@@ -1,6 +1,6 @@
 # Design 001: Dateiliste mit der GuiExpert Table
 
-> **Status:** 🛑 Entwurf – wartet auf Freigabe · **Datum:** 2026-10-17 · **Branch:** `feat/guiexpert-dateiliste`
+> **Status:** ✅ umgesetzt (Freigabe 2026-10-17: E2 eigenes Set, Sortieren per Doppelklick hinnehmen, Leertaste = TC) · **Datum:** 2026-10-17 · **Branch:** `feat/guiexpert-dateiliste`
 > **Pakete:** `@guiexpert/table@1.1.99`, `@guiexpert/angular-table@22.1.99` (npm, Major = Angular 22)
 > **Grundlage:** Quellcode-Analyse des Mono-Repos (Stand `ebcf9cd`, Release 1.1.99) **und** ein Spike in der echten
 > Tauri-App unter Xvfb (Rust-Daten, zoneless Angular 22, Tastatur/Maus per `xdotool`). Der Spike wurde verworfen,
@@ -165,6 +165,8 @@ Werden in 001 **umgangen, wo es ohne Core-Eingriff sauber geht**, und als Vorsch
 | G10 | Keine Scrollbar-Variablen, kein `prefers-color-scheme` | eigene Regeln | `--ge-table-scrollbar-*`, optional Auto-Dark |
 | G11 | `ResizeObserver` Pflicht (jsdom) | Test-Doppelgänger | Guard `typeof ResizeObserver` |
 | G12 | `console.debug` je Taste auf `localhost` (betrifft Tauri-Dev) | hinnehmen | an `setLoggingActive` koppeln |
+| G13 | `AreaModelObjectArray.getCustomClassesAt` wirft für Zeilen außerhalb des Bereichs (`row.selected` von `undefined`) | Guard in `FileBodyModel` | Guard im Core + Test |
+| G14 | Header-Sortierung (Doppelklick) ruft `stopPropagation()`, kein Ereignis „Sortierung geändert“ | Capture-Listener + `setTimeout` → Cursor per Pfad wiederherstellen | Event `onSortChanged(GeSortEvent)` |
 
 ## 4. Offene Fragen an Marc
 
@@ -177,8 +179,27 @@ Werden in 001 **umgangen, wo es ohne Core-Eingriff sauber geht**, und als Vorsch
 ## 5. Fortschritt
 
 - [x] Phase 1: Bestand, Spike, Design (dieses Dokument)
-- [ ] Freigabe
-- [ ] Phase 3: Frontend (Specs zuerst, dann Umsetzung) – Phase 2 (Rust) entfällt bis auf das Messskript
-- [ ] Phase 4: Ende-zu-Ende + Performance-Messung
-- [ ] Phase 5: Doku (`docs/architecture.md` Abhängigkeiten + Entscheidungen, README Tastenkürzel)
-- [ ] Phase 6: Abschlussprüfung, Lückenliste für `mono/TODO.md`
+- [x] Freigabe (2026-10-17, alle drei Empfehlungen)
+- [x] Phase 3: Frontend – 58 Vitest-Tests (Comparatoren, Renderer inkl. HTML-Injection, Body-Modell, Store,
+  Controller gegen `FakeTableBridge`, FileBrowser mit Platzhalter für die Table); Phase 2 entfällt bis auf den
+  manuellen Rust-Messtest (`listing.rs`, `#[ignore]`)
+- [x] Phase 4: Ende-zu-Ende unter Xvfb (Debug- und Release-Build): Tastatur-Tabelle E7, Doppelklick, Sortieren per
+  Kopf mit Cursor- und Markierungserhalt, Spaltenbreite über Ordnerwechsel, gesperrter Ordner, 100 000 Einträge
+- [x] Phase 5: Doku (`docs/architecture.md` inkl. Performance, README Tastatur, `docs/feature-parity.md`, `CLAUDE.md` §5)
+- [x] Phase 6: `pnpm check`, Release-Build
+
+### Befunde während der Umsetzung
+
+- **Sortieren nach Kopf-Doppelklick** verschob den Cursor (Index bleibt, Zeilen tauschen) → G14-Workaround.
+- **Collator unter POSIX-Locale:** WebKitGTK mit `LANG=C.UTF-8` sortierte Groß- vor Kleinbuchstaben →
+  `createNameCollator()` prüft sich selbst und fällt auf `en` zurück.
+- **Eigene Renderer** haben keinen Innenabstand (die Table polstert nur ihr Label-Div) → Klasse `fnf-cell`.
+- Aus Marcs Screenshot der alten Version übernommen: Häkchen statt Icon für markierte Einträge.
+- **Performance** (Release, Container, 100 020 Einträge): Rust 0,80 s + JSON 0,06 s, gesamt inkl. IPC 1,5 s, Table
+  0,17–0,40 s → Ziel < 500 ms verfehlt, Engpass Backend/Transport (20 MB JSON). Optionen in `docs/architecture.md`
+  („Performance“); auf dem Mac nachmessen.
+
+### Offen
+
+- Lücken G1–G14 als Vorschläge in `mono/TODO.md` eintragen (Marc entscheidet, ob/wann).
+- macOS/Windows nicht praktisch getestet (nur Linux/Xvfb).

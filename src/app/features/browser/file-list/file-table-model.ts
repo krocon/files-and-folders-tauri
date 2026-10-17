@@ -1,0 +1,114 @@
+import {
+  AreaModelObjectArrayWithColumndefs,
+  SelectionModel,
+  ShortcutActionIdMapping,
+  TableFactory,
+  TableModelIf,
+  TableOptions,
+  TableOptionsIf,
+} from '@guiexpert/table';
+import { DirEntry } from '../../../core/fs/fs.models';
+import { createFileColumns } from './file-columns';
+
+export const ROW_HEIGHT = 24;
+export const HEADER_HEIGHT = 26;
+
+/** What the body model needs to know to style rows (read at render time). */
+export interface FileRowState {
+  /** Displayed row index of the cursor (table focus), -1 if none. */
+  cursorRow(): number;
+  isMarked(path: string): boolean;
+}
+
+/**
+ * Body model of the file list: adds row classes for cursor, marked, hidden and
+ * symlink entries. The table only supports classes per cell, so every cell of
+ * a row gets them.
+ */
+export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> {
+  constructor(
+    rows: DirEntry[],
+    columnDefs: ReturnType<typeof createFileColumns>,
+    private state: FileRowState,
+  ) {
+    super('body', rows, columnDefs, ROW_HEIGHT);
+  }
+
+  setRowState(state: FileRowState): void {
+    this.state = state;
+  }
+
+  /** Used by the name renderer: marked rows show a check mark instead of the icon (as in the old version). */
+  isMarkedAt(rowIndex: number): boolean {
+    const entry = this.getRowByIndex(rowIndex) as DirEntry | undefined;
+    return entry ? this.state.isMarked(entry.path) : false;
+  }
+
+  override getCustomClassesAt(rowIndex: number, columnIndex: number): string[] {
+    const entry = this.getRowByIndex(rowIndex) as DirEntry | undefined;
+    if (!entry) {
+      // the core reads `row.selected` without a guard (G13) – never call it for a missing row
+      return [];
+    }
+    const classes = super.getCustomClassesAt(rowIndex, columnIndex);
+    if (rowIndex === this.state.cursorRow()) {
+      classes.push('fnf-cursor');
+    }
+    if (this.state.isMarked(entry.path)) {
+      classes.push('fnf-marked');
+    }
+    if (entry.hidden) {
+      classes.push('fnf-hidden');
+    }
+    if (entry.kind === 'symlink') {
+      classes.push('fnf-symlink');
+    }
+    if (entry.kind === 'unknown') {
+      classes.push('fnf-unreadable');
+    }
+    return classes;
+  }
+}
+
+const NO_STATE: FileRowState = { cursorRow: () => -1, isMarked: () => false };
+
+export interface FileTable {
+  readonly model: TableModelIf;
+  readonly body: FileBodyModel;
+  readonly options: TableOptionsIf;
+}
+
+/** Keys re-mapped for a file list (merged per key with the table defaults). */
+export const FILE_LIST_SHORTCUTS: ShortcutActionIdMapping = {
+  home: 'NAVIGATE_FIRST_CELL',
+  end: 'NAVIGATE_LAST_CELL',
+};
+
+/** Creates model + options once per panel. A new object would re-create the table. */
+export function createFileTable(labelledBy: string): FileTable {
+  const columnDefs = createFileColumns();
+  const body = new FileBodyModel([], columnDefs, NO_STATE);
+  const options: TableOptionsIf = {
+    ...new TableOptions(),
+    defaultRowHeights: { header: HEADER_HEIGHT, body: ROW_HEIGHT, footer: 0 },
+    hoverColumnVisible: false,
+    hoverRowVisible: true,
+    verticalBorderVisible: false,
+    horizontalBorderVisible: false,
+    headerSeparatorBorderVisible: true,
+    getSelectionModel: () => new SelectionModel('none', 'single'),
+    shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
+    ariaLabelledBy: labelledBy,
+    overlayOptions: {
+      noRowsText: 'This folder is empty.',
+      loadingText: 'Loading…',
+      loadingDelayInMs: 150,
+    },
+  };
+  const model = TableFactory.createTableModel({
+    bodyAreaModel: body,
+    columnDefs,
+    tableOptions: options,
+  });
+  return { model, body, options };
+}

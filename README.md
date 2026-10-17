@@ -4,24 +4,42 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Phase 1 (MVP / Walking Skeleton).** Die App listet Verzeichnisse über Rust, zeigt sie
-> in Angular an und erlaubt Navigation in Unterordner und nach oben. Dateien werden nur angezeigt
+> **Status: Prompt 001 (Dateiliste mit der GuiExpert Table).** Die App listet Verzeichnisse über Rust, zeigt
+> sie in einer GuiExpert Table an und erlaubt Navigation, Sortieren und Markieren. Dateien werden nur angezeigt
 > und ausgewählt – es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
-## Was funktioniert (Phase 1)
+## Was funktioniert
 
 - Start im Home-Ordner des aktuellen Benutzers (über Tauris `path().home_dir()`).
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
-- Tabelle mit Ordnern zuerst, Sortierung nach Name (case-insensitive).
-- Ordner/Symlinks auf Ordner öffnen per Doppelklick oder `Enter`; nach oben per „Up“-Button oder
-  `Backspace` (der Herkunftsordner wird wieder ausgewählt).
-- Tastatur: `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, `Enter`, `Backspace`.
-- Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht
-  bleibt bei Fehlern erhalten.
+- Dateiliste mit der [GuiExpert Table](https://gui.expert) (virtuelles Scrollen, 100 000 Einträge flüssig):
+  Spalten Name, Erweiterung, Größe (`<DIR>` für Ordner), Geändert; Spaltenbreiten veränderbar und beim
+  Ordnerwechsel erhalten.
+- Sortieren per **Doppelklick** auf den Spaltenkopf; Ordner bleiben in beiden Richtungen oben, Namen natürlich
+  sortiert (`file2` vor `file10`), leere Werte unten.
+- Zeilen-Cursor (aktiv/inaktiv), markierte Einträge rot mit Häkchen, versteckte Einträge gedimmt.
+- Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht bleibt bei Fehlern.
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
 - Helles/dunkles Farbschema über CSS Custom Properties (`prefers-color-scheme`).
+
+### Tastatur und Maus (Stand Prompt 001)
+
+| Taste / Maus | Wirkung |
+| --- | --- |
+| `↑` `↓` `Bild↑` `Bild↓` | Cursor bewegen |
+| `Pos1` / `Ende` (macOS zusätzlich `⌘↑` / `⌘↓`) | erste / letzte Zeile |
+| `Enter`, Doppelklick | Ordner öffnen |
+| `Backspace`, Button „Up“ | Elternordner (Cursor auf dem Herkunftsordner) |
+| `Leertaste`, `Einfg` | markieren/entmarkieren und Cursor weiter |
+| `Shift+↑` / `Shift+↓` | markieren und Cursor bewegen |
+| `Strg/⌘+Klick` | Markierung umschalten |
+| `Shift+Klick` | Bereich ab vorherigem Cursor markieren |
+| `Strg/⌘+A` / `Strg/⌘+Shift+A` | alles markieren / Markierung aufheben |
+| Doppelklick auf Spaltenkopf | sortieren (auf-/absteigend) |
+
+Das vollständige, konfigurierbare Tastaturmodell folgt in Prompt 002.
 
 ## Voraussetzungen
 
@@ -68,7 +86,8 @@ Notarisierung sind noch nicht eingerichtet.
 ```
 src/                       Angular-Frontend
   app/core/fs/             DTO-Typen, Fehler-Mapping, FsApi (einziger Ort mit invoke())
-  app/features/browser/    FileBrowserStore (Signals), FileBrowser, FileTable
+  app/features/browser/    FileBrowserStore (Signals), FileBrowser
+    file-list/             FileList (GuiExpert Table), Controller, Bridge, Spalten, Renderer
   app/shared/              Formatierung (Größe, Datum)
   styles.scss              Design-Tokens (CSS Custom Properties)
 src-tauri/                 Rust-Backend (Tauri 2)
@@ -88,6 +107,7 @@ Fachliche Referenzen (nur Funktionsumfang, kein übernommener Code):
 - npm [`files-and-folders`](https://www.npmjs.com/package/files-and-folders) – MIT (laut package.json)
 - [krocon/node-files-and-folders](https://github.com/krocon/node-files-and-folders) – MIT (laut package.json)
 - [krocon/files-and-folders](https://github.com/krocon/files-and-folders) – „ISC“ in package.json, keine LICENSE-Datei
-- [krocon/files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) – Custom Source-Available License (CSAL) v1.0; **kein Code übernehmen**, nur als Funktionsreferenz
+- [krocon/files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) – Custom Source-Available License (CSAL) v1.0 (Rechteinhaber: GUI Expert GmbH); Nutzung als Referenz, Code-Übernahme nur nach Marcs ausdrücklicher Freigabe
+- [GuiExpert Table](https://github.com/guiexperttable/mono) – MIT (aktuelle Releases)
 
 Die Lizenz dieses Projekts ist noch nicht festgelegt (`license` in `Cargo.toml`/`package.json` leer).

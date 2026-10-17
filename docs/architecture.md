@@ -1,13 +1,14 @@
 # Architektur
 
-Stand: Phase 1 (MVP). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 001 (GuiExpert-Dateiliste). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
 
 ```
 ┌──────────────── WebView (Angular 22, zoneless) ────────────────┐
-│  FileBrowser ── FileTable (präsentational, Tastatur)           │
+│  FileBrowser ── FileList ─ <guiexpert-table> (GuiExpert Table)  │
+│                  └ FileListController ─ TableBridge (Fassade)    │
 │      │                                                         │
 │  FileBrowserStore (Signals, pro Panel bereitgestellt)          │
 │      │                                                         │
@@ -44,7 +45,13 @@ sind als solche markiert.
 | Sicherheit | Capabilities nur `core:default`; keine fs/shell-Plugins; strikte CSP | Minimale Angriffsfläche. Eigene Commands sind über `invoke_handler` registriert. |
 | CSP & Styles | `dangerousDisableAssetCspModification: ["style-src"]` | Tauri ergänzt sonst Hashes in `style-src`, wodurch `'unsafe-inline'` ignoriert wird und Angulars zur Laufzeit eingefügte Komponenten-Styles blockiert würden (in der App verifiziert). `script-src` bleibt strikt. |
 | Styling | SCSS + Design-Tokens in `src/styles.scss`, Dark-Mode per `prefers-color-scheme` | Kein UI-Framework nötig. |
-| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `tauri`, `serde`. Dev: `tempfile` (Rust-Tests), angular-eslint, Prettier, Vitest/jsdom | Router und Forms wurden entfernt (noch nicht benötigt); das Log-Plugin des Templates ebenfalls. |
+| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`. Dev: `tempfile`, `serde_json` (Rust-Tests), angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
+| Dateiliste | GuiExpert Table, **ein** `TableModel` je Panel, Ordnerwechsel nur über `setRows` + `reSort` + `repaintHard` | Spaltenbreiten und Sortierung bleiben erhalten; ein neues Modell-Objekt würde die Table neu aufbauen. Details und Belege: `prompts/001-guiexpert-dateiliste.design.md`. |
+| Cursor | Table-Fokus (`FocusModel`, Spalte 0) ↔ `FileBrowserStore.cursorPath`, Abgleich über den Pfad; Darstellung als Zeilenklasse `fnf-cursor` | Fokus der Table ist index-basiert und zellbasiert; der Pfad ist sortierfest. Nach Header-Sortierung (Doppelklick, ohne Ereignis) stellt ein Capture-Listener den Cursor per Pfad wieder her. |
+| Markierung | eigenes `Set<path>` im Store, `SelectionModel` der Table auf `none` | Das `SelectionModel` ist index-basiert und überlebt kein Sortieren. Anzeige: Klasse `fnf-marked` + Häkchen statt Icon (wie die alte Version), Screenreader-Text „marked“. |
+| Sortierung | Comparatoren je Spalte (`f * …`-Trick: Ordner oben, leere Werte unten in beiden Richtungen), natürliche Namensordnung per `Intl.Collator` mit Selbsttest | Der Collator fällt auf `en` zurück, wenn die Laufzeit nach Codepunkten sortiert (WebKitGTK mit `LANG=C.UTF-8`, im Container beobachtet). |
+| Tastatur/Maus | Table-Aktionen über `shortcutService.addListener` (Leertaste, Strg/⌘+A, Strg/⌘+Shift+A), ungemappte Tasten am Host (Enter, Backspace, Einfg, Shift+Pfeile), Klicks über `api.subscribe` (ohne 150-ms-Entprellung des Wrappers) | Übergangslösung bis zum Aktionssystem (Prompt 002). `Pos1`/`Ende` per `shortcutActionIdMapping` auf erste/letzte Zeile, Strg/⌘+X aus dem Live-Mapping entfernt. |
+| Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
 ## DTO-Vertrag
 
@@ -57,6 +64,25 @@ DirEntry { name, path, kind: 'file'|'directory'|'symlink'|'unknown', targetKind,
            size | null, modifiedMs | null, hidden, lossyName }
 FsError { code, message, path | null }
 ```
+
+## Performance (Messung Prompt 001, Okt. 2026)
+
+Ordner mit 100 020 Einträgen (`node scripts/make-big-dir.mjs <ziel>`), Linux-Container unter Xvfb, Release-Build:
+
+| Schritt | Zeit |
+| --- | --- |
+| Rust `list_directory` (Metadaten lesen, sortieren) | 0,80 s |
+| JSON-Serialisierung (20 MB, ~205 Byte/Eintrag) | 0,06 s |
+| `list_directory` gesamt inkl. IPC (gemessen im Frontend) | 1,5 s |
+| Table `setRows` + Sortieren + erstes Rendern | 0,17–0,40 s |
+| Umsortieren per Spaltenkopf | 0,16 s |
+| Scrollen / Strg+Ende | ohne spürbare Verzögerung |
+
+Das Ziel „< 500 ms bis zur ersten Anzeige“ wird im Container verfehlt; der Engpass ist Backend + Transport, nicht die
+Table. Auf dem Mac noch zu messen (Konsole: `[fnf:perf]`). Optionen (noch nicht umgesetzt, Kandidaten für Prompt
+003/012): schlankeres DTO (Ordnerpfad einmal statt voller Pfad je Eintrag), Streaming in Blöcken über
+`tauri::ipc::Channel` (erste Zeilen sofort), paralleles `stat`, binäres Format. Messung Rust allein:
+`FNF_PERF_DIR=<ordner> cargo test --release perf -- --ignored --nocapture` (in `src-tauri`).
 
 ## Geplante Erweiterungen (noch nicht implementiert)
 

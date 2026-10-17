@@ -303,3 +303,26 @@ mod tests {
         assert!(l.entries[0].name.contains('\u{FFFD}'));
     }
 }
+
+#[cfg(test)]
+mod perf {
+    /// Manual measurement: `FNF_PERF_DIR=/big/dir cargo test --release perf -- --ignored --nocapture`
+    #[test]
+    #[ignore = "manual performance measurement"]
+    fn perf_list_big_directory() {
+        let Ok(dir) = std::env::var("FNF_PERF_DIR") else {
+            return;
+        };
+        let start = std::time::Instant::now();
+        let listing = super::list_directory(std::path::Path::new(&dir)).unwrap();
+        let listed = start.elapsed();
+        let json = serde_json::to_string(&listing).unwrap();
+        println!(
+            "list_directory: {} entries in {:?}, JSON {} KB in {:?}",
+            listing.entries.len(),
+            listed,
+            json.len() / 1024,
+            start.elapsed() - listed
+        );
+    }
+}

@@ -24,9 +24,11 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 
 | Referenzfunktion (dokumentiert in README von node-files-and-folders / -mr) | Phase | Status | Tests | Anmerkung |
 | --- | --- | --- | --- | --- |
-| Verzeichnis anzeigen, navigieren | 1 | ✅ | Rust + Angular | |
+| Verzeichnis anzeigen, navigieren | 1/001 | ✅ | Rust + Angular | GuiExpert Table |
+| Markieren: Einfg/Leertaste, Shift, Strg/⌘+Klick, alles/nichts | 001 | ✅ | `file-list-controller.spec.ts` | Markierung per Pfad, übersteht Sortieren; Num+/−/* und Muster in 002 |
+| Markierte Zeilen rot mit Häkchen | 001 | ✅ | `file-renderers.spec.ts` | wie in der alten Version |
 | Hidden-Dateien umschalten | 2 | 🟡 | Rust (Flag) | Flag wird geliefert und gedimmt angezeigt, Toggle fehlt |
-| Sortierung („smart sorting“) | 2 | 🟡 | Rust | nur fest: Ordner zuerst, Name |
+| Sortierung („smart sorting“) | 001 | ✅ | `file-columns.spec.ts` | Spaltenkopf (Doppelklick), Ordner oben in beiden Richtungen, natürlich statt `localeCompare` (bewusst besser) |
 | Verzeichnis-Historie | 2 | ⬜ | | |
 | Filter nach Name/Endung/Art | 4 | ⬜ | | |
 | Dual-Panel | 5 | ⬜ | | Store ist bereits pro Panel |

@@ -17,7 +17,7 @@
   >
     <span aria-hidden="true">⟳</span> Refresh
   </button>
-  <output class="path" [attr.title]="store.path()" aria-label="Current folder">
+  <output class="path" [id]="pathId" [attr.title]="store.path()">
     {{ store.path() ?? '…' }}
   </output>
 </div>
@@ -35,24 +35,16 @@
   </div>
 }
 
-<app-file-table
-  [entries]="store.entries()"
-  [selectedPath]="store.selectedPath()"
-  [loading]="store.loading()"
-  (selectEntry)="store.select($event)"
-  (openEntry)="store.open($event)"
-  (moveSelection)="store.moveSelection($event)"
-  (selectEdge)="store.selectEdge($event)"
-  (goUp)="store.up()"
-/>
+<app-file-list [labelledBy]="pathId" />
 
-<footer class="status" role="status" aria-live="polite">
+<!-- no live region: the table announces folder changes; the cursor name would be read on every move -->
+<footer class="status">
   @if (store.loading()) {
     <span>Loading…</span>
   } @else if (store.listing()) {
     <span>{{ status() }}</span>
   }
-  @if (store.selectedEntry(); as sel) {
-    <span class="selection" [attr.title]="sel.path">{{ sel.name }}</span>
+  @if (store.cursorEntry(); as cur) {
+    <span class="selection" [attr.title]="cur.path">{{ cur.name }}</span>
   }
 </footer>

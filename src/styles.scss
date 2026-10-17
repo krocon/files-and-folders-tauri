@@ -1,3 +1,5 @@
+@use 'styles/ge-table-theme';
+
 /* Design tokens. Components must use these variables instead of literal values. */
 :root {
   color-scheme: light dark;
@@ -17,6 +19,11 @@
   --color-danger: #c62f3a;
   --color-danger-bg: #fdecee;
   --color-danger-text: #7d1720;
+  --color-marked: #c8102e;
+  --color-cursor-bg: #2f6fde;
+  --color-cursor-text: #ffffff;
+  --color-cursor-marked-text: #ffe066;
+  --color-cursor-inactive-bg: #dde6f7;
 
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
@@ -52,6 +59,11 @@
     --color-danger: #e5606a;
     --color-danger-bg: #3a1c20;
     --color-danger-text: #ffc9cd;
+    --color-marked: #ff7a85;
+    --color-cursor-bg: #2c5bb8;
+    --color-cursor-text: #ffffff;
+    --color-cursor-marked-text: #ffe066;
+    --color-cursor-inactive-bg: #2a3240;
   }
 }
 

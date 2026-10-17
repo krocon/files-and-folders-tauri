@@ -1,0 +1,47 @@
+import { DirEntry } from '../app/core/fs/fs.models';
+import { TableBridge } from '../app/features/browser/file-list/table-bridge';
+
+/**
+ * In-memory TableBridge: keeps rows in a display order given by an optional
+ * sort function, records calls. Mirrors what the real table does that
+ * matters to the controller (focus index survives setRows, clamped).
+ */
+export class FakeTableBridge implements TableBridge {
+  rows: DirEntry[] = [];
+  focus = -1;
+  calls: string[] = [];
+  announcements: string[] = [];
+  sortFn: ((a: DirEntry, b: DirEntry) => number) | null = null;
+
+  setRows(rows: readonly DirEntry[]): void {
+    this.calls.push(`setRows(${rows.length})`);
+    this.rows = this.sortFn ? [...rows].sort(this.sortFn) : [...rows];
+  }
+
+  /** Simulates a header sort: order changes, focus index stays. */
+  sort(fn: (a: DirEntry, b: DirEntry) => number): void {
+    this.sortFn = fn;
+    this.rows = [...this.rows].sort(fn);
+  }
+
+  displayedRows(): readonly DirEntry[] {
+    return this.rows;
+  }
+
+  focusedRow(): number {
+    return this.focus;
+  }
+
+  setFocusedRow(index: number): void {
+    this.calls.push(`setFocusedRow(${index})`);
+    this.focus = index;
+  }
+
+  repaint(): void {
+    this.calls.push('repaint');
+  }
+
+  announce(text: string): void {
+    this.announcements.push(text);
+  }
+}

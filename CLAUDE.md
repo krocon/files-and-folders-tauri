@@ -99,8 +99,12 @@ prompts/                     Feature-Prompts (s. o.)
     dann die Propagation. Nicht gemappte Tasten (z. B. `Insert`, `F5`, `Backspace` ohne Editing-Option) bubbeln zum
     App-Handler. Default-Mapping: `home`/`end` = Zeilenanfang/-ende (Spalten!) – für eine Dateiliste auf
     `NAVIGATE_FIRST_CELL`/`NAVIGATE_LAST_CELL` umbiegen.
-  - Cursor (Total Commander) ↔ `FocusModel`; markierte Dateien ↔ `SelectionModel("row", …)`. Vor der Umsetzung im
-    Code prüfen (Prompt 001).
+  - Cursor (Total Commander) ↔ `FocusModel` (über den Pfad abgeglichen); markierte Dateien = eigenes `Set<path>` im
+    Store, **nicht** `SelectionModel` (index-basiert, überlebt kein Sortieren). Umsetzung: `features/browser/file-list/`,
+    Begründung und alle Workarounds (G1–G14): `prompts/001-guiexpert-dateiliste.design.md`.
+  - Sortieren per Spaltenkopf geht nur per **Doppelklick**; der Handler ruft `stopPropagation()` und es gibt kein
+    Sortier-Ereignis. `setRows` sortiert nicht neu (`reSort()` danach).
+  - Table-API nur über `TableBridge` (`file-list/table-bridge.ts`) ansprechen – dort sind die Workarounds gebündelt.
   - Filter extern: `externalFilterFunction` + `tableApi.externalFilterChanged()`; Sortierung über `ColumnDef.sortable`
     / `sortComparator` bzw. `tableApi.sort(fn)`.
   - Renderer ohne Angular (`CellRendererIf`) sind schneller als Angular-Komponenten; Daten nie unescaped in
@@ -140,4 +144,6 @@ prompts/                     Feature-Prompts (s. o.)
 - Alte Projekte: `krocon/node-files-and-folders-client`, `krocon/node-files-and-folders-server`, npm
   `files-and-folders` (MIT laut package.json) – fachliche Vorlage, Code wird nicht übernommen (AngularJS/Node passt
   nicht), Ideen und Formate (Shortcuts, Rename-Makros, Farbschemata) dürfen übernommen werden.
-- `krocon/files-and-folders-mr`: Custom Source-Available License – **kein Code übernehmen**, nur Funktionsreferenz.
+- `krocon/files-and-folders-mr` (lokal `~/WebstormProjects/files-and-folders-mr`): Custom Source-Available License,
+  Rechteinhaber GUI Expert GmbH (Marc). Als Referenz für Verhalten, Layout und Konfiguration nutzen; Code nur nach
+  Marcs ausdrücklicher Freigabe übernehmen. Die acht Default-Designs: `docs/legacy-themes/`.

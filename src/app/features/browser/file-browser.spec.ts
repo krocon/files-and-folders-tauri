@@ -1,8 +1,17 @@
+import { Component, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FsApi } from '../../core/fs/fs-api';
 import { DirectoryListing } from '../../core/fs/fs.models';
 import { deferred, dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowser } from './file-browser';
+import { FileBrowserStore } from './file-browser.store';
+import { FileList } from './file-list/file-list';
+
+/** jsdom has no layout – the real table is tested end-to-end; here a stand-in. */
+@Component({ selector: 'app-file-list', template: '<div class="stub-list"></div>' })
+class FileListStub {
+  readonly labelledBy = input.required<string>();
+}
 
 describe('FileBrowser', () => {
   let api: FakeFsApi;
@@ -13,6 +22,10 @@ describe('FileBrowser', () => {
       imports: [FileBrowser],
       providers: [{ provide: FsApi, useValue: api }],
     });
+    TestBed.overrideComponent(FileBrowser, {
+      remove: { imports: [FileList] },
+      add: { imports: [FileListStub] },
+    });
   });
 
   async function render() {
@@ -20,7 +33,8 @@ describe('FileBrowser', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return { fixture, el: fixture.nativeElement as HTMLElement };
+    const store = fixture.debugElement.injector.get(FileBrowserStore);
+    return { fixture, el: fixture.nativeElement as HTMLElement, store };
   }
 
   it('shows a loading state while the backend is working', async () => {
@@ -34,22 +48,28 @@ describe('FileBrowser', () => {
     await fixture.whenStable();
   });
 
-  it('renders the current path and entries including unicode names', async () => {
+  it('renders the current path, names the list with it and counts entries', async () => {
     api.handler = () =>
       Promise.resolve(
         listing('/Users/jörg/Mein Ordner', [dir('Übersicht'), entry('日本語 file.txt')]),
       );
-    const { el } = await render();
-    expect(el.querySelector('.path')?.textContent).toContain('/Users/jörg/Mein Ordner');
-    const names = [...el.querySelectorAll('tbody .name')].map((n) => n.textContent);
-    expect(names).toEqual(['Übersicht', '日本語 file.txt']);
+    const { el, fixture } = await render();
+    const path = el.querySelector('.path') as HTMLElement;
+    expect(path.textContent).toContain('/Users/jörg/Mein Ordner');
+    const list = fixture.debugElement.query((d) => d.componentInstance instanceof FileListStub);
+    expect((list.componentInstance as FileListStub).labelledBy()).toBe(path.id);
     expect(el.querySelector('.status')?.textContent).toContain('1 folder, 1 other item');
   });
 
-  it('shows the empty state', async () => {
-    api.handler = () => Promise.resolve(listing('/empty', []));
-    const { el } = await render();
-    expect(el.querySelector('.empty')?.textContent).toContain('empty');
+  it('shows marked count and the cursor entry in the status line', async () => {
+    api.handler = () =>
+      Promise.resolve(listing('/x', [entry('a', { path: '/x/a' }), entry('b', { path: '/x/b' })]));
+    const { el, fixture, store } = await render();
+    store.setCursor('/x/b');
+    store.setMarked(['/x/a', '/x/b'], true);
+    fixture.detectChanges();
+    expect(el.querySelector('.status')?.textContent).toContain('2 marked');
+    expect(el.querySelector('.selection')?.textContent).toBe('b');
   });
 
   it('shows an understandable error message instead of crashing', async () => {
@@ -68,47 +88,22 @@ describe('FileBrowser', () => {
     expect(el.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('navigates into a folder on double click and up via the button', async () => {
+  it('goes up via the button and keeps the cursor on the folder it came from', async () => {
     api.handler = (p) =>
       Promise.resolve(
-        p === '/home/Sub'
-          ? listing('/home/Sub', [entry('inner.txt')], '/home')
-          : listing('/home', [dir('Sub', { path: '/home/Sub' })], '/'),
+        p === '/home' || p === undefined
+          ? listing('/home', [dir('Sub', { path: '/home/Sub' })], '/')
+          : listing('/home/Sub', [entry('inner.txt')], '/home'),
       );
-    const { el, fixture } = await render();
-    el.querySelector('tbody tr')!.dispatchEvent(new MouseEvent('dblclick'));
-    await fixture.whenStable();
+    const { el, fixture, store } = await render();
+    await store.load('/home/Sub');
     fixture.detectChanges();
-    expect(el.querySelector('.path')?.textContent).toContain('/home/Sub');
-
     const upButton = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Up'))!;
     upButton.click();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(api.calls.at(-1)).toBe('/home');
-    expect(el.querySelector('tr.selected .name')?.textContent).toBe('Sub');
-  });
-
-  it('supports keyboard navigation (arrows, Enter, Backspace)', async () => {
-    api.handler = (p) =>
-      Promise.resolve(
-        p === '/home/B'
-          ? listing('/home/B', [], '/home')
-          : listing('/home', [dir('A', { path: '/home/A' }), dir('B', { path: '/home/B' })], '/'),
-      );
-    const { el, fixture } = await render();
-    const grid = el.querySelector('[role="grid"]') as HTMLElement;
-    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-    fixture.detectChanges();
-    expect(el.querySelector('tr.selected .name')?.textContent).toBe('B');
-    expect(grid.getAttribute('aria-activedescendant')).toBe('fnf-row-1');
-
-    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-    await fixture.whenStable();
-    expect(api.calls.at(-1)).toBe('/home/B');
-
-    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }));
-    await fixture.whenStable();
-    expect(api.calls.at(-1)).toBe('/home');
+    expect(store.cursorEntry()?.name).toBe('Sub');
+    expect(el.querySelector('.selection')?.textContent).toBe('Sub');
   });
 });

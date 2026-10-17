@@ -1,0 +1,38 @@
+import { SelectionModel } from '@guiexpert/table';
+import { dir, entry } from '../../../../testing/fs-fixtures';
+import { createFileTable, FILE_LIST_SHORTCUTS, ROW_HEIGHT } from './file-table-model';
+
+describe('createFileTable', () => {
+  it('creates a compact table without table selection and with file-list shortcuts', () => {
+    const { options, body, model } = createFileTable('path-1');
+    expect(options.defaultRowHeights.body).toBe(ROW_HEIGHT);
+    expect(options.hoverColumnVisible).toBe(false);
+    expect((options.getSelectionModel?.() as SelectionModel).selectionType).toBe('none');
+    expect(options.shortcutActionIdMapping).toEqual(FILE_LIST_SHORTCUTS);
+    expect(options.ariaLabelledBy).toBe('path-1');
+    expect(model.getBodyModel()).toBe(body);
+  });
+});
+
+describe('FileBodyModel.getCustomClassesAt', () => {
+  it('adds cursor, marked, hidden and symlink classes per row', () => {
+    const { body } = createFileTable('x');
+    const rows = [
+      dir('a', { path: '/a' }),
+      entry('.h', { path: '/.h', hidden: true }),
+      entry('l', { path: '/l', kind: 'symlink', targetKind: 'file' }),
+      entry('u', { path: '/u', kind: 'unknown' }),
+    ];
+    body.setRows(rows);
+    body.setRowState({ cursorRow: () => 0, isMarked: (p) => p === '/.h' });
+    expect(body.getCustomClassesAt(0, 0)).toContain('fnf-cursor');
+    expect(body.getCustomClassesAt(0, 0)).not.toContain('fnf-marked');
+    expect(body.getCustomClassesAt(1, 2)).toEqual(
+      expect.arrayContaining(['fnf-marked', 'fnf-hidden']),
+    );
+    expect(body.getCustomClassesAt(1, 2)).not.toContain('fnf-cursor');
+    expect(body.getCustomClassesAt(2, 0)).toContain('fnf-symlink');
+    expect(body.getCustomClassesAt(3, 0)).toContain('fnf-unreadable');
+    expect(body.getCustomClassesAt(9, 0)).not.toContain('fnf-cursor');
+  });
+});

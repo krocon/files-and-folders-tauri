@@ -1,0 +1,79 @@
+/*
+ * Bridge between our design tokens (src/styles.scss) and the GuiExpert Table.
+ * The table defines its --ge-table-* variables on <html>; redefining them on the
+ * table host (.ge-table) wins by inheritance. Only this file knows --ge-table-*.
+ * Prompt 013/019 extend this when themes become switchable.
+ */
+.ge-table {
+  --ge-table-bg: var(--color-surface);
+  --ge-table-border: var(--color-border);
+
+  --ge-table-header-west-bg: var(--color-surface-raised);
+  --ge-table-header-center-bg: var(--color-surface-raised);
+  --ge-table-header-east-bg: var(--color-surface-raised);
+  --ge-table-header-west-text: var(--color-muted);
+  --ge-table-header-center-text: var(--color-muted);
+  --ge-table-header-east-text: var(--color-muted);
+  --ge-table-header-center-horizontal-border: var(--color-border);
+  --ge-table-header-center-vertical-border: var(--color-border);
+
+  --ge-table-body-west-bg: var(--color-surface);
+  --ge-table-body-center-bg: var(--color-surface);
+  --ge-table-body-east-bg: var(--color-surface);
+  --ge-table-body-west-text: var(--color-text);
+  --ge-table-body-center-text: var(--color-text);
+  --ge-table-body-east-text: var(--color-text);
+  --ge-table-row-odd-bg: transparent;
+  --ge-table-row-even-bg: transparent;
+
+  --ge-table-hover-row-bg: var(--color-row-hover);
+  /* the cursor is a whole row (.fnf-cursor) – the table's cell frame stays invisible */
+  --ge-table-focus-border: transparent;
+  --ge-table-focus-outline-color: transparent;
+
+  --ge-table-overlay-bg: transparent;
+  --ge-table-overlay-color: var(--color-muted);
+  --ge-table-spinner-color: var(--color-accent);
+
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+/* Cell content of our own renderers (same inner spacing as the table's label div). */
+.ge-table .fnf-cell {
+  padding-inline: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ge-table .fnf-icon {
+  display: inline-block;
+  min-width: 2.25em;
+}
+
+/* Row states (classes from FileBodyModel.getCustomClassesAt, set on every cell of the row). */
+.ge-table .fnf-hidden {
+  color: var(--color-muted);
+}
+
+.ge-table .fnf-unreadable {
+  color: var(--color-danger);
+}
+
+.ge-table .fnf-marked {
+  color: var(--color-marked);
+}
+
+.ge-table .fnf-cursor {
+  background-color: var(--color-cursor-inactive-bg);
+}
+
+.ge-table:focus-within .fnf-cursor {
+  background-color: var(--color-cursor-bg);
+  color: var(--color-cursor-text);
+}
+
+.ge-table:focus-within .fnf-cursor.fnf-marked {
+  color: var(--color-cursor-marked-text);
+}

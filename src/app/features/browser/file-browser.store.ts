@@ -2,10 +2,21 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { FsApi } from '../../core/fs/fs-api';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, DirectoryListing, FsError, isNavigableDir } from '../../core/fs/fs.models';
+import { recordPerf, since } from '../../shared/perf';
+
+const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
 
 /**
  * State of one file panel. Provided per component (not root) so that a later
  * dual-pane / tab layout can create independent instances.
+ *
+ * - `cursorPath`: the one entry under the cursor (Total Commander "focus"),
+ *   `null` = first displayed row.
+ * - `marked`: entries marked for operations, keyed by path – survives sorting
+ *   and filtering, cleared when the folder changes.
+ *
+ * The display order (sorting) belongs to the table; methods that depend on it
+ * receive the displayed paths as an argument.
  */
 @Injectable()
 export class FileBrowserStore {
@@ -16,35 +27,44 @@ export class FileBrowserStore {
   readonly listing = signal<DirectoryListing | null>(null);
   readonly loading = signal(false);
   readonly error = signal<FsError | null>(null);
-  readonly selectedPath = signal<string | null>(null);
+  readonly cursorPath = signal<string | null>(null);
+  readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
 
   readonly path = computed(() => this.listing()?.path ?? null);
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
   readonly parent = computed(() => this.listing()?.parent ?? null);
   readonly canGoUp = computed(() => this.parent() !== null && !this.loading());
-  readonly selectedIndex = computed(() => {
-    const sel = this.selectedPath();
-    return sel === null ? -1 : this.entries().findIndex((e) => e.path === sel);
+  readonly cursorEntry = computed(() => {
+    const path = this.cursorPath();
+    return path === null ? null : (this.entries().find((e) => e.path === path) ?? null);
   });
-  readonly selectedEntry = computed(() => this.entries()[this.selectedIndex()] ?? null);
+  readonly markedEntries = computed(() => {
+    const marked = this.marked();
+    return marked.size === 0 ? [] : this.entries().filter((e) => marked.has(e.path));
+  });
 
   /**
    * Loads a directory (home directory when `path` is omitted).
    * On failure the previous listing stays visible and `error` is set.
+   * `cursor` = entry to put the cursor on (e.g. the folder we came from).
    */
-  async load(path?: string, options: { select?: string | null } = {}): Promise<void> {
+  async load(path?: string, options: { cursor?: string | null } = {}): Promise<void> {
     const seq = ++this.requestSeq;
     this.loading.set(true);
     try {
+      const start = performance.now();
       const listing = await this.api.listDirectory(path);
       if (seq !== this.requestSeq) {
         return;
       }
+      recordPerf('list_directory (Rust + IPC)', since(start), `${listing.entries.length} entries`);
+      const samePath = listing.path === this.path();
+      const paths = new Set(listing.entries.map((e) => e.path));
       this.listing.set(listing);
       this.error.set(null);
-      const wanted = options.select ?? null;
-      const keep = wanted !== null && listing.entries.some((e) => e.path === wanted);
-      this.selectedPath.set(keep ? wanted : (listing.entries[0]?.path ?? null));
+      const wanted = options.cursor ?? null;
+      this.cursorPath.set(wanted !== null && paths.has(wanted) ? wanted : null);
+      this.marked.set(samePath ? intersect(this.marked(), paths) : EMPTY_MARKS);
     } catch (err) {
       if (seq !== this.requestSeq) {
         return;
@@ -57,53 +77,92 @@ export class FileBrowserStore {
     }
   }
 
-  /** Opens a directory entry; files are only selected in this version. */
+  /** Opens a directory entry; files only get the cursor in this version. */
   open(entry: DirEntry): Promise<void> {
-    this.select(entry);
+    this.setCursor(entry.path);
     if (isNavigableDir(entry) && !entry.lossyName) {
       return this.load(entry.path);
     }
     return Promise.resolve();
   }
 
-  /** Navigates to the parent and re-selects the folder we came from. */
+  /** Navigates to the parent and puts the cursor on the folder we came from. */
   up(): Promise<void> {
     const parent = this.parent();
     if (parent === null) {
       return Promise.resolve();
     }
-    return this.load(parent, { select: this.path() });
+    return this.load(parent, { cursor: this.path() });
   }
 
+  /** Reloads the folder, keeping cursor and (still existing) marks. */
   refresh(): Promise<void> {
     const path = this.path();
-    return this.load(path ?? undefined, { select: this.selectedPath() });
+    return this.load(path ?? undefined, { cursor: this.cursorPath() });
   }
 
-  select(entry: DirEntry | null): void {
-    this.selectedPath.set(entry?.path ?? null);
+  setCursor(path: string | null): void {
+    this.cursorPath.set(path);
   }
 
-  /** Moves the selection by `delta` rows, clamped to the list bounds. */
-  moveSelection(delta: number): void {
-    const entries = this.entries();
-    if (entries.length === 0) {
+  isMarked(path: string): boolean {
+    return this.marked().has(path);
+  }
+
+  toggleMark(path: string): void {
+    const next = new Set(this.marked());
+    if (!next.delete(path)) {
+      next.add(path);
+    }
+    this.marked.set(next);
+  }
+
+  setMarked(paths: readonly string[], marked: boolean): void {
+    const next = new Set(this.marked());
+    for (const p of paths) {
+      if (marked) {
+        next.add(p);
+      } else {
+        next.delete(p);
+      }
+    }
+    this.marked.set(next);
+  }
+
+  /**
+   * Marks all entries between `from` and `to` (inclusive) in the displayed
+   * order – Shift+click. Unknown paths are ignored.
+   */
+  markRange(from: string, to: string, displayed: readonly string[]): void {
+    const a = displayed.indexOf(from);
+    const b = displayed.indexOf(to);
+    if (a < 0 || b < 0) {
       return;
     }
-    const current = this.selectedIndex();
-    const base = current < 0 ? (delta > 0 ? -1 : entries.length) : current;
-    const next = Math.min(entries.length - 1, Math.max(0, base + delta));
-    this.selectedPath.set(entries[next].path);
+    this.setMarked(displayed.slice(Math.min(a, b), Math.max(a, b) + 1), true);
   }
 
-  selectEdge(edge: 'first' | 'last'): void {
-    const entries = this.entries();
-    if (entries.length > 0) {
-      this.selectedPath.set(entries[edge === 'first' ? 0 : entries.length - 1].path);
-    }
+  markAll(displayed: readonly string[]): void {
+    this.marked.set(new Set(displayed));
+  }
+
+  clearMarks(): void {
+    this.marked.set(EMPTY_MARKS);
+  }
+
+  invertMarks(displayed: readonly string[]): void {
+    const current = this.marked();
+    this.marked.set(new Set(displayed.filter((p) => !current.has(p))));
   }
 
   dismissError(): void {
     this.error.set(null);
   }
+}
+
+function intersect(marks: ReadonlySet<string>, existing: Set<string>): ReadonlySet<string> {
+  if (marks.size === 0) {
+    return EMPTY_MARKS;
+  }
+  return new Set([...marks].filter((p) => existing.has(p)));
 }
