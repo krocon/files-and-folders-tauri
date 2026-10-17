@@ -34,6 +34,8 @@ pub enum FsErrorCode {
     DuplicateTarget,
     /// Nothing to undo (no rename log for this task, or it was undone already).
     UndoUnavailable,
+    /// More items than a command accepts (watched folders, dropped paths).
+    TooMany,
     Io,
 }
 
@@ -108,5 +110,7 @@ mod tests {
             serde_json::to_value(&e).unwrap()["code"],
             "undo_unavailable"
         );
+        let e = FsError::new(FsErrorCode::TooMany, "many", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "too_many");
     }
 }

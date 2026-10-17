@@ -16,6 +16,7 @@
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
+//! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod clean;
@@ -35,6 +36,7 @@ pub mod preview;
 pub mod properties;
 pub mod rename_presets;
 pub mod session;
+pub mod watch;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -48,6 +50,7 @@ pub fn run() {
         .manage(commands::PresetsState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::PreviewState::default())
+        .manage(commands::watch::WatchState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -114,7 +117,10 @@ pub fn run() {
             commands::load_rename_presets,
             commands::save_rename_presets,
             commands::read_preview,
-            commands::get_properties
+            commands::get_properties,
+            commands::watch::subscribe_watch,
+            commands::watch::watch_dirs,
+            commands::watch::describe_paths
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
