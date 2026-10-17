@@ -4,6 +4,7 @@
 import { DirSize, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
+import { SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -68,6 +69,8 @@ export type JobSpec =
       readonly mode: DeleteMode;
       readonly options: CleanOptions;
     }
+  /** Recursive search (design 009); hits come as `searchHits` events. */
+  | { readonly kind: 'search'; readonly criteria: SearchCriteria }
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }
@@ -148,6 +151,8 @@ export interface Summary {
   /** Job-level error (planning failed, invalid target …). */
   readonly error: FsError | null;
   readonly dirSize: DirSize | null;
+  /** Search job: final statistics (`errors` = unreadable folders). */
+  readonly search?: SearchStats | null;
 }
 
 export interface JobInfo {
@@ -178,6 +183,12 @@ export type JobEvent =
     }
   | { readonly type: 'removed'; readonly ids: readonly string[] }
   | { readonly type: 'undoAvailable'; readonly id: string; readonly available: boolean }
+  | {
+      readonly type: 'searchHits';
+      readonly id: string;
+      readonly hits: readonly SearchHit[];
+      readonly stats: SearchStats;
+    }
   | { readonly type: 'quitRequested'; readonly running: number };
 
 export const EMPTY_PROGRESS: Progress = {

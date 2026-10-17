@@ -1,9 +1,16 @@
-import { ColumnDef, ColumnDefIf, Size, TrueFn, ValueRowSortComparator } from '@guiexpert/table';
+import {
+  ColumnDef,
+  ColumnDefIf,
+  FalseFn,
+  Size,
+  TrueFn,
+  ValueRowSortComparator,
+} from '@guiexpert/table';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
 
 /** Column properties of the file list. `ext` is computed from the name. */
-export type FileColumn = 'name' | 'ext' | 'size' | 'modifiedMs';
+export type FileColumn = 'name' | 'ext' | 'size' | 'modifiedMs' | 'dir';
 
 const COLLATOR_OPTIONS: Intl.CollatorOptions = { numeric: true, sensitivity: 'base' };
 
@@ -82,7 +89,14 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
     (a, b) => (a.modifiedMs as number) - (b.modifiedMs as number),
     (e) => e.modifiedMs === null,
   ),
+  // folder of a search hit (design 009); natural order, then by name
+  dir: fileComparator((a, b) => collator.compare(dirOf(a), dirOf(b))),
 };
+
+/** Folder of a search hit (`SearchHit.dir`), empty for listing entries. */
+export function dirOf(entry: DirEntry): string {
+  return (entry as DirEntry & { dir?: string }).dir ?? '';
+}
 
 const px = (value: number) => new Size(value, 'px');
 
@@ -129,6 +143,18 @@ export function createFileColumns(): ColumnDefIf[] {
       sortable: TrueFn,
       sortComparator: fileComparators.modifiedMs,
       bodyRenderer: new DateCellRenderer(),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    // only shown in a search result tab (design 009 E4)
+    ColumnDef.create({
+      property: 'dir',
+      headerLabel: 'Folder',
+      width: px(260),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.dir,
+      valueGetter: (row: DirEntry) => dirOf(row),
       headerClasses: ['ge-table-text-align-start'],
       bodyClasses: ['ge-table-text-align-start'],
     }),

@@ -15,7 +15,9 @@ export type DialogKind =
   | 'multi-rename'
   | 'group-files'
   | 'clean-folders'
-  | 'multi-mkdir';
+  | 'multi-mkdir'
+  | 'find'
+  | 'folder-finder';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

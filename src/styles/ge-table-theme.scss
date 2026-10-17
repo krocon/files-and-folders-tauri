@@ -109,3 +109,9 @@
 .ge-table .fnf-mr-new {
   font-weight: 600;
 }
+
+/* active row of a list driven from an input field (folder finder, design 009 E6) */
+.ge-table .fnf-grid-active {
+  background-color: var(--color-cursor-bg);
+  color: var(--color-cursor-text);
+}

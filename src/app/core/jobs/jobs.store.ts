@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
+import { SearchHit, SearchStats } from '../search/search.models';
 import { Decision, EMPTY_PROGRESS, isFinished, JobEvent, JobInfo, JobSpec } from './jobs.models';
 
 /**
@@ -14,6 +15,11 @@ export class JobsStore {
   private readonly waiters = new Map<string, ((job: JobInfo) => void)[]>();
   private seq = 0;
   private started = false;
+  /** Search hits go to the listener of their job only (never into `jobs`). */
+  private readonly hitListeners = new Map<
+    string,
+    (hits: readonly SearchHit[], stats: SearchStats) => void
+  >();
   /** Events received while the snapshot is on its way – replayed after it. */
   private buffer: JobEvent[] | null = null;
 
@@ -98,6 +104,22 @@ export class JobsStore {
     return new Promise((resolve) =>
       this.waiters.set(id, [...(this.waiters.get(id) ?? []), resolve]),
     );
+  }
+
+  /**
+   * Receives the hits of search job `id` (design 009 E1). Hits of jobs without a
+   * listener (superseded searches) are dropped. Returns the unsubscribe function.
+   */
+  onSearchHits(
+    id: string,
+    listener: (hits: readonly SearchHit[], stats: SearchStats) => void,
+  ): () => void {
+    this.hitListeners.set(id, listener);
+    return () => {
+      if (this.hitListeners.get(id) === listener) {
+        this.hitListeners.delete(id);
+      }
+    };
   }
 
   find(id: string): JobInfo | undefined {
@@ -215,6 +237,9 @@ export class JobsStore {
       case 'undoAvailable':
         this.patch(event.id, (j) => ({ ...j, undoAvailable: event.available }));
         break;
+      case 'searchHits':
+        this.hitListeners.get(event.id)?.(event.hits, event.stats);
+        break;
       case 'quitRequested':
         this.quitRequest.set({ running: event.running, seq: ++this.seq });
         break;
@@ -226,7 +251,7 @@ export class JobsStore {
   }
 }
 
-/** Folder sizes and the copy dialog's count are not tasks of the user. */
+/** Folder sizes, the copy dialog's count and searches are not tasks of the user. */
 export function isHelperJob(job: JobInfo): boolean {
-  return job.spec.kind === 'dirSize' || job.spec.kind === 'count';
+  return job.spec.kind === 'dirSize' || job.spec.kind === 'count' || job.spec.kind === 'search';
 }

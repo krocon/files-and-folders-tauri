@@ -211,14 +211,19 @@ export class FileList implements OnDestroy {
         ? [parentRow(listing.parent), ...listing.entries]
         : [...listing.entries];
     // announce only a new folder, not a refresh or a calculated folder size
+    // a result tab announces through its header (live region), not with its key
     const label =
-      listing.path !== this.shownPath ? (listing.segments.at(-1)?.name ?? listing.path) : undefined;
+      listing.path !== this.shownPath && this.store.searchKey() === null
+        ? (listing.segments.at(-1)?.name ?? listing.path)
+        : undefined;
     this.shownPath = listing.path;
     const state = this.store.takePendingTableState() ?? undefined;
     const seq = ++this.applySeq;
     this.applying = true;
     try {
       this.controller?.showRows(rows, label, state);
+      // the folder column belongs to result tabs (after the state: it may carry column widths)
+      this.bridge?.setColumnVisible('dir', this.store.searchKey() !== null);
     } finally {
       // the table reports state changes debounced (300 ms) – ignore the ones caused by applying
       setTimeout(() => {

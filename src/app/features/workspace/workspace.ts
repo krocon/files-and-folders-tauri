@@ -37,6 +37,12 @@ import { CleanFoldersStore } from '../cleanfolders/clean.store';
 import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
+import { FindDialog } from '../search/find-dialog';
+import { FindStore } from '../search/find.store';
+import { FolderFinderDialog } from '../search/folder-finder-dialog';
+import { FolderFinderStore } from '../search/folder-finder.store';
+import { registerSearchActions } from '../search/search-actions';
+import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
@@ -71,6 +77,8 @@ import { WorkspaceStore } from './workspace.store';
     GroupFilesDialog,
     CleanFoldersDialog,
     MultiMkdirDialog,
+    FindDialog,
+    FolderFinderDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -93,6 +101,9 @@ export class Workspace implements OnInit {
   private readonly gf = inject(GroupFilesStore);
   private readonly cl = inject(CleanFoldersStore);
   private readonly mm = inject(MultiMkdirStore);
+  private readonly find = inject(FindStore);
+  private readonly search = inject(SearchStore);
+  private readonly finder = inject(FolderFinderStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -173,6 +184,9 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
+    this.destroyRef.onDestroy(
+      registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
+    );
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();

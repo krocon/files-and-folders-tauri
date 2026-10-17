@@ -47,6 +47,8 @@ export type FsErrorCode =
   | 'duplicate_target'
   /** Nothing to undo (anymore). */
   | 'undo_unavailable'
+  /** A search pattern (regex, glob) is invalid (design 009). */
+  | 'invalid_pattern'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

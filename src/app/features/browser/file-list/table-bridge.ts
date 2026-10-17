@@ -22,6 +22,8 @@ export interface TableBridge {
   setFocusedRow(index: number): void;
   repaint(): void;
   announce(text: string): void;
+  /** Shows or hides a column (the folder column of a result tab, design 009). */
+  setColumnVisible(property: string, visible: boolean): void;
   /** Column layout, sort and scroll position (per tab, design 004 E2). */
   getTableState(): Partial<TableStateIf>;
   /** Applies parts of a saved table state (sort also re-sorts the rows). */
@@ -70,6 +72,11 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
       api.repaintHard();
     },
     displayedRows: () => body.getFilteredRows(),
+    setColumnVisible(property, visible) {
+      if (api.isColumnVisible(property) !== visible) {
+        api.setColumnVisible(property, visible);
+      }
+    },
     focusedRow() {
       const focus = scope.focusModel()?.getFocus();
       return focus ? focus[0] : -1;
