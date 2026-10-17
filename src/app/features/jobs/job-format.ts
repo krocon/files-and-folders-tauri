@@ -83,15 +83,15 @@ export function fraction(p: Progress): number | null {
   return null;
 }
 
-/** "1.2 MB of 5.0 MB · 3.4 MB/s · 0:12 left" */
-export function progressText(p: Progress): string {
+/** "1.2 MB of 5.0 MB · 3.4 MB/s · 0:12 left" – rate and time only while running. */
+export function progressText(p: Progress, running = true): string {
   const parts: string[] = [];
   if (p.bytesTotal > 0) {
     parts.push(`${formatSize(p.bytesDone)} of ${formatSize(p.bytesTotal)}`);
   } else if (p.itemsTotal > 0) {
     parts.push(`${p.itemsDone} of ${p.itemsTotal}`);
   }
-  if (p.rateBps > 0) {
+  if (running && p.rateBps > 0) {
     parts.push(`${formatSize(p.rateBps)}/s`);
     const left = p.bytesTotal - p.bytesDone;
     if (left > 0) {

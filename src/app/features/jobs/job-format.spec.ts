@@ -28,5 +28,6 @@ describe('job format', () => {
     };
     expect(progressText(p)).toBe('1.0 MB of 3.0 MB · 1.0 MB/s · 0:02 left');
     expect(formatDuration(3725)).toBe('1:02:05');
+    expect(progressText(p, false)).toBe('1.0 MB of 3.0 MB'); // paused: no stale rate
   });
 });

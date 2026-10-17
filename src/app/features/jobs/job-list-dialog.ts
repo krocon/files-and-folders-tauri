@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  afterEveryRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+} from '@angular/core';
 import { isFinished, JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { describeFsError } from '../../core/fs/fs-error';
@@ -141,11 +148,23 @@ export class JobListDialog {
         finished: isFinished(job.state),
         percent: f === null ? null : Math.round(f * 100),
         paused: job.state === 'paused',
-        progress: progressText(job.progress),
+        progress: progressText(job.progress, job.state === 'running'),
       };
     }),
   );
   protected readonly hasFinished = computed(() => this.rows().some((r) => r.finished));
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    // a focused button can vanish (the job ended): keep the focus inside the dialog
+    afterEveryRender(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        this.host.nativeElement.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+      }
+    });
+  }
+
   protected readonly announcement = computed(() => {
     const rows = this.rows();
     const done = rows.filter((r) => r.finished).length;
