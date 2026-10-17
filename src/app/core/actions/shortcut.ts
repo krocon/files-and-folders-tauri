@@ -181,6 +181,24 @@ export type KeyEventLike = Pick<
   'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'
 >;
 
+/**
+ * Modifier state after a key event. WebKitGTK reports a released modifier as
+ * still held in its own `keyup` (the X11 state before the event) – the key
+ * that goes up is up (design 012, found in the drag & drop E2E).
+ */
+export function modifiersAfter(
+  evt: KeyEventLike,
+  type: string,
+): Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'> {
+  const up = type === 'keyup' ? evt.key : '';
+  return {
+    ctrlKey: evt.ctrlKey && up !== 'Control',
+    metaKey: evt.metaKey && up !== 'Meta' && up !== 'OS',
+    altKey: evt.altKey && up !== 'Alt' && up !== 'AltGraph',
+    shiftKey: evt.shiftKey && up !== 'Shift',
+  };
+}
+
 /** Key name of an event (rules of D2), `null` for a lone modifier. */
 export function eventKey(evt: Pick<KeyboardEvent, 'key' | 'code'>): string | null {
   const { key, code } = evt;

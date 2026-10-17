@@ -82,6 +82,17 @@ describe('FileBrowserStore – folder watching', () => {
     expect(store.entries().map((e) => e.name)).toEqual(['a.txt']);
   });
 
+  it('a cursor moved during a reload is kept (keys pressed while a flood reloads)', async () => {
+    store.setCursor(a.path);
+    const pending = deferred<DirectoryListing>();
+    api.handler = () => pending.promise;
+    const reload = store.refresh();
+    store.setCursor(c.path);
+    pending.resolve(listing('/w', [sub, a, b, c]));
+    await reload;
+    expect(store.cursorPath()).toBe(c.path);
+  });
+
   it('queues one reload while a load runs, never several', async () => {
     const pending = deferred<DirectoryListing>();
     api.handler = () => pending.promise;

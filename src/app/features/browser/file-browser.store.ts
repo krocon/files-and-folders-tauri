@@ -34,6 +34,11 @@ export interface LoadOptions {
   readonly history?: HistoryMode;
   /** Remember the folder being left in the current tab memory (default true; false on tab switch). */
   readonly remember?: boolean;
+  /**
+   * Reload of the shown folder: the cursor is the one at the time the answer
+   * arrives (the user may have moved it meanwhile), not the one at the request.
+   */
+  readonly keepCursor?: boolean;
   /** Scroll position to restore once the listing is shown (back/forward). */
   readonly scrollTop?: number;
 }
@@ -175,7 +180,12 @@ export class FileBrowserStore {
       const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
       this.listing.set(listing);
       this.error.set(null);
-      const wanted = options.cursor !== undefined ? options.cursor : (remembered?.cursor ?? null);
+      const wanted =
+        options.keepCursor && samePath
+          ? this.cursorPath()
+          : options.cursor !== undefined
+            ? options.cursor
+            : (remembered?.cursor ?? null);
       this.cursorPath.set(wanted !== null && paths.has(wanted) ? wanted : null);
       if (samePath) {
         this.marked.set(intersect(this.marked(), paths));
@@ -278,7 +288,11 @@ export class FileBrowserStore {
       return Promise.resolve();
     }
     const path = this.path();
-    return this.load(path ?? undefined, { cursor: this.cursorPath(), history: 'none' });
+    return this.load(path ?? undefined, {
+      cursor: this.cursorPath(),
+      keepCursor: true,
+      history: 'none',
+    });
   }
 
   /**

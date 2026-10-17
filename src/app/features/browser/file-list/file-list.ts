@@ -14,6 +14,7 @@ import { TableComponent } from '@guiexpert/angular-table';
 import { TableApi, TableStateIf } from '@guiexpert/table';
 import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
 import { Side } from '../../../core/session/session.models';
+import { modifiersAfter } from '../../../core/actions/shortcut';
 import { DRAG_THRESHOLD, dragKind, dragSources } from '../../dnd/dnd-logic';
 import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
@@ -325,7 +326,11 @@ export class FileList implements OnDestroy {
       this.endPress();
       return;
     }
-    this.dnd.move(this.lastPointer.x, this.lastPointer.y, dragKind(evt, IS_MAC));
+    this.dnd.move(
+      this.lastPointer.x,
+      this.lastPointer.y,
+      dragKind(modifiersAfter(evt, evt.type), IS_MAC),
+    );
   };
 
   private endPress(): void {
