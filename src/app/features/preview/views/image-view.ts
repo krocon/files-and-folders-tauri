@@ -40,17 +40,25 @@ import { PV_TEXTS } from '../preview-texts';
       flex: 1;
       min-height: 0;
       overflow: auto;
-      display: grid;
-      place-items: center;
+      /* auto margins centre without cutting off a zoomed image (unlike place-items) */
+      display: flex;
       background: repeating-conic-gradient(var(--color-surface-raised) 0% 25%, transparent 0% 50%)
         50% / 16px 16px;
     }
+    .stage.fit {
+      position: relative;
+    }
+    /* fit by absolute positioning: the box has a definite size */
     .stage.fit img {
+      position: absolute;
+      inset: 0;
+      margin: auto;
       max-width: 100%;
       max-height: 100%;
-      object-fit: contain;
     }
     img {
+      margin: auto;
+      flex: none;
       image-orientation: from-image;
     }
     .dims {

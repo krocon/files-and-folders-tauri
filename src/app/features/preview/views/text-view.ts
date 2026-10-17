@@ -63,9 +63,12 @@ export class TextView {
         const el = doc.createElement('div');
         el.className = 'ln';
         el.dataset['n'] = String(i + 1);
-        el.textContent = lines[i];
+        // one grid item for the text: marks and text nodes must not become columns
+        const text = doc.createElement('span');
+        text.textContent = lines[i];
+        el.appendChild(text);
         block.appendChild(el);
-        this.lineEls.push(el);
+        this.lineEls.push(text);
       }
       box.appendChild(block);
     }
