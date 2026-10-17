@@ -4,7 +4,7 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Prompt 003 (Navigation, Filter, Ordnergröße) auf Basis von 002 und 004.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
+> **Status: Prompt 005 (Job-Engine) auf Basis von 001–004.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
 > GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
 > Favoriten und Fenstergröße werden gespeichert. Es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
@@ -30,6 +30,12 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Ordnergröße**: Leertaste auf einem Ordner markiert ihn und berechnet die Größe (abbrechbar, folgt keinen Symlinks);
   `Alt+Shift+Enter` für alle markierten Ordner.
 - **Dateien öffnen** mit der Standard-App (Enter/Doppelklick); Programme erst nach Rückfrage.
+- **Kopieren als Job** (Prompt 005): `F5` kopiert die markierten Einträge (oder den unter dem Cursor) in den Ordner der
+  anderen Seite – nach einer Rückfrage. Fortschritt mit Rate und Restzeit im Tasks-Button und in der Task-Liste
+  (`Strg+F11` / `⌃K F6`), Pause, Weiter, Abbruch; nie eine halbe Datei unter dem echten Namen. Existiert eine Datei
+  schon, fragt ein Dialog: Überschreiben, Überspringen (Vorgabe), Umbenennen, Überschreiben wenn neuer, Abbrechen –
+  auch „für alle“. Fehler einzelner Dateien werden gesammelt und am Ende gelistet. Beenden mit laufenden Jobs fragt
+  nach. Der vollständige Kopierdialog sowie Verschieben, Löschen, Ordner anlegen folgen in Prompt 006.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).

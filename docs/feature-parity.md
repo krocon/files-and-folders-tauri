@@ -33,7 +33,7 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Filter nach Name/Endung/Art | 003 | ✅ | `navigation.spec.ts` | Schnellfilter je Tab (Wildcards, `|`, `-ausschließen`), bleibt sichtbar (alt: verschwand nach 6,7 s); Typ-Ahead |
 | Dual-Panel | 004 | ✅ | `workspace.store.spec.ts`, `file-panel.spec.ts`, E2E (Xvfb) | gemeinsamer Splitter (Maus/Tastatur/Doppelklick), aktive Seite = Quelle, `Tab` wechselt; Splitter-Position wird gespeichert (alt: nicht) |
 | Tabs, Tab-Presets | 004 | 🟡 | `workspace.store.spec.ts`, `tab-bar.spec.ts`, E2E | Tabs je Seite mit Kontextmenü (alt/mr vollständig), Zustand je Tab und Neustart; Presets offen. Abweichung: `Shift+Tab` = Fokus rückwärts statt nächster Tab (Barrierefreiheit), nächster Tab `Strg+Tab` |
-| Kopieren / Verschieben (in Queues) | 3 | ⬜ | | |
+| Kopieren / Verschieben (in Queues) | 005/006 | 🟡 | Rust `jobs/tests_engine.rs`, `job-actions.spec.ts`, E2E | Kopieren als Job mit Byte-Fortschritt, Pause, Abbruch, **Konfliktabfrage** (alt: überschrieb still), Fehlerliste (alt: Queue stoppte); F5 vorerst mit einfacher Rückfrage, Kopierdialog und Verschieben in 006 |
 | Ordner erstellen, Multi-Mkdir | 3 | ⬜ | | |
 | Löschen, leere Ordner rekursiv löschen | 3 | ⬜ | | |
 | Umbenennen, Multi-Rename (Muster/Makros) | 3/8 | ⬜ | | AI-Rename von -mr: offen, ggf. ✖ |
@@ -52,5 +52,6 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Sitzung wiederherstellen (Tabs, aktive Seite, Fenster) | 004 | ✅ | Rust `session.rs`, E2E | alt: localStorage; jetzt Datei, gelöschter Ordner → Elternordner mit Hinweis, kaputte Datei → Defaults + Warnung |
 | Button-Leiste mit Modifier-Sätzen, Actions-Menü | 002 | ✅ | `button-bar.spec.ts` | Sätze default/Shift/⌘ bzw. Strg/Alt, Badge ohne gehaltene Modifier, Freigaben; Actions-Menü in 4 Spalten |
 | „..“-Zeile, Ordnergröße, Datei öffnen | 003 | ✅ | `navigation.spec.ts`, Rust `dirsize.rs`/`opener.rs` | „..“ nie markiert/gezählt; Größe als abbrechbarer Job ohne Symlinks; Standard-App mit Rückfrage bei Programmen (alt: Linux nur PDF) |
+| Job-Warteschlange (Tasks) | 005 | ✅ | `jobs.store.spec.ts`, `dialogs.spec.ts` (jobs) | seriell + Hintergrund, Pause/Weiter/Abbruch, Fehlerliste, „Erledigte entfernen“; Rückfrage beim Beenden |
 | Auth-Modul | – | ✖ | | Desktop-App, nicht nötig |
 | Docker-/Web-Betrieb | – | ✖ | | Desktop-only |

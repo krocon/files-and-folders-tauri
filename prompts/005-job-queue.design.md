@@ -1,6 +1,6 @@
 # Design 005: Job-Engine im Rust-Backend
 
-> **Status:** ✅ freigegeben (2026-10-17, E1–E8 wie empfohlen) – in Umsetzung · **Datum:** 2026-10-17 · **Branch:** `feat/job-queue`
+> **Status:** ✅ umgesetzt (freigegeben 2026-10-17, E1–E8 wie empfohlen) · **Datum:** 2026-10-17 · **Branch:** `feat/job-queue`
 > (von `feat/navigation-liste`)
 > **Grundlage:** legacy §6, mr §6, Designs 003 (Ordnergröße mit Token-Map, wird hier abgelöst) und 004 (Schließen).
 
@@ -123,5 +123,46 @@ Fortschritt höchstens **10 Events/s je Job** (Test: 10 000 kleine Dateien → �
 
 - [x] Phase 1: dieses Dokument
 - [x] Freigabe (2026-10-17)
-- [x] Phase 2: Rust – `jobs/` (control, manager, copy, report), Commands, Beenden-Rückfrage; Ordnergröße als Job
-- [ ] Phasen 2–6
+- [x] Phase 2: Rust – `jobs/` (control, manager, copy, report), Commands, Beenden-Rückfrage; Ordnergröße als Job;
+  24 neue Rust-Tests (71 gesamt)
+- [x] Phase 3: Frontend – `core/jobs/` (Modelle, `JobsApi`, `JobsStore`), `features/jobs/` (Konfliktdialog, Task-Liste,
+  F5 minimal), Tasks-Button mit Fortschritt, Panels laden bei `dirsChanged` neu, Rückfrage beim Beenden, Hintergrund
+  eines Modals `inert`; 26 neue Vitest-Tests (203 gesamt)
+- [x] Phase 4: Ende-zu-Ende unter Xvfb (Debug-Build): F5 mit Rückfrage, Konfliktdialog (Enter = Überspringen),
+  Ordner rekursiv + Änderungszeit, Zielpanel lädt neu, 4-GB-Datei mit Fortschritt/Rate/Restzeit, Pause per Tastatur
+  (Teil-Datei wächst nicht), Abbruch in der Pause (Teil-Datei gelöscht), Ordnergröße per Leertaste als Job
+- [x] Phase 5/6: Doku, `pnpm check`, Debug-Build, Review durch separaten Agenten
+
+### Review (separater Agent) – alle Befunde umgesetzt
+
+| Befund | Umsetzung |
+|---|---|
+| Pause während einer Konfliktfrage löschte die Frage – Job hing danach für immer | Zustandswechsel unter dem Manager-Lock geprüft; Pause greift nach der Antwort (Test) |
+| „Überschreiben“ mit einem Symlink löschte das Ziel, bevor der Link existierte | Link unter Temp-Namen anlegen, dann umbenennen (Test) |
+| FIFO/Gerätedatei blockierte den Job und die Warteschlange | nur echte Dateien werden kopiert, Sonderdateien landen in der Fehlerliste (Test) |
+| Abonnenten wuchsen mit jedem WebView-Reload (`Channel::send` scheitert nicht) | ein Kanal je WebView-Label, Reload ersetzt ihn |
+| Ereignisse während des Abonnierens gingen verloren (Job „läuft“ ewig) | Puffer bis zum Snapshot, dann abspielen (Test) |
+| „Erledigte entfernen“ konnte zwei serielle Kopien gleichzeitig starten; doppeltes Dekrement bei Thread-Fehler | `parallel` aus der Spezifikation an `finish` übergeben |
+| Lange Dateinamen (> 240 Byte) scheiterten am Temp-Namen | kurze Temp-Namen `.fnf-<job>-<n>.part` (Test) |
+| Eine zurückgestellte Frage versteckte die Fragen anderer Jobs | erste nicht zurückgestellte Frage wird gezeigt (Test) |
+| „Platte voll“ pausierte ohne Grund; unbegrenzte Fehlerereignisse | Grund in der Task-Liste; Live-Fehler max. 100, Planungsfehler max. 1000 (gezählt) |
+| Datei, die während des Kopierens am Ziel auftaucht, wurde still ersetzt | Hard-Link (atomar, scheitert bei vorhandenem Namen), Rückfall Prüfen + Umbenennen auf FAT/exFAT (Test) |
+| doppelte `alertdialog`-Rolle, fehlende Beschreibung, Live-Region sagte Fortschritt 10×/s an | eine Rolle + `aria-describedby`; nur „n von m erledigt“ wird angesagt |
+
+### Befunde Ende-zu-Ende
+
+- Unterstrichener Buchstabe trennte das Wort („O verwrite“) → Label aus Teilen ohne Leerraum.
+- Pause/Weiter als zwei Buttons → Fokus ging verloren; jetzt ein Button mit `aria-pressed` (Test).
+- `formatSize` zeigte „1024 MB/s“ → rundet in die nächste Einheit (roter Test zuerst).
+- **Fokus konnte das Modal verlassen** (Shift+Tab aus der Task-Liste in die Button-Leiste) → Fenster hinter jedem
+  Dialog ist `inert` (Test). Betrifft alle Dialoge seit 002.
+- Veraltete Rate/Restzeit während der Pause; Fokus auf `body`, wenn der fokussierte Button mit dem Job verschwindet.
+
+### Offen / nicht geprüft
+
+- **Beenden mit laufenden Jobs** nur per Unit-Test: Unter Xvfb ohne Fenstermanager lassen sich `CloseRequested` und
+  `⌘Q` nicht auslösen. Auf dem Mac bitte einmal prüfen (Kopie starten, Fenster schließen → Rückfrage).
+- „Platte voll“ nicht praktisch erzeugt (nur der Code-Pfad und die Anzeige sind getestet).
+- macOS/Windows nicht praktisch getestet (Symlink-Rechte unter Windows, WebView2).
+- Titel in der Task-Liste zeigen volle Pfade (abgeschnitten am Ende) – Darstellung „Name → Zielordner“ braucht den
+  Ordnernamen aus Rust (Pfade sind im Frontend opak); mit 006 klären.
