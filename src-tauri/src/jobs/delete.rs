@@ -202,7 +202,7 @@ fn plan(paths: &[PathBuf], control: &Control) -> Option<(Vec<Step>, u64)> {
 }
 
 /// Moves one entry to the trash of its volume.
-fn trash_one(path: &Path) -> Result<(), String> {
+pub(crate) fn trash_one(path: &Path) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         // Finder keeps "Put Back"; if the user refused to let us control the

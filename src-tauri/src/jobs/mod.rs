@@ -3,9 +3,11 @@
 //! Pure std code without Tauri – the command layer only forwards events.
 //! Keep in sync with `src/app/core/jobs/jobs.models.ts`.
 
+pub mod clean;
 pub mod control;
 pub mod copy;
 pub mod delete;
+pub mod group;
 pub mod manager;
 pub mod rename;
 pub mod report;
@@ -13,12 +15,16 @@ pub mod report;
 mod tests_engine;
 #[cfg(test)]
 mod tests_ops;
+#[cfg(test)]
+mod tests_tools;
 
+use crate::clean::{CleanItem, CleanOptions};
 use crate::dirsize::DirSize;
 use crate::error::FsError;
 use serde::{Deserialize, Serialize};
 
 pub use control::Control;
+pub use group::{GroupItem, Transfer};
 pub use manager::JobManager;
 pub use rename::RenameItem;
 
@@ -68,6 +74,22 @@ pub enum JobSpec {
         #[serde(default, skip_deserializing)]
         undo_of: Option<String>,
     },
+    /// Group files (design 008): every entry to `<root>/<group>/<name>` by copy or move.
+    Group {
+        root: String,
+        items: Vec<GroupItem>,
+        transfer: Transfer,
+        #[serde(default)]
+        options: CopyOptions,
+    },
+    /// Clean folders (design 008): delete what `find_empty_dirs` listed, checked again.
+    Clean {
+        roots: Vec<String>,
+        items: Vec<CleanItem>,
+        mode: DeleteMode,
+        #[serde(default)]
+        options: CleanOptions,
+    },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
@@ -83,7 +105,7 @@ impl JobSpec {
             JobSpec::Copy { background, .. }
             | JobSpec::Move { background, .. }
             | JobSpec::Delete { background, .. } => *background,
-            JobSpec::Rename { .. } => false,
+            JobSpec::Rename { .. } | JobSpec::Group { .. } | JobSpec::Clean { .. } => false,
             JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Simulate { .. } => true,
         }
     }
@@ -94,6 +116,8 @@ impl JobSpec {
             JobSpec::Move { .. } => "move",
             JobSpec::Delete { .. } => "delete",
             JobSpec::Rename { .. } => "rename",
+            JobSpec::Group { .. } => "group",
+            JobSpec::Clean { .. } => "clean",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
@@ -381,6 +405,22 @@ mod tests {
         })
         .unwrap();
         assert_eq!(e["type"], "undoAvailable");
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"group","root":"/r","items":[{"path":"/a/x 01.mp3","group":"x"}],"transfer":"move"}"#,
+        )
+        .unwrap();
+        assert_eq!(spec.kind(), "group");
+        assert!(!spec.is_parallel());
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"clean","roots":["/r"],"items":[{"path":"/r/e","kind":"dir"}],"mode":"trash","options":{"includeRoots":false,"junk":[".DS_Store"]}}"#,
+        )
+        .unwrap();
+        let JobSpec::Clean { options, items, .. } = &spec else {
+            panic!()
+        };
+        assert!(options.empty_dirs, "default on");
+        assert_eq!(items[0].junk, 0);
+        assert_eq!(spec.kind(), "clean");
         let e = serde_json::to_value(JobEvent::DirsChanged { dirs: vec![] }).unwrap();
         assert_eq!(e["type"], "dirsChanged");
     }

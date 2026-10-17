@@ -85,18 +85,39 @@ pub fn check(
     rename_to: Option<&str>,
     plan: &mut Plan,
 ) -> Result<Vec<Top>, FsError> {
-    let target_dir = normalize_lexically(target_dir);
-    let meta = fs::metadata(&target_dir).map_err(|e| FsError::from_io(&e, &target_dir))?;
-    if !meta.is_dir() {
-        return Err(FsError::new(
-            FsErrorCode::NotADirectory,
-            "The target is not a folder",
-            Some(&target_dir),
-        ));
+    let pairs: Vec<(PathBuf, PathBuf)> = sources
+        .iter()
+        .map(|s| (s.clone(), target_dir.to_path_buf()))
+        .collect();
+    check_pairs(&pairs, rename_to, plan)
+}
+
+/// [`check`] for pairs *source → target folder* (grouping, design 008 E2):
+/// every distinct target folder must be a folder.
+pub fn check_pairs(
+    pairs: &[(PathBuf, PathBuf)],
+    rename_to: Option<&str>,
+    plan: &mut Plan,
+) -> Result<Vec<Top>, FsError> {
+    let mut checked: Vec<PathBuf> = Vec::new();
+    for (_, target_dir) in pairs {
+        let target_dir = normalize_lexically(target_dir);
+        if checked.contains(&target_dir) {
+            continue;
+        }
+        let meta = fs::metadata(&target_dir).map_err(|e| FsError::from_io(&e, &target_dir))?;
+        if !meta.is_dir() {
+            return Err(FsError::new(
+                FsErrorCode::NotADirectory,
+                "The target is not a folder",
+                Some(&target_dir),
+            ));
+        }
+        checked.push(target_dir);
     }
     if let Some(n) = rename_to {
         validate_name(n)?;
-        if sources.len() != 1 {
+        if pairs.len() != 1 {
             return Err(FsError::new(
                 FsErrorCode::InvalidName,
                 "A new name needs exactly one source",
@@ -105,7 +126,8 @@ pub fn check(
         }
     }
     let mut tops = Vec::new();
-    for src in sources {
+    for (src, target_dir) in pairs {
+        let target_dir = normalize_lexically(target_dir);
         let src = normalize_lexically(src);
         let Some(name) = src.file_name() else {
             return Err(FsError::new(
@@ -589,11 +611,29 @@ pub fn run(
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
+    let pairs: Vec<(PathBuf, PathBuf)> = sources
+        .iter()
+        .map(|s| (s.clone(), target_dir.to_path_buf()))
+        .collect();
+    run_pairs(id, &pairs, options, mode, Summary::default(), control, emit)
+}
+
+/// [`run`] for pairs *source → target folder* (grouping). `summary` carries
+/// what happened before (items that failed while preparing the groups).
+pub fn run_pairs(
+    id: &str,
+    pairs: &[(PathBuf, PathBuf)],
+    options: &CopyOptions,
+    mode: Mode,
+    summary: Summary,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
     let mut run = Run {
         id,
         control,
         rep: Reporter::new(id, emit),
-        summary: Summary::default(),
+        summary,
         conflict_seq: 0,
         for_all: options.conflict_default.decision(),
         temp_seq: 0,
@@ -602,7 +642,7 @@ pub fn run(
     };
     run.state(JobState::Planning);
     let mut plan = Plan::default();
-    let tops = match check(sources, target_dir, options.rename_to.as_deref(), &mut plan) {
+    let tops = match check_pairs(pairs, options.rename_to.as_deref(), &mut plan) {
         Ok(t) => t,
         Err(e) => {
             run.summary.error = Some(e);

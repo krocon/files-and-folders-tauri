@@ -16,6 +16,7 @@
 //! - [`rename_presets`] multi-rename presets file
 //! - [`commands`]     thin Tauri command layer
 
+pub mod clean;
 pub mod commands;
 pub mod dirsize;
 pub mod error;
@@ -85,6 +86,8 @@ pub fn run() {
             commands::clear_finished_jobs,
             commands::cancel_all_and_quit,
             commands::plan_rename,
+            commands::create_folders,
+            commands::find_empty_dirs,
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets

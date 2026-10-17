@@ -84,6 +84,60 @@ pub fn make_dir(parent: &Path, name: &str) -> Result<PathBuf, FsError> {
     Ok(parent.join(parts[0]))
 }
 
+/// Names per `create_folders` call (Multi-MkDir, design 008 E4).
+pub const MAX_FOLDERS: usize = 1000;
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderError {
+    pub name: String,
+    pub error: FsError,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatedFolders {
+    pub created: Vec<String>,
+    pub errors: Vec<FolderError>,
+}
+
+/// Creates one folder per name in `parent` (Multi-MkDir). Names are single
+/// segments; an existing entry is never touched (error for that name).
+pub fn create_folders(parent: &Path, names: &[String]) -> Result<CreatedFolders, FsError> {
+    if names.is_empty() || names.len() > MAX_FOLDERS {
+        return Err(FsError::new(
+            FsErrorCode::InvalidName,
+            format!("1 to {MAX_FOLDERS} names"),
+            None,
+        ));
+    }
+    let meta = fs::metadata(parent).map_err(|e| FsError::from_io(&e, parent))?;
+    if !meta.is_dir() {
+        return Err(FsError::new(
+            FsErrorCode::NotADirectory,
+            "Not a folder",
+            Some(parent),
+        ));
+    }
+    let mut out = CreatedFolders::default();
+    for name in names {
+        let result = validate_name(name).and_then(|()| {
+            let path = parent.join(name);
+            fs::create_dir(&path)
+                .map(|()| path.clone())
+                .map_err(|e| FsError::from_io(&e, &path))
+        });
+        match result {
+            Ok(p) => out.created.push(p.to_string_lossy().into_owned()),
+            Err(error) => out.errors.push(FolderError {
+                name: name.clone(),
+                error,
+            }),
+        }
+    }
+    Ok(out)
+}
+
 /// Creates an empty file; never replaces an existing one.
 pub fn create_file(parent: &Path, name: &str) -> Result<PathBuf, FsError> {
     validate_name(name).map_err(|e| named(e, parent))?;
@@ -192,6 +246,37 @@ pub fn unique_temp(dir: &Path) -> PathBuf {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn create_folders_never_touches_existing_entries() {
+        let d = tempdir().unwrap();
+        fs::write(d.path().join("S02"), "datei").unwrap();
+        let names: Vec<String> = ["S01", "S02", "a/b", "Ünï 🎉", "S01"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let out = create_folders(d.path(), &names).unwrap();
+        assert_eq!(out.created.len(), 2);
+        assert!(d.path().join("S01").is_dir() && d.path().join("Ünï 🎉").is_dir());
+        assert_eq!(fs::read_to_string(d.path().join("S02")).unwrap(), "datei");
+        let codes: Vec<_> = out
+            .errors
+            .iter()
+            .map(|e| (e.name.as_str(), e.error.code))
+            .collect();
+        assert_eq!(
+            codes,
+            [
+                ("S02", FsErrorCode::AlreadyExists),
+                ("a/b", FsErrorCode::InvalidName),
+                ("S01", FsErrorCode::AlreadyExists)
+            ]
+        );
+        assert!(create_folders(d.path(), &[]).is_err());
+        let many: Vec<String> = (0..=MAX_FOLDERS).map(|i| format!("x{i}")).collect();
+        assert!(create_folders(d.path(), &many).is_err());
+        assert!(create_folders(&d.path().join("S02"), &names).is_err());
+    }
 
     #[test]
     fn make_dir_simple_nested_and_existing() {
