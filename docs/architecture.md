@@ -1,20 +1,22 @@
 # Architektur
 
-Stand: Prompt 001 (GuiExpert-Dateiliste). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 004 (Fensteraufbau: zwei Seiten, Tabs, Sitzungszustand). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
 
 ```
 ┌──────────────── WebView (Angular 22, zoneless) ────────────────┐
-│  FileBrowser ── FileList ─ <guiexpert-table> (GuiExpert Table)  │
-│                  └ FileListController ─ TableBridge (Fassade)    │
-│      │                                                         │
-│  FileBrowserStore (Signals, pro Panel bereitgestellt)          │
-│      │                                                         │
-│  FsApi (abstrakt) ── TauriFsApi: einziger invoke()-Aufrufer     │
+│  Workspace (Grid, Splitter) ── WorkspaceStore (Root: Tabs beider│
+│   │                             Seiten, aktive Seite, Favoriten)│
+│   ├ FilePanel ×2 (Header, TabBar, FileList, Statuszeile)        │
+│   │   └ FileList ─ <guiexpert-table> ─ FileListController       │
+│   │                 └ TableBridge (Fassade, State je Tab)       │
+│   │   FileBrowserStore (Signals, pro Panel bereitgestellt)      │
+│   └ ButtonBar (Gerüst, buttons.json)                           │
+│  FsApi / SessionApi (abstrakt) ── Tauri*Api: einzige invoke()s  │
 └──────┼─────────────────────────────────────────────────────────┘
-       │  IPC: invoke('list_directory', { path })
+       │  IPC: list_directory, load_session, save_session
 ┌──────┼──────────────── Rust (Tauri 2) ─────────────────────────┐
 │  commands.rs  Eingabe validieren, Default (Home) auflösen,     │
 │               Arbeit per spawn_blocking vom Async-Runtime fern  │
@@ -22,6 +24,8 @@ sind als solche markiert.
 │  paths.rs     Validierung, lexikalische Normalisierung,        │
 │               Eltern/Breadcrumbs (nur std::path)               │
 │  model.rs / error.rs  DTOs (camelCase) und FsError {code,..}   │
+│  session.rs   Sitzungsdatei (laden, sanitize, atomar speichern)│
+│  window_state.rs  Fenstergeometrie wiederherstellen/erfassen   │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -45,17 +49,20 @@ sind als solche markiert.
 | Sicherheit | Capabilities nur `core:default`; keine fs/shell-Plugins; strikte CSP | Minimale Angriffsfläche. Eigene Commands sind über `invoke_handler` registriert. |
 | CSP & Styles | `dangerousDisableAssetCspModification: ["style-src"]` | Tauri ergänzt sonst Hashes in `style-src`, wodurch `'unsafe-inline'` ignoriert wird und Angulars zur Laufzeit eingefügte Komponenten-Styles blockiert würden (in der App verifiziert). `script-src` bleibt strikt. |
 | Styling | SCSS + Design-Tokens in `src/styles.scss`, Dark-Mode per `prefers-color-scheme` | Kein UI-Framework nötig. |
-| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`. Dev: `tempfile`, `serde_json` (Rust-Tests), angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
+| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
 | Dateiliste | GuiExpert Table, **ein** `TableModel` je Panel, Ordnerwechsel nur über `setRows` + `reSort` + `repaintHard` | Spaltenbreiten und Sortierung bleiben erhalten; ein neues Modell-Objekt würde die Table neu aufbauen. Details und Belege: `prompts/001-guiexpert-dateiliste.design.md`. |
 | Cursor | Table-Fokus (`FocusModel`, Spalte 0) ↔ `FileBrowserStore.cursorPath`, Abgleich über den Pfad; Darstellung als Zeilenklasse `fnf-cursor` | Fokus der Table ist index-basiert und zellbasiert; der Pfad ist sortierfest. Nach Header-Sortierung (Doppelklick, ohne Ereignis) stellt ein Capture-Listener den Cursor per Pfad wieder her. |
 | Markierung | eigenes `Set<path>` im Store, `SelectionModel` der Table auf `none` | Das `SelectionModel` ist index-basiert und überlebt kein Sortieren. Anzeige: Klasse `fnf-marked` + Häkchen statt Icon (wie die alte Version), Screenreader-Text „marked“. |
 | Sortierung | Comparatoren je Spalte (`f * …`-Trick: Ordner oben, leere Werte unten in beiden Richtungen), natürliche Namensordnung per `Intl.Collator` mit Selbsttest | Der Collator fällt auf `en` zurück, wenn die Laufzeit nach Codepunkten sortiert (WebKitGTK mit `LANG=C.UTF-8`, im Container beobachtet). |
 | Tastatur/Maus | Table-Aktionen über `shortcutService.addListener` (Leertaste, Strg/⌘+A, Strg/⌘+Shift+A), ungemappte Tasten am Host (Enter, Backspace, Einfg, Shift+Pfeile), Klicks über `api.subscribe` (ohne 150-ms-Entprellung des Wrappers) | Übergangslösung bis zum Aktionssystem (Prompt 002). `Pos1`/`Ende` per `shortcutActionIdMapping` auf erste/letzte Zeile, Strg/⌘+X aus dem Live-Mapping entfernt. |
+| Fensteraufbau | CSS-Grid mit gemeinsamer Spaltenbreite (`--fnf-split`), Panels als `display: contents`, ein Trenner über die Zeilen 1–4 | Ein Splitter verschiebt alle Zeilen; Zeilenhöhen beider Seiten bleiben gleich. Details: `prompts/004-dual-pane-tabs.design.md`. |
+| Tabs | Tab-Liste beider Seiten im Root-`WorkspaceStore`; **eine** Table je Panel, beim Tab-Wechsel Zustand über `getState/applyState(['columns','sort','scroll'])` | n Tables wären n× Speicher und versteckte Tables ohne Layout; der Ordner wird beim Wechsel ohnehin neu gelesen. |
+| Sitzungszustand | eigene JSON-Datei `<app_config_dir>/session.json` (`version: 1`), geschrieben von Rust (temp + rename), Frontend speichert entprellt (400 ms) und beim Verstecken; kaputte Datei → Defaults + Warnung + `session.json.bad` | Keine Plugins mit generischem Zugriff; Rust begrenzt alle Werte (`sanitize`). Fenstergeometrie schreibt/liest nur Rust (Fenster startet unsichtbar, Position nur auf vorhandenem Monitor) – das Frontend braucht keine Fenster-Berechtigungen. |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
 ## DTO-Vertrag
 
-Rust `model.rs` ↔ TypeScript `src/app/core/fs/fs.models.ts` (manuell synchron gehalten; geplant:
+Rust `model.rs` ↔ TypeScript `src/app/core/fs/fs.models.ts`, Rust `session.rs` ↔ `src/app/core/session/session.models.ts` (manuell synchron gehalten; geplant:
 Generierung oder ein Vertragstest, sobald mehr Commands existieren).
 
 ```ts

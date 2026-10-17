@@ -69,11 +69,14 @@
   background-color: var(--color-cursor-inactive-bg);
 }
 
+/* full cursor in the active panel (or wherever the focus is), dimmed in the other one (design 004 E1) */
+.fnf-active-panel .ge-table .fnf-cursor,
 .ge-table:focus-within .fnf-cursor {
   background-color: var(--color-cursor-bg);
   color: var(--color-cursor-text);
 }
 
+.fnf-active-panel .ge-table .fnf-cursor.fnf-marked,
 .ge-table:focus-within .fnf-cursor.fnf-marked {
   color: var(--color-cursor-marked-text);
 }

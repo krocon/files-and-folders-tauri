@@ -12,8 +12,9 @@
 
 ## 1. Stand
 
-- Phase 1 (Walking Skeleton) und Prompt 001 (Dateiliste mit der GuiExpert Table, Cursor, Markieren, Sortieren) sind
-  fertig. Als Nächstes: Prompt 004 (Fensteraufbau). Details: `docs/roadmap.md`, `prompts/README.md`.
+- Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table) und Prompt 004 (Fensteraufbau: zwei
+  Seiten, Tabs, Splitter, Statuszeile, Button-Leiste als Gerüst, Sitzungszustand) sind fertig. Als Nächstes:
+  Prompt 002 (Aktionen und Tastatur). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -42,15 +43,19 @@ Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die B
 
 ```
 src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
-  app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi = einzige invoke()-Stelle
-  app/features/browser/      FileBrowserStore (Zustand je Panel), FileBrowser, FileTable (wird durch GuiExpert ersetzt)
+  app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory)
+  app/core/session/          Sitzungs-DTOs, SessionApi (invoke load_session/save_session)
+  app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
+  app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
+                             FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
   app/shared/                Formatierung (Größe, Datum)
-  testing/                   Fixtures, FakeFsApi (nie im Produktivcode importieren)
+  testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
   styles.scss                Design-Tokens (CSS Custom Properties, light/dark)
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
+  src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
@@ -66,6 +71,9 @@ prompts/                     Feature-Prompts (s. o.)
   `describeFsError()`.
 - **Pfade sind opake Strings** aus dem Backend. Kein Split/Join mit `/` oder `\` im Frontend; Eltern, Segmente,
   Zielpfade rechnet Rust (`std::path`). Kein `canonicalize` für Navigation (Symlinks, `\\?\`-Präfix unter Windows).
+- **Tabs und Seiten**: der Root-`WorkspaceStore` hält die Tabs beider Seiten; ein `FilePanel` liest seinen aktiven
+  Tab dort und schreibt Pfad, Titel, Cursor und Table-Zustand zurück – Tabs werden **per Id** adressiert, nie per
+  Index über Seiten hinweg.
 - **Zustand je Panel**: Stores sind `@Injectable()` ohne `providedIn: 'root'` und werden im Komponenten-Provider
   erzeugt – Dual-Pane und Tabs brauchen unabhängige Instanzen. Globales (Einstellungen, Job-Queue, Keymap) in
   Root-Services.

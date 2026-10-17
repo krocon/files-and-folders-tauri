@@ -4,13 +4,24 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Prompt 001 (Dateiliste mit der GuiExpert Table).** Die App listet Verzeichnisse über Rust, zeigt
-> sie in einer GuiExpert Table an und erlaubt Navigation, Sortieren und Markieren. Dateien werden nur angezeigt
-> und ausgewählt – es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
+> **Status: Prompt 004 (Fensteraufbau).** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
+> GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
+> Favoriten und Fenstergröße werden gespeichert. Es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
 ## Was funktioniert
 
-- Start im Home-Ordner des aktuellen Benutzers (über Tauris `path().home_dir()`).
+- **Fensteraufbau** nach [docs/ui-layout.md](docs/ui-layout.md): links und rechts je Pfad-Header (Breadcrumb,
+  klickbar, bei langen Pfaden rechtsbündig; Favoriten-Stern), Tab-Leiste, Dateiliste und Statuszeile
+  (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (Funktionen
+  noch gedimmt, „kommt in Prompt …“).
+- **Aktive Seite** = Quelle, andere = Ziel; Klick in eine Seite oder `Tab` wechselt, Ansage für Screenreader.
+- **Tabs je Seite**: klonen (`+`), schließen (`−`, der letzte bleibt), Kontextmenü (Neu laden, Schließen, ins andere
+  Panel verschieben/klonen, nach links/rechts), Doppelklick lädt neu, Mittelklick schließt; jeder Tab behält Pfad,
+  Sortierung, Spaltenbreiten, Cursor und Scrollposition.
+- **Sitzung**: Tabs beider Seiten, aktive Seite, Splitter, Favoriten und Fenstergröße/-position werden in
+  `session.json` im App-Config-Verzeichnis gespeichert und beim Start wiederhergestellt; gelöschte Ordner →
+  nächster existierender Elternordner mit Hinweis; kaputte Datei → Defaults + Warnung (alte Datei als `.bad`).
+- Ohne gespeicherte Sitzung: beide Seiten im Home-Ordner des aktuellen Benutzers.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -24,20 +35,26 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
 - Helles/dunkles Farbschema über CSS Custom Properties (`prefers-color-scheme`).
 
-### Tastatur und Maus (Stand Prompt 001)
+### Tastatur und Maus (Stand Prompt 004)
 
 | Taste / Maus | Wirkung |
 | --- | --- |
 | `↑` `↓` `Bild↑` `Bild↓` | Cursor bewegen |
 | `Pos1` / `Ende` (macOS zusätzlich `⌘↑` / `⌘↓`) | erste / letzte Zeile |
 | `Enter`, Doppelklick | Ordner öffnen |
-| `Backspace`, Button „Up“ | Elternordner (Cursor auf dem Herkunftsordner) |
+| `Backspace`, Klick auf ein Breadcrumb-Segment | Elternordner (Cursor auf dem Herkunftsordner) |
 | `Leertaste`, `Einfg` | markieren/entmarkieren und Cursor weiter |
 | `Shift+↑` / `Shift+↓` | markieren und Cursor bewegen |
 | `Strg/⌘+Klick` | Markierung umschalten |
 | `Shift+Klick` | Bereich ab vorherigem Cursor markieren |
 | `Strg/⌘+A` / `Strg/⌘+Shift+A` | alles markieren / Markierung aufheben |
 | Doppelklick auf Spaltenkopf | sortieren (auf-/absteigend) |
+| `Tab` (in der Liste) | andere Seite aktivieren |
+| `Strg+Tab` / `Strg+Shift+Tab` | nächster / vorheriger Tab |
+| `Strg/⌘+Alt+T` / `Strg/⌘+Alt+W` | Tab klonen / schließen |
+| `Strg/⌘+Enter` | Ordner unter dem Cursor in neuem Tab öffnen |
+| Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10` | Tab wechseln, schließen, Kontextmenü |
+| Splitter: Ziehen, `←` `→` `Pos1` `Ende`, Doppelklick/`Enter` | Breite ändern, 50 / 50 |
 
 Das vollständige, konfigurierbare Tastaturmodell folgt in Prompt 002.
 

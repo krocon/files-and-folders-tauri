@@ -1,3 +1,4 @@
+import type { TableStateIf, TableStatePart } from '@guiexpert/table';
 import { DirEntry } from '../app/core/fs/fs.models';
 import { TableBridge } from '../app/features/browser/file-list/table-bridge';
 
@@ -43,5 +44,21 @@ export class FakeTableBridge implements TableBridge {
 
   announce(text: string): void {
     this.announcements.push(text);
+  }
+
+  /** What `getTableState` returns; `applyTableState` records and merges into it. */
+  tableState: Partial<TableStateIf> = { version: 1 };
+
+  getTableState(): Partial<TableStateIf> {
+    return structuredClone(this.tableState);
+  }
+
+  applyTableState(state: Partial<TableStateIf>, parts: readonly TableStatePart[]): void {
+    const wanted = parts.filter((p) => p in state);
+    if (wanted.length === 0) {
+      return;
+    }
+    this.calls.push(`applyTableState(${wanted.join(',')})`);
+    this.tableState = { ...this.tableState, ...structuredClone(state) };
   }
 }

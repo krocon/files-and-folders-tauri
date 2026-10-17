@@ -29,10 +29,10 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Markierte Zeilen rot mit Häkchen | 001 | ✅ | `file-renderers.spec.ts` | wie in der alten Version |
 | Hidden-Dateien umschalten | 2 | 🟡 | Rust (Flag) | Flag wird geliefert und gedimmt angezeigt, Toggle fehlt |
 | Sortierung („smart sorting“) | 001 | ✅ | `file-columns.spec.ts` | Spaltenkopf (Doppelklick), Ordner oben in beiden Richtungen, natürlich statt `localeCompare` (bewusst besser) |
-| Verzeichnis-Historie | 2 | ⬜ | | |
+| Verzeichnis-Historie | 003 | 🟡 | `workspace.store.spec.ts` | Verlauf je Tab wird seit 004 geführt und gespeichert (max. 15); Bedienung in 003 |
 | Filter nach Name/Endung/Art | 4 | ⬜ | | |
-| Dual-Panel | 5 | ⬜ | | Store ist bereits pro Panel |
-| Tabs, Tab-Presets | 5 | ⬜ | | |
+| Dual-Panel | 004 | ✅ | `workspace.store.spec.ts`, `file-panel.spec.ts`, E2E (Xvfb) | gemeinsamer Splitter (Maus/Tastatur/Doppelklick), aktive Seite = Quelle, `Tab` wechselt; Splitter-Position wird gespeichert (alt: nicht) |
+| Tabs, Tab-Presets | 004 | 🟡 | `workspace.store.spec.ts`, `tab-bar.spec.ts`, E2E | Tabs je Seite mit Kontextmenü (alt/mr vollständig), Zustand je Tab und Neustart; Presets offen. Abweichung: `Shift+Tab` = Fokus rückwärts statt nächster Tab (Barrierefreiheit), nächster Tab `Strg+Tab` |
 | Kopieren / Verschieben (in Queues) | 3 | ⬜ | | |
 | Ordner erstellen, Multi-Mkdir | 3 | ⬜ | | |
 | Löschen, leere Ordner rekursiv löschen | 3 | ⬜ | | |
@@ -40,7 +40,7 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Group Files (nach Namensmuster in Ordner) | 8+ | ⬜ | | |
 | Suche (Find) | 4 | ⬜ | | |
 | Change-Dir-Baumdialog, „Go to anything“ | 5 | ⬜ | | |
-| Bookmarks | 5 | ⬜ | | |
+| Bookmarks | 004/003 | 🟡 | `file-panel.spec.ts` | Favoriten-Stern im Pfad-Header, gespeichert; Menü in 003 |
 | Namen/Pfade in Zwischenablage (Text/JSON) | 5 | ⬜ | | |
 | Externe Tools / App-Launcher, „Terminal hier“ | 7 | ⬜ | | nur über schmale, konfigurierte Commands |
 | Integriertes Terminal (xterm, -mr) | – | ⬜ | | Sicherheitsabwägung nötig |
@@ -49,5 +49,7 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Duplikate finden, Dateiattribute (-mr) | 6+ | ⬜ | | |
 | Farbschemata (Light/Dark/…) | 1/8 | 🟡 | – | Light/Dark via Tokens; weitere Themes offen |
 | Tastaturkürzel pro OS, konfigurierbar | 5/8 | 🟡 | Angular | Basis-Navigation fest verdrahtet |
+| Sitzung wiederherstellen (Tabs, aktive Seite, Fenster) | 004 | ✅ | Rust `session.rs`, E2E | alt: localStorage; jetzt Datei, gelöschter Ordner → Elternordner mit Hinweis, kaputte Datei → Defaults + Warnung |
+| Button-Leiste mit Modifier-Sätzen | 004/002 | 🟡 | `button-config.spec.ts` | Gerüst und `buttons.json`; Umschaltung und Aktionen in 002 |
 | Auth-Modul | – | ✖ | | Desktop-App, nicht nötig |
 | Docker-/Web-Betrieb | – | ✖ | | Desktop-only |

@@ -1,0 +1,78 @@
+<nav
+  class="part header"
+  [class.fnf-active-panel]="active()"
+  [attr.aria-label]="texts.pathLabel(side())"
+>
+  <span class="crumbs" [id]="pathId" [attr.title]="store.path()">
+    @for (seg of segments(); track seg.path; let i = $index; let last = $last) {
+      @if (needsSeparator(i)) {
+        <span class="sep" aria-hidden="true">/</span>
+      }
+      <button
+        type="button"
+        class="crumb"
+        [class.current]="last"
+        [attr.aria-current]="last ? 'location' : null"
+        (click)="openSegment(seg)"
+      >
+        {{ seg.name }}
+      </button>
+    } @empty {
+      <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
+    }
+  </span>
+  <button
+    type="button"
+    class="star"
+    [attr.aria-pressed]="isFavorite()"
+    [attr.aria-label]="isFavorite() ? texts.favoriteRemove : texts.favoriteAdd"
+    [attr.title]="isFavorite() ? texts.favoriteRemove : texts.favoriteAdd"
+    [disabled]="store.path() === null"
+    (click)="toggleFavorite()"
+  >
+    <span aria-hidden="true">{{ isFavorite() ? '★' : '☆' }}</span>
+  </button>
+</nav>
+
+<app-tab-bar class="part tabs" [class.fnf-active-panel]="active()" [side]="side()" />
+
+<div
+  class="part list"
+  role="tabpanel"
+  [id]="'fnf-pane-' + side()"
+  [attr.aria-labelledby]="'fnf-tab-' + tab().id"
+  [class.fnf-active-panel]="active()"
+>
+  @if (errorText(); as text) {
+    <div class="error" role="alert">
+      <div>
+        <strong>{{ text }}</strong>
+        @if (store.error()?.path; as p) {
+          <div class="error-path">{{ p }}</div>
+        }
+        <div class="error-detail">{{ store.error()?.message }}</div>
+      </div>
+      <button type="button" class="btn" (click)="store.dismissError()">{{ texts.dismiss }}</button>
+    </div>
+  }
+  <app-file-list
+    [labelledBy]="pathId"
+    (openInNewTab)="openInNewTab($event)"
+    (tableStateChanged)="onTableState($event)"
+  />
+</div>
+
+<!-- no live region: the table announces folder changes -->
+<footer class="part status" [class.fnf-active-panel]="active()">
+  @let s = summary();
+  <span [attr.title]="s.markedSize + ' / ' + s.totalSize + ' bytes'">
+    <b class="sel">{{ formatSize(s.markedSize) }}</b> / {{ formatSize(s.totalSize) }}
+  </span>
+  <span>
+    in <b class="sel">{{ s.markedFiles }}</b> / {{ s.files }} Files,
+    <b class="sel">{{ s.markedDirs }}</b> / {{ s.dirs }} Folders
+  </span>
+  @if (store.listing()?.unreadableEntries; as n) {
+    <span class="warn">· {{ texts.unreadable(n) }}</span>
+  }
+</footer>

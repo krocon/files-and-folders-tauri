@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { FileBrowser } from './features/browser/file-browser';
+import { Workspace } from './features/workspace/workspace';
 
 @Component({
   selector: 'app-root',
-  imports: [FileBrowser],
-  template: `<main class="shell"><app-file-browser /></main>`,
+  imports: [Workspace],
+  template: `<app-workspace class="shell" />`,
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

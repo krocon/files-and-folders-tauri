@@ -2,13 +2,13 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
+  min-width: 0;
   overflow: hidden;
   background: var(--color-surface);
+  outline-offset: -2px;
 
   &:focus-within {
-    border-color: var(--color-focus);
+    outline: var(--focus-ring-width) solid var(--color-focus);
   }
 }
 
