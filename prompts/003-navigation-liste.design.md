@@ -1,6 +1,6 @@
 # Design 003: Navigation, Verlauf, Filter und Statuszeile
 
-> **Status:** 🛑 Entwurf, wartet auf Freigabe · **Datum:** 2026-10-17 · **Branch:** `feat/navigation-liste`
+> **Status:** ✅ umgesetzt (freigegeben 2026-10-17, E1–E10 wie empfohlen) · **Datum:** 2026-10-17 · **Branch:** `feat/navigation-liste`
 > (von `feat/aktionen-tastatur`)
 > **Grundlage:** legacy §4/§5, mr §1.3/§1.4/§3/§4, `docs/ui-layout.md` Zeilen 1–2, Designs 001/002/004.
 
@@ -134,5 +134,20 @@ Fokus-Reihenfolge je Seite: Breadcrumb → Stern → Menü ▾ → Tabs → + �
 ## 6. Fortschritt
 
 - [x] Phase 1: dieses Dokument
-- [ ] Freigabe
-- [ ] Phasen 2–6
+- [x] Freigabe (2026-10-17)
+- [x] Phase 2: Rust – `dirsize.rs`, `opener.rs`, `expand_tilde`, `resolve_location`, `calc_dir_size`/`cancel_dir_size`,
+  `open_file`, Fehlercodes `not_a_file`/`executable`, `recent` in `session.rs`; Abhängigkeit `open` 5
+- [x] Phase 3: Frontend – „..“-Zeile, Zurück/Vor + Merken je Ordner (`tab-memory.ts`), Zuletzt-Liste, Menü ▾,
+  👁/⏷ mit Filterfeld je Tab, Typ-Ahead, Ordnergröße (Leertaste, `Alt+Shift+Enter`), Pfadeingabe (`Strg/⌘+L`),
+  Datei öffnen mit Rückfrage bei Programmen (`ConfirmService`); 174 Vitest-Tests
+- [x] Phase 4: Ende-zu-Ende unter Xvfb: „..“, Hidden standardmäßig aus und `Strg+H`, Typ-Ahead „mei“, Leertaste
+  berechnet 197 KB (Symlink-Zyklus im Baum endet), Zurück/Vor mit Cursor, Pfadeingabe `~/Dokumente/brief.txt`
+  (Cursor auf der Datei), Filter `*e*` + Esc, Menü ▾ (`Alt+F1`), kaputter Symlink → Fehlermeldung
+- [x] Phase 5/6: Doku, `pnpm check`, Debug-Build, Review durch separaten Agenten
+
+### Befunde
+
+- Berechnete Ordnergrößen gehen beim Verlassen des Ordners verloren (kein Cache) – bewusst einfach; Kandidat für
+  012 (Überwachung) bzw. einen Größen-Cache.
+- „Öffnen mit Standard-App“ nur bis zum Aufruf von `xdg-open` geprüft (Container ohne Desktop); macOS/Windows offen.
+- Fehlermeldung `not_found` heißt jetzt „Datei oder Ordner existiert nicht“ (galt vorher nur Ordnern).

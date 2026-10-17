@@ -32,7 +32,7 @@ export function toFsError(err: unknown): FsError {
 export function describeFsError(error: FsError): string {
   switch (error.code) {
     case 'not_found':
-      return 'The folder does not exist (anymore).';
+      return 'The file or folder does not exist (anymore).';
     case 'permission_denied':
       return 'Access denied – you do not have permission to read this folder.';
     case 'not_a_directory':

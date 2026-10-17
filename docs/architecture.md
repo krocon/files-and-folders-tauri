@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Prompt 002 (Aktionssystem, Keymaps) auf Basis von 004 (Fensteraufbau, Sitzungszustand). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 003 (Navigation, Filter, Ordnergröße, Öffnen) auf Basis von 002 und 004. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
@@ -49,7 +49,7 @@ sind als solche markiert.
 | Sicherheit | Capabilities nur `core:default`; keine fs/shell-Plugins; strikte CSP | Minimale Angriffsfläche. Eigene Commands sind über `invoke_handler` registriert. |
 | CSP & Styles | `dangerousDisableAssetCspModification: ["style-src"]` | Tauri ergänzt sonst Hashes in `style-src`, wodurch `'unsafe-inline'` ignoriert wird und Angulars zur Laufzeit eingefügte Komponenten-Styles blockiert würden (in der App verifiziert). `script-src` bleibt strikt. |
 | Styling | SCSS + Design-Tokens in `src/styles.scss`, Dark-Mode per `prefers-color-scheme` | Kein UI-Framework nötig. |
-| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
+| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum), `open` 5 (seit 003: Standard-App starten ohne Shell, MIT/Apache, Basis von `tauri-plugin-opener`). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
 | Dateiliste | GuiExpert Table, **ein** `TableModel` je Panel, Ordnerwechsel nur über `setRows` + `reSort` + `repaintHard` | Spaltenbreiten und Sortierung bleiben erhalten; ein neues Modell-Objekt würde die Table neu aufbauen. Details und Belege: `prompts/001-guiexpert-dateiliste.design.md`. |
 | Cursor | Table-Fokus (`FocusModel`, Spalte 0) ↔ `FileBrowserStore.cursorPath`, Abgleich über den Pfad; Darstellung als Zeilenklasse `fnf-cursor` | Fokus der Table ist index-basiert und zellbasiert; der Pfad ist sortierfest. Nach Header-Sortierung (Doppelklick, ohne Ereignis) stellt ein Capture-Listener den Cursor per Pfad wieder her. |
 | Markierung | eigenes `Set<path>` im Store, `SelectionModel` der Table auf `none` | Das `SelectionModel` ist index-basiert und überlebt kein Sortieren. Anzeige: Klasse `fnf-marked` + Häkchen statt Icon (wie die alte Version), Screenreader-Text „marked“. |
@@ -61,6 +61,10 @@ sind als solche markiert.
 | Aktionen | Katalog mit stabilen Ids (`core/actions/action-catalog.ts`), Handler registrieren Features beim Root-`ActionService`; fehlende Handler = gedimmt mit „kommt in Prompt …“ | Jede Funktion ist über Kürzel, Button, Menü und Palette gleich erreichbar; spätere Prompts registrieren nur. Details: `prompts/002-aktionen-tastatur.design.md`. |
 | Tastatur | ein Capture-Handler an `document` (`KeyboardDispatcher`), kanonische Notation `Mod+Ctrl+Alt+Shift+Taste` aus `key` mit `code`-Rückfall (Ziffern, Numpad, ⌥ auf macOS), Auswertung auf `keydown` | Vermeidet die Matching-Fehler von mr (Modifier-Reihenfolge, Aliasse) und funktioniert mit deutscher Tastatur; einfache Tasten wirken nur in der Liste, Navigationstasten bleiben bei der GuiExpert Table. |
 | Keymaps | Defaults als JSON je OS im Frontend, Nutzer-Override `keymap.json` (Rust schreibt atomar, kaputt → `.bad`), je Aktion gemischt, Konflikte/Fehler als Hinweis | Eine Quelle für Dispatcher, Badges, Menü und Palette; Rust prüft nur Form und Größe. |
+| Navigation | „..“ als synthetische Zeile im Tabellenmodell; Zurück/Vor und Zustand je Ordner in `TabMemory` je Tab (nur im Speicher, LRU 50); „zuletzt besucht“ in `session.json` | Siehe `prompts/003-navigation-liste.design.md`. |
+| Filter | Hidden + Schnellfilter je Tab als `externalFilterFunction` der Table (ein Prädikat aus dem Store) | 100 000 Zeilen in wenigen ms; Markierung bleibt bei ausgeblendeten Einträgen erhalten (Hinweis in der Statuszeile). |
+| Ordnergröße | `calc_dir_size` iterativ, folgt keinen Symlinks, Abbruch-Token, Fortschritt über `Channel` | Zyklensicher; Job-Engine kommt mit 005. |
+| Dateien öffnen | eigener Command `open_file` + Crate `open` (Argument-Array), Programme nur nach Rückfrage | Kein `tauri-plugin-opener` mit breiter Pfad-Capability. |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
 ## DTO-Vertrag
