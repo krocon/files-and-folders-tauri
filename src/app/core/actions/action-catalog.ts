@@ -48,6 +48,7 @@ export const ACTION_IDS = [
   'OPEN_FIND_DLG',
   // files
   'OPEN_VIEW_DLG',
+  'QUICK_VIEW',
   'OPEN_EDIT_DLG',
   'OPEN_CREATE_FILE_DLG',
   'OPEN_COPY_DLG',
@@ -145,6 +146,7 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   SPLITTER_RESET: m('Panels 50 / 50', 'selection', '002', true),
   OPEN_FIND_DLG: m('Find…', 'selection', '009'),
   OPEN_VIEW_DLG: m('View', 'files', '010'),
+  QUICK_VIEW: m('Quick view in the other panel', 'files', '010'),
   OPEN_EDIT_DLG: m('Edit', 'files', '011'),
   OPEN_CREATE_FILE_DLG: m('Create file…', 'files', '006'),
   OPEN_COPY_DLG: m('Copy…', 'files', '006'),

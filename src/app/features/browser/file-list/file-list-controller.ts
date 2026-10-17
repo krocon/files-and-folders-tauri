@@ -204,6 +204,17 @@ export class FileListController {
     return this.cursorRow();
   }
 
+  /** Moves the cursor to `path` (viewer ←/→, design 010 E8); false if it is not displayed. */
+  moveCursorTo(path: string): boolean {
+    const index = this.bridge.displayedRows().findIndex((r) => r.path === path);
+    if (index < 0) {
+      return false;
+    }
+    this.bridge.setFocusedRow(index);
+    this.onFocusChanged(index);
+    return true;
+  }
+
   /**
    * F2: edit the name of `entry` in place, the name without extension selected
    * (design 006 E3). False if the list cannot edit it now (the caller opens the dialog).

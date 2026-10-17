@@ -44,7 +44,8 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Namen/Pfade in Zwischenablage (Text/JSON) | 5 | ⬜ | | |
 | Externe Tools / App-Launcher, „Terminal hier“ | 7 | ⬜ | | nur über schmale, konfigurierte Commands |
 | Integriertes Terminal (xterm, -mr) | – | ⬜ | | Sicherheitsabwägung nötig |
-| Viewer / Editor | 6 | ⬜ | | |
+| Viewer / Editor | 010 | 🟡 | Rust `preview/` (`encoding.rs`, `detect.rs`, `mod.rs`: 2-GB-Datei, Kodierungen, `bild.txt`, FIFO), `commands::tests::preview_scheme_serves_only_valid_tokens`; `preview.spec.ts`, `preview-logic.spec.ts`, E2E | **Neu** (alt: nur „Edit“ mit Sublime, keine Ansicht): Ansicht F3 als Overlay (Text mit Zeilennummern, Suche, Umbruch, Kodierung, Hex, Bild mit Zoom, ←/→ durch das Panel), Schnellvorschau Strg+Q, Typ am Inhalt. F4 = Standard-App bis 011. Offen: eingebauter Editor (mr Monaco), PDF/Markdown/Audio/Video-Provider, weitere Kodierungen |
+| Eigenschaften / Attribute | 010 | 🟡 | Rust `properties.rs`; `preview.spec.ts` (Zeilen je Plattform), E2E | Anzeige: Typ, Größe (Ordner als Job), Zeiten, Unix `rwx` + Eigentümer, Windows R/H/S/A, Link-Ziel. Offen: Ändern von Rechten/Attributen/Datum (mr Attribute-Dialog) |
 | Pack/Unpack (ZIP, TAR, 7z) | 8+ | ⬜ | | |
 | Duplikate finden, Dateiattribute (-mr) | 6+ | ⬜ | | |
 | Farbschemata (Light/Dark/…) | 1/8 | 🟡 | – | Light/Dark via Tokens; weitere Themes offen |

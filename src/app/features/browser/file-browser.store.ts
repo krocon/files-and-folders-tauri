@@ -395,7 +395,8 @@ export class FileBrowserStore {
     return state;
   }
 
-  private async openFile(entry: DirEntry): Promise<void> {
+  /** Opens a file with the default app; programs only after `confirmExecutable` (F4, Enter). */
+  async openFile(entry: DirEntry): Promise<void> {
     try {
       await this.api.openFile(entry.path, false);
     } catch (err) {

@@ -111,6 +111,17 @@
   &.fnf-active-panel {
     border-top-color: var(--color-active-panel-accent);
   }
+
+  /* quick view (design 010 E4): the list stays (table state), hidden behind the preview */
+  .quick {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  &.quick-on app-file-list {
+    visibility: hidden;
+  }
 }
 
 .error {

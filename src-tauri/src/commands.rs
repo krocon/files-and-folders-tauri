@@ -114,6 +114,87 @@ pub async fn open_file<R: Runtime>(
     .map_err(|e| FsError::new(FsErrorCode::Io, format!("Opening failed: {e}"), None))?
 }
 
+// ---- preview and properties (design 010) ----
+
+/// Image tokens of the `fnfpreview` scheme (shared with the protocol handler).
+#[derive(Default, Clone)]
+pub struct PreviewState {
+    pub tokens: Arc<crate::preview::ImageTokens>,
+    /// Image requests served at the same time (review 2).
+    pub slots: Arc<crate::preview::ServeSlots>,
+}
+
+/// Bounded preview of a file (text, image token, hex); never reads more than the limits.
+#[tauri::command]
+pub async fn read_preview<R: Runtime>(
+    app: AppHandle<R>,
+    state: tauri::State<'_, PreviewState>,
+    path: String,
+    options: Option<crate::preview::PreviewOptions>,
+) -> Result<crate::preview::Preview, FsError> {
+    let file = resolve_input(&app, &path)?;
+    let tokens = state.tokens.clone();
+    let options = options.unwrap_or_default();
+    blocking("Reading the preview", move || {
+        crate::preview::read_preview(&file, &options, |p, slot| tokens.issue_in(p, slot))
+    })
+    .await
+}
+
+/// Properties of a file or folder (read only).
+#[tauri::command]
+pub async fn get_properties<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<crate::properties::Properties, FsError> {
+    let file = resolve_input(&app, &path)?;
+    blocking("Reading the properties", move || {
+        crate::properties::properties(&file)
+    })
+    .await
+}
+
+/// Answer of the `fnfpreview` scheme when all serve slots are taken (review 2).
+pub fn preview_busy_response() -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(503)
+        .header("Cache-Control", "no-store")
+        .header("Retry-After", "1")
+        .body(Vec::new())
+        .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
+}
+
+/// Answer of the `fnfpreview` scheme: the image of a token or 404 (design 010 E3).
+pub fn preview_response(
+    tokens: &crate::preview::ImageTokens,
+    uri_path: &str,
+) -> tauri::http::Response<Vec<u8>> {
+    let token = uri_path.trim_start_matches('/');
+    let builder = tauri::http::Response::builder()
+        .header("X-Content-Type-Options", "nosniff")
+        .header("Cache-Control", "no-store");
+    let valid = token.len() == 32 && token.bytes().all(|b| b.is_ascii_hexdigit());
+    match valid
+        .then(|| crate::preview::serve_image(tokens, token))
+        .flatten()
+    {
+        Some((bytes, mime)) => {
+            let builder = builder.status(200).header("Content-Type", mime);
+            let builder = if mime == "image/svg+xml" {
+                builder.header(
+                    "Content-Security-Policy",
+                    "default-src 'none'; style-src 'unsafe-inline'",
+                )
+            } else {
+                builder
+            };
+            builder.body(bytes)
+        }
+        None => builder.status(404).body(Vec::new()),
+    }
+    .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
+}
+
 // ---- quick operations (design 006 E8) ----
 
 async fn blocking<T: Send + 'static>(
@@ -711,6 +792,29 @@ pub async fn cancel_all_and_quit<R: Runtime>(app: AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn preview_scheme_serves_only_valid_tokens() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("a.gif");
+        std::fs::write(&p, b"GIF89a\x01\0\x01\0").unwrap();
+        let tokens = crate::preview::ImageTokens::default();
+        let t = tokens.issue(&p);
+        let ok = preview_response(&tokens, &format!("/{t}"));
+        assert_eq!(ok.status(), 200);
+        assert_eq!(ok.headers()["content-type"], "image/gif");
+        assert_eq!(ok.headers()["x-content-type-options"], "nosniff");
+        assert_eq!(preview_response(&tokens, "/../etc/passwd").status(), 404);
+        assert_eq!(
+            preview_response(&tokens, &format!("/{}", "0".repeat(32))).status(),
+            404
+        );
+        let svg = dir.path().join("a.svg");
+        std::fs::write(&svg, "<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
+        let r = preview_response(&tokens, &format!("/{}", tokens.issue(&svg)));
+        assert_eq!(r.headers()["content-type"], "image/svg+xml");
+        assert!(r.headers().contains_key("content-security-policy"));
+    }
 
     /// Review 008 #2: a cancel reaches a running search and one not started yet.
     #[test]
