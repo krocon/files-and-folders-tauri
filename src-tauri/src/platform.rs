@@ -123,6 +123,33 @@ pub fn file_id(meta: &Metadata) -> Option<(u64, u64)> {
     }
 }
 
+/// What tells an entry apart from a new one under the same name later (undo,
+/// design 007 review R1). Unix: device + inode + birth time (inode numbers are
+/// reused at once after a delete; without a birth time – file system or kernel
+/// without `statx` btime – device + inode alone). Elsewhere (Windows – std
+/// offers no stable file index): size + modification time as a fallback.
+/// None of these change on a rename.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntryStamp(u64, u64, u128);
+
+fn nanos(t: io::Result<std::time::SystemTime>) -> u128 {
+    t.ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_nanos())
+}
+
+pub fn entry_stamp(meta: &Metadata) -> EntryStamp {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        EntryStamp(meta.dev(), meta.ino(), nanos(meta.created()))
+    }
+    #[cfg(not(unix))]
+    {
+        EntryStamp(meta.len(), 0, nanos(meta.modified()))
+    }
+}
+
 /// Number of hard links of an entry (`None` where std does not tell – Windows).
 /// Two names of one inode look like "the same entry" to a case check.
 pub fn link_count(meta: &Metadata) -> Option<u64> {
@@ -178,6 +205,20 @@ mod tests {
         assert!(!a.exists());
         rename_noreplace(&t.path().join("d"), &t.path().join("e")).unwrap();
         assert!(t.path().join("e").is_dir());
+    }
+
+    #[test]
+    fn entry_stamp_survives_a_rename_but_not_a_replacement() {
+        let t = tempdir().unwrap();
+        let (a, b) = (t.path().join("a"), t.path().join("b"));
+        fs::write(&a, "A").unwrap();
+        let before = entry_stamp(&fs::symlink_metadata(&a).unwrap());
+        fs::rename(&a, &b).unwrap();
+        assert_eq!(entry_stamp(&fs::symlink_metadata(&b).unwrap()), before);
+        fs::remove_file(&b).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(&b, "neu!").unwrap(); // may get the same inode number
+        assert_ne!(entry_stamp(&fs::symlink_metadata(&b).unwrap()), before);
     }
 
     #[cfg(unix)]

@@ -61,10 +61,11 @@ pub enum JobSpec {
         allow_dangerous: bool,
     },
     /// Multi-rename (design 007): every entry gets a new name in its folder.
-    /// `undo_of` = the job this one undoes (runs the valid pairs even if others fail).
+    /// `undo_of` = the job this one undoes (runs the valid pairs even if others
+    /// fail) – set only by `JobManager::undo_rename`, never read from the frontend.
     Rename {
         items: Vec<RenameItem>,
-        #[serde(default)]
+        #[serde(default, skip_deserializing)]
         undo_of: Option<String>,
     },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).

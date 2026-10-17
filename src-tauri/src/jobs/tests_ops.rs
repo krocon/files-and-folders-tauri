@@ -573,6 +573,7 @@ fn rename_items(dir: &Path, pairs: &[(&str, &str)]) -> Vec<RenameItem> {
         .map(|(a, b)| RenameItem {
             path: s(&dir.join(a)),
             new_name: b.to_string(),
+            expect: None,
         })
         .collect()
 }
@@ -671,6 +672,62 @@ fn rename_undo_reports_changed_entries_and_renames_the_rest() {
             })
             .is_err()
     );
+}
+
+/// Review R1: b was replaced after the rename – undo must not rename the new b.
+#[test]
+fn rename_undo_leaves_a_replaced_entry_alone() {
+    let h = Harness::new();
+    let t = tempdir().unwrap();
+    let d = t.path();
+    fs::write(d.join("a"), "alt").unwrap();
+    fs::write(d.join("k"), "k").unwrap();
+    let id = h
+        .mgr
+        .start(JobSpec::Rename {
+            items: rename_items(d, &[("a", "b"), ("k", "k2")]),
+            undo_of: None,
+        })
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    fs::remove_file(d.join("b")).unwrap();
+    fs::write(d.join("other"), "neu").unwrap();
+    fs::rename(d.join("other"), d.join("b")).unwrap(); // a new entry named b
+    let undo = h.mgr.undo_rename(Some(&id)).unwrap();
+    let job = h.finish(&undo);
+    assert_eq!(job.state, JobState::DoneWithErrors);
+    let sum = job.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (1, 1));
+    assert_eq!(sum.errors[0].error.code, FsErrorCode::UndoUnavailable);
+    assert!(
+        sum.errors[0]
+            .error
+            .message
+            .contains("changed since the rename")
+    );
+    assert_eq!(fs::read_to_string(d.join("b")).unwrap(), "neu");
+    assert!(!d.join("a").exists());
+    assert!(d.join("k").exists());
+}
+
+/// Review R7: the frontend cannot switch on the partial (undo) mode.
+#[test]
+fn rename_undo_of_is_not_accepted_from_the_frontend() {
+    let spec: JobSpec =
+        serde_json::from_str(r#"{"kind":"rename","items":[],"undoOf":"job-1"}"#).unwrap();
+    assert_eq!(
+        spec,
+        JobSpec::Rename {
+            items: vec![],
+            undo_of: None
+        }
+    );
+    let v = serde_json::to_value(JobSpec::Rename {
+        items: vec![],
+        undo_of: Some("job-1".into()),
+    })
+    .unwrap();
+    assert_eq!(v["undoOf"], "job-1"); // still shown in the task list
 }
 
 #[test]

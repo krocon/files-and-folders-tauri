@@ -352,6 +352,22 @@ gründliche Selbstprüfung der Schwerpunkte, jeweils mit Test belegt:
 - **Regex-Fehler:** ungültiger Ausdruck/Bedingung → Fehler am Feld, alle Zeilen „Fehler“, keine Rust-Anfrage, kein
   Umbenennen – Fehlerfälle im Katalog, `multirename.spec.ts`, Dialog-Test. ReDoS bleibt bewusst offen (E10 a).
 
+### Review (separater Agent) – Ergebnis
+
+Nachträglich hat ein separater Agent den Diff geprüft; die Funde sind mit je einem zuerst roten Test behoben
+(`jobs/rename.rs` bzw. `tests_ops.rs`, `rename_presets.rs`, `platform.rs`).
+
+| # | Fund | Stand |
+|---|---|---|
+| 1 mittel | Undo-Paar war nur {Pfad, alter Name}: ein zwischenzeitlich gelöschtes und neu angelegtes Ziel wäre umbenannt worden | ✅ `RenameItem.expect` = `platform::entry_stamp` (Unix: Gerät + Inode + Geburtszeit – Inode-Nummern werden sofort wiederverwendet; Windows: Größe + mtime als Rückfall), nur von der Engine gesetzt (`serde(skip)`); abweichend → Fehler je Eintrag „changed since the rename“ (`undo_unavailable`) – `rename_undo_leaves_a_replaced_entry_alone`, `entry_stamp_survives_a_rename_but_not_a_replacement`, `expect_is_not_part_of_the_wire_format` |
+| 2 mittel (DoS) | Blockade-Schleife O(n²) (lange Kette, letztes Ziel belegt) | ✅ `block_waiters`: Rückwärtsabhängigkeiten (Besetzer → Wartende) einmal per Worklist, O(n) – `blocking_a_long_chain_is_linear` (100 000 synthetisch, vorher > 30 s), `plan_of_a_blocked_chain_of_twenty_thousand` (echte Dateien, ~0,7 s debug) |
+| 3 gering | Groß/klein-Messung mit vollem Unicode-Case (ß→SS, İ), NotFound sofort „sensitiv“, Hard-Link als „gleich“ | ✅ nur ASCII-Buchstaben tauschen; Hard-Link (`nlink > 1`) oder verschwundener Eintrag → nächstes Mitglied, sonst Plattform-Default. Abweichung vom Vorschlag: NotFound bei noch vorhandenem Original gilt als eindeutig „sensitiv“ (mit ASCII-Tausch kein Faltungsproblem mehr) – `swap_case_is_ascii_only`, `case_measurement_ignores_hard_links_and_uses_the_next_member` |
+| 4 gering | Hard-Link eines Plan-Mitglieds wurde als Kette erkannt; `waiting_for` überschrieb Wartende | ✅ `Occupied(j)` nur bei einem Link oder wenn das Ziel wirklich `j`s Name ist, sonst „existiert“; `waiting_for` als `Map<usize, Vec<usize>>` – `hard_link_of_a_member_is_not_a_chain` |
+| 5 gering | Liegengebliebener Zwischenname fehlte im Undo; Panik mitten im Job verlor erledigte Paare | ✅ gescheiterte Rücknahme → Undo-Paar {Zwischenname → alter Name}; Undo-Liste als geteilter Puffer (`&mut Vec`, Manager behält ihn nach `catch_unwind`) – `stuck_temporary_name_is_in_the_undo_log`, `panic_keeps_the_pairs_done_so_far` (Puffer-Umbau vor dem Test, daher nicht rot) |
+| 6 gering (Windows) | `platform::rename_noreplace`: Rückfall „prüfen + rename“ für Ordner/Links ist unter Windows nicht atomar | ⏳ offen: `MoveFileExW` ohne `MOVEFILE_REPLACE_EXISTING` (bzw. `std::fs::rename` prüfen) braucht einen Windows-Test – auf Windows nachziehen |
+| 7 gering | `undo_of` war vom Frontend setzbar und schaltete den Partial-Modus frei | ✅ `#[serde(skip_deserializing)]`, nur `JobManager::undo_rename` setzt es; serialisiert weiter (Task-Liste) – `rename_undo_of_is_not_accepted_from_the_frontend` |
+| 8 gering | `rename_presets::load`: jeder Lesefehler wurde als kaputte Datei nach `.bad` verschoben | ✅ nur Parse-/Versionsfehler; I/O-Fehler → Datei unberührt, `persist = false` – `read_errors_leave_the_file_alone` |
+
 ## 10. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
@@ -370,4 +386,5 @@ gründliche Selbstprüfung der Schwerpunkte, jeweils mit Test belegt:
 ## 11. Offen
 
 - KI-Modus (E11), Web-Worker gegen ReDoS (E10 b), Undo über einen Neustart, Undo für Einzel-Umbenennen (F2).
+- Review #6: atomares „nie ersetzen“ für Ordner/Links unter Windows.
 - Fehlertexte aus Rust sind englisch (i18n in 015).

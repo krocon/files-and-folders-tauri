@@ -98,7 +98,8 @@ fn parse(text: &str) -> Result<RenamePresets, String> {
     Ok(bound(file))
 }
 
-/// Missing file → empty; broken file → empty + warning, kept as `.bad`.
+/// Missing file → empty; broken file (parse/version) → empty + warning, kept
+/// as `.bad`; unreadable file → empty + warning, untouched, not saved over.
 pub fn load(file: &Path) -> LoadedPresets {
     let failure = match fs::read_to_string(file) {
         Ok(text) => match parse(&text) {
@@ -118,7 +119,16 @@ pub fn load(file: &Path) -> LoadedPresets {
                 persist: true,
             };
         }
-        Err(e) => format!("The multi-rename presets file could not be read ({e})"),
+        // a read error is no broken file: leave it alone and do not save over it
+        Err(e) => {
+            return LoadedPresets {
+                presets: RenamePresets::default(),
+                warning: Some(format!(
+                    "The multi-rename presets file could not be read ({e}); changes are not saved in this session."
+                )),
+                persist: false,
+            };
+        }
     };
     match keep_broken_file(file) {
         Some(bad) => LoadedPresets {
@@ -181,6 +191,20 @@ mod tests {
                 text
             );
         }
+    }
+
+    /// Review R8: a read error (here: a folder in the file's place) is not a
+    /// broken file – leave it alone and do not save over it.
+    #[test]
+    fn read_errors_leave_the_file_alone() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join(FILE_NAME);
+        fs::create_dir(&file).unwrap();
+        let l = load(&file);
+        assert!(!l.persist);
+        assert!(l.warning.as_deref().unwrap().contains("could not be read"));
+        assert!(file.is_dir());
+        assert!(!dir.path().join(format!("{FILE_NAME}.bad")).exists());
     }
 
     #[test]
