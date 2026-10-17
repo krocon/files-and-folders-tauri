@@ -1,3 +1,11 @@
+import { FsApi } from '../../core/fs/fs-api';
+import { SessionApi } from '../../core/session/session-api';
+import { KeymapApi } from '../../core/actions/keymap-api';
+import { FakeFsApi } from '../../../testing/fs-fixtures';
+import { FakeSessionApi } from '../../../testing/fake-session-api';
+import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
+import { RenameApi } from '../../core/rename/rename-api';
+import { FakeRenameApi } from '../../../testing/fake-rename-api';
 import { TestBed } from '@angular/core/testing';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -11,10 +19,21 @@ const copy = { kind: 'copy' as const, sources: ['/a/x.txt'], targetDir: '/b' };
 describe('job dialogs', () => {
   let api: FakeJobsApi;
   let store: JobsStore;
+  let renameApi: FakeRenameApi;
 
   beforeEach(async () => {
     api = new FakeJobsApi();
-    TestBed.configureTestingModule({ providers: [{ provide: JobsApi, useValue: api }] });
+    renameApi = new FakeRenameApi();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: JobsApi, useValue: api },
+        // the task list offers "Undo" for rename jobs (MultiRenameStore → workspace)
+        { provide: RenameApi, useValue: renameApi },
+        { provide: FsApi, useValue: new FakeFsApi() },
+        { provide: SessionApi, useValue: new FakeSessionApi() },
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
+      ],
+    });
     store = TestBed.inject(JobsStore);
     await store.init();
   });
@@ -207,5 +226,37 @@ describe('job dialogs', () => {
     expect(el.querySelector('.errors li')?.textContent).toContain('/a/locked');
     button('Remove finished').click();
     expect(api.clearCalls).toBe(1);
+  });
+
+  it('job list: a finished rename job offers Undo', async () => {
+    const id = await store.start({ kind: 'rename', items: [{ path: '/a/x', newName: 'y' }] });
+    api.emit({
+      type: 'finished',
+      id,
+      state: 'done',
+      summary: {
+        itemsDone: 1,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 0,
+        errors: [],
+        error: null,
+        dirSize: null,
+      },
+    });
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const undoButton = () =>
+      [...el.querySelectorAll<HTMLButtonElement>('button')].find(
+        (b) => b.textContent?.trim() === 'Undo',
+      );
+    expect(undoButton()).toBeUndefined();
+    api.emit({ type: 'undoAvailable', id, available: true });
+    fixture.detectChanges();
+    expect(undoButton()?.getAttribute('aria-label')).toBe('Undo: Rename /a/x → y');
+    undoButton()!.click();
+    await new Promise((r) => setTimeout(r));
+    expect(renameApi.undos).toEqual([id]);
   });
 });

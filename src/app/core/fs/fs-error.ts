@@ -13,6 +13,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'invalid_name',
   'dangerous_path',
   'trash_failed',
+  'duplicate_target',
+  'undo_unavailable',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -62,6 +64,10 @@ export function describeFsError(error: FsError): string {
       return 'This is a drive, your home folder or a system folder.';
     case 'trash_failed':
       return 'The item could not be moved to the trash.';
+    case 'duplicate_target':
+      return 'Another selected entry gets the same name.';
+    case 'undo_unavailable':
+      return 'There is nothing to undo.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

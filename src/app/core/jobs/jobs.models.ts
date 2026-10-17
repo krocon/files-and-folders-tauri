@@ -2,6 +2,7 @@
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
 import { DirSize, FsError } from '../fs/fs.models';
+import { RenameItem } from '../rename/rename.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -37,6 +38,12 @@ export type JobSpec =
       readonly mode: DeleteMode;
       readonly background?: boolean;
       readonly allowDangerous?: boolean;
+    }
+  /** Multi-rename (design 007); `undoOf` = the job this one undoes. */
+  | {
+      readonly kind: 'rename';
+      readonly items: readonly RenameItem[];
+      readonly undoOf?: string | null;
     }
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }
@@ -129,6 +136,8 @@ export interface JobInfo {
   readonly summary: Summary | null;
   /** Why the job paused itself (disk full) – cleared when it runs again. */
   readonly pauseReason: FsError | null;
+  /** A finished rename job that can still be undone. */
+  readonly undoAvailable: boolean;
 }
 
 export type JobEvent =
@@ -145,6 +154,7 @@ export type JobEvent =
       readonly summary: Summary;
     }
   | { readonly type: 'removed'; readonly ids: readonly string[] }
+  | { readonly type: 'undoAvailable'; readonly id: string; readonly available: boolean }
   | { readonly type: 'quitRequested'; readonly running: number };
 
 export const EMPTY_PROGRESS: Progress = {

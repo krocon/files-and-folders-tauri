@@ -3,6 +3,7 @@ import { FsApi, TauriFsApi } from './core/fs/fs-api';
 import { SessionApi, TauriSessionApi } from './core/session/session-api';
 import { KeymapApi, TauriKeymapApi } from './core/actions/keymap-api';
 import { JobsApi, TauriJobsApi } from './core/jobs/jobs-api';
+import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -11,5 +12,6 @@ export const appConfig: ApplicationConfig = {
     { provide: SessionApi, useClass: TauriSessionApi },
     { provide: KeymapApi, useClass: TauriKeymapApi },
     { provide: JobsApi, useClass: TauriJobsApi },
+    { provide: RenameApi, useClass: TauriRenameApi },
   ],
 };

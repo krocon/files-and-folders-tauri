@@ -10,6 +10,7 @@ import { isFinished, JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { describeFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { MultiRenameStore } from '../multirename/multirename.store';
 import { Modal } from '../../shared/dialog/modal';
 import { fraction, JOB_TEXTS, jobTitle, progressText, stateLabel } from './job-format';
 
@@ -66,6 +67,18 @@ const SHOWN_ERRORS = 50;
               </div>
               @if (s.error; as e) {
                 <p class="error">{{ describe(e) }} {{ e.message }}</p>
+              }
+              @if (row.job.undoAvailable) {
+                <div class="actions">
+                  <button
+                    type="button"
+                    class="btn"
+                    [attr.aria-label]="t.undoLabel(row.title)"
+                    (click)="mr.undo(row.job.id)"
+                  >
+                    {{ t.undo }}
+                  </button>
+                </div>
               }
               @if (s.errors.length) {
                 <details class="errors">
@@ -135,6 +148,7 @@ export class JobListDialog {
   protected readonly t = JOB_TEXTS;
   protected readonly jobs = inject(JobsStore);
   protected readonly dialogs = inject(DialogService);
+  protected readonly mr = inject(MultiRenameStore);
   protected readonly shownErrors = SHOWN_ERRORS;
   protected readonly describe = describeFsError;
 
