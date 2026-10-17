@@ -1,3 +1,5 @@
+import { JobsApi } from '../../core/jobs/jobs-api';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { FsApi } from '../../core/fs/fs-api';
 import { DirectoryListing } from '../../core/fs/fs.models';
@@ -11,7 +13,11 @@ describe('FileBrowserStore', () => {
   beforeEach(() => {
     api = new FakeFsApi();
     TestBed.configureTestingModule({
-      providers: [FileBrowserStore, { provide: FsApi, useValue: api }],
+      providers: [
+        FileBrowserStore,
+        { provide: FsApi, useValue: api },
+        { provide: JobsApi, useValue: new FakeJobsApi() },
+      ],
     });
     store = TestBed.inject(FileBrowserStore);
   });

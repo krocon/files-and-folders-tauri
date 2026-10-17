@@ -6,6 +6,8 @@ export interface ConfirmRequest {
   readonly message: string;
   readonly detail?: string;
   readonly confirmLabel: string;
+  /** Destructive: red button, Enter/Esc = cancel (default). Otherwise Enter confirms. */
+  readonly danger?: boolean;
 }
 
 /** Asks a yes/no question in a modal; the default (Enter, Esc) is "cancel". */

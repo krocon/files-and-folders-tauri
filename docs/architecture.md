@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Prompt 003 (Navigation, Filter, Ordnergröße, Öffnen) auf Basis von 002 und 004. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 005 (Job-Engine) auf Basis von 001–004. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
@@ -65,6 +65,9 @@ sind als solche markiert.
 | Filter | Hidden + Schnellfilter je Tab als `externalFilterFunction` der Table (ein Prädikat aus dem Store) | 100 000 Zeilen in wenigen ms; Markierung bleibt bei ausgeblendeten Einträgen erhalten (Hinweis in der Statuszeile). |
 | Ordnergröße | `calc_dir_size` iterativ, folgt keinen Symlinks, Abbruch-Token, Fortschritt über `Channel` | Zyklensicher; Job-Engine kommt mit 005. |
 | Dateien öffnen | eigener Command `open_file` + Crate `open` (Argument-Array), Programme nur nach Rückfrage | Kein `tauri-plugin-opener` mit breiter Pfad-Capability. |
+| Jobs | Rust `jobs/`: `JobManager` mit serieller Warteschlange (+ Hintergrund-Jobs), ein Thread je laufendem Job, `Control` (Abbruch-Flag, Pause und Konfliktantwort über `Mutex`+`Condvar`, jede Wartestelle wacht beim Abbruch auf); Ereignisse über **einen** `Channel` je WebView; Fortschritt max. 10/s | Jobs blockieren absichtlich (Frage, Pause) – nicht im Tokio-Pool. Details: `prompts/005-job-queue.design.md`. |
+| Kopieren | Planung zuerst (Ziel in Quelle / auf sich selbst abgelehnt), Datei → `.fnf-<job>-<n>.part` im Zielordner → Hard-Link bzw. `rename`; Symlinks als Link; Konflikte als Frage; Fehler je Eintrag gesammelt; „Platte voll“ pausiert | Nie eine halbe Datei unter dem echten Namen; eine während des Kopierens aufgetauchte Datei wird nicht ersetzt. |
+| Modale Dialoge | Fenster dahinter `inert` | Fokus und Klicks bleiben im Dialog (aria-modal allein reicht nicht). |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
 ## DTO-Vertrag

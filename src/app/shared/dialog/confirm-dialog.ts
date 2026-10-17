@@ -13,12 +13,19 @@ import { Modal } from './modal';
           <p class="detail">{{ r.detail }}</p>
         }
         <div class="buttons">
-          <button type="button" class="btn" data-autofocus (click)="confirm.answer(false)">
-            Cancel
-          </button>
-          <button type="button" class="btn danger" (click)="confirm.answer(true)">
-            {{ r.confirmLabel }}
-          </button>
+          @if (r.danger !== false) {
+            <button type="button" class="btn" data-autofocus (click)="confirm.answer(false)">
+              Cancel
+            </button>
+            <button type="button" class="btn danger" (click)="confirm.answer(true)">
+              {{ r.confirmLabel }}
+            </button>
+          } @else {
+            <button type="button" class="btn" (click)="confirm.answer(false)">Cancel</button>
+            <button type="button" class="btn primary" data-autofocus (click)="confirm.answer(true)">
+              {{ r.confirmLabel }}
+            </button>
+          }
         </div>
       </app-modal>
     }
@@ -38,6 +45,11 @@ import { Modal } from './modal';
       display: flex;
       justify-content: flex-end;
       gap: var(--spacing-2);
+    }
+    .primary {
+      color: var(--color-accent-text);
+      background: var(--color-accent);
+      border-color: var(--color-accent);
     }
     .danger {
       color: var(--color-danger-text);

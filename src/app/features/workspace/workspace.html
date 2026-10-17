@@ -1,7 +1,9 @@
 @if (ws.ready()) {
-  <app-file-panel side="left" />
+  <!-- while a dialog is open, the window behind it is inert (no focus, no clicks) -->
+  <app-file-panel side="left" [attr.inert]="modalOpen() ? '' : null" />
   <div
     class="splitter"
+    [attr.inert]="modalOpen() ? '' : null"
     role="separator"
     tabindex="0"
     aria-orientation="vertical"
@@ -18,14 +20,14 @@
     (dblclick)="resetSplitter()"
     (keydown)="onSplitterKey($event)"
   ></div>
-  <app-file-panel side="right" />
-  <app-button-bar class="buttons" />
+  <app-file-panel side="right" [attr.inert]="modalOpen() ? '' : null" />
+  <app-button-bar class="buttons" [attr.inert]="modalOpen() ? '' : null" />
 }
 
 <div class="sr-only" aria-live="polite">{{ announcement() }}</div>
 
 <!-- always rendered: a live region that appears together with its text is often not read -->
-<div class="notices" role="status">
+<div class="notices" role="status" [attr.inert]="modalOpen() ? '' : null">
   @for (n of ws.notices(); track $index; let i = $index) {
     <div class="notice">
       <span>{{ n }}</span>
@@ -36,6 +38,12 @@
     <div class="notice">
       <span>{{ n }}</span>
       <button type="button" class="btn" (click)="actions.dismiss(i)">{{ texts.dismiss }}</button>
+    </div>
+  }
+  @for (n of jobs.messages(); track $index; let i = $index) {
+    <div class="notice">
+      <span>{{ n }}</span>
+      <button type="button" class="btn" (click)="jobs.dismiss(i)">{{ texts.dismiss }}</button>
     </div>
   }
 </div>
@@ -58,5 +66,11 @@
   }
   @case ('confirm') {
     <app-confirm-dialog />
+  }
+  @case ('jobs') {
+    <app-job-list-dialog />
+  }
+  @case ('conflict') {
+    <app-conflict-dialog />
   }
 }

@@ -6,6 +6,9 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'not_a_directory',
   'not_a_file',
   'executable',
+  'target_inside_source',
+  'same_source_target',
+  'disk_full',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -41,6 +44,12 @@ export function describeFsError(error: FsError): string {
       return 'This is a folder, not a file.';
     case 'executable':
       return 'This file is a program.';
+    case 'target_inside_source':
+      return 'The target folder lies inside the source folder.';
+    case 'same_source_target':
+      return 'Source and target folder are the same.';
+    case 'disk_full':
+      return 'The disk is full.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

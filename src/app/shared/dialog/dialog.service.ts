@@ -1,7 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 
 export type DialogKind =
-  'palette' | 'call-action' | 'mark-pattern' | 'unmark-pattern' | 'shortcuts' | 'confirm';
+  | 'palette'
+  | 'call-action'
+  | 'mark-pattern'
+  | 'unmark-pattern'
+  | 'shortcuts'
+  | 'confirm'
+  | 'jobs'
+  | 'conflict';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

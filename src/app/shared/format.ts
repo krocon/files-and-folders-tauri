@@ -14,6 +14,11 @@ export function formatSize(bytes: number | null): string {
     value /= 1024;
     unit++;
   }
+  // 1023.6 MB would round to "1024 MB" – show "1.0 GB" instead
+  if (Math.round(value) >= 1024 && unit < UNITS.length - 1) {
+    value /= 1024;
+    unit++;
+  }
   return `${value.toFixed(value < 10 ? 1 : 0)} ${UNITS[unit]}`;
 }
 

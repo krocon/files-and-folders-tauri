@@ -3,6 +3,8 @@ import { ActionService } from '../../../core/actions/action.service';
 import { ACTIONS, ActionId, shortLabel } from '../../../core/actions/action-catalog';
 import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
 import { badgeFor } from '../../../core/actions/shortcut';
+import { isFinished } from '../../../core/jobs/jobs.models';
+import { JobsStore } from '../../../core/jobs/jobs.store';
 import { ActionsMenu } from '../../actions/actions-menu';
 import { TEXTS } from '../texts';
 import { BUTTON_SETS, modifierSet } from './button-config';
@@ -58,10 +60,16 @@ interface ToolButton {
           [attr.aria-label]="t.label"
           [attr.title]="t.title"
           (click)="run(t.id, t.ready)"
+          [class.attention]="t.status?.waiting"
         >
           <span aria-hidden="true">{{ t.icon }}</span>
           @if (t.showLabel) {
             <span aria-hidden="true">{{ t.label }}</span>
+          }
+          @if (t.status; as st) {
+            <span class="task-bar" aria-hidden="true"
+              ><span [style.width.%]="st.percent"></span
+            ></span>
           }
         </button>
       }
@@ -76,6 +84,7 @@ interface ToolButton {
 export class ButtonBar {
   private readonly actions = inject(ActionService);
   private readonly keys = inject(KeyboardDispatcher);
+  private readonly jobs = inject(JobsStore);
   protected readonly menuOpen = signal(false);
 
   private readonly toolDefs: readonly Omit<ToolButton, 'label'>[] = [
@@ -101,12 +110,31 @@ export class ButtonBar {
     });
   });
 
+  /** "finished / total" of the visible tasks while any runs (mr), plus overall progress. */
+  private readonly taskStatus = computed(() => {
+    if (this.jobs.active().length === 0) {
+      return null;
+    }
+    const visible = this.jobs.visible();
+    const finished = visible.filter((j) => isFinished(j.state)).length;
+    const waiting = visible.some((j) => j.state === 'waitingForDecision');
+    const progress = this.jobs.overallProgress();
+    return {
+      text: `${finished} / ${visible.length}`,
+      percent: progress === null ? 0 : Math.round(progress * 100),
+      waiting,
+    };
+  });
+
   protected readonly tools = computed(() =>
     this.toolDefs.map((t) => {
       const state = this.actions.state(t.id);
+      const status = t.id === 'OPEN_TASK_DLG' ? this.taskStatus() : null;
+      const label = shortLabel(t.id);
       return {
         ...t,
-        label: shortLabel(t.id),
+        label: status ? `${label} ${status.text}` : label,
+        status,
         ready: state === 'ready',
         title: this.title(t.id, state, this.actions.shortcutLabel(t.id)),
       };
