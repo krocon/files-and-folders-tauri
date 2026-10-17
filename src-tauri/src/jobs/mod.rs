@@ -143,6 +143,24 @@ impl JobSpec {
         }
     }
 
+    /// Paths the job moves, renames or deletes (not copies): watched folders at
+    /// or below them are paused while it runs (review 012 #3).
+    pub fn changed_paths(&self) -> Vec<std::path::PathBuf> {
+        let strs: Vec<&String> = match self {
+            JobSpec::Move { sources, .. } => sources.iter().collect(),
+            JobSpec::Delete { paths, .. } => paths.iter().collect(),
+            JobSpec::Rename { items, .. } => items.iter().map(|i| &i.path).collect(),
+            JobSpec::Group {
+                items,
+                transfer: Transfer::Move,
+                ..
+            } => items.iter().map(|i| &i.path).collect(),
+            JobSpec::Clean { items, .. } => items.iter().map(|i| &i.path).collect(),
+            _ => Vec::new(),
+        };
+        strs.into_iter().map(std::path::PathBuf::from).collect()
+    }
+
     /// Helper jobs (folder size, count, search) are no tasks of the user: quitting
     /// while they run needs no confirmation – cancelling them loses nothing.
     pub fn is_helper(&self) -> bool {

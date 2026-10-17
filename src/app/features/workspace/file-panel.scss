@@ -217,6 +217,10 @@
   color: var(--color-accent);
 }
 
+.status .watch {
+  color: var(--color-muted);
+}
+
 /* result tab header (design 009 E4) */
 .search-head {
   justify-content: flex-start;

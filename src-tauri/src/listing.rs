@@ -43,16 +43,7 @@ pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
             Ok(link_meta) => entry_from_metadata(name, &path, &link_meta, lossy_name),
             Err(_) => {
                 unreadable += 1;
-                DirEntryDto {
-                    hidden: is_dot_name(&name),
-                    name,
-                    path: path.to_string_lossy().into_owned(),
-                    kind: EntryKind::Unknown,
-                    target_kind: None,
-                    size: None,
-                    modified_ms: None,
-                    lossy_name,
-                }
+                unknown_entry(name, &path, lossy_name)
             }
         };
         entries.push(dto);
@@ -67,6 +58,74 @@ pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
         entries,
         unreadable_entries: unreadable,
     })
+}
+
+/// One entry as [`list_directory`] would return it (watcher deltas, dropped
+/// paths). `None` if nothing exists at `path` (a dangling link does exist);
+/// an entry that cannot be read comes back as [`EntryKind::Unknown`].
+pub fn stat_entry(path: &Path) -> Option<DirEntryDto> {
+    let os_name = path.file_name()?;
+    let lossy_name = os_name.to_str().is_none();
+    let name = os_name.to_string_lossy().into_owned();
+    match fs::symlink_metadata(path) {
+        Ok(meta) => Some(entry_from_metadata(name, path, &meta, lossy_name)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(_) => Some(unknown_entry(name, path, lossy_name)),
+    }
+}
+
+/// Paths dropped onto the window (design 012 E6), described like listing entries.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DescribedPaths {
+    pub entries: Vec<DirEntryDto>,
+    /// The common folder of all entries, `None` if they come from several folders.
+    pub parent: Option<String>,
+    /// Paths that do not exist (any more).
+    pub missing: usize,
+}
+
+/// Describes validated, absolute paths; missing ones are counted, not failed.
+pub fn describe_paths(paths: &[std::path::PathBuf]) -> DescribedPaths {
+    let mut entries = Vec::new();
+    let mut missing = 0;
+    let mut parent: Option<Option<std::path::PathBuf>> = None;
+    let mut seen = std::collections::HashSet::new();
+    for p in paths {
+        let Some(entry) = stat_entry(p) else {
+            missing += 1;
+            continue;
+        };
+        // linear, not quadratic: up to 10 000 dropped paths (review 012 #8)
+        if !seen.insert(entry.path.clone()) {
+            continue;
+        }
+        let this = parent_of(p);
+        parent = match parent {
+            None => Some(this),
+            Some(prev) if prev == this => Some(prev),
+            Some(_) => Some(None),
+        };
+        entries.push(entry);
+    }
+    DescribedPaths {
+        entries,
+        parent: parent.flatten().map(|p| p.to_string_lossy().into_owned()),
+        missing,
+    }
+}
+
+fn unknown_entry(name: String, path: &Path, lossy_name: bool) -> DirEntryDto {
+    DirEntryDto {
+        hidden: is_dot_name(&name),
+        name,
+        path: path.to_string_lossy().into_owned(),
+        kind: EntryKind::Unknown,
+        target_kind: None,
+        size: None,
+        modified_ms: None,
+        lossy_name,
+    }
 }
 
 pub(crate) fn entry_from_metadata(
@@ -164,6 +223,52 @@ mod tests {
 
     fn names(l: &DirectoryListing) -> Vec<&str> {
         l.entries.iter().map(|e| e.name.as_str()).collect()
+    }
+
+    #[test]
+    fn stat_entry_matches_the_listing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir(root.join("Ordner äöü 😀")).unwrap();
+        fs::write(root.join("d a.txt"), b"abc").unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("d a.txt"), root.join("link")).unwrap();
+            std::os::unix::fs::symlink(root.join("missing"), root.join("dangling")).unwrap();
+        }
+        let l = list_directory(root).unwrap();
+        for e in &l.entries {
+            assert_eq!(
+                stat_entry(Path::new(&e.path)).as_ref(),
+                Some(e),
+                "{}",
+                e.name
+            );
+        }
+        assert_eq!(stat_entry(&root.join("gone")), None);
+        #[cfg(unix)]
+        {
+            let d = stat_entry(&root.join("dangling")).unwrap();
+            assert_eq!((d.kind, d.target_kind), (EntryKind::Symlink, None));
+        }
+    }
+
+    #[test]
+    fn describe_paths_finds_the_common_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir(root.join("sub")).unwrap();
+        fs::write(root.join("a b.txt"), b"1").unwrap();
+        fs::write(root.join("sub").join("c.txt"), b"1").unwrap();
+        let d = describe_paths(&[root.join("a b.txt"), root.join("sub"), root.join("gone")]);
+        assert_eq!(d.entries.len(), 2);
+        assert_eq!(d.missing, 1);
+        assert_eq!(d.parent.as_deref(), Some(root.to_string_lossy().as_ref()));
+        let d = describe_paths(&[root.join("a b.txt"), root.join("sub").join("c.txt")]);
+        assert_eq!(d.parent, None);
+        let d = describe_paths(&[root.join("a b.txt"), root.join("a b.txt")]);
+        assert_eq!(d.entries.len(), 1);
+        assert_eq!(describe_paths(&[]).parent, None);
     }
 
     #[test]

@@ -15,6 +15,12 @@ export interface TableBridge {
   /** The external row filter changed (hidden files, quick filter). */
   filterChanged(): void;
   /** Rows in display order (sorted/filtered). */
+  /**
+   * Replaces rows of the same entries (sizes/times changed, review 012 #5):
+   * re-sorts only if a changed column is sorted, repaints only if one is
+   * displayed, keeps the F2 editor. False = not all rows found (use setRows).
+   */
+  updateRows(rows: readonly DirEntry[], columns: ReadonlySet<string>): boolean;
   displayedRows(): readonly DirEntry[];
   /** Displayed index of the focused row, -1 if none. */
   focusedRow(): number;
@@ -36,6 +42,8 @@ export interface TableBridge {
    * False if the entry is not displayed or the table cannot edit now.
    */
   startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean;
+  /** Displayed index of the body row containing `element` (drag and drop), -1 if none. */
+  rowIndexAt(element: Element): number;
 }
 
 /** The parts of the table state that belong to a tab. */
@@ -68,6 +76,24 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
           renaming.editor.cancel();
         }
       }
+    },
+    updateRows(rows, columns) {
+      const { found, visible } = body.replaceRows(rows);
+      if (found !== rows.length) {
+        return false;
+      }
+      if (!visible || body.renaming) {
+        // hidden/filtered rows need no repaint; an open F2 editor stays (the next repaint shows them)
+        return true;
+      }
+      const sorted = api.getState(['sort']).sort ?? [];
+      if (sorted.some((s) => s.property !== undefined && columns.has(s.property))) {
+        api.reSort();
+        api.repaintHard();
+      } else {
+        api.repaint();
+      }
+      return true;
     },
     filterChanged() {
       api.externalFilterChanged();
@@ -122,6 +148,17 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
         return false;
       }
       return true;
+    },
+    rowIndexAt(element) {
+      // TODO(guiexpert): no "row at point" API (G18): body cells carry data-area="body" and the displayed row index
+      const cell = element.closest('[data-area="body"][data-row-index]');
+      if (!cell || !scope.hostElement.contains(cell)) {
+        return -1;
+      }
+      const index = Number(cell.getAttribute('data-row-index'));
+      return Number.isInteger(index) && index >= 0 && index < body.getFilteredRows().length
+        ? index
+        : -1;
     },
     applyTableState(state, parts) {
       const wanted = parts.filter((p) => p in state);

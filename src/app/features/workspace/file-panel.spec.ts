@@ -14,12 +14,15 @@ import { deferred, dir, entry, FakeFsApi, listing } from '../../../testing/fs-fi
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { FileList } from '../browser/file-list/file-list';
 import { FilePanel } from './file-panel';
+import { WatchApi } from '../../core/watch/watch-api';
+import { FakeWatchApi } from '../../../testing/fake-watch-api';
 import { newTab, WorkspaceStore } from './workspace.store';
 
 /** jsdom has no layout – the real table is tested end-to-end; here a stand-in. */
 @Component({ selector: 'app-file-list', template: '<div class="stub-list" tabindex="0"></div>' })
 class FileListStub {
   readonly labelledBy = input.required<string>();
+  readonly side = input<unknown>(null);
   readonly openInNewTab = output<unknown>();
   readonly tableStateChanged = output<Partial<TableStateIf>>();
 }
@@ -36,9 +39,11 @@ function withSegments(l: DirectoryListing, names: string[]): DirectoryListing {
 describe('FilePanel', () => {
   let fs: FakeFsApi;
   let ws: WorkspaceStore;
+  let watch: FakeWatchApi;
 
   beforeEach(() => {
     fs = new FakeFsApi();
+    watch = new FakeWatchApi();
     fs.handler = (p) => {
       switch (p) {
         case '/data':
@@ -75,6 +80,7 @@ describe('FilePanel', () => {
         { provide: PreviewApi, useValue: new FakePreviewApi() },
         { provide: JobsApi, useValue: new FakeJobsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
+        { provide: WatchApi, useValue: watch },
       ],
     });
     TestBed.overrideComponent(FilePanel, {
@@ -112,6 +118,36 @@ describe('FilePanel', () => {
     };
     return { fixture, store, el, settle };
   }
+
+  it('watches its folder and applies changes from other programs (design 012)', async () => {
+    watch.modes.set('/other', 'off');
+    const { store, el, settle } = await render();
+    await settle();
+    expect(watch.calls.at(-1)).toEqual(['/data']);
+    store.setCursor('/data/b.txt');
+    watch.emit({
+      type: 'changes',
+      dir: '/data',
+      upserted: [entry('neu.txt', { path: '/data/neu.txt' })],
+      removed: ['/data/b.txt'],
+    });
+    expect(store.entries().map((e) => e.name)).toEqual(['Übersicht', 'a.txt', 'neu.txt']);
+    expect(store.cursorPath()).toBe('/data/a.txt');
+    // events of other folders are ignored
+    watch.emit({ type: 'changes', dir: '/other', upserted: [], removed: ['/data/a.txt'] });
+    expect(store.entries()).toHaveLength(3);
+    // rescan reloads once
+    const calls = fs.calls.length;
+    watch.emit({ type: 'rescan', dir: '/data' });
+    await settle();
+    expect(fs.calls.length).toBe(calls + 1);
+    // a folder that is not watched says so in the status line
+    await store.load('/other');
+    await settle();
+    expect(watch.calls.at(-1)).toEqual(['/other']);
+    await settle();
+    expect(el.querySelector('.status .watch')?.textContent).toContain('network drive');
+  });
 
   it('loads the active tab and writes the folder title back', async () => {
     const { el } = await render();

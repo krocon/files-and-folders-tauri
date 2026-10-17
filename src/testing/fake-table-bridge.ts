@@ -21,6 +21,17 @@ export class FakeTableBridge implements TableBridge {
     this.rows = this.sortFn ? kept.sort(this.sortFn) : kept;
   }
 
+  updateRows(rows: readonly DirEntry[], columns: ReadonlySet<string>): boolean {
+    this.calls.push(`updateRows(${rows.length},${[...columns].join('+')})`);
+    const byPath = new Map(rows.map((r) => [r.path, r]));
+    if (rows.some((r) => !this.all.some((a) => a.path === r.path))) {
+      return false;
+    }
+    this.all = this.all.map((r) => byPath.get(r.path) ?? r);
+    this.rows = this.rows.map((r) => byPath.get(r.path) ?? r);
+    return true;
+  }
+
   /** Rows hidden by the external filter (set by tests). */
   filter: (r: DirEntry) => boolean = () => true;
   private all: DirEntry[] = [];
@@ -109,5 +120,12 @@ export class FakeTableBridge implements TableBridge {
       },
     };
     return true;
+  }
+
+  /** Row index `rowIndexAt` answers (tests set it). */
+  rowAt = -1;
+
+  rowIndexAt(): number {
+    return this.rowAt;
   }
 }

@@ -19,6 +19,8 @@ export interface FileRowState {
   /** Displayed row index of the cursor (table focus), -1 if none. */
   cursorRow(): number;
   isMarked(path: string): boolean;
+  /** The folder row a drag would drop into (design 012 E5). */
+  isDropTarget?(path: string): boolean;
 }
 
 /**
@@ -50,6 +52,31 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     return (this.getRowByIndex(rowIndex) as DirEntry | undefined)?.path === r.path;
   }
 
+  /**
+   * Replaces rows by path without touching order or filter (watcher updates of
+   * sizes/times, review 012 #5). `visible`: one of them is displayed now.
+   */
+  replaceRows(changed: readonly DirEntry[]): { found: number; visible: boolean } {
+    const byPath = new Map(changed.map((e) => [e.path, e]));
+    let found = 0;
+    let visible = false;
+    for (let i = 0; i < this.rows.length; i++) {
+      const next = byPath.get(this.rows[i].path);
+      if (next) {
+        this.rows[i] = next;
+        found++;
+      }
+    }
+    for (let i = 0; i < this.filteredRows.length; i++) {
+      const next = byPath.get(this.filteredRows[i].path);
+      if (next) {
+        this.filteredRows[i] = next;
+        visible = true;
+      }
+    }
+    return { found, visible };
+  }
+
   /** The table never writes a cell: renaming goes through Rust, then the folder reloads. */
   override setValue(): boolean {
     return false;
@@ -73,6 +100,9 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     }
     if (this.state.isMarked(entry.path)) {
       classes.push('fnf-marked');
+    }
+    if (this.state.isDropTarget?.(entry.path)) {
+      classes.push('fnf-drop-target');
     }
     if (entry.hidden) {
       classes.push('fnf-hidden');

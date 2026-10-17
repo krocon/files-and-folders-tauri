@@ -37,6 +37,10 @@ struct Inner {
     retired: VecDeque<JobInfo>,
 }
 
+/// Pauses whatever must let go of the given paths while a job changes them
+/// (the folder watcher on Windows); the returned function undoes it.
+pub type FsGuard = Arc<dyn Fn(&[PathBuf]) -> Box<dyn FnOnce() + Send> + Send + Sync>;
+
 /// Finished helper jobs kept for `wait_finished` after their removal.
 const RETIRED_KEPT: usize = 64;
 
@@ -50,6 +54,7 @@ pub struct JobManager {
     pub(crate) force_copy_on_move: AtomicBool,
     /// What the last rename jobs did (job id → pairs that undo it), newest last.
     undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
+    fs_guard: Mutex<Option<FsGuard>>,
 }
 
 /// Rename jobs that can be undone (design 007 E7).
@@ -64,11 +69,17 @@ impl JobManager {
             home: Mutex::new(None),
             force_copy_on_move: AtomicBool::new(false),
             undo_log: Mutex::new(VecDeque::new()),
+            fs_guard: Mutex::new(None),
         })
     }
 
     pub fn set_home(&self, home: Option<PathBuf>) {
         *self.home.lock().unwrap_or_else(|e| e.into_inner()) = home;
+    }
+
+    /// Installs the guard called around jobs that move, rename or delete.
+    pub fn set_fs_guard(&self, guard: FsGuard) {
+        *self.fs_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -242,22 +253,34 @@ impl JobManager {
                 (state, summary)
             }
         };
+        let changed = spec.changed_paths();
+        let guard = self
+            .fs_guard
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let release = guard
+            .filter(|_| !changed.is_empty() && !control.is_cancelled())
+            .map(|g| g(&changed));
         // a panic (a bug, or inside a crate such as `trash`) must not leave the job
         // "running" forever and block the serial queue
-        let (state, summary) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
-            .unwrap_or_else(|_| {
-                (
-                    JobState::Failed,
-                    Summary {
-                        error: Some(FsError::new(
-                            FsErrorCode::Io,
-                            "The task stopped because of an internal error",
-                            None,
-                        )),
-                        ..Summary::default()
-                    },
-                )
-            });
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work));
+        if let Some(release) = release {
+            release();
+        }
+        let (state, summary) = result.unwrap_or_else(|_| {
+            (
+                JobState::Failed,
+                Summary {
+                    error: Some(FsError::new(
+                        FsErrorCode::Io,
+                        "The task stopped because of an internal error",
+                        None,
+                    )),
+                    ..Summary::default()
+                },
+            )
+        });
         self.finish(
             id,
             state,

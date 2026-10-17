@@ -111,6 +111,31 @@ export class OpsStore {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
     const other = this.ws.panel(otherSide(side))?.store.path() ?? null;
+    await this.openCopyMoveFor({
+      kind,
+      side,
+      sourceDir,
+      sources,
+      target: other ?? this.folder() ?? '',
+    });
+  }
+
+  /**
+   * The copy/move dialog for given entries and target – drag and drop (design
+   * 012 E5/E6). `side` is the panel the entries come from (or were dropped on);
+   * `sourceDir` their folder ('' if they come from several folders).
+   */
+  async openCopyMoveFor(args: {
+    kind: 'copy' | 'move';
+    side: Side;
+    sourceDir: string;
+    sources: readonly DirEntry[];
+    target: string;
+  }): Promise<void> {
+    if (args.sources.length === 0) {
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    const other = this.ws.panel(otherSide(args.side))?.store.path() ?? null;
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
     const targets = targetOptions([
@@ -119,16 +144,8 @@ export class OpsStore {
       { group: 'Favourite', paths: [...this.ws.favorites()] },
       { group: 'Recent', paths: this.ws.recent() },
     ]);
-    const dangers = kind === 'move' ? await this.dangers(sources) : [];
-    this.copyMove.set({
-      kind,
-      side,
-      sourceDir,
-      sources,
-      target: other ?? this.folder() ?? '',
-      targets,
-      dangers,
-    });
+    const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
+    this.copyMove.set({ ...args, targets, dangers });
     this.dialogs.show('copy-move');
   }
 

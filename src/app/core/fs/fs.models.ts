@@ -53,6 +53,8 @@ export type FsErrorCode =
   | 'unknown_tool'
   /** More entries than the tool takes (`fileLimit`). */
   | 'too_many_files'
+  /** More items than a command accepts (watched folders, dropped paths). */
+  | 'too_many'
   /** A search pattern (regex, glob) is invalid (design 009). */
   | 'invalid_pattern'
   | 'invalid_menu'

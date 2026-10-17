@@ -7,6 +7,7 @@ import {
   HeldModifiers,
   isFunctionKey,
   KeyEventLike,
+  modifiersAfter,
   NO_MODIFIERS,
   strokeFromEvent,
   strokeToString,
@@ -57,7 +58,8 @@ export class KeyboardDispatcher {
       this.updateHeld(e);
       this.handle(e);
     };
-    const up = (e: KeyboardEvent) => this.updateHeld(e);
+    const up = (e: KeyboardEvent) =>
+      this.updateHeld({ ...pickKey(e), ...modifiersAfter(e, 'keyup') });
     const reset = () => this.held.set(NO_MODIFIERS);
     doc.addEventListener('keydown', down, true);
     doc.addEventListener('keyup', up, true);
@@ -185,4 +187,8 @@ function isTextInput(target: Element | null): boolean {
     return !['button', 'checkbox', 'radio', 'submit', 'reset'].includes(target.type);
   }
   return (target as HTMLElement).isContentEditable === true;
+}
+
+function pickKey(e: KeyboardEvent): Pick<KeyboardEvent, 'key' | 'code'> {
+  return { key: e.key, code: e.code };
 }

@@ -13,10 +13,22 @@ import {
 import { TableComponent } from '@guiexpert/angular-table';
 import { TableApi, TableStateIf } from '@guiexpert/table';
 import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
+import { Side } from '../../../core/session/session.models';
+import { modifiersAfter } from '../../../core/actions/shortcut';
+import {
+  DRAG_THRESHOLD,
+  dragKeyAction,
+  dragKind,
+  dragOriginDir,
+  dragSources,
+  panelZoneHit,
+} from '../../dnd/dnd-logic';
+import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
 import { createFileTable } from './file-table-model';
+import { inPlaceUpdate } from './row-update';
 import { createTableBridge, removeConflictingShortcuts, TableBridge } from './table-bridge';
 
 /** Empty result tab: own text instead of the table's "This folder is empty." (options are copied once). */
@@ -45,6 +57,10 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
   host: {
     '(keydown)': 'onKeydown($event)',
     '(mouseup)': 'onMouseUp($event)',
+    '(pointerdown)': 'onPointerDown($event)',
+    // no native HTML drag of icons/text: our own pointer drag (design 012 E5)
+    '(dragstart)': '$event.preventDefault()',
+    '[class.drop-target]': 'dropOnPanel()',
   },
 })
 export class FileList implements OnDestroy {
@@ -53,6 +69,24 @@ export class FileList implements OnDestroy {
 
   /** Id of the element naming the list (the path display) – `aria-labelledby`. */
   readonly labelledBy = input.required<string>();
+  /** The panel side (drag and drop); without it the list is no drag source or drop zone. */
+  readonly side = input<Side | null>(null);
+
+  private readonly dnd = inject(DragStore);
+  /** The folder row of this list a drag would drop into. */
+  private readonly dropRow = computed(() => {
+    const t = this.dnd.drag()?.target;
+    return t && t.side === this.side() ? t.rowPath : null;
+  });
+  /** A drag would drop into this panel's folder. */
+  protected readonly dropOnPanel = computed(() => {
+    const t = this.dnd.drag()?.target;
+    return !!t && t.side === this.side() && t.rowPath === null;
+  });
+  private press: { x: number; y: number; pointerId: number; row: DirEntry } | null = null;
+  private dragging = false;
+  private lastPointer = { x: 0, y: 0 };
+  private unregisterZone?: () => void;
 
   /** Strg/⌘+Enter on a folder. */
   readonly openInNewTab = output<DirEntry>();
@@ -66,6 +100,8 @@ export class FileList implements OnDestroy {
     createFileTable(this.labelledBy(), () => this.store.rowFilter()),
   );
   private shownPath: string | null = null;
+  /** The listing the table shows (for in-place row updates). */
+  private shownListing: DirectoryListing | null = null;
 
   private bridge?: TableBridge;
   private controller?: FileListController;
@@ -87,6 +123,9 @@ export class FileList implements OnDestroy {
       const listing = this.store.listing();
       untracked(() => {
         if (listing && this.controller) {
+          if (this.updateInPlace(listing)) {
+            return;
+          }
           const start = performance.now();
           this.show(listing);
           const sync = since(start);
@@ -102,6 +141,7 @@ export class FileList implements OnDestroy {
     });
     effect(() => {
       this.store.marked();
+      this.dropRow();
       untracked(() => this.bridge?.repaint());
     });
     effect(() => {
@@ -128,7 +168,20 @@ export class FileList implements OnDestroy {
     table.body.setRowState({
       cursorRow: () => bridge.focusedRow(),
       isMarked: (path) => this.store.isMarked(path),
+      isDropTarget: (path) => this.dropRow() === path,
     });
+    const side = this.side();
+    if (side) {
+      this.unregisterZone = this.dnd.registerZone(side, {
+        element: this.host.nativeElement,
+        hit: (el) => {
+          const index = bridge.rowIndexAt(el);
+          const row = index >= 0 ? (bridge.displayedRows()[index] ?? null) : null;
+          // a result tab is no folder to drop into (review 012 #4a)
+          return panelZoneHit(side, this.store, row);
+        },
+      });
+    }
     this.unsubscribe = api.subscribe({
       onFocusChanged: (model) => controller.onFocusChanged(model.getFocus()[0]),
       onStateChanged: (evt) => {
@@ -143,6 +196,11 @@ export class FileList implements OnDestroy {
         }
         e.preventDefault();
         e.stopPropagation();
+        if (this.dragging) {
+          return; // no menu in the middle of a drag (012 × 014)
+        }
+        // macOS Ctrl+click is a button-0 press: it must not turn into a drag behind the menu
+        this.endPress();
         this.contextMenu.emit({
           rowIndex: evt.areaIdent === 'body' ? evt.rowIndex : -1,
           x: e.clientX,
@@ -204,6 +262,136 @@ export class FileList implements OnDestroy {
     }
   }
 
+  // ---- drag and drop (design 012 E5) ----
+
+  protected onPointerDown(evt: PointerEvent): void {
+    const target = evt.target as Element | null;
+    if (
+      evt.button !== 0 ||
+      !this.bridge ||
+      !this.side() ||
+      !target ||
+      target.closest('input, textarea') ||
+      this.store.navigationLocked()
+    ) {
+      return;
+    }
+    const index = this.bridge.rowIndexAt(target);
+    const row = index >= 0 ? this.bridge.displayedRows()[index] : undefined;
+    if (!row) {
+      return;
+    }
+    this.press = { x: evt.clientX, y: evt.clientY, pointerId: evt.pointerId, row };
+    window.addEventListener('pointermove', this.onPointerMove, true);
+    window.addEventListener('pointerup', this.onPointerUp, true);
+    window.addEventListener('pointercancel', this.onPointerCancel, true);
+    window.addEventListener('keydown', this.onDragKey, true);
+    window.addEventListener('keyup', this.onDragKey, true);
+  }
+
+  private readonly onPointerMove = (evt: PointerEvent): void => {
+    const press = this.press;
+    if (!press) {
+      return;
+    }
+    this.lastPointer = { x: evt.clientX, y: evt.clientY };
+    if (!this.dragging) {
+      if (Math.hypot(evt.clientX - press.x, evt.clientY - press.y) < DRAG_THRESHOLD) {
+        return;
+      }
+      const sources = dragSources(
+        press.row,
+        (p) => this.store.isMarked(p),
+        this.store.markedEntries(),
+      );
+      const side = this.side();
+      if (!sources || !side) {
+        this.endPress();
+        return;
+      }
+      this.dragging = true;
+      try {
+        this.host.nativeElement.setPointerCapture(press.pointerId);
+      } catch {
+        // the pointer may be gone already – the window listeners still see it
+      }
+      this.dnd.begin({
+        side,
+        // a result tab: its location key, as for F5/F6 (review 012 #4b)
+        sourceDir: dragOriginDir(this.store),
+        sources,
+        kind: dragKind(evt, IS_MAC),
+        x: evt.clientX,
+        y: evt.clientY,
+      });
+    } else {
+      this.dnd.move(evt.clientX, evt.clientY, dragKind(evt, IS_MAC));
+    }
+    evt.preventDefault();
+  };
+
+  private readonly onPointerUp = (evt: PointerEvent): void => {
+    if (this.dragging) {
+      swallowNextClick();
+      void this.dnd.drop(evt.clientX, evt.clientY, dragKind(evt, IS_MAC));
+    }
+    this.endPress();
+  };
+
+  private readonly onPointerCancel = (): void => {
+    if (this.dragging) {
+      this.dnd.cancel();
+    }
+    this.endPress();
+  };
+
+  /**
+   * Esc cancels; Shift/⌘ switch between copy and move without moving the mouse;
+   * every other key is swallowed – F8 or Del must not act on the dragged rows (review 012 #9).
+   */
+  private readonly onDragKey = (evt: KeyboardEvent): void => {
+    if (!this.dragging) {
+      return;
+    }
+    const action = dragKeyAction(evt);
+    if (action !== 'modifier') {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+    if (action === 'cancel') {
+      this.dnd.cancel();
+      swallowNextClick();
+      this.endPress();
+      return;
+    }
+    if (action === 'swallow') {
+      return;
+    }
+    this.dnd.move(
+      this.lastPointer.x,
+      this.lastPointer.y,
+      dragKind(modifiersAfter(evt, evt.type), IS_MAC),
+    );
+  };
+
+  private endPress(): void {
+    const press = this.press;
+    if (press && this.dragging) {
+      try {
+        this.host.nativeElement.releasePointerCapture(press.pointerId);
+      } catch {
+        // not captured
+      }
+    }
+    this.press = null;
+    this.dragging = false;
+    window.removeEventListener('pointermove', this.onPointerMove, true);
+    window.removeEventListener('pointerup', this.onPointerUp, true);
+    window.removeEventListener('pointercancel', this.onPointerCancel, true);
+    window.removeEventListener('keydown', this.onDragKey, true);
+    window.removeEventListener('keyup', this.onDragKey, true);
+  }
+
   /** Behaviour of this list for the panel's actions (undefined until the table is ready). */
   get listController(): FileListController | undefined {
     return this.controller;
@@ -221,8 +409,26 @@ export class FileList implements OnDestroy {
     target?.focus();
   }
 
+  /**
+   * Only sizes/times of shown entries changed (a file being written): replace
+   * those rows, without setRows, re-sort (unless sorted by them) or reopening
+   * the F2 editor (review 012 #5). False = show the listing as usual.
+   */
+  private updateInPlace(listing: DirectoryListing): boolean {
+    if (!this.bridge || this.store.hasPendingTableState()) {
+      return false;
+    }
+    const update = inPlaceUpdate(this.shownListing, listing);
+    if (!update || !this.bridge.updateRows(update.rows, update.columns)) {
+      return false;
+    }
+    this.shownListing = listing;
+    return true;
+  }
+
   /** Rows of a listing: the ".." row first (if there is a parent), then the entries. */
   private show(listing: DirectoryListing): void {
+    this.shownListing = listing;
     const rows: DirEntry[] =
       listing.parent !== null
         ? [parentRow(listing.parent), ...listing.entries]
@@ -257,5 +463,20 @@ export class FileList implements OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubscribe?.();
+    this.unregisterZone?.();
+    if (this.dragging) {
+      this.dnd.cancel();
+    }
+    this.endPress();
   }
+}
+
+/** The click that follows releasing a drag must not move the cursor or open a row. */
+function swallowNextClick(): void {
+  const stop = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  window.addEventListener('click', stop, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 0);
 }

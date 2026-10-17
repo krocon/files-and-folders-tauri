@@ -17,6 +17,8 @@ import { FsApi } from '../../core/fs/fs-api';
 import { describeFsError, toFsError } from '../../core/fs/fs-error';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { WatchService } from '../../core/watch/watch.service';
+import { WatchEvent } from '../../core/watch/watch.models';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
@@ -118,7 +120,16 @@ export class FilePanel implements OnInit {
   private readonly fsApi = inject(FsApi);
   private readonly confirm = inject(ConfirmService);
   private readonly jobs = inject(JobsStore);
+  private readonly watch = inject(WatchService);
   protected readonly formatSize = formatSize;
+  /** Shown when the folder is not watched natively (design 012 E2). */
+  protected readonly watchHint = computed(() => {
+    const status = this.watch.status(this.store.path());
+    if (!status || status.mode === 'native') {
+      return null;
+    }
+    return status.mode === 'poll' ? TEXTS.slowWatched : TEXTS.notWatched(status.reason);
+  });
 
   /** Tab that is shown or being opened. */
   private shownTabId: string | null = null;
@@ -190,20 +201,21 @@ export class FilePanel implements OnInit {
         }
       });
     });
-    // a job changed the shown folder (copy target, …): reload, cursor and marks stay
+    // a job changed the shown folder (copy target, …): reload, cursor and marks stay;
+    // together with the watcher at most one reload at a time (design 012 E4)
     effect(() => {
       const change = this.jobs.changedDirs();
       untracked(() => {
         const path = this.store.path();
-        if (
-          change &&
-          path !== null &&
-          change.dirs.includes(path) &&
-          !this.store.navigationLocked()
-        ) {
-          void this.store.refresh();
+        if (change && path !== null && change.dirs.includes(path)) {
+          this.store.requestRefresh();
         }
       });
+    });
+    // the shown folder is watched (design 012 E2)
+    effect(() => {
+      const path = this.store.path();
+      untracked(() => this.watch.setPanelDir(this.side(), path, this.store.listedAt ?? undefined));
     });
     effect(() => {
       const req = this.ws.navigateRequest();
@@ -248,6 +260,31 @@ export class FilePanel implements OnInit {
       controller: () => this.list()?.listController,
     });
     this.destroyRef.onDestroy(unregister);
+    const unwatch = this.watch.on((event) => this.onWatchEvent(event));
+    this.destroyRef.onDestroy(() => {
+      unwatch();
+      this.watch.setPanelDir(this.side(), null);
+    });
+  }
+
+  /** Changes of the shown folder by other programs (design 012 E3). */
+  private onWatchEvent(event: WatchEvent): void {
+    if (event.dir !== this.store.path() || this.store.navigationLocked()) {
+      return;
+    }
+    switch (event.type) {
+      case 'changes': {
+        const displayed = this.list()?.listController?.displayedEntries();
+        this.store.applyChanges(event.dir, event.upserted, event.removed, displayed);
+        break;
+      }
+      case 'rescan':
+        this.store.requestRefresh();
+        break;
+      case 'gone':
+        void this.store.goToExistingAncestor();
+        break;
+    }
   }
 
   protected activate(): void {

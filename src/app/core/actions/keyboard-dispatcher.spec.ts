@@ -134,4 +134,19 @@ describe('KeyboardDispatcher', () => {
     expect(actions.ranByKeyRecently('OPEN_CONTEXT_MENU')).toBe(true);
     expect(actions.ranByKeyRecently('OPEN_COPY_DLG')).toBe(false);
   });
+
+  it('a released modifier is up even if the keyup still reports it (WebKitGTK, design 012)', () => {
+    const detach = keys.attach(document);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', shiftKey: true }));
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift', shiftKey: true }));
+    expect(keys.held().shift).toBe(false);
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Alt', altKey: true, shiftKey: true }),
+    );
+    document.dispatchEvent(
+      new KeyboardEvent('keyup', { key: 'Alt', altKey: true, shiftKey: true }),
+    );
+    expect(keys.held()).toMatchObject({ alt: false, shift: true });
+    detach();
+  });
 });

@@ -1,6 +1,8 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod watch;
+
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops;
 use crate::jobs::rename::{self, RenameItem, RenamePlan};

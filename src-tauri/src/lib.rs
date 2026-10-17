@@ -18,6 +18,7 @@
 //! - [`rename_presets`] multi-rename presets file
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
+//! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
@@ -42,6 +43,7 @@ pub mod rename_presets;
 pub mod search;
 pub mod session;
 pub mod tools;
+pub mod watch;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -58,6 +60,7 @@ pub fn run() {
         .manage(commands::PreviewState::default())
         .manage(commands::MenuState::default())
         .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
+        .manage(commands::watch::WatchState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -78,6 +81,24 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // Windows: a watched folder keeps itself and its parents from being
+            // renamed or deleted – pause the watches below what a job changes (review 012 #3)
+            if cfg!(windows) {
+                let handle = app.handle().clone();
+                app.state::<commands::JobsState>()
+                    .manager
+                    .set_fs_guard(std::sync::Arc::new(move |paths| {
+                        let state = handle.state::<commands::watch::WatchState>();
+                        let paused = state.hub().pause_under(paths);
+                        let handle = handle.clone();
+                        Box::new(move || {
+                            handle
+                                .state::<commands::watch::WatchState>()
+                                .hub()
+                                .resume(&paused)
+                        })
+                    }));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -133,7 +154,10 @@ pub fn run() {
             commands::get_properties,
             commands::set_app_menu,
             commands::subscribe_menu,
-            commands::close_main_window
+            commands::close_main_window,
+            commands::watch::subscribe_watch,
+            commands::watch::watch_dirs,
+            commands::watch::describe_paths
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

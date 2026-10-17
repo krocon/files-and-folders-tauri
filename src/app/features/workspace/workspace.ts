@@ -60,6 +60,7 @@ import { registerMenuActions } from '../menus/menu-actions';
 import { MenuService } from '../menus/menu.service';
 import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
+import { DragGhost } from '../dnd/drag-ghost';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
@@ -75,6 +76,7 @@ import { WorkspaceStore } from './workspace.store';
   selector: 'app-workspace',
   imports: [
     FilePanel,
+    DragGhost,
     ButtonBar,
     CommandPalette,
     MarkPatternDialog,
