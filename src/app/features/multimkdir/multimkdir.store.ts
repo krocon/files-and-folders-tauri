@@ -56,9 +56,16 @@ export class MultiMkdirStore {
       error: n.error !== null,
     })),
   );
+  /** After a partial failure Create waits for a change (review 008 #6): the same names again would only fail again. */
   readonly canRun = computed(() => {
     const o = this.outcome();
-    return !this.busy() && o.error === null && o.names.length > 0 && o.names.every((n) => !n.error);
+    return (
+      !this.busy() &&
+      this.runError() === null &&
+      o.error === null &&
+      o.names.length > 0 &&
+      o.names.every((n) => !n.error)
+    );
   });
 
   hasFolder(): boolean {

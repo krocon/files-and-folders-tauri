@@ -153,10 +153,48 @@ pub async fn create_folders<R: Runtime>(
     .await
 }
 
-/// Lists empty folders (and pattern files) below the start folders; writes nothing (design 008 E3).
+/// Cancel tokens of running clean-folders searches, by the frontend's scan id
+/// (review 008 #2). A cancel that arrives before its search leaves a set token.
+#[derive(Default)]
+pub struct CleanScanState {
+    tokens: Mutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+/// Most search ids kept; a cancel without its search is the only way to grow.
+const MAX_SCAN_TOKENS: usize = 64;
+
+impl CleanScanState {
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, Arc<AtomicBool>>> {
+        self.tokens.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// The token of `id` (a cancel may have come first).
+    pub fn begin(&self, id: &str) -> Arc<AtomicBool> {
+        self.lock().entry(id.to_string()).or_default().clone()
+    }
+
+    pub fn end(&self, id: &str) {
+        self.lock().remove(id);
+    }
+
+    pub fn cancel(&self, id: &str) {
+        let mut tokens = self.lock();
+        if !tokens.contains_key(id) && tokens.len() >= MAX_SCAN_TOKENS {
+            tokens.retain(|_, t| !t.load(Ordering::SeqCst));
+        }
+        tokens
+            .entry(id.to_string())
+            .or_default()
+            .store(true, Ordering::SeqCst);
+    }
+}
+
+/// Lists empty folders (and pattern files) below the start folders; writes nothing
+/// (design 008 E3). `scan_id` lets `cancel_clean_scan` stop it early.
 #[tauri::command]
 pub async fn find_empty_dirs<R: Runtime>(
     app: AppHandle<R>,
+    scan_id: String,
     roots: Vec<String>,
     options: crate::clean::CleanOptions,
 ) -> Result<crate::clean::CleanScan, FsError> {
@@ -164,10 +202,19 @@ pub async fn find_empty_dirs<R: Runtime>(
         .iter()
         .map(|r| resolve_input(&app, r))
         .collect::<Result<Vec<_>, _>>()?;
-    blocking("Searching empty folders", move || {
-        crate::clean::find_empty_dirs(&roots, &options)
+    let token = app.state::<CleanScanState>().begin(&scan_id);
+    let result = blocking("Searching empty folders", move || {
+        crate::clean::find_empty_dirs_cancellable(&roots, &options, &token)
     })
-    .await
+    .await;
+    app.state::<CleanScanState>().end(&scan_id);
+    result
+}
+
+/// Stops the search `scan_id` (a newer one started, the dialog closed).
+#[tauri::command]
+pub fn cancel_clean_scan<R: Runtime>(app: AppHandle<R>, scan_id: String) {
+    app.state::<CleanScanState>().cancel(&scan_id);
 }
 
 /// Creates an empty file (never overwrites).
@@ -659,4 +706,27 @@ pub async fn cancel_all_and_quit<R: Runtime>(app: AppHandle<R>) {
         .await;
     save_on_close(&app);
     app.exit(0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Review 008 #2: a cancel reaches a running search and one not started yet.
+    #[test]
+    fn clean_scan_tokens() {
+        let st = CleanScanState::default();
+        let a = st.begin("a");
+        assert!(!a.load(Ordering::SeqCst));
+        st.cancel("a");
+        assert!(a.load(Ordering::SeqCst));
+        st.end("a");
+        st.cancel("b"); // before its search
+        assert!(st.begin("b").load(Ordering::SeqCst));
+        st.end("b");
+        for i in 0..200 {
+            st.cancel(&format!("late {i}")); // after the search ended: bounded
+        }
+        assert!(st.lock().len() <= MAX_SCAN_TOKENS);
+    }
 }

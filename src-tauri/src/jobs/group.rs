@@ -10,6 +10,7 @@ use super::{Control, CopyOptions, ItemError, JobEvent, JobState, MAX_REPORTED_ER
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -114,7 +115,7 @@ pub fn run(
         state: JobState::Planning,
     });
     // one folder per group, in the order the groups first appear
-    let mut dirs: Vec<(String, Result<PathBuf, FsError>)> = Vec::new();
+    let mut dirs: HashMap<String, Result<PathBuf, FsError>> = HashMap::new();
     let mut created_any = false;
     let mut pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
     for item in items {
@@ -122,12 +123,13 @@ pub fn run(
             return (JobState::Cancelled, summary);
         }
         let src = normalize_lexically(Path::new(&item.path));
-        let dir = match dirs.iter().find(|(g, _)| *g == item.group) {
-            Some((_, d)) => d.clone(),
+        // a map, not a list search: O(n) for n entries in many groups (review 008 #5)
+        let dir = match dirs.get(&item.group) {
+            Some(d) => d.clone(),
             None => {
                 let d = group_dir(&root, &item.group);
                 created_any |= d.is_ok();
-                dirs.push((item.group.clone(), d.clone()));
+                dirs.insert(item.group.clone(), d.clone());
                 d
             }
         };

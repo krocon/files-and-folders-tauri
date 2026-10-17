@@ -89,7 +89,8 @@ Gruppenordner bleiben nach Abbruch stehen (Annahme, im Bericht des Jobs sichtbar
 - **Systemmüll** (Option, Default aus): `.DS_Store`, `Thumbs.db`, `desktop.ini`; die
   Liste ist im Dialog editierbar (`;`-getrennt, Vergleich ohne Groß/klein). **Lösch-Muster** (mr, Option, Default
   aus, Vorgabe `*.bak`): Namensmuster mit `*`/`?`, `;`-getrennt; ein führendes `**/` wird ignoriert (Treffer in jeder
-  Tiefe ohnehin). Keine neue Crate (kein `globset`).
+  Tiefe ohnehin). Muster ohne Literal außer `.` (`*`, `?*`, `*.*`, `.*` …) werden abgelehnt – sie träfen (fast)
+  jede Datei. Keine neue Crate (kein `globset`).
 - Ordner werden einzeln in den Papierkorb gelegt (verschachtelte leere Bäume = mehrere Papierkorb-Einträge) –
   einfach und je Schritt prüfbar; Zusammenfassen → „Offen“.
 
@@ -242,10 +243,25 @@ gründliche Selbstprüfung des Diffs mit Schwerpunkt auf den destruktiven Pfaden
 - **Gruppieren:** Gruppenname per `validate_name`, Gruppenordner nur als echter Ordner zusammengeführt (Datei/Link →
   Fehler der Gruppe, nie durch einen Link verschoben), Ordner nie in sich selbst, Verschieben gefährlicher Pfade
   abgelehnt; Kopieren/Verschieben selbst ist die geprüfte Engine aus 005/006 – `group_*` in `tests_tools.rs`.
-- **Restrisiko (dokumentiert):** zwischen Prüfung und Löschen eines Ordners liegt ein winziges Zeitfenster; tauscht
-  ein anderer Prozess genau dann den geprüften Ordner gegen einen Link, könnte beim endgültigen Löschen eine
-  gleichnamige **Systemmüll-Datei** (`.DS_Store` …) im Link-Ziel entfernt werden. Der Ordner selbst (`remove_dir` auf
-  einen Link scheitert) und alles andere bleiben unberührt; im Papierkorb-Modus wird der Link als Ganzes verschoben.
+- **Restrisiko (nach Review #3):** *Endgültig* löscht der Job unter Unix relativ zur Wurzel über geöffnete
+  Ordner-Handles (`openat` mit `O_NOFOLLOW | O_DIRECTORY`, dann `unlinkat`, `platform::remove_below`): ein nach der
+  Prüfung gegen einen Link getauschter Pfadteil – oder Ordner – lässt das Löschen scheitern, statt im Link-Ziel eine
+  Musterdatei oder Systemmüll zu entfernen. Offen bleiben (a) **Windows** (Löschen per Pfad, die Prüfung direkt davor ist
+  der einzige Schutz) und (b) der **Papierkorb** auf allen Systemen (`trash` arbeitet mit Pfaden): tauscht ein anderer
+  Prozess genau im Zeitfenster zwischen Prüfung und Verschieben einen Ordner auf dem Weg gegen einen Link, könnte ein
+  gleichnamiger Eintrag im Link-Ziel in den Papierkorb wandern (wiederherstellbar). Das setzt einen Angreifer mit
+  Schreibrecht im aufgeräumten Baum voraus.
+
+### Review (separater Agent) – Ergebnis
+
+| # | Fund | Stand |
+|---|---|---|
+| 1 mittel | Schutz gegen „alle Dateien“ nur für Muster aus lauter `*` (`?*`, `*?*`, `*.*` trafen fast alles) | ✅ abgelehnt, wenn außer `*`/`?`/`.` nichts bleibt; `clean::tests::glob` |
+| 2 mittel | `find_empty_dirs` nicht abbrechbar; jede Optionsänderung startete einen weiteren Vollscan | ✅ Token je Suche (`CleanScanState`, `scan_id`, Command `cancel_clean_scan`), Prüfung je Eintrag, abgebrochen = `cancelled` ohne Einträge; Store bricht die laufende Suche bei neuer Suche und beim Schließen ab – `clean::tests::a_cancelled_scan_ends_early`, `commands::tests::clean_scan_tokens`, `tools.spec.ts` „cancels a running search …“ |
+| 3 gering | TOCTOU über einen Link-Pfadteil galt auch für Musterdateien | ✅ Unix endgültig: `platform::remove_below` (`openat` `O_NOFOLLOW\|O_DIRECTORY` + `unlinkat`) – `platform::tests::remove_below_never_follows_a_link_on_the_way`; Windows und Papierkorb: Restrisiko oben beschrieben |
+| 4 gering | „Startordner mitlöschen“ mit Startordner = Link: Suche listete die Wurzel, Job scheiterte | ✅ Wurzel nur, wenn `symlink_metadata(root).is_dir()`; `clean::tests::a_linked_start_folder_is_never_listed_itself` |
+| 5 gering | O(n·g) in `group.rs` (`dirs.iter().find`) und `copy::check_pairs` (`checked.contains`); Abbruch in der Planung | ✅ `HashMap`/`HashSet`; `run_pairs` prüft den Abbruch vor jedem Sofort-Umbenennen – `tests_tools::group_move_cancelled_while_planning_moves_nothing` (Laufzeit selbst ohne eigenen Test) |
+| 6 gering | Multi-MkDir: nach Teilfehler schickte „Anlegen“ alle Namen erneut | ✅ „Anlegen“ gesperrt bis zur nächsten Änderung; `tools.spec.ts` „creates the folders and keeps failed names …“ |
 
 ## 9. Fortschritt
 

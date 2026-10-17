@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Entries the scan looks at before it stops (`truncated`).
 pub const MAX_VISITED: u64 = 500_000;
@@ -82,6 +83,8 @@ pub struct CleanScan {
     pub unreadable_more: u64,
     /// The scan stopped at a limit; started folders count as not empty.
     pub truncated: bool,
+    /// The scan was cancelled (a newer one started, the dialog closed).
+    pub cancelled: bool,
     pub visited: u64,
 }
 
@@ -119,7 +122,9 @@ impl Matcher {
             if p.len() > MAX_NAME_LEN || p.contains(['/', '\\', '\0']) {
                 return bad("A file pattern must be a name pattern such as *.bak");
             }
-            if p.chars().all(|c| c == '*') {
+            // without a literal other than `.` it hits (almost) every file:
+            // `*`, `?*`, `*?*`, `*.*` (review 008 #1)
+            if p.chars().all(|c| matches!(c, '*' | '?' | '.')) {
                 return bad("The file pattern would match every file");
             }
             patterns.push(p.to_lowercase().chars().collect());
@@ -193,6 +198,9 @@ pub fn check_roots(roots: &[PathBuf]) -> Result<Vec<PathBuf>, FsError> {
 struct Ctx<'a> {
     m: &'a Matcher,
     o: &'a CleanOptions,
+    cancel: &'a AtomicBool,
+    /// The current start folder is a real folder, not reached through a link.
+    root_real: bool,
     scan: CleanScan,
     seen: HashSet<PathBuf>,
 }
@@ -232,6 +240,11 @@ impl Ctx<'_> {
         let mut removable = true;
         let mut junk = 0u32;
         for entry in rd {
+            if self.cancel.load(Ordering::Relaxed) {
+                self.scan.cancelled = true;
+                self.scan.truncated = true;
+                return false;
+            }
             self.scan.visited += 1;
             if self.scan.visited > MAX_VISITED || self.scan.truncated {
                 self.scan.truncated = true;
@@ -284,7 +297,8 @@ impl Ctx<'_> {
         if !removable || !self.o.empty_dirs {
             return false;
         }
-        if !is_root || self.o.include_roots {
+        // a linked start folder is never offered: the job deletes no link (review 008 #4)
+        if !is_root || (self.o.include_roots && self.root_real) {
             self.push(dir, CleanKind::Dir, junk);
         }
         true
@@ -293,11 +307,23 @@ impl Ctx<'_> {
 
 /// Finds what "clean folders" would delete below `roots` (design 008 E3).
 pub fn find_empty_dirs(roots: &[PathBuf], options: &CleanOptions) -> Result<CleanScan, FsError> {
+    find_empty_dirs_cancellable(roots, options, &AtomicBool::new(false))
+}
+
+/// [`find_empty_dirs`] that stops early (`cancelled`, nothing listed) once
+/// `cancel` is set (review 008 #2).
+pub fn find_empty_dirs_cancellable(
+    roots: &[PathBuf],
+    options: &CleanOptions,
+    cancel: &AtomicBool,
+) -> Result<CleanScan, FsError> {
     let roots = check_roots(roots)?;
     let m = Matcher::new(options)?;
     let mut ctx = Ctx {
         m: &m,
         o: options,
+        cancel,
+        root_real: false,
         scan: CleanScan::default(),
         seen: HashSet::new(),
     };
@@ -312,10 +338,14 @@ pub fn find_empty_dirs(roots: &[PathBuf], options: &CleanOptions) -> Result<Clea
             ));
         }
         let dev = file_id(&meta).map(|f| f.0);
+        ctx.root_real = fs::symlink_metadata(root).is_ok_and(|m| m.is_dir());
         ctx.dir(root, dev, true);
         if ctx.scan.truncated {
             break;
         }
+    }
+    if ctx.scan.cancelled {
+        ctx.scan.items.clear(); // a partial list must never be deleted
     }
     Ok(ctx.scan)
 }
@@ -360,7 +390,10 @@ mod tests {
         assert!(m.matches("~ä 1.tmp"));
         assert!(m.matches("abc"));
         assert!(!m.matches("abbc"));
-        for bad in ["a/b", "*", "**"] {
+        // review 008 #1: patterns without a literal (or only dots) match (almost) every file
+        for bad in [
+            "a/b", "*", "**", "?", "?*", "*?*", "*.*", "**/*.*", ".", "*.", ".*", "?.?",
+        ] {
             assert!(
                 Matcher::new(&CleanOptions {
                     patterns: vec![bad.into()],
@@ -491,6 +524,48 @@ mod tests {
         )
         .unwrap();
         assert_eq!(names(&scan, &root), ["bak/old.bak"]);
+    }
+
+    #[test]
+    fn a_cancelled_scan_ends_early() {
+        // review 008 #2: the scan stops at the token
+        let t = tempfile::tempdir().unwrap();
+        for i in 0..50 {
+            fs::create_dir_all(t.path().join(format!("d{i}/e"))).unwrap();
+        }
+        let scan =
+            find_empty_dirs_cancellable(&[t.path().to_path_buf()], &opts(), &AtomicBool::new(true))
+                .unwrap();
+        assert!(scan.cancelled);
+        assert!(scan.items.is_empty());
+        assert!(scan.visited <= 1, "{}", scan.visited);
+        let scan = find_empty_dirs_cancellable(
+            &[t.path().to_path_buf()],
+            &opts(),
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        assert!(!scan.cancelled);
+        assert_eq!(scan.items.len(), 100);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_start_folder_is_never_listed_itself() {
+        // review 008 #4: the job would refuse it (no link is deleted) – so the search does not offer it
+        let t = tempfile::tempdir().unwrap();
+        let empty = t.path().join("empty");
+        fs::create_dir(&empty).unwrap();
+        let link = t.path().join("link");
+        std::os::unix::fs::symlink(&empty, &link).unwrap();
+        let o = CleanOptions {
+            include_roots: true,
+            ..opts()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&link), &o).unwrap();
+        assert!(scan.items.is_empty(), "{:?}", scan.items);
+        let scan = find_empty_dirs(std::slice::from_ref(&empty), &o).unwrap();
+        assert_eq!(scan.items.len(), 1);
     }
 
     #[test]

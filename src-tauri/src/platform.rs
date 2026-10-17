@@ -107,6 +107,112 @@ fn native_noreplace(_from: &Path, _to: &Path) -> Option<io::Result<()>> {
     None
 }
 
+/// Deletes `rel` below `root` – a file, or (`dir`) an empty folder after the
+/// `junk` files directly inside it – without following a link in any path part
+/// below `root` (review 008 #3). `rel` = "" means `root` itself, which then
+/// must not be a link; `root` itself may be reached through a link otherwise
+/// (the panel's path). Unix: every folder is opened with
+/// `O_NOFOLLOW | O_DIRECTORY` relative to the previous one and the entry is
+/// removed with `unlinkat` – a folder swapped for a link after the check makes
+/// this fail instead of deleting elsewhere. Elsewhere: by path (the check right
+/// before stays the only guard).
+pub fn remove_below(
+    root: &Path,
+    rel: &Path,
+    dir: bool,
+    junk: &[std::ffi::OsString],
+) -> io::Result<()> {
+    use std::path::Component;
+    let mut parts = Vec::new();
+    for c in rel.components() {
+        match c {
+            Component::Normal(n) => parts.push(n),
+            _ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
+        }
+    }
+    let (base, parts) = match parts.split_last() {
+        Some(_) => (root, parts),
+        None => match (root.parent(), root.file_name()) {
+            (Some(p), Some(n)) => (p, vec![n]),
+            _ => return Err(io::Error::from(io::ErrorKind::InvalidInput)),
+        },
+    };
+    remove_at(base, &parts, dir, junk)
+}
+
+#[cfg(unix)]
+fn remove_at(
+    base: &Path,
+    parts: &[&std::ffi::OsStr],
+    dir: bool,
+    junk: &[std::ffi::OsString],
+) -> io::Result<()> {
+    use std::ffi::{CString, OsStr};
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
+    use std::os::unix::ffi::OsStrExt;
+    let c = |s: &OsStr| {
+        CString::new(s.as_bytes()).map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))
+    };
+    let open = |at: RawFd, name: &CString, follow: bool| -> io::Result<OwnedFd> {
+        let mut flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC;
+        if !follow {
+            flags |= libc::O_NOFOLLOW;
+        }
+        // SAFETY: a valid NUL-terminated name; the fd is checked and owned
+        let fd = unsafe { libc::openat(at, name.as_ptr(), flags) };
+        if fd < 0 {
+            Err(io::Error::last_os_error())
+        } else {
+            // SAFETY: a fresh descriptor nobody else owns
+            Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+        }
+    };
+    let unlink = |at: RawFd, name: &CString, flags: libc::c_int| -> io::Result<()> {
+        // SAFETY: a valid descriptor and NUL-terminated name
+        if unsafe { libc::unlinkat(at, name.as_ptr(), flags) } == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    };
+    let (last, folders) = parts
+        .split_last()
+        .ok_or_else(|| io::Error::from(io::ErrorKind::InvalidInput))?;
+    let mut cur = open(libc::AT_FDCWD, &c(base.as_os_str())?, true)?;
+    for f in folders {
+        cur = open(cur.as_raw_fd(), &c(f)?, false)?;
+    }
+    let name = c(last)?;
+    if !dir {
+        return unlink(cur.as_raw_fd(), &name, 0);
+    }
+    let inner = open(cur.as_raw_fd(), &name, false)?;
+    for j in junk {
+        // flags 0: never a folder; a link would only lose itself
+        unlink(inner.as_raw_fd(), &c(j)?, 0)?;
+    }
+    drop(inner);
+    unlink(cur.as_raw_fd(), &name, libc::AT_REMOVEDIR)
+}
+
+#[cfg(not(unix))]
+fn remove_at(
+    base: &Path,
+    parts: &[&std::ffi::OsStr],
+    dir: bool,
+    junk: &[std::ffi::OsString],
+) -> io::Result<()> {
+    let mut path = base.to_path_buf();
+    path.extend(parts);
+    if !dir {
+        return fs::remove_file(&path);
+    }
+    for j in junk {
+        fs::remove_file(path.join(j))?;
+    }
+    fs::remove_dir(&path)
+}
+
 /// Identity of a file system entry (device + inode) – to notice that a path
 /// now names another entry than at planning time (e.g. a folder replaced by a
 /// link). `None` where std offers no stable id (Windows).
@@ -234,5 +340,41 @@ mod tests {
             fs::metadata(&d).unwrap().permissions().mode() & 0o777,
             0o755
         );
+    }
+
+    /// Review 008 #3: a folder on the way swapped for a link after the check –
+    /// the delete must not reach through it.
+    #[cfg(unix)]
+    #[test]
+    fn remove_below_never_follows_a_link_on_the_way() {
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().join("start");
+        let outside = t.path().join("outside");
+        fs::create_dir_all(root.join("a/leer")).unwrap();
+        fs::write(root.join("a/x.bak"), "x").unwrap();
+        fs::create_dir_all(outside.join("leer")).unwrap();
+        fs::write(outside.join("x.bak"), "keep").unwrap();
+        fs::write(outside.join("leer/.DS_Store"), "keep").unwrap();
+        // swap `a` for a link to `outside`
+        fs::rename(root.join("a"), t.path().join("a old")).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("a")).unwrap();
+        let junk = [std::ffi::OsString::from(".DS_Store")];
+        assert!(remove_below(&root, Path::new("a/x.bak"), false, &[]).is_err());
+        assert!(remove_below(&root, Path::new("a/leer"), true, &junk).is_err());
+        // the link itself is no folder to remove either
+        assert!(remove_below(&root, Path::new("a"), true, &[]).is_err());
+        assert!(outside.join("x.bak").exists());
+        assert!(outside.join("leer/.DS_Store").exists());
+        assert!(root.join("a").exists());
+        // the real thing works: file, folder with junk, the start folder itself
+        let real = t.path().join("a old");
+        fs::write(real.join("leer/.DS_Store"), "x").unwrap();
+        remove_below(&real, Path::new("x.bak"), false, &[]).unwrap();
+        remove_below(&real, Path::new("leer"), true, &junk).unwrap();
+        assert!(!real.join("x.bak").exists() && !real.join("leer").exists());
+        remove_below(&real, Path::new(""), true, &[]).unwrap();
+        assert!(!real.exists());
+        // `..` or an absolute part is refused
+        assert!(remove_below(&root, Path::new("../outside/x.bak"), false, &[]).is_err());
     }
 }

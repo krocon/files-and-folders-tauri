@@ -98,6 +98,8 @@ export class CleanFoldersStore {
   private readonly scanned = signal<{ options: CleanOptions; scan: CleanScan } | null>(null);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private seq = 0;
+  /** Id of the search still running in Rust (review 008 #2: cancelled when obsolete). */
+  private running: string | null = null;
 
   readonly options = computed(() => cleanOptions(this.form()));
   /** The search result belongs to the current options. */
@@ -150,6 +152,7 @@ export class CleanFoldersStore {
 
   close(): void {
     this.cancelTimer();
+    this.cancelRunning();
     this.seq++;
     this.request.set(null);
     this.scanned.set(null);
@@ -161,6 +164,13 @@ export class CleanFoldersStore {
     this.scanError.set(null);
     this.runError.set(null);
     this.schedule();
+  }
+
+  private cancelRunning(): void {
+    if (this.running !== null) {
+      void this.api.cancelScan(this.running).catch(() => undefined);
+      this.running = null;
+    }
   }
 
   private cancelTimer(): void {
@@ -185,15 +195,22 @@ export class CleanFoldersStore {
       return;
     }
     const options = this.options();
+    this.cancelRunning(); // its answer would be dropped anyway – stop the full scan
     const seq = ++this.seq;
+    const id = `clean-${seq}`;
+    this.running = id;
     try {
-      const scan = await this.api.findEmptyDirs(req.roots, options);
-      if (seq === this.seq) {
+      const scan = await this.api.findEmptyDirs(id, req.roots, options);
+      if (seq === this.seq && !scan.cancelled) {
         this.scanned.set({ options, scan });
       }
     } catch (e) {
       if (seq === this.seq) {
         this.scanError.set(toFsError(e));
+      }
+    } finally {
+      if (this.running === id) {
+        this.running = null;
       }
     }
   }

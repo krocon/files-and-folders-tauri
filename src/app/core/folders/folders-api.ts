@@ -9,16 +9,33 @@ import { CleanOptions, CleanScan, CreatedFolders } from './folders.models';
  * Rejects with an `FsError`.
  */
 export abstract class FoldersApi {
-  /** Lists empty folders (and files matching a pattern) below the start folders; writes nothing. */
-  abstract findEmptyDirs(roots: readonly string[], options: CleanOptions): Promise<CleanScan>;
+  /**
+   * Lists empty folders (and files matching a pattern) below the start folders; writes
+   * nothing. `scanId` (unique per search) lets `cancelScan` stop it early.
+   */
+  abstract findEmptyDirs(
+    scanId: string,
+    roots: readonly string[],
+    options: CleanOptions,
+  ): Promise<CleanScan>;
+  /** Stops a running search (it answers `cancelled: true`, without items). */
+  abstract cancelScan(scanId: string): Promise<void>;
   /** Creates one folder per name in `parent`; never touches an existing entry. */
   abstract createFolders(parent: string, names: readonly string[]): Promise<CreatedFolders>;
 }
 
 @Injectable()
 export class TauriFoldersApi extends FoldersApi {
-  findEmptyDirs(roots: readonly string[], options: CleanOptions): Promise<CleanScan> {
-    return call<CleanScan>('find_empty_dirs', { roots, options });
+  findEmptyDirs(
+    scanId: string,
+    roots: readonly string[],
+    options: CleanOptions,
+  ): Promise<CleanScan> {
+    return call<CleanScan>('find_empty_dirs', { scanId, roots, options });
+  }
+
+  cancelScan(scanId: string): Promise<void> {
+    return call<void>('cancel_clean_scan', { scanId });
   }
 
   createFolders(parent: string, names: readonly string[]): Promise<CreatedFolders> {
