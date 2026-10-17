@@ -97,6 +97,13 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
 - **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
   und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
+- **Kontextmenü** (Rechtsklick, `Shift+F10`, Kontextmenü-Taste): passend zu Datei, Ordner, Markierung, freier
+  Fläche oder Ergebnis-Tab, mit Kürzeln und Untermenüs (**Open with tool** mit den Tools, **Copy to clipboard**);
+  nicht verfügbare Einträge sind gedimmt. Rechtsklick setzt den Cursor, die Markierung bleibt – mit Markierung wirkt
+  das Menü auf die markierten Einträge (Überschrift „N marked entries“).
+- **Menüleiste** File · Edit · View · Go · Tools · Window · Help mit allen Aktionen und ihren Kürzeln: unter macOS
+  nativ (App-Menü mit About, Settings `⌘,`, Services, Hide, Quit; Edit mit Copy/Paste für Textfelder), unter
+  Windows/Linux in der App (`Alt+M` fokussiert sie). Kürzel kommen aus der Keymap inkl. Override.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -133,6 +140,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
 | Folder menu, right panel | `Alt+F2` | `⌥F2` |
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
+| Context menu | `Shift+F10`, Kontextmenü-Taste | `⇧F10` |
+| Menu bar | `Alt+M` | – (nativ) |
+| Settings… (ab 015) | `Ctrl+,` | `⌘,` |
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |

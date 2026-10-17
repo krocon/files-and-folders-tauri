@@ -7,6 +7,10 @@
 
 ## Aufbau
 
+Unter Windows/Linux steht darüber eine **Menüleiste** (Zeile 0: File · Edit · View · Go · Tools · Window · Help,
+`role="menubar"`, `Alt+M`); macOS nutzt die native Menüleiste (Prompt 014). Das Kontextmenü der Liste (Rechtsklick,
+`Shift+F10`) zeigt die Aktionen zum Eintrag bzw. zur Markierung.
+
 Zwei gleichberechtigte Seiten wie im Norton/Total Commander. Jede Seite hat dieselben vier Zeilen, darunter liegen
 zwei Zeilen über die volle Breite.
 

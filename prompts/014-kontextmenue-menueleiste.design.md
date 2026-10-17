@@ -194,7 +194,20 @@ zurück in die Liste. Kontextmenü: Untermenü `aria-haspopup`, → / Enter öff
 
 ## 7. Abweichungen bei der Umsetzung
 
-(siehe Fortschritt)
+- **Menüleiste im App-Root**, nicht im Grid des Workspace (`app.ts`: Flex-Spalte Menüleiste + Workspace) – keine
+  Umnummerierung der Grid-Zeilen (weniger Konflikte mit 012/013). Bei offenem Dialog ist sie `inert`; der
+  Hintergrund des Dialogs dimmt sie nicht mit (nur optisch).
+- **`Mod+,` nicht mehr reserviert** (`RESERVED_MACOS`): es ist jetzt das Kürzel von `OPEN_SETUP_DLG` = Einstellungen
+  im App-Menü.
+- **Fokus nach dem Rechtsklick:** GuiExpert fokussiert beim Loslassen der Maustaste seinen Host – das Kontextmenü
+  holt den Fokus beim `pointerup` zurück (nur im echten Fenster prüfbar, jsdom hat das Verhalten nicht → kein roter
+  Unit-Test, E2E geprüft). Hover verschiebt den Fokus (eine Hervorhebung für Maus und Tastatur).
+- **Menüs ohne aktiven Eintrag** (z. B. Edit, bevor die Liste bereit ist): der Fokus geht auf den ersten
+  (gedimmten) Eintrag – APG erlaubt fokussierbare deaktivierte Einträge, sonst wäre `Esc` wirkungslos.
+- Die Aktionen der Menüs (Actions ▴, Kontextmenü, Menüleiste, nativ) laufen alle durch `resolveMenu()` bzw.
+  `toNativeSpec()` – Actions ▴ wurde darauf umgestellt (gleiches Verhalten).
+- GTK-Accelerator (nur mit `FNF_NATIVE_MENU=1`) greifen vor der WebView: im E2E löste `Ctrl+Alt+I` die Aktion genau
+  einmal aus (über das Menü-Ereignis). Deshalb bleibt nativ unter Linux/Windows nur Diagnose.
 
 ## 8. Review (separater Agent) – Ergebnis
 
@@ -204,10 +217,17 @@ zurück in die Liste. Kontextmenü: Untermenü `aria-haspopup`, → / Enter öff
 ## 9. Fortschritt
 
 - [x] Phase 1 Design
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
+- [x] Phase 2 Rust: `app_menu.rs` (6 Tests: Accelerator je OS, F-Tasten, schlichte Tasten/Alt/Akkorde, Spec-Validierung,
+  JSON-Form), Commands `set_app_menu`, `subscribe_menu`, `close_main_window`, Fehlercode `invalid_menu`
+- [x] Phase 3 Frontend: Menümodell + Specs, ContextMenu mit Untermenüs/Badges/Trennern, MenuService, MenuBar,
+  Aktionen `OPEN_CONTEXT_MENU`/`FOCUS_MENU_BAR`/`QUIT_APP`, Dispatcher (Fokus-Bezug, Echo-Erkennung)
+- [x] Phase 4 E2E (Xvfb, Linux): Rechtsklick Ordner/frei/markiert (Cursor wandert, Markierung bleibt, Überschrift
+  „2 marked entries“, Pack gedimmt), Copy… aus dem Menü → Dialog mit den 2 markierten Dateien, `Shift+F10` an der
+  Cursor-Zeile, Untermenü „Open with tool“ per → mit den Tools, HTML-Menüleiste per `Alt+M`/↓/→ mit Badges, „Invert
+  marks“ aus der Leiste wirkt; Override `INVERT_MARKS = Mod+Alt+I` → nach Neustart im nativen GTK-Menü
+  (`FNF_NATIVE_MENU=1`) als `Ctrl+Alt+I`, Klick im nativen Menü und Tastendruck lösen die Aktion je einmal aus.
+  Nicht geprüft: macOS-Menü (kein Mac), Windows, Ergebnis-Tab-Kontext nur per Unit-Test.
+- [x] Phase 5 Doku: architecture, feature-parity, roadmap, ui-layout, README, CLAUDE.md, prompts/README
 
 ## 10. Offen
 
