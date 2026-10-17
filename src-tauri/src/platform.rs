@@ -289,6 +289,45 @@ pub fn make_writable(path: &Path, meta: &Metadata) -> io::Result<()> {
     }
 }
 
+/// Login name of a user id (`getpwuid_r`), `None` if unknown.
+#[cfg(unix)]
+pub fn user_name(uid: u32) -> Option<String> {
+    let mut buf = vec![0 as libc::c_char; 16 * 1024];
+    // SAFETY: zeroed passwd is a valid out-parameter; buf outlives the borrow of pw_name
+    let mut pwd: libc::passwd = unsafe { std::mem::zeroed() };
+    let mut result: *mut libc::passwd = std::ptr::null_mut();
+    let rc = unsafe { libc::getpwuid_r(uid, &mut pwd, buf.as_mut_ptr(), buf.len(), &mut result) };
+    if rc != 0 || result.is_null() || pwd.pw_name.is_null() {
+        return None;
+    }
+    // SAFETY: getpwuid_r succeeded, pw_name points into buf (NUL-terminated)
+    let name = unsafe { std::ffi::CStr::from_ptr(pwd.pw_name) };
+    Some(name.to_string_lossy().into_owned())
+}
+
+/// Group name of a group id (`getgrgid_r`), `None` if unknown.
+#[cfg(unix)]
+pub fn group_name(gid: u32) -> Option<String> {
+    let mut buf = vec![0 as libc::c_char; 16 * 1024];
+    // SAFETY: as in `user_name`
+    let mut grp: libc::group = unsafe { std::mem::zeroed() };
+    let mut result: *mut libc::group = std::ptr::null_mut();
+    let rc = unsafe { libc::getgrgid_r(gid, &mut grp, buf.as_mut_ptr(), buf.len(), &mut result) };
+    if rc != 0 || result.is_null() || grp.gr_name.is_null() {
+        return None;
+    }
+    // SAFETY: getgrgid_r succeeded, gr_name points into buf
+    let name = unsafe { std::ffi::CStr::from_ptr(grp.gr_name) };
+    Some(name.to_string_lossy().into_owned())
+}
+
+/// Windows file attributes (`FILE_ATTRIBUTE_*`).
+#[cfg(windows)]
+pub fn file_attributes(meta: &Metadata) -> u32 {
+    use std::os::windows::fs::MetadataExt;
+    meta.file_attributes()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
