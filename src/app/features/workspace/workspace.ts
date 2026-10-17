@@ -38,6 +38,9 @@ import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { CommandPalette } from '../actions/command-palette';
+import { registerOsActions } from '../osintegration/os-actions';
+import { OsStore } from '../osintegration/os.store';
+import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
@@ -71,6 +74,7 @@ import { WorkspaceStore } from './workspace.store';
     GroupFilesDialog,
     CleanFoldersDialog,
     MultiMkdirDialog,
+    ToolConfigDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -93,6 +97,7 @@ export class Workspace implements OnInit {
   private readonly gf = inject(GroupFilesStore);
   private readonly cl = inject(CleanFoldersStore);
   private readonly mm = inject(MultiMkdirStore);
+  private readonly os = inject(OsStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -144,6 +149,13 @@ export class Workspace implements OnInit {
         }
       });
     });
+    // success messages of design 011 (copied, tool started) for screen readers
+    effect(() => {
+      const text = this.os.status();
+      if (text) {
+        untracked(() => this.announcement.set(text));
+      }
+    });
     effect(() => {
       const req = this.jobs.quitRequest();
       if (req) {
@@ -173,10 +185,11 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
+    this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();
-    void this.actions.init();
+    void this.actions.init().then(() => this.os.init());
   }
 
   // ---- splitter ----

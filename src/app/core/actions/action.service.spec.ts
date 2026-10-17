@@ -45,12 +45,12 @@ describe('ActionService', () => {
 
   it('loads the override, applies it and saves changes per action', async () => {
     api.loaded = {
-      bindings: { OPEN_COPY_DLG: ['Mod+Alt+C'], NOPE: ['F1'] },
+      bindings: { OPEN_COPY_DLG: ['Mod+Alt+J'], NOPE: ['F1'] },
       warning: 'old file kept',
     };
     await actions.init();
-    expect(actions.shortcuts('OPEN_COPY_DLG')).toEqual(['Mod+Alt+C']);
-    expect(actions.shortcutLabel('OPEN_COPY_DLG')).toBe('Ctrl+Alt+C');
+    expect(actions.shortcuts('OPEN_COPY_DLG')).toEqual(['Mod+Alt+J']);
+    expect(actions.shortcutLabel('OPEN_COPY_DLG')).toBe('Ctrl+Alt+J');
     expect(actions.messages()).toEqual([
       'old file kept',
       'Shortcut file: unknown action NOPE was ignored.',

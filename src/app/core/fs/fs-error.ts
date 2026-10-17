@@ -15,6 +15,9 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'trash_failed',
   'duplicate_target',
   'undo_unavailable',
+  'program_not_found',
+  'unknown_tool',
+  'too_many_files',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -68,6 +71,12 @@ export function describeFsError(error: FsError): string {
       return 'Another selected entry gets the same name.';
     case 'undo_unavailable':
       return 'There is nothing to undo.';
+    case 'program_not_found':
+      return 'The program was not found – is it installed? (tools.json)';
+    case 'unknown_tool':
+      return 'This tool is not configured (anymore).';
+    case 'too_many_files':
+      return 'Too many entries for this tool.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

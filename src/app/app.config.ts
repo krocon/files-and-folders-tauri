@@ -5,6 +5,8 @@ import { KeymapApi, TauriKeymapApi } from './core/actions/keymap-api';
 import { JobsApi, TauriJobsApi } from './core/jobs/jobs-api';
 import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
 import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
+import { OsApi, TauriOsApi } from './core/os/os-api';
+import { ClipboardApi, WebClipboardApi } from './core/os/clipboard';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,5 +17,7 @@ export const appConfig: ApplicationConfig = {
     { provide: JobsApi, useClass: TauriJobsApi },
     { provide: RenameApi, useClass: TauriRenameApi },
     { provide: FoldersApi, useClass: TauriFoldersApi },
+    { provide: OsApi, useClass: TauriOsApi },
+    { provide: ClipboardApi, useClass: WebClipboardApi },
   ],
 };
