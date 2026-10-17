@@ -42,3 +42,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Claude: Bündel für die Übergabe aus der Remote-Sitzung (CLAUDE.md §9)
+/.tmp-bundle

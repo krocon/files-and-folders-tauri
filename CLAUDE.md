@@ -182,3 +182,46 @@ prompts/                     Feature-Prompts (s. o.)
 - `krocon/files-and-folders-mr` (lokal `~/WebstormProjects/files-and-folders-mr`): Custom Source-Available License,
   Rechteinhaber GUI Expert GmbH (Marc). Als Referenz für Verhalten, Layout und Konfiguration nutzen; Code nur nach
   Marcs ausdrücklicher Freigabe übernehmen. Die acht Default-Designs: `docs/legacy-themes/`.
+
+## 9. Arbeitsumgebung für Claude (Remote-Sitzung) – zuerst lesen, spart Zeit
+
+**Wo was läuft**
+- Das Repo liegt auf Marcs Mac (`~/WebstormProjects/files-and-folders-tauri`). Die Geräte-Shell (`device_bash`) ist
+  eine **Linux-VM (aarch64) ohne pnpm/cargo** – dort keine Checks, nur `git` (status/log/branch/merge/bundle) und Lesen.
+- `git` auf dem Gerät braucht **Löschrechte** (Lock-Dateien): einmal je Sitzung
+  `device_request_delete_permission` für den Repo-Ordner. Dort gibt es keine Git-Identität: Commits mit
+  `git -c "user.name=Marc Kronberg" -c user.email=krocon@gmail.com …` – oder Marc den Befehl nennen (er führt ihn gern
+  selbst aus).
+- Gebaut und getestet wird in der **Cloud-Umgebung** (Klon des Repos).
+
+**Ablauf (bewährt)**
+1. Gerät: `git switch -c feat/<slug> main && mkdir -p .tmp-bundle && git bundle create .tmp-bundle/repo.bundle --all`
+2. `device_stage_files` → Container: `git clone -b feat/<slug> /mnt/user-data/uploads/files-and-folders-tauri/.tmp-bundle/repo.bundle ~/fnf`
+3. Container einrichten (einmal je Sitzung, im Hintergrund starten und währenddessen lesen):
+   `apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev xdotool imagemagick`
+   (Xvfb ist da), `pnpm install --frozen-lockfile` (~10 s), `cd src-tauri && cargo build --tests` (~3,5 min beim
+   ersten Mal). Node im Container ist 22.22.0 (< 22.22.3) – funktioniert trotzdem.
+4. Zurück: Container `git bundle create /mnt/user-data/outputs/<slug>.bundle origin/main..feat/<slug>` →
+   `device_commit_files` nach `.tmp-bundle/<slug>.bundle` → Marc (oder Gerät):
+   `git pull --ff-only .tmp-bundle/<slug>.bundle feat/<slug>`. `.tmp-bundle/` ist in `.gitignore`.
+
+**Referenzquellen (lesbar ohne Marcs Mac)**
+- Alte Version (AngularJS): `git clone --depth 1 https://github.com/krocon/node-files-and-folders-client` – z. B.
+  `src/fnf/commands/multirename/` (Makros, Umlaut-Tabelle, `titleCaps`).
+- mr (Angular 20): `git clone --depth 1 https://github.com/krocon/files-and-folders-mr` (nur lesen, Lizenz §8) – z. B.
+  `apps/fnf/src/app/feature/cmd/<feature>/`.
+- GuiExpert Table: https://github.com/guiexperttable/mono (oder die API im installierten `node_modules/@guiexpert/table`).
+
+**Sparsam lesen** – statt alles zu öffnen:
+- `docs/architecture.md` Tabelle „Entscheidungen“ + das Design-Dokument des Vorgänger-Prompts (Abschnitte
+  „Verträge“ und „Fortschritt“) reichen meist als Überblick. Aus `docs/legacy-analysis*.md` nur die im Prompt
+  genannten Abschnitte (`grep -n "^### "` zuerst).
+- Einstiegspunkte: Rust `jobs/mod.rs` (`JobSpec`, `kind()`, `is_parallel()`), `jobs/manager.rs` (`run`-match,
+  `validate`), `fileops.rs` (`rename_entry`, `check_danger`), `platform::rename_noreplace`, `paths::validate_name`,
+  `commands.rs` + Registrierung in `lib.rs`. Frontend: `features/ops/ops.store.ts` (Muster für Anfrage → Dialog →
+  Ausführung), `ops-logic.ts` (`selectionForAction`), `shared/dialog/dialog.service.ts` (`DialogKind` ergänzen),
+  `modal.ts`, `workspace.ts` (bindet die Dialoge ein), `core/actions/action-catalog.ts` (`m(label, group, prompt)` =
+  noch ohne Handler), Keymaps `core/actions/keymaps/{linux,macos,windows}.json`, `button-bar/buttons.json`,
+  `browser/file-list/file-table-model.ts` (Muster für ein GuiExpert-Modell mit Zeilenklassen).
+- Bekannte Fakten: `FileBrowserStore.markedEntries` hat die Reihenfolge des Listings aus Rust, **nicht** die
+  aktuelle Sortierung der Table. `DirectoryListing.segments` beginnt mit der Wurzel (Name = Wurzelpfad, z. B. `/`).
