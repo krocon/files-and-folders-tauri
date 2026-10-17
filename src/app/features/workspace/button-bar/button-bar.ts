@@ -8,7 +8,7 @@ import { JobsStore } from '../../../core/jobs/jobs.store';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ActionsMenu } from '../../actions/actions-menu';
 import { THEME_TEXTS } from '../../themes/theme-texts';
-import { ContextMenu, MenuItem } from '../context-menu';
+import { ContextMenu, MenuCloseReason, MenuItem } from '../context-menu';
 import { TEXTS } from '../texts';
 import { BUTTON_SETS, modifierSet } from './button-config';
 
@@ -205,9 +205,9 @@ export class ButtonBar {
     this.focusThemeToggle();
   }
 
-  protected onThemeMenuClosed(reason: 'key' | 'outside'): void {
+  protected onThemeMenuClosed(reason: MenuCloseReason): void {
     this.themeMenu.set(null);
-    if (reason === 'key') {
+    if (reason !== 'outside') {
       this.focusThemeToggle();
     }
   }

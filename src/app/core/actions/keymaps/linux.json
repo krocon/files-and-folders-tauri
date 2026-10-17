@@ -18,6 +18,8 @@
   "OPEN_TERMINAL_HERE": ["Mod+Shift+C"],
   "OPEN_COMMAND_PALETTE": ["Mod+Shift+P", "Mod+F12"],
   "OPEN_CALL_ACTION_DLG": ["F10"],
+  "OPEN_CONTEXT_MENU": ["Shift+F10", "ContextMenu"],
+  "FOCUS_MENU_BAR": ["Alt+M"],
   "TOGGLE_MARK_AND_ADVANCE": ["Space", "Insert"],
   "MARK_DOWN": ["Shift+ArrowDown"],
   "MARK_UP": ["Shift+ArrowUp"],
@@ -59,5 +61,6 @@
   "OPEN_SHORTCUT_DLG": ["Mod+Shift+K"],
   "OPEN_TOOLS_DLG": ["Mod+Shift+X"],
   "OPEN_TASK_DLG": ["Mod+F11"],
-  "NEXT_THEME": ["Ctrl+Alt+Shift+T"]
+  "NEXT_THEME": ["Ctrl+Alt+Shift+T"],
+  "OPEN_SETUP_DLG": ["Mod+,"]
 }

@@ -5,6 +5,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  Injector,
   input,
   OnInit,
   signal,
@@ -32,6 +33,7 @@ import { summarize } from './status';
 import { TabBar } from './tab-bar';
 import { TEXTS } from './texts';
 import { WorkspaceStore } from './workspace.store';
+import { MenuService } from '../menus/menu.service';
 
 let panelSeq = 0;
 
@@ -114,6 +116,7 @@ export class FilePanel implements OnInit {
     const bytes = jobs.reduce((n, j) => n + (j.progress?.bytes ?? 0), 0);
     return `${TEXTS.calculating(jobs.length)} ${formatSize(bytes)}`;
   });
+  private readonly injector = inject(Injector);
   private readonly fsApi = inject(FsApi);
   private readonly confirm = inject(ConfirmService);
   private readonly jobs = inject(JobsStore);
@@ -380,6 +383,11 @@ export class FilePanel implements OnInit {
     if (key) {
       this.search.stop(key);
     }
+  }
+
+  /** Right click in the list (design 014 E3); the menu service is root-wide, fetched lazily. */
+  protected onListContextMenu(evt: { rowIndex: number; x: number; y: number }): void {
+    this.injector.get(MenuService).openFromPointer(this.side(), evt.rowIndex, evt.x, evt.y);
   }
 
   protected onTableState(state: Partial<TableStateIf>): void {

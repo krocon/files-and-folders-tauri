@@ -21,8 +21,10 @@
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
+//! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
 
+pub mod app_menu;
 pub mod clean;
 pub mod commands;
 pub mod dirsize;
@@ -59,6 +61,8 @@ pub fn run() {
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
+        .manage(commands::MenuState::default())
+        .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
         .manage(commands::watch::WatchState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
@@ -155,6 +159,10 @@ pub fn run() {
             commands::save_themes,
             commands::import_theme,
             commands::export_theme,
+            commands::set_app_menu,
+            commands::set_menu_enabled,
+            commands::subscribe_menu,
+            commands::close_main_window,
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths

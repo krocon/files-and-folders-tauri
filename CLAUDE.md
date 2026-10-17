@@ -20,8 +20,9 @@
   Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir), Prompt 009 (Suche mit Ergebnis-Tabs,
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
-  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen) und Prompt 013 (Farbschemata: Mechanik,
-  Live-Editor, System folgen) sind fertig. Als Nächstes: Prompt 014.
+  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
+  Live-Editor, System folgen) und Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell) sind
+  fertig. Als Nächstes: Prompt 015.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -84,6 +85,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
+  app/core/menu/             MenuApi (set_app_menu, subscribe_menu, close_main_window), DTOs des nativen Menüs
+  app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
+                             Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
   app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
   app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
@@ -98,6 +102,7 @@ src-tauri/                   Rust (Tauri 2)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
+  src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
   src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort),

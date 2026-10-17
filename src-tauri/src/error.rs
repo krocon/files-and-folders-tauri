@@ -44,6 +44,8 @@ pub enum FsErrorCode {
     TooMany,
     /// A search pattern (regex, glob) is invalid or too large (design 009).
     InvalidPattern,
+    /// The frontend sent a menu spec that is malformed or too large (design 014).
+    InvalidMenu,
     Io,
 }
 
@@ -131,5 +133,7 @@ mod tests {
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "too_many");
         let e = FsError::new(FsErrorCode::InvalidPattern, "bad", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_pattern");
+        let e = FsError::new(FsErrorCode::InvalidMenu, "bad", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_menu");
     }
 }

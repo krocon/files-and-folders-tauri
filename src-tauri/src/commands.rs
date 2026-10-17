@@ -1140,3 +1140,108 @@ mod tests {
         assert!(st.lock().len() <= MAX_SCAN_TOKENS);
     }
 }
+
+// ---- application menu (design 014) ----
+
+/// Channel of the menu events and the ids of the current native menu.
+#[derive(Default)]
+pub struct MenuState {
+    channel: Mutex<Option<Channel<crate::app_menu::MenuEvent>>>,
+    ids: Mutex<std::collections::HashSet<String>>,
+}
+
+/// Installs the native menu bar (macOS, or `FNF_NATIVE_MENU=1`). Returns false when
+/// this platform uses the in-app menu bar – the frontend then shows its own.
+#[tauri::command]
+pub fn set_app_menu<R: Runtime>(
+    app: AppHandle<R>,
+    spec: crate::app_menu::MenuSpec,
+) -> Result<bool, FsError> {
+    crate::app_menu::validate_spec(&spec)
+        .map_err(|m| FsError::new(FsErrorCode::InvalidMenu, m, None))?;
+    if !crate::app_menu::native_menu_wanted() {
+        return Ok(false);
+    }
+    let menu = crate::app_menu::build_menu(&app, &spec)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))?;
+    *app.state::<MenuState>()
+        .ids
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = crate::app_menu::item_ids(&spec);
+    app.set_menu(menu)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))?;
+    Ok(true)
+}
+
+/// Enables/disables items of the installed native menu without rebuilding it
+/// (selection, dialogs and tabs change states often, review 014 #7). Unknown ids
+/// (an older spec) are skipped; without a native menu this does nothing.
+#[tauri::command]
+pub fn set_menu_enabled<R: Runtime>(
+    app: AppHandle<R>,
+    items: Vec<crate::app_menu::MenuEnabled>,
+) -> Result<(), FsError> {
+    let wanted = {
+        let ids = app
+            .state::<MenuState>()
+            .ids
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        crate::app_menu::validate_enabled(&items, &ids)
+            .map_err(|m| FsError::new(FsErrorCode::InvalidMenu, m, None))?
+    };
+    if wanted.is_empty() || !crate::app_menu::native_menu_wanted() {
+        return Ok(());
+    }
+    let Some(menu) = app.menu() else {
+        return Ok(());
+    };
+    crate::app_menu::apply_enabled(&menu, &wanted)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))
+}
+
+/// Menu events (ids of chosen items) go to this channel.
+#[tauri::command]
+pub fn subscribe_menu<R: Runtime>(
+    app: AppHandle<R>,
+    on_event: Channel<crate::app_menu::MenuEvent>,
+) {
+    *app.state::<MenuState>()
+        .channel
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some(on_event);
+}
+
+/// Called by Tauri for every chosen menu item: forwards ids of our spec only.
+pub fn forward_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    let state = app.state::<MenuState>();
+    if !state
+        .ids
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .contains(id)
+    {
+        return;
+    }
+    if let Some(channel) = state
+        .channel
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        let _ = channel.send(crate::app_menu::MenuEvent { id: id.to_string() });
+    }
+}
+
+/// Quit from the in-app menu: closes the main window like its close button
+/// (running jobs ask first, the session is saved).
+#[tauri::command]
+pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
+    match app.get_webview_window(MAIN_WINDOW) {
+        Some(w) => w
+            .close()
+            .map_err(|e| FsError::new(FsErrorCode::Io, e.to_string(), None)),
+        None => Ok(()),
+    }
+}

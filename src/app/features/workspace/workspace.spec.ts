@@ -17,7 +17,7 @@ import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FilePanel } from './file-panel';
-import { Workspace } from './workspace';
+import { keepsWebViewMenu, Workspace } from './workspace';
 import { WorkspaceStore } from './workspace.store';
 import { Component, input } from '@angular/core';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
@@ -133,5 +133,26 @@ describe('Workspace', () => {
     confirm.answer(true);
     await new Promise((r) => setTimeout(r));
     expect(jobs.quitCalls).toBe(1);
+  });
+});
+
+describe('keepsWebViewMenu (review 014 #6)', () => {
+  it('only for text fields, contenteditable and a selection under the pointer', () => {
+    document.body.innerHTML =
+      '<input id="i"><div id="ce" contenteditable="plaintext-only"><b id="inner">x</b></div>' +
+      '<p id="sel">selected</p><p id="other">elsewhere</p>';
+    const el = (id: string) => document.getElementById(id);
+    expect(keepsWebViewMenu(el('i'))).toBe(true);
+    expect(keepsWebViewMenu(el('inner'))).toBe(true);
+    const range = document.createRange();
+    range.selectNodeContents(el('sel')!);
+    document.getSelection()!.removeAllRanges();
+    document.getSelection()!.addRange(range);
+    expect(keepsWebViewMenu(el('sel'))).toBe(true);
+    // a selection elsewhere does not unlock the WebView menu on a row or button
+    expect(keepsWebViewMenu(el('other'))).toBe(false);
+    document.getSelection()!.removeAllRanges();
+    expect(keepsWebViewMenu(el('sel'))).toBe(false);
+    expect(keepsWebViewMenu(null)).toBe(false);
   });
 });

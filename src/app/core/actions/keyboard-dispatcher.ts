@@ -22,6 +22,12 @@ const REPEATABLE: ReadonlySet<ActionId> = new Set<ActionId>([
   'PREV_TAB',
 ]);
 
+/**
+ * Actions about the focused element (design 014 E4): like plain keys they only fire
+ * in the file list (or with no focus) – the tab bar keeps its own Shift+F10.
+ */
+const FOCUS_SCOPED: ReadonlySet<ActionId> = new Set<ActionId>(['OPEN_CONTEXT_MENU']);
+
 export const CHORD_TIMEOUT_MS = 1500;
 
 export interface DispatchEvent extends KeyEventLike {
@@ -77,6 +83,21 @@ export class KeyboardDispatcher {
     }
     const text = strokeToString(stroke);
     const lookup = this.actions.keymap().lookup;
+    const target = evt.target instanceof Element ? evt.target : null;
+
+    if (target?.closest('[role="menu"], [role="menubar"]')) {
+      // an open menu or the menu bar owns the keys, like a native menu (review 014 #3):
+      // no action behind the open menu, and no native accelerator either
+      this.clearChord();
+      const id = lookup.get(text) ?? this.actions.extraFor(text)?.id;
+      if (id) {
+        this.actions.noteKeySuppressed(id);
+        if (hasCommandModifier(stroke) || isFunctionKey(stroke.key)) {
+          evt.preventDefault(); // no WebView default (reload, find) either
+        }
+      }
+      return null;
+    }
 
     if (this.chord) {
       const combo = `${this.chord.first} ${text}`;
@@ -89,11 +110,12 @@ export class KeyboardDispatcher {
     }
 
     const plain = !hasCommandModifier(stroke) && !isFunctionKey(stroke.key);
-    const target = evt.target instanceof Element ? evt.target : null;
     if (plain && !inFileListOrNowhere(target)) {
       return null;
     }
     if (isTextInput(target) && !isFunctionKey(stroke.key)) {
+      // the text field keeps the key – and a native accelerator must not run it (review 014 #1)
+      this.noteSuppressed(lookup.get(text));
       return null;
     }
     if ([...lookup.keys()].some((k) => k.startsWith(`${text} `))) {
@@ -108,8 +130,13 @@ export class KeyboardDispatcher {
       if (extra && !evt.repeat) {
         evt.preventDefault();
         evt.stopPropagation();
+        this.actions.noteKeyRun(extra.id);
         void this.actions.runExtra(extra.id);
       }
+      return null;
+    }
+    if (FOCUS_SCOPED.has(id) && !inFileListOrNowhere(target)) {
+      this.noteSuppressed(id);
       return null;
     }
     if (evt.repeat && !REPEATABLE.has(id)) {
@@ -123,8 +150,15 @@ export class KeyboardDispatcher {
   private fire(id: ActionId, evt: DispatchEvent): ActionId {
     evt.preventDefault();
     evt.stopPropagation();
+    this.actions.noteKeyRun(id);
     void this.actions.run(id);
     return id;
+  }
+
+  private noteSuppressed(id: string | undefined): void {
+    if (id) {
+      this.actions.noteKeySuppressed(id);
+    }
   }
 
   private clearChord(): void {

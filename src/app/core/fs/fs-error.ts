@@ -20,6 +20,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'too_many_files',
   'too_many',
   'invalid_pattern',
+  'invalid_menu',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -83,6 +84,8 @@ export function describeFsError(error: FsError): string {
       return 'Too many items at once.';
     case 'invalid_pattern':
       return 'The search pattern is invalid.';
+    case 'invalid_menu':
+      return 'The menu could not be built.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':
