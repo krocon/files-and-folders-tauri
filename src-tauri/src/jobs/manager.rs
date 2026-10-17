@@ -72,6 +72,7 @@ impl JobManager {
                 progress: Progress::default(),
                 conflict: None,
                 summary: None,
+                pause_reason: None,
             };
             inner.jobs.push(Entry {
                 info: info.clone(),
@@ -97,7 +98,10 @@ impl JobManager {
         });
         if spawned.is_err() {
             // no thread available: report the job as failed and keep the queue moving
-            self.lock().running -= 1;
+            // (`finish` decrements `running`)
+            let parallel = self
+                .with_job(&id, |e| e.info.spec.is_parallel())
+                .unwrap_or(true);
             let summary = Summary {
                 error: Some(FsError::new(
                     FsErrorCode::Io,
@@ -106,7 +110,7 @@ impl JobManager {
                 )),
                 ..Summary::default()
             };
-            self.finish(&id, JobState::Failed, summary);
+            self.finish(&id, JobState::Failed, summary, parallel);
         }
     }
 
@@ -136,11 +140,12 @@ impl JobManager {
                 }
             }
         };
-        self.finish(id, state, summary);
+        self.finish(id, state, summary, spec.is_parallel());
     }
 
-    /// Records the final state and starts the next queued serial job.
-    fn finish(self: &Arc<Self>, id: &str, state: JobState, summary: Summary) {
+    /// Records the final state and starts the next queued serial job. `parallel`
+    /// comes from the spec (the entry may already be removed by `clear_finished`).
+    fn finish(self: &Arc<Self>, id: &str, state: JobState, summary: Summary, parallel: bool) {
         self.record(JobEvent::Finished {
             id: id.to_string(),
             state,
@@ -149,11 +154,6 @@ impl JobManager {
         let next = {
             let mut inner = self.lock();
             inner.running = inner.running.saturating_sub(1);
-            let parallel = inner
-                .jobs
-                .iter()
-                .find(|e| e.info.id == id)
-                .is_some_and(|e| e.info.spec.is_parallel());
             let mut next = None;
             if !parallel {
                 inner.serial_busy = false;
@@ -170,49 +170,83 @@ impl JobManager {
         }
     }
 
-    /// Updates the stored job info from an event, then forwards it.
+    /// Updates the stored job info from an event, then forwards it. State
+    /// changes are checked under the lock: a finished job keeps its final state,
+    /// and "running" while the user paused becomes "paused".
     fn record(&self, event: JobEvent) {
-        {
+        let forward = {
             let mut inner = self.lock();
-            fn find<'a>(inner: &'a mut Inner, id: &str) -> Option<&'a mut JobInfo> {
-                inner
-                    .jobs
-                    .iter_mut()
-                    .find(|e| e.info.id == id)
-                    .map(|e| &mut e.info)
+            fn find<'a>(inner: &'a mut Inner, id: &str) -> Option<&'a mut Entry> {
+                inner.jobs.iter_mut().find(|e| e.info.id == id)
             }
-            match &event {
-                JobEvent::State { id, state } => {
-                    if let Some(info) = find(&mut inner, id) {
-                        info.state = *state;
-                        if *state != JobState::WaitingForDecision {
-                            info.conflict = None;
+            let forward = match event {
+                JobEvent::State { id, state } => match find(&mut inner, &id) {
+                    Some(e) if e.info.state.is_finished() => None,
+                    Some(e) => {
+                        let state = if state == JobState::Running && e.control.is_paused() {
+                            JobState::Paused
+                        } else {
+                            state
+                        };
+                        e.info.state = state;
+                        if state != JobState::WaitingForDecision {
+                            e.info.conflict = None;
                         }
+                        if state != JobState::Paused {
+                            e.info.pause_reason = None;
+                        }
+                        Some(JobEvent::State { id, state })
                     }
-                }
-                JobEvent::Progress { id, progress } => {
-                    if let Some(info) = find(&mut inner, id) {
-                        info.progress = progress.clone();
+                    None => Some(JobEvent::State { id, state }),
+                },
+                JobEvent::Progress {
+                    ref id,
+                    ref progress,
+                } => {
+                    if let Some(e) = find(&mut inner, id) {
+                        e.info.progress = progress.clone();
                     }
+                    Some(event)
                 }
-                JobEvent::Conflict { id, conflict } => {
-                    if let Some(info) = find(&mut inner, id) {
-                        info.conflict = Some(conflict.clone());
+                JobEvent::Conflict {
+                    ref id,
+                    ref conflict,
+                } => {
+                    if let Some(e) = find(&mut inner, id) {
+                        e.info.conflict = Some(conflict.clone());
                     }
+                    Some(event)
                 }
-                JobEvent::Finished { id, state, summary } => {
-                    if let Some(info) = find(&mut inner, id) {
-                        info.state = *state;
-                        info.summary = Some(summary.as_ref().clone());
-                        info.conflict = None;
-                        info.progress.current = None;
+                JobEvent::ItemFailed { ref id, ref error } => {
+                    if error.error.code == FsErrorCode::DiskFull
+                        && let Some(e) = find(&mut inner, id)
+                    {
+                        e.info.pause_reason = Some(error.error.clone());
                     }
+                    Some(event)
                 }
-                _ => {}
-            }
+                JobEvent::Finished {
+                    ref id,
+                    state,
+                    ref summary,
+                } => {
+                    if let Some(e) = find(&mut inner, id) {
+                        e.info.state = state;
+                        e.info.summary = Some(summary.as_ref().clone());
+                        e.info.conflict = None;
+                        e.info.pause_reason = None;
+                        e.info.progress.current = None;
+                    }
+                    Some(event)
+                }
+                other => Some(other),
+            };
             self.changed.notify_all();
+            forward
+        };
+        if let Some(event) = forward {
+            (self.sink)(&event);
         }
-        (self.sink)(&event);
     }
 
     fn with_job<T>(&self, id: &str, f: impl FnOnce(&Entry) -> T) -> Option<T> {
@@ -241,37 +275,56 @@ impl JobManager {
         }
     }
 
+    /// Pauses a job. Only a queued, planning or running job shows "paused" at
+    /// once; a job waiting for an answer keeps its question and pauses after it.
     pub fn pause(&self, id: &str) {
-        let Some((control, state)) = self.with_job(id, |e| (e.control.clone(), e.info.state))
-        else {
-            return;
+        let forward = {
+            let mut inner = self.lock();
+            let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) else {
+                return;
+            };
+            if e.info.state.is_finished() {
+                return;
+            }
+            e.control.set_paused(true);
+            if matches!(
+                e.info.state,
+                JobState::Running | JobState::Planning | JobState::Queued
+            ) {
+                e.info.state = JobState::Paused;
+                Some(JobEvent::State {
+                    id: id.to_string(),
+                    state: JobState::Paused,
+                })
+            } else {
+                None
+            }
         };
-        if state.is_finished() {
-            return;
-        }
-        control.set_paused(true);
-        if matches!(
-            state,
-            JobState::Running | JobState::Planning | JobState::Queued
-        ) {
-            self.record(JobEvent::State {
-                id: id.to_string(),
-                state: JobState::Paused,
-            });
+        if let Some(event) = forward {
+            (self.sink)(&event);
         }
     }
 
     pub fn resume(&self, id: &str) {
-        let Some((control, state)) = self.with_job(id, |e| (e.control.clone(), e.info.state))
-        else {
-            return;
+        let forward = {
+            let mut inner = self.lock();
+            let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) else {
+                return;
+            };
+            e.control.set_paused(false);
+            if e.info.state == JobState::Paused {
+                e.info.state = JobState::Running;
+                e.info.pause_reason = None;
+                Some(JobEvent::State {
+                    id: id.to_string(),
+                    state: JobState::Running,
+                })
+            } else {
+                None
+            }
         };
-        control.set_paused(false);
-        if state == JobState::Paused {
-            self.record(JobEvent::State {
-                id: id.to_string(),
-                state: JobState::Running,
-            });
+        if let Some(event) = forward {
+            (self.sink)(&event);
         }
     }
 

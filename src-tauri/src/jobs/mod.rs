@@ -164,6 +164,8 @@ pub struct JobInfo {
     pub progress: Progress,
     pub conflict: Option<Conflict>,
     pub summary: Option<Summary>,
+    /// Why the job paused itself (e.g. disk full) – cleared when it runs again.
+    pub pause_reason: Option<FsError>,
 }
 
 /// Everything the frontend hears about jobs.

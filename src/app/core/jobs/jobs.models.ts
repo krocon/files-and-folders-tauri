@@ -93,6 +93,8 @@ export interface JobInfo {
   readonly progress: Progress;
   readonly conflict: Conflict | null;
   readonly summary: Summary | null;
+  /** Why the job paused itself (disk full) – cleared when it runs again. */
+  readonly pauseReason: FsError | null;
 }
 
 export type JobEvent =

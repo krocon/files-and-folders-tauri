@@ -103,6 +103,7 @@ export function job(id: string, spec: JobSpec, patch: Partial<JobInfo> = {}): Jo
     progress: EMPTY_PROGRESS,
     conflict: null,
     summary: null,
+    pauseReason: null,
     ...patch,
   };
 }

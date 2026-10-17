@@ -26,6 +26,7 @@ export const JOB_TEXTS = {
   applyToAll: 'Apply to all further conflicts',
   newName: 'New name',
   later: 'Later',
+  diskFullHint: 'Free some space, then choose Resume – or cancel.',
   copyTitle: 'Copy',
   copyMessage: (n: number) => (n === 1 ? 'Copy 1 entry to' : `Copy ${n} entries to`),
   copyConfirm: 'Copy',

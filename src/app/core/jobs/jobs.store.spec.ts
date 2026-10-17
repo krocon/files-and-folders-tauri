@@ -80,7 +80,7 @@ describe('JobsStore', () => {
     store.postpone(id);
     expect(store.conflictToShow()).toBeNull();
     expect(store.pendingConflict()?.id).toBe(id);
-    store.reopenConflict();
+    store.reopenConflict(id);
     await store.resolveConflict(id, 1, { type: 'skip' }, true);
     expect(api.answers).toEqual([
       { id, conflictId: 1, decision: { type: 'skip' }, applyToAll: true },
@@ -102,5 +102,59 @@ describe('JobsStore', () => {
   it('does not count folder sizes as tasks', async () => {
     await store.start({ kind: 'dirSize', path: '/x' });
     expect(store.visible().map((j) => j.spec.kind)).toEqual(['copy']);
+  });
+
+  it('asks the next job when one question was postponed', async () => {
+    const a = await store.start(copy);
+    const b = await store.start(copy);
+    for (const [id, cid] of [
+      [a, 1],
+      [b, 2],
+    ] as const) {
+      api.emit({ type: 'conflict', id, conflict: conflict(cid) });
+      api.emit({ type: 'state', id, state: 'waitingForDecision' });
+    }
+    expect(store.conflictToShow()?.id).toBe(a);
+    store.postpone(a);
+    expect(store.conflictToShow()?.id).toBe(b);
+    store.postpone(b);
+    expect(store.conflictToShow()).toBeNull();
+    store.reopenConflict(b);
+    expect(store.conflictToShow()?.id).toBe(b);
+  });
+
+  it('shows why a job paused itself (disk full) until it runs again', async () => {
+    const id = await store.start(copy);
+    const error = { code: 'disk_full' as const, message: 'No space left on device', path: '/b/x' };
+    api.emit({ type: 'itemFailed', id, error: { path: '/b/x', error } });
+    api.emit({ type: 'state', id, state: 'paused' });
+    expect(store.find(id)?.pauseReason).toEqual(error);
+    api.emit({ type: 'state', id, state: 'running' });
+    expect(store.find(id)?.pauseReason).toBeNull();
+  });
+});
+
+describe('JobsStore after a reload', () => {
+  it('replays events that arrive while the snapshot is on its way', async () => {
+    const api = new FakeJobsApi();
+    api.snapshot = [job('j7', copy, { state: 'running' })];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const subscribe = api.subscribe.bind(api);
+    api.subscribe = async (onEvent) => {
+      const snapshot = await subscribe(onEvent);
+      // the job finishes before the snapshot reaches the store
+      onEvent({ type: 'finished', id: 'j7', state: 'done', summary: summary() });
+      await gate;
+      return snapshot;
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: JobsApi, useValue: api }] });
+    const store = TestBed.inject(JobsStore);
+    const init = store.init();
+    const waiter = store.whenFinished('j7');
+    release();
+    await init;
+    expect(store.find('j7')?.state).toBe('done');
+    expect((await waiter).state).toBe('done');
   });
 });

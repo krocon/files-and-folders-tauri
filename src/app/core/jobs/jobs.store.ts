@@ -14,6 +14,8 @@ export class JobsStore {
   private readonly waiters = new Map<string, ((job: JobInfo) => void)[]>();
   private seq = 0;
   private started = false;
+  /** Events received while the snapshot is on its way – replayed after it. */
+  private buffer: JobEvent[] | null = null;
 
   /** In start order. */
   readonly jobs = signal<readonly JobInfo[]>([]);
@@ -30,18 +32,21 @@ export class JobsStore {
   );
   /** Jobs of the current "batch" for the Tasks button: all not cleared, except folder sizes. */
   readonly visible = computed(() => this.jobs().filter((j) => j.spec.kind !== 'dirSize'));
-  /** The first job waiting for an answer (asked in order of their conflicts). */
-  readonly pendingConflict = computed(
-    () => this.jobs().find((j) => j.state === 'waitingForDecision' && j.conflict !== null) ?? null,
+  /** Jobs waiting for an answer, in start order. */
+  readonly waitingForAnswer = computed(() =>
+    this.jobs().filter((j) => j.state === 'waitingForDecision' && j.conflict !== null),
   );
-  /** Conflict hidden with "Later" (`jobId:conflictId`) – not shown again automatically. */
-  readonly postponed = signal<string | null>(null);
-  /** The conflict the dialog should show now (not postponed). */
+  /** The first job waiting for an answer. */
+  readonly pendingConflict = computed(() => this.waitingForAnswer()[0] ?? null);
+  /** Questions hidden with "Later" (`jobId:conflictId`) – not shown again automatically. */
+  readonly postponed = signal<ReadonlySet<string>>(new Set());
+  /** The question the dialog shows now: the first one that is not postponed. */
   readonly conflictToShow = computed(() => {
-    const job = this.pendingConflict();
-    return job && job.conflict && `${job.id}:${job.conflict.conflictId}` !== this.postponed()
-      ? job
-      : null;
+    const postponed = this.postponed();
+    return (
+      this.waitingForAnswer().find((j) => !postponed.has(`${j.id}:${j.conflict!.conflictId}`)) ??
+      null
+    );
   });
 
   /** Overall progress of the unfinished jobs, 0 … 1 (null = none). */
@@ -60,13 +65,18 @@ export class JobsStore {
       return;
     }
     this.started = true;
+    this.buffer = [];
     try {
       const jobs = await this.api.subscribe((e) => this.apply(e));
-      // events that arrived while subscribing are newer than the snapshot
-      const known = new Set(this.jobs().map((j) => j.id));
-      this.jobs.update((current) => [...jobs.filter((j) => !known.has(j.id)), ...current]);
+      this.jobs.set(jobs);
     } catch (err) {
       this.report(`Jobs are not available: ${toFsError(err).message}`);
+    }
+    // events that arrived while subscribing are newer than the snapshot
+    const pending = this.buffer ?? [];
+    this.buffer = null;
+    for (const e of pending) {
+      this.apply(e);
     }
   }
 
@@ -92,12 +102,14 @@ export class JobsStore {
 
   postpone(id: string | null): void {
     const job = id === null ? undefined : this.find(id);
-    this.postponed.set(job?.conflict ? `${job.id}:${job.conflict.conflictId}` : null);
+    if (job?.conflict) {
+      this.postponed.update((p) => new Set(p).add(`${job.id}:${job.conflict!.conflictId}`));
+    }
   }
 
-  /** Shows a postponed question again (job list → "Answer…"). */
-  reopenConflict(): void {
-    this.postponed.set(null);
+  /** Shows a postponed question of a job again (job list → "Answer…"). */
+  reopenConflict(id: string): void {
+    this.postponed.update((p) => new Set([...p].filter((k) => !k.startsWith(`${id}:`))));
   }
 
   cancel(id: string): Promise<void> {
@@ -142,6 +154,10 @@ export class JobsStore {
 
   /** Applies one event from Rust (public for tests). */
   apply(event: JobEvent): void {
+    if (this.buffer) {
+      this.buffer.push(event);
+      return;
+    }
     switch (event.type) {
       case 'added':
         this.jobs.update((jobs) =>
@@ -153,6 +169,7 @@ export class JobsStore {
           ...j,
           state: event.state,
           conflict: event.state === 'waitingForDecision' ? j.conflict : null,
+          pauseReason: event.state === 'paused' ? j.pauseReason : null,
         }));
         break;
       case 'progress':
@@ -162,7 +179,11 @@ export class JobsStore {
         this.patch(event.id, (j) => ({ ...j, conflict: event.conflict }));
         break;
       case 'itemFailed':
-        break; // the summary carries the list; live errors are only counted there
+        // the summary carries the list; only "disk full" matters live (job paused itself)
+        if (event.error.error.code === 'disk_full') {
+          this.patch(event.id, (j) => ({ ...j, pauseReason: event.error.error }));
+        }
+        break;
       case 'dirsChanged':
         this.changedDirs.set({ dirs: event.dirs, seq: ++this.seq });
         break;

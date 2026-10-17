@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Decision } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
@@ -18,8 +26,14 @@ import { JOB_TEXTS } from './job-format';
   template: `
     @if (job(); as j) {
       @if (j.conflict; as c) {
-        <app-modal role="alertdialog" [heading]="t.conflictTitle" width="36rem" (closed)="later()">
-          <p class="intro">{{ t.conflictIntro }}</p>
+        <app-modal
+          dialogRole="alertdialog"
+          describedBy="fnf-conflict-intro"
+          [heading]="t.conflictTitle"
+          width="36rem"
+          (closed)="later()"
+        >
+          <p class="intro" id="fnf-conflict-intro">{{ t.conflictIntro }}</p>
           <dl class="files">
             <dt>{{ t.source }}</dt>
             <dd>
@@ -60,24 +74,19 @@ import { JOB_TEXTS } from './job-format';
             {{ t.applyToAll }}
           </label>
           <div class="buttons">
-            <button type="button" class="btn" (click)="decide({ type: 'overwrite' })">
-              <u>O</u>verwrite
-            </button>
-            <button
-              type="button"
-              class="btn"
-              [attr.data-autofocus]="renaming() ? null : ''"
-              (click)="decide({ type: 'skip' })"
-            >
-              <u>S</u>kip
-            </button>
-            <button type="button" class="btn" (click)="startRename()"><u>R</u>ename…</button>
-            <button type="button" class="btn" (click)="decide({ type: 'overwriteIfNewer' })">
-              Overwrite if <u>n</u>ewer
-            </button>
-            <button type="button" class="btn danger" (click)="decide({ type: 'cancel' })">
-              <u>C</u>ancel copying
-            </button>
+            @for (b of buttons; track b.key) {
+              <button
+                type="button"
+                class="btn"
+                [class.danger]="b.key === 'c'"
+                [attr.data-autofocus]="b.key === 's' && !renaming() ? '' : null"
+                [attr.aria-keyshortcuts]="'Alt+' + b.key.toUpperCase()"
+                (click)="press(b.key)"
+              >
+                {{ b.before }}<u>{{ b.letter }}</u
+                >{{ b.after }}
+              </button>
+            }
           </div>
           <p class="hint">Alt+letter chooses · Esc: {{ t.later }}</p>
         </app-modal>
@@ -92,8 +101,29 @@ export class ConflictDialog {
   protected readonly t = JOB_TEXTS;
   private readonly jobs = inject(JobsStore);
   private readonly dialogs = inject(DialogService);
-  protected readonly job = computed(() => this.jobs.pendingConflict());
+  protected readonly job = computed(() => this.jobs.conflictToShow());
+
+  constructor() {
+    // the question was answered or the job ended elsewhere: no invisible modal may stay open
+    effect(() => {
+      if (this.job() === null) {
+        untracked(() => {
+          if (this.dialogs.open() === 'conflict') {
+            this.dialogs.close();
+          }
+        });
+      }
+    });
+  }
   protected readonly applyToAll = signal(false);
+  /** Label split around the Alt letter (underlined). */
+  protected readonly buttons = [
+    { key: 'o', before: '', letter: 'O', after: 'verwrite' },
+    { key: 's', before: '', letter: 'S', after: 'kip' },
+    { key: 'r', before: '', letter: 'R', after: 'ename…' },
+    { key: 'n', before: 'Overwrite if ', letter: 'n', after: 'ewer' },
+    { key: 'c', before: '', letter: 'C', after: 'ancel copying' },
+  ] as const;
   protected readonly renaming = signal(false);
 
   protected size(bytes: number | null): string {
@@ -139,23 +169,35 @@ export class ConflictDialog {
     this.dialogs.close();
   }
 
+  protected press(key: string): boolean {
+    switch (key) {
+      case 'o':
+        this.decide({ type: 'overwrite' });
+        return true;
+      case 's':
+        this.decide({ type: 'skip' });
+        return true;
+      case 'r':
+        this.startRename();
+        return true;
+      case 'n':
+        this.decide({ type: 'overwriteIfNewer' });
+        return true;
+      case 'c':
+        this.decide({ type: 'cancel' });
+        return true;
+      default:
+        return false;
+    }
+  }
+
   protected onKeydown(evt: KeyboardEvent): void {
     if (!evt.altKey || evt.ctrlKey || evt.metaKey) {
       return;
     }
-    const key = evt.code.replace('Key', '').toLowerCase();
-    const actions: Record<string, () => void> = {
-      o: () => this.decide({ type: 'overwrite' }),
-      s: () => this.decide({ type: 'skip' }),
-      r: () => this.startRename(),
-      n: () => this.decide({ type: 'overwriteIfNewer' }),
-      c: () => this.decide({ type: 'cancel' }),
-    };
-    const run = actions[key];
-    if (run) {
+    if (this.press(evt.code.replace('Key', '').toLowerCase())) {
       evt.preventDefault();
       evt.stopPropagation();
-      run();
     }
   }
 }

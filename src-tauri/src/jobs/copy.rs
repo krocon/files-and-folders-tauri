@@ -1,5 +1,5 @@
 //! Copy job (design 005 E6): plan first (list, total size, validation), then
-//! copy every file into a temporary `.<name>.fnf-part-<job>` in the target
+//! copy every file into a temporary `.fnf-<job>-<n>.part` in the target
 //! folder and rename it to the real name – a cancelled or failed copy never
 //! leaves a half-written file under the real name. Symbolic links are copied
 //! as links. Existing targets raise a conflict question; per-item errors are
@@ -18,6 +18,8 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 const BLOCK: usize = 64 * 1024;
+/// `ItemFailed` events per job; further errors are only counted in the summary.
+const MAX_LIVE_ERRORS: u64 = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ItemKind {
@@ -37,8 +39,23 @@ pub struct Item {
 pub struct Plan {
     pub items: Vec<Item>,
     pub bytes_total: u64,
-    /// Entries that could not be read while planning.
+    /// Entries that could not be read while planning (the first [`MAX_REPORTED_ERRORS`]).
     pub errors: Vec<ItemError>,
+    /// Further unreadable entries (counted, not listed).
+    pub more_errors: u64,
+}
+
+impl Plan {
+    fn error(&mut self, path: &Path, error: FsError) {
+        if self.errors.len() < MAX_REPORTED_ERRORS {
+            self.errors.push(ItemError {
+                path: path_string(path),
+                error,
+            });
+        } else {
+            self.more_errors += 1;
+        }
+    }
 }
 
 fn path_string(p: &Path) -> String {
@@ -81,10 +98,7 @@ pub fn plan(
         let src_meta = match fs::symlink_metadata(&src) {
             Ok(m) => m,
             Err(e) => {
-                plan.errors.push(ItemError {
-                    path: path_string(&src),
-                    error: FsError::from_io(&e, &src),
-                });
+                plan.error(&src, FsError::from_io(&e, &src));
                 continue;
             }
         };
@@ -116,10 +130,7 @@ pub fn plan(
                 let read = match fs::read_dir(&s) {
                     Ok(r) => r,
                     Err(e) => {
-                        plan.errors.push(ItemError {
-                            path: path_string(&s),
-                            error: FsError::from_io(&e, &s),
-                        });
+                        plan.error(&s, FsError::from_io(&e, &s));
                         continue;
                     }
                 };
@@ -127,10 +138,7 @@ pub fn plan(
                 for entry in read {
                     match entry.and_then(|e| e.metadata().map(|m| (e.path(), e.file_name(), m))) {
                         Ok(c) => children.push(c),
-                        Err(e) => plan.errors.push(ItemError {
-                            path: path_string(&s),
-                            error: FsError::from_io(&e, &s),
-                        }),
+                        Err(e) => plan.error(&s, FsError::from_io(&e, &s)),
                     }
                 }
                 // DirEntry::metadata does not follow symlinks – what we want
@@ -138,13 +146,23 @@ pub fn plan(
                 for (cp, cn, cm) in children {
                     stack.push((cp, d.join(cn), cm));
                 }
-            } else {
+            } else if ft.is_file() {
                 plan.bytes_total += m.len();
                 plan.items.push(Item {
                     src: s,
                     dst: d,
                     kind: ItemKind::File { size: m.len() },
                 });
+            } else {
+                // pipes, sockets, devices: reading could block forever or never end
+                plan.error(
+                    &s,
+                    FsError::new(
+                        FsErrorCode::NotAFile,
+                        "Special file (pipe, socket or device) – not copied",
+                        Some(&s),
+                    ),
+                );
             }
         }
     }
@@ -213,6 +231,8 @@ struct Run<'a> {
     conflict_seq: u64,
     /// Decision for all further conflicts ("apply to all").
     for_all: Option<Decision>,
+    /// Numbers the temporary names of this job.
+    temp_seq: u64,
 }
 
 impl Run<'_> {
@@ -222,7 +242,10 @@ impl Run<'_> {
             path: path_string(path),
             error,
         };
-        self.rep.item_failed(item.clone());
+        // the summary carries the list; live events only for the first ones (no IPC flood)
+        if self.summary.items_failed <= MAX_LIVE_ERRORS {
+            self.rep.item_failed(item.clone());
+        }
         if self.summary.errors.len() < MAX_REPORTED_ERRORS {
             self.summary.errors.push(item);
         }
@@ -277,8 +300,11 @@ impl Run<'_> {
     fn copy_entry(&mut self, item: &Item, dst: &Path, overwrite: bool) -> bool {
         loop {
             let result = match item.kind {
-                ItemKind::Symlink => copy_symlink(&item.src, dst, overwrite).map_err(CopyError::Io),
-                _ => self.copy_file(&item.src, dst),
+                ItemKind::Symlink => {
+                    let tmp = self.temp_name(dst);
+                    copy_symlink(&item.src, dst, &tmp, overwrite).map_err(CopyError::Io)
+                }
+                _ => self.copy_file(&item.src, dst, overwrite),
             };
             match result {
                 Ok(()) => {
@@ -309,12 +335,15 @@ impl Run<'_> {
         }
     }
 
-    fn copy_file(&mut self, src: &Path, dst: &Path) -> Result<(), CopyError> {
-        let name = dst
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let tmp = dst.with_file_name(format!(".{name}.fnf-part-{}", self.id));
+    /// Short temporary name next to `dst` – adding to a long file name could exceed
+    /// the 255-byte limit of the file system.
+    fn temp_name(&mut self, dst: &Path) -> PathBuf {
+        self.temp_seq += 1;
+        dst.with_file_name(format!(".fnf-{}-{}.part", self.id, self.temp_seq))
+    }
+
+    fn copy_file(&mut self, src: &Path, dst: &Path, overwrite: bool) -> Result<(), CopyError> {
+        let tmp = self.temp_name(dst);
         let mut written = 0u64;
         let result = (|| -> Result<(), CopyError> {
             let mut input = File::open(src)?;
@@ -340,7 +369,7 @@ impl Run<'_> {
             }
             drop(out);
             let _ = fs::set_permissions(&tmp, src_meta.permissions());
-            fs::rename(&tmp, dst)?;
+            place(&tmp, dst, overwrite)?;
             Ok(())
         })();
         if result.is_err() {
@@ -351,23 +380,63 @@ impl Run<'_> {
     }
 }
 
-fn copy_symlink(src: &Path, dst: &Path, overwrite: bool) -> io::Result<()> {
-    let target = fs::read_link(src)?;
+/// Moves the finished temporary file to its real name. Without `overwrite` a
+/// file that appeared at `dst` meanwhile is never replaced: a hard link fails
+/// if the name exists (atomic); file systems without hard links (FAT, exFAT)
+/// fall back to check + rename, which leaves a tiny window.
+fn place(tmp: &Path, dst: &Path, overwrite: bool) -> io::Result<()> {
     if overwrite {
-        fs::remove_file(dst)?;
+        return fs::rename(tmp, dst);
     }
-    #[cfg(unix)]
-    {
-        std::os::unix::fs::symlink(&target, dst)
-    }
-    #[cfg(windows)]
-    {
-        if fs::metadata(src).map(|m| m.is_dir()).unwrap_or(false) {
-            std::os::windows::fs::symlink_dir(&target, dst)
-        } else {
-            std::os::windows::fs::symlink_file(&target, dst)
+    let appeared = || {
+        io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "The target appeared while copying",
+        )
+    };
+    match fs::hard_link(tmp, dst) {
+        Ok(()) => {
+            let _ = fs::remove_file(tmp);
+            Ok(())
         }
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Err(appeared()),
+        Err(_) if fs::symlink_metadata(dst).is_ok() => Err(appeared()),
+        Err(_) => fs::rename(tmp, dst),
     }
+}
+
+#[cfg(test)]
+pub fn place_for_tests(tmp: &Path, dst: &Path) -> io::Result<()> {
+    place(tmp, dst, false)
+}
+
+/// Copies a link as a link: created under a temporary name first, so an
+/// existing target is only replaced once the new link exists.
+fn copy_symlink(src: &Path, dst: &Path, tmp: &Path, overwrite: bool) -> io::Result<()> {
+    let target = fs::read_link(src)?;
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(&target, tmp);
+    #[cfg(windows)]
+    let made = if fs::metadata(src).map(|m| m.is_dir()).unwrap_or(false) {
+        std::os::windows::fs::symlink_dir(&target, tmp)
+    } else {
+        std::os::windows::fs::symlink_file(&target, tmp)
+    };
+    made?;
+    let placed = if overwrite {
+        fs::rename(tmp, dst)
+    } else if fs::symlink_metadata(dst).is_ok() {
+        Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "The target appeared while copying",
+        ))
+    } else {
+        fs::rename(tmp, dst)
+    };
+    if placed.is_err() {
+        let _ = fs::remove_file(tmp);
+    }
+    placed
 }
 
 /// Runs a copy job to its end. Emits progress, conflicts and state changes.
@@ -385,6 +454,7 @@ pub fn run(
         summary: Summary::default(),
         conflict_seq: 0,
         for_all: None,
+        temp_seq: 0,
     };
     run.state(JobState::Planning);
     let plan = match plan(sources, target_dir, control) {
@@ -395,6 +465,7 @@ pub fn run(
             return (JobState::Failed, run.summary);
         }
     };
+    run.summary.items_failed += plan.more_errors;
     for e in plan.errors {
         let path = PathBuf::from(&e.path);
         run.fail(&path, e.error);

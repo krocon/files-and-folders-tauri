@@ -18,7 +18,9 @@ const SHOWN_ERRORS = 50;
   imports: [Modal],
   template: `
     <app-modal [heading]="t.jobsTitle" width="44rem" (closed)="dialogs.close()">
-      <ul class="jobs" aria-live="polite">
+      <!-- only finished counts are announced, not the progress (10×/s) -->
+      <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
+      <ul class="jobs">
         @for (row of rows(); track row.job.id) {
           <li class="job" [class.finished]="row.finished" [attr.data-state]="row.job.state">
             <div class="head">
@@ -39,6 +41,9 @@ const SHOWN_ERRORS = 50;
                   [class.indeterminate]="row.percent === null"
                 ></span>
               </div>
+              @if (row.job.pauseReason; as reason) {
+                <p class="error" role="alert">{{ describe(reason) }} {{ t.diskFullHint }}</p>
+              }
               <div class="detail">
                 <span>{{ row.progress }}</span>
                 @if (row.job.progress.current; as cur) {
@@ -76,17 +81,19 @@ const SHOWN_ERRORS = 50;
             @if (!row.finished) {
               <div class="actions">
                 @if (row.job.state === 'waitingForDecision') {
-                  <button type="button" class="btn primary" (click)="answer()">
+                  <button type="button" class="btn primary" (click)="answer(row.job)">
                     {{ t.answer }}
                   </button>
                 }
-                @if (row.job.state === 'paused') {
-                  <button type="button" class="btn" (click)="jobs.resume(row.job.id)">
-                    {{ t.resume }}
-                  </button>
-                } @else if (row.job.state !== 'waitingForDecision') {
-                  <button type="button" class="btn" (click)="jobs.pause(row.job.id)">
-                    {{ t.pause }}
+                @if (row.job.state !== 'waitingForDecision') {
+                  <!-- one button for both: toggling keeps the keyboard focus on it -->
+                  <button
+                    type="button"
+                    class="btn"
+                    [attr.aria-pressed]="row.paused"
+                    (click)="togglePause(row.job)"
+                  >
+                    {{ row.paused ? t.resume : t.pause }}
                   </button>
                 }
                 <button type="button" class="btn danger" (click)="jobs.cancel(row.job.id)">
@@ -133,14 +140,24 @@ export class JobListDialog {
         state: stateLabel(job.state),
         finished: isFinished(job.state),
         percent: f === null ? null : Math.round(f * 100),
+        paused: job.state === 'paused',
         progress: progressText(job.progress),
       };
     }),
   );
   protected readonly hasFinished = computed(() => this.rows().some((r) => r.finished));
+  protected readonly announcement = computed(() => {
+    const rows = this.rows();
+    const done = rows.filter((r) => r.finished).length;
+    return rows.length ? `${done} of ${rows.length} tasks finished` : '';
+  });
 
-  protected answer(): void {
-    this.jobs.reopenConflict();
+  protected togglePause(job: JobInfo): void {
+    void (job.state === 'paused' ? this.jobs.resume(job.id) : this.jobs.pause(job.id));
+  }
+
+  protected answer(job: JobInfo): void {
+    this.jobs.reopenConflict(job.id);
     this.dialogs.show('conflict');
   }
 }

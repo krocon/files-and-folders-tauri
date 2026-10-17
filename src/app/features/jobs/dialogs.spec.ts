@@ -43,11 +43,22 @@ describe('job dialogs', () => {
 
   it('conflict: alertdialog with both files, Skip is the default', async () => {
     const { el } = await withConflict();
-    expect(el.querySelector('[role="alertdialog"]')).not.toBeNull();
+    const dialog = el.querySelector('[role="alertdialog"]')!;
+    expect(dialog).not.toBeNull();
+    expect(el.querySelectorAll('[role="alertdialog"]')).toHaveLength(1);
+    expect(dialog.getAttribute('aria-describedby')).toBe('fnf-conflict-intro');
     expect(el.textContent).toContain('/b/x.txt');
     expect(el.textContent).toContain('2.0 KB');
-    const skip = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('kip'))!;
+    const skip = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Skip')!;
     expect(skip.hasAttribute('data-autofocus')).toBe(true);
+    // the underlined letter is part of the word (no gap)
+    expect([...el.querySelectorAll('.buttons button')].map((b) => b.textContent?.trim())).toEqual([
+      'Overwrite',
+      'Skip',
+      'Rename…',
+      'Overwrite if newer',
+      'Cancel copying',
+    ]);
   });
 
   it('conflict: Alt+letter answers, "apply to all" is passed on', async () => {
@@ -77,6 +88,14 @@ describe('job dialogs', () => {
       decision: { type: 'rename', newName: 'neu.txt' },
       applyToAll: false,
     });
+  });
+
+  it('conflict: closes itself when the job ends elsewhere (no invisible modal)', async () => {
+    const { fixture, id } = await withConflict();
+    api.emit({ type: 'state', id, state: 'cancelled' });
+    fixture.detectChanges();
+    TestBed.tick();
+    expect(TestBed.inject(DialogService).open()).toBeNull();
   });
 
   it('conflict: Esc postpones the question, the job keeps waiting', async () => {
@@ -110,9 +129,19 @@ describe('job dialogs', () => {
     expect(el.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('50');
     const button = (label: string) =>
       [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
-    button('Pause').click();
-    button('Cancel').click();
+    const pause = button('Pause');
+    pause.focus();
+    pause.click();
     expect(api.paused).toEqual([id]);
+    api.emit({ type: 'state', id, state: 'paused' });
+    fixture.detectChanges();
+    // the same button now resumes and keeps the focus
+    expect(document.activeElement).toBe(pause);
+    expect(pause.textContent?.trim()).toBe('Resume');
+    expect(pause.getAttribute('aria-pressed')).toBe('true');
+    pause.click();
+    expect(api.resumed).toEqual([id]);
+    button('Cancel').click();
     expect(api.cancelled).toEqual([id]);
     api.emit({
       type: 'finished',

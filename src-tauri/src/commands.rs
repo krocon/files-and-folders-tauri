@@ -10,6 +10,7 @@ use crate::opener;
 use crate::paths::{expand_tilde, validate_input_path};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::window_state;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -346,21 +347,23 @@ pub async fn save_keymap_override<R: Runtime>(
 /// The job manager and the channels of the frontends listening to it.
 pub struct JobsState {
     pub manager: Arc<JobManager>,
-    subscribers: Arc<Mutex<Vec<Channel<JobEvent>>>>,
+    /// One channel per webview (label): a reloaded page replaces its old channel –
+    /// `Channel::send` does not fail for a page that is gone.
+    subscribers: Arc<Mutex<HashMap<String, Channel<JobEvent>>>>,
     /// Set once the user confirmed quitting – lets the next close/exit through.
     pub quitting: AtomicBool,
 }
 
 impl Default for JobsState {
     fn default() -> Self {
-        let subscribers: Arc<Mutex<Vec<Channel<JobEvent>>>> = Arc::default();
+        let subscribers: Arc<Mutex<HashMap<String, Channel<JobEvent>>>> = Arc::default();
         let sink_subs = subscribers.clone();
         let manager = JobManager::new(Arc::new(move |event: &JobEvent| {
-            // channels of reloaded or closed webviews fail – drop them
+            // channels of closed webviews fail – drop them
             sink_subs
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
-                .retain(|ch| ch.send(event.clone()).is_ok());
+                .retain(|_, ch| ch.send(event.clone()).is_ok());
         }));
         Self {
             manager,
@@ -379,13 +382,17 @@ impl JobsState {
 
 /// Subscribes to job events; returns the current jobs (state after a reload).
 #[tauri::command]
-pub fn subscribe_jobs<R: Runtime>(app: AppHandle<R>, on_event: Channel<JobEvent>) -> Vec<JobInfo> {
+pub fn subscribe_jobs<R: Runtime>(
+    app: AppHandle<R>,
+    webview: tauri::Webview<R>,
+    on_event: Channel<JobEvent>,
+) -> Vec<JobInfo> {
     let state = app.state::<JobsState>();
     state
         .subscribers
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .push(on_event);
+        .insert(webview.label().to_string(), on_event);
     state.manager.list()
 }
 

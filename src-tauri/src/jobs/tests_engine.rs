@@ -92,7 +92,7 @@ fn tree() -> (TempDir, PathBuf, PathBuf) {
 fn no_temp_files(dir: &Path) -> bool {
     walk(dir)
         .iter()
-        .all(|p| !p.to_string_lossy().contains(".fnf-part-"))
+        .all(|p| !p.to_string_lossy().contains(".part"))
 }
 
 fn walk(dir: &Path) -> Vec<PathBuf> {
@@ -469,4 +469,95 @@ fn suggested_names_skip_existing_ones() {
         copy::suggest_name(&dir.path().join(".hidden")),
         ".hidden (1)"
     );
+}
+
+#[test]
+fn pause_during_a_question_keeps_the_question() {
+    let h = Harness::new();
+    let (_d, src, dst) = tree();
+    fs::write(dst.join("a.txt"), "old").unwrap();
+    let id = h.copy(
+        &[&src.join("a.txt"), &src.join("Unter ordner 📁/b.bin")],
+        &dst,
+        false,
+    );
+    let c = h.conflict(&id);
+    h.mgr.pause(&id);
+    let info = h.mgr.list().into_iter().find(|j| j.id == id).unwrap();
+    assert_eq!(info.state, JobState::WaitingForDecision);
+    assert!(
+        info.conflict.is_some(),
+        "pausing must not drop the question"
+    );
+    h.mgr
+        .resolve_conflict(&id, c.conflict_id, Decision::Overwrite, false);
+    h.wait_state(&id, JobState::Paused); // pauses right after the answer
+    h.mgr.resume(&id);
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(fs::read_to_string(dst.join("a.txt")).unwrap(), "alpha");
+}
+
+#[cfg(unix)]
+#[test]
+fn special_files_are_reported_not_opened() {
+    let h = Harness::new();
+    let (_d, src, dst) = tree();
+    let fifo = src.join("rohr");
+    let made = std::process::Command::new("mkfifo").arg(&fifo).status();
+    if !made.is_ok_and(|s| s.success()) {
+        return; // mkfifo not available
+    }
+    let info = h.finish(&h.copy(&[&src], &dst, false));
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    let s = info.summary.unwrap();
+    assert_eq!(s.items_failed, 1);
+    assert_eq!(s.errors[0].error.code, crate::error::FsErrorCode::NotAFile);
+    assert!(dst.join("Quelle ä/a.txt").exists());
+}
+
+#[test]
+fn long_file_names_copy() {
+    let h = Harness::new();
+    let dir = tempdir().unwrap();
+    let name = "n".repeat(250);
+    let src = dir.path().join("s");
+    let dst = dir.path().join("d");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join(&name), "x").unwrap();
+    let info = h.finish(&h.copy(&[&src.join(&name)], &dst, false));
+    assert_eq!(info.state, JobState::Done);
+    assert!(dst.join(&name).exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn overwriting_with_a_link_replaces_the_target_only_when_the_link_exists() {
+    let h = Harness::new();
+    let (_d, src, dst) = tree();
+    std::os::unix::fs::symlink("a.txt", src.join("link")).unwrap();
+    fs::write(dst.join("link"), "user data").unwrap();
+    let id = h.copy(&[&src.join("link")], &dst, false);
+    let c = h.conflict(&id);
+    h.mgr
+        .resolve_conflict(&id, c.conflict_id, Decision::Overwrite, false);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert_eq!(
+        fs::read_link(dst.join("link")).unwrap(),
+        PathBuf::from("a.txt")
+    );
+    assert!(no_temp_files(&dst));
+}
+
+#[test]
+fn a_target_that_appears_while_copying_is_not_replaced() {
+    let dir = tempdir().unwrap();
+    let tmp = dir.path().join("t.part");
+    let dst = dir.path().join("x");
+    fs::write(&tmp, "new").unwrap();
+    fs::write(&dst, "appeared").unwrap();
+    let err = copy::place_for_tests(&tmp, &dst).unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
+    assert_eq!(fs::read_to_string(&dst).unwrap(), "appeared");
 }
