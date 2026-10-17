@@ -5,6 +5,7 @@ import {
   completeTokens,
   diffTokens,
   guessDark,
+  isColorValue,
   isSafeValue,
   newThemeId,
   normalizeImport,
@@ -49,6 +50,14 @@ describe('theme logic', () => {
     ]) {
       expect(isSafeValue(bad), bad).toBe(false);
     }
+  });
+
+  it('accepts colours and var() references as colour values', () => {
+    expect(isColorValue('#2c5bb8')).toBe(true);
+    expect(isColorValue('var(--color-bg)')).toBe(true);
+    expect(isColorValue('rgb(0 0 0 / 50%)')).toBe(true);
+    expect(isColorValue('#2c5bb80')).toBe(false);
+    expect(isColorValue('inherit')).toBe(false);
   });
 
   it('sanitizes token maps and reports what it dropped', () => {

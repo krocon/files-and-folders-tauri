@@ -74,3 +74,8 @@
     background: var(--color-accent);
   }
 }
+
+/* the colour scheme menu is position: fixed – its host must not take part in the flex layout */
+app-context-menu {
+  display: contents;
+}

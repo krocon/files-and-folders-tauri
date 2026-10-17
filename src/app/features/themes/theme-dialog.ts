@@ -14,6 +14,7 @@ import { toHex } from '../../core/theme/color';
 import {
   checkContrast,
   completeTokens,
+  isColorValue,
   isSafeValue,
   resolveColor,
 } from '../../core/theme/theme-logic';
@@ -330,7 +331,8 @@ export class ThemeDialog {
   }
 
   protected setText(name: string, value: string): void {
-    if (isSafeValue(value)) {
+    const kind = TOKENS.find((d) => d.name === name)?.kind;
+    if (kind === 'color' ? isColorValue(value) : isSafeValue(value)) {
       this.setToken(name, value.trim());
     } else {
       this.invalid.update((s) => new Set(s).add(name));

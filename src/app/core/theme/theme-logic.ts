@@ -35,6 +35,12 @@ export function isSafeValue(value: string): boolean {
 }
 
 /** The value of a token after following `var(--x[, fallback])` chains; `null` on cycles/missing. */
+/** For colour tokens: a colour we can read or a `var(--…)` reference (checked when resolved). */
+export function isColorValue(value: string): boolean {
+  const v = value.trim();
+  return isSafeValue(v) && (parseColor(v) !== null || VAR_REF.test(v));
+}
+
 export function resolveValue(
   name: string,
   tokens: Readonly<Record<string, string>>,
