@@ -3,12 +3,16 @@
 //! event sink. The lock is never held during file I/O or while sending events.
 
 use super::report::Reporter;
-use super::{Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, Summary, copy};
-use crate::dirsize;
+use super::{
+    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, Summary, copy, delete,
+};
+use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
+use crate::fileops::check_danger;
 use crate::paths::validate_input_path;
 use std::collections::VecDeque;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -34,6 +38,10 @@ pub struct JobManager {
     inner: Mutex<Inner>,
     changed: Condvar,
     sink: Sink,
+    /// The user's home folder (moving or deleting it needs a second confirmation).
+    home: Mutex<Option<PathBuf>>,
+    /// Tests force the copy + delete path of a move (no second volume in CI).
+    pub(crate) force_copy_on_move: AtomicBool,
 }
 
 impl JobManager {
@@ -42,7 +50,13 @@ impl JobManager {
             inner: Mutex::new(Inner::default()),
             changed: Condvar::new(),
             sink,
+            home: Mutex::new(None),
+            force_copy_on_move: AtomicBool::new(false),
         })
+    }
+
+    pub fn set_home(&self, home: Option<PathBuf>) {
+        *self.home.lock().unwrap_or_else(|e| e.into_inner()) = home;
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -51,7 +65,8 @@ impl JobManager {
 
     /// Validates the spec and queues (or starts) the job. Returns its id.
     pub fn start(self: &Arc<Self>, spec: JobSpec) -> Result<String, FsError> {
-        validate(&spec)?;
+        let home = self.home.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        validate(&spec, home.as_deref())?;
         let parallel = spec.is_parallel();
         let (id, run_now, info) = {
             let mut inner = self.lock();
@@ -127,10 +142,34 @@ impl JobManager {
                 JobSpec::Copy {
                     sources,
                     target_dir,
+                    options,
                     ..
                 } => {
                     let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
-                    copy::run(id, &sources, &PathBuf::from(target_dir), &control, &emit)
+                    let target = PathBuf::from(target_dir);
+                    let mode = copy::Mode::Copy;
+                    copy::run(id, &sources, &target, options, mode, &control, &emit)
+                }
+                JobSpec::Move {
+                    sources,
+                    target_dir,
+                    options,
+                    ..
+                } => {
+                    let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                    let target = PathBuf::from(target_dir);
+                    let mode = copy::Mode::Move {
+                        force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
+                    };
+                    copy::run(id, &sources, &target, options, mode, &control, &emit)
+                }
+                JobSpec::Delete { paths, mode, .. } => {
+                    let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                    delete::run(id, &paths, *mode, &control, &emit)
+                }
+                JobSpec::Count { paths } => {
+                    let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                    run_count(id, &paths, &control, &emit)
                 }
                 JobSpec::DirSize { path } => {
                     run_dir_size(id, &PathBuf::from(path), &control, &emit)
@@ -446,7 +485,8 @@ impl JobManager {
 }
 
 /// Checks paths before a job is accepted (the operation validates again).
-fn validate(spec: &JobSpec) -> Result<(), FsError> {
+fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
+    let nothing = || FsError::new(FsErrorCode::InvalidPath, "Nothing selected", None);
     match spec {
         JobSpec::Copy {
             sources,
@@ -454,16 +494,43 @@ fn validate(spec: &JobSpec) -> Result<(), FsError> {
             ..
         } => {
             if sources.is_empty() {
-                return Err(FsError::new(
-                    FsErrorCode::InvalidPath,
-                    "Nothing to copy",
-                    None,
-                ));
+                return Err(nothing());
             }
             for s in sources {
                 validate_input_path(s)?;
             }
             validate_input_path(target_dir)?;
+        }
+        JobSpec::Move {
+            sources,
+            target_dir,
+            allow_dangerous,
+            ..
+        } => {
+            if sources.is_empty() {
+                return Err(nothing());
+            }
+            for s in sources {
+                check_danger(&validate_input_path(s)?, home, *allow_dangerous)?;
+            }
+            validate_input_path(target_dir)?;
+        }
+        JobSpec::Delete {
+            paths,
+            allow_dangerous,
+            ..
+        } => {
+            if paths.is_empty() {
+                return Err(nothing());
+            }
+            for p in paths {
+                check_danger(&validate_input_path(p)?, home, *allow_dangerous)?;
+            }
+        }
+        JobSpec::Count { paths } => {
+            for p in paths {
+                validate_input_path(p)?;
+            }
         }
         JobSpec::DirSize { path } => {
             validate_input_path(path)?;
@@ -479,6 +546,81 @@ fn validate(spec: &JobSpec) -> Result<(), FsError> {
         }
     }
     Ok(())
+}
+
+/// Files, folders and bytes of a selection (links count as files, never followed).
+fn run_count(
+    id: &str,
+    paths: &[PathBuf],
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    emit(JobEvent::State {
+        id: id.to_string(),
+        state: JobState::Running,
+    });
+    let mut total = DirSize::default();
+    let report = |t: &DirSize| {
+        emit(JobEvent::Progress {
+            id: id.to_string(),
+            progress: Progress {
+                bytes_done: t.bytes,
+                items_done: t.files + t.dirs,
+                ..Progress::default()
+            },
+        });
+    };
+    for p in paths {
+        if control.is_cancelled() {
+            total.cancelled = true;
+            break;
+        }
+        match std::fs::symlink_metadata(p) {
+            Ok(m) if m.is_dir() => {
+                total.dirs += 1;
+                let base = total;
+                let sub = dirsize::dir_size(
+                    p,
+                    control.cancel_flag(),
+                    Duration::from_millis(100),
+                    |s| {
+                        report(&DirSize {
+                            files: base.files + s.files,
+                            dirs: base.dirs + s.dirs,
+                            bytes: base.bytes + s.bytes,
+                            ..base
+                        })
+                    },
+                );
+                total.files += sub.files;
+                total.dirs += sub.dirs;
+                total.bytes += sub.bytes;
+                total.unreadable += sub.unreadable;
+                if sub.cancelled {
+                    total.cancelled = true;
+                    break;
+                }
+            }
+            Ok(m) => {
+                total.files += 1;
+                total.bytes += m.len();
+            }
+            Err(_) => total.unreadable += 1,
+        }
+    }
+    report(&total);
+    let state = if total.cancelled {
+        JobState::Cancelled
+    } else {
+        JobState::Done
+    };
+    let summary = Summary {
+        items_done: total.files + total.dirs,
+        bytes_done: total.bytes,
+        dir_size: Some(total),
+        ..Summary::default()
+    };
+    (state, summary)
 }
 
 fn run_dir_size(

@@ -1,4 +1,4 @@
-//! Copy job (design 005 E6): plan first (list, total size, validation), then
+//! Copy and move jobs (design 005 E6, 006 E5): plan first (list, total size, validation), then
 //! copy every file into a temporary `.fnf-<job>-<n>.part` in the target
 //! folder and rename it to the real name – a cancelled or failed copy never
 //! leaves a half-written file under the real name. Symbolic links are copied
@@ -7,11 +7,12 @@
 
 use super::report::Reporter;
 use super::{
-    Conflict, Control, Decision, FileMeta, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS,
-    Summary,
+    Conflict, ConflictKind, Control, CopyOptions, Decision, FileMeta, ItemError, JobEvent,
+    JobState, MAX_REPORTED_ERRORS, Summary,
 };
 use crate::error::{FsError, FsErrorCode};
-use crate::paths::normalize_lexically;
+use crate::paths::{normalize_lexically, validate_name};
+use std::ffi::OsStr;
 use std::fs::{self, File, Metadata};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -62,13 +63,23 @@ fn path_string(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }
 
-/// Validates sources and target and lists everything to copy (parents before
-/// children). `Err` = the whole job cannot run.
-pub fn plan(
+/// One top-level source with its target path.
+#[derive(Debug)]
+pub struct Top {
+    pub src: PathBuf,
+    pub dst: PathBuf,
+    pub meta: Metadata,
+}
+
+/// Job-level checks for all sources before anything happens: target is a
+/// folder, no root, not onto itself, not into itself. Unreadable sources are
+/// reported in the plan's errors.
+pub fn check(
     sources: &[PathBuf],
     target_dir: &Path,
-    control: &Control,
-) -> Result<Option<Plan>, FsError> {
+    rename_to: Option<&str>,
+    plan: &mut Plan,
+) -> Result<Vec<Top>, FsError> {
     let target_dir = normalize_lexically(target_dir);
     let meta = fs::metadata(&target_dir).map_err(|e| FsError::from_io(&e, &target_dir))?;
     if !meta.is_dir() {
@@ -78,17 +89,28 @@ pub fn plan(
             Some(&target_dir),
         ));
     }
-    let mut plan = Plan::default();
+    if let Some(n) = rename_to {
+        validate_name(n)?;
+        if sources.len() != 1 {
+            return Err(FsError::new(
+                FsErrorCode::InvalidName,
+                "A new name needs exactly one source",
+                None,
+            ));
+        }
+    }
+    let mut tops = Vec::new();
     for src in sources {
         let src = normalize_lexically(src);
         let Some(name) = src.file_name() else {
             return Err(FsError::new(
                 FsErrorCode::InvalidPath,
-                "A drive or root cannot be copied",
+                "A drive or root cannot be copied or moved",
                 Some(&src),
             ));
         };
-        if src.parent() == Some(target_dir.as_path()) {
+        let dst = target_dir.join(rename_to.map(OsStr::new).unwrap_or(name));
+        if dst == src {
             return Err(FsError::new(
                 FsErrorCode::SameSourceTarget,
                 "Source and target folder are the same",
@@ -109,10 +131,23 @@ pub fn plan(
                 Some(&src),
             ));
         }
-        let mut stack = vec![(src.clone(), target_dir.join(name), src_meta)];
+        tops.push(Top {
+            src,
+            dst,
+            meta: src_meta,
+        });
+    }
+    Ok(tops)
+}
+
+/// Lists everything below the top-level sources (parents before children).
+/// `false` = cancelled.
+pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
+    for top in tops {
+        let mut stack = vec![(top.src, top.dst, top.meta)];
         while let Some((s, d, m)) = stack.pop() {
             if control.is_cancelled() {
-                return Ok(None);
+                return false;
             }
             let ft = m.file_type();
             if ft.is_symlink() {
@@ -166,7 +201,19 @@ pub fn plan(
             }
         }
     }
-    Ok(Some(plan))
+    true
+}
+
+/// Validates sources and target and lists everything to copy (parents before
+/// children). `Err` = the whole job cannot run, `Ok(None)` = cancelled.
+pub fn plan(
+    sources: &[PathBuf],
+    target_dir: &Path,
+    control: &Control,
+) -> Result<Option<Plan>, FsError> {
+    let mut plan = Plan::default();
+    let tops = check(sources, target_dir, None, &mut plan)?;
+    Ok(walk(tops, &mut plan, control).then_some(plan))
 }
 
 /// A free name in the folder of `dst`: `name (1).ext`, `name (2).ext`, …
@@ -186,18 +233,6 @@ pub fn suggest_name(dst: &Path) -> String {
         }
     }
     format!("{stem} (copy){ext}")
-}
-
-/// A new name typed by the user: one path component, nothing special.
-fn valid_new_name(name: &str) -> bool {
-    let p = Path::new(name);
-    !name.trim().is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
-        && !name.contains('\0')
-        && p.components().count() == 1
 }
 
 fn meta_of(m: &Metadata) -> FileMeta {
@@ -223,16 +258,40 @@ impl From<io::Error> for CopyError {
     }
 }
 
+/// How one file ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Outcome {
+    Done,
+    Failed,
+    Cancelled,
+}
+
+/// Copy, or move (design 006 E5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Copy,
+    /// `force_copy`: behave as if source and target were on different
+    /// volumes (tests of the copy + delete path).
+    Move { force_copy: bool },
+}
+
 struct Run<'a> {
     id: &'a str,
     control: &'a Control,
     rep: Reporter<'a>,
     summary: Summary,
     conflict_seq: u64,
-    /// Decision for all further conflicts ("apply to all").
+    /// Decision for all further conflicts ("apply to all" or the dialog default).
     for_all: Option<Decision>,
     /// Numbers the temporary names of this job.
     temp_seq: u64,
+    moving: bool,
+    /// Moving between volumes: copy + delete instead of rename.
+    cross: bool,
+}
+
+fn is_cross_device(e: &io::Error) -> bool {
+    e.kind() == io::ErrorKind::CrossesDevices
 }
 
 impl Run<'_> {
@@ -266,6 +325,7 @@ impl Run<'_> {
         self.conflict_seq += 1;
         let conflict = Conflict {
             conflict_id: self.conflict_seq,
+            kind: ConflictKind::Exists,
             source: path_string(src),
             target: path_string(dst),
             source_meta: meta_of(sm),
@@ -296,8 +356,8 @@ impl Run<'_> {
         Some(decision)
     }
 
-    /// Copies one file (or link) with retries after "disk full"; returns false if cancelled.
-    fn copy_entry(&mut self, item: &Item, dst: &Path, overwrite: bool) -> bool {
+    /// Copies one file (or link) with retries after "disk full".
+    fn copy_entry(&mut self, item: &Item, dst: &Path, overwrite: bool) -> Outcome {
         loop {
             let result = match item.kind {
                 ItemKind::Symlink => {
@@ -309,9 +369,9 @@ impl Run<'_> {
             match result {
                 Ok(()) => {
                     self.summary.items_done += 1;
-                    return true;
+                    return Outcome::Done;
                 }
-                Err(CopyError::Cancelled) => return false,
+                Err(CopyError::Cancelled) => return Outcome::Cancelled,
                 Err(CopyError::Io(e)) => {
                     let error = FsError::from_io(&e, dst);
                     if error.code == FsErrorCode::DiskFull {
@@ -323,16 +383,45 @@ impl Run<'_> {
                         self.control.set_paused(true);
                         self.state(JobState::Paused);
                         if !self.control.wait_while_paused() {
-                            return false;
+                            return Outcome::Cancelled;
                         }
                         self.state(JobState::Running);
                         continue;
                     }
                     self.fail(&item.src, error);
-                    return true;
+                    return Outcome::Failed;
                 }
             }
         }
+    }
+
+    /// Moves one file or link. Same volume: rename (never replacing a target
+    /// unless `overwrite`). Other volume: copy, and delete the source only
+    /// after the copy is complete under its real name.
+    fn move_entry(&mut self, item: &Item, dst: &Path, overwrite: bool) -> Outcome {
+        if !self.cross {
+            match rename_no_clobber(item, dst, overwrite) {
+                Ok(()) => {
+                    self.summary.items_done += 1;
+                    return Outcome::Done;
+                }
+                Err(e) if is_cross_device(&e) => self.cross = true,
+                Err(e) => {
+                    self.fail(&item.src, FsError::from_io(&e, dst));
+                    return Outcome::Failed;
+                }
+            }
+        }
+        let outcome = self.copy_entry(item, dst, overwrite);
+        if outcome == Outcome::Done
+            && let Err(e) = remove_entry(&item.src)
+        {
+            // the copy stays – nothing is lost, the source could not be removed
+            self.summary.items_done -= 1;
+            self.fail(&item.src, FsError::from_io(&e, &item.src));
+            return Outcome::Failed;
+        }
+        outcome
     }
 
     /// Short temporary name next to `dst` – adding to a long file name could exceed
@@ -378,6 +467,51 @@ impl Run<'_> {
         }
         result
     }
+}
+
+/// Removes a file or link (a directory link on Windows needs `remove_dir`).
+fn remove_entry(path: &Path) -> io::Result<()> {
+    match fs::remove_file(path) {
+        Err(e) if cfg!(windows) && fs::symlink_metadata(path).is_ok_and(|m| m.is_symlink()) => {
+            fs::remove_dir(path).map_err(|_| e)
+        }
+        r => r,
+    }
+}
+
+/// Same-volume move of one file or link. Without `overwrite` a regular file
+/// is hard-linked first (fails atomically if the target exists) and the
+/// source name removed; links and file systems without hard links use check +
+/// rename. `CrossesDevices` tells the caller to copy instead.
+fn rename_no_clobber(item: &Item, dst: &Path, overwrite: bool) -> io::Result<()> {
+    if overwrite {
+        return fs::rename(&item.src, dst);
+    }
+    let appeared = || {
+        io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "The target appeared while moving",
+        )
+    };
+    if matches!(item.kind, ItemKind::File { .. }) {
+        match fs::hard_link(&item.src, dst) {
+            Ok(()) => {
+                if let Err(e) = fs::remove_file(&item.src) {
+                    // keep exactly one name: undo the link
+                    let _ = fs::remove_file(dst);
+                    return Err(e);
+                }
+                return Ok(());
+            }
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => return Err(appeared()),
+            Err(e) if is_cross_device(&e) => return Err(e),
+            Err(_) => {} // no hard links here: check + rename
+        }
+    }
+    if fs::symlink_metadata(dst).is_ok() {
+        return Err(appeared());
+    }
+    fs::rename(&item.src, dst)
 }
 
 /// Moves the finished temporary file to its real name. Without `overwrite` a
@@ -439,11 +573,13 @@ fn copy_symlink(src: &Path, dst: &Path, tmp: &Path, overwrite: bool) -> io::Resu
     placed
 }
 
-/// Runs a copy job to its end. Emits progress, conflicts and state changes.
+/// Runs a copy or move job to its end. Emits progress, conflicts and state changes.
 pub fn run(
     id: &str,
     sources: &[PathBuf],
     target_dir: &Path,
+    options: &CopyOptions,
+    mode: Mode,
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
@@ -453,25 +589,55 @@ pub fn run(
         rep: Reporter::new(id, emit),
         summary: Summary::default(),
         conflict_seq: 0,
-        for_all: None,
+        for_all: options.conflict_default.decision(),
         temp_seq: 0,
+        moving: matches!(mode, Mode::Move { .. }),
+        cross: matches!(mode, Mode::Move { force_copy: true }),
     };
     run.state(JobState::Planning);
-    let plan = match plan(sources, target_dir, control) {
-        Ok(Some(p)) => p,
-        Ok(None) => return (JobState::Cancelled, run.summary),
+    let mut plan = Plan::default();
+    let tops = match check(sources, target_dir, options.rename_to.as_deref(), &mut plan) {
+        Ok(t) => t,
         Err(e) => {
             run.summary.error = Some(e);
             return (JobState::Failed, run.summary);
         }
     };
+    // moving: whole entries whose target name is free are renamed at once
+    let mut fast_done = 0u64;
+    let mut rest = Vec::new();
+    for top in tops {
+        if run.moving && !run.cross && fs::symlink_metadata(&top.dst).is_err() {
+            match fs::rename(&top.src, &top.dst) {
+                Ok(()) => {
+                    fast_done += 1;
+                    run.summary.items_done += 1;
+                    for p in [top.src.parent(), top.dst.parent()].into_iter().flatten() {
+                        run.rep.dir_changed(path_string(p));
+                    }
+                    continue;
+                }
+                Err(e) if is_cross_device(&e) => run.cross = true,
+                Err(e) => {
+                    run.fail(&top.src, FsError::from_io(&e, &top.src));
+                    continue;
+                }
+            }
+        }
+        rest.push(top);
+    }
+    if !walk(rest, &mut plan, control) {
+        run.rep.flush_dirs();
+        return (JobState::Cancelled, run.summary);
+    }
     run.summary.items_failed += plan.more_errors;
-    for e in plan.errors {
+    for e in std::mem::take(&mut plan.errors) {
         let path = PathBuf::from(&e.path);
         run.fail(&path, e.error);
     }
     run.rep.progress.bytes_total = plan.bytes_total;
-    run.rep.progress.items_total = plan.items.len() as u64;
+    run.rep.progress.items_total = plan.items.len() as u64 + fast_done;
+    run.rep.progress.items_done = fast_done;
     run.state(if control.is_paused() {
         JobState::Paused
     } else {
@@ -480,6 +646,8 @@ pub fn run(
     run.rep.tick(true);
 
     let mut failed_dirs: Vec<PathBuf> = Vec::new();
+    // moving: source folders renamed as a whole (their items are done)
+    let mut moved_dirs: Vec<PathBuf> = Vec::new();
     let mut cancelled = false;
     'items: for item in &plan.items {
         if control.is_cancelled() || !control.wait_while_paused() {
@@ -491,6 +659,12 @@ pub fn run(
             ItemKind::File { size } => size,
             _ => 0,
         };
+        if moved_dirs.iter().any(|d| item.src.starts_with(d)) {
+            run.summary.items_done += 1;
+            run.rep.progress.items_done += 1;
+            run.rep.progress.bytes_done += size;
+            continue;
+        }
         if failed_dirs.iter().any(|d| item.dst.starts_with(d)) {
             run.summary.items_skipped += 1;
             run.rep.progress.items_done += 1;
@@ -498,6 +672,11 @@ pub fn run(
             continue;
         }
         if let Some(parent) = item.dst.parent() {
+            run.rep.dir_changed(path_string(parent));
+        }
+        if run.moving
+            && let Some(parent) = item.src.parent()
+        {
             run.rep.dir_changed(path_string(parent));
         }
         if item.kind == ItemKind::Dir {
@@ -514,13 +693,28 @@ pub fn run(
                     );
                     failed_dirs.push(item.dst.clone());
                 }
-                Err(_) => match fs::create_dir(&item.dst) {
-                    Ok(()) => run.summary.items_done += 1,
-                    Err(e) => {
-                        run.fail(&item.dst, FsError::from_io(&e, &item.dst));
-                        failed_dirs.push(item.dst.clone());
+                Err(_) => {
+                    let mut renamed = false;
+                    if run.moving && !run.cross {
+                        match fs::rename(&item.src, &item.dst) {
+                            Ok(()) => renamed = true,
+                            Err(e) if is_cross_device(&e) => run.cross = true,
+                            Err(_) => {} // move the content one by one
+                        }
                     }
-                },
+                    if renamed {
+                        run.summary.items_done += 1;
+                        moved_dirs.push(item.src.clone());
+                    } else {
+                        match fs::create_dir(&item.dst) {
+                            Ok(()) => run.summary.items_done += 1,
+                            Err(e) => {
+                                run.fail(&item.dst, FsError::from_io(&e, &item.dst));
+                                failed_dirs.push(item.dst.clone());
+                            }
+                        }
+                    }
+                }
             }
             run.rep.progress.items_done += 1;
             run.rep.tick(false);
@@ -568,11 +762,8 @@ pub fn run(
                 }
                 Decision::Rename { new_name } => {
                     let name = new_name.unwrap_or_else(|| suggest_name(&dst));
-                    if !valid_new_name(&name) {
-                        run.fail(
-                            &item.src,
-                            FsError::new(FsErrorCode::InvalidPath, "Invalid file name", Some(&dst)),
-                        );
+                    if let Err(e) = validate_name(&name) {
+                        run.fail(&item.src, FsError { path: Some(path_string(&dst)), ..e });
                         run.rep.progress.items_done += 1;
                         run.rep.progress.bytes_done += size;
                         continue 'items;
@@ -587,7 +778,12 @@ pub fn run(
             }
         }
         let before = run.rep.progress.bytes_done;
-        if !run.copy_entry(item, &dst, overwrite) {
+        let outcome = if run.moving {
+            run.move_entry(item, &dst, overwrite)
+        } else {
+            run.copy_entry(item, &dst, overwrite)
+        };
+        if outcome == Outcome::Cancelled {
             cancelled = true;
             break;
         }
@@ -595,6 +791,14 @@ pub fn run(
         run.rep.progress.bytes_done = before + size;
         run.rep.progress.items_done += 1;
         run.rep.tick(false);
+    }
+    if run.moving {
+        // emptied source folders go (deepest first); anything left keeps its folder
+        for item in plan.items.iter().rev() {
+            if item.kind == ItemKind::Dir && !moved_dirs.iter().any(|d| item.src.starts_with(d)) {
+                let _ = fs::remove_dir(&item.src);
+            }
+        }
     }
     run.rep.progress.current = None;
     run.summary.bytes_done = run.rep.progress.bytes_done;

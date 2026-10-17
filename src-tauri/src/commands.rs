@@ -6,8 +6,9 @@ use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
+use crate::fileops;
 use crate::opener;
-use crate::paths::{expand_tilde, validate_input_path};
+use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::window_state;
 use std::collections::HashMap;
@@ -109,6 +110,88 @@ pub async fn open_file<R: Runtime>(
     })
     .await
     .map_err(|e| FsError::new(FsErrorCode::Io, format!("Opening failed: {e}"), None))?
+}
+
+// ---- quick operations (design 006 E8) ----
+
+async fn blocking<T: Send + 'static>(
+    what: &str,
+    f: impl FnOnce() -> Result<T, FsError> + Send + 'static,
+) -> Result<T, FsError> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| FsError::new(FsErrorCode::Io, format!("{what} failed: {e}"), None))?
+}
+
+/// Creates a folder (`a/b/c` allowed); returns the topmost new path.
+#[tauri::command]
+pub async fn make_dir<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    name: String,
+) -> Result<String, FsError> {
+    let parent = resolve_input(&app, &parent)?;
+    blocking("Creating the folder", move || {
+        fileops::make_dir(&parent, &name).map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+/// Creates an empty file (never overwrites).
+#[tauri::command]
+pub async fn create_file<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    name: String,
+) -> Result<String, FsError> {
+    let parent = resolve_input(&app, &parent)?;
+    blocking("Creating the file", move || {
+        fileops::create_file(&parent, &name).map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+/// Renames one entry in its folder (never overwrites); returns the new path.
+#[tauri::command]
+pub async fn rename_entry<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    new_name: String,
+    allow_dangerous: bool,
+) -> Result<String, FsError> {
+    let path = resolve_input(&app, &path)?;
+    let home = home_dir(&app).ok();
+    blocking("Renaming", move || {
+        fileops::rename_entry(&path, &new_name, home.as_deref(), allow_dangerous)
+            .map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathCheck {
+    pub path: String,
+    pub danger: Option<Danger>,
+}
+
+/// Which of the paths are a root, the home folder or a system folder (second confirmation).
+#[tauri::command]
+pub fn check_paths<R: Runtime>(
+    app: AppHandle<R>,
+    paths: Vec<String>,
+) -> Result<Vec<PathCheck>, FsError> {
+    let home = home_dir(&app).ok();
+    paths
+        .into_iter()
+        .map(|p| {
+            let v = validate_input_path(&p)?;
+            Ok(PathCheck {
+                danger: danger_of(&v, home.as_deref()),
+                path: p,
+            })
+        })
+        .collect()
 }
 
 /// Session file, last known session and window geometry (managed state).

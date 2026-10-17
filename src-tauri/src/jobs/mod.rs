@@ -5,10 +5,13 @@
 
 pub mod control;
 pub mod copy;
+pub mod delete;
 pub mod manager;
 pub mod report;
 #[cfg(test)]
 mod tests_engine;
+#[cfg(test)]
+mod tests_ops;
 
 use crate::dirsize::DirSize;
 use crate::error::FsError;
@@ -31,7 +34,32 @@ pub enum JobSpec {
         target_dir: String,
         #[serde(default)]
         background: bool,
+        #[serde(default)]
+        options: CopyOptions,
     },
+    /// Move into `target_dir`: rename on the same volume, else copy + delete per file.
+    Move {
+        sources: Vec<String>,
+        target_dir: String,
+        #[serde(default)]
+        background: bool,
+        #[serde(default)]
+        options: CopyOptions,
+        /// The user confirmed moving a root/home/system path a second time.
+        #[serde(default)]
+        allow_dangerous: bool,
+    },
+    /// Delete to the trash (default) or permanently.
+    Delete {
+        paths: Vec<String>,
+        mode: DeleteMode,
+        #[serde(default)]
+        background: bool,
+        #[serde(default)]
+        allow_dangerous: bool,
+    },
+    /// Counts files, folders and bytes of a selection (copy dialog; parallel).
+    Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
     DirSize { path: String },
     /// Test job for load and throttling tests – rejected in release builds.
@@ -42,18 +70,66 @@ impl JobSpec {
     /// Runs immediately instead of waiting in the serial queue.
     pub fn is_parallel(&self) -> bool {
         match self {
-            JobSpec::Copy { background, .. } => *background,
-            JobSpec::DirSize { .. } | JobSpec::Simulate { .. } => true,
+            JobSpec::Copy { background, .. }
+            | JobSpec::Move { background, .. }
+            | JobSpec::Delete { background, .. } => *background,
+            JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Simulate { .. } => true,
         }
     }
 
     pub fn kind(&self) -> &'static str {
         match self {
             JobSpec::Copy { .. } => "copy",
+            JobSpec::Move { .. } => "move",
+            JobSpec::Delete { .. } => "delete",
+            JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
         }
     }
+}
+
+/// What happens when a target exists (copy/move dialog, design 006 E4).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ConflictDefault {
+    #[default]
+    Ask,
+    Overwrite,
+    Skip,
+    OverwriteIfNewer,
+    /// Free name `name (1).ext` for every conflict.
+    Rename,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyOptions {
+    #[serde(default)]
+    pub conflict_default: ConflictDefault,
+    /// New name of the single source in the target folder ("copy under another name").
+    #[serde(default)]
+    pub rename_to: Option<String>,
+}
+
+impl ConflictDefault {
+    /// The answer applied to every conflict (`None` = ask).
+    pub fn decision(self) -> Option<Decision> {
+        match self {
+            ConflictDefault::Ask => None,
+            ConflictDefault::Overwrite => Some(Decision::Overwrite),
+            ConflictDefault::Skip => Some(Decision::Skip),
+            ConflictDefault::OverwriteIfNewer => Some(Decision::OverwriteIfNewer),
+            ConflictDefault::Rename => Some(Decision::Rename { new_name: None }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DeleteMode {
+    Trash,
+    Permanent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -105,12 +181,23 @@ pub struct FileMeta {
 #[serde(rename_all = "camelCase")]
 pub struct Conflict {
     pub conflict_id: u64,
+    pub kind: ConflictKind,
     pub source: String,
     pub target: String,
     pub source_meta: FileMeta,
     pub target_meta: FileMeta,
     /// Free name in the target folder (`name (1).ext`) for "rename".
     pub suggested_name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ConflictKind {
+    /// The target exists (copy/move). Answers: all decisions.
+    Exists,
+    /// Permanent delete of a write-protected entry (`source` = `target`).
+    /// Answers: overwrite (= delete anyway), skip, cancel.
+    ReadOnly,
 }
 
 /// Answer to a conflict.
@@ -224,6 +311,32 @@ mod tests {
         )
         .unwrap();
         assert!(spec.is_parallel());
+        let JobSpec::Copy { options, .. } = spec else {
+            panic!()
+        };
+        assert_eq!(options, CopyOptions::default());
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"move","sources":["/a"],"targetDir":"/b","options":{"conflictDefault":"overwriteIfNewer","renameTo":"x"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            spec,
+            JobSpec::Move {
+                sources: vec!["/a".into()],
+                target_dir: "/b".into(),
+                background: false,
+                options: CopyOptions {
+                    conflict_default: ConflictDefault::OverwriteIfNewer,
+                    rename_to: Some("x".into())
+                },
+                allow_dangerous: false
+            }
+        );
+        let spec: JobSpec =
+            serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"permanent"}"#)
+                .unwrap();
+        assert_eq!(spec.kind(), "delete");
+        assert!(!spec.is_parallel());
         let d: Decision =
             serde_json::from_str(r#"{"type":"rename","newName":"x (1).txt"}"#).unwrap();
         assert_eq!(

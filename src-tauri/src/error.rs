@@ -22,6 +22,14 @@ pub enum FsErrorCode {
     SameSourceTarget,
     /// The target volume is full.
     DiskFull,
+    /// A file or folder with this name exists already.
+    AlreadyExists,
+    /// The name is not allowed (separator, reserved name, too long …).
+    InvalidName,
+    /// Root, drive, home or system folder – needs an explicit second confirmation.
+    DangerousPath,
+    /// The item could not be moved to the trash (no trash on this volume …).
+    TrashFailed,
     Io,
 }
 
@@ -49,6 +57,7 @@ impl FsError {
             io::ErrorKind::PermissionDenied => FsErrorCode::PermissionDenied,
             io::ErrorKind::NotADirectory => FsErrorCode::NotADirectory,
             io::ErrorKind::StorageFull | io::ErrorKind::QuotaExceeded => FsErrorCode::DiskFull,
+            io::ErrorKind::AlreadyExists => FsErrorCode::AlreadyExists,
             _ => FsErrorCode::Io,
         };
         Self::new(code, err.to_string(), Some(path))
