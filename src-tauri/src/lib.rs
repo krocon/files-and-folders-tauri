@@ -16,6 +16,8 @@
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
+//! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
+//! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
@@ -37,6 +39,7 @@ pub mod properties;
 pub mod rename_presets;
 pub mod search;
 pub mod session;
+pub mod tools;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -49,6 +52,7 @@ pub fn run() {
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
         .manage(commands::CleanScanState::default())
+        .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
@@ -115,6 +119,12 @@ pub fn run() {
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets,
+            commands::list_volumes,
+            commands::reveal_in_file_manager,
+            commands::open_terminal,
+            commands::load_tools,
+            commands::run_tool,
+            commands::open_tools_config,
             commands::read_preview,
             commands::get_properties
         ])

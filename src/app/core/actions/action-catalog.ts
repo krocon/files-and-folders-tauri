@@ -22,6 +22,8 @@ export const ACTION_IDS = [
   'COPY_2_CLIPBOARD_FULLNAMES',
   'COPY_2_CLIPBOARD_NAMES_AS_JSON',
   'COPY_2_CLIPBOARD_FULLNAMES_AS_JSON',
+  'REVEAL_IN_FILE_MANAGER',
+  'OPEN_TERMINAL_HERE',
   'OPEN_COMMAND_PALETTE',
   'OPEN_CALL_ACTION_DLG',
   // selection
@@ -76,6 +78,7 @@ export const ACTION_IDS = [
   'OPEN_THEMES_DLG',
   'OPEN_BUTTON_CONFIG_DLG',
   'OPEN_TOOL_CONFIG_DLG',
+  'OPEN_TOOLS_DLG',
   'OPEN_TASK_DLG',
   'OPEN_ABOUT_DLG',
 ] as const;
@@ -126,6 +129,8 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   COPY_2_CLIPBOARD_FULLNAMES: m('Copy full paths to clipboard', 'navigation', '011'),
   COPY_2_CLIPBOARD_NAMES_AS_JSON: m('Copy names as JSON', 'navigation', '011'),
   COPY_2_CLIPBOARD_FULLNAMES_AS_JSON: m('Copy full paths as JSON', 'navigation', '011'),
+  REVEAL_IN_FILE_MANAGER: m('Show in file manager', 'navigation', '011'),
+  OPEN_TERMINAL_HERE: m('Open terminal here', 'navigation', '011'),
   OPEN_COMMAND_PALETTE: m('Go to anything…', 'navigation', '002'),
   OPEN_CALL_ACTION_DLG: m('Call action…', 'navigation', '002', true),
   TOGGLE_MARK_AND_ADVANCE: m('Toggle mark and move down', 'selection', '002'),
@@ -176,6 +181,7 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_THEMES_DLG: m('Themes…', 'config', '013'),
   OPEN_BUTTON_CONFIG_DLG: m('Button configuration…', 'config', '015'),
   OPEN_TOOL_CONFIG_DLG: m('Tool configuration…', 'config', '011'),
+  OPEN_TOOLS_DLG: m('Open with tool…', 'config', '011'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
   OPEN_ABOUT_DLG: m('About…', 'config', '015'),
 };

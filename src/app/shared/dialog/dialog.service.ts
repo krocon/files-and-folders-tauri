@@ -16,6 +16,8 @@ export type DialogKind =
   | 'group-files'
   | 'clean-folders'
   | 'multi-mkdir'
+  | 'tools'
+  | 'tool-config'
   | 'viewer'
   | 'properties'
   | 'find'

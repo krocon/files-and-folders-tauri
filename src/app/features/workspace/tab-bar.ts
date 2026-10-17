@@ -11,6 +11,8 @@ import {
 } from '@angular/core';
 import { Side } from '../../core/session/session.models';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
+import { VolumesStore } from '../osintegration/volumes.store';
 import { SearchStore } from '../search/search.store';
 import { ContextMenu, MenuItem } from './context-menu';
 import { TEXTS } from './texts';
@@ -45,6 +47,7 @@ export class TabBar {
 
   /** The panel's store (TabBar lives inside the FilePanel). */
   protected readonly store = inject(FileBrowserStore, { optional: true });
+  private readonly drives = inject(VolumesStore);
   protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
   protected readonly folderMenuItems = computed<MenuItem[]>(() => {
     const t = TEXTS;
@@ -56,8 +59,18 @@ export class TabBar {
         ? [{ id: `${prefix}-none`, label: t.menuEmpty, disabled: true }]
         : paths.map((p, i) => ({ id: `${prefix}:${i}`, label: p }))),
     ];
+    const volumes = this.drives.volumes();
+    const drives: MenuItem[] = [
+      { id: 'vol-h', label: OS_TEXTS.drives, heading: true },
+      ...(volumes === null
+        ? [{ id: 'vol-loading', label: OS_TEXTS.readingDrives, disabled: true }]
+        : volumes.length === 0
+          ? [{ id: 'vol-none', label: OS_TEXTS.noDrives, disabled: true }]
+          : volumes.map((v, i) => ({ id: `vol:${i}`, label: volumeLabel(v) }))),
+    ];
     return [
       { id: 'home', label: t.menuHome },
+      ...drives,
       ...group('fav', t.menuFavorites, favorites),
       ...group('recent', t.menuRecent, recent),
     ];
@@ -106,6 +119,7 @@ export class TabBar {
     const button = this.host.nativeElement.querySelector<HTMLElement>('.folder-menu');
     const rect = button?.getBoundingClientRect();
     this.ws.setActive(this.side());
+    void this.drives.refresh();
     this.folderMenuOpen.set({ x: rect?.left ?? 0, y: rect?.bottom ?? 0 });
   }
 
@@ -120,6 +134,8 @@ export class TabBar {
       path = favorites[Number(id.slice(4))];
     } else if (id.startsWith('recent:')) {
       path = recent[Number(id.slice(7))];
+    } else if (id.startsWith('vol:')) {
+      path = this.drives.volumes()?.[Number(id.slice(4))]?.path;
     }
     if (path !== undefined) {
       this.ws.requestNavigate(this.side(), path);

@@ -34,6 +34,12 @@ pub enum FsErrorCode {
     DuplicateTarget,
     /// Nothing to undo (no rename log for this task, or it was undone already).
     UndoUnavailable,
+    /// An external program (tool, terminal, file manager) is not installed / not found.
+    ProgramNotFound,
+    /// The frontend asked for a tool id that is not in the configuration.
+    UnknownTool,
+    /// More files than the tool's `fileLimit`.
+    TooManyFiles,
     /// A search pattern (regex, glob) is invalid or too large (design 009).
     InvalidPattern,
     Io,
@@ -105,6 +111,15 @@ mod tests {
             serde_json::to_value(&e).unwrap()["code"],
             "duplicate_target"
         );
+        let e = FsError::new(FsErrorCode::ProgramNotFound, "no", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "program_not_found"
+        );
+        let e = FsError::new(FsErrorCode::TooManyFiles, "no", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "too_many_files");
+        let e = FsError::new(FsErrorCode::UnknownTool, "no", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "unknown_tool");
         let e = FsError::new(FsErrorCode::UndoUnavailable, "no", None);
         assert_eq!(
             serde_json::to_value(&e).unwrap()["code"],

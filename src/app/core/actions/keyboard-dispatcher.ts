@@ -102,6 +102,12 @@ export class KeyboardDispatcher {
     }
     const id = lookup.get(text);
     if (!id) {
+      const extra = this.actions.extraFor(text);
+      if (extra && !evt.repeat) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        void this.actions.runExtra(extra.id);
+      }
       return null;
     }
     if (evt.repeat && !REPEATABLE.has(id)) {

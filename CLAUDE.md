@@ -18,8 +18,9 @@
   Fortschritt, Pause, Abbruch, Konflikten), Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
   anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig),
   Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir), Prompt 009 (Suche mit Ergebnis-Tabs,
-  Ordner-Finder) und Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften) sind fertig. Als Nächstes:
-  Prompt 011 (OS-Integration, externe Tools).
+  Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften) und Prompt 011 (Laufwerke im Ordnermenü,
+  Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage) sind fertig. Als Nächstes:
+  Prompt 012 (Überwachung).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -62,6 +63,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/groupfiles/   group-engine.ts (rein, Testkatalog .cases.json), GroupFilesStore + Dialog (Job `group`)
   app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
   app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
+  app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
+  app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
+                             im Ordnermenü), Tool-Konfigurationsdialog
   app/core/search/           Such-DTOs (Kriterien, Treffer, Statistik) – Treffer kommen als Job-Ereignis `searchHits`
   app/features/search/       SearchStore (Root: Ergebnisse je Ergebnis-Tab, Drosselung), FindStore + Suchdialog
                              (find-form.ts rein, search-presets.json), Ordner-Finder (Store, Logik, Dialog), Aktionen
@@ -100,6 +104,9 @@ src-tauri/                   Rust (Tauri 2)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
+  src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
+  src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
+                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
