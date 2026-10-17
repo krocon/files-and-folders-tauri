@@ -1,4 +1,8 @@
 //! Platform functions with one signature per OS (CLAUDE.md §4).
+//! Submodules: [`volumes`] (drives, mount points), [`desktop`] (file manager, terminal).
+
+pub mod desktop;
+pub mod volumes;
 
 use std::fs::{self, Metadata};
 use std::io;

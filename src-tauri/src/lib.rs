@@ -14,6 +14,8 @@
 //! - [`fileops`]      create folder/file, rename (never overwrite)
 //! - [`jobs`]         job engine: copy, move, delete, multi-rename (+ undo), count, folder size; queue, progress, conflicts, cancel/pause
 //! - [`rename_presets`] multi-rename presets file
+//! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
+//! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`commands`]     thin Tauri command layer
 
 pub mod clean;
@@ -31,6 +33,7 @@ pub mod paths;
 pub mod platform;
 pub mod rename_presets;
 pub mod session;
+pub mod tools;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -43,6 +46,7 @@ pub fn run() {
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
         .manage(commands::CleanScanState::default())
+        .manage(commands::ToolsState::default())
         .setup(|app| {
             commands::init_session(app.handle());
             app.state::<commands::JobsState>()
@@ -92,7 +96,13 @@ pub fn run() {
             commands::cancel_clean_scan,
             commands::undo_rename,
             commands::load_rename_presets,
-            commands::save_rename_presets
+            commands::save_rename_presets,
+            commands::list_volumes,
+            commands::reveal_in_file_manager,
+            commands::open_terminal,
+            commands::load_tools,
+            commands::run_tool,
+            commands::open_tools_config
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
