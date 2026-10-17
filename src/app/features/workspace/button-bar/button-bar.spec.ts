@@ -46,7 +46,13 @@ describe('ButtonBar', () => {
     const { fixture, labels, keys } = await render();
     keys.held.set({ ...NO_MODIFIERS, shift: true });
     fixture.detectChanges();
-    expect(labels()).toEqual(['F4 Create file', 'Copy', 'F6 Rename', 'F7 Create folder', 'Delete']);
+    expect(labels()).toEqual([
+      'F4 Create file',
+      'Copy',
+      'F6 Rename',
+      'F7 Create folder',
+      'F8 Delete permanently',
+    ]);
   });
 
   it('enables and runs a registered action', async () => {

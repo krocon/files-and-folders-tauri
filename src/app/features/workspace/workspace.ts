@@ -20,6 +20,11 @@ import { ConflictDialog } from '../jobs/conflict-dialog';
 import { JobListDialog } from '../jobs/job-list-dialog';
 import { JOB_TEXTS } from '../jobs/job-format';
 import { registerJobActions } from '../jobs/job-actions';
+import { CopyMoveDialog } from '../ops/copy-move-dialog';
+import { DeleteDialog } from '../ops/delete-dialog';
+import { NameDialog } from '../ops/name-dialog';
+import { registerOpsActions } from '../ops/ops-actions';
+import { OpsStore } from '../ops/ops.store';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
@@ -47,6 +52,9 @@ import { WorkspaceStore } from './workspace.store';
     ConfirmDialog,
     JobListDialog,
     ConflictDialog,
+    CopyMoveDialog,
+    DeleteDialog,
+    NameDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -64,6 +72,7 @@ export class Workspace implements OnInit {
   protected readonly dialogs = inject(DialogService);
   protected readonly jobs = inject(JobsStore);
   private readonly confirm = inject(ConfirmService);
+  private readonly ops = inject(OpsStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -100,6 +109,21 @@ export class Workspace implements OnInit {
         }
       });
     });
+    // a dialog closed and its opener is gone (e.g. a conflict that appeared after the copy
+    // dialog): the keyboard focus goes back to the active list instead of staying on <body>
+    effect(() => {
+      const open = this.dialogs.open();
+      untracked(() => {
+        if (open === null && this.ws.ready()) {
+          setTimeout(() => {
+            const active = document.activeElement;
+            if (this.dialogs.open() === null && (!active || active === document.body)) {
+              this.ws.requestFocus(this.ws.activeSide());
+            }
+          });
+        }
+      });
+    });
     effect(() => {
       const req = this.jobs.quitRequest();
       if (req) {
@@ -123,9 +147,8 @@ export class Workspace implements OnInit {
 
   ngOnInit(): void {
     this.destroyRef.onDestroy(registerWorkspaceActions(this.actions, this.ws, this.dialogs));
-    this.destroyRef.onDestroy(
-      registerJobActions(this.actions, this.ws, this.jobs, this.dialogs, this.confirm),
-    );
+    this.destroyRef.onDestroy(registerJobActions(this.actions, this.dialogs));
+    this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();

@@ -133,6 +133,13 @@
     "F8",
     "Mod+Backspace"
   ],
+  "DELETE_PERMANENT": [
+    "Shift+F8",
+    "Mod+Alt+Backspace"
+  ],
+  "RENAME_INLINE": [
+    "F2"
+  ],
   "OPEN_MULTIRENAME_DLG": [
     "Mod+F6"
   ],

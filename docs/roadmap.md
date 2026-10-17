@@ -26,7 +26,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | Ursprüngliche Phase | Prompts |
 | --- | --- |
 | 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
-| 3 Sichere Basisoperationen | 005 (Job-Engine), 006 (Operationen) |
+| 3 Sichere Basisoperationen | 005 (Job-Engine ✅), 006 (Operationen ✅) |
 | 4 Suche & Filter | 003 (Schnellfilter), 009 (Suche) |
 | 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop), 014 (Menüs) |
 | 6 Vorschau & Eigenschaften | 010 |

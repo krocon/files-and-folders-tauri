@@ -11,12 +11,14 @@
 //! - [`fs_atomic`]    atomic writes of config files
 //! - [`dirsize`]      recursive folder size (no symlinks, cancellable)
 //! - [`opener`]       open files with the default app (checked)
-//! - [`jobs`]         job engine: copy, folder size; queue, progress, conflicts, cancel/pause
+//! - [`fileops`]      create folder/file, rename (never overwrite)
+//! - [`jobs`]         job engine: copy, move, delete, count, folder size; queue, progress, conflicts, cancel/pause
 //! - [`commands`]     thin Tauri command layer
 
 pub mod commands;
 pub mod dirsize;
 pub mod error;
+pub mod fileops;
 pub mod fs_atomic;
 pub mod jobs;
 pub mod keymap;
@@ -24,6 +26,7 @@ pub mod listing;
 pub mod model;
 pub mod opener;
 pub mod paths;
+pub mod platform;
 pub mod session;
 pub mod window_state;
 
@@ -37,6 +40,9 @@ pub fn run() {
         .manage(commands::JobsState::default())
         .setup(|app| {
             commands::init_session(app.handle());
+            app.state::<commands::JobsState>()
+                .manager
+                .set_home(app.path().home_dir().ok());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -62,6 +68,10 @@ pub fn run() {
             commands::save_keymap_override,
             commands::resolve_location,
             commands::open_file,
+            commands::make_dir,
+            commands::create_file,
+            commands::rename_entry,
+            commands::check_paths,
             commands::subscribe_jobs,
             commands::start_job,
             commands::cancel_job,

@@ -9,6 +9,10 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'target_inside_source',
   'same_source_target',
   'disk_full',
+  'already_exists',
+  'invalid_name',
+  'dangerous_path',
+  'trash_failed',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -50,6 +54,14 @@ export function describeFsError(error: FsError): string {
       return 'Source and target folder are the same.';
     case 'disk_full':
       return 'The disk is full.';
+    case 'already_exists':
+      return 'A file or folder with this name exists already.';
+    case 'invalid_name':
+      return 'This name is not allowed.';
+    case 'dangerous_path':
+      return 'This is a drive, your home folder or a system folder.';
+    case 'trash_failed':
+      return 'The item could not be moved to the trash.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

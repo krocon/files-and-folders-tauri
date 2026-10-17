@@ -26,6 +26,7 @@ describe('job dialogs', () => {
       id,
       conflict: {
         conflictId: 3,
+        kind: 'exists',
         source: '/a/x.txt',
         target: '/b/x.txt',
         sourceMeta: { size: 2048, modifiedMs: 0, isDir: false },
@@ -51,7 +52,13 @@ describe('job dialogs', () => {
     expect(el.textContent).toContain('2.0 KB');
     const skip = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Skip')!;
     expect(skip.hasAttribute('data-autofocus')).toBe(true);
-    // the underlined letter is part of the word (no gap)
+    // the underlined letter is part of the word: one flex item, so the button's gap cannot split it
+    for (const b of el.querySelectorAll('.buttons button')) {
+      const items = [...b.childNodes].filter(
+        (n) => n.nodeType === Node.ELEMENT_NODE || n.textContent?.trim(),
+      );
+      expect(items).toHaveLength(1);
+    }
     expect([...el.querySelectorAll('.buttons button')].map((b) => b.textContent?.trim())).toEqual([
       'Overwrite',
       'Skip',
@@ -88,6 +95,38 @@ describe('job dialogs', () => {
       decision: { type: 'rename', newName: 'neu.txt' },
       applyToAll: false,
     });
+  });
+
+  it('conflict: a write-protected entry offers delete anyway / skip / cancel deleting', async () => {
+    const id = await store.start({ kind: 'delete', paths: ['/a/ro.txt'], mode: 'permanent' });
+    api.emit({
+      type: 'conflict',
+      id,
+      conflict: {
+        conflictId: 1,
+        kind: 'readOnly',
+        source: '/a/ro.txt',
+        target: '/a/ro.txt',
+        sourceMeta: { size: 1, modifiedMs: 0, isDir: false },
+        targetMeta: { size: 1, modifiedMs: 0, isDir: false },
+        suggestedName: '',
+      },
+    });
+    api.emit({ type: 'state', id, state: 'waitingForDecision' });
+    TestBed.inject(DialogService).show('conflict');
+    const fixture = TestBed.createComponent(ConflictDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Write-protected');
+    expect([...el.querySelectorAll('.buttons button')].map((b) => b.textContent?.trim())).toEqual([
+      'Delete anyway',
+      'Skip',
+      'Cancel deleting',
+    ]);
+    el.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, code: 'KeyR', bubbles: true }));
+    expect(api.answers).toEqual([]); // no "rename" here
+    el.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, code: 'KeyD', bubbles: true }));
+    expect(api.answers[0]).toMatchObject({ id, conflictId: 1, decision: { type: 'overwrite' } });
   });
 
   it('conflict: closes itself when the job ends elsewhere (no invisible modal)', async () => {

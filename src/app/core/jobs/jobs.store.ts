@@ -26,12 +26,12 @@ export class JobsStore {
   /** Messages for the user (failed start, …). */
   readonly messages = signal<readonly string[]>([]);
 
-  /** Jobs that are not finished, without folder sizes (shown on the Tasks button). */
+  /** Jobs that are not finished, without helper jobs (shown on the Tasks button). */
   readonly active = computed(() =>
-    this.jobs().filter((j) => !isFinished(j.state) && j.spec.kind !== 'dirSize'),
+    this.jobs().filter((j) => !isFinished(j.state) && !isHelperJob(j)),
   );
-  /** Jobs of the current "batch" for the Tasks button: all not cleared, except folder sizes. */
-  readonly visible = computed(() => this.jobs().filter((j) => j.spec.kind !== 'dirSize'));
+  /** Jobs of the current "batch" for the Tasks button: all not cleared, except helper jobs. */
+  readonly visible = computed(() => this.jobs().filter((j) => !isHelperJob(j)));
   /** Jobs waiting for an answer, in start order. */
   readonly waitingForAnswer = computed(() =>
     this.jobs().filter((j) => j.state === 'waitingForDecision' && j.conflict !== null),
@@ -217,4 +217,9 @@ export class JobsStore {
   private patch(id: string, fn: (j: JobInfo) => JobInfo): void {
     this.jobs.update((jobs) => jobs.map((j) => (j.id === id ? fn(j) : j)));
   }
+}
+
+/** Folder sizes and the copy dialog's count are not tasks of the user. */
+export function isHelperJob(job: JobInfo): boolean {
+  return job.spec.kind === 'dirSize' || job.spec.kind === 'count';
 }

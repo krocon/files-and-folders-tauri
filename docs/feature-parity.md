@@ -33,10 +33,10 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Filter nach Name/Endung/Art | 003 | ✅ | `navigation.spec.ts` | Schnellfilter je Tab (Wildcards, `|`, `-ausschließen`), bleibt sichtbar (alt: verschwand nach 6,7 s); Typ-Ahead |
 | Dual-Panel | 004 | ✅ | `workspace.store.spec.ts`, `file-panel.spec.ts`, E2E (Xvfb) | gemeinsamer Splitter (Maus/Tastatur/Doppelklick), aktive Seite = Quelle, `Tab` wechselt; Splitter-Position wird gespeichert (alt: nicht) |
 | Tabs, Tab-Presets | 004 | 🟡 | `workspace.store.spec.ts`, `tab-bar.spec.ts`, E2E | Tabs je Seite mit Kontextmenü (alt/mr vollständig), Zustand je Tab und Neustart; Presets offen. Abweichung: `Shift+Tab` = Fokus rückwärts statt nächster Tab (Barrierefreiheit), nächster Tab `Strg+Tab` |
-| Kopieren / Verschieben (in Queues) | 005/006 | 🟡 | Rust `jobs/tests_engine.rs`, `job-actions.spec.ts`, E2E | Kopieren als Job mit Byte-Fortschritt, Pause, Abbruch, **Konfliktabfrage** (alt: überschrieb still), Fehlerliste (alt: Queue stoppte); F5 vorerst mit einfacher Rückfrage, Kopierdialog und Verschieben in 006 |
-| Ordner erstellen, Multi-Mkdir | 3 | ⬜ | | |
-| Löschen, leere Ordner rekursiv löschen | 3 | ⬜ | | |
-| Umbenennen, Multi-Rename (Muster/Makros) | 3/8 | ⬜ | | AI-Rename von -mr: offen, ggf. ✖ |
+| Kopieren / Verschieben (in Queues) | 005/006 | ✅ | Rust `jobs/tests_engine.rs`, `jobs/tests_ops.rs`, `ops/ops.spec.ts`, `ops/dialogs.spec.ts`, E2E (Linux) | Dialog mit Live-Zählung, Zielvorschlägen (Tabs, Favoriten, zuletzt), Kopie unter neuem Namen, Konfliktvorgabe; **Konfliktabfrage** (alt: überschrieb still), Fehlerliste (alt: Queue stoppte); Verschieben über Laufwerke kopiert und löscht je Datei erst danach |
+| Ordner erstellen, Multi-Mkdir | 006/008 | 🟡 | Rust `fileops.rs`, `ops-logic.spec.ts`, E2E | Ordner (auch `a/b/c`) mit Serien-Vorschlag (mr) und Datei anlegen ✅; Multi-Mkdir in 008 |
+| Löschen, leere Ordner rekursiv löschen | 006/008 | 🟡 | Rust `jobs/tests_ops.rs` (inkl. Papierkorb unter Linux), E2E | **Papierkorb** als Standard (alt: endgültig), endgültig mit Shift, schreibgeschützt fragt, Wurzel/Home/System nur mit zweiter Bestätigung; leere Ordner löschen in 008 |
+| Umbenennen, Multi-Rename (Muster/Makros) | 006/007 | 🟡 | Rust `fileops.rs`, `ops.spec.ts`, E2E | Umbenennen per Dialog und **F2 in der Liste** (Endung nicht markiert), nur Groß/klein über Zwischennamen, nie überschreiben ✅; Multi-Rename in 007; AI-Rename von -mr: offen, ggf. ✖ |
 | Group Files (nach Namensmuster in Ordner) | 8+ | ⬜ | | |
 | Suche (Find) | 4 | ⬜ | | |
 | Change-Dir-Baumdialog, „Go to anything“ | 002/003 | 🟡 | `command-palette.spec.ts` | Befehlspalette mit allen Aktionen (unscharfe Suche, Kürzel); Ordner aus Verlauf/Favoriten in 003, Baumdialog offen |

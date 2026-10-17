@@ -17,6 +17,7 @@ const summary = (patch: Partial<Summary> = {}): Summary => ({
 });
 const conflict = (id: number) => ({
   conflictId: id,
+  kind: 'exists' as const,
   source: '/a/x',
   target: '/b/x',
   sourceMeta: { size: 1, modifiedMs: 1, isDir: false },

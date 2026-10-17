@@ -39,6 +39,10 @@ export type FsErrorCode =
   | 'target_inside_source'
   | 'same_source_target'
   | 'disk_full'
+  | 'already_exists'
+  | 'invalid_name'
+  | 'dangerous_path'
+  | 'trash_failed'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'
@@ -93,4 +97,13 @@ export function isNavigableDir(entry: DirEntry): boolean {
   return (
     entry.kind === 'directory' || (entry.kind === 'symlink' && entry.targetKind === 'directory')
   );
+}
+
+/** Why a path needs a second confirmation (Rust `paths::Danger`). */
+export type Danger = 'root' | 'home' | 'system';
+
+/** Result of `check_paths`. */
+export interface PathCheck {
+  readonly path: string;
+  readonly danger: Danger | null;
 }

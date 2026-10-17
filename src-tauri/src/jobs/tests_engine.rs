@@ -9,15 +9,15 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::{TempDir, tempdir};
 
-const WAIT: Duration = Duration::from_secs(20);
+pub(super) const WAIT: Duration = Duration::from_secs(20);
 
-struct Harness {
-    mgr: Arc<JobManager>,
-    events: Arc<Mutex<Vec<JobEvent>>>,
+pub(super) struct Harness {
+    pub(super) mgr: Arc<JobManager>,
+    pub(super) events: Arc<Mutex<Vec<JobEvent>>>,
 }
 
 impl Harness {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let events: Arc<Mutex<Vec<JobEvent>>> = Arc::default();
         let sink_events = events.clone();
         let mgr = JobManager::new(Arc::new(move |e: &JobEvent| {
@@ -26,7 +26,7 @@ impl Harness {
         Self { mgr, events }
     }
 
-    fn copy(&self, sources: &[&Path], target: &Path, background: bool) -> String {
+    pub(super) fn copy(&self, sources: &[&Path], target: &Path, background: bool) -> String {
         self.mgr
             .start(JobSpec::Copy {
                 sources: sources
@@ -35,18 +35,19 @@ impl Harness {
                     .collect(),
                 target_dir: target.to_string_lossy().into_owned(),
                 background,
+                options: CopyOptions::default(),
             })
             .unwrap()
     }
 
-    fn finish(&self, id: &str) -> JobInfo {
+    pub(super) fn finish(&self, id: &str) -> JobInfo {
         self.mgr
             .wait_finished(id, WAIT)
             .expect("job did not finish")
     }
 
     /// Waits until the job asks a conflict question and returns it.
-    fn conflict(&self, id: &str) -> Conflict {
+    pub(super) fn conflict(&self, id: &str) -> Conflict {
         let deadline = Instant::now() + WAIT;
         loop {
             let info = self.mgr.list().into_iter().find(|j| j.id == id).unwrap();
@@ -58,7 +59,7 @@ impl Harness {
         }
     }
 
-    fn wait_state(&self, id: &str, state: JobState) {
+    pub(super) fn wait_state(&self, id: &str, state: JobState) {
         let deadline = Instant::now() + WAIT;
         while self.mgr.list().iter().find(|j| j.id == id).unwrap().state != state {
             assert!(Instant::now() < deadline, "state {state:?} not reached");
@@ -66,7 +67,7 @@ impl Harness {
         }
     }
 
-    fn count(&self, pred: impl Fn(&JobEvent) -> bool) -> usize {
+    pub(super) fn count(&self, pred: impl Fn(&JobEvent) -> bool) -> usize {
         self.events
             .lock()
             .unwrap()
@@ -77,7 +78,7 @@ impl Harness {
 }
 
 /// Source tree: `Quelle ä/` with `a.txt`, `Unter ordner 📁/b.bin`, `leer/`.
-fn tree() -> (TempDir, PathBuf, PathBuf) {
+pub(super) fn tree() -> (TempDir, PathBuf, PathBuf) {
     let dir = tempdir().unwrap();
     let src = dir.path().join("Quelle ä");
     fs::create_dir_all(src.join("Unter ordner 📁")).unwrap();
@@ -89,13 +90,13 @@ fn tree() -> (TempDir, PathBuf, PathBuf) {
     (dir, src, dst)
 }
 
-fn no_temp_files(dir: &Path) -> bool {
+pub(super) fn no_temp_files(dir: &Path) -> bool {
     walk(dir)
         .iter()
         .all(|p| !p.to_string_lossy().contains(".part"))
 }
 
-fn walk(dir: &Path) -> Vec<PathBuf> {
+pub(super) fn walk(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for e in fs::read_dir(dir).unwrap() {
         let p = e.unwrap().path();
@@ -440,7 +441,8 @@ fn invalid_specs_are_refused_before_queueing() {
             .start(JobSpec::Copy {
                 sources: vec![],
                 target_dir: "/x".into(),
-                background: false
+                background: false,
+                options: CopyOptions::default(),
             })
             .is_err()
     );
@@ -449,7 +451,8 @@ fn invalid_specs_are_refused_before_queueing() {
             .start(JobSpec::Copy {
                 sources: vec!["rel".into()],
                 target_dir: "/x".into(),
-                background: false
+                background: false,
+                options: CopyOptions::default(),
             })
             .is_err()
     );

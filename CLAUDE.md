@@ -14,8 +14,9 @@
 
 - Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table), Prompt 004 (Fensteraufbau, Tabs,
   Sitzungszustand), Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste), Prompt 003
-  (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen) und Prompt 005 (Job-Engine: Kopieren mit
-  Fortschritt, Pause, Abbruch, Konflikten) sind fertig. Als Nächstes: Prompt 006 (Basis-Operationen). Details: `docs/roadmap.md`, `prompts/README.md`.
+  (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen), Prompt 005 (Job-Engine: Kopieren mit
+  Fortschritt, Pause, Abbruch, Konflikten) und Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
+  anlegen, Umbenennen inkl. F2 in der Liste) sind fertig. Als Nächstes: Prompt 007 (Multi-Rename). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -47,7 +48,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory)
   app/core/session/          Sitzungs-DTOs, SessionApi (invoke load_session/save_session)
   app/core/jobs/             Job-DTOs, JobsApi (ein Ereigniskanal), JobsStore (Root: alle Jobs, Konflikte, Waiter)
-  app/features/jobs/         Task-Liste, Konfliktdialog, Job-Aktionen (F5 minimal, Tasks)
+  app/features/jobs/         Task-Liste, Konfliktdialog (auch „schreibgeschützt“), Aktion Tasks
+  app/features/ops/          Dateioperationen: OpsStore (Auswahl, Ziele, Ausführung), Dialoge Kopieren/Verschieben,
+                             Löschen, Name (Ordner/Datei anlegen, Umbenennen), Aktionen F2/F5–F8
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
@@ -64,8 +67,10 @@ src-tauri/                   Rust (Tauri 2)
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
-  src/jobs/                  Job-Engine: manager (Warteschlange, Threads), control (Abbruch/Pause/Antwort),
-                             copy (Planung, Temp + Umbenennen, Konflikte), report (Drosselung); tests_engine.rs
+  src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
+  src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort),
+                             copy (Kopieren + Verschieben: Planung, Temp + Umbenennen, Konflikte), delete
+                             (Papierkorb/endgültig), report (Drosselung); tests_engine.rs, tests_ops.rs
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
@@ -133,6 +138,8 @@ prompts/                     Feature-Prompts (s. o.)
   - Sortieren per Spaltenkopf geht nur per **Doppelklick**; der Handler ruft `stopPropagation()` und es gibt kein
     Sortier-Ereignis. `setRows` sortiert nicht neu (`reSort()` danach).
   - Table-API nur über `TableBridge` (`file-list/table-bridge.ts`) ansprechen – dort sind die Workarounds gebündelt.
+  - Umbenennen in der Liste (F2): `FileBodyModel.isEditable` nur für die Namenszelle des Eintrags, eigener Editor
+    (`rename-editor.ts`, `getEditRenderer`), `tableApi.startEditing`; das Modell schreibt nie (`setValue` → false).
   - Filter extern: `externalFilterFunction` + `tableApi.externalFilterChanged()`; Sortierung über `ColumnDef.sortable`
     / `sortComparator` bzw. `tableApi.sort(fn)`.
   - Renderer ohne Angular (`CellRendererIf`) sind schneller als Angular-Komponenten; Daten nie unescaped in

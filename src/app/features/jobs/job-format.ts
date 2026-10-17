@@ -16,6 +16,9 @@ export const JOB_TEXTS = {
   moreErrors: (n: number) => `… and ${n} more`,
   conflictTitle: 'File already exists',
   conflictIntro: 'The target folder already contains a file with this name.',
+  readOnlyTitle: 'Write-protected',
+  readOnlyIntro: 'This entry is write-protected. Delete it anyway?',
+  entry: 'Entry',
   source: 'New',
   target: 'Existing',
   overwrite: 'Overwrite',
@@ -60,11 +63,21 @@ export function stateLabel(state: JobState): string {
 export function jobTitle(job: JobInfo): string {
   const spec = job.spec;
   switch (spec.kind) {
-    case 'copy': {
+    case 'copy':
+    case 'move': {
       const n = spec.sources.length;
       const what = n === 1 ? spec.sources[0] : `${n} entries`;
-      return `Copy ${what} → ${spec.targetDir}`;
+      const verb = spec.kind === 'copy' ? 'Copy' : 'Move';
+      const as = spec.options?.renameTo ? ` as ${spec.options.renameTo}` : '';
+      return `${verb} ${what} → ${spec.targetDir}${as}`;
     }
+    case 'delete': {
+      const n = spec.paths.length;
+      const what = n === 1 ? spec.paths[0] : `${n} entries`;
+      return spec.mode === 'trash' ? `Move ${what} to the trash` : `Delete ${what} permanently`;
+    }
+    case 'count':
+      return `Count ${spec.paths.length === 1 ? spec.paths[0] : `${spec.paths.length} entries`}`;
     case 'dirSize':
       return `Folder size of ${spec.path}`;
     case 'simulate':
