@@ -428,6 +428,10 @@ export class FileList implements OnDestroy {
       this.controller?.showRows(rows, label, state);
       // the folder column belongs to result tabs (after the state: it may carry column widths)
       this.bridge?.setColumnVisible('dir', this.store.searchKey() !== null);
+      this.bridge?.setColumnVisible(
+        'group',
+        this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',
+      );
       this.bridge?.setEmptyText(
         this.store.searchKey() !== null && rows.length === 0 ? NO_HITS : null,
       );

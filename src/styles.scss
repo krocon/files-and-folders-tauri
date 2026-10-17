@@ -13,6 +13,8 @@
   --color-accent: #2f6fde;
   --color-accent-text: #ffffff;
   --color-row-hover: #eef3fc;
+  /* every other group of a duplicate tab (design 016 E6) */
+  --color-group-alt-bg: #f3f5f8;
   --color-selection: #2f6fde;
   --color-selection-text: #ffffff;
   --color-focus: #1f5bc7;
@@ -69,6 +71,7 @@
     --color-border: #353a45;
     --color-accent: #5b8ef0;
     --color-row-hover: #262d3b;
+    --color-group-alt-bg: #232730;
     --color-selection: #2c5bb8;
     --color-selection-text: #ffffff;
     --color-focus: #8fb3ff;

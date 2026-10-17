@@ -20,6 +20,9 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'too_many_files',
   'too_many',
   'invalid_pattern',
+  'archive_error',
+  'unsafe_entry',
+  'archive_too_large',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -83,6 +86,12 @@ export function describeFsError(error: FsError): string {
       return 'Too many items at once.';
     case 'invalid_pattern':
       return 'The search pattern is invalid.';
+    case 'archive_error':
+      return 'The archive is broken or uses an unsupported feature.';
+    case 'unsafe_entry':
+      return 'An archive entry would leave the target folder or is a link – not extracted.';
+    case 'archive_too_large':
+      return 'The archive exceeds the safety limits (size, number of entries).';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

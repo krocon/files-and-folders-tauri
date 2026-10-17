@@ -5,45 +5,118 @@
 >
   @if (tab().search; as ref) {
     @let r = searchResult();
-    <span
-      class="crumbs search-head"
-      [id]="pathId"
-      [attr.title]="searchTexts.headerTitle"
-      [attr.aria-busy]="r?.running ? 'true' : null"
-      (dblclick)="editSearch()"
-    >
-      <b class="search-label">{{ searchTexts.header(ref.label) }}</b>
-      @if (r) {
-        <span class="search-roots">{{ searchTexts.inRoots(r.criteria.roots) }}</span>
-        <span class="search-count"
-          >· {{ searchTexts.hits(r.running ? r.stats.hits : r.hits.length) }}</span
-        >
-        @if (r.running) {
-          <span class="spinner" aria-hidden="true"></span>
-          <span class="search-roots">{{
-            searchTexts.scanned(r.stats.dirsScanned, r.stats.elapsedMs)
-          }}</span>
-        } @else if (r.cancelled) {
-          <span class="warn">· {{ searchTexts.cancelled }}</span>
+    @if (r?.kind === 'duplicates') {
+      <span
+        class="crumbs search-head"
+        [id]="pathId"
+        [attr.title]="searchTexts.headerTitle"
+        [attr.aria-busy]="r?.running ? 'true' : null"
+        (dblclick)="editSearch()"
+      >
+        <b class="search-label">{{ dupTexts.header }}</b>
+        @if (r) {
+          <span class="search-roots">{{ searchTexts.inRoots(r.criteria.roots) }}</span>
+          @if (r.running) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="search-roots">· {{ dupProgress() }}</span>
+          } @else {
+            <span class="search-count">· {{ dupSummary() }}</span>
+            @if (r.cancelled) {
+              <span class="warn">· {{ searchTexts.cancelled }}</span>
+            }
+          }
+          @if (r.stats.truncated) {
+            <span class="warn">· {{ searchTexts.truncated(r.stats.filesScanned) }}</span>
+          }
+          @if (r.error) {
+            <span class="warn" role="alert">· {{ r.error.message }}</span>
+          }
+          @if (r.stats.unreadable > 0) {
+            <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
+          }
         }
-        @if (r.stats.truncated) {
-          <span class="warn">· {{ searchTexts.truncated(r.stats.hits) }}</span>
-        }
-        @if (r.error) {
-          <span class="warn" role="alert">· {{ r.error.message }}</span>
-        }
-        @if (r.stats.unreadable > 0) {
-          <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
-        }
+      </span>
+      <span class="sr-only" role="status">{{ searchStatus() }}</span>
+      @if (r?.running) {
+        <button type="button" class="btn small" (click)="stopSearch()">
+          {{ searchTexts.stop }}
+        </button>
+      } @else if (r && r.hits.length > 0) {
+        <span class="dup-keep" role="group" [attr.aria-label]="dupTexts.keepTitle">
+          <button
+            type="button"
+            class="btn small"
+            [attr.title]="dupTexts.keepTitle"
+            (click)="keep('newest')"
+          >
+            {{ dupTexts.keepNewest }}
+          </button>
+          <button
+            type="button"
+            class="btn small"
+            [attr.title]="dupTexts.keepTitle"
+            (click)="keep('oldest')"
+          >
+            {{ dupTexts.keepOldest }}
+          </button>
+          <button
+            type="button"
+            class="btn small"
+            [attr.title]="dupTexts.keepTitle"
+            (click)="keep('first')"
+          >
+            {{ dupTexts.keepFirst }}
+          </button>
+        </span>
       }
-    </span>
-    <span class="sr-only" role="status">{{ searchStatus() }}</span>
-    @if (r?.running) {
-      <button type="button" class="btn small" (click)="stopSearch()">{{ searchTexts.stop }}</button>
+      @if (r && !r.running) {
+        <button type="button" class="btn small" (click)="rerunSearch()">
+          {{ searchTexts.again }}
+        </button>
+      }
     } @else {
-      <button type="button" class="btn small" (click)="rerunSearch()">
-        {{ searchTexts.again }}
-      </button>
+      <span
+        class="crumbs search-head"
+        [id]="pathId"
+        [attr.title]="searchTexts.headerTitle"
+        [attr.aria-busy]="r?.running ? 'true' : null"
+        (dblclick)="editSearch()"
+      >
+        <b class="search-label">{{ searchTexts.header(ref.label) }}</b>
+        @if (r) {
+          <span class="search-roots">{{ searchTexts.inRoots(r.criteria.roots) }}</span>
+          <span class="search-count"
+            >· {{ searchTexts.hits(r.running ? r.stats.hits : r.hits.length) }}</span
+          >
+          @if (r.running) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="search-roots">{{
+              searchTexts.scanned(r.stats.dirsScanned, r.stats.elapsedMs)
+            }}</span>
+          } @else if (r.cancelled) {
+            <span class="warn">· {{ searchTexts.cancelled }}</span>
+          }
+          @if (r.stats.truncated) {
+            <span class="warn">· {{ searchTexts.truncated(r.stats.hits) }}</span>
+          }
+          @if (r.error) {
+            <span class="warn" role="alert">· {{ r.error.message }}</span>
+          }
+          @if (r.stats.unreadable > 0) {
+            <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
+          }
+        }
+      </span>
+      <span class="sr-only" role="status">{{ searchStatus() }}</span>
+      @if (r?.running) {
+        <button type="button" class="btn small" (click)="stopSearch()">
+          {{ searchTexts.stop }}
+        </button>
+      } @else {
+        <button type="button" class="btn small" (click)="rerunSearch()">
+          {{ searchTexts.again }}
+        </button>
+      }
     }
   } @else if (editingPath()) {
     <form class="path-form" (submit)="submitPath($event, pathInput.value)">
@@ -84,6 +157,14 @@
         <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
       }
     </span>
+    @if (store.archive(); as a) {
+      <span class="archive-badge" [attr.title]="a.path">
+        {{ archiveTexts.archiveBadge(a.format) }}
+        @if (a.unsafeEntries > 0) {
+          · <span class="warn">{{ archiveTexts.unsafeHidden(a.unsafeEntries) }}</span>
+        }
+      </span>
+    }
   }
   <button
     type="button"

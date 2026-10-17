@@ -10,7 +10,7 @@ import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.model
 import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
 
 /** Column properties of the file list. `ext` is computed from the name. */
-export type FileColumn = 'name' | 'ext' | 'size' | 'modifiedMs' | 'dir';
+export type FileColumn = 'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'group';
 
 const COLLATOR_OPTIONS: Intl.CollatorOptions = { numeric: true, sensitivity: 'base' };
 
@@ -91,7 +91,18 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
   ),
   // folder of a search hit (design 009); natural order, then by name
   dir: fileComparator((a, b) => collator.compare(dirOf(a), dirOf(b))),
+  // group of a duplicate (design 016 E6), then by folder (a group stays together)
+  group: fileComparator(
+    (a, b) =>
+      (groupOf(a) as number) - (groupOf(b) as number) || collator.compare(dirOf(a), dirOf(b)),
+    (e) => groupOf(e) === undefined,
+  ),
 };
+
+/** Group of a duplicate (`SearchHit.group`), undefined elsewhere. */
+export function groupOf(entry: DirEntry): number | undefined {
+  return (entry as DirEntry & { group?: number }).group;
+}
 
 /** Folder of a search hit (`SearchHit.dir`), empty for listing entries. */
 export function dirOf(entry: DirEntry): string {
@@ -145,6 +156,18 @@ export function createFileColumns(): ColumnDefIf[] {
       bodyRenderer: new DateCellRenderer(),
       headerClasses: ['ge-table-text-align-start'],
       bodyClasses: ['ge-table-text-align-start'],
+    }),
+    // only shown in a duplicate tab (design 016 E6)
+    ColumnDef.create({
+      property: 'group',
+      headerLabel: 'Group',
+      width: px(64),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.group,
+      valueGetter: (row: DirEntry) => groupOf(row) ?? '',
+      headerClasses: ['ge-table-text-align-end'],
+      bodyClasses: ['ge-table-text-align-end'],
     }),
     // only shown in a search result tab (design 009 E4)
     ColumnDef.create({

@@ -328,7 +328,8 @@ export class JobsStore {
   }
 }
 
-/** Folder sizes, the copy dialog's count and searches are not tasks of the user. */
+/** Folder sizes, the copy dialog's count, searches and duplicate searches are not tasks of the user. */
 export function isHelperJob(job: JobInfo): boolean {
-  return job.spec.kind === 'dirSize' || job.spec.kind === 'count' || job.spec.kind === 'search';
+  const k = job.spec.kind;
+  return k === 'dirSize' || k === 'count' || k === 'search' || k === 'duplicates';
 }

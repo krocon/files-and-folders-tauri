@@ -99,6 +99,20 @@ export function jobTitle(job: JobInfo): string {
       const where = c.roots.length === 1 ? c.roots[0] : `${c.roots.length} folders`;
       return `Search "${c.name || '*'}" in ${where}`;
     }
+    case 'extract': {
+      const n = spec.entries.length;
+      const what =
+        n === 0 ? spec.archive : n === 1 ? spec.entries[0] : `${n} entries of ${spec.archive}`;
+      return `Extract ${what} → ${spec.targetDir}`;
+    }
+    case 'pack': {
+      const n = spec.sources.length;
+      return `Pack ${n === 1 ? spec.sources[0] : `${n} entries`} → ${spec.targetDir} / ${spec.name}`;
+    }
+    case 'duplicates': {
+      const c = spec.criteria;
+      return `Find duplicates in ${c.roots.length === 1 ? c.roots[0] : `${c.roots.length} folders`}`;
+    }
     case 'count':
       return `Count ${spec.paths.length === 1 ? spec.paths[0] : `${spec.paths.length} entries`}`;
     case 'dirSize':
