@@ -167,8 +167,8 @@ prompts/                     Feature-Prompts (s. o.)
 - Pro Prompt ein Branch `feat/<slug>` von `main`. **Commits zwischendurch sind erwünscht** (nach jeder grünen
   Phase, Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`), immer mit grünem `pnpm check` bzw.
   begründeter Ausnahme.
-- **Kein Push, kein Force-Push, kein `git reset --hard`, keine Releases** ohne ausdrückliche Anweisung. Fremde
-  Änderungen nie verwerfen.
+- ~~**Kein Push, kein Force-Push, kein `git reset --hard`, keine Releases** ohne ausdrückliche Anweisung. Fremde
+  Änderungen nie verwerfen.~~ du darfst pushen.
 - `.github/workflows/` kann aus der Remote-Sitzung nicht geschrieben werden – Workflow-Dateien Marc übergeben.
 - README, `docs/architecture.md`, `docs/roadmap.md`, `docs/feature-parity.md` bei relevanten Änderungen mitpflegen.
 
