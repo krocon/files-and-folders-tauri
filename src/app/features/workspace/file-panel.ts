@@ -15,6 +15,7 @@ import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
 import { describeFsError, toFsError } from '../../core/fs/fs-error';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
+import { JobsStore } from '../../core/jobs/jobs.store';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
@@ -84,6 +85,7 @@ export class FilePanel implements OnInit {
   });
   private readonly fsApi = inject(FsApi);
   private readonly confirm = inject(ConfirmService);
+  private readonly jobs = inject(JobsStore);
   protected readonly formatSize = formatSize;
 
   /** Tab that is shown or being opened. */
@@ -142,6 +144,21 @@ export class FilePanel implements OnInit {
             tab.filterText !== state.filterText)
         ) {
           this.ws.updateTab(tab.id, state);
+        }
+      });
+    });
+    // a job changed the shown folder (copy target, …): reload, cursor and marks stay
+    effect(() => {
+      const change = this.jobs.changedDirs();
+      untracked(() => {
+        const path = this.store.path();
+        if (
+          change &&
+          path !== null &&
+          change.dirs.includes(path) &&
+          !this.store.navigationLocked()
+        ) {
+          void this.store.refresh();
         }
       });
     });

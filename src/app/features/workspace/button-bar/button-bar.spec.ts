@@ -1,3 +1,6 @@
+import { JobsApi } from '../../../core/jobs/jobs-api';
+import { JobsStore } from '../../../core/jobs/jobs.store';
+import { FakeJobsApi } from '../../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../../core/actions/action.service';
 import { KeymapApi } from '../../../core/actions/keymap-api';
@@ -7,10 +10,16 @@ import { FakeKeymapApi } from '../../../../testing/fake-keymap-api';
 import { ButtonBar } from './button-bar';
 
 describe('ButtonBar', () => {
+  let jobsApi: FakeJobsApi;
+  beforeEach(() => (jobsApi = new FakeJobsApi()));
+
   async function render() {
     TestBed.configureTestingModule({
       imports: [ButtonBar],
-      providers: [{ provide: KeymapApi, useValue: new FakeKeymapApi() }],
+      providers: [
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
+        { provide: JobsApi, useValue: jobsApi },
+      ],
     });
     const actions = TestBed.inject(ActionService);
     actions.platform.set('linux');
@@ -58,5 +67,34 @@ describe('ButtonBar', () => {
     fixture.detectChanges();
     expect(el.querySelectorAll('[role="menu"] [role="group"]')).toHaveLength(4);
     expect(el.querySelector('.actions-toggle')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('shows "finished / total" and a progress bar on the Tasks button while jobs run', async () => {
+    const { fixture, el } = await render();
+    const jobs = TestBed.inject(JobsStore);
+    await jobs.init();
+    const spec = { kind: 'copy' as const, sources: ['/a'], targetDir: '/b' };
+    const tasks = () => el.querySelector<HTMLButtonElement>('[aria-label^="Tasks"]')!;
+    expect(tasks().getAttribute('aria-label')).toBe('Tasks');
+    await jobs.start(spec);
+    await jobs.start(spec);
+    jobsApi.emit({
+      type: 'progress',
+      id: 'j1',
+      progress: {
+        bytesDone: 50,
+        bytesTotal: 100,
+        itemsDone: 1,
+        itemsTotal: 2,
+        current: null,
+        rateBps: 0,
+      },
+    });
+    fixture.detectChanges();
+    expect(tasks().getAttribute('aria-label')).toBe('Tasks 0 / 2');
+    expect((el.querySelector('.task-bar span') as HTMLElement).style.width).toBe('50%');
+    jobsApi.emit({ type: 'state', id: 'j2', state: 'waitingForDecision' });
+    fixture.detectChanges();
+    expect(tasks().classList).toContain('attention');
   });
 });

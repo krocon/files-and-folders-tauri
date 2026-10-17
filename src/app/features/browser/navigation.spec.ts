@@ -1,8 +1,11 @@
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { JobsApi } from '../../core/jobs/jobs-api';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { FsApi } from '../../core/fs/fs-api';
 import { DirectoryListing, parentRow } from '../../core/fs/fs.models';
 import { FakeTableBridge } from '../../../testing/fake-table-bridge';
-import { deferred, dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
+import { dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from './file-browser.store';
 import { fileComparators } from './file-list/file-columns';
 import { FileListController, TYPE_AHEAD_RESET_MS } from './file-list/file-list-controller';
@@ -29,17 +32,23 @@ const tree: Record<string, DirectoryListing> = {
 
 describe('navigation (prompt 003)', () => {
   let api: FakeFsApi;
+  let jobsApi: FakeJobsApi;
   let store: FileBrowserStore;
   let scroll = 0;
 
   beforeEach(async () => {
     api = new FakeFsApi();
+    jobsApi = new FakeJobsApi();
     api.handler = (p) =>
       tree[p ?? '/h']
         ? Promise.resolve(tree[p ?? '/h'])
         : Promise.reject({ code: 'not_found', message: 'x', path: p });
     TestBed.configureTestingModule({
-      providers: [FileBrowserStore, { provide: FsApi, useValue: api }],
+      providers: [
+        FileBrowserStore,
+        { provide: FsApi, useValue: api },
+        { provide: JobsApi, useValue: jobsApi },
+      ],
     });
     store = TestBed.inject(FileBrowserStore);
     store.scrollTop = () => scroll;
@@ -162,19 +171,41 @@ describe('navigation (prompt 003)', () => {
     expect([...store.marked()]).toEqual(['/h/B']);
   });
 
-  it('calculates a folder size, shows it and cancels jobs when leaving', async () => {
-    api.sizes['/h/A'] = 4096;
+  it('calculates a folder size as a job, shows it and cancels jobs when leaving', async () => {
+    TestBed.inject(JobsStore).init();
+    await Promise.resolve();
+    jobsApi.autoFinishDirSize = true;
+    jobsApi.sizes['/h/A'] = 4096;
     await store.calcDirSize(tree['/h'].entries[0]);
+    expect(jobsApi.started[0].spec).toEqual({ kind: 'dirSize', path: '/h/A' });
     expect(store.entries()[0].size).toBe(4096);
-    const gate = deferred<void>();
-    api.sizeGate = gate.promise;
+
+    jobsApi.autoFinishDirSize = false;
     const running = store.calcDirSize(tree['/h'].entries[1]);
-    expect(store.sizeJobs()).toHaveLength(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    const id = jobsApi.started[1].id;
+    jobsApi.emit({ type: 'state', id, state: 'running' });
+    expect(store.sizeJobs()).toEqual([{ path: '/h/B', jobId: id, progress: { bytes: 0 } }]);
     await store.load('/h/A');
-    expect(api.cancelled).toHaveLength(1);
-    gate.resolve();
+    expect(jobsApi.cancelled).toEqual([id]);
+    jobsApi.emit({
+      type: 'finished',
+      id,
+      state: 'cancelled',
+      summary: {
+        itemsDone: 0,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 0,
+        errors: [],
+        error: null,
+        dirSize: null,
+      },
+    });
     await running;
     expect(store.sizeJobs()).toHaveLength(0);
+    expect(store.entries().every((e) => e.size === null || e.kind === 'file')).toBe(true);
   });
 
   it('opens files with the default app and asks before running programs', async () => {
@@ -233,7 +264,11 @@ describe('".." row and type-ahead in the list', () => {
         ]),
       );
     TestBed.configureTestingModule({
-      providers: [FileBrowserStore, { provide: FsApi, useValue: api }],
+      providers: [
+        FileBrowserStore,
+        { provide: FsApi, useValue: api },
+        { provide: JobsApi, useValue: new FakeJobsApi() },
+      ],
     });
     store = TestBed.inject(FileBrowserStore);
     await store.load('/h');

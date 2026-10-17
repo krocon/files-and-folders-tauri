@@ -14,6 +14,12 @@ import { ActionService } from '../../core/actions/action.service';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
 import { ConfirmDialog } from '../../shared/dialog/confirm-dialog';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { ConflictDialog } from '../jobs/conflict-dialog';
+import { JobListDialog } from '../jobs/job-list-dialog';
+import { JOB_TEXTS } from '../jobs/job-format';
+import { registerJobActions } from '../jobs/job-actions';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
@@ -32,7 +38,16 @@ import { WorkspaceStore } from './workspace.store';
  */
 @Component({
   selector: 'app-workspace',
-  imports: [FilePanel, ButtonBar, CommandPalette, MarkPatternDialog, ShortcutDialog, ConfirmDialog],
+  imports: [
+    FilePanel,
+    ButtonBar,
+    CommandPalette,
+    MarkPatternDialog,
+    ShortcutDialog,
+    ConfirmDialog,
+    JobListDialog,
+    ConflictDialog,
+  ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +62,8 @@ export class Workspace implements OnInit {
   protected readonly ws = inject(WorkspaceStore);
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
+  protected readonly jobs = inject(JobsStore);
+  private readonly confirm = inject(ConfirmService);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -72,11 +89,44 @@ export class Workspace implements OnInit {
         }
       });
     });
+    // a job asks: show the question unless another dialog (other than the task list) is open
+    effect(() => {
+      const job = this.jobs.conflictToShow();
+      const open = this.dialogs.open();
+      untracked(() => {
+        if (job && (open === null || open === 'jobs')) {
+          this.dialogs.show('conflict');
+        }
+      });
+    });
+    effect(() => {
+      const req = this.jobs.quitRequest();
+      if (req) {
+        untracked(() => void this.askQuit(req.running));
+      }
+    });
+  }
+
+  private async askQuit(running: number): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: JOB_TEXTS.quitTitle,
+      message: JOB_TEXTS.quitMessage(running),
+      confirmLabel: JOB_TEXTS.quitConfirm,
+      danger: true,
+    });
+    if (ok) {
+      await this.ws.flush();
+      await this.jobs.cancelAllAndQuit();
+    }
   }
 
   ngOnInit(): void {
     this.destroyRef.onDestroy(registerWorkspaceActions(this.actions, this.ws, this.dialogs));
+    this.destroyRef.onDestroy(
+      registerJobActions(this.actions, this.ws, this.jobs, this.dialogs, this.confirm),
+    );
     this.destroyRef.onDestroy(this.keyboard.attach(document));
+    void this.jobs.init();
     void this.ws.init();
     void this.actions.init();
   }

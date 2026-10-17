@@ -49,3 +49,27 @@
   background: var(--color-shortcut-bg);
   border-radius: 3px;
 }
+
+.fbtn {
+  position: relative;
+}
+
+.fbtn.attention {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.task-bar {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 1px;
+  height: 2px;
+  background: var(--color-surface-raised);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+}

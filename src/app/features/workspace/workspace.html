@@ -38,6 +38,12 @@
       <button type="button" class="btn" (click)="actions.dismiss(i)">{{ texts.dismiss }}</button>
     </div>
   }
+  @for (n of jobs.messages(); track $index; let i = $index) {
+    <div class="notice">
+      <span>{{ n }}</span>
+      <button type="button" class="btn" (click)="jobs.dismiss(i)">{{ texts.dismiss }}</button>
+    </div>
+  }
 </div>
 
 @switch (dialogs.open()) {
@@ -58,5 +64,11 @@
   }
   @case ('confirm') {
     <app-confirm-dialog />
+  }
+  @case ('jobs') {
+    <app-job-list-dialog />
+  }
+  @case ('conflict') {
+    <app-conflict-dialog />
   }
 }

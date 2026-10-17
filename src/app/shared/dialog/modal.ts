@@ -21,7 +21,7 @@ let modalSeq = 0;
     <div class="backdrop" (pointerdown)="onBackdrop($event)">
       <div
         class="dialog"
-        role="dialog"
+        [attr.role]="role()"
         aria-modal="true"
         [attr.aria-labelledby]="titleId"
         [style.width]="width()"
@@ -38,6 +38,8 @@ let modalSeq = 0;
 export class Modal {
   readonly heading = input.required<string>();
   readonly width = input('34rem');
+  /** `alertdialog` for questions that interrupt work (conflicts). */
+  readonly role = input<'dialog' | 'alertdialog'>('dialog');
   readonly closed = output<void>();
   protected readonly titleId = `fnf-modal-${++modalSeq}`;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

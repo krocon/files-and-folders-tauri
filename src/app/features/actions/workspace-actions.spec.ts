@@ -1,3 +1,5 @@
+import { JobsApi } from '../../core/jobs/jobs-api';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../core/actions/action.service';
 import { KeymapApi } from '../../core/actions/keymap-api';
@@ -37,6 +39,7 @@ describe('workspace actions', () => {
       providers: [
         FileBrowserStore,
         { provide: FsApi, useValue: fs },
+        { provide: JobsApi, useValue: new FakeJobsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
       ],

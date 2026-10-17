@@ -1,3 +1,6 @@
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { JobsApi } from '../../core/jobs/jobs-api';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { Component, input, output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { TableStateIf } from '@guiexpert/table';
@@ -67,6 +70,7 @@ describe('FilePanel', () => {
       imports: [FilePanel],
       providers: [
         { provide: FsApi, useValue: fs },
+        { provide: JobsApi, useValue: new FakeJobsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
       ],
     });
@@ -296,5 +300,18 @@ describe('FilePanel', () => {
     await settle();
     expect(store.path()).toBe('/other');
     expect(ws.recent()[0]).toBe('/other');
+  });
+
+  it('reloads when a job changed the shown folder', async () => {
+    const { settle } = await render();
+    const jobs = TestBed.inject(JobsStore);
+    await jobs.init();
+    const before = fs.calls.length;
+    (TestBed.inject(JobsApi) as FakeJobsApi).emit({ type: 'dirsChanged', dirs: ['/elsewhere'] });
+    await settle();
+    expect(fs.calls.length).toBe(before);
+    (TestBed.inject(JobsApi) as FakeJobsApi).emit({ type: 'dirsChanged', dirs: ['/data'] });
+    await settle();
+    expect(fs.calls.slice(before)).toEqual(['/data']);
   });
 });

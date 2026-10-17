@@ -1,0 +1,143 @@
+import { TestBed } from '@angular/core/testing';
+import { JobsApi } from '../../core/jobs/jobs-api';
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { DialogService } from '../../shared/dialog/dialog.service';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
+import { ConflictDialog } from './conflict-dialog';
+import { JobListDialog } from './job-list-dialog';
+
+const copy = { kind: 'copy' as const, sources: ['/a/x.txt'], targetDir: '/b' };
+
+describe('job dialogs', () => {
+  let api: FakeJobsApi;
+  let store: JobsStore;
+
+  beforeEach(async () => {
+    api = new FakeJobsApi();
+    TestBed.configureTestingModule({ providers: [{ provide: JobsApi, useValue: api }] });
+    store = TestBed.inject(JobsStore);
+    await store.init();
+  });
+
+  async function withConflict() {
+    const id = await store.start(copy);
+    api.emit({
+      type: 'conflict',
+      id,
+      conflict: {
+        conflictId: 3,
+        source: '/a/x.txt',
+        target: '/b/x.txt',
+        sourceMeta: { size: 2048, modifiedMs: 0, isDir: false },
+        targetMeta: { size: 10, modifiedMs: 0, isDir: false },
+        suggestedName: 'x (1).txt',
+      },
+    });
+    api.emit({ type: 'state', id, state: 'waitingForDecision' });
+    TestBed.inject(DialogService).show('conflict');
+    const fixture = TestBed.createComponent(ConflictDialog);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return { id, fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('conflict: alertdialog with both files, Skip is the default', async () => {
+    const { el } = await withConflict();
+    expect(el.querySelector('[role="alertdialog"]')).not.toBeNull();
+    expect(el.textContent).toContain('/b/x.txt');
+    expect(el.textContent).toContain('2.0 KB');
+    const skip = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('kip'))!;
+    expect(skip.hasAttribute('data-autofocus')).toBe(true);
+  });
+
+  it('conflict: Alt+letter answers, "apply to all" is passed on', async () => {
+    const { el, fixture, id } = await withConflict();
+    (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    fixture.detectChanges();
+    el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'o', code: 'KeyO', altKey: true, bubbles: true }),
+    );
+    expect(api.answers).toEqual([
+      { id, conflictId: 3, decision: { type: 'overwrite' }, applyToAll: true },
+    ]);
+    expect(TestBed.inject(DialogService).open()).toBeNull();
+  });
+
+  it('conflict: rename with a typed name', async () => {
+    const { el, fixture, id } = await withConflict();
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('ename'))!.click();
+    fixture.detectChanges();
+    const input = el.querySelector<HTMLInputElement>('.rename input')!;
+    expect(input.value).toBe('x (1).txt');
+    input.value = 'neu.txt';
+    el.querySelector('.rename')!.dispatchEvent(new Event('submit'));
+    expect(api.answers[0]).toEqual({
+      id,
+      conflictId: 3,
+      decision: { type: 'rename', newName: 'neu.txt' },
+      applyToAll: false,
+    });
+  });
+
+  it('conflict: Esc postpones the question, the job keeps waiting', async () => {
+    const { el, id } = await withConflict();
+    el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(api.answers).toEqual([]);
+    expect(store.conflictToShow()).toBeNull();
+    expect(store.pendingConflict()?.id).toBe(id);
+  });
+
+  it('job list: progress, pause/cancel, errors after the end, clear finished', async () => {
+    const id = await store.start(copy);
+    api.emit({ type: 'state', id, state: 'running' });
+    api.emit({
+      type: 'progress',
+      id,
+      progress: {
+        bytesDone: 30,
+        bytesTotal: 60,
+        itemsDone: 1,
+        itemsTotal: 2,
+        current: '/a/x.txt',
+        rateBps: 0,
+      },
+    });
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('50');
+    const button = (label: string) =>
+      [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
+    button('Pause').click();
+    button('Cancel').click();
+    expect(api.paused).toEqual([id]);
+    expect(api.cancelled).toEqual([id]);
+    api.emit({
+      type: 'finished',
+      id,
+      state: 'doneWithErrors',
+      summary: {
+        itemsDone: 1,
+        itemsSkipped: 0,
+        itemsFailed: 1,
+        bytesDone: 60,
+        errors: [
+          {
+            path: '/a/locked',
+            error: { code: 'permission_denied', message: 'denied', path: '/a/locked' },
+          },
+        ],
+        error: null,
+        dirSize: null,
+      },
+    });
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Done with errors');
+    expect(el.querySelector('.errors summary')?.textContent).toContain('1 error');
+    expect(el.querySelector('.errors li')?.textContent).toContain('/a/locked');
+    button('Remove finished').click();
+    expect(api.clearCalls).toBe(1);
+  });
+});

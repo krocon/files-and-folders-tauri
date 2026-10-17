@@ -5,11 +5,12 @@ import { toFsError } from '../../core/fs/fs-error';
 import {
   DirEntry,
   DirectoryListing,
-  DirSize,
   FsError,
   isNavigableDir,
   isParentRow,
 } from '../../core/fs/fs.models';
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { isFinished } from '../../core/jobs/jobs.models';
 import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
 import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
@@ -29,15 +30,12 @@ export interface LoadOptions {
   readonly scrollTop?: number;
 }
 
-/** A folder size calculation of this panel. */
+/** A folder size calculation of this panel (a `dirSize` job of the engine). */
 export interface SizeJob {
   readonly path: string;
   readonly jobId: string;
-  readonly progress: DirSize | null;
+  readonly progress: { readonly bytes: number } | null;
 }
-
-let jobSeq = 0;
-const JOB_PREFIX = Math.random().toString(36).slice(2, 10);
 
 /**
  * State of one file panel. Provided per component (not root): two panels and
@@ -69,7 +67,20 @@ export class FileBrowserStore {
   readonly hiddenVisible = signal(false);
   readonly filterActive = signal(false);
   readonly filterText = signal('');
-  readonly sizeJobs = signal<readonly SizeJob[]>([]);
+  private readonly jobs = inject(JobsStore);
+  /** Size jobs started by this panel: job id → folder path. */
+  private readonly ownSizeJobs = signal<ReadonlyMap<string, string>>(new Map());
+  readonly sizeJobs = computed<readonly SizeJob[]>(() => {
+    const own = this.ownSizeJobs();
+    return this.jobs
+      .jobs()
+      .filter((j) => own.has(j.id) && !isFinished(j.state))
+      .map((j) => ({
+        path: own.get(j.id)!,
+        jobId: j.id,
+        progress: j.state === 'running' ? { bytes: j.progress.bytesDone } : null,
+      }));
+  });
 
   /** Current vertical scroll position (provided by the file list). */
   scrollTop: () => number = () => 0;
@@ -320,40 +331,43 @@ export class FileBrowserStore {
 
   // ---- folder sizes (design 003 E7) ----
 
-  /** Starts the size calculation of a folder (no-op for files or if already running). */
-  calcDirSize(entry: DirEntry): Promise<void> {
+  /** Starts the size calculation of a folder as a job (no-op for files or if already running). */
+  async calcDirSize(entry: DirEntry): Promise<void> {
     if (!isNavigableDir(entry) || isParentRow(entry) || entry.kind === 'symlink') {
-      return Promise.resolve();
+      return;
     }
-    if (this.sizeJobs().some((j) => j.path === entry.path)) {
-      return Promise.resolve();
+    if ([...this.ownSizeJobs().values()].includes(entry.path)) {
+      return;
     }
-    // unique across webview reloads (Rust refuses duplicate ids)
-    const jobId = `size-${JOB_PREFIX}-${++jobSeq}`;
     const folder = this.path();
-    this.sizeJobs.update((jobs) => [...jobs, { path: entry.path, jobId, progress: null }]);
-    return this.api
-      .calcDirSize(entry.path, jobId, (progress) =>
-        this.sizeJobs.update((jobs) =>
-          jobs.map((j) => (j.jobId === jobId ? { ...j, progress } : j)),
-        ),
-      )
-      .then((result) => {
-        if (!result.cancelled && this.path() === folder) {
-          this.applyDirSize(entry.path, result.bytes);
-        }
-      })
-      .catch((err) => {
-        if (this.path() === folder) {
-          this.error.set(toFsError(err));
-        }
-      })
-      .finally(() => this.sizeJobs.update((jobs) => jobs.filter((j) => j.jobId !== jobId)));
+    let id: string;
+    try {
+      id = await this.jobs.start({ kind: 'dirSize', path: entry.path });
+    } catch (err) {
+      this.error.set(toFsError(err));
+      return;
+    }
+    this.ownSizeJobs.update((m) => new Map(m).set(id, entry.path));
+    const job = await this.jobs.whenFinished(id);
+    this.ownSizeJobs.update((m) => {
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
+    if (this.path() !== folder) {
+      return;
+    }
+    const size = job.summary?.dirSize;
+    if (job.state === 'done' && size) {
+      this.applyDirSize(entry.path, size.bytes);
+    } else if (job.state === 'failed' && job.summary?.error) {
+      this.error.set(job.summary.error);
+    }
   }
 
   cancelSizeJobs(): void {
-    for (const j of this.sizeJobs()) {
-      void this.api.cancelDirSize(j.jobId);
+    for (const id of this.ownSizeJobs().keys()) {
+      void this.jobs.cancel(id);
     }
   }
 

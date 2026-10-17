@@ -1,4 +1,4 @@
-import { DirEntry, DirectoryListing, DirSize, Location } from '../app/core/fs/fs.models';
+import { DirEntry, DirectoryListing, Location } from '../app/core/fs/fs.models';
 import { FsApi } from '../app/core/fs/fs-api';
 
 export function entry(name: string, overrides: Partial<DirEntry> = {}): DirEntry {
@@ -44,29 +44,6 @@ export class FakeFsApi extends FsApi {
     return loc
       ? Promise.resolve(loc)
       : Promise.reject({ code: 'not_found', message: 'No such file or directory', path: input });
-  }
-
-  /** Sizes by path; progress is reported once before resolving. */
-  sizes: Record<string, number> = {};
-  readonly sizeJobs: string[] = [];
-  readonly cancelled: string[] = [];
-  sizeGate: Promise<void> = Promise.resolve();
-  async calcDirSize(
-    path: string,
-    jobId: string,
-    onProgress: (p: DirSize) => void,
-  ): Promise<DirSize> {
-    this.sizeJobs.push(jobId);
-    const bytes = this.sizes[path] ?? 0;
-    onProgress({ files: 1, dirs: 0, bytes: bytes / 2, unreadable: 0, cancelled: false });
-    await this.sizeGate;
-    const cancelled = this.cancelled.includes(jobId);
-    return { files: 2, dirs: 1, bytes: cancelled ? bytes / 2 : bytes, unreadable: 0, cancelled };
-  }
-
-  cancelDirSize(jobId: string): Promise<void> {
-    this.cancelled.push(jobId);
-    return Promise.resolve();
   }
 
   readonly opened: { path: string; allowExecutable: boolean }[] = [];
