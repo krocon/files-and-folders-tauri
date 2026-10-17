@@ -1,0 +1,526 @@
+//! Job manager: ids, the serial queue, one thread per running job, the
+//! current state of every job (for snapshots after a WebView reload) and the
+//! event sink. The lock is never held during file I/O or while sending events.
+
+use super::report::Reporter;
+use super::{Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, Summary, copy};
+use crate::dirsize;
+use crate::error::{FsError, FsErrorCode};
+use crate::paths::validate_input_path;
+use std::collections::VecDeque;
+use std::path::PathBuf;
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// Receives every event (the command layer forwards them to the frontend).
+pub type Sink = Arc<dyn Fn(&JobEvent) + Send + Sync>;
+
+struct Entry {
+    info: JobInfo,
+    control: Arc<Control>,
+}
+
+#[derive(Default)]
+struct Inner {
+    jobs: Vec<Entry>,
+    next_id: u64,
+    serial_busy: bool,
+    queue: VecDeque<String>,
+    running: usize,
+}
+
+pub struct JobManager {
+    inner: Mutex<Inner>,
+    changed: Condvar,
+    sink: Sink,
+}
+
+impl JobManager {
+    pub fn new(sink: Sink) -> Arc<Self> {
+        Arc::new(Self {
+            inner: Mutex::new(Inner::default()),
+            changed: Condvar::new(),
+            sink,
+        })
+    }
+
+    fn lock(&self) -> MutexGuard<'_, Inner> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Validates the spec and queues (or starts) the job. Returns its id.
+    pub fn start(self: &Arc<Self>, spec: JobSpec) -> Result<String, FsError> {
+        validate(&spec)?;
+        let parallel = spec.is_parallel();
+        let (id, run_now, info) = {
+            let mut inner = self.lock();
+            inner.next_id += 1;
+            let id = format!("j{}", inner.next_id);
+            let run_now = parallel || !inner.serial_busy;
+            if !parallel {
+                if run_now {
+                    inner.serial_busy = true;
+                } else {
+                    inner.queue.push_back(id.clone());
+                }
+            }
+            let info = JobInfo {
+                id: id.clone(),
+                spec,
+                state: JobState::Queued,
+                progress: Progress::default(),
+                conflict: None,
+                summary: None,
+            };
+            inner.jobs.push(Entry {
+                info: info.clone(),
+                control: Arc::new(Control::default()),
+            });
+            (id, run_now, info)
+        };
+        (self.sink)(&JobEvent::Added {
+            job: Box::new(info),
+        });
+        if run_now {
+            self.spawn(id.clone());
+        }
+        Ok(id)
+    }
+
+    fn spawn(self: &Arc<Self>, id: String) {
+        self.lock().running += 1;
+        let me = self.clone();
+        let spawned = thread::Builder::new().name(format!("fnf-job-{id}")).spawn({
+            let id = id.clone();
+            move || me.run(&id)
+        });
+        if spawned.is_err() {
+            // no thread available: report the job as failed and keep the queue moving
+            self.lock().running -= 1;
+            let summary = Summary {
+                error: Some(FsError::new(
+                    FsErrorCode::Io,
+                    "Could not start a worker thread",
+                    None,
+                )),
+                ..Summary::default()
+            };
+            self.finish(&id, JobState::Failed, summary);
+        }
+    }
+
+    fn run(self: &Arc<Self>, id: &str) {
+        let Some((spec, control)) = self.with_job(id, |e| (e.info.spec.clone(), e.control.clone()))
+        else {
+            return;
+        };
+        let emit = |e: JobEvent| self.record(e);
+        let (state, summary) = if control.is_cancelled() {
+            (JobState::Cancelled, Summary::default())
+        } else {
+            match &spec {
+                JobSpec::Copy {
+                    sources,
+                    target_dir,
+                    ..
+                } => {
+                    let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                    copy::run(id, &sources, &PathBuf::from(target_dir), &control, &emit)
+                }
+                JobSpec::DirSize { path } => {
+                    run_dir_size(id, &PathBuf::from(path), &control, &emit)
+                }
+                JobSpec::Simulate { items, item_ms } => {
+                    run_simulate(id, *items, *item_ms, &control, &emit)
+                }
+            }
+        };
+        self.finish(id, state, summary);
+    }
+
+    /// Records the final state and starts the next queued serial job.
+    fn finish(self: &Arc<Self>, id: &str, state: JobState, summary: Summary) {
+        self.record(JobEvent::Finished {
+            id: id.to_string(),
+            state,
+            summary: Box::new(summary),
+        });
+        let next = {
+            let mut inner = self.lock();
+            inner.running = inner.running.saturating_sub(1);
+            let parallel = inner
+                .jobs
+                .iter()
+                .find(|e| e.info.id == id)
+                .is_some_and(|e| e.info.spec.is_parallel());
+            let mut next = None;
+            if !parallel {
+                inner.serial_busy = false;
+                if let Some(n) = inner.queue.pop_front() {
+                    inner.serial_busy = true;
+                    next = Some(n);
+                }
+            }
+            self.changed.notify_all();
+            next
+        };
+        if let Some(n) = next {
+            self.spawn(n);
+        }
+    }
+
+    /// Updates the stored job info from an event, then forwards it.
+    fn record(&self, event: JobEvent) {
+        {
+            let mut inner = self.lock();
+            fn find<'a>(inner: &'a mut Inner, id: &str) -> Option<&'a mut JobInfo> {
+                inner
+                    .jobs
+                    .iter_mut()
+                    .find(|e| e.info.id == id)
+                    .map(|e| &mut e.info)
+            }
+            match &event {
+                JobEvent::State { id, state } => {
+                    if let Some(info) = find(&mut inner, id) {
+                        info.state = *state;
+                        if *state != JobState::WaitingForDecision {
+                            info.conflict = None;
+                        }
+                    }
+                }
+                JobEvent::Progress { id, progress } => {
+                    if let Some(info) = find(&mut inner, id) {
+                        info.progress = progress.clone();
+                    }
+                }
+                JobEvent::Conflict { id, conflict } => {
+                    if let Some(info) = find(&mut inner, id) {
+                        info.conflict = Some(conflict.clone());
+                    }
+                }
+                JobEvent::Finished { id, state, summary } => {
+                    if let Some(info) = find(&mut inner, id) {
+                        info.state = *state;
+                        info.summary = Some(summary.as_ref().clone());
+                        info.conflict = None;
+                        info.progress.current = None;
+                    }
+                }
+                _ => {}
+            }
+            self.changed.notify_all();
+        }
+        (self.sink)(&event);
+    }
+
+    fn with_job<T>(&self, id: &str, f: impl FnOnce(&Entry) -> T) -> Option<T> {
+        self.lock().jobs.iter().find(|e| e.info.id == id).map(f)
+    }
+
+    pub fn cancel(self: &Arc<Self>, id: &str) {
+        let queued = {
+            let mut inner = self.lock();
+            let pos = inner.queue.iter().position(|q| q == id);
+            if let Some(p) = pos {
+                inner.queue.remove(p);
+            }
+            if let Some(e) = inner.jobs.iter().find(|e| e.info.id == id) {
+                e.control.cancel();
+            }
+            pos.is_some()
+        };
+        if queued {
+            // never started: finish it here (the running count was never increased)
+            self.record(JobEvent::Finished {
+                id: id.to_string(),
+                state: JobState::Cancelled,
+                summary: Box::default(),
+            });
+        }
+    }
+
+    pub fn pause(&self, id: &str) {
+        let Some((control, state)) = self.with_job(id, |e| (e.control.clone(), e.info.state))
+        else {
+            return;
+        };
+        if state.is_finished() {
+            return;
+        }
+        control.set_paused(true);
+        if matches!(
+            state,
+            JobState::Running | JobState::Planning | JobState::Queued
+        ) {
+            self.record(JobEvent::State {
+                id: id.to_string(),
+                state: JobState::Paused,
+            });
+        }
+    }
+
+    pub fn resume(&self, id: &str) {
+        let Some((control, state)) = self.with_job(id, |e| (e.control.clone(), e.info.state))
+        else {
+            return;
+        };
+        control.set_paused(false);
+        if state == JobState::Paused {
+            self.record(JobEvent::State {
+                id: id.to_string(),
+                state: JobState::Running,
+            });
+        }
+    }
+
+    /// Passes the answer to the job – only once per conflict (a second click on
+    /// another button must not replace the first answer).
+    pub fn resolve_conflict(
+        &self,
+        id: &str,
+        conflict_id: u64,
+        decision: Decision,
+        apply_to_all: bool,
+    ) {
+        let control = {
+            let mut inner = self.lock();
+            let Some(entry) = inner.jobs.iter_mut().find(|e| e.info.id == id) else {
+                return;
+            };
+            if entry.info.conflict.as_ref().map(|c| c.conflict_id) != Some(conflict_id) {
+                return;
+            }
+            entry.info.conflict = None;
+            entry.control.clone()
+        };
+        control.answer(conflict_id, decision, apply_to_all);
+    }
+
+    pub fn list(&self) -> Vec<JobInfo> {
+        self.lock().jobs.iter().map(|e| e.info.clone()).collect()
+    }
+
+    /// Removes finished jobs from the list.
+    pub fn clear_finished(&self) {
+        let ids: Vec<String> = {
+            let mut inner = self.lock();
+            let ids = inner
+                .jobs
+                .iter()
+                .filter(|e| e.info.state.is_finished())
+                .map(|e| e.info.id.clone())
+                .collect();
+            inner.jobs.retain(|e| !e.info.state.is_finished());
+            ids
+        };
+        if !ids.is_empty() {
+            (self.sink)(&JobEvent::Removed { ids });
+        }
+    }
+
+    /// Jobs not finished yet (queued, running, paused, waiting).
+    pub fn active_count(&self) -> usize {
+        self.lock()
+            .jobs
+            .iter()
+            .filter(|e| !e.info.state.is_finished())
+            .count()
+    }
+
+    pub fn cancel_all(self: &Arc<Self>) {
+        let ids: Vec<String> = self
+            .lock()
+            .jobs
+            .iter()
+            .filter(|e| !e.info.state.is_finished())
+            .map(|e| e.info.id.clone())
+            .collect();
+        for id in ids {
+            self.cancel(&id);
+        }
+    }
+
+    /// Asks the frontend to confirm quitting while jobs run.
+    pub fn request_quit(&self) {
+        let running = self.active_count();
+        (self.sink)(&JobEvent::QuitRequested { running });
+    }
+
+    /// Waits until no job thread runs (e.g. after `cancel_all`). `false` on timeout.
+    pub fn wait_idle(&self, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        let mut inner = self.lock();
+        while inner.running > 0 || !inner.queue.is_empty() {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                return false;
+            }
+            inner = self
+                .changed
+                .wait_timeout(inner, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+        true
+    }
+
+    /// Waits for a job to finish (tests and quitting). `None` on timeout or unknown id.
+    pub fn wait_finished(&self, id: &str, timeout: Duration) -> Option<JobInfo> {
+        let deadline = Instant::now() + timeout;
+        let mut inner = self.lock();
+        loop {
+            let info = inner
+                .jobs
+                .iter()
+                .find(|e| e.info.id == id)
+                .map(|e| e.info.clone())?;
+            if info.state.is_finished() {
+                return Some(info);
+            }
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                return None;
+            }
+            inner = self
+                .changed
+                .wait_timeout(inner, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+}
+
+/// Checks paths before a job is accepted (the operation validates again).
+fn validate(spec: &JobSpec) -> Result<(), FsError> {
+    match spec {
+        JobSpec::Copy {
+            sources,
+            target_dir,
+            ..
+        } => {
+            if sources.is_empty() {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    "Nothing to copy",
+                    None,
+                ));
+            }
+            for s in sources {
+                validate_input_path(s)?;
+            }
+            validate_input_path(target_dir)?;
+        }
+        JobSpec::DirSize { path } => {
+            validate_input_path(path)?;
+        }
+        JobSpec::Simulate { .. } => {
+            if !cfg!(debug_assertions) {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    "Test jobs exist only in debug builds",
+                    None,
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn run_dir_size(
+    id: &str,
+    path: &std::path::Path,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    if !path.is_dir() {
+        let error = FsError::new(FsErrorCode::NotADirectory, "Not a folder", Some(path));
+        return (
+            JobState::Failed,
+            Summary {
+                error: Some(error),
+                ..Summary::default()
+            },
+        );
+    }
+    emit(JobEvent::State {
+        id: id.to_string(),
+        state: JobState::Running,
+    });
+    let size = dirsize::dir_size(
+        path,
+        control.cancel_flag(),
+        Duration::from_millis(100),
+        |p| {
+            emit(JobEvent::Progress {
+                id: id.to_string(),
+                progress: Progress {
+                    bytes_done: p.bytes,
+                    items_done: p.files + p.dirs,
+                    ..Progress::default()
+                },
+            });
+        },
+    );
+    let state = if size.cancelled {
+        JobState::Cancelled
+    } else {
+        JobState::Done
+    };
+    let summary = Summary {
+        items_done: size.files + size.dirs,
+        bytes_done: size.bytes,
+        dir_size: Some(size),
+        ..Summary::default()
+    };
+    (state, summary)
+}
+
+/// Debug-only test job: `items` steps of `item_ms` each, 1 000 "bytes" per step.
+fn run_simulate(
+    id: &str,
+    items: u32,
+    item_ms: u32,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    let mut rep = Reporter::new(id, emit);
+    rep.progress.items_total = u64::from(items);
+    rep.progress.bytes_total = u64::from(items) * 1000;
+    let state = if control.is_paused() {
+        JobState::Paused
+    } else {
+        JobState::Running
+    };
+    rep.emit(JobEvent::State {
+        id: id.to_string(),
+        state,
+    });
+    for i in 0..items {
+        if control.is_cancelled() || !control.wait_while_paused() {
+            return (
+                JobState::Cancelled,
+                Summary {
+                    items_done: u64::from(i),
+                    ..Summary::default()
+                },
+            );
+        }
+        if item_ms > 0 {
+            thread::sleep(Duration::from_millis(u64::from(item_ms)));
+        }
+        rep.progress.items_done += 1;
+        rep.progress.bytes_done += 1000;
+        rep.tick(false);
+    }
+    rep.tick(true);
+    (
+        JobState::Done,
+        Summary {
+            items_done: u64::from(items),
+            bytes_done: u64::from(items) * 1000,
+            ..Summary::default()
+        },
+    )
+}

@@ -16,6 +16,12 @@ pub enum FsErrorCode {
     Executable,
     InvalidPath,
     NoHomeDirectory,
+    /// Copy/move target lies inside the source folder.
+    TargetInsideSource,
+    /// Copy/move onto itself (source already in the target folder).
+    SameSourceTarget,
+    /// The target volume is full.
+    DiskFull,
     Io,
 }
 
@@ -42,6 +48,7 @@ impl FsError {
             io::ErrorKind::NotFound => FsErrorCode::NotFound,
             io::ErrorKind::PermissionDenied => FsErrorCode::PermissionDenied,
             io::ErrorKind::NotADirectory => FsErrorCode::NotADirectory,
+            io::ErrorKind::StorageFull | io::ErrorKind::QuotaExceeded => FsErrorCode::DiskFull,
             _ => FsErrorCode::Io,
         };
         Self::new(code, err.to_string(), Some(path))

@@ -1,6 +1,6 @@
 # Design 005: Job-Engine im Rust-Backend
 
-> **Status:** 🛑 Entwurf, wartet auf Freigabe · **Datum:** 2026-10-17 · **Branch:** `feat/job-queue`
+> **Status:** ✅ freigegeben (2026-10-17, E1–E8 wie empfohlen) – in Umsetzung · **Datum:** 2026-10-17 · **Branch:** `feat/job-queue`
 > (von `feat/navigation-liste`)
 > **Grundlage:** legacy §6, mr §6, Designs 003 (Ordnergröße mit Token-Map, wird hier abgelöst) und 004 (Schließen).
 
@@ -122,5 +122,6 @@ Fortschritt höchstens **10 Events/s je Job** (Test: 10 000 kleine Dateien → �
 ## 6. Fortschritt
 
 - [x] Phase 1: dieses Dokument
-- [ ] Freigabe
+- [x] Freigabe (2026-10-17)
+- [x] Phase 2: Rust – `jobs/` (control, manager, copy, report), Commands, Beenden-Rückfrage; Ordnergröße als Job
 - [ ] Phasen 2–6

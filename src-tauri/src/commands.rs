@@ -1,8 +1,8 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
-use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
+use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
@@ -10,11 +10,10 @@ use crate::opener;
 use crate::paths::{expand_tilde, validate_input_path};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::window_state;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime};
@@ -93,75 +92,6 @@ pub async fn resolve_location<R: Runtime>(
     })
     .await
     .map_err(|e| FsError::new(FsErrorCode::Io, format!("Resolving failed: {e}"), None))?
-}
-
-/// Running folder-size jobs (cancel tokens). Replaced by the job engine of prompt 005.
-#[derive(Default)]
-pub struct DirSizeJobs {
-    tokens: Mutex<HashMap<String, Arc<AtomicBool>>>,
-}
-
-/// Recursive size of a folder with progress; symlinks are not followed.
-#[tauri::command]
-pub async fn calc_dir_size<R: Runtime>(
-    app: AppHandle<R>,
-    path: String,
-    job_id: String,
-    on_progress: Channel<DirSize>,
-) -> Result<DirSize, FsError> {
-    let dir = resolve_input(&app, &path)?;
-    let token = Arc::new(AtomicBool::new(false));
-    {
-        let jobs = app.state::<DirSizeJobs>();
-        let mut tokens = jobs.tokens.lock().unwrap_or_else(|e| e.into_inner());
-        if tokens.contains_key(&job_id) {
-            return Err(FsError::new(FsErrorCode::Io, "Duplicate job id", None));
-        }
-        tokens.insert(job_id.clone(), token.clone());
-    }
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        if !dir.is_dir() {
-            return Err(FsError::new(
-                FsErrorCode::NotADirectory,
-                "Not a folder",
-                Some(&dir),
-            ));
-        }
-        Ok(dirsize::dir_size(
-            &dir,
-            &token,
-            Duration::from_millis(100),
-            |p| {
-                let _ = on_progress.send(*p);
-            },
-        ))
-    })
-    .await;
-    app.state::<DirSizeJobs>()
-        .tokens
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .remove(&job_id);
-    result.map_err(|e| {
-        FsError::new(
-            FsErrorCode::Io,
-            format!("Size calculation failed: {e}"),
-            None,
-        )
-    })?
-}
-
-#[tauri::command]
-pub fn cancel_dir_size<R: Runtime>(app: AppHandle<R>, job_id: String) {
-    if let Some(t) = app
-        .state::<DirSizeJobs>()
-        .tokens
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .get(&job_id)
-    {
-        t.store(true, std::sync::atomic::Ordering::Relaxed);
-    }
 }
 
 /// Opens a file with the default application; executables only with `allow_executable`.
@@ -409,4 +339,111 @@ pub async fn save_keymap_override<R: Runtime>(
             None,
         )
     })?
+}
+
+// ---- jobs (design 005) ----
+
+/// The job manager and the channels of the frontends listening to it.
+pub struct JobsState {
+    pub manager: Arc<JobManager>,
+    subscribers: Arc<Mutex<Vec<Channel<JobEvent>>>>,
+    /// Set once the user confirmed quitting – lets the next close/exit through.
+    pub quitting: AtomicBool,
+}
+
+impl Default for JobsState {
+    fn default() -> Self {
+        let subscribers: Arc<Mutex<Vec<Channel<JobEvent>>>> = Arc::default();
+        let sink_subs = subscribers.clone();
+        let manager = JobManager::new(Arc::new(move |event: &JobEvent| {
+            // channels of reloaded or closed webviews fail – drop them
+            sink_subs
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .retain(|ch| ch.send(event.clone()).is_ok());
+        }));
+        Self {
+            manager,
+            subscribers,
+            quitting: AtomicBool::new(false),
+        }
+    }
+}
+
+impl JobsState {
+    /// True if closing/exiting must wait for the user's answer.
+    pub fn must_ask_before_quit(&self) -> bool {
+        !self.quitting.load(Ordering::SeqCst) && self.manager.active_count() > 0
+    }
+}
+
+/// Subscribes to job events; returns the current jobs (state after a reload).
+#[tauri::command]
+pub fn subscribe_jobs<R: Runtime>(app: AppHandle<R>, on_event: Channel<JobEvent>) -> Vec<JobInfo> {
+    let state = app.state::<JobsState>();
+    state
+        .subscribers
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(on_event);
+    state.manager.list()
+}
+
+#[tauri::command]
+pub fn start_job<R: Runtime>(app: AppHandle<R>, spec: JobSpec) -> Result<String, FsError> {
+    app.state::<JobsState>().manager.start(spec)
+}
+
+#[tauri::command]
+pub fn cancel_job<R: Runtime>(app: AppHandle<R>, id: String) {
+    app.state::<JobsState>().manager.cancel(&id);
+}
+
+#[tauri::command]
+pub fn pause_job<R: Runtime>(app: AppHandle<R>, id: String) {
+    app.state::<JobsState>().manager.pause(&id);
+}
+
+#[tauri::command]
+pub fn resume_job<R: Runtime>(app: AppHandle<R>, id: String) {
+    app.state::<JobsState>().manager.resume(&id);
+}
+
+#[tauri::command]
+pub fn resolve_conflict<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    conflict_id: u64,
+    decision: Decision,
+    apply_to_all: bool,
+) {
+    app.state::<JobsState>()
+        .manager
+        .resolve_conflict(&id, conflict_id, decision, apply_to_all);
+}
+
+#[tauri::command]
+pub fn list_jobs<R: Runtime>(app: AppHandle<R>) -> Vec<JobInfo> {
+    app.state::<JobsState>().manager.list()
+}
+
+#[tauri::command]
+pub fn clear_finished_jobs<R: Runtime>(app: AppHandle<R>) {
+    app.state::<JobsState>().manager.clear_finished();
+}
+
+/// The user confirmed quitting: cancel all jobs, wait for them to clean up
+/// their temporary files (max. 5 s), save the session and exit.
+#[tauri::command]
+pub async fn cancel_all_and_quit<R: Runtime>(app: AppHandle<R>) {
+    let manager = {
+        let state = app.state::<JobsState>();
+        state.quitting.store(true, Ordering::SeqCst);
+        state.manager.clone()
+    };
+    manager.cancel_all();
+    let _ = tauri::async_runtime::spawn_blocking(move || manager.wait_idle(Duration::from_secs(5)))
+        .await;
+    save_on_close(&app);
+    app.exit(0);
 }
