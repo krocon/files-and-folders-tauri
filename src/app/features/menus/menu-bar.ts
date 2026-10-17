@@ -9,7 +9,12 @@ import {
   untracked,
 } from '@angular/core';
 import { DialogService } from '../../shared/dialog/dialog.service';
-import { ContextMenu } from '../workspace/context-menu';
+import {
+  ContextMenu,
+  isTypeahead,
+  MenuCloseReason,
+  typeaheadIndex,
+} from '../workspace/context-menu';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { MENU_TEXTS } from './menu-texts';
 import { MenuService } from './menu.service';
@@ -18,7 +23,8 @@ import { MenuService } from './menu.service';
  * The menu bar in the window (Windows/Linux, design 014 E5) after the APG
  * menubar pattern: roving focus, ←/→ move (also while a menu is open), ↓ /
  * Enter / Space open, Esc closes (focus back to the entry), Esc on an entry
- * returns to the file list. The drop-downs are the {@link ContextMenu}.
+ * returns to the file list, a letter jumps to the menu starting with it, Tab in a
+ * drop-down leaves the bar. The drop-downs are the {@link ContextMenu}.
  */
 @Component({
   selector: 'app-menu-bar',
@@ -152,8 +158,14 @@ export class MenuBar {
       case 'Escape':
         this.ws.requestFocus(this.ws.activeSide());
         break;
-      default:
-        return;
+      default: {
+        const labels = this.menus.menuBar().map((m) => m.label);
+        const next = isTypeahead(evt) ? typeaheadIndex(labels, i, evt.key) : -1;
+        if (next < 0) {
+          return;
+        }
+        this.focusTop(next);
+      }
     }
     evt.preventDefault();
     evt.stopPropagation();
@@ -176,10 +188,16 @@ export class MenuBar {
     setTimeout(() => void this.menus.run(id));
   }
 
-  protected onClosed(reason: 'key' | 'outside'): void {
+  protected onClosed(reason: MenuCloseReason): void {
     const i = this.openIndex();
     this.openIndex.set(null);
-    if (reason === 'key' && i !== null) {
+    if (reason === 'tab') {
+      // Tab leaves the menu bar (APG): back to the file list
+      if (i !== null) {
+        this.roving.set(i);
+      }
+      this.ws.requestFocus(this.ws.activeSide());
+    } else if (reason === 'key' && i !== null) {
       this.focusTop(i);
     } else {
       this.closedAt = Date.now();

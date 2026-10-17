@@ -84,6 +84,35 @@ describe('KeyboardDispatcher', () => {
     expect(press('F5', 'F5', input).id).toBe('OPEN_COPY_DLG');
   });
 
+  it('keys inside an open menu or the menu bar belong to the menu (review 014 #3)', () => {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<div role="menubar"><button role="menuitem" id="top">File</button></div>' +
+        '<div role="menu"><div role="menuitem" tabindex="-1" id="item">Copy</div></div>',
+    );
+    const top = document.getElementById('top')!;
+    const item = document.getElementById('item')!;
+    expect(press('p', 'KeyP', item, { ctrlKey: true, shiftKey: true })).toEqual({
+      id: null,
+      prevented: true,
+    });
+    expect(press('F5', 'F5', item).id).toBeNull();
+    expect(press('F5', 'F5', top).id).toBeNull();
+    expect(ran).toEqual([]);
+    expect(actions.handledByKeyRecently('OPEN_COPY_DLG')).toBe(true);
+    // unbound keys stay with the menu (no preventDefault)
+    expect(press('F12', 'F12', item, { altKey: true, shiftKey: true }).prevented).toBe(false);
+  });
+
+  it('a shortcut held back in a text input is noted, so its native menu echo is dropped (review 014 #1)', () => {
+    expect(press('a', 'KeyA', input, { ctrlKey: true }).id).toBeNull();
+    expect(actions.handledByKeyRecently('SELECT_ALL')).toBe(true);
+    expect(actions.ranByKeyRecently('SELECT_ALL')).toBe(false);
+    // Shift+F10 outside the list: the tab bar keeps it, the native accelerator must not open the menu
+    expect(press('F10', 'F10', button, { shiftKey: true }).id).toBeNull();
+    expect(actions.handledByKeyRecently('OPEN_CONTEXT_MENU')).toBe(true);
+  });
+
   it('does nothing while a dialog is open', () => {
     TestBed.inject(DialogService).show('palette');
     expect(press('F5', 'F5', list).id).toBeNull();

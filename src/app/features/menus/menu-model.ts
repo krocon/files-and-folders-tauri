@@ -2,7 +2,12 @@ import { ACTIONS, ActionId } from '../../core/actions/action-catalog';
 import { ActionState, ExtraAction } from '../../core/actions/action.service';
 import { Platform } from '../../core/actions/platform';
 import { canonicalShortcut } from '../../core/actions/shortcut';
-import { NativeMenuNode, NativeMenuSpec, PredefinedItem } from '../../core/menu/menu.models';
+import {
+  MenuItemEnabled,
+  NativeMenuNode,
+  NativeMenuSpec,
+  PredefinedItem,
+} from '../../core/menu/menu.models';
 import { MenuItem } from '../workspace/context-menu';
 import { MENU_TEXTS } from './menu-texts';
 
@@ -272,13 +277,13 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'RELOAD_DIR',
     'TOGGLE_HIDDEN_FILES',
     'TOGGLE_FILTER',
-    'CALC_DIR_SIZES',
     '-',
     'SELECT_ALL',
     'OPEN_MARK_PATTERN_DLG',
     '-',
+    // no REVEAL_IN_FILE_MANAGER / CALC_DIR_SIZES: they act on the cursor row,
+    // which a click on free space does not move (review 014 #2)
     'OPEN_TERMINAL_HERE',
-    'REVEAL_IN_FILE_MANAGER',
   ],
   result: [
     'GOTO_FILE',
@@ -429,7 +434,7 @@ export function toNativeSpec(
           out.push({
             kind: 'item',
             id: x.id,
-            label: x.label,
+            label: nativeLabel(x.label),
             accelerator: shown ? canonicalShortcut(x.shortcut!, platform) : null,
             enabled: !blocked && x.enabled(),
           });
@@ -438,12 +443,12 @@ export function toNativeSpec(
         out.push({
           kind: 'item',
           id: d,
-          label: ACTIONS[d].label,
+          label: nativeLabel(ACTIONS[d].label),
           accelerator: src.shortcuts(d)[0] ?? null,
           enabled: !blocked && src.state(d) === 'ready',
         });
       } else if ('sub' in d) {
-        out.push({ kind: 'submenu', label: d.sub, items: nodes(d.items) });
+        out.push({ kind: 'submenu', label: nativeLabel(d.sub), items: nodes(d.items) });
       } else if ('native' in d) {
         out.push({ kind: 'predefined', name: d.native });
       }
@@ -457,4 +462,58 @@ export function toNativeSpec(
       items: nodes(m.items),
     })),
   };
+}
+
+/** Longest label Rust accepts (`app_menu::MAX_LABEL`). */
+export const NATIVE_MAX_LABEL = 120;
+
+/**
+ * A label the native menu accepts (review 014 #4): control characters and runs of
+ * whitespace become one space, at most {@link NATIVE_MAX_LABEL} characters – one
+ * odd tool label must not cost the whole menu bar.
+ */
+export function nativeLabel(label: string): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = label.replace(/[\u0000-\u001f\u007f-\u009f\s]+/g, ' ').trim();
+  const chars = [...clean];
+  return (
+    (chars.length > NATIVE_MAX_LABEL
+      ? chars.slice(0, NATIVE_MAX_LABEL - 1).join('') + '…'
+      : clean) || '?'
+  );
+}
+
+/** The spec without the enabled flags: equal keys = same menu, only states differ (review 014 #7). */
+export function nativeStructureKey(spec: NativeMenuSpec): string {
+  return JSON.stringify(spec, (key, value: unknown) => (key === 'enabled' ? undefined : value));
+}
+
+/** Enabled flag per item id (an action in several menus has one state). */
+export function nativeEnabled(spec: NativeMenuSpec): ReadonlyMap<string, boolean> {
+  const out = new Map<string, boolean>();
+  const walk = (nodes: readonly NativeMenuNode[]) => {
+    for (const n of nodes) {
+      if (n.kind === 'submenu') {
+        walk(n.items);
+      } else if (n.kind === 'item') {
+        out.set(n.id, n.enabled);
+      }
+    }
+  };
+  walk(spec.menus);
+  return out;
+}
+
+/** Items whose enabled flag differs between two specs of the same structure. */
+export function enabledChanges(
+  prev: ReadonlyMap<string, boolean>,
+  next: ReadonlyMap<string, boolean>,
+): MenuItemEnabled[] {
+  const out: MenuItemEnabled[] = [];
+  for (const [id, enabled] of next) {
+    if (prev.get(id) !== enabled) {
+      out.push({ id, enabled });
+    }
+  }
+  return out;
 }

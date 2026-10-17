@@ -15,7 +15,7 @@ import { FileBrowserStore } from '../browser/file-browser.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { MenuBar } from './menu-bar';
 import { registerMenuActions } from './menu-actions';
-import { MenuService } from './menu.service';
+import { MenuService, NATIVE_DEBOUNCE_MS } from './menu.service';
 
 describe('menus', () => {
   let api: FakeMenuApi;
@@ -101,10 +101,25 @@ describe('menus', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(menus.mode()).toBe('native');
     expect(api.specs.length).toBe(1);
+    // a state change only toggles items, the menu is not rebuilt (review 014 #7)
+    actions.register({ RELOAD_DIR: { run: () => undefined, enabled: () => false } });
+    TestBed.tick();
+    await new Promise((r) => setTimeout(r, NATIVE_DEBOUNCE_MS + 20));
+    expect(api.specs.length).toBe(1);
+    expect(api.enabledCalls.at(-1)).toEqual([{ id: 'RELOAD_DIR', enabled: false }]);
+    actions.register({ RELOAD_DIR: { run: () => void ran.push('RELOAD_DIR') } });
+    TestBed.tick();
+    await new Promise((r) => setTimeout(r, NATIVE_DEBOUNCE_MS + 20));
+    expect(api.enabledCalls.at(-1)).toEqual([{ id: 'RELOAD_DIR', enabled: true }]);
+    expect(api.specs.length).toBe(1);
     api.emit('RELOAD_DIR');
     expect(ran).toEqual(['RELOAD_DIR']);
     actions.noteKeyRun('RELOAD_DIR');
     api.emit('RELOAD_DIR');
+    expect(ran).toEqual(['RELOAD_DIR']);
+    // the key was held back in a text field: its native accelerator must not run it (review 014 #1)
+    actions.noteKeySuppressed('OPEN_COPY_DLG');
+    api.emit('OPEN_COPY_DLG');
     expect(ran).toEqual(['RELOAD_DIR']);
     TestBed.inject(DialogService).show('palette');
     api.emit('OPEN_COPY_DLG');
@@ -153,6 +168,17 @@ describe('menus', () => {
     await key('Escape');
     expect(tops[1].getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(tops[1]);
+    // typeahead on the bar (review 014 #5)
+    await key('w');
+    expect(document.activeElement).toBe(tops[5]);
+    await key('h');
+    expect(document.activeElement).toBe(tops[6]);
+    // Tab in an open drop-down leaves the bar (review 014 #5)
+    await key('ArrowDown');
+    expect(tops[6].getAttribute('aria-expanded')).toBe('true');
+    await key('Tab');
+    expect(tops[6].getAttribute('aria-expanded')).toBe('false');
+    expect(el.contains(document.activeElement)).toBe(false);
     el.remove();
   });
 });

@@ -272,10 +272,7 @@ export class Workspace implements OnInit {
    * fields and selected text keep it (copy/paste).
    */
   protected onContextMenu(evt: MouseEvent): void {
-    const target = evt.target instanceof Element ? evt.target : null;
-    const editable = !!target?.closest('input, textarea, [contenteditable="true"]');
-    const selected = (document.getSelection()?.toString() ?? '') !== '';
-    if (!editable && !selected) {
+    if (!keepsWebViewMenu(evt.target instanceof Element ? evt.target : null)) {
       evt.preventDefault();
     }
   }
@@ -289,4 +286,32 @@ export class Workspace implements OnInit {
       void this.ws.flush();
     }
   }
+}
+
+/**
+ * The WebView's own menu (copy/paste) stays for text fields, editable content
+ * (any `contenteditable` value) and a text selection under the pointer – a
+ * selection elsewhere does not unlock it on rows or buttons (review 014 #6).
+ */
+export function keepsWebViewMenu(target: Element | null): boolean {
+  if (!target) {
+    return false;
+  }
+  if (
+    (target as HTMLElement).isContentEditable === true ||
+    target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
+  ) {
+    return true;
+  }
+  const sel = target.ownerDocument.getSelection();
+  if (!sel || sel.toString() === '') {
+    return false;
+  }
+  // not containsNode(…, true): it misses an element that holds the whole selection
+  for (let i = 0; i < sel.rangeCount; i++) {
+    if (sel.getRangeAt(i).intersectsNode(target)) {
+      return true;
+    }
+  }
+  return false;
 }

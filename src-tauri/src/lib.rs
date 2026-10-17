@@ -153,6 +153,7 @@ pub fn run() {
             commands::read_preview,
             commands::get_properties,
             commands::set_app_menu,
+            commands::set_menu_enabled,
             commands::subscribe_menu,
             commands::close_main_window,
             commands::watch::subscribe_watch,

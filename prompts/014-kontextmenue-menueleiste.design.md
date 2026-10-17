@@ -213,6 +213,14 @@ zurück in die Liste. Kontextmenü: Untermenü `aria-haspopup`, → / Enter öff
 
 | # | Befund | Bewertung | Umsetzung |
 |---|---|---|---|
+| 1 | Native Menü-Kürzel umgehen die Textfeld-Sperre (Dispatcher hält die Taste zurück, das Accelerator-Echo läuft trotzdem) | mittel | Dispatcher vermerkt die zurückgehaltene Id (`ActionService.noteKeySuppressed`, auch für `OPEN_CONTEXT_MENU` außerhalb der Liste); `onNativeEvent` verwirft sie < 400 ms (`handledByKeyRecently`). Tests: `keyboard-dispatcher.spec`, `menus.spec` |
+| 2 | Kontext `empty`: „Show in file manager“/„Calculate folder sizes“ wirken auf den alten Cursor | gering | beide aus dem Leerflächen-Menü entfernt (Terminal hier bleibt, wirkt auf den Ordner). Test: `menu-model.spec` |
+| 3 | Bei offenem Kontextmenü/Dropdown laufen Mod-/F-Tasten in den Dispatcher, das Menü bleibt offen | gering | Dispatcher ignoriert Ziele in `[role=menu]`/`[role=menubar]` wie ein natives Menü (gebundene Mod-/F-Tasten: `preventDefault`, als unterdrückt vermerkt). Test: `keyboard-dispatcher.spec`, E2E (F5 im offenen Menü ohne Wirkung) |
+| 4 | Tool-Label mit Steuerzeichen bricht das native Menü (Spec-Validierung schlägt fehl) | gering | `tools.rs` `clean_label` (Steuerzeichen/Leerraum → ein Leerzeichen) beim Laden; `toNativeSpec` säubert alle Labels (`nativeLabel`, max. 120 Zeichen). Tests: Rust `tools::tests::validation`, `menu-model.spec` |
+| 5 | APG: Typeahead fehlt; gedimmte Einträge nicht fokussierbar; Tab im Dropdown bleibt in der Leiste | gering | Typeahead in `ContextMenu` und `MenuBar` (`typeaheadIndex`); gedimmte Einträge per Pfeil/Hover fokussierbar mit `aria-disabled` + `aria-describedby` (versteckter Hinweistext); `closed('tab')` – die Leiste gibt den Fokus an die Liste ab. Tests: `context-menu.spec`, `menus.spec`, E2E |
+| 6 | WebView-Menü: jede Textauswahl irgendwo schaltet es frei; `contenteditable` nur `"true"` | gering | `keepsWebViewMenu`: Auswahl muss das Ziel schneiden (`Range.intersectsNode`; `containsNode(…, true)` verfehlt das umschließende Element), `isContentEditable` bzw. jedes `contenteditable` ≠ `false`. Test: `workspace.spec` |
+| 7 | `app_menu.rs` toter `ids`-Code; natives Menü wird bei jeder Statusänderung neu gebaut | gering | `ids` entfernt; Struktur (ohne `enabled`) und Aktivierung getrennt: Strukturwechsel → `set_app_menu`, sonst Diff → neuer Command `set_menu_enabled(items)` (Ids validiert, max. 600, unbekannte übersprungen, `set_enabled` rekursiv). Tests: Rust `enabled_updates_only_for_known_ids`, `menu-model.spec`, `menus.spec` |
+| – | Merge mit 012: Rechtsklick vs. Pointer-Drag | – | Kontextmenü beendet einen offenen Pointer-Press (macOS Ctrl+Klick = Taste 0), während eines Drags kein Menü. E2E: Rechtsklick, Drag → Kopieren-Dialog, `Shift+F10`, `Alt+M` + Typeahead + Tab |
 
 ## 9. Fortschritt
 

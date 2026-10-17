@@ -185,6 +185,25 @@ export class ActionService {
     return this.lastKey !== null && this.lastKey.id === id && now - this.lastKey.at < windowMs;
   }
 
+  private lastSuppressed: { id: string; at: number } | null = null;
+
+  /**
+   * The dispatcher held the shortcut of `id` back on purpose (text input, focus-scoped
+   * key): a native accelerator for the same key must not run it either (review 014 #1).
+   */
+  noteKeySuppressed(id: string, now = Date.now()): void {
+    this.lastSuppressed = { id, at: now };
+  }
+
+  /** True if the keyboard ran `id` or held it back less than `windowMs` ago. */
+  handledByKeyRecently(id: string, windowMs = 400, now = Date.now()): boolean {
+    const s = this.lastSuppressed;
+    return (
+      this.ranByKeyRecently(id, windowMs, now) ||
+      (s !== null && s.id === id && now - s.at < windowMs)
+    );
+  }
+
   shortcuts(id: ActionId): readonly string[] {
     return this.keymap().bindings[id] ?? [];
   }

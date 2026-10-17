@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from '../fs/fs-error';
-import { NativeMenuEvent, NativeMenuSpec } from './menu.models';
+import { MenuItemEnabled, NativeMenuEvent, NativeMenuSpec } from './menu.models';
 
 /**
  * Facade for the application menu (Rust `app_menu.rs`, design 014). Root default =
@@ -11,6 +11,8 @@ import { NativeMenuEvent, NativeMenuSpec } from './menu.models';
 export abstract class MenuApi {
   /** Installs the native menu bar; false = this platform shows the in-app menu bar. */
   abstract setAppMenu(spec: NativeMenuSpec): Promise<boolean>;
+  /** Enables/disables items of the installed native menu without rebuilding it. */
+  abstract setMenuEnabled(items: readonly MenuItemEnabled[]): Promise<void>;
   /** Ids of chosen native menu items. */
   abstract subscribe(onEvent: (evt: NativeMenuEvent) => void): Promise<void>;
   /** Closes the main window like its close button (Quit of the in-app menu). */
@@ -25,6 +27,17 @@ export class TauriMenuApi extends MenuApi {
     }
     try {
       return await invoke<boolean>('set_app_menu', { spec });
+    } catch (err) {
+      throw toFsError(err);
+    }
+  }
+
+  async setMenuEnabled(items: readonly MenuItemEnabled[]): Promise<void> {
+    if (!isTauri()) {
+      return;
+    }
+    try {
+      await invoke<void>('set_menu_enabled', { items });
     } catch (err) {
       throw toFsError(err);
     }

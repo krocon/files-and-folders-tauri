@@ -9,6 +9,9 @@ import {
   MenuSource,
   resolveMenu,
   resolveMenuBar,
+  enabledChanges,
+  nativeEnabled,
+  nativeStructureKey,
   toNativeSpec,
 } from './menu-model';
 
@@ -73,6 +76,13 @@ describe('menu model', () => {
     expect(contextMenuFor('marked', 3)[0]).toEqual({ heading: '3 marked entries' });
     expect(ids(contextMenuFor('folder')).has('OPEN_IN_NEW_TAB')).toBe(true);
     expect(ids(contextMenuFor('file')).has('OPEN_IN_NEW_TAB')).toBe(false);
+  });
+
+  it('free space has no entries acting on the (old) cursor row (review 014 #2)', () => {
+    const empty = ids(contextMenuFor('empty'));
+    expect(empty.has('REVEAL_IN_FILE_MANAGER')).toBe(false);
+    expect(empty.has('CALC_DIR_SIZES')).toBe(false);
+    expect(empty.has('OPEN_TERMINAL_HERE')).toBe(true);
   });
 
   it('resolves labels, badges, dimmed entries with hints and the tools submenu', () => {
@@ -175,5 +185,35 @@ describe('menu model', () => {
     expect(open.find((n) => n.id === 'OPEN_PACK_DLG')?.enabled).toBe(false);
     expect(open.find((n) => n.id === 'tool:edit')).toMatchObject({ accelerator: 'Mod+E' });
     expect(items(true).every((n) => !n.enabled)).toBe(true);
+  });
+
+  it('native spec: tool labels lose control characters (review 014 #4)', () => {
+    const t = { ...tool('tool:x'), label: ' Ed\nit\u0007 ' + 'x'.repeat(200) };
+    const spec = toNativeSpec(source({}, [t]), 'linux', false);
+    const json = JSON.stringify(spec);
+    expect(json).not.toMatch(/\\n|\\u0007/);
+    const found: string[] = [];
+    const walk = (n: readonly NativeMenuNode[]) =>
+      n.forEach((x) =>
+        x.kind === 'submenu'
+          ? walk(x.items)
+          : x.kind === 'item' && x.id === 'tool:x' && found.push(x.label),
+      );
+    walk(spec.menus);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found[0].startsWith('Ed it x')).toBe(true);
+    expect([...found[0]].length).toBeLessThanOrEqual(120);
+  });
+
+  it('native spec: a state change is an enabled diff, not a new structure (review 014 #7)', () => {
+    const a = toNativeSpec(source(), 'macos', false);
+    const b = toNativeSpec(source({ OPEN_COPY_DLG: 'unavailable' }), 'macos', false);
+    expect(nativeStructureKey(a)).toBe(nativeStructureKey(b));
+    expect(enabledChanges(nativeEnabled(a), nativeEnabled(b))).toEqual([
+      { id: 'OPEN_COPY_DLG', enabled: false },
+    ]);
+    expect(enabledChanges(nativeEnabled(b), nativeEnabled(b))).toEqual([]);
+    const c = toNativeSpec(source({}, [tool('tool:new')]), 'macos', false);
+    expect(nativeStructureKey(c)).not.toBe(nativeStructureKey(a));
   });
 });

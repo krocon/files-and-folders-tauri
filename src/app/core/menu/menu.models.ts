@@ -40,3 +40,9 @@ export interface NativeMenuSpec {
 export interface NativeMenuEvent {
   readonly id: string;
 }
+
+/** Enabled flag of one native item (`set_menu_enabled`, review 014 #7). */
+export interface MenuItemEnabled {
+  readonly id: string;
+  readonly enabled: boolean;
+}

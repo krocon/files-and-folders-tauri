@@ -79,32 +79,77 @@ pub const PREDEFINED: &[&str] = &[
 /// Checks form and size of a spec; the message names the first problem.
 pub fn validate_spec(spec: &MenuSpec) -> Result<(), String> {
     let mut count = 0usize;
-    let mut ids = HashSet::new();
     for top in &spec.menus {
         if !matches!(top, MenuNode::Submenu { .. }) {
             return Err("top-level entries must be submenus".into());
         }
-        validate_node(top, 1, &mut count, &mut ids)?;
+        validate_node(top, 1, &mut count)?;
     }
     Ok(())
 }
 
-fn validate_node<'a>(
-    node: &'a MenuNode,
-    depth: usize,
-    count: &mut usize,
-    ids: &mut HashSet<&'a str>,
-) -> Result<(), String> {
+/// New enabled flag of one item of the installed menu (`set_menu_enabled`, review 014 #7).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MenuEnabled {
+    pub id: String,
+    pub enabled: bool,
+}
+
+/// Checks an enabled update: well-formed ids, at most [`MAX_NODES`]; ids that the
+/// installed menu does not have (an older spec) are skipped.
+pub fn validate_enabled(
+    items: &[MenuEnabled],
+    known: &HashSet<String>,
+) -> Result<std::collections::HashMap<String, bool>, String> {
+    if items.len() > MAX_NODES {
+        return Err(format!("more than {MAX_NODES} menu entries"));
+    }
+    let mut out = std::collections::HashMap::new();
+    for item in items {
+        validate_id(&item.id)?;
+        if known.contains(&item.id) {
+            out.insert(item.id.clone(), item.enabled);
+        }
+    }
+    Ok(out)
+}
+
+/// Sets the enabled flags of all items of `menu` named in `wanted` (an action may
+/// appear in several menus – all of them change).
+pub fn apply_enabled<R: Runtime>(
+    menu: &Menu<R>,
+    wanted: &std::collections::HashMap<String, bool>,
+) -> tauri::Result<()> {
+    fn walk<R: Runtime>(
+        items: Vec<MenuItemKind<R>>,
+        wanted: &std::collections::HashMap<String, bool>,
+    ) -> tauri::Result<()> {
+        for kind in items {
+            match kind {
+                MenuItemKind::MenuItem(item) => {
+                    if let Some(&on) = wanted.get(item.id().as_ref()) {
+                        item.set_enabled(on)?;
+                    }
+                }
+                MenuItemKind::Submenu(sub) => walk(sub.items()?, wanted)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    walk(menu.items()?, wanted)
+}
+
+fn validate_node(node: &MenuNode, depth: usize, count: &mut usize) -> Result<(), String> {
     *count += 1;
     if *count > MAX_NODES {
         return Err(format!("more than {MAX_NODES} menu entries"));
     }
     match node {
         MenuNode::Item { id, label, .. } => {
+            // the same action may appear in several menus – it is the same event
             validate_id(id)?;
             validate_label(label)?;
-            // the same action may appear in several menus – it is the same event
-            ids.insert(id.as_str());
         }
         MenuNode::Submenu { label, items } => {
             if depth > MAX_DEPTH {
@@ -112,7 +157,7 @@ fn validate_node<'a>(
             }
             validate_label(label)?;
             for child in items {
-                validate_node(child, depth + 1, count, ids)?;
+                validate_node(child, depth + 1, count)?;
             }
         }
         MenuNode::Separator => {}
@@ -472,6 +517,30 @@ mod tests {
         assert!(bad(vec![sub(vec![sub(vec![sub(vec![sub(vec![])])])])]));
         assert!(!bad(vec![sub(vec![sub(vec![sub(vec![])])])]));
         assert!(bad(vec![sub((0..MAX_NODES).map(|_| item("A")).collect())]));
+    }
+
+    #[test]
+    fn enabled_updates_only_for_known_ids() {
+        let known: HashSet<String> = ["OPEN_COPY_DLG".to_string(), "tool:edit".to_string()].into();
+        let e = |id: &str, enabled| MenuEnabled {
+            id: id.into(),
+            enabled,
+        };
+        let ok =
+            validate_enabled(&[e("OPEN_COPY_DLG", false), e("tool:edit", true)], &known).unwrap();
+        assert_eq!(ok.get("OPEN_COPY_DLG"), Some(&false));
+        assert_eq!(ok.len(), 2);
+        // ids of an older menu are skipped, malformed ids and floods rejected
+        assert_eq!(
+            validate_enabled(&[e("GONE", true)], &known).unwrap().len(),
+            0
+        );
+        assert!(validate_enabled(&[e("a b", true)], &known).is_err());
+        let flood: Vec<_> = (0..=MAX_NODES).map(|_| e("OPEN_COPY_DLG", true)).collect();
+        assert!(validate_enabled(&flood, &known).is_err());
+        let json = r#"[{"id":"OPEN_COPY_DLG","enabled":true}]"#;
+        let parsed: Vec<MenuEnabled> = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed, vec![e("OPEN_COPY_DLG", true)]);
     }
 
     #[test]

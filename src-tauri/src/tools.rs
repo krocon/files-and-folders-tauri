@@ -277,7 +277,17 @@ pub fn program_ok(p: &str) -> bool {
     !p.contains(['/', '\\', ':']) && p != "." && p != ".."
 }
 
-/// Checks one tool; trims the label and clamps the file limit.
+/// A label for menus and buttons: control characters (line breaks, tabs, escapes)
+/// become spaces, runs of whitespace one space (a native menu rejects them, review 014 #4).
+pub fn clean_label(label: &str) -> String {
+    label
+        .split(|c: char| c.is_control() || c.is_whitespace())
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Checks one tool; cleans the label and clamps the file limit.
 pub fn validate(mut t: Tool) -> Result<Tool, String> {
     if !valid_id(&t.id) {
         return Err(format!(
@@ -285,7 +295,7 @@ pub fn validate(mut t: Tool) -> Result<Tool, String> {
             t.id
         ));
     }
-    t.label = t.label.trim().to_string();
+    t.label = clean_label(&t.label);
     if t.label.is_empty() || t.label.chars().count() > 100 {
         return Err(format!("tool {}: the label is empty or too long", t.id));
     }
@@ -915,6 +925,13 @@ mod tests {
         let mut clamp = t(&[], false);
         clamp.file_limit = 0;
         assert_eq!(validate(clamp).unwrap().file_limit, 1);
+        // control characters would break the native menu (review 014 #4)
+        let mut ctl = t(&[], false);
+        ctl.label = " Ed\nit\u{7}\tnow ".into();
+        assert_eq!(validate(ctl).unwrap().label, "Ed it now");
+        let mut only = t(&[], false);
+        only.label = "\u{1b}\u{7}".into();
+        assert!(validate(only).is_err());
     }
 
     #[test]

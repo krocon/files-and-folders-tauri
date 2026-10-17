@@ -11,6 +11,10 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 
+export type MenuCloseReason = 'key' | 'tab' | 'outside';
+
+let menuCounter = 0;
+
 export interface MenuItem {
   readonly id: string;
   readonly label: string;
@@ -28,9 +32,10 @@ export interface MenuItem {
 }
 
 /**
- * Popup menu after the APG menu pattern: `role="menu"`, ↑/↓/Pos1/Ende move,
- * Enter/Space choose, → / Enter open a submenu, ← / Esc close it, Esc/Tab close
- * the menu. Focus goes to the first enabled item; the opener gets it back (done
+ * Popup menu after the APG menu pattern: `role="menu"`, ↑/↓/Pos1/Ende move (also
+ * over dimmed entries, which say why via `aria-describedby`), a letter jumps to the
+ * next entry starting with it, Enter/Space choose, → / Enter open a submenu, ← / Esc
+ * close it, Esc/Tab close the menu. Focus goes to the first enabled item; the opener gets it back (done
  * by the owner on `closed`). Generic: ids in, `chosen(id)` out – also for the
  * entries of submenus.
  */
@@ -69,6 +74,7 @@ export interface MenuItem {
           role="menuitem"
           tabindex="-1"
           [attr.aria-disabled]="item.disabled ? 'true' : null"
+          [attr.aria-describedby]="item.disabled && item.hint ? hintId(item) : null"
           [attr.aria-haspopup]="item.children ? 'menu' : null"
           [attr.aria-expanded]="item.children ? openSub()?.id === item.id : null"
           [attr.title]="item.hint || null"
@@ -76,6 +82,9 @@ export interface MenuItem {
           (mouseenter)="onHover($event, item)"
         >
           <span class="label">{{ item.label }}</span>
+          @if (item.disabled && item.hint) {
+            <span class="sr-only" [id]="hintId(item)">{{ item.hint }}</span>
+          }
           @if (item.children) {
             <span class="arrow" aria-hidden="true">▸</span>
           } @else if (item.shortcut) {
@@ -122,14 +131,18 @@ export class ContextMenu {
   /** Focus the first entry when shown (false when a submenu opens on hover). */
   readonly autofocus = input(true);
   readonly chosen = output<string>();
-  /** `key` = Escape/Tab (focus back to the opener), `outside` = click elsewhere. */
-  readonly closed = output<'key' | 'outside'>();
+  /**
+   * `key` = Escape (focus back to the opener), `tab` = Tab (the owner moves the focus on;
+   * a menu bar leaves the bar, review 014 #5), `outside` = click elsewhere.
+   */
+  readonly closed = output<MenuCloseReason>();
   /** A submenu was left with ← or Esc (focus back to its parent entry). */
   readonly back = output<void>();
   /** ←/→ in a top-level menu where they mean nothing – a menu bar opens the neighbour. */
   readonly sideways = output<-1 | 1>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly uid = `fnf-menu-${++menuCounter}`;
 
   protected readonly openSub = signal<{
     id: string;
@@ -177,6 +190,10 @@ export class ContextMenu {
     this.chosen.emit(item.id);
   }
 
+  protected hintId(item: MenuItem): string {
+    return `${this.uid}-hint-${this.items().indexOf(item)}`;
+  }
+
   protected onClick(evt: MouseEvent): void {
     const el = this.ownItem(evt.target);
     const item = el ? this.find(el.dataset['id']) : undefined;
@@ -189,9 +206,7 @@ export class ContextMenu {
   /** Mouse: the entry gets the focus (keyboard goes on from there); submenus open on hover. */
   protected onHover(evt: MouseEvent, item: MenuItem): void {
     const el = evt.currentTarget as HTMLElement;
-    if (!item.disabled) {
-      el.focus();
-    }
+    el.focus(); // dimmed entries too (APG) – the hint is read
     if (item.children && !item.disabled) {
       this.openChildren(item, false);
     } else if (this.openSub()) {
@@ -203,22 +218,23 @@ export class ContextMenu {
     if (this.openSub() && this.inSubmenu(evt.target)) {
       return; // the submenu handles its own keys
     }
-    const enabled = this.enabled();
+    // APG: dimmed entries stay focusable (their hint is announced), they just do nothing
+    const all = this.ownItems();
     const active = document.activeElement as HTMLElement | null;
-    const current = enabled.indexOf(active as HTMLElement);
+    const current = all.indexOf(active as HTMLElement);
     const item = active ? this.find(active.dataset['id']) : undefined;
     switch (evt.key) {
       case 'ArrowDown':
-        this.focusItem(enabled[(current + 1) % enabled.length]);
+        this.focusItem(all[(current + 1) % all.length]);
         break;
       case 'ArrowUp':
-        this.focusItem(enabled[(current - 1 + enabled.length) % enabled.length]);
+        this.focusItem(all[(current - 1 + all.length) % all.length]);
         break;
       case 'Home':
-        this.focusItem(enabled[0]);
+        this.focusItem(all[0]);
         break;
       case 'End':
-        this.focusItem(enabled.at(-1));
+        this.focusItem(all.at(-1));
         break;
       case 'ArrowRight':
         if (item?.children && !item.disabled) {
@@ -248,19 +264,25 @@ export class ContextMenu {
         }
         break;
       case 'Tab':
-        this.closed.emit('key');
+        this.closed.emit('tab');
         break;
-      default:
-        return;
+      default: {
+        const next = isTypeahead(evt) ? typeaheadIndex(this.labels(all), current, evt.key) : -1;
+        if (next < 0) {
+          return;
+        }
+        this.openSub.set(null);
+        this.focusItem(all[next]);
+      }
     }
     evt.preventDefault();
     evt.stopPropagation();
   }
 
-  protected onSubClosed(reason: 'key' | 'outside'): void {
+  protected onSubClosed(reason: MenuCloseReason): void {
     this.openSub.set(null);
-    if (reason === 'key') {
-      this.closed.emit('key');
+    if (reason !== 'outside') {
+      this.closed.emit(reason);
     }
   }
 
@@ -315,6 +337,10 @@ export class ContextMenu {
     });
   }
 
+  private labels(els: readonly HTMLElement[]): string[] {
+    return els.map((el) => this.find(el.dataset['id'])?.label ?? '');
+  }
+
   private find(id: string | undefined): MenuItem | undefined {
     return id === undefined ? undefined : this.items().find((i) => i.id === id);
   }
@@ -365,4 +391,21 @@ export class ContextMenu {
       menu.style.top = `${Math.max(0, window.innerHeight - rect.height - 4)}px`;
     }
   }
+}
+
+/** A printable character without command modifiers (APG typeahead). */
+export function isTypeahead(evt: KeyboardEvent): boolean {
+  return evt.key.length === 1 && evt.key !== ' ' && !evt.ctrlKey && !evt.metaKey && !evt.altKey;
+}
+
+/** Index of the next label after `current` starting with `char` (wraps), -1 if none. */
+export function typeaheadIndex(labels: readonly string[], current: number, char: string): number {
+  const c = char.toLocaleLowerCase();
+  for (let step = 1; step <= labels.length; step++) {
+    const i = (current + step + labels.length) % labels.length;
+    if (labels[i].trim().toLocaleLowerCase().startsWith(c)) {
+      return i;
+    }
+  }
+  return -1;
 }

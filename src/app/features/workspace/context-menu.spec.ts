@@ -66,7 +66,8 @@ describe('ContextMenu', () => {
 
   it('opens a submenu with → / Enter, chooses inside it and goes back with ←', async () => {
     const { el, host, key } = await render();
-    await key('ArrowDown'); // skips the dimmed Pack…
+    await key('ArrowDown'); // dimmed Pack… is focusable (APG)
+    await key('ArrowDown');
     expect(document.activeElement?.textContent).toContain('Open with tool');
     await key('ArrowRight');
     const sub = el.querySelector('app-context-menu app-context-menu')!;
@@ -94,5 +95,26 @@ describe('ContextMenu', () => {
     expect(host.chosen).toEqual(['COPY']);
     await key('Escape');
     expect(host.closed).toEqual(['key']);
+  });
+
+  it('APG: dimmed entries are focusable and describe why; typeahead; Tab leaves (review 014 #5)', async () => {
+    const { el, host, key } = await render();
+    await key('ArrowDown');
+    const pack = document.activeElement as HTMLElement;
+    expect(pack.textContent).toContain('Pack…');
+    expect(pack.getAttribute('aria-disabled')).toBe('true');
+    const hint = document.getElementById(pack.getAttribute('aria-describedby') ?? '');
+    expect(hint?.textContent).toBe('Coming in prompt 016');
+    await key('Enter');
+    expect(host.chosen).toEqual([]);
+    await key('o');
+    expect(document.activeElement?.textContent).toContain('Open with tool');
+    await key('C');
+    expect(document.activeElement?.textContent).toContain('Copy…');
+    await key('p');
+    expect(document.activeElement).toBe(pack);
+    expect(el.querySelector('app-context-menu app-context-menu')).toBeNull();
+    await key('Tab');
+    expect(host.closed).toEqual(['tab']);
   });
 });

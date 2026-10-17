@@ -1089,6 +1089,34 @@ pub fn set_app_menu<R: Runtime>(
     Ok(true)
 }
 
+/// Enables/disables items of the installed native menu without rebuilding it
+/// (selection, dialogs and tabs change states often, review 014 #7). Unknown ids
+/// (an older spec) are skipped; without a native menu this does nothing.
+#[tauri::command]
+pub fn set_menu_enabled<R: Runtime>(
+    app: AppHandle<R>,
+    items: Vec<crate::app_menu::MenuEnabled>,
+) -> Result<(), FsError> {
+    let wanted = {
+        let ids = app
+            .state::<MenuState>()
+            .ids
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        crate::app_menu::validate_enabled(&items, &ids)
+            .map_err(|m| FsError::new(FsErrorCode::InvalidMenu, m, None))?
+    };
+    if wanted.is_empty() || !crate::app_menu::native_menu_wanted() {
+        return Ok(());
+    }
+    let Some(menu) = app.menu() else {
+        return Ok(());
+    };
+    crate::app_menu::apply_enabled(&menu, &wanted)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))
+}
+
 /// Menu events (ids of chosen items) go to this channel.
 #[tauri::command]
 pub fn subscribe_menu<R: Runtime>(

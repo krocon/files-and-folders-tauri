@@ -3,18 +3,23 @@ import { ActionService } from '../../core/actions/action.service';
 import { isParentRow } from '../../core/fs/fs.models';
 import { toFsError } from '../../core/fs/fs-error';
 import { MenuApi } from '../../core/menu/menu-api';
+import { NativeMenuSpec } from '../../core/menu/menu.models';
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   contextKind,
   contextMenuFor,
+  enabledChanges,
   MenuDef,
+  nativeEnabled,
+  nativeStructureKey,
   resolveMenuBar,
   resolveMenu,
   toNativeSpec,
 } from './menu-model';
 import { MENU_TEXTS } from './menu-texts';
+import { MenuCloseReason } from '../workspace/context-menu';
 
 /** How long the native spec waits for more changes before it is sent (design 014 E7). */
 export const NATIVE_DEBOUNCE_MS = 150;
@@ -78,30 +83,56 @@ export class MenuService {
       toNativeSpec(this.actions, this.actions.platform(), this.dialogs.open() !== null),
     );
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let sent = '';
+    // what the native menu shows: its structure (labels, shortcuts, tools) and the states
+    let sentStructure = '';
+    let sentEnabled: ReadonlyMap<string, boolean> = new Map();
+    let latest: NativeMenuSpec | null = null;
+    const flush = () => {
+      timer = null;
+      const next = latest;
+      if (!next || this.mode() === 'html') {
+        return;
+      }
+      const structure = nativeStructureKey(next);
+      const enabled = nativeEnabled(next);
+      if (structure !== sentStructure) {
+        sentStructure = structure;
+        sentEnabled = enabled;
+        void this.api
+          .setAppMenu(next)
+          .then((native) => this.mode.set(native ? 'native' : 'html'))
+          .catch((err) => {
+            this.mode.set('html');
+            this.actions.report(`Menu: ${toFsError(err).message}`);
+          });
+        return;
+      }
+      // only states changed (selection, dialog, tab): toggle items, no rebuild (review 014 #7)
+      if (this.mode() !== 'native') {
+        timer = setTimeout(flush, NATIVE_DEBOUNCE_MS); // the first menu is still on its way
+        return;
+      }
+      const changes = enabledChanges(sentEnabled, enabled);
+      sentEnabled = enabled;
+      if (changes.length > 0) {
+        void this.api
+          .setMenuEnabled(changes)
+          .catch((err) => this.actions.report(`Menu: ${toFsError(err).message}`));
+      }
+    };
     effect(
       () => {
-        const next = JSON.stringify(spec());
+        const next = spec();
         untracked(() => {
-          if (this.mode() === 'html' || next === sent) {
+          if (this.mode() === 'html') {
             return;
           }
+          latest = next;
           if (timer !== null) {
             clearTimeout(timer);
           }
           // the first spec goes out at once (no flash of the HTML menu bar on macOS)
-          const delay = sent === '' ? 0 : NATIVE_DEBOUNCE_MS;
-          timer = setTimeout(() => {
-            timer = null;
-            sent = next;
-            void this.api
-              .setAppMenu(JSON.parse(next))
-              .then((native) => this.mode.set(native ? 'native' : 'html'))
-              .catch((err) => {
-                this.mode.set('html');
-                this.actions.report(`Menu: ${toFsError(err).message}`);
-              });
-          }, delay);
+          timer = setTimeout(flush, sentStructure === '' ? 0 : NATIVE_DEBOUNCE_MS);
         });
       },
       { injector: this.injector },
@@ -111,8 +142,9 @@ export class MenuService {
   /** A native menu item was chosen. */
   onNativeEvent(id: string): void {
     // like the keyboard dispatcher: keys and menus wait while a dialog is open;
-    // a menu event right after the same key is its echo (design 014 E6)
-    if (this.dialogs.open() !== null || this.actions.ranByKeyRecently(id)) {
+    // a menu event right after the same key is its echo (design 014 E6) – also when the
+    // dispatcher held that key back in a text field (review 014 #1)
+    if (this.dialogs.open() !== null || this.actions.handledByKeyRecently(id)) {
       return;
     }
     void this.actions.runAny(id);
@@ -171,10 +203,10 @@ export class MenuService {
     return this.actions.runAny(id);
   }
 
-  close(reason: 'key' | 'outside'): void {
+  close(reason: MenuCloseReason): void {
     const open = this.open();
     this.open.set(null);
-    if (open && reason === 'key') {
+    if (open && reason !== 'outside') {
       this.ws.requestFocus(open.side);
     }
   }
