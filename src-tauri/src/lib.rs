@@ -17,6 +17,7 @@
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
+//! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod clean;
@@ -35,6 +36,7 @@ pub mod platform;
 pub mod preview;
 pub mod properties;
 pub mod rename_presets;
+pub mod search;
 pub mod session;
 pub mod watch;
 pub mod window_state;

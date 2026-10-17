@@ -10,6 +10,7 @@ import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { CopyMoveDialog } from './copy-move-dialog';
+import { OPS_TEXTS } from './ops-texts';
 import { DeleteDialog } from './delete-dialog';
 import { NameDialog } from './name-dialog';
 import { OpsStore } from './ops.store';
@@ -84,6 +85,10 @@ describe('operation dialogs', () => {
     });
     fixture.detectChanges();
     expect(el.querySelector('.count')?.textContent).toContain('1 file, 0 folders, 2.0 KB');
+    // Rust removes finished helper jobs at once (review 009 #10): the count stays
+    jobsApi.emit({ type: 'removed', ids: [countId] });
+    fixture.detectChanges();
+    expect(el.querySelector('.count')?.textContent).toContain('1 file, 0 folders, 2.0 KB');
     const inputs = el.querySelectorAll<HTMLInputElement>('input[type="text"]');
     expect(inputs[0].value).toBe('/dst');
     expect(inputs[1].value).toBe('a.txt');
@@ -137,6 +142,31 @@ describe('operation dialogs', () => {
     el.querySelector<HTMLInputElement>('.danger-box input')!.click();
     fixture.detectChanges();
     expect(start.disabled).toBe(false);
+  });
+
+  it('review 009 #5: copy warns about equal names from different folders, louder with "overwrite"', async () => {
+    const other = entry('A.TXT', { path: '/other/A.TXT' });
+    ops.copyMove.set({
+      kind: 'copy',
+      side: 'left',
+      sourceDir: 'search:s1',
+      sources: [a, sub, other],
+      target: '/dst',
+      targets: [],
+      dangers: [],
+    });
+    TestBed.inject(DialogService).show('copy-move');
+    const { fixture, el } = await render(CopyMoveDialog);
+    const box = () => el.querySelector('.same-names')?.textContent ?? '';
+    expect(box()).toContain('a.txt');
+    expect(box()).not.toContain('Sub');
+    expect(box()).not.toContain(OPS_TEXTS.sameNamesOverwrite);
+    const select = [...el.querySelectorAll<HTMLSelectElement>('select')].at(-1)!;
+    select.value = 'overwrite';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(box()).toContain(OPS_TEXTS.sameNamesOverwrite);
+    fixture.destroy();
   });
 
   it('delete: trash confirms with Enter, permanent defaults to Cancel', async () => {

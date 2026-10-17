@@ -27,7 +27,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | --- | --- |
 | 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
 | 3 Sichere Basisoperationen | 005 (Job-Engine ✅), 006 (Operationen ✅), 007 (Multi-Rename ✅), 008 (Gruppieren, Ordner aufräumen, Multi-MkDir ✅) |
-| 4 Suche & Filter | 003 (Schnellfilter), 009 (Suche) |
+| 4 Suche & Filter | 003 (Schnellfilter ✅), 009 (Suche, Ergebnis-Tabs, Ordner-Finder ✅) |
 | 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop ✅, ins System offen), 014 (Menüs) |
 | 6 Vorschau & Eigenschaften | 010 (Ansicht, Schnellvorschau, Eigenschaften ✅) |
 | 7 OS-Integration | 011, 012 (Überwachung ✅) |

@@ -213,6 +213,28 @@ fn remove_at(
     fs::remove_dir(&path)
 }
 
+/// Opens a regular file for reading without ever blocking on it: Unix opens with
+/// `O_NONBLOCK` (a FIFO or device swapped in after the listing does not hang),
+/// then checks the opened handle (`fstat`) – anything but a regular file is
+/// refused. Elsewhere: a plain open plus the same check.
+pub fn open_regular_file(path: &Path) -> io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY);
+    }
+    let file = options.open(path)?;
+    if !file.metadata()?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    Ok(file)
+}
+
 /// Identity of a file system entry (device + inode) – to notice that a path
 /// now names another entry than at planning time (e.g. a folder replaced by a
 /// link). `None` where std offers no stable id (Windows).
@@ -365,6 +387,29 @@ pub fn file_attributes(meta: &Metadata) -> u32 {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    /// Review 009 #6: a FIFO (or a device) never blocks the reader – it is refused.
+    #[cfg(unix)]
+    #[test]
+    fn open_regular_file_refuses_fifos_without_blocking() {
+        let t = tempdir().unwrap();
+        let fifo = t.path().join("pipe");
+        let c = std::ffi::CString::new(fifo.to_string_lossy().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+        let start = std::time::Instant::now();
+        assert!(open_regular_file(&fifo).is_err());
+        assert!(start.elapsed() < std::time::Duration::from_secs(1));
+        let file = t.path().join("f.txt");
+        fs::write(&file, b"abc").unwrap();
+        let mut s = String::new();
+        use std::io::Read;
+        open_regular_file(&file)
+            .unwrap()
+            .read_to_string(&mut s)
+            .unwrap();
+        assert_eq!(s, "abc");
+        assert!(open_regular_file(t.path()).is_err(), "a folder is no file");
+    }
 
     #[test]
     fn rename_noreplace_never_replaces() {

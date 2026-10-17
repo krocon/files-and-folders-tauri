@@ -108,3 +108,12 @@
     outline: var(--focus-ring-width) solid var(--color-focus);
   }
 }
+
+.search-icon {
+  margin-inline-end: 2px;
+  font-size: 0.85em;
+}
+
+.tab .spinner {
+  margin-inline-start: var(--spacing-1);
+}

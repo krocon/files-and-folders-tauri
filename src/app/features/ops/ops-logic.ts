@@ -150,3 +150,22 @@ const OS_CODES: ReadonlySet<FsErrorCode> = new Set<FsErrorCode>([
 export function dialogError(e: FsError): string {
   return OS_CODES.has(e.code) ? `${describeFsError(e)} (${e.message})` : e.message;
 }
+
+/**
+ * Names that several sources share (review 009 #5: hits of a search come from
+ * different folders). Compared without case – the target may not tell them
+ * apart. Returns the first spelling of each.
+ */
+export function sameNames(entries: readonly DirEntry[]): string[] {
+  const seen = new Map<string, { name: string; n: number }>();
+  for (const e of entries) {
+    const key = e.name.toLocaleLowerCase();
+    const s = seen.get(key);
+    if (s) {
+      s.n++;
+    } else {
+      seen.set(key, { name: e.name, n: 1 });
+    }
+  }
+  return [...seen.values()].filter((s) => s.n > 1).map((s) => s.name);
+}

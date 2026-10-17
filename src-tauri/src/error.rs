@@ -36,6 +36,8 @@ pub enum FsErrorCode {
     UndoUnavailable,
     /// More items than a command accepts (watched folders, dropped paths).
     TooMany,
+    /// A search pattern (regex, glob) is invalid or too large (design 009).
+    InvalidPattern,
     Io,
 }
 
@@ -112,5 +114,7 @@ mod tests {
         );
         let e = FsError::new(FsErrorCode::TooMany, "many", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "too_many");
+        let e = FsError::new(FsErrorCode::InvalidPattern, "bad", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_pattern");
     }
 }

@@ -22,6 +22,9 @@ import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models
 import { Side } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { SearchStore } from '../search/search.store';
+import { FindStore } from '../search/find.store';
+import { SEARCH_TEXTS } from '../search/search-texts';
 import { FileList } from '../browser/file-list/file-list';
 import { QuickView } from '../preview/quick-view';
 import { QuickViewStore } from '../preview/quick-view.store';
@@ -69,6 +72,27 @@ export class FilePanel implements OnInit {
   protected readonly quickView = computed(() => this.quick.shownOn() === this.side());
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
   private readonly tabId = computed(() => this.tab().id);
+  protected readonly search = inject(SearchStore);
+  private readonly find = inject(FindStore);
+  protected readonly searchTexts = SEARCH_TEXTS;
+  /** The result the active tab shows (result tab, design 009 E4). */
+  protected readonly searchResult = computed(() => {
+    const key = this.tab().search?.key;
+    return key ? (this.search.results().get(key) ?? null) : null;
+  });
+  /** Live region of a result tab: only the start and the end are announced. */
+  protected readonly searchStatus = computed(() => {
+    const r = this.searchResult();
+    if (!r) {
+      return '';
+    }
+    if (r.running) {
+      return SEARCH_TEXTS.searching;
+    }
+    return r.error
+      ? SEARCH_TEXTS.failed(r.error.message)
+      : SEARCH_TEXTS.finished(r.stats.hits, r.stats.unreadable);
+  });
 
   protected readonly errorText = computed(() => {
     const err = this.store.error();
@@ -118,11 +142,22 @@ export class FilePanel implements OnInit {
       const id = this.tabId();
       untracked(() => void this.showTab(id));
     });
+    // result tab: show the (growing) hits of its search
+    effect(() => {
+      const tab = this.tab();
+      const key = tab.search?.key ?? null;
+      const result = this.searchResult();
+      untracked(() => {
+        if (key !== null && this.shownTabId === tab.id) {
+          this.store.showSearch(key, result?.hits ?? []);
+        }
+      });
+    });
     effect(() => {
       const listing = this.store.listing();
       untracked(() => {
         const id = this.tabId();
-        if (listing && this.ownsListing(id)) {
+        if (listing && this.ownsListing(id) && this.store.searchKey() === null) {
           this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
         }
       });
@@ -199,13 +234,16 @@ export class FilePanel implements OnInit {
       const req = this.ws.reloadRequest();
       untracked(() => {
         if (req?.side === this.side()) {
-          void this.store.refresh();
+          const key = this.tab().search?.key;
+          // a result tab "reloads" by searching again
+          void (key ? this.search.rerun(key) : this.store.refresh());
         }
       });
     });
   }
 
   ngOnInit(): void {
+    this.store.openInNewTab = (path, cursor) => this.ws.openInNewTab(this.side(), path, '', cursor);
     this.store.confirmExecutable = (entry) =>
       this.confirm.ask({
         title: TEXTS.runProgramTitle,
@@ -322,6 +360,28 @@ export class FilePanel implements OnInit {
     this.ws.openInNewTab(this.side(), entry.path, entry.name);
   }
 
+  /** Header of a result tab: double click opens the search with its values (ui-layout). */
+  protected editSearch(): void {
+    if (this.tab().search) {
+      this.ws.setActive(this.side());
+      this.find.open();
+    }
+  }
+
+  protected rerunSearch(): void {
+    const key = this.tab().search?.key;
+    if (key) {
+      void this.search.rerun(key);
+    }
+  }
+
+  protected stopSearch(): void {
+    const key = this.tab().search?.key;
+    if (key) {
+      this.search.stop(key);
+    }
+  }
+
   protected onTableState(state: Partial<TableStateIf>): void {
     const id = this.tabId();
     if (this.ownsListing(id)) {
@@ -369,6 +429,12 @@ export class FilePanel implements OnInit {
     this.store.setMemory(this.ws.memory(id));
     this.store.setFilter(tab);
     this.store.setPendingTableState(tab.table);
+    if (tab.search) {
+      this.store.navigationLocked.set(false);
+      this.store.setCursor(tab.cursor);
+      this.store.showSearch(tab.search.key, this.search.result(tab.search.key)?.hits ?? []);
+      return;
+    }
     this.store.navigationLocked.set(true);
     try {
       await this.store.load(tab.path ?? undefined, {

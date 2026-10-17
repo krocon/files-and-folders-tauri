@@ -319,7 +319,8 @@ fn errors_per_item_are_collected_and_the_job_goes_on() {
     let (_d, src, dst) = tree();
     // a folder in the target where a file should go → that item fails, the rest is copied
     fs::create_dir_all(dst.join("Quelle ä/a.txt")).unwrap();
-    let missing = src.join("gibt es nicht");
+    // beside the source (one below it would be dropped: the folder brings it along)
+    let missing = src.with_file_name("gibt es nicht");
     let info = h.finish(&h.copy(&[&src, &missing], &dst, false));
     assert_eq!(info.state, JobState::DoneWithErrors);
     let s = info.summary.unwrap();

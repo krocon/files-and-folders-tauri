@@ -49,6 +49,8 @@ export type FsErrorCode =
   | 'undo_unavailable'
   /** More items than a command accepts (watched folders, dropped paths). */
   | 'too_many'
+  /** A search pattern (regex, glob) is invalid (design 009). */
+  | 'invalid_pattern'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

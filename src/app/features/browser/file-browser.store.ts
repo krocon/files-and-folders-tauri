@@ -104,7 +104,19 @@ export class FileBrowserStore {
   /** Asks the user whether to run an executable file (provided by the panel). */
   confirmExecutable: (entry: DirEntry) => Promise<boolean> = () => Promise.resolve(false);
 
-  readonly path = computed(() => this.listing()?.path ?? null);
+  /** Set while the panel shows a search result (design 009 E4) – then there is no folder. */
+  readonly searchKey = signal<string | null>(null);
+  /** Opens a folder in a new tab (result tab: Enter on a folder, "go to file"; set by the panel). */
+  openInNewTab: (path: string, cursor: string | null) => void = () => undefined;
+
+  readonly path = computed(() =>
+    this.searchKey() !== null ? null : (this.listing()?.path ?? null),
+  );
+  /** Identity of what the panel shows: the folder path, or `search:<key>` (operations, design 009). */
+  readonly locationKey = computed(() => {
+    const key = this.searchKey();
+    return key !== null ? `search:${key}` : this.path();
+  });
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
   readonly parent = computed(() => this.listing()?.parent ?? null);
   readonly canGoUp = computed(() => this.parent() !== null && !this.loading());
@@ -157,7 +169,7 @@ export class FileBrowserStore {
    */
   async load(path?: string, options: LoadOptions = {}): Promise<void> {
     const seq = ++this.requestSeq;
-    const leaving = this.listing();
+    const leaving = this.searchKey() === null ? this.listing() : null;
     const leavingState = leaving ? this.captureFolderState() : null;
     this.loading.set(true);
     try {
@@ -178,6 +190,7 @@ export class FileBrowserStore {
       }
       const paths = new Set(listing.entries.map((e) => e.path));
       const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
+      this.searchKey.set(null);
       this.listing.set(listing);
       this.error.set(null);
       const wanted =
@@ -231,10 +244,49 @@ export class FileBrowserStore {
     }
   }
 
+  /**
+   * Shows the hits of search result `key` (design 009 E4): no ".." row, no
+   * breadcrumbs. Cursor and marks stay while the same result grows or shrinks.
+   */
+  showSearch(key: string, hits: readonly DirEntry[]): void {
+    ++this.requestSeq; // a folder still loading must not replace the result
+    const same = this.searchKey() === key;
+    if (!same) {
+      this.cancelSizeJobs();
+    }
+    const paths = new Set(hits.map((h) => h.path));
+    this.searchKey.set(key);
+    this.listing.set({
+      path: `search:${key}`,
+      parent: null,
+      segments: [],
+      entries: hits,
+      unreadableEntries: 0,
+    });
+    this.loading.set(false);
+    if (!same) {
+      this.error.set(null);
+    }
+    const cursor = this.cursorPath();
+    this.cursorPath.set(cursor !== null && paths.has(cursor) ? cursor : null);
+    this.marked.set(same ? intersect(this.marked(), paths) : EMPTY_MARKS);
+  }
+
   /** Opens an entry: folder → into it, ".." → up, file → default application. */
   async open(entry: DirEntry): Promise<void> {
     if (this.navigationLocked()) {
       return;
+    }
+    if (this.searchKey() !== null) {
+      // result tab: a folder opens in a new tab, the result stays
+      this.setCursor(entry.path);
+      if (isNavigableDir(entry)) {
+        if (!entry.lossyName) {
+          this.openInNewTab(entry.path, null);
+        }
+        return;
+      }
+      return this.openFile(entry);
     }
     if (isParentRow(entry)) {
       return this.up();
@@ -260,7 +312,7 @@ export class FileBrowserStore {
 
   back(): Promise<void> {
     const entry = this.memoryRef.back.at(-1);
-    if (!entry || this.navigationLocked()) {
+    if (!entry || this.navigationLocked() || this.searchKey() !== null) {
       return Promise.resolve();
     }
     return this.load(entry.path, {
@@ -272,7 +324,7 @@ export class FileBrowserStore {
 
   forward(): Promise<void> {
     const entry = this.memoryRef.forward.at(-1);
-    if (!entry || this.navigationLocked()) {
+    if (!entry || this.navigationLocked() || this.searchKey() !== null) {
       return Promise.resolve();
     }
     return this.load(entry.path, {
@@ -284,7 +336,7 @@ export class FileBrowserStore {
 
   /** Reloads the folder, keeping cursor and (still existing) marks. */
   refresh(): Promise<void> {
-    if (this.navigationLocked()) {
+    if (this.navigationLocked() || this.searchKey() !== null) {
       return Promise.resolve();
     }
     const path = this.path();
@@ -429,7 +481,7 @@ export class FileBrowserStore {
     if ([...this.ownSizeJobs().values()].includes(entry.path)) {
       return;
     }
-    const folder = this.path();
+    const folder = this.locationKey();
     let id: string;
     try {
       id = await this.jobs.start({ kind: 'dirSize', path: entry.path });
@@ -444,7 +496,7 @@ export class FileBrowserStore {
       next.delete(id);
       return next;
     });
-    if (this.path() !== folder) {
+    if (this.locationKey() !== folder) {
       return;
     }
     const size = job.summary?.dirSize;

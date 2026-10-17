@@ -58,6 +58,16 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   nie oberhalb des Startordners, Links werden nie verfolgt; jeder Eintrag wird vor dem Löschen erneut geprüft.
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
   Elternordner `[P]`, Schreibweise.
+- **Suche** (`Alt+F7`, Prompt 009): Name als Glob (`*.mp3;*.flac`), Regex oder Text, Groß/klein, ganzer Name/Teil;
+  Dateien/Ordner/Links, Größe, Änderungsdatum (letzte N Tage, von–bis), Text im Inhalt (mit Größenlimit), versteckte
+  Einträge, Links folgen (zyklensicher), max. Tiefe, Ausschlüsse (`.git; node_modules`), max. Treffer; Vorlagen
+  (Filme, Bilder, Audio, Comics …), eigene Vorlagen und letzte Suchen (für die Sitzung). Treffer streamen in einen
+  **Ergebnis-Tab** (Lupe, Spinner, Spalte „Folder“): markieren, kopieren, verschieben, löschen wie im Ordner,
+  „Zur Datei“ (`Strg+Shift+G` / `⌘⇧G`) öffnet den Ordner in neuem Tab mit Cursor auf der Datei, Enter auf einem Ordner
+  ebenso; `Stop`, `Search again` (`Strg+Shift+F7`), Doppelklick auf den Header ändert die Suche. Unlesbare Ordner
+  werden gemeldet; Ergebnis-Tabs werden nicht gespeichert.
+- **Ordner-Finder** (`Alt+F10`, alt „Change Dir“): alle Unterordner bis Tiefe 5 (Regler 1–10/∞), Filter unscharf und
+  live, `↑ ↓ Bild↑ Bild↓`, Enter wechselt dorthin, Esc bricht ab.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
   (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;
@@ -105,7 +115,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Reload | `Ctrl+R` | `⌘R` |
 | History back | `Alt+ArrowLeft` | `⌘[` |
 | History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L`, `Alt+F10` | `⌘L`, `⌘⌃D` |
+| Go to path… | `Ctrl+L` | `⌘L`, `⌘⌃D` |
+| Find folder (change dir)… | `Alt+F10` | `⌥F10` |
+| Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
 | Folder menu, right panel | `Alt+F2` | `⌥F2` |
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
@@ -133,6 +145,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Close tab | `Ctrl+W` | `⌘⌥W` |
 | Toggle favourite | `Ctrl+D` | `⌘D` |
 | Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
+| Search again | `Ctrl+Shift+F7` | `⌘⇧F7` |
 | View | `F3` | `F3` |
 | Quick view in the other panel | `Ctrl+Q` | `⌃Q` |
 | Edit (default app until 011) | `F4` | `F4` |

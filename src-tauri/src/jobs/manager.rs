@@ -5,7 +5,7 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, group, rename,
+    Transfer, clean, copy, delete, group, rename, search,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -33,7 +33,12 @@ struct Inner {
     serial_busy: bool,
     queue: VecDeque<String>,
     running: usize,
+    /// Helper jobs removed when they finished (newest last) – for `wait_finished`.
+    retired: VecDeque<JobInfo>,
 }
+
+/// Finished helper jobs kept for `wait_finished` after their removal.
+const RETIRED_KEPT: usize = 64;
 
 pub struct JobManager {
     inner: Mutex<Inner>,
@@ -221,6 +226,7 @@ impl JobManager {
                             &emit,
                         )
                     }
+                    JobSpec::Search { criteria } => search::run(id, criteria, &control, &emit),
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         run_count(id, &paths, &control, &emit)
@@ -280,9 +286,22 @@ impl JobManager {
             state,
             summary: Box::new(summary),
         });
-        let next = {
+        let (next, retired) = {
             let mut inner = self.lock();
             inner.running = inner.running.saturating_sub(1);
+            // helper jobs (search, count, folder size) leave the list once their end
+            // was reported – the list does not grow with every search (review 009 #10)
+            let retired = inner
+                .jobs
+                .iter()
+                .position(|e| e.info.id == id && e.info.spec.is_helper())
+                .map(|i| inner.jobs.remove(i).info);
+            if let Some(info) = &retired {
+                if inner.retired.len() >= RETIRED_KEPT {
+                    inner.retired.pop_front();
+                }
+                inner.retired.push_back(info.clone());
+            }
             let mut next = None;
             if !parallel {
                 inner.serial_busy = false;
@@ -292,8 +311,13 @@ impl JobManager {
                 }
             }
             self.changed.notify_all();
-            next
+            (next, retired.is_some())
         };
+        if retired {
+            (self.sink)(&JobEvent::Removed {
+                ids: vec![id.to_string()],
+            });
+        }
         if let Some(n) = next {
             self.spawn(n);
         }
@@ -569,12 +593,13 @@ impl JobManager {
         }
     }
 
-    /// Jobs not finished yet (queued, running, paused, waiting).
+    /// Jobs not finished yet (queued, running, paused, waiting), without helper
+    /// jobs (folder size, count, search – quitting needs no confirmation for them).
     pub fn active_count(&self) -> usize {
         self.lock()
             .jobs
             .iter()
-            .filter(|e| !e.info.state.is_finished())
+            .filter(|e| !e.info.state.is_finished() && !e.info.spec.is_helper())
             .count()
     }
 
@@ -624,7 +649,8 @@ impl JobManager {
                 .jobs
                 .iter()
                 .find(|e| e.info.id == id)
-                .map(|e| e.info.clone())?;
+                .map(|e| e.info.clone())
+                .or_else(|| inner.retired.iter().find(|j| j.id == id).cloned())?;
             if info.state.is_finished() {
                 return Some(info);
             }
@@ -743,6 +769,10 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             for i in items {
                 validate_input_path(&i.path)?;
             }
+        }
+        JobSpec::Search { criteria } => {
+            // patterns and paths only – the roots are read in the job thread
+            crate::search::compile(criteria)?;
         }
         JobSpec::Count { paths } => {
             for p in paths {

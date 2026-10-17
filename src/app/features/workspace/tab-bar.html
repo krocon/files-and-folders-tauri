@@ -21,14 +21,21 @@
       [class.selected]="selected"
       [attr.aria-selected]="selected"
       [attr.tabindex]="selected ? 0 : -1"
-      [attr.title]="tab.path ?? texts.homeFolder"
+      [attr.title]="tab.search ? tab.search.label : (tab.path ?? texts.homeFolder)"
+      [attr.aria-busy]="isSearching(tab) ? 'true' : null"
       (click)="select(i)"
       (dblclick)="reload(i)"
       (auxclick)="onAuxClick($event, i)"
       (contextmenu)="onContextMenu($event, i)"
       (keydown)="onTabKeydown($event, i)"
     >
+      @if (tab.search) {
+        <span class="search-icon" aria-hidden="true">🔍</span>
+      }
       {{ title(tab) }}
+      @if (isSearching(tab)) {
+        <span class="spinner" aria-hidden="true"></span>
+      }
     </button>
   }
 </div>

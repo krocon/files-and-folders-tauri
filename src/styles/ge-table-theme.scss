@@ -117,3 +117,9 @@
     inset 0 -2px 0 var(--color-accent);
   background: var(--color-row-hover);
 }
+
+/* active row of a list driven from an input field (folder finder, design 009 E6) */
+.ge-table .fnf-grid-active {
+  background-color: var(--color-cursor-bg);
+  color: var(--color-cursor-text);
+}

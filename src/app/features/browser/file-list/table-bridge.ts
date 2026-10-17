@@ -22,6 +22,10 @@ export interface TableBridge {
   setFocusedRow(index: number): void;
   repaint(): void;
   announce(text: string): void;
+  /** Shows or hides a column (the folder column of a result tab, design 009). */
+  setColumnVisible(property: string, visible: boolean): void;
+  /** An own "no rows" text over the empty list (result tab), `null` = the table's default. */
+  setEmptyText(text: string | null): void;
   /** Column layout, sort and scroll position (per tab, design 004 E2). */
   getTableState(): Partial<TableStateIf>;
   /** Applies parts of a saved table state (sort also re-sorts the rows). */
@@ -41,6 +45,7 @@ export const TAB_TABLE_PARTS: readonly TableStatePart[] = ['columns', 'sort', 's
 
 export function createTableBridge(api: TableApi, body: FileBodyModel): TableBridge {
   const scope = api.getTableScope();
+  let manualOverlay = false;
   const stopRename = () => {
     body.renaming?.editor.cancel();
   };
@@ -72,6 +77,20 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
       api.repaintHard();
     },
     displayedRows: () => body.getFilteredRows(),
+    setEmptyText(text) {
+      if (text !== null) {
+        api.showNoRowsOverlay(text);
+        manualOverlay = true;
+      } else if (manualOverlay) {
+        api.hideOverlay();
+        manualOverlay = false;
+      }
+    },
+    setColumnVisible(property, visible) {
+      if (api.isColumnVisible(property) !== visible) {
+        api.setColumnVisible(property, visible);
+      }
+    },
     focusedRow() {
       const focus = scope.focusModel()?.getFocus();
       return focus ? focus[0] : -1;
