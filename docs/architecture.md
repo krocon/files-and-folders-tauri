@@ -73,6 +73,9 @@ sind als solche markiert.
 | Schutz | `paths::validate_name` (Windows-Regeln unter Windows), `paths::danger_of` (Wurzel, Volume, Home, Systemordner): Verschieben, Umbenennen, Löschen nur mit `allowDangerous` nach zweiter Bestätigung | Rust entscheidet, das Frontend zeigt nur an. |
 | Dialoge der Operationen | `OpsStore` (Root) baut die Anfrage (Auswahl „Markierung, sonst Cursor“, Zielvorschläge, Live-Zählung als Hilfs-Job `count`) und führt aus; Dialoge sind dünn | Nach der Operation: Cursor auf das Ergebnis bzw. den nächsten Eintrag, Markierungen weg, betroffene Ordner laden über `dirsChanged` neu. Details: `prompts/006-basis-operationen.design.md`. |
 | Umbenennen in der Liste (F2) | Editor der GuiExpert Table in der Namenszelle (`startEditing`, eigener `CellRendererIf`); das Modell schreibt nie (`setValue` → false), der Name geht an Rust | Kein Overlay nötig; Entwurf überlebt Repaints. |
+| Multi-Rename | Namen rechnet nur die TS-Engine (`features/multirename/rename-engine.ts`, JS-Regex wie in den alten Versionen), Rust rechnet nie Namen: `plan_rename` prüft Paare `{ path, newName }` (Name, Dubletten mit gemessener Groß/klein-Empfindlichkeit, Ziel vorhanden per Inode/Datei-Index, Ketten/Tausch), der Job `rename` führt aus (`rename_noreplace`, Ketten in Reihenfolge, Zyklen über `.fnf-rename-…` mit Rücknahme bei Fehlern) | Eine Quelle der Wahrheit je Aufgabe; Vorschau ohne IPC je Tastendruck; Ausführung und Prüfung im Backend (destruktiv). Design 007 |
+| Rückgängig (Rename) | Rust merkt sich je Rename-Job die ausgeführten Paare (neuer Pfad → alter Name), nur im Speicher, letzte 20; `undo_rename` startet einen neuen Rename-Job (Teilausführung erlaubt); `JobInfo.undoAvailable` + Ereignis `undoAvailable` | Keine Protokolldatei mit Nutzerpfaden; ein Undo ist selbst wieder rückgängig zu machen |
+| Multi-Rename-Vorlagen | `<app_config_dir>/rename-presets.json` (`version: 1`, `last` + max. 100 benannte), Rust prüft nur Form und Größe (Regeln als `serde_json::Value`), kaputt → `.bad` | Wie `keymap.json`; 015 kann die Datei übernehmen |
 | Modale Dialoge | Fenster dahinter `inert` | Fokus und Klicks bleiben im Dialog (aria-modal allein reicht nicht). |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
@@ -106,6 +109,14 @@ Table. Auf dem Mac noch zu messen (Konsole: `[fnf:perf]`). Optionen (noch nicht 
 003/012): schlankeres DTO (Ordnerpfad einmal statt voller Pfad je Eintrag), Streaming in Blöcken über
 `tauri::ipc::Channel` (erste Zeilen sofort), paralleles `stat`, binäres Format. Messung Rust allein:
 `FNF_PERF_DIR=<ordner> cargo test --release perf -- --ignored --nocapture` (in `src-tauri`).
+
+### Multi-Rename (Messung Prompt 007, Okt. 2026)
+
+10 000 Dateien, Linux-Container unter Xvfb, Debug-Build: TS-Engine + Vorschauzeilen 10–25 ms (Vitest/jsdom),
+`plan_rename` in Rust 280 ms (debug) bzw. 113 ms (release, `cargo test --release ten_thousand`); im Fenster steht die
+neue Vorschau < 350 ms nach dem letzten Tastendruck (Namen ab 1 000 Einträgen 80 ms entprellt, damit die Eingabe
+flüssig bleibt), die Rust-Prüfung ~1 s später (120 ms Entprellung + Prüfung + IPC im Debug-Build). Umbenennen von
+10 000 Dateien als Job: ~1 s.
 
 ## Geplante Erweiterungen (noch nicht implementiert)
 

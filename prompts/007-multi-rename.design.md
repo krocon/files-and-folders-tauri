@@ -310,10 +310,64 @@ verfügbar, einem `vfat`-Loop-Mount (insensitiv) getestet; sonst nur mit Plattfo
 | 6 | Abweichungen in E4 (Ersetzen aller Vorkommen, kein `,,`-Kollaps, ≥ 1 Eintrag, Sortierung nach Nr.) | wie in der Tabelle |
 | 7 | Strg+M zusätzlich unter Windows/Linux? | **Ja** (TC-Gewohnheit) |
 
-## 7. Fortschritt
+## 7. Abweichungen bei der Umsetzung (mit Begründung)
+
+| Punkt | Design | umgesetzt | Grund |
+|---|---|---|---|
+| Ort von `plan`/`run` | `rename.rs` | `src-tauri/src/jobs/rename.rs` (rein std) | braucht `Control`/`JobEvent`/`Reporter` der Job-Engine |
+| Prüfung bei `start_job` | Plan mit Fehlern → Job nicht angenommen | `start_job` prüft nur Form (nicht leer, ≤ 100 000, Pfade gültig); der Job prüft im eigenen Thread und **scheitert ohne eine einzige Umbenennung**, sobald ein Paar fehlerhaft ist (Summary-Fehler „Nothing was renamed: …“) | `start_job` ist ein synchroner Command – 10 000 `stat` gehören nicht auf den Haupt-Thread; Ergebnis für den Nutzer gleich (nichts passiert, Meldung) |
+| Undo-Job | – | `JobSpec::Rename { items, undoOf }`: mit `undoOf` laufen die gültigen Paare, der Rest scheitert je Eintrag | E7 „Fehler je Eintrag, der Rest wird zurückbenannt“ |
+| `undo_rename(jobId)` | Id Pflicht | `jobId: Option` – `null` = letzter Rename-Job | Aktion `UNDO_RENAME` braucht keine Id; auch wenn die Task-Liste schon geleert ist |
+| Neues Ereignis | – | `JobEvent::UndoAvailable { id, available }` (vor `finished` gesendet) | Knopf erscheint/verschwindet (Undo, Verdrängung aus den letzten 20) |
+| Ersetzungszeile | `onlyIf: string \| null` | `onlyIf: boolean` + `condition: string` | Haken und Feld getrennt (UI wie alt), Text bleibt beim Abschalten erhalten |
+| Makro-Menü | APG-Menü | natives `<select>` mit `<optgroup>` je Kategorie; die Wahl bleibt sichtbar | barrierefrei ohne eigenes Widget; Pfeiltasten probieren Makro für Makro durch (E2E: ein Rücksetzen auf „Makros…“ wendete sonst immer das erste an) |
+| Makros | 3 legacy | 5 (legacy 3 + mr „Trenner ._- → Leerzeichen“, „Filme mit Jahr“), alle auf den Namensteil umgeschrieben; Makro 3 ohne `,,`-Kollaps (`([^.\s,]+),\s*`) | Beispiele der alten Hilfetexte als Tests |
+| Doppelklick setzt `[N].[E]` | legacy | entfällt, Knopf „Reset“ | Doppelklick markiert in Textfeldern ein Wort |
+| Umlaute | legacy `Ä → AE` | `Ä → Ae`, `ß → ss`, Akzente ohne Zeichen (Tabelle erweitert, `ž` global) | korrektes Deutsch; alte Tabelle hatte tote Zeilen |
+| Entprellung | Engine 80 ms (E10 a) | Engine **ab 1 000 Einträgen** 80 ms (kleiner sofort); Rust-Prüfung 120 ms | E2E: ohne Entprellung stauten sich bei 10 000 Einträgen die Tastendrücke |
+| Modal | – | `Modal` hat ein `height`-Input (großer Dialog 92vw × 86vh) | |
+
+## 8. Annahmen
+
+- Abbruch eines Rename-Jobs wird zwischen zwei Einträgen geprüft; ein begonnener Zyklus wird immer zu Ende geführt
+  oder vollständig zurückgenommen (kein Zwischenname bleibt liegen; nur wenn auch die Rücknahme scheitert, nennt die
+  Fehlermeldung den Zwischennamen).
+- Ein Ziel, das ein **Hard-Link** derselben Datei ist, gilt als „existiert“ (nicht als derselbe Eintrag) – sonst würde
+  `rename` beide Namen stehen lassen.
+- Die Vorschau zeigt für `[D]`/`[T]` die lokale Zeit des WebViews.
+
+## 9. Review
+
+Ein separater Review-Agent stand in dieser Sitzung nicht zur Verfügung (keine Subagenten-Werkzeuge). Stattdessen
+gründliche Selbstprüfung der Schwerpunkte, jeweils mit Test belegt:
+- **Nie überschreiben:** jede Umbenennung über `rename_noreplace`; nur „dieselbe Datei“ (gleicher Inode, ein Link)
+  geht über `rename_same_entry` (prüft vorher die exakte Schreibweise) – `run_never_overwrites_a_target_that_appears_after_planning`,
+  `plan_refuses_dangerous_paths_and_hard_links`, `rename_case_only_does_not_overwrite_a_distinct_entry` (006).
+- **Zyklen/Abbruch:** Ketten in Abhängigkeitsreihenfolge (O(n)), Zyklen über eindeutige Zwischennamen mit
+  Rücknahme – `run_simple_chain_swap_and_three_cycle`, `cycle_failure_is_rolled_back_without_temporary_names`,
+  `cancel_stops_between_entries_and_completes_no_half_cycle`, `rename_job_swap_undo_and_undo_of_undo` (zählt die
+  Einträge des Ordners: kein Zwischenname).
+- **Undo:** stellt den Ausgangszustand her (auch Tausch, Dreierzyklus, NFD-Name byte-genau im E2E), geänderte Datei
+  → Fehler je Eintrag, Undo des Undo, Log-Grenze 20 – `tests_ops.rs`.
+- **Regex-Fehler:** ungültiger Ausdruck/Bedingung → Fehler am Feld, alle Zeilen „Fehler“, keine Rust-Anfrage, kein
+  Umbenennen – Fehlerfälle im Katalog, `multirename.spec.ts`, Dialog-Test. ReDoS bleibt bewusst offen (E10 a).
+
+## 10. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust: `rename.rs` (plan, run, Undo-Protokoll), `JobSpec::Rename`, Commands, Vorlagen-Datei
-- [ ] Phase 3 Frontend: Engine + Testkatalog, Store, Dialog, Vorschau-Table, Aktionen, Task-Liste „Rückgängig“
-- [ ] Phase 4 Ende-zu-Ende · [ ] Phase 5 Doku · [ ] Phase 6 Abschlussprüfung, Review (Schwerpunkte: kein
-  Überschreiben, Zyklen/Abbruch, Undo, Regex-Fehler)
+- [x] Phase 2 Rust: `jobs/rename.rs` (plan, run, Undo-Paare), `JobSpec::Rename`, Undo-Log im `JobManager`,
+  Commands `plan_rename`, `undo_rename`, `load/save_rename_presets`, `rename_presets.rs`, Fehlercodes
+  `duplicate_target`, `undo_unavailable` – 18 neue Rust-Tests (inkl. 10 000 Dateien: Plan 113 ms release)
+- [x] Phase 3 Frontend: Engine + Testkatalog (99 Fälle), Store, Dialog, Vorschau-Table, Aktionen
+  `OPEN_MULTIRENAME_DLG` (+ `Strg+M` unter Windows/Linux) und `UNDO_RENAME`, „Undo“ in der Task-Liste
+- [x] Phase 4 Ende-zu-Ende (Xvfb, Debug-Build): Muster + Zähler + Umlaute auf Ordner/`README`/`x.tar.gz`/NFD-`über.txt`,
+  Makro „first last - title“ per Tastatur, Konflikt mit vorhandener Datei (gesperrt, Zeile rot), Tausch `a↔b` über drei
+  Ersetzungszeilen, Undo aus Task-Liste und Befehlspalette, „zuletzt“ nach Neustart, 10 000 Dateien (Vorschau
+  < 350 ms nach der Eingabe, Umbenennen ~1 s, Undo). Nicht prüfbar: APFS/NTFS (Groß/klein-insensitiv,
+  Normalisierung, Windows-Namen), gesperrter Ordner (als root greifen Rechte nicht), Dark-Mode nur über Tokens.
+- [x] Phase 5 Doku · [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build), Selbst-Review (§9)
+
+## 11. Offen
+
+- KI-Modus (E11), Web-Worker gegen ReDoS (E10 b), Undo über einen Neustart, Undo für Einzel-Umbenennen (F2).
+- Fehlertexte aus Rust sind englisch (i18n in 015).
