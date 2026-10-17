@@ -17,7 +17,16 @@ import { dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { OpsStore } from '../ops/ops.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { dragKind, dragSources, DragOrigin, resolveDropTarget, ZoneHit } from './dnd-logic';
+import {
+  dragKeyAction,
+  dragKind,
+  dragOriginDir,
+  dragSources,
+  DragOrigin,
+  panelZoneHit,
+  resolveDropTarget,
+  ZoneHit,
+} from './dnd-logic';
 import { DragStore } from './drag.store';
 
 const a = entry('a.txt', { path: '/src/a.txt' });
@@ -79,6 +88,51 @@ describe('dnd-logic (design 012 E5)', () => {
     expect(resolveDropTarget(hit('right', '/dst', lossy), own)?.rowPath).toBeNull();
     // the other panel shows the same folder: nothing to do there
     expect(resolveDropTarget(hit('right', '/src', null), own)).toBeNull();
+  });
+});
+
+describe('dnd-logic – result tabs and keys (review 012)', () => {
+  const hits = [entry('a.txt', { path: '/x/a.txt' })];
+  const resultTab = {
+    path: () => null,
+    locationKey: () => 'search:k1',
+    listing: () => listing('search:k1', hits),
+  };
+  const folder = {
+    path: () => '/w',
+    locationKey: () => '/w',
+    listing: () => ({
+      ...listing('/w', []),
+      segments: [
+        { name: '/', path: '/' },
+        { name: 'w', path: '/w' },
+      ],
+    }),
+  };
+
+  it('a result tab is no drop folder; its drags come from its location key', () => {
+    expect(panelZoneHit('left', resultTab, null).panelDir).toBeNull();
+    expect(panelZoneHit('left', folder, null)).toEqual({
+      side: 'left',
+      panelDir: '/w',
+      panelName: 'w',
+      row: null,
+    });
+    expect(dragOriginDir(resultTab)).toBe('search:k1');
+    expect(dragOriginDir(folder)).toBe('/w');
+  });
+
+  it('while dragging: Esc cancels, modifiers switch the kind, every other key is swallowed', () => {
+    const key = (k: string, type = 'keydown') => dragKeyAction({ key: k, type });
+    expect(key('Escape')).toBe('cancel');
+    expect(key('Escape', 'keyup')).toBe('swallow');
+    for (const m of ['Shift', 'Meta', 'Control', 'Alt']) {
+      expect(key(m)).toBe('modifier');
+      expect(key(m, 'keyup')).toBe('modifier');
+    }
+    for (const k of ['F5', 'Delete', 'Enter', 'ArrowDown', 'a', 'Tab']) {
+      expect(key(k)).toBe('swallow');
+    }
   });
 });
 

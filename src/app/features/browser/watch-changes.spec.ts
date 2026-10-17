@@ -118,6 +118,34 @@ describe('FileBrowserStore – folder watching', () => {
     expect(api.calls.at(-1)).toBe('/elsewhere');
   });
 
+  it('deltas and a queued reload of a superseded load are dropped (review 012 #4c)', async () => {
+    const pending = deferred<DirectoryListing>();
+    api.handler = () => pending.promise;
+    const stale = store.load('/w');
+    store.applyChanges('/w', [entry('d.txt', { path: '/w/d.txt' })], []);
+    store.requestRefresh();
+    // a result tab replaces the folder that was still loading
+    store.showSearch('k', [a]);
+    pending.resolve(listing('/w', [sub, a]));
+    await stale;
+    const calls = api.calls.length;
+    api.handler = () => Promise.resolve(listing('/w', [sub, a]));
+    await store.load('/w');
+    await Promise.resolve();
+    expect(store.entries().map((e) => e.name)).toEqual(['Sub', 'a.txt']);
+    expect(api.calls.length).toBe(calls + 1);
+    // the same for a new load that supersedes an older one
+    const older = deferred<DirectoryListing>();
+    api.handler = () => older.promise;
+    const first = store.load('/w');
+    store.applyChanges('/w', [entry('e.txt', { path: '/w/e.txt' })], []);
+    api.handler = () => Promise.resolve(listing('/w', [a]));
+    await store.load('/w');
+    older.resolve(listing('/w', []));
+    await first;
+    expect(store.entries().map((e) => e.name)).toEqual(['a.txt']);
+  });
+
   it('a gone folder leads to the nearest existing ancestor', async () => {
     api.handler = (p) =>
       Promise.resolve({
@@ -172,6 +200,41 @@ describe('WatchService', () => {
     await settle();
     expect(api.calls.at(-1)).toEqual(['/net']);
     expect(api.calls.length).toBe(3);
+  });
+
+  it('one watch_dirs call at a time; the last folders win (review 012 #1)', async () => {
+    const gate = deferred<void>();
+    api.hold = gate.promise;
+    service.setPanelDir('left', '/a');
+    await settle();
+    service.setPanelDir('left', '/b');
+    await settle();
+    service.setPanelDir('left', '/c');
+    await settle();
+    expect(api.calls).toEqual([['/a']]);
+    api.hold = null;
+    gate.resolve();
+    await settle();
+    await settle();
+    expect(api.calls).toEqual([['/a'], ['/c']]);
+    expect([...service.statuses().keys()]).toEqual(['/c']);
+  });
+
+  it('reloads a newly watched folder once if it changed since it was listed (review 012 #6)', async () => {
+    const got: string[] = [];
+    service.on((e) => got.push(`${e.type}:${e.dir}`));
+    api.modified.set('/a', 5_000);
+    api.modified.set('/b', 1_000);
+    service.setPanelDir('left', '/a', 9_000);
+    service.setPanelDir('right', '/b', 9_000);
+    await settle();
+    expect(got).toEqual([]);
+    api.modified.set('/a', 10_000);
+    service.setPanelDir('right', '/c', 9_000);
+    api.modified.set('/c', 9_500);
+    await settle();
+    // "/a" was watched already; "/c" changed after its listing started
+    expect(got).toEqual(['rescan:/c']);
   });
 
   it('hands the events to every listener until it unsubscribes', async () => {

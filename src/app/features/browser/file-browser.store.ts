@@ -73,6 +73,8 @@ export class FileBrowserStore {
   private deltasDuringLoad: FolderDelta[] = [];
   /** A reload was requested while another load ran (design 012 E4). */
   private refreshAfterLoad: string | null = null;
+  /** Wall-clock time (ms) the shown listing was requested – changes after it may be missing. */
+  listedAt: number | null = null;
 
   readonly listing = signal<DirectoryListing | null>(null);
   readonly loading = signal(false);
@@ -168,7 +170,8 @@ export class FileBrowserStore {
    * On failure the previous listing stays visible and `error` is set.
    */
   async load(path?: string, options: LoadOptions = {}): Promise<void> {
-    const seq = ++this.requestSeq;
+    const seq = this.supersede();
+    const startedAt = Date.now();
     const leaving = this.searchKey() === null ? this.listing() : null;
     const leavingState = leaving ? this.captureFolderState() : null;
     this.loading.set(true);
@@ -191,6 +194,7 @@ export class FileBrowserStore {
       const paths = new Set(listing.entries.map((e) => e.path));
       const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
       this.searchKey.set(null);
+      this.listedAt = startedAt;
       this.listing.set(listing);
       this.error.set(null);
       const wanted =
@@ -249,7 +253,7 @@ export class FileBrowserStore {
    * breadcrumbs. Cursor and marks stay while the same result grows or shrinks.
    */
   showSearch(key: string, hits: readonly DirEntry[]): void {
-    ++this.requestSeq; // a folder still loading must not replace the result
+    this.supersede(); // a folder still loading must not replace the result
     const same = this.searchKey() === key;
     if (!same) {
       this.cancelSizeJobs();
@@ -345,6 +349,17 @@ export class FileBrowserStore {
       keepCursor: true,
       history: 'none',
     });
+  }
+
+  /**
+   * Starts a new request: older responses are dropped, and so are the watcher
+   * deltas and the queued reload that belonged to them (review 012 #4c) – the
+   * new listing is read after them anyway.
+   */
+  private supersede(): number {
+    this.deltasDuringLoad = [];
+    this.refreshAfterLoad = null;
+    return ++this.requestSeq;
   }
 
   /**
@@ -529,6 +544,10 @@ export class FileBrowserStore {
 
   setPendingTableState(state: Partial<TableStateIf> | null): void {
     this.pendingTableState = state;
+  }
+
+  hasPendingTableState(): boolean {
+    return this.pendingTableState !== null;
   }
 
   takePendingTableState(): Partial<TableStateIf> | null {

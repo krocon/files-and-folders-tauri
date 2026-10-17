@@ -73,6 +73,24 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // Windows: a watched folder keeps itself and its parents from being
+            // renamed or deleted – pause the watches below what a job changes (review 012 #3)
+            if cfg!(windows) {
+                let handle = app.handle().clone();
+                app.state::<commands::JobsState>()
+                    .manager
+                    .set_fs_guard(std::sync::Arc::new(move |paths| {
+                        let state = handle.state::<commands::watch::WatchState>();
+                        let paused = state.hub().pause_under(paths);
+                        let handle = handle.clone();
+                        Box::new(move || {
+                            handle
+                                .state::<commands::watch::WatchState>()
+                                .hub()
+                                .resume(&paused)
+                        })
+                    }));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

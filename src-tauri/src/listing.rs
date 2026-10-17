@@ -90,12 +90,14 @@ pub fn describe_paths(paths: &[std::path::PathBuf]) -> DescribedPaths {
     let mut entries = Vec::new();
     let mut missing = 0;
     let mut parent: Option<Option<std::path::PathBuf>> = None;
+    let mut seen = std::collections::HashSet::new();
     for p in paths {
         let Some(entry) = stat_entry(p) else {
             missing += 1;
             continue;
         };
-        if entries.iter().any(|e: &DirEntryDto| e.path == entry.path) {
+        // linear, not quadratic: up to 10 000 dropped paths (review 012 #8)
+        if !seen.insert(entry.path.clone()) {
             continue;
         }
         let this = parent_of(p);

@@ -224,7 +224,15 @@ Fokus bleibt beim Ziehen im Quell-Panel; der Dialog übernimmt danach den Fokus 
 
 | # | Befund | Schwere | Umgang |
 |---|---|---|---|
-| | | | |
+| 1 | Wettlauf bei `watch_dirs`: ältere Menge konnte eine neuere überholen; `Msg::Dirs` außerhalb des Locks | mittel | ✅ `WatchService` serialisiert (ein Aufruf zur Zeit, danach der neueste Stand); Rust sendet die Tabelle unter dem Lock. Spec „one watch_dirs call at a time“ |
+| 2 | Ordner gelöscht + neu angelegt: inotify hing am alten Inode | mittel | ✅ `Touch::SelfRemoved` (Remove/Rename des Ordners selbst) bzw. andere Inode → Watch neu anmelden + Rescan; reine Attribut-/mtime-Änderung (Polling) liefert die Kinder statt Rescan. Test mit echtem Watcher; behebt auch den flaky `polling_reports_changes_too` |
+| 3 | Windows: Watch-Handles sperren Ordner/Eltern beim Verschieben/Umbenennen/Löschen | mittel | ✅ zentral im `JobManager` (`set_fs_guard`, `JobSpec::changed_paths`: Move, Delete, Rename/Multi-Rename, Group-Move, Clean): betroffene überwachte Ordner (gleich/unterhalb) pausieren, danach neu anmelden + Rescan bzw. `gone`. Nur unter Windows eingehängt (`cfg!(windows)`), Logik plattformneutral getestet (Hub + Manager). Unter Windows nicht real geprüft |
+| 4 | Nach dem Merge mit 009: Ergebnis-Tab als Drop-Ordner, `sourceDir` beim Ziehen, Deltas/Reload einer überholten Ladung | mittel | ✅ `panelZoneHit` (Ergebnis-Tab: kein Panel-Ordner), `dragOriginDir` = `locationKey()`, `supersede()` leert Deltas und vorgemerktes Neuladen bei jeder neuen Anfrage (load, showSearch). Specs |
+| 5 | Dauer-Schreibvorgänge: jedes Größen-Update = setRows + reSort + Repaint, F2-Editor neu geöffnet; eigene Temp-Dateien im Watcher | gering/mittel | ✅ `inPlaceUpdate` + `TableBridge.updateRows` (Zeilen ersetzen; reSort nur bei Sortierung nach Größe/Datum; ausgeblendete Zeilen und offener F2-Editor ohne Repaint); `.fnf-*.part`/`.fnf-rename-*` ignoriert. Offen: neue *versteckte* Einträge gehen weiter über setRows |
+| 6 | Lücke zwischen Listing und Watch-Anmeldung | gering | ✅ Rust meldet die mtime des Ordners bei der Anmeldung (`modifiedMs`); neuer als die Listing-Anfrage − 2 s → einmal `rescan` |
+| 7 | Polling ohne Grenze | gering | ✅ ab 20 000 Einträgen oder bei fehlendem Leserecht `off` mit Grund in der Statuszeile („too many entries to poll“, „permission denied“) |
+| 8 | `describe_paths`: quadratische Doppel-Erkennung | gering | ✅ `HashSet` |
+| 9 | Während des Ziehens wirkten andere Tasten (F8, Entf) | gering | ✅ `dragKeyAction`: nur Esc und Modifier, alles andere verschluckt. Spec |
 
 ## 8. Fortschritt
 

@@ -212,7 +212,7 @@ export class FilePanel implements OnInit {
     // the shown folder is watched (design 012 E2)
     effect(() => {
       const path = this.store.path();
-      untracked(() => this.watch.setPanelDir(this.side(), path));
+      untracked(() => this.watch.setPanelDir(this.side(), path, this.store.listedAt ?? undefined));
     });
     effect(() => {
       const req = this.ws.navigateRequest();

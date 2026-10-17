@@ -34,6 +34,12 @@ impl Default for WatchState {
     }
 }
 
+impl WatchState {
+    pub fn hub(&self) -> &WatchHub {
+        &self.hub
+    }
+}
+
 /// Receives the watch events of this webview.
 #[tauri::command]
 pub fn subscribe_watch<R: Runtime>(

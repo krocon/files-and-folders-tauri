@@ -8,6 +8,8 @@ export interface WatchStatus {
   readonly mode: WatchMode;
   /** `network`, or the watcher error (for `poll`/`off`). */
   readonly reason: string | null;
+  /** The folder's mtime once the watch was set up (null: off / unknown). */
+  readonly modifiedMs: number | null;
 }
 
 /** Debounced changes of a watched folder (design 012 E3). */

@@ -15,6 +15,12 @@ export interface TableBridge {
   /** The external row filter changed (hidden files, quick filter). */
   filterChanged(): void;
   /** Rows in display order (sorted/filtered). */
+  /**
+   * Replaces rows of the same entries (sizes/times changed, review 012 #5):
+   * re-sorts only if a changed column is sorted, repaints only if one is
+   * displayed, keeps the F2 editor. False = not all rows found (use setRows).
+   */
+  updateRows(rows: readonly DirEntry[], columns: ReadonlySet<string>): boolean;
   displayedRows(): readonly DirEntry[];
   /** Displayed index of the focused row, -1 if none. */
   focusedRow(): number;
@@ -70,6 +76,24 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
           renaming.editor.cancel();
         }
       }
+    },
+    updateRows(rows, columns) {
+      const { found, visible } = body.replaceRows(rows);
+      if (found !== rows.length) {
+        return false;
+      }
+      if (!visible || body.renaming) {
+        // hidden/filtered rows need no repaint; an open F2 editor stays (the next repaint shows them)
+        return true;
+      }
+      const sorted = api.getState(['sort']).sort ?? [];
+      if (sorted.some((s) => s.property !== undefined && columns.has(s.property))) {
+        api.reSort();
+        api.repaintHard();
+      } else {
+        api.repaint();
+      }
+      return true;
     },
     filterChanged() {
       api.externalFilterChanged();

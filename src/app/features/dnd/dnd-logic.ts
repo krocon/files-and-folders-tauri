@@ -1,4 +1,4 @@
-import { DirEntry, isNavigableDir, isParentRow } from '../../core/fs/fs.models';
+import { DirEntry, DirectoryListing, isNavigableDir, isParentRow } from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
 
 /** Copy or move – a link (design 012 E5) needs a job kind that does not exist yet. */
@@ -54,6 +54,43 @@ export function dragSources(
     return marked.length > 0 ? marked : [row];
   }
   return [row];
+}
+
+/** What a panel shows, as far as drag and drop needs it (the panel store). */
+export interface PanelView {
+  /** The folder, null for a result tab. */
+  path(): string | null;
+  /** The folder or `search:<key>`. */
+  locationKey(): string | null;
+  listing(): DirectoryListing | null;
+}
+
+/** The zone hit of a panel: a result tab has no folder to drop into (review 012 #4a). */
+export function panelZoneHit(side: Side, view: PanelView, row: DirEntry | null): ZoneHit {
+  const dir = view.path();
+  const listing = view.listing();
+  return {
+    side,
+    panelDir: dir,
+    panelName: dir === null ? '' : (listing?.segments.at(-1)?.name ?? dir),
+    row,
+  };
+}
+
+/** The folder dragged entries come from – for a result tab its location key (review 012 #4b). */
+export function dragOriginDir(view: PanelView): string | null {
+  return view.locationKey();
+}
+
+/** A key while dragging: cancel (Esc), switch copy/move (modifiers) or swallow (review 012 #9). */
+export function dragKeyAction(evt: {
+  readonly key: string;
+  readonly type: string;
+}): 'cancel' | 'modifier' | 'swallow' {
+  if (evt.key === 'Escape') {
+    return evt.type === 'keydown' ? 'cancel' : 'swallow';
+  }
+  return ['Shift', 'Meta', 'Control', 'Alt', 'OS'].includes(evt.key) ? 'modifier' : 'swallow';
 }
 
 /** Copy without modifier; move with Shift (Windows/Linux) or ⌘ (macOS, as in the Finder). */

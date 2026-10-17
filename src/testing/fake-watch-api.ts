@@ -9,6 +9,10 @@ export class FakeWatchApi extends WatchApi {
   /** Mode per folder (default native). */
   modes = new Map<string, WatchMode>();
   described = new Map<string, DirEntry>();
+  /** Folder mtime reported with the status (default null). */
+  modified = new Map<string, number>();
+  /** While set, `watchDirs` answers only once it resolves. */
+  hold: Promise<void> | null = null;
   private listener: ((e: WatchEvent) => void) | null = null;
 
   subscribe(onEvent: (event: WatchEvent) => void): Promise<void> {
@@ -16,14 +20,20 @@ export class FakeWatchApi extends WatchApi {
     return Promise.resolve();
   }
 
-  watchDirs(dirs: readonly string[]): Promise<WatchStatus[]> {
+  async watchDirs(dirs: readonly string[]): Promise<WatchStatus[]> {
     this.calls.push([...dirs]);
-    return Promise.resolve(
-      dirs.map((dir) => {
-        const mode = this.modes.get(dir) ?? 'native';
-        return { dir, mode, reason: mode === 'native' ? null : 'network' };
-      }),
-    );
+    if (this.hold) {
+      await this.hold;
+    }
+    return dirs.map((dir) => {
+      const mode = this.modes.get(dir) ?? 'native';
+      return {
+        dir,
+        mode,
+        reason: mode === 'native' ? null : 'network',
+        modifiedMs: this.modified.get(dir) ?? null,
+      };
+    });
   }
 
   describePaths(paths: readonly string[]): Promise<DescribedPaths> {

@@ -21,8 +21,11 @@ pub const RESCAN_GAP: Duration = Duration::from_millis(1500);
 pub enum Touch {
     /// A direct child changed (also for events deeper below it).
     Child(OsString),
-    /// The folder itself (deleted, renamed, attributes).
+    /// The folder itself (attributes, or an event of unknown kind).
     SelfChanged,
+    /// The folder itself was removed or renamed: its watch is lost even if a
+    /// new folder of that name exists (and may reuse the inode).
+    SelfRemoved,
     /// The watcher lost events or failed – reload.
     Rescan,
 }
@@ -34,8 +37,14 @@ pub enum Flush {
     Changes { dir: PathBuf, names: Vec<OsString> },
     /// Reload the whole folder.
     Rescan { dir: PathBuf },
-    /// The folder itself changed: gone, or reload.
-    SelfChanged { dir: PathBuf },
+    /// The folder itself changed: gone, replaced (reload), or only its
+    /// attributes (then the children in `names`, or a reload if `rescan`).
+    SelfChanged {
+        dir: PathBuf,
+        names: Vec<OsString>,
+        rescan: bool,
+        removed: bool,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -43,6 +52,7 @@ struct DirState {
     names: BTreeSet<OsString>,
     rescan: bool,
     self_changed: bool,
+    self_removed: bool,
     first: Option<Instant>,
     last: Option<Instant>,
     last_rescan: Option<Instant>,
@@ -94,6 +104,10 @@ impl Batcher {
                 }
             }
             Touch::SelfChanged => state.self_changed = true,
+            Touch::SelfRemoved => {
+                state.self_changed = true;
+                state.self_removed = true;
+            }
             Touch::Rescan => {
                 state.rescan = true;
                 state.names.clear();
@@ -122,7 +136,12 @@ impl Batcher {
                 continue;
             }
             let flush = if state.self_changed {
-                Flush::SelfChanged { dir: dir.clone() }
+                Flush::SelfChanged {
+                    dir: dir.clone(),
+                    names: std::mem::take(&mut state.names).into_iter().collect(),
+                    rescan: state.rescan,
+                    removed: state.self_removed,
+                }
             } else if state.rescan {
                 state.last_rescan = Some(now);
                 Flush::Rescan { dir: dir.clone() }
@@ -135,6 +154,7 @@ impl Batcher {
             state.names.clear();
             state.rescan = false;
             state.self_changed = false;
+            state.self_removed = false;
             state.first = None;
             state.last = None;
             out.push(flush);
@@ -146,7 +166,7 @@ impl Batcher {
 
 fn flush_dir(f: &Flush) -> &Path {
     match f {
-        Flush::Changes { dir, .. } | Flush::Rescan { dir } | Flush::SelfChanged { dir } => dir,
+        Flush::Changes { dir, .. } | Flush::Rescan { dir } | Flush::SelfChanged { dir, .. } => dir,
     }
 }
 
@@ -160,10 +180,22 @@ pub fn classify(dir_aliases: &[PathBuf], path: &Path) -> Option<Touch> {
         if let Ok(rest) = path.strip_prefix(alias)
             && let Some(Component::Normal(name)) = rest.components().next()
         {
+            if is_own_temp(name) {
+                return None;
+            }
             return Some(Touch::Child(name.to_os_string()));
         }
     }
     None
+}
+
+/// Temp files of our own jobs (copy `.fnf-<job>-<n>.part`, rename
+/// `.fnf-rename-…`): never shown, so their events are dropped (review 012 #5).
+fn is_own_temp(name: &std::ffi::OsStr) -> bool {
+    let Some(name) = name.to_str() else {
+        return false;
+    };
+    name.starts_with(".fnf-rename-") || (name.starts_with(".fnf-") && name.ends_with(".part"))
 }
 
 #[cfg(test)]
@@ -251,7 +283,12 @@ mod tests {
         assert_eq!(
             b.due(t0 + ms(350)),
             vec![
-                Flush::SelfChanged { dir: "/a".into() },
+                Flush::SelfChanged {
+                    dir: "/a".into(),
+                    names: vec!["x".into()],
+                    rescan: false,
+                    removed: false
+                },
                 Flush::Changes {
                     dir: "/b".into(),
                     names: vec!["y".into()]
@@ -289,5 +326,14 @@ mod tests {
         );
         assert_eq!(classify(&aliases, Path::new("/var/xy/a")), None);
         assert_eq!(classify(&aliases, Path::new("/var")), None);
+        assert_eq!(classify(&aliases, Path::new("/var/x/.fnf-3-1.part")), None);
+        assert_eq!(
+            classify(&aliases, Path::new("/var/x/.fnf-rename-1-2-3")),
+            None
+        );
+        assert_eq!(
+            classify(&aliases, Path::new("/var/x/.fnf-notes.txt")),
+            Some(child(".fnf-notes.txt"))
+        );
     }
 }

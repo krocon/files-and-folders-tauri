@@ -63,6 +63,7 @@ fn create_rename_delete_arrive_in_under_a_second() {
     let st = hub.set_dirs(std::slice::from_ref(&dir), false).unwrap();
     assert_eq!(st[0].mode, WatchMode::Native);
     assert_eq!(st[0].dir, dir.to_string_lossy());
+    assert!(st[0].modified_ms.is_some_and(|ms| ms > 0));
 
     let start = Instant::now();
     fs::write(dir.join("neu – datei.txt"), b"hello").unwrap();
@@ -204,18 +205,13 @@ fn polling_reports_changes_too() {
     let dir = tmp.path().to_path_buf();
     let (hub, rx) = hub();
     let mut w = hub.watchers.lock().unwrap();
-    hub.poller(&mut w)
+    poller(&hub.tx, &mut w)
         .unwrap()
         .watch(&dir, RecursiveMode::NonRecursive)
         .unwrap();
     w.current.push((dir.clone(), WatchMode::Poll));
     drop(w);
-    hub.tx
-        .send(Msg::Dirs(vec![Watched {
-            dir: dir.clone(),
-            aliases: aliases_of(&dir),
-        }]))
-        .unwrap();
+    hub.tx.send(Msg::Dirs(vec![Watched::new(&dir)])).unwrap();
     std::thread::sleep(Duration::from_millis(100));
     fs::write(dir.join("polled.txt"), b"1").unwrap();
     let got = wait_for(&rx, POLL_INTERVAL * 3, |g| {
@@ -225,4 +221,118 @@ fn polling_reports_changes_too() {
         upserted_names(&got).contains(&"polled.txt".to_string()),
         "{got:?}"
     );
+}
+
+#[test]
+fn a_folder_deleted_and_created_again_is_watched_again() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("wieder da");
+    fs::create_dir(&dir).unwrap();
+    let (hub, rx) = hub();
+    hub.set_dirs(std::slice::from_ref(&dir), false).unwrap();
+    fs::remove_dir(&dir).unwrap();
+    fs::create_dir(&dir).unwrap();
+    // the folder is there again: a reload, not "gone"
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        g.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }))
+    });
+    assert!(
+        got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. })),
+        "{got:?}"
+    );
+    // and changes inside the new folder still arrive (inotify watched the old inode)
+    fs::write(dir.join("neu.txt"), b"x").unwrap();
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        upserted_names(g).contains(&"neu.txt".to_string())
+    });
+    assert!(
+        upserted_names(&got).contains(&"neu.txt".to_string()),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn own_temp_files_are_ignored() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().to_path_buf();
+    let (hub, rx) = hub();
+    hub.set_dirs(std::slice::from_ref(&dir), false).unwrap();
+    fs::write(dir.join(".fnf-7-1.part"), b"x").unwrap();
+    fs::write(dir.join(".fnf-rename-1-2-3"), b"x").unwrap();
+    fs::write(dir.join("echt.txt"), b"x").unwrap();
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        upserted_names(g).contains(&"echt.txt".to_string())
+    });
+    assert_eq!(
+        upserted_names(&got),
+        vec!["echt.txt".to_string()],
+        "{got:?}"
+    );
+}
+
+#[test]
+fn paused_folders_are_quiet_and_reload_when_resumed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let a = tmp.path().join("a");
+    let sub = a.join("sub");
+    let b = tmp.path().join("b");
+    fs::create_dir_all(&sub).unwrap();
+    fs::create_dir(&b).unwrap();
+    let (hub, rx) = hub();
+    hub.set_dirs(&[sub.clone(), b.clone()], false).unwrap();
+    // a job moves "a": its watched descendants pause, "b" does not
+    let paused = hub.pause_under(std::slice::from_ref(&a));
+    assert_eq!(paused, vec![sub.clone()]);
+    fs::write(sub.join("während.txt"), b"x").unwrap();
+    assert!(
+        wait_for(&rx, Duration::from_millis(600), |_| false)
+            .iter()
+            .all(
+                |e| !matches!(e, WatchEvent::Changes { dir, .. } if dir == &sub.to_string_lossy())
+            ),
+    );
+    hub.resume(&paused);
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        g.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }))
+    });
+    assert!(
+        got.contains(&WatchEvent::Rescan {
+            dir: sub.to_string_lossy().into_owned()
+        }),
+        "{got:?}"
+    );
+    // watched again
+    fs::write(sub.join("danach.txt"), b"x").unwrap();
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        upserted_names(g).contains(&"danach.txt".to_string())
+    });
+    assert!(upserted_names(&got).contains(&"danach.txt".to_string()));
+    // a paused folder that is gone afterwards is reported gone
+    let paused = hub.pause_under(std::slice::from_ref(&a));
+    fs::remove_dir_all(&a).unwrap();
+    hub.resume(&paused);
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        g.iter().any(|e| matches!(e, WatchEvent::Gone { .. }))
+    });
+    assert!(
+        got.contains(&WatchEvent::Gone {
+            dir: sub.to_string_lossy().into_owned()
+        }),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn polling_is_off_for_huge_folders() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().to_path_buf();
+    for i in 0..30 {
+        fs::write(dir.join(format!("f{i}")), b"").unwrap();
+    }
+    assert!(poll_limit_reason(&dir, 100).is_none());
+    assert_eq!(
+        poll_limit_reason(&dir, 20).as_deref(),
+        Some("too many entries to poll")
+    );
+    assert!(poll_limit_reason(&tmp.path().join("missing"), 20).is_some());
 }

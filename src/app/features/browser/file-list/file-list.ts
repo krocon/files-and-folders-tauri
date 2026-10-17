@@ -15,12 +15,20 @@ import { TableApi, TableStateIf } from '@guiexpert/table';
 import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
 import { Side } from '../../../core/session/session.models';
 import { modifiersAfter } from '../../../core/actions/shortcut';
-import { DRAG_THRESHOLD, dragKind, dragSources } from '../../dnd/dnd-logic';
+import {
+  DRAG_THRESHOLD,
+  dragKeyAction,
+  dragKind,
+  dragOriginDir,
+  dragSources,
+  panelZoneHit,
+} from '../../dnd/dnd-logic';
 import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
 import { createFileTable } from './file-table-model';
+import { inPlaceUpdate } from './row-update';
 import { createTableBridge, removeConflictingShortcuts, TableBridge } from './table-bridge';
 
 /** Empty result tab: own text instead of the table's "This folder is empty." (options are copied once). */
@@ -90,6 +98,8 @@ export class FileList implements OnDestroy {
     createFileTable(this.labelledBy(), () => this.store.rowFilter()),
   );
   private shownPath: string | null = null;
+  /** The listing the table shows (for in-place row updates). */
+  private shownListing: DirectoryListing | null = null;
 
   private bridge?: TableBridge;
   private controller?: FileListController;
@@ -111,6 +121,9 @@ export class FileList implements OnDestroy {
       const listing = this.store.listing();
       untracked(() => {
         if (listing && this.controller) {
+          if (this.updateInPlace(listing)) {
+            return;
+          }
           const start = performance.now();
           this.show(listing);
           const sync = since(start);
@@ -161,13 +174,9 @@ export class FileList implements OnDestroy {
         element: this.host.nativeElement,
         hit: (el) => {
           const index = bridge.rowIndexAt(el);
-          const listing = this.store.listing();
-          return {
-            side,
-            panelDir: listing?.path ?? null,
-            panelName: listing?.segments.at(-1)?.name ?? listing?.path ?? '',
-            row: index >= 0 ? (bridge.displayedRows()[index] ?? null) : null,
-          };
+          const row = index >= 0 ? (bridge.displayedRows()[index] ?? null) : null;
+          // a result tab is no folder to drop into (review 012 #4a)
+          return panelZoneHit(side, this.store, row);
         },
       });
     }
@@ -288,7 +297,8 @@ export class FileList implements OnDestroy {
       }
       this.dnd.begin({
         side,
-        sourceDir: this.store.path(),
+        // a result tab: its location key, as for F5/F6 (review 012 #4b)
+        sourceDir: dragOriginDir(this.store),
         sources,
         kind: dragKind(evt, IS_MAC),
         x: evt.clientX,
@@ -315,17 +325,26 @@ export class FileList implements OnDestroy {
     this.endPress();
   };
 
-  /** Esc cancels; Shift/⌘ switch between copy and move without moving the mouse. */
+  /**
+   * Esc cancels; Shift/⌘ switch between copy and move without moving the mouse;
+   * every other key is swallowed – F8 or Del must not act on the dragged rows (review 012 #9).
+   */
   private readonly onDragKey = (evt: KeyboardEvent): void => {
     if (!this.dragging) {
       return;
     }
-    if (evt.key === 'Escape' && evt.type === 'keydown') {
+    const action = dragKeyAction(evt);
+    if (action !== 'modifier') {
       evt.preventDefault();
       evt.stopPropagation();
+    }
+    if (action === 'cancel') {
       this.dnd.cancel();
       swallowNextClick();
       this.endPress();
+      return;
+    }
+    if (action === 'swallow') {
       return;
     }
     this.dnd.move(
@@ -370,8 +389,26 @@ export class FileList implements OnDestroy {
     target?.focus();
   }
 
+  /**
+   * Only sizes/times of shown entries changed (a file being written): replace
+   * those rows, without setRows, re-sort (unless sorted by them) or reopening
+   * the F2 editor (review 012 #5). False = show the listing as usual.
+   */
+  private updateInPlace(listing: DirectoryListing): boolean {
+    if (!this.bridge || this.store.hasPendingTableState()) {
+      return false;
+    }
+    const update = inPlaceUpdate(this.shownListing, listing);
+    if (!update || !this.bridge.updateRows(update.rows, update.columns)) {
+      return false;
+    }
+    this.shownListing = listing;
+    return true;
+  }
+
   /** Rows of a listing: the ".." row first (if there is a parent), then the entries. */
   private show(listing: DirectoryListing): void {
+    this.shownListing = listing;
     const rows: DirEntry[] =
       listing.parent !== null
         ? [parentRow(listing.parent), ...listing.entries]

@@ -52,6 +52,31 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     return (this.getRowByIndex(rowIndex) as DirEntry | undefined)?.path === r.path;
   }
 
+  /**
+   * Replaces rows by path without touching order or filter (watcher updates of
+   * sizes/times, review 012 #5). `visible`: one of them is displayed now.
+   */
+  replaceRows(changed: readonly DirEntry[]): { found: number; visible: boolean } {
+    const byPath = new Map(changed.map((e) => [e.path, e]));
+    let found = 0;
+    let visible = false;
+    for (let i = 0; i < this.rows.length; i++) {
+      const next = byPath.get(this.rows[i].path);
+      if (next) {
+        this.rows[i] = next;
+        found++;
+      }
+    }
+    for (let i = 0; i < this.filteredRows.length; i++) {
+      const next = byPath.get(this.filteredRows[i].path);
+      if (next) {
+        this.filteredRows[i] = next;
+        visible = true;
+      }
+    }
+    return { found, visible };
+  }
+
   /** The table never writes a cell: renaming goes through Rust, then the folder reloads. */
   override setValue(): boolean {
     return false;
