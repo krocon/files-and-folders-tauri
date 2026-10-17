@@ -7,9 +7,13 @@ Phasen vom Design über Rust- und Frontend-Tests bis zur Ende-zu-Ende-Prüfung u
 **So startet man einen Prompt:** neue Sitzung im Repo, dann z. B.
 „Lies `prompts/000-arbeitsweise.md` und führe `prompts/001-guiexpert-dateiliste.md` aus.“
 
-Herkunft: Analyse des alten Codes (`docs/legacy-analysis.md`, Okt. 2026) aus
-`krocon/node-files-and-folders-client` und `krocon/node-files-and-folders-server`, abgeglichen mit dem Stand nach
-Phase 1 (Walking Skeleton) und der GuiExpert Table 1.1.99 als Dateiliste.
+Herkunft: Analyse der alten Versionen – `docs/legacy-analysis.md` (AngularJS/Node 2016, `node-files-and-folders-*`)
+und `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, `files-and-folders-mr`) –, Marcs Vorgabe zum Fensteraufbau
+(`docs/ui-layout.md`, Screenshot in `docs/legacy-screenshots/`), die Default-Designs (`docs/legacy-themes/`) und die
+GuiExpert Table 1.1.99 als Dateiliste.
+
+**Ausführungsreihenfolge:** 001 → **004** → 002 → 003 → 005 → 006 → … (004 ist das Fenstergerüst und kommt deshalb
+direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 
 ## Reihenfolge
 
@@ -17,9 +21,9 @@ Phase 1 (Walking Skeleton) und der GuiExpert Table 1.1.99 als Dateiliste.
 |---|---|---|---|---|
 | 000 | [000-arbeitsweise.md](000-arbeitsweise.md) | gemeinsamer Ablauf, Phasen, Regeln | – | – |
 | 001 | [001-guiexpert-dateiliste.md](001-guiexpert-dateiliste.md) | Dateiliste mit der GuiExpert Table, Cursor/Markierung, Sortierung, Performance | MVP | M |
-| 002 | [002-aktionen-tastatur.md](002-aktionen-tastatur.md) | Aktionsregister, Keymaps je OS + Override, TC-Auswahl, Befehlspalette „Go to anything“, F-Tasten-Leiste | 001 | M |
-| 003 | [003-navigation-liste.md](003-navigation-liste.md) | Pfadleiste, „..“, Zurück/Vor, Favoriten/zuletzt, Hidden, Schnellfilter, Typ-Ahead, Ordnergröße, Statuszeile, Datei öffnen | 001, 002 | M |
-| 004 | [004-dual-pane-tabs.md](004-dual-pane-tabs.md) | zwei Panels, Quelle/Ziel, Tabs, Sitzungszustand speichern | 001–003 | M |
+| 002 | [002-aktionen-tastatur.md](002-aktionen-tastatur.md) | Aktionsregister, Keymaps je OS + Override, TC-Auswahl, Befehlspalette, Button-Leiste mit Modifier-Sätzen, Actions-Menü | 001, 004 | M |
+| 003 | [003-navigation-liste.md](003-navigation-liste.md) | „..“, Zurück/Vor, Menü ▾ (Laufwerke/Favoriten/zuletzt), Hidden + Filter je Tab, Quick-Search, Ordnergröße, Auswahl je Ordner merken, Datei öffnen | 001, 004, 002 | M |
+| 004 | [004-dual-pane-tabs.md](004-dual-pane-tabs.md) | **Fensteraufbau**: zwei Seiten mit Pfad-Header, Tab-Reitern, Liste, Statuszeile; Splitter; Button-Leiste (Gerüst); Sitzungszustand – **direkt nach 001** | 001 | L |
 | 005 | [005-job-queue.md](005-job-queue.md) | Job-Engine in Rust: Fortschritt, Abbruch, Pause, Konfliktprotokoll, Job-UI | 004 | L |
 | 006 | [006-basis-operationen.md](006-basis-operationen.md) | Ordner anlegen, Umbenennen, Kopieren, Verschieben, Löschen (Papierkorb) | 005 | L |
 | 007 | [007-multi-rename.md](007-multi-rename.md) | Multi-Rename (Muster, Zähler, Regex, Makros, Vorschau, Undo) | 005, 006 | M |
@@ -43,10 +47,12 @@ Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Pla
 - **001 zuerst:** Die Dateiliste ist das Bauteil, auf dem alles sitzt. Der Umstieg auf die GuiExpert Table klärt
   früh, wie Cursor und Markierung abgebildet werden, und deckt Lücken der Table auf, solange sie im Mono-Repo noch
   günstig zu schließen sind.
+- **004 direkt nach 001:** Marcs Vorgabe zum Fensteraufbau (zwei Seiten wie im Norton Commander, je mit Header,
+  Tab-Reitern, Liste und Statuszeile, darunter die Button-Leiste) ist das Gerüst, in das alle weiteren Funktionen
+  eingehängt werden. Wer es früh baut, muss später nichts umbauen.
 - **002 vor allem anderen Bedienbaren:** Jede spätere Funktion ist eine Aktion. Wer Kürzel, Menüs und Palette
   zuerst baut, muss später nichts umverdrahten (im alten Programm war das Aktions-Id-Modell die tragende Idee).
-- **003 → 004:** erst ein Panel vollständig, dann zwei. Tabs und Sitzungszustand brauchen Verlauf, Filter und
-  Sortierung als Teil des Tab-Zustands.
+- **003 nach 004:** Menü ▾, Filter und Hidden sitzen in der Tab-Leiste und gelten je Tab – sie brauchen das Gerüst.
 - **005 vor 006:** Kopieren/Verschieben/Löschen sind nur sicher mit Abbruch, Konfliktabfrage und Fehlerbericht.
   Die Engine trägt später auch Multi-Rename, Gruppieren, Suche und Duplikate.
 - **007–009:** die Spezialwerkzeuge, die das alte Programm ausmachten (Multi-Rename, Gruppieren, Ordner-Finder).

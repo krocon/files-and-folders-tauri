@@ -1,9 +1,10 @@
 # Prompt 002: Aktionssystem, Tastenkürzel und „Go to anything“
 
-> **Slug:** `aktionen-tastatur` · **Braucht:** 001 · **Umfang:** M
+> **Slug:** `aktionen-tastatur` · **Braucht:** 001, 004 · **Umfang:** M
 > Lies zuerst `prompts/000-arbeitsweise.md`. Altes Verhalten: `docs/legacy-analysis.md` §1.2 (Action-Dispatch,
 > Dialog-Modus), §2 (Action-IDs, Shortcuts, Tastatur-Mechanik), §3 („Go to anything“, Enhance/Reduce selection),
-> §4 (Auswahlmodell).
+> §4 (Auswahlmodell). Neuere Version: `docs/legacy-analysis-mr.md` §1.8 (Button-Leiste, Modifier-Sätze, Actions-Menü,
+> Badges), §2 (Action-Ids, Default-Keymaps, Matching-Fehler), §3 (Quick-Search, Freigaberegeln der Buttons).
 
 ## Ziel
 
@@ -51,6 +52,24 @@ nur noch hier.
    Tastatur und Screenreader (APG Combobox + Listbox).
 7. **Anzeige der Kürzel** in Tooltips und Menüs aus derselben Quelle (`formatShortcut(platform)`).
 8. **Funktionstasten-Leiste** unten (wie TC: F3 … F8), Klick = Aktion; ausblendbar.
+
+## Ergänzungen aus files-and-folders-mr
+
+- **Default-Keymap** aus `mr/apps/fnf-api/src/assets/shortcut/defaults/*.json` als Ausgangspunkt (F3 View, F4 Edit,
+  Shift+F4 Create File, F5 Copy, F6 Move, Shift+F6 Rename, Strg+F6 Multi Rename, F8 Delete, F10 Call Action, Tab Panel,
+  Shift+Tab nächster Tab, Strg+F Find …); **F7 = MkDir** ergänzen (fehlte in mr). Die alten Kombinationen mit `cmd`
+  meinten auf allen OS die Meta-Taste – neu: `Mod` = ⌘ auf macOS, Strg sonst.
+- **Matching-Fehler nicht wiederholen** (mr §2): kanonische Form (sortierte Modifier + `KeyboardEvent.code`/`key`) auf
+  **beiden** Seiten, Auswertung auf `keydown` (Wiederholung für Pfeile), Tools nutzen dieselbe Notation, Akkorde
+  (`Strg+K F6`) optional mit Timeout.
+- **Button-Leiste mit Modifier-Sätzen** (Gerüst aus 004, Inhalt hier): Satz wechselt bei gedrücktem Shift / Alt / ⌘ bzw.
+  Strg (`docs/ui-layout.md`); Badge zeigt das Kürzel ohne gehaltene Modifier; Freigaberegeln je Aktion nach mr §3
+  („Button enable states“), berechnet aus Markierung bzw. Cursor.
+- **Actions-Menü** (4 Spalten, Einträge nach mr §1.8) und **Call Action** (F10, Eingabe einer Aktion) neben der
+  Befehlspalette „Go to anything“ (die in mr auch Ordner aus Tabs/Verlauf anbot → mit 003 verbinden).
+- **Shortcut-Übersicht/-Editor** (⌨ in der Button-Leiste): Tabelle Aktion → Kürzel je OS, Tastenaufnahme; speichert in
+  die Override-Datei (gemischt, nicht ersetzt – mr ersetzte die Defaults komplett).
+- Tote Ids aus mr nicht übernehmen (`OPEN_SELECT_DLG`, `OPEN_DESELECT_DLG`, `SAVE_CONFIG`, …, mr §2).
 
 ## Entscheidungsfragen
 

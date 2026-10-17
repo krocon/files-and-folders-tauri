@@ -26,3 +26,10 @@ packen; Duplikate finden (Größe → Hash) mit sicherer Auswahl zum Löschen.
 - ZIP mit Unicode-Namen öffnen, navigieren, Teile entpacken, Markierung packen; Zip-Slip-Testarchiv wird
   abgewiesen (Rust-Test).
 - Duplikatsuche über 100 000 Dateien abbrechbar, Ergebnis korrekt (Test mit bekannten Dubletten).
+
+## Ergänzungen aus files-and-folders-mr (mr §3, §5, §7)
+
+- **Zip-Browsing** über Pfade `datei.zip:` (Archiv wie Ordner), Pack-Dialog (Dateiname, Zielordner, Passwort, Format,
+  Kompressionsstufe), Unpack (Zielordner, Passwort); mr nutzte 7-Zip (`node-7z` + `7zip-bin`) – hier Rust-Crates oder
+  ein mitgelieferter 7-Zip-Sidecar (Lizenz prüfen).
+- „Find duplicates“ hatte in mr nur ein Kürzel, keine Umsetzung.

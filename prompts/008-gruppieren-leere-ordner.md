@@ -1,4 +1,4 @@
-# Prompt 008: Dateien gruppieren und leere Ordner löschen
+# Prompt 008: Dateien gruppieren, Ordner aufräumen, Multi-MkDir
 
 > **Slug:** `gruppieren-leere-ordner` · **Braucht:** 005, 006 · **Umfang:** S–M
 > Lies zuerst `prompts/000-arbeitsweise.md`. Altes Verhalten: `docs/legacy-analysis.md` §3.2 (Group Files),
@@ -39,3 +39,10 @@ rekursiv löschen** – ohne den alten Fehler, dass Elternordner oberhalb des St
 
 - Alle Gruppierungsmodi mit Vorschau; Ausführen per Kopieren und Verschieben, Konflikte über den Dialog aus 005.
 - Leere Ordner: nie etwas außerhalb des Startordners (Rust-Test), Vorschau vor dem Löschen, Papierkorb als Default.
+
+## Ergänzungen aus files-and-folders-mr (mr §5)
+
+- **Gruppieren**: 11 Modi (u. a. zusätzlich `ebook_mode`), optional KI-Strategie (wie 007: nur optional).
+- **Clean Folders** statt nur „leere Ordner löschen“: Muster für zu löschende Dateien (Glob, Default `**/*.bak`) **und**
+  Option „leere Ordner löschen“ – mit Vorschau, Papierkorb, nie außerhalb des Startordners.
+- **Multi-MkDir**: Ordnernamen-Vorlage mit Zähler (Start/Ende/Schritt/Stellen) und Groß-/Kleinschreibung.

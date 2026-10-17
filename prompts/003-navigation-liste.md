@@ -1,6 +1,6 @@
 # Prompt 003: Navigation, Verlauf, Filter und Statuszeile
 
-> **Slug:** `navigation-liste` · **Braucht:** 001, 002 · **Umfang:** M
+> **Slug:** `navigation-liste` · **Braucht:** 001, 004, 002 · **Umfang:** M
 > Lies zuerst `prompts/000-arbeitsweise.md`. Altes Verhalten: `docs/legacy-analysis.md` §4 (Dateiliste, Sortierung,
 > Quick-Filter, Ordnergröße, Statuszeile), §5 (Breadcrumb, Favoriten, Verlauf, zuletzt besuchte Ordner).
 
@@ -46,6 +46,17 @@ per Tastendruck und eine korrekte Statuszeile. Dateien öffnen sich mit der Stan
 10. **Neu laden** (Strg+R/F5? – Konflikt mit TC-F5 = Kopieren klären), Cursor und Markierung bleiben per Pfad.
 11. Rust: `DirEntry` um `created_ms`, `accessed_ms`, `readonly` erweitern, falls für Spalten/Eigenschaften nötig
     (nur, wenn der Prompt es braucht – sonst Prompt 010).
+
+## Ergänzungen aus files-and-folders-mr und `docs/ui-layout.md`
+
+- Bedienelemente sitzen dort, wo `docs/ui-layout.md` sie vorsieht: Menü ▾ (Laufwerke, Favoriten, zuletzt besucht) links
+  in der Tab-Leiste, Hidden-👁 und Filter-⏷ mit Eingabefeld rechts – Filter/Hidden gelten **je Tab**.
+- **Quick-Search** wie mr: Buchstaben bilden ein Präfix (Reset nach 2 s oder Esc), Cursor springt zum ersten Treffer.
+- **Auswahl und Cursor je Ordner merken** (mr `selection0/1`, `focus0/1`): Rückkehr in einen Ordner stellt Cursor und
+  Markierung wieder her (im Speicher je Tab, begrenzt).
+- **Verlauf** je Tab (max. 15, neueste zuerst, ohne Dubletten) mit Zurück/Vor; langer Druck/Rechtsklick auf den Tab
+  zeigt ihn (Menü in 004 vorbereitet).
+- **Statuszeile** im Format aus `docs/ui-layout.md`, Größen per Leertaste-Job ergänzt (mr: Space startet `walkdir`).
 
 ## Entscheidungsfragen
 

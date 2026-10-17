@@ -28,7 +28,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
 | 3 Sichere Basisoperationen | 005 (Job-Engine), 006 (Operationen) |
 | 4 Suche & Filter | 003 (Schnellfilter), 009 (Suche) |
-| 5 Total-Commander-Bedienung | 002 (Aktionen/Tastatur), 004 (Dual-Pane/Tabs), 012 (Drag & Drop), 014 (Menüs) |
+| 5 Total-Commander-Bedienung | 004 (Fensteraufbau, als Nächstes), 002 (Aktionen/Tastatur), 012 (Drag & Drop), 014 (Menüs) |
 | 6 Vorschau & Eigenschaften | 010 |
 | 7 OS-Integration | 011, 012 (Überwachung) |
 | 8 Einstellungen & UX | 013 (Themes), 015 (Einstellungen, i18n) |
@@ -36,7 +36,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 10 Distribution | 017 |
 | 11 Feature-Parität | 018 (Spezialwerkzeuge: 007, 008, 016) |
 
-Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
+Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 
 ## Bekannte Einschränkungen (aktuell)
 

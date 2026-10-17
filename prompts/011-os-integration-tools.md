@@ -48,3 +48,15 @@ zusammengesetzten Shell-Strings, keine beliebigen Kommandos aus dem Frontend.
 ## Review-Schwerpunkte
 
 Command-Injection, Pfad-Validierung, Capability-Umfang, Verhalten mit Netzlaufwerken und fehlenden Programmen.
+
+## Ergänzungen aus files-and-folders-mr (mr §1.7, §9)
+
+- **Shell-Zeile** im Fenster (Zeile 5 in `docs/ui-layout.md`, ein/aus per Aktion): `<Pfad>>` + Eingabe mit Verlauf und
+  Autovervollständigung, Ausgabe darunter. Sicherheitsentscheidung im Design: Befehle laufen nur nach ausdrücklicher
+  Eingabe des Nutzers in seinem Kontext (wie ein Terminal), nie aus Konfiguration oder Dateinamen zusammengesetzt;
+  alternativ echtes Terminal per PTY (`portable-pty`) später.
+- **Tools-Konfiguration** im mr-Format `{id, label, shortcut, cmd, para, fileLimit}` importierbar, intern auf
+  Programm + Argument-Array umgestellt (`$file`, `$dir` → Platzhalter je Argument). mr-Defaults je OS: Editor
+  (`code $file`), Terminal, Im Finder zeigen; Windows zusätzlich 7-Zip.
+- **Dateityp-Konfiguration** (`filetype/defaults/data.json`: `[{label, extensions}]`) für „Auswahl nach Typ“ und – neu –
+  für die Icons der Liste (in mr fest im Renderer verdrahtet).

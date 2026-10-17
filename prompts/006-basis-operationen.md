@@ -48,6 +48,16 @@ Konfliktbehandlung, Papierkorb und vollständigen Tests. Erst nach diesem Prompt
    Zyklus), schreibgeschützten Dateien, großen Dateien (Fortschritt), Konflikten (alle Entscheidungen),
    Abbruch an verschiedenen Stellen, Verschieben über Volumes (wenn im Test möglich, sonst simuliert).
 
+## Ergänzungen aus files-and-folders-mr (mr §3, §5, §7)
+
+- **Datei anlegen** (Shift+F4, „Create File“) zusätzlich zu Ordner anlegen; neuer Eintrag bekommt den Cursor.
+- **MkDir-Vorschlag**: gibt es ≥ 2 Geschwister nach dem Muster `^[A-Za-z]{1,10}\d{2,}$` (S01, S02), wird der nächste
+  Name vorgeschlagen (S03).
+- Copy/Move/Delete in **einem** Dialog mit Live-Zählung (Dateien, Größe) und Zielvorschlägen (Pfade aller Tabs) wie mr;
+  jedes Element wird ein Job (005) – diesmal **mit** Konfliktbehandlung und Papierkorb (mr überschrieb still und
+  löschte endgültig).
+- Freigaberegeln der Buttons (mr §3) gelten auch für die Dialoge (z. B. Rename nur bei genau einem Eintrag).
+
 ## Entscheidungsfragen
 
 - Papierkorb-Crate (Reife, Lizenz, Windows/macOS/Linux-Verhalten) – Empfehlung.

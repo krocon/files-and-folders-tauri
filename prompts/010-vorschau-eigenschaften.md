@@ -33,3 +33,11 @@ Formate über eine erweiterbare Vorschau-Architektur. Dazu ein Eigenschaften-Dia
 - UTF-8, UTF-16 und Windows-1252-Texte korrekt; falsche Endung (`bild.txt` ist ein PNG) wird erkannt.
 - Bildvorschau großer Fotos flüssig; CSP/Capabilities nur so weit geöffnet wie nötig (in `docs/architecture.md`).
 - Eigenschaften zeigen plattformgerechte Rechte/Attribute.
+
+## Ergänzungen aus files-and-folders-mr (mr §5)
+
+- **Attribute-Dialog** wie mr: Archiv, Versteckt, Schreibgeschützt, System (Windows), Datum/Uhrzeit ändern – plattform-
+  gerecht (Unix: Rechte), Änderungen im Backend validiert.
+- **View/Edit** öffnete in mr ein eigenes Fenster mit Monaco (Theme, Zeilennummern, Minimap, Umbruch, Suchen/Ersetzen,
+  Speichern, Rückfrage bei ungespeicherten Änderungen). Entscheiden: Monaco in einem Tauri-`WebviewWindow` (Größe der
+  Abhängigkeit, CSP) oder schlanker eigener Viewer + externer Editor über Tools (011). Bild-/Medienvorschau fehlte in mr.

@@ -32,3 +32,10 @@ Brücke zu den `--ge-table-*`-Variablen der GuiExpert Table.
 - `light`, `dark` + „System folgen“; Wechsel ohne Neustart, auch in der Table.
 - Eigenes Schema speichern, nach Neustart aktiv; Export/Import einer JSON-Datei.
 - Alle Schemata erfüllen die Kontrastprüfung für Liste, Cursor und Markierung (Test, der die Werte prüft).
+
+## Ergänzungen aus files-and-folders-mr (mr §8)
+
+- In mr wurden die `--ge-table-*`-Variablen auf `--fnf-table-*` gelegt, im aktiven Panel auf `--fnf-activepanel-*`;
+  der Cursor war nur im aktiven Panel sichtbar. Theme-Dateien hatten **kein Hell/Dunkel-Flag** → hier ergänzen
+  (`dark: boolean`), damit `color-scheme` und `html[data-theme]` der Table passen.
+- Theme-Wechsel per Menü 🎨 in der Button-Leiste (`L&F <Name>`, eigene zuerst) und per Kürzel (mr: `Strg+⌘+Alt+F1…F8`).

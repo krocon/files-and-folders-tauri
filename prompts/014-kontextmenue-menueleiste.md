@@ -26,3 +26,8 @@ Menüleiste (nativ unter macOS, in Windows/Linux wahlweise nativ oder in der App
 
 - Kontextmenü per Maus und Tastatur, Einträge passend zum Kontext, Aktion wirkt auf die richtige Auswahl.
 - Menüleiste zeigt dieselben Kürzel wie die Keymap; Änderung im Override (002) schlägt nach Neustart durch.
+
+## Ergänzungen aus files-and-folders-mr (mr §1.4, §1.8)
+
+- Menüs der alten Version: **Actions ▴** (4 Spalten) und **🎨** in der Button-Leiste, **Tab-Kontextmenü** (004) – alle
+  aus dem Aktionsregister, mit Kürzeln. Ein Kontextmenü auf Dateien gab es in mr nicht; es ist hier neu.

@@ -44,3 +44,11 @@ ein normales Panel bedienen lässt (markieren, kopieren, löschen, „gehe zur D
 - Symlink-Zyklus: kein Endlos-Durchlauf (Rust-Test).
 - Ergebnis-Tab: Markieren + Kopieren/Löschen funktioniert, „Zur Datei“ springt korrekt.
 - Ordner-Finder filtert live und wechselt per Enter.
+
+## Ergänzungen aus files-and-folders-mr (mr §5, §7, §9)
+
+- Suchmuster als **Glob** (Default `**/*.*`) mit Vorlagen aus einer Konfigurationsdatei (`search/defaults/data.json`:
+  `[{label, extensions}]`), „nur Ordner“ (in mr fehlerhaft – lieferte nichts), „in neuem Tab“.
+- Ergebnis-Tab zeigt im Header `Search: "<Muster>"`; Doppelklick öffnet die Suche mit den alten Werten (`docs/ui-layout.md`).
+- **Change Dir** als Baum der Unterordner mit Tiefe (mr: Schieberegler, max. 5) und Filter.
+- Suche läuft asynchron und abbrechbar (mr blockierte den Server mit synchronem `readdir`).

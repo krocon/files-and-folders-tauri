@@ -45,6 +45,14 @@ Namen ohne Endung, sichere Ausführung als Job und Rückgängig.
    (NFC/NFD auf macOS!), Chicago-Style-Grenzfälle, Regex-Fehler (ungültiger Ausdruck → Meldung, kein Absturz),
    Zyklen, Konflikte, Undo.
 
+## Ergänzungen aus files-and-folders-mr (mr §5)
+
+- Zusätzliche Makros `[Q]` (Großelternordner) und `[R]` (Urgroßelternordner), Option „Endung ignorieren“, `strategy`.
+- **KI-Modus** (mr: `POST /api/ai/convertnames` mit OpenAI oder lokalem Llama, Prompts in `prompt/defaults/*.yaml`):
+  im Design entscheiden, ob/wann – nur optional, Schlüssel im OS-Schlüsselbund, nie im Klartext; Vorschau bleibt
+  Pflicht.
+- Bekannter Fehler: Zähler-Schritt „50“ hatte auch in mr den Wert 30.
+
 ## Entscheidungsfragen
 
 - Engine in TS, Rust oder beiden (mit gemeinsamem Testkatalog als JSON)?

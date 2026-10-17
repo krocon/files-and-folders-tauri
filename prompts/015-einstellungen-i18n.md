@@ -29,3 +29,12 @@ Einstellungsdialog für alles, was bisher hart verdrahtet ist; dazu deutsche und
 - Jede Einstellung wirkt sofort oder sagt, dass ein Neustart nötig ist; nach Neustart erhalten.
 - Kaputte Settings-Datei → Start mit Defaults, Original wird als `.bak` gesichert, Warnung (Rust-Test).
 - Sprache de/en vollständig umschaltbar (Test: keine fehlenden Schlüssel), Formate folgen der Locale.
+
+## Ergänzungen aus files-and-folders-mr (mr §3, §5, §9)
+
+- **Darstellungsvarianten der alten Version** als Einstellung: Ordner als `[Name]`, Dateiname ohne Endung, Datum als
+  `yyyy-mm-dd` + kleine Uhrzeit, Zeilenhöhe 34 px (mr) vs. 24 px (heute), „condensed presentation“.
+- Setup-Flags aus mr (`setup/data.json`) prüfen, was in einer Desktop-App noch sinnvoll ist (z. B.
+  `loadFolderSizeAfterSelection`); Fenster-Optionen entfallen.
+- Konfigurationen (Buttons, Tools, Dateitypen, Suchvorlagen, Prompts) wie mr bearbeitbar – aber als **Override, der mit
+  den Defaults gemischt wird** (mr ersetzte die Defaults komplett).

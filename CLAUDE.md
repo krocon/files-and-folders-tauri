@@ -12,10 +12,13 @@
 
 ## 1. Stand
 
-- Phase 1 (Walking Skeleton) ist fertig: Rust listet Verzeichnisse, Angular zeigt sie an, Navigation in Unterordner
-  und nach oben, Tastatur, Fehlerzustände. Details: `docs/roadmap.md`.
+- Phase 1 (Walking Skeleton) und Prompt 001 (Dateiliste mit der GuiExpert Table, Cursor, Markieren, Sortieren) sind
+  fertig. Als Nächstes: Prompt 004 (Fensteraufbau). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
-  Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (Analyse des alten Codes).
+  Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
+  `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
+  (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
+  `docs/legacy-themes/` (die acht Default-Designs).
 
 ## 2. Befehle (Root, pnpm 10 via `packageManager`, Node ≥ 22.22.3, Rust stable ≥ 1.90)
 
@@ -49,7 +52,8 @@ src-tauri/                   Rust (Tauri 2)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   capabilities/default.json  nur core:default
-docs/                        architecture.md, roadmap.md, feature-parity.md, legacy-analysis.md
+docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
+                             legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
 prompts/                     Feature-Prompts (s. o.)
 ```
 
