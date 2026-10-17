@@ -4,8 +4,8 @@
 
 use super::report::Reporter;
 use super::{
-    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary, copy,
-    delete, rename,
+    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
+    Transfer, clean, copy, delete, group, rename,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -190,6 +190,36 @@ impl JobManager {
                     JobSpec::Delete { paths, mode, .. } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         delete::run(id, &paths, *mode, &control, &emit)
+                    }
+                    JobSpec::Group {
+                        root,
+                        items,
+                        transfer,
+                        options,
+                    } => {
+                        let force_copy = self.force_copy_on_move.load(Ordering::SeqCst);
+                        let root = PathBuf::from(root);
+                        group::run(
+                            id, &root, items, *transfer, options, force_copy, &control, &emit,
+                        )
+                    }
+                    JobSpec::Clean {
+                        roots,
+                        items,
+                        mode,
+                        options,
+                    } => {
+                        let roots: Vec<PathBuf> = roots.iter().map(PathBuf::from).collect();
+                        clean::run(
+                            id,
+                            &roots,
+                            items,
+                            *mode,
+                            options,
+                            home.as_deref(),
+                            &control,
+                            &emit,
+                        )
                     }
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
@@ -666,6 +696,50 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                 ));
             }
             // the job checks names, duplicates and targets itself (file I/O, off this thread)
+            for i in items {
+                validate_input_path(&i.path)?;
+            }
+        }
+        JobSpec::Group {
+            root,
+            items,
+            transfer,
+            ..
+        } => {
+            if items.is_empty() {
+                return Err(nothing());
+            }
+            if items.len() > group::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    format!("Too many entries (max. {})", group::MAX_ITEMS),
+                    None,
+                ));
+            }
+            validate_input_path(root)?;
+            for i in items {
+                let p = validate_input_path(&i.path)?;
+                if *transfer == Transfer::Move {
+                    check_danger(&p, home, false)?;
+                }
+                // group names are checked per group in the job (an error there fails only that group)
+            }
+        }
+        JobSpec::Clean { roots, items, .. } => {
+            if roots.is_empty() || items.is_empty() {
+                return Err(nothing());
+            }
+            if items.len() > crate::clean::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    format!("Too many entries (max. {})", crate::clean::MAX_ITEMS),
+                    None,
+                ));
+            }
+            for r in roots {
+                validate_input_path(r)?;
+            }
+            // each entry is checked again right before it is deleted (inside a root, no link, danger)
             for i in items {
                 validate_input_path(&i.path)?;
             }

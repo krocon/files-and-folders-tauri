@@ -144,10 +144,15 @@
     "Mod+F6"
   ],
   "OPEN_GROUPFILES_DLG": [
+    "Alt+G",
     "Mod+Alt+G"
   ],
   "OPEN_DELETE_EMPTY_FOLDERS_DLG": [
+    "Mod+Alt+R",
     "Mod+Alt+Shift+D"
+  ],
+  "OPEN_MULTIMKDIR_DLG": [
+    "Mod+F7"
   ],
   "OPEN_SHORTCUT_DLG": [
     "Mod+Shift+K"

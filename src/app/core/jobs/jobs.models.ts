@@ -2,6 +2,7 @@
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
 import { DirSize, FsError } from '../fs/fs.models';
+import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
 
 /** What happens when a target exists (copy/move dialog). */
@@ -14,6 +15,12 @@ export interface CopyOptions {
 }
 
 export type DeleteMode = 'trash' | 'permanent';
+
+/** One entry of a group job: the source and the name of its group folder. */
+export interface GroupItem {
+  readonly path: string;
+  readonly group: string;
+}
 
 export type JobSpec =
   | {
@@ -44,6 +51,22 @@ export type JobSpec =
       readonly kind: 'rename';
       readonly items: readonly RenameItem[];
       readonly undoOf?: string | null;
+    }
+  /** Group files (design 008): every entry to `<root>/<group>/<name>`. */
+  | {
+      readonly kind: 'group';
+      readonly root: string;
+      readonly items: readonly GroupItem[];
+      readonly transfer: 'copy' | 'move';
+      readonly options?: CopyOptions;
+    }
+  /** Clean folders (design 008): deletes what `findEmptyDirs` listed, checked again. */
+  | {
+      readonly kind: 'clean';
+      readonly roots: readonly string[];
+      readonly items: readonly CleanItem[];
+      readonly mode: DeleteMode;
+      readonly options: CleanOptions;
     }
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }

@@ -139,6 +139,37 @@ pub async fn make_dir<R: Runtime>(
     .await
 }
 
+/// Creates several folders (Multi-MkDir, design 008 E4); a result per name.
+#[tauri::command]
+pub async fn create_folders<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    names: Vec<String>,
+) -> Result<fileops::CreatedFolders, FsError> {
+    let parent = resolve_input(&app, &parent)?;
+    blocking("Creating the folders", move || {
+        fileops::create_folders(&parent, &names)
+    })
+    .await
+}
+
+/// Lists empty folders (and pattern files) below the start folders; writes nothing (design 008 E3).
+#[tauri::command]
+pub async fn find_empty_dirs<R: Runtime>(
+    app: AppHandle<R>,
+    roots: Vec<String>,
+    options: crate::clean::CleanOptions,
+) -> Result<crate::clean::CleanScan, FsError> {
+    let roots = roots
+        .iter()
+        .map(|r| resolve_input(&app, r))
+        .collect::<Result<Vec<_>, _>>()?;
+    blocking("Searching empty folders", move || {
+        crate::clean::find_empty_dirs(&roots, &options)
+    })
+    .await
+}
+
 /// Creates an empty file (never overwrites).
 #[tauri::command]
 pub async fn create_file<R: Runtime>(

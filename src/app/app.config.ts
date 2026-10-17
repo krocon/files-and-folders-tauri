@@ -4,6 +4,7 @@ import { SessionApi, TauriSessionApi } from './core/session/session-api';
 import { KeymapApi, TauriKeymapApi } from './core/actions/keymap-api';
 import { JobsApi, TauriJobsApi } from './core/jobs/jobs-api';
 import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
+import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,5 +14,6 @@ export const appConfig: ApplicationConfig = {
     { provide: KeymapApi, useClass: TauriKeymapApi },
     { provide: JobsApi, useClass: TauriJobsApi },
     { provide: RenameApi, useClass: TauriRenameApi },
+    { provide: FoldersApi, useClass: TauriFoldersApi },
   ],
 };

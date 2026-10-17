@@ -6,6 +6,8 @@ import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { RenameApi } from '../../core/rename/rename-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
+import { FakeFoldersApi } from '../../../testing/fake-folders-api';
+import { FoldersApi } from '../../core/folders/folders-api';
 import { TestBed } from '@angular/core/testing';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -29,6 +31,7 @@ describe('job dialogs', () => {
         { provide: JobsApi, useValue: api },
         // the task list offers "Undo" for rename jobs (MultiRenameStore → workspace)
         { provide: RenameApi, useValue: renameApi },
+        { provide: FoldersApi, useValue: new FakeFoldersApi() },
         { provide: FsApi, useValue: new FakeFsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },

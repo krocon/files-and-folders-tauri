@@ -1,5 +1,7 @@
 import { RenameApi } from '../../core/rename/rename-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
+import { FakeFoldersApi } from '../../../testing/fake-folders-api';
+import { FoldersApi } from '../../core/folders/folders-api';
 import { TestBed } from '@angular/core/testing';
 import { KeymapApi } from '../../core/actions/keymap-api';
 import { FsApi } from '../../core/fs/fs-api';
@@ -34,6 +36,7 @@ describe('Workspace', () => {
         { provide: FsApi, useValue: fs },
         { provide: JobsApi, useValue: jobs },
         { provide: RenameApi, useValue: new FakeRenameApi() },
+        { provide: FoldersApi, useValue: new FakeFoldersApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
       ],

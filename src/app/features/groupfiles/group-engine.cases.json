@@ -1,0 +1,235 @@
+{
+  "groupOf": [
+    {
+      "mode": "runningNumber",
+      "name": "Band - Titel 01.mp3",
+      "group": "Band - Titel"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "Asterix Band 12.cbr",
+      "group": "Asterix"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "#1 Foo 02.txt",
+      "group": null
+    },
+    {
+      "mode": "runningNumber",
+      "name": "Über alles 01.mp3",
+      "group": "Über alles"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "Ägypten_3.jpg",
+      "group": "Ägypten"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "Mickey's Party 7.cbz",
+      "group": "Mickeys Party"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "[Panini] Spider-Man 004 (2019).cbr",
+      "group": "Spider-Man"
+    },
+    {
+      "mode": "runningNumber",
+      "ignoreBrackets": false,
+      "name": "[Panini] Spider-Man 004.cbr",
+      "group": "[Panini] Spider-Man"
+    },
+    {
+      "mode": "runningNumber",
+      "name": "README",
+      "group": null
+    },
+    {
+      "mode": "runningNumber",
+      "name": "2024.txt",
+      "group": null
+    },
+    {
+      "mode": "runningNumber",
+      "name": "Track 05",
+      "group": null
+    },
+    {
+      "mode": "minusSeparator",
+      "name": "Band - Titel 01.mp3",
+      "group": "Band"
+    },
+    {
+      "mode": "minusSeparator",
+      "name": "Artist - Album - 03 Song.mp3",
+      "group": "Artist - Album"
+    },
+    {
+      "mode": "minusSeparator",
+      "name": "foo-bar-baz.txt",
+      "group": "foo-bar"
+    },
+    {
+      "mode": "minusSeparator",
+      "name": "nothing.txt",
+      "group": null
+    },
+    {
+      "mode": "minusSeparator",
+      "name": "Mötley Crüe - Kickstart (Live).flac",
+      "group": "Mötley Crüe"
+    },
+    {
+      "mode": "firstWord",
+      "name": "Band - Titel 01.mp3",
+      "group": "Band"
+    },
+    {
+      "mode": "firstWord",
+      "name": "Straße 12.jpg",
+      "group": "Straße"
+    },
+    {
+      "mode": "firstWord",
+      "name": "#1 Foo",
+      "group": "1"
+    },
+    {
+      "mode": "firstWord",
+      "name": "single",
+      "group": null
+    },
+    {
+      "mode": "firstWord",
+      "name": "日本語 テスト.txt",
+      "group": "日本語"
+    },
+    {
+      "mode": "firstLetter",
+      "name": "band.mp3",
+      "group": "b"
+    },
+    {
+      "mode": "firstLetter",
+      "name": " _-Zebra",
+      "group": "Z"
+    },
+    {
+      "mode": "firstLetterUpper",
+      "name": "über.txt",
+      "group": "Ü"
+    },
+    {
+      "mode": "firstLetterLower",
+      "name": "Über.txt",
+      "group": "ü"
+    },
+    {
+      "mode": "firstLetter",
+      "name": "🎉 Party.jpg",
+      "group": "🎉"
+    },
+    {
+      "mode": "firstLetter",
+      "name": "(2019) Abc.txt",
+      "group": "A"
+    },
+    {
+      "mode": "firstLetter",
+      "ignoreBrackets": false,
+      "name": "(2019) Abc.txt",
+      "group": "("
+    },
+    {
+      "mode": "twoLetters",
+      "name": "Abba Gold.mp3",
+      "group": "Ab"
+    },
+    {
+      "mode": "twoLettersUpper",
+      "name": "abba",
+      "group": "AB"
+    },
+    {
+      "mode": "twoLettersLower",
+      "name": "ABBA",
+      "group": "ab"
+    },
+    {
+      "mode": "twoLetters",
+      "name": "a",
+      "group": "a"
+    },
+    {
+      "mode": "newFolder",
+      "newFolder": "  Neu  ",
+      "name": "x.txt",
+      "group": "Neu"
+    },
+    {
+      "mode": "newFolder",
+      "newFolder": "",
+      "name": "x.txt",
+      "group": null
+    }
+  ],
+  "groupEntries": [
+    {
+      "title": "min size 2 leaves single entries out",
+      "mode": "runningNumber",
+      "names": ["Band - Titel 01.mp3", "Band - Titel 02.mp3", "Solo 1.mp3", "README"],
+      "status": ["ok", "ok", "small", "none"],
+      "count": 1
+    },
+    {
+      "title": "min size none",
+      "mode": "runningNumber",
+      "minSize": 0,
+      "names": ["Band - Titel 01.mp3", "Solo 1.mp3"],
+      "status": ["ok", "ok"],
+      "count": 2
+    },
+    {
+      "title": "min size applies to letter modes, too",
+      "mode": "firstLetter",
+      "minSize": 3,
+      "names": ["a1", "a2", "a3", "b1"],
+      "status": ["ok", "ok", "ok", "small"],
+      "count": 1
+    },
+    {
+      "title": "new folder ignores the min size",
+      "mode": "newFolder",
+      "newFolder": "Alle",
+      "minSize": 10,
+      "names": ["x", "y"],
+      "status": ["ok", "ok"],
+      "count": 1
+    },
+    {
+      "title": "invalid group names are errors",
+      "mode": "minusSeparator",
+      "minSize": 0,
+      "names": ["AC:DC - Live.mp3", "a.b. - c", "ok - fine"],
+      "status": ["error", "ok", "ok"],
+      "count": 2
+    },
+    {
+      "title": "first letter dot is invalid",
+      "mode": "firstLetter",
+      "minSize": 0,
+      "names": [".hidden"],
+      "status": ["error"],
+      "count": 0
+    },
+    {
+      "title": "NFD names group with NFC names",
+      "mode": "runningNumber",
+      "names": ["Über 1.mp3", "Über 2.mp3"],
+      "status": ["ok", "ok"],
+      "count": 1
+    }
+  ]
+}
