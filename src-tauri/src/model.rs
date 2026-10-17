@@ -58,4 +58,8 @@ pub struct DirectoryListing {
     pub entries: Vec<DirEntryDto>,
     /// Number of entries whose metadata could not be read.
     pub unreadable_entries: usize,
+    /// Set when the listing is a folder inside an archive (design 016 E1):
+    /// `path` and the entry paths are virtual then (`…/a.zip/dir`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archive: Option<crate::archive::ArchiveInfo>,
 }

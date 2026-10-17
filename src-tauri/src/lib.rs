@@ -20,11 +20,15 @@
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
+//! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ index, name checks, zip-bomb limits (design 016)
+//! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`commands`]     thin Tauri command layer
 
+pub mod archive;
 pub mod clean;
 pub mod commands;
 pub mod dirsize;
+pub mod duplicates;
 pub mod error;
 pub mod fileops;
 pub mod fs_atomic;

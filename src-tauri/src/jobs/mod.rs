@@ -3,15 +3,21 @@
 //! Pure std code without Tauri – the command layer only forwards events.
 //! Keep in sync with `src/app/core/jobs/jobs.models.ts`.
 
+pub mod ask;
 pub mod clean;
 pub mod control;
 pub mod copy;
 pub mod delete;
+pub mod duplicates;
+pub mod extract;
 pub mod group;
 pub mod manager;
+pub mod pack;
 pub mod rename;
 pub mod report;
 pub mod search;
+#[cfg(test)]
+mod tests_archive;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
@@ -19,8 +25,10 @@ mod tests_ops;
 #[cfg(test)]
 mod tests_tools;
 
+use crate::archive::ArchiveFormat;
 use crate::clean::{CleanItem, CleanOptions};
 use crate::dirsize::DirSize;
+use crate::duplicates::DuplicateCriteria;
 use crate::error::FsError;
 use crate::search::{SearchCriteria, SearchHit, SearchStats};
 use serde::{Deserialize, Serialize};
@@ -120,6 +128,30 @@ pub enum JobSpec {
     },
     /// Recursive search (design 009): hits are streamed as `searchHits` events.
     Search { criteria: SearchCriteria },
+    /// Extract entries of an archive (design 016 E4). `entries` are virtual paths
+    /// (`…/a.zip/dir`) – empty = everything; `into_subfolder` = into `<target>/<archive stem>`.
+    Extract {
+        archive: String,
+        #[serde(default)]
+        entries: Vec<String>,
+        target_dir: String,
+        #[serde(default)]
+        into_subfolder: bool,
+        #[serde(default)]
+        options: CopyOptions,
+    },
+    /// Pack sources into `<target_dir>/<name>` (design 016 E5).
+    Pack {
+        sources: Vec<String>,
+        target_dir: String,
+        name: String,
+        format: ArchiveFormat,
+        /// Compression level 1–9 (ZIP, TAR.GZ); default 6.
+        #[serde(default)]
+        level: Option<u32>,
+    },
+    /// Duplicate files (design 016 E6): groups are streamed as `searchHits`.
+    Duplicates { criteria: DuplicateCriteria },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
@@ -135,8 +167,13 @@ impl JobSpec {
             JobSpec::Copy { background, .. }
             | JobSpec::Move { background, .. }
             | JobSpec::Delete { background, .. } => *background,
-            JobSpec::Rename { .. } | JobSpec::Group { .. } | JobSpec::Clean { .. } => false,
-            JobSpec::DirSize { .. }
+            JobSpec::Rename { .. }
+            | JobSpec::Group { .. }
+            | JobSpec::Clean { .. }
+            | JobSpec::Extract { .. }
+            | JobSpec::Pack { .. } => false,
+            JobSpec::Duplicates { .. }
+            | JobSpec::DirSize { .. }
             | JobSpec::Count { .. }
             | JobSpec::Search { .. }
             | JobSpec::Simulate { .. } => true,
@@ -166,7 +203,10 @@ impl JobSpec {
     pub fn is_helper(&self) -> bool {
         matches!(
             self,
-            JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Search { .. }
+            JobSpec::DirSize { .. }
+                | JobSpec::Count { .. }
+                | JobSpec::Search { .. }
+                | JobSpec::Duplicates { .. }
         )
     }
 
@@ -179,6 +219,9 @@ impl JobSpec {
             JobSpec::Group { .. } => "group",
             JobSpec::Clean { .. } => "clean",
             JobSpec::Search { .. } => "search",
+            JobSpec::Extract { .. } => "extract",
+            JobSpec::Pack { .. } => "pack",
+            JobSpec::Duplicates { .. } => "duplicates",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",

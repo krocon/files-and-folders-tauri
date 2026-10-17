@@ -8,7 +8,6 @@ use crate::fileops;
 use crate::jobs::rename::{self, RenameItem, RenamePlan};
 use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
-use crate::listing;
 use crate::model::DirectoryListing;
 use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
@@ -34,7 +33,7 @@ pub async fn list_directory<R: Runtime>(
     path: Option<String>,
 ) -> Result<DirectoryListing, FsError> {
     let dir = resolve_dir(&app, path)?;
-    tauri::async_runtime::spawn_blocking(move || listing::list_directory(&dir))
+    tauri::async_runtime::spawn_blocking(move || crate::archive::list_directory_or_archive(&dir))
         .await
         .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
 }
