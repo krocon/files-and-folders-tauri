@@ -207,10 +207,36 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 
 | Punkt | Design | umgesetzt | Grund |
 |---|---|---|---|
+| F5 im Archiv | Kopierdialog mit Titel „Extract“ | Entpacken-Dialog (derselbe wie `Alt+F9`, ohne „Unterordner“) | ein Dialog für beide Wege; der Kopierdialog hätte Name/Hintergrund/Zählung ohne Sinn im Archiv |
+| Sperren im Archiv | `OpsStore.folder()` = null | zusätzlich **zentrales Veto** `ActionService.setVeto` (`OFF_IN_ARCHIVE`: F3/F4/F7/F8/Shift+F4/F2, Eigenschaften, Tools, Terminal, Suche, Multi-Rename, Gruppieren, Aufräumen, Duplikate, Packen) – auch für Tools (Extras) | E2E: F4/F3 und Werkzeuge anderer Features waren im Archiv aktiv und hätten virtuelle Pfade an Rust bzw. externe Programme gegeben |
+| Ziehen aus einem Archiv / auf ein Archiv-Panel | – | Meldung „read-only“ bzw. „cannot copy into an archive“ | Entpacken per Drag → Offen |
+| Unsichere Einträge beim Entpacken | Fehler je Eintrag | **ein** Fehler „N Einträge mit unsicherem Namen nicht entpackt“, `itemsFailed` += N | sie stehen nicht im Index (nie im Plan), ein Eintrag je Name würde die Liste fluten |
+| Zip-Bomben-Test | Testarchiv mit überlappenden Einträgen | Grenzen über synthetischen Index (`check_limits`), `LimitedReader` für gzip, ZIP mit gepatchter Größe (Job) | überlappende Einträge lassen sich mit dem `zip`-Writer nicht erzeugen; die Grenzen selbst sind getestet |
+| Zeiten in ZIP | – | DOS-Zeit wird als UTC gelesen und geschrieben | ohne Zeitzonen-Crate; eigene Archive sind exakt, fremde um die Zeitzone verschoben (Offen: Extended-Timestamp-Feld) |
+| Duplikat-Header | Buttons „Keep newest/oldest/first“ | „Keep: newest · oldest · first“, Gruppe mit nur noch einer Datei zählt nicht mehr | E2E: im schmalen Panel verdeckten die Buttons die Zusammenfassung |
+| Hilfs-Job | – | `duplicates` ist Hilfs-Job (nicht in Tasks, kein Nachfragen beim Beenden) wie `search` | ein Abbruch verliert nichts |
 
 ## 7. Review
 
 ### Selbstprüfung
+
+- **Zip-Slip:** Namen werden einmal beim Lesen des Index geprüft (`sanitize`) – nur geprüfte Komponenten erreichen
+  Liste und Plan; Ziel = `root.join(komponenten)` ohne `..`; jeder Ordner auf dem Weg per `symlink_metadata` (nie
+  `metadata`), Temp-Datei mit `create_new` (folgt keinem Link), `rename`/`rename_noreplace` ersetzen nie *durch* einen
+  Link. Tests: `zip_slip_archive_is_refused_and_the_rest_extracted`, `tar_slip_and_links_are_refused`,
+  `a_link_in_the_target_is_never_followed`. **Restrisiko:** ein lokaler Angreifer, der zwischen Prüfung und Schreiben
+  einen geprüften Ordner gegen einen Link tauscht (TOCTOU) – wie beim Kopieren; `openat`-basiert wäre die Lösung.
+- **Bomben:** Anzahl (200 000), Summe (64 GiB), Verhältnis (1 100 × + 1 MiB) vor jedem Entpacken (schon beim Auflisten),
+  je Eintrag nie mehr als die angegebene Größe (`written > size` → Abbruch, Temp weg), gzip-Strom gezählt. Ein
+  legitimes 64-GiB-Nullen-Archiv läuft (Platte voll → Pause wie Kopieren).
+- **Links/Sonderdateien** aus Archiven werden nie angelegt; Setuid/Setgid/Sticky werden nie gesetzt (`& 0o777`).
+- **Packen:** Links werden nicht verfolgt (gemeldet), FIFOs/Geräte nie geöffnet (`open_regular_file`), das zu
+  ersetzende Archiv packt sich nie selbst, halbe Archive nie unter dem echten Namen.
+- **Duplikate:** SHA-256 (keine konstruierbaren Kollisionen), Hardlinks/doppelte Wurzeln nur einmal, leere Dateien
+  ignoriert; Auswahlhilfen lassen je Gruppe genau eine Datei unmarkiert, Löschen nur über den Löschdialog
+  (Papierkorb-Default, Warnung bei ganz markierten Gruppen).
+- **Nicht geprüft:** macOS/Windows (Pfade mit `\` und Laufwerken nur über die Namensprüfung getestet, Windows-Regeln
+  von `validate_name` greifen dort), Archive > 1 GB (nur Grenzen per Test), Dark-Mode nur über Tokens.
 
 ### Review (separater Agent) – Ergebnis
 
@@ -220,11 +246,31 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 ## 8. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende
-- [ ] Phase 5 Doku
-- [ ] Phase 6 Abschlussprüfung
+- [x] Phase 2 Rust: `archive/` (Index ZIP/TAR/TAR.GZ, `sanitize`, Grenzen, LRU, virtuelle Pfade in
+  `list_directory`), Jobs `extract`, `pack`, `duplicates` (+ `jobs/ask.rs`), `duplicates.rs`, Fehlercodes
+  `archive_error`/`unsafe_entry`/`archive_too_large`, `SearchHit.group`, `SearchStats.groups/bytesToHash/bytesHashed`
+  – 26 neue Rust-Tests (+ 100 000 Dateien `--ignored`, 52 s, davon ~30 s Anlegen)
+- [x] Phase 3 Frontend: `core/archive/archive-names.ts`, `FileBrowserStore.archive()`/`searchKind`, Enter öffnet
+  Archive, `ArchiveStore` + Pack-/Unpack-Dialog, `OpsStore`-Sperren, Veto im `ActionService`, `DuplicatesStore` +
+  Dialog + `duplicates-logic.ts`, `SearchStore.findDuplicates` (Ergebnis-Art `duplicates`), Spalte „Group“ mit
+  Schattierung (Token `--color-group-alt-bg`), Header mit Zusammenfassung/Fortschritt/Auswahlhilfen, Löschwarnung,
+  Kürzel `Alt+F5`/`Alt+F9`/`Alt+Shift+F7`, Button-Leiste Alt-Satz F5 = Packen – 14 neue Frontend-Tests
+- [x] Phase 4 Ende-zu-Ende (Xvfb :98, Debug-Build, eigenes `HOME` unter `/tmp/claude-0/e2e-016`): ZIP mit
+  Unicode-/Emoji-Namen, `../evil.txt`, `/abs-evil.txt` und Link geöffnet (Badge „ZIP · read-only · 2 unsafe entries
+  hidden“, Link als Link, Ordnergrößen), navigiert (Breadcrumbs, `..` mit Cursor auf dem Archiv), eine Datei per F5
+  entpackt, das ganze Archiv per `Alt+F9` in Unterordner (3 Fehler gemeldet, nichts außerhalb des Ziels), Ordner mit
+  Link/leerem Ordner als TAR.GZ gepackt (Link gemeldet, `tar tzvf` korrekt) und im Panel geöffnet; Duplikate (2
+  Gruppen, versteckte und „gleicher Kopf, anderer Inhalt“ ausgeschlossen), „Keep newest“, F8 → Papierkorb, Zeilen
+  verlassen das Ergebnis; 100 000 Dateien (eine Größengruppe) in ~2 s, `/usr` mit `Stop` beim Scannen und beim
+  Vergleichen (< 0,5 s „stopped“); im Archiv F7/F8/F4 gesperrt. Nicht prüfbar: gesperrter Ordner (root),
+  macOS/Windows.
+- [x] Phase 5 Doku (architecture, feature-parity, roadmap, README, CLAUDE.md, prompts/README)
+- [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build)
+
+### Lücken der GuiExpert Table
+
+- Keine neue. G15 (`minWidth` bei Gewichtsspalten) trifft auch den Duplikat-Tab: mit Spalte „Group“ wird der Name im
+  schmalen Panel sehr schmal – Spalte daher nur 52 px.
 
 ## 9. Offen
 
@@ -232,4 +278,6 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 - Passwörter (ZIP AES/ZipCrypto) beim Packen und Entpacken.
 - In ein geöffnetes Archiv packen/löschen/umbenennen; Datei im Archiv öffnen/ansehen (F3, Enter) über Temp-Kopie.
 - Suche in Archiven; Abbruch des Auflistens großer `.tar.gz`.
-- Duplikate: Ordner-Duplikate, Bild-Ähnlichkeit, „durch Hardlink ersetzen“.
+- Duplikate: Ordner-Duplikate, Bild-Ähnlichkeit, „durch Hardlink ersetzen“, Fortschritt in Prozent im Tab.
+- ZIP-Zeiten aus dem Extended-Timestamp-Feld (UTC) statt DOS-Zeit; Entpacken per Drag aus einem Archiv-Panel.
+- E2E einmal beobachtet (nicht reproduzierbar): der erste F5 im Archiv öffnete keinen Dialog; danach stets korrekt.
