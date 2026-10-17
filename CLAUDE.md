@@ -200,7 +200,7 @@ prompts/                     Feature-Prompts (s. o.)
 3. Container einrichten (einmal je Sitzung, im Hintergrund starten und währenddessen lesen):
    `apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev xdotool imagemagick`
    (Xvfb ist da), `pnpm install --frozen-lockfile` (~10 s), `cd src-tauri && cargo build --tests` (~3,5 min beim
-   ersten Mal). Node im Container ist 22.22.0 (< 22.22.3) – funktioniert trotzdem.
+   ersten Mal). Node im Container ist zu alt für die Angular-CLI (22.22.0 < 22.22.3, `ng lint` bricht ab): `npm pack node-linux-x64@22.23.3` (npm-Registry ist erreichbar, nodejs.org nicht), entpacken und `package/bin/node` über `/opt/node22/bin/node` kopieren. `pnpm check` dauert dann ~3 min.
 4. Zurück: Container `git bundle create /mnt/user-data/outputs/<slug>.bundle origin/main..feat/<slug>` →
    `device_commit_files` nach `.tmp-bundle/<slug>.bundle` → Marc (oder Gerät):
    `git pull --ff-only .tmp-bundle/<slug>.bundle feat/<slug>`. `.tmp-bundle/` ist in `.gitignore`.
