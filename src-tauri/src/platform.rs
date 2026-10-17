@@ -289,36 +289,69 @@ pub fn make_writable(path: &Path, meta: &Metadata) -> io::Result<()> {
     }
 }
 
+/// Calls a `get*_r` function with a buffer that doubles on `ERANGE` (up to 1 MiB).
+#[cfg(unix)]
+fn with_name_buffer(
+    start: usize,
+    mut call: impl FnMut(&mut [libc::c_char]) -> (libc::c_int, Option<String>),
+) -> Option<String> {
+    const MAX: usize = 1024 * 1024;
+    let mut len = start.max(1);
+    loop {
+        let mut buf = vec![0 as libc::c_char; len];
+        let (rc, name) = call(&mut buf);
+        if rc == libc::ERANGE && len < MAX {
+            len = (len * 2).min(MAX);
+            continue;
+        }
+        return if rc == 0 { name } else { None };
+    }
+}
+
 /// Login name of a user id (`getpwuid_r`), `None` if unknown.
 #[cfg(unix)]
 pub fn user_name(uid: u32) -> Option<String> {
-    let mut buf = vec![0 as libc::c_char; 16 * 1024];
-    // SAFETY: zeroed passwd is a valid out-parameter; buf outlives the borrow of pw_name
-    let mut pwd: libc::passwd = unsafe { std::mem::zeroed() };
-    let mut result: *mut libc::passwd = std::ptr::null_mut();
-    let rc = unsafe { libc::getpwuid_r(uid, &mut pwd, buf.as_mut_ptr(), buf.len(), &mut result) };
-    if rc != 0 || result.is_null() || pwd.pw_name.is_null() {
-        return None;
-    }
-    // SAFETY: getpwuid_r succeeded, pw_name points into buf (NUL-terminated)
-    let name = unsafe { std::ffi::CStr::from_ptr(pwd.pw_name) };
-    Some(name.to_string_lossy().into_owned())
+    user_name_with(uid, 16 * 1024)
+}
+
+#[cfg(unix)]
+fn user_name_with(uid: u32, start: usize) -> Option<String> {
+    with_name_buffer(start, |buf| {
+        // SAFETY: zeroed passwd is a valid out-parameter; buf outlives the read of pw_name
+        let mut pwd: libc::passwd = unsafe { std::mem::zeroed() };
+        let mut result: *mut libc::passwd = std::ptr::null_mut();
+        let rc =
+            unsafe { libc::getpwuid_r(uid, &mut pwd, buf.as_mut_ptr(), buf.len(), &mut result) };
+        if rc != 0 || result.is_null() || pwd.pw_name.is_null() {
+            return (rc, None);
+        }
+        // SAFETY: getpwuid_r succeeded, pw_name points into buf (NUL-terminated)
+        let name = unsafe { std::ffi::CStr::from_ptr(pwd.pw_name) };
+        (0, Some(name.to_string_lossy().into_owned()))
+    })
 }
 
 /// Group name of a group id (`getgrgid_r`), `None` if unknown.
 #[cfg(unix)]
 pub fn group_name(gid: u32) -> Option<String> {
-    let mut buf = vec![0 as libc::c_char; 16 * 1024];
-    // SAFETY: as in `user_name`
-    let mut grp: libc::group = unsafe { std::mem::zeroed() };
-    let mut result: *mut libc::group = std::ptr::null_mut();
-    let rc = unsafe { libc::getgrgid_r(gid, &mut grp, buf.as_mut_ptr(), buf.len(), &mut result) };
-    if rc != 0 || result.is_null() || grp.gr_name.is_null() {
-        return None;
-    }
-    // SAFETY: getgrgid_r succeeded, gr_name points into buf
-    let name = unsafe { std::ffi::CStr::from_ptr(grp.gr_name) };
-    Some(name.to_string_lossy().into_owned())
+    group_name_with(gid, 16 * 1024)
+}
+
+#[cfg(unix)]
+fn group_name_with(gid: u32, start: usize) -> Option<String> {
+    with_name_buffer(start, |buf| {
+        // SAFETY: as in `user_name_with`
+        let mut grp: libc::group = unsafe { std::mem::zeroed() };
+        let mut result: *mut libc::group = std::ptr::null_mut();
+        let rc =
+            unsafe { libc::getgrgid_r(gid, &mut grp, buf.as_mut_ptr(), buf.len(), &mut result) };
+        if rc != 0 || result.is_null() || grp.gr_name.is_null() {
+            return (rc, None);
+        }
+        // SAFETY: getgrgid_r succeeded, gr_name points into buf
+        let name = unsafe { std::ffi::CStr::from_ptr(grp.gr_name) };
+        (0, Some(name.to_string_lossy().into_owned()))
+    })
 }
 
 /// Windows file attributes (`FILE_ATTRIBUTE_*`).
@@ -415,5 +448,16 @@ mod tests {
         assert!(!real.exists());
         // `..` or an absolute part is refused
         assert!(remove_below(&root, Path::new("../outside/x.bak"), false, &[]).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn review6_names_grow_the_buffer_on_erange() {
+        // 8 bytes are too small for any passwd/group record: ERANGE → retry
+        assert_eq!(user_name_with(0, 8).as_deref(), Some("root"));
+        let g = group_name_with(0, 8);
+        assert!(g.is_some());
+        assert_eq!(g, group_name(0));
+        assert_eq!(user_name_with(u32::MAX - 7, 8), None);
     }
 }

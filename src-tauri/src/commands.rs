@@ -120,6 +120,8 @@ pub async fn open_file<R: Runtime>(
 #[derive(Default, Clone)]
 pub struct PreviewState {
     pub tokens: Arc<crate::preview::ImageTokens>,
+    /// Image requests served at the same time (review 2).
+    pub slots: Arc<crate::preview::ServeSlots>,
 }
 
 /// Bounded preview of a file (text, image token, hex); never reads more than the limits.
@@ -134,7 +136,7 @@ pub async fn read_preview<R: Runtime>(
     let tokens = state.tokens.clone();
     let options = options.unwrap_or_default();
     blocking("Reading the preview", move || {
-        crate::preview::read_preview(&file, &options, |p| tokens.issue(p))
+        crate::preview::read_preview(&file, &options, |p, slot| tokens.issue_in(p, slot))
     })
     .await
 }
@@ -150,6 +152,16 @@ pub async fn get_properties<R: Runtime>(
         crate::properties::properties(&file)
     })
     .await
+}
+
+/// Answer of the `fnfpreview` scheme when all serve slots are taken (review 2).
+pub fn preview_busy_response() -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(503)
+        .header("Cache-Control", "no-store")
+        .header("Retry-After", "1")
+        .body(Vec::new())
+        .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
 }
 
 /// Answer of the `fnfpreview` scheme: the image of a token or 404 (design 010 E3).

@@ -21,6 +21,11 @@
   contain-intrinsic-size: auto calc(var(--fnf-block-lines) * 1.35em);
 }
 
+/* not filled yet (review 3): an empty placeholder of the block's height */
+:host ::ng-deep .block:not(.filled) {
+  height: calc(var(--fnf-block-lines) * 1.35em);
+}
+
 :host ::ng-deep .ln {
   display: grid;
   grid-template-columns: var(--fnf-gutter) 1fr;

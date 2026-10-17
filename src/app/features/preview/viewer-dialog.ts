@@ -15,6 +15,7 @@ import { formatSize } from '../../shared/format';
 import { PreviewContent } from './preview-content';
 import { previewNotes } from './preview-notes';
 import { PV_TEXTS } from './preview-texts';
+import { viewerStepFor } from './viewer-keys';
 import { ViewerStore, ViewMode } from './viewer.store';
 
 const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
@@ -245,15 +246,15 @@ export class ViewerDialog {
     if (inField) {
       return;
     }
+    const step = viewerStepFor(key, {
+      tagName: target.tagName,
+      inToolbar: !!target.closest?.('[role="toolbar"]'),
+    });
+    if (step !== null) {
+      this.v.step(step);
+      return handled();
+    }
     switch (key) {
-      case 'ArrowRight':
-      case 'Space':
-        this.v.step(1);
-        return handled();
-      case 'ArrowLeft':
-      case 'Backspace':
-        this.v.step(-1);
-        return handled();
       case 'W':
         if (this.isText()) {
           this.v.toggleWrap();

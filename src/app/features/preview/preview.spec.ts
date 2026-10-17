@@ -116,7 +116,7 @@ describe('viewer, quick view and properties (design 010)', () => {
     expect(dialogs.open()).toBe('viewer');
     expect(api.reads[0]).toEqual({
       path: '/src/a.txt',
-      options: { encoding: 'auto', mode: 'auto' },
+      options: { encoding: 'auto', mode: 'auto', imageSlot: 'viewer' },
     });
     expect(viewer.position()).toEqual({ index: 1, count: 3 });
     viewer.step(1); // skips the folder "Zwischen"
@@ -142,7 +142,11 @@ describe('viewer, quick view and properties (design 010)', () => {
     await flush();
     viewer.setEncoding('windows-1252');
     viewer.setMode('hex');
-    expect(api.reads.at(-1)?.options).toEqual({ encoding: 'windows-1252', mode: 'hex' });
+    expect(api.reads.at(-1)?.options).toEqual({
+      encoding: 'windows-1252',
+      mode: 'hex',
+      imageSlot: 'viewer',
+    });
     api.hold = true;
     api.previews.set('/src/a.txt', textPreview('old'));
     viewer.setEncoding('latin-1');
@@ -203,6 +207,31 @@ describe('viewer, quick view and properties (design 010)', () => {
     TestBed.tick();
     expect(quick.shownOn()).toBeNull();
     expect(quick.preview()).toBeNull();
+  });
+
+  it('quick view: down/up within the debounce while loading does not hang in loading (review 1)', async () => {
+    left.setCursor('/src/a.txt');
+    await actions.run('QUICK_VIEW');
+    await flush();
+    await flush();
+    quick.debounceMs = 5;
+    api.hold = true; // slow answer for bild.txt
+    left.setCursor('/src/bild.txt');
+    TestBed.tick();
+    await new Promise((r) => setTimeout(r, 15));
+    expect(quick.loading()).toBe(true);
+    left.setCursor('/src/link'); // ↓
+    TestBed.tick();
+    left.setCursor('/src/bild.txt'); // ↑ within the debounce
+    TestBed.tick();
+    await new Promise((r) => setTimeout(r, 15));
+    api.release();
+    await flush();
+    await flush();
+    expect(quick.entry()?.path).toBe('/src/bild.txt');
+    expect(quick.loading()).toBe(false);
+    expect(quick.preview()?.kind).toBe('text');
+    expect(api.reads.map((r) => r.path)).toEqual(['/src/a.txt', '/src/bild.txt']);
   });
 
   it('properties: loads and calculates a folder size as a job', async () => {
@@ -311,6 +340,58 @@ describe('viewer, quick view and properties (design 010)', () => {
     fixture.componentRef.setInput('context', DEFAULT_CONTEXT);
     fixture.detectChanges();
     expect(el.querySelectorAll('mark')).toHaveLength(0);
+  });
+
+  it('the text view fills blocks lazily and only once splits lines (review 3)', () => {
+    const observed: Element[] = [];
+    let fire: (els: Element[]) => void = () => undefined;
+    class FakeIO {
+      constructor(cb: (entries: { target: Element; isIntersecting: boolean }[]) => void) {
+        fire = (els) => cb(els.map((target) => ({ target, isIntersecting: true })));
+      }
+      observe(el: Element) {
+        observed.push(el);
+      }
+      unobserve = (): void => undefined;
+      disconnect = (): void => undefined;
+    }
+    const g = globalThis as { IntersectionObserver?: unknown };
+    const saved = g.IntersectionObserver;
+    g.IntersectionObserver = FakeIO;
+    try {
+      const lines = Array.from({ length: 1200 }, (_, i) => `Zeile ${i + 1}`);
+      const fixture = TestBed.createComponent(TextView);
+      fixture.componentRef.setInput('preview', textPreview('ignored'));
+      fixture.componentRef.setInput('context', { ...DEFAULT_CONTEXT, lines });
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      const blocks = [...el.querySelectorAll<HTMLElement>('.block')];
+      expect(blocks).toHaveLength(3);
+      expect(el.querySelectorAll('.ln')).toHaveLength(500); // only the first block
+      expect(observed).toEqual([blocks[1], blocks[2]]);
+      fire([blocks[2]]);
+      expect(el.querySelectorAll('.ln')).toHaveLength(700);
+      expect(blocks[2].querySelector('.ln')?.textContent).toBe('Zeile 1001');
+      // a match in a block not filled yet: marked once the block is filled
+      const matches = findMatches(lines, 'Zeile 900');
+      fixture.componentRef.setInput('context', { ...DEFAULT_CONTEXT, lines, matches, current: 0 });
+      fixture.detectChanges();
+      expect(el.querySelector('mark.current')?.textContent).toBe('Zeile 900');
+      expect(el.querySelectorAll('.ln')).toHaveLength(1200);
+    } finally {
+      g.IntersectionObserver = saved;
+    }
+  });
+
+  it('the viewer splits the text once and hands the lines to the view (review 3)', async () => {
+    api.previews.set('/src/a.txt', textPreview('a\nb\nab'));
+    left.setCursor('/src/a.txt');
+    viewer.open();
+    await flush();
+    const lines = viewer.context().lines;
+    expect(lines).toEqual(['a', 'b', 'ab']);
+    viewer.setQuery('a');
+    expect(viewer.context().lines).toBe(lines);
   });
 
   function props_(path: string): Properties {

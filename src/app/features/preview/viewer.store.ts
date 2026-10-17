@@ -56,6 +56,7 @@ export class ViewerStore {
     matches: this.matches(),
     current: this.current(),
     zoom: this.zoom(),
+    lines: this.lines(),
   }));
   /** Position among the files of the panel, 1-based. */
   readonly position = computed(() => {
@@ -178,6 +179,7 @@ export class ViewerStore {
       const p = await this.api.readPreview(entry.path, {
         encoding: this.encoding(),
         mode: this.mode(),
+        imageSlot: 'viewer',
       });
       if (seq === this.seq) {
         this.preview.set(p);

@@ -242,6 +242,12 @@ Fokus Viewer: Inhalt (autofocus) → Werkzeugleiste → Suche → Schließen. Ei
 
 | # | Fund | Stand |
 |---|---|---|
+| 1 | mittel – `QuickViewStore.schedule()` erhöhte `seq` vor der Gleich-Prüfung: ↓↑ innerhalb der Entprellzeit ließ `loading` für immer `true` | ✅ Gleich-Prüfung vor dem Ungültigmachen, `seq` erst beim Laden erhöht · `preview.spec.ts` „down/up within the debounce … (review 1)“ |
+| 2 | mittel – Bild-Schema las bis 256 MiB je Anfrage in einen Vec, ein Thread je Anfrage | ✅ `MAX_IMAGE_BYTES` 64 MiB, `ServeSlots` (max. 3 gleichzeitig, sonst 503 + `Retry-After`, vor dem Thread-Start), Token-Slots `imageSlot` `quick`/`viewer`: neues Token widerruft das vorige des Slots · `preview::tests::review2_*` |
+| 3 | gering – Textansicht baute alle Zeilen als DOM (1 MiB kurze Zeilen → Mio. Knoten), Zeilen doppelt gesplittet | ✅ Blöcke à 500 Zeilen als Platzhalter mit Höhe, gefüllt per `IntersectionObserver` (Scroll-Vorfahr als Root, 200 % Vorlauf), Treffer in ungefüllten Blöcken beim Füllen markiert, aktueller Treffer füllt seinen Block; Zeilen einmal im `ViewerStore` (`context.lines`) · `preview.spec.ts` „fills blocks lazily … (review 3)“, „splits the text once … (review 3)“; E2E: 1 MiB mit 524 288 Zeilen öffnet flüssig, End springt zu Zeile 524 289, Zeilennummern passen |
+| 4 | gering – `truncated` verglich mit veraltetem/0-`size` (wachsende Datei, `/proc`) | ✅ `is_truncated`: gelesen = Limit und (`size` > Limit oder ein weiteres Byte lesbar), für Text und Hex · `preview::tests::review4_*` (inkl. `/proc/self/status`, Linux) |
+| 5 | gering – Space/←/→ auf fokussierten Buttons blätterten statt den Button auszulösen | ✅ `viewer-keys.ts` `viewerStepFor`: Space nicht auf BUTTON, ←/→ nicht in der Toolbar · `preview-logic.spec.ts` „viewer keys (review 5)“; E2E: Space auf „Close“ schließt |
+| 6 | gering – `user_name`/`group_name` gaben bei `ERANGE` `None` | ✅ `with_name_buffer`: Puffer verdoppeln bis 1 MiB · `platform::tests::review6_names_grow_the_buffer_on_erange` |
 
 ## 9. Fortschritt
 

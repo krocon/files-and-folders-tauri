@@ -49,14 +49,17 @@ pub fn run() {
         .manage(commands::CleanScanState::default())
         .manage(commands::PreviewState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
-            let tokens = ctx
-                .app_handle()
-                .state::<commands::PreviewState>()
-                .tokens
-                .clone();
+            let state = ctx.app_handle().state::<commands::PreviewState>();
+            // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
+            let Some(slot) = state.slots.try_acquire() else {
+                responder.respond(commands::preview_busy_response());
+                return;
+            };
+            let tokens = state.tokens.clone();
             let path = request.uri().path().to_owned();
             // reading an image may take a moment: never on the main/runtime thread
             std::thread::spawn(move || {
+                let _slot = slot;
                 responder.respond(commands::preview_response(&tokens, &path))
             });
         })

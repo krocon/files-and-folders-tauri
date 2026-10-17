@@ -33,6 +33,8 @@ export interface PreviewOptions {
   readonly mode?: 'auto' | 'text' | 'hex';
   readonly maxTextBytes?: number;
   readonly hexBytes?: number;
+  /** Image token slot: a new token revokes the slot's previous one (review 2). */
+  readonly imageSlot?: 'quick' | 'viewer';
 }
 
 interface PreviewBase {

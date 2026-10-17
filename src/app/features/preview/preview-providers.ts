@@ -16,6 +16,8 @@ export interface PreviewContext {
   readonly current: number;
   /** Image zoom: `fit` or a factor (1 = 100 %). */
   readonly zoom: 'fit' | number;
+  /** The text already split into lines (the viewer splits once); else the view splits. */
+  readonly lines?: readonly string[];
 }
 
 export const DEFAULT_CONTEXT: PreviewContext = {

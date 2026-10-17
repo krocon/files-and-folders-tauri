@@ -51,22 +51,24 @@ export class QuickViewStore {
   private schedule(entry: DirEntry | null): void {
     if (this.timer !== null) {
       clearTimeout(this.timer);
-    }
-    const seq = ++this.seq;
-    if (!entry || isParentRow(entry)) {
       this.timer = null;
+    }
+    if (!entry || isParentRow(entry)) {
+      this.seq++;
       this.entry.set(null);
       this.preview.set(null);
       this.error.set(null);
       this.loading.set(false);
       return;
     }
+    // Back on the entry that is shown or still loading (e.g. ↓↑ within the
+    // debounce): keep that answer valid instead of invalidating it (review 1).
     if (this.entry()?.path === entry.path && (this.preview() || this.loading())) {
       return;
     }
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.load(entry, seq);
+      void this.load(entry, ++this.seq);
     }, this.debounceMs);
   }
 
@@ -75,7 +77,10 @@ export class QuickViewStore {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const p = await this.api.readPreview(entry.path, { maxTextBytes: QUICK_VIEW_TEXT_BYTES });
+      const p = await this.api.readPreview(entry.path, {
+        maxTextBytes: QUICK_VIEW_TEXT_BYTES,
+        imageSlot: 'quick',
+      });
       if (seq === this.seq) {
         this.preview.set(p);
       }

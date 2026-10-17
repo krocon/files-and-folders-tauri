@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { hexDump } from './hex';
 import { modeOctal, modeString } from './permissions';
 import { findMatches, segmentsOf, splitLines, stepMatch } from './text-search';
+import { viewerStepFor } from './viewer-keys';
 
 describe('text viewer helpers (design 010 E8)', () => {
   it('splits lines on every line ending', () => {
@@ -62,5 +63,25 @@ describe('text viewer helpers (design 010 E8)', () => {
     expect(modeOctal(0o755)).toBe('755');
     expect(modeOctal(0o4755)).toBe('4755');
     expect(modeOctal(0o7)).toBe('007');
+  });
+});
+
+describe('viewer keys (review 5)', () => {
+  const at = (tagName: string, inToolbar = false) => ({ tagName, inToolbar });
+
+  it('steps with Space/←/→/Backspace on the content', () => {
+    expect(viewerStepFor('Space', at('DIV'))).toBe(1);
+    expect(viewerStepFor('ArrowRight', at('DIV'))).toBe(1);
+    expect(viewerStepFor('ArrowLeft', at('DIV'))).toBe(-1);
+    expect(viewerStepFor('Backspace', at('DIV'))).toBe(-1);
+    expect(viewerStepFor('W', at('DIV'))).toBeNull();
+  });
+
+  it('leaves Space to a focused button and ←/→ to the toolbar', () => {
+    expect(viewerStepFor('Space', at('BUTTON', true))).toBeNull();
+    expect(viewerStepFor('Space', at('BUTTON'))).toBeNull();
+    expect(viewerStepFor('ArrowRight', at('BUTTON', true))).toBeNull();
+    expect(viewerStepFor('ArrowLeft', at('SPAN', true))).toBeNull();
+    expect(viewerStepFor('ArrowRight', at('BUTTON'))).toBe(1); // a button outside the toolbar
   });
 });
