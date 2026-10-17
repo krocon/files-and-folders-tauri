@@ -4,6 +4,7 @@ import { dir, entry } from '../../../testing/fs-fixtures';
 import {
   cursorAfterRemoval,
   dialogError,
+  sameNames,
   selectionForAction,
   stemLength,
   suggestFolderName,
@@ -109,5 +110,19 @@ describe('dialogError', () => {
     ).toBe(
       'Access denied – you do not have permission to read this folder. (Permission denied (os error 13))',
     );
+  });
+});
+
+describe('sameNames (review 009 #5)', () => {
+  it('lists names that occur more than once (case-insensitive targets), first spelling', () => {
+    const list = [
+      entry('a.txt', { path: '/x/a.txt' }),
+      entry('b.txt', { path: '/x/b.txt' }),
+      entry('A.TXT', { path: '/y/A.TXT' }),
+      entry('a.txt', { path: '/z/a.txt' }),
+      entry('c', { path: '/y/c' }),
+    ];
+    expect(sameNames(list)).toEqual(['a.txt']);
+    expect(sameNames([list[1], list[4]])).toEqual([]);
   });
 });

@@ -111,6 +111,17 @@
   &.fnf-active-panel {
     border-top-color: var(--color-active-panel-accent);
   }
+
+  /* quick view (design 010 E4): the list stays (table state), hidden behind the preview */
+  .quick {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  &.quick-on app-file-list {
+    visibility: hidden;
+  }
 }
 
 .error {
@@ -204,4 +215,38 @@
 
 .status .busy {
   color: var(--color-accent);
+}
+
+/* result tab header (design 009 E4) */
+.search-head {
+  justify-content: flex-start;
+  gap: var(--spacing-1);
+  font-family: var(--font-sans);
+  cursor: default;
+
+  .search-label {
+    flex: none;
+  }
+
+  .search-roots {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+  }
+
+  .search-count {
+    flex: none;
+  }
+
+  .warn {
+    flex: none;
+    color: var(--color-danger);
+  }
+}
+
+.btn.small {
+  flex: none;
+  padding: 0 var(--spacing-2);
 }

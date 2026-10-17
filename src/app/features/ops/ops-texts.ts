@@ -22,6 +22,10 @@ export const OPS_TEXTS = {
     rename: 'Keep both (new name)',
   },
   background: 'Run in the background (next to other tasks)',
+  sameNames: (names: readonly string[]) =>
+    `Entries from different folders have the same name (${names.slice(0, 5).join(', ')}${names.length > 5 ? ', …' : ''}) – in the target folder they meet.`,
+  sameNamesOverwrite:
+    'With “Overwrite” a later entry replaces an earlier one of the same name without asking.',
   cancel: 'Cancel',
   ctrlEnter: 'Ctrl/⌘+Enter starts · Esc cancels',
   targetIsFile: 'The target is a file – choose a folder.',

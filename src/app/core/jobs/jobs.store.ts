@@ -1,7 +1,21 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
+import { SearchHit, SearchStats } from '../search/search.models';
 import { Decision, EMPTY_PROGRESS, isFinished, JobEvent, JobInfo, JobSpec } from './jobs.models';
+
+/** Hits of a job without a listener are kept this long after its end (then dropped). */
+export const HIT_BUFFER_GRACE_MS = 5_000;
+/** At most this many hits are buffered per job without a listener (the search's own limit). */
+const MAX_BUFFERED_HITS = 100_000;
+/** Finished jobs removed by Rust (helper jobs) that `find`/`whenFinished` still know. */
+const RETIRED_KEPT = 64;
+
+interface HitBuffer {
+  hits: SearchHit[];
+  stats: SearchStats;
+  timer: ReturnType<typeof setTimeout> | null;
+}
 
 /**
  * All jobs of the app (root): kept in sync with the Rust job manager through
@@ -14,6 +28,21 @@ export class JobsStore {
   private readonly waiters = new Map<string, ((job: JobInfo) => void)[]>();
   private seq = 0;
   private started = false;
+  /** Search hits go to the listener of their job only (never into `jobs`). */
+  private readonly hitListeners = new Map<
+    string,
+    (hits: readonly SearchHit[], stats: SearchStats) => void
+  >();
+  /**
+   * Hits of jobs that have no listener yet (review 009 #1): Rust may stream hits
+   * before `start` resolved. The listener gets them on `onSearchHits`; without
+   * one they are dropped {@link HIT_BUFFER_GRACE_MS} after the job's end.
+   */
+  private readonly hitBuffers = new Map<string, HitBuffer>();
+  /** Jobs whose listener unsubscribed: their late hits are dropped, not buffered. */
+  private readonly hitsClosed = new Set<string>();
+  /** Finished jobs Rust removed (helper jobs, review 009 #10), newest last. */
+  private readonly retired = signal<readonly JobInfo[]>([]);
   /** Events received while the snapshot is on its way – replayed after it. */
   private buffer: JobEvent[] | null = null;
 
@@ -100,8 +129,38 @@ export class JobsStore {
     );
   }
 
+  /**
+   * Receives the hits of search job `id` (design 009 E1); hits that arrived
+   * before (buffered) are delivered at once. After unsubscribing, the job's
+   * hits are dropped. Returns the unsubscribe function.
+   */
+  onSearchHits(
+    id: string,
+    listener: (hits: readonly SearchHit[], stats: SearchStats) => void,
+  ): () => void {
+    this.hitListeners.set(id, listener);
+    this.hitsClosed.delete(id);
+    const buffered = this.hitBuffers.get(id);
+    if (buffered) {
+      this.dropBuffer(id);
+      listener(buffered.hits, buffered.stats);
+    }
+    return () => {
+      if (this.hitListeners.get(id) === listener) {
+        this.hitListeners.delete(id);
+        this.hitsClosed.add(id);
+        if (this.hitsClosed.size > RETIRED_KEPT * 16) {
+          // ids of jobs that ended before the unsubscribe (oldest first)
+          this.hitsClosed.delete(this.hitsClosed.values().next().value!);
+        }
+        this.dropBuffer(id);
+      }
+    };
+  }
+
+  /** A job by id – also a finished one Rust has removed meanwhile (helper jobs). */
   find(id: string): JobInfo | undefined {
-    return this.jobs().find((j) => j.id === id);
+    return this.jobs().find((j) => j.id === id) ?? this.retired().find((j) => j.id === id);
   }
 
   postpone(id: string | null): void {
@@ -199,6 +258,7 @@ export class JobsStore {
           conflict: null,
           progress: { ...(j.progress ?? EMPTY_PROGRESS), current: null },
         }));
+        this.expireHits(event.id);
         const job = this.find(event.id);
         const waiting = this.waiters.get(event.id);
         this.waiters.delete(event.id);
@@ -209,11 +269,18 @@ export class JobsStore {
       }
       case 'removed': {
         const ids = new Set(event.ids);
+        const gone = this.jobs().filter((j) => ids.has(j.id) && isFinished(j.state));
+        if (gone.length > 0) {
+          this.retired.update((r) => [...r, ...gone].slice(-RETIRED_KEPT));
+        }
         this.jobs.update((jobs) => jobs.filter((j) => !ids.has(j.id)));
         break;
       }
       case 'undoAvailable':
         this.patch(event.id, (j) => ({ ...j, undoAvailable: event.available }));
+        break;
+      case 'searchHits':
+        this.deliverHits(event.id, event.hits, event.stats);
         break;
       case 'quitRequested':
         this.quitRequest.set({ running: event.running, seq: ++this.seq });
@@ -221,12 +288,47 @@ export class JobsStore {
     }
   }
 
+  private deliverHits(id: string, hits: readonly SearchHit[], stats: SearchStats): void {
+    const listener = this.hitListeners.get(id);
+    if (listener) {
+      listener(hits, stats);
+      return;
+    }
+    if (this.hitsClosed.has(id)) {
+      return;
+    }
+    const b = this.hitBuffers.get(id) ?? { hits: [], stats, timer: null };
+    const room = MAX_BUFFERED_HITS - b.hits.length;
+    if (room > 0) {
+      b.hits.push(...(hits.length > room ? hits.slice(0, room) : hits));
+    }
+    b.stats = stats;
+    this.hitBuffers.set(id, b);
+  }
+
+  /** A job ended: its buffered hits wait a little for the listener, then go. */
+  private expireHits(id: string): void {
+    this.hitsClosed.delete(id);
+    const b = this.hitBuffers.get(id);
+    if (b && b.timer === null) {
+      b.timer = setTimeout(() => this.dropBuffer(id), HIT_BUFFER_GRACE_MS);
+    }
+  }
+
+  private dropBuffer(id: string): void {
+    const b = this.hitBuffers.get(id);
+    if (b?.timer != null) {
+      clearTimeout(b.timer);
+    }
+    this.hitBuffers.delete(id);
+  }
+
   private patch(id: string, fn: (j: JobInfo) => JobInfo): void {
     this.jobs.update((jobs) => jobs.map((j) => (j.id === id ? fn(j) : j)));
   }
 }
 
-/** Folder sizes and the copy dialog's count are not tasks of the user. */
+/** Folder sizes, the copy dialog's count and searches are not tasks of the user. */
 export function isHelperJob(job: JobInfo): boolean {
-  return job.spec.kind === 'dirSize' || job.spec.kind === 'count';
+  return job.spec.kind === 'dirSize' || job.spec.kind === 'count' || job.spec.kind === 'search';
 }

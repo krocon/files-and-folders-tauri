@@ -94,6 +94,11 @@ export function jobTitle(job: JobInfo): string {
       const how = spec.mode === 'trash' ? 'to the trash' : 'permanently';
       return `Clean ${where}: ${n === 1 ? '1 entry' : `${n} entries`} ${how}`;
     }
+    case 'search': {
+      const c = spec.criteria;
+      const where = c.roots.length === 1 ? c.roots[0] : `${c.roots.length} folders`;
+      return `Search "${c.name || '*'}" in ${where}`;
+    }
     case 'count':
       return `Count ${spec.paths.length === 1 ? spec.paths[0] : `${spec.paths.length} entries`}`;
     case 'dirSize':

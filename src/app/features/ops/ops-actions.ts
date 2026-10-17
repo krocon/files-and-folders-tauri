@@ -8,7 +8,8 @@ import { OpsStore } from './ops.store';
  * needs a folder. F2 renames in the list itself.
  */
 export function registerOpsActions(actions: ActionService, ops: OpsStore): () => void {
-  const some = () => ops.folder() !== null && ops.selection().length > 0;
+  // copy, move and delete also work in a search result tab (design 009 E4)
+  const some = () => ops.location() !== null && ops.selection().length > 0;
   const one = () => ops.folder() !== null && ops.selection().length === 1;
   const folder = () => ops.folder() !== null;
   const handlers: Partial<Record<ActionId, ActionHandler>> = {

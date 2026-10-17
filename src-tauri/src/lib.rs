@@ -13,9 +13,12 @@
 //! - [`opener`]       open files with the default app (checked)
 //! - [`fileops`]      create folder/file, rename (never overwrite)
 //! - [`jobs`]         job engine: copy, move, delete, multi-rename (+ undo), count, folder size; queue, progress, conflicts, cancel/pause
+//! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
+//! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
+//! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod clean;
@@ -31,7 +34,10 @@ pub mod model;
 pub mod opener;
 pub mod paths;
 pub mod platform;
+pub mod preview;
+pub mod properties;
 pub mod rename_presets;
+pub mod search;
 pub mod session;
 pub mod tools;
 pub mod window_state;
@@ -47,6 +53,22 @@ pub fn run() {
         .manage(commands::PresetsState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
+        .manage(commands::PreviewState::default())
+        .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
+            let state = ctx.app_handle().state::<commands::PreviewState>();
+            // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
+            let Some(slot) = state.slots.try_acquire() else {
+                responder.respond(commands::preview_busy_response());
+                return;
+            };
+            let tokens = state.tokens.clone();
+            let path = request.uri().path().to_owned();
+            // reading an image may take a moment: never on the main/runtime thread
+            std::thread::spawn(move || {
+                let _slot = slot;
+                responder.respond(commands::preview_response(&tokens, &path))
+            });
+        })
         .setup(|app| {
             commands::init_session(app.handle());
             app.state::<commands::JobsState>()
@@ -102,7 +124,9 @@ pub fn run() {
             commands::open_terminal,
             commands::load_tools,
             commands::run_tool,
-            commands::open_tools_config
+            commands::open_tools_config,
+            commands::read_preview,
+            commands::get_properties
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

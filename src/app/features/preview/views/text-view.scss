@@ -1,0 +1,55 @@
+:host {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.lines {
+  white-space: pre;
+  tab-size: 4;
+}
+
+.lines.wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* blocks off screen are not laid out: 20 000 lines stay smooth */
+:host ::ng-deep .block {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--fnf-block-lines) * 1.35em);
+}
+
+/* not filled yet (review 3): an empty placeholder of the block's height */
+:host ::ng-deep .block:not(.filled) {
+  height: calc(var(--fnf-block-lines) * 1.35em);
+}
+
+:host ::ng-deep .ln {
+  display: grid;
+  grid-template-columns: var(--fnf-gutter) 1fr;
+  column-gap: 0.75ch;
+  min-height: 1.35em;
+}
+
+:host ::ng-deep .ln::before {
+  content: attr(data-n);
+  text-align: right;
+  color: var(--color-muted);
+  user-select: none;
+  border-right: 1px solid var(--color-border);
+  padding-right: 0.5ch;
+}
+
+:host ::ng-deep mark {
+  background: var(--color-search-hit);
+  color: inherit;
+  border-radius: 2px;
+}
+
+:host ::ng-deep mark.current {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  outline: 1px solid var(--color-accent);
+}

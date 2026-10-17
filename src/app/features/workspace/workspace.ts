@@ -37,6 +37,18 @@ import { CleanFoldersStore } from '../cleanfolders/clean.store';
 import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
+import { registerPreviewActions } from '../preview/preview-actions';
+import { PropertiesDialog } from '../preview/properties-dialog';
+import { PropertiesStore } from '../preview/properties.store';
+import { QuickViewStore } from '../preview/quick-view.store';
+import { ViewerDialog } from '../preview/viewer-dialog';
+import { ViewerStore } from '../preview/viewer.store';
+import { FindDialog } from '../search/find-dialog';
+import { FindStore } from '../search/find.store';
+import { FolderFinderDialog } from '../search/folder-finder-dialog';
+import { FolderFinderStore } from '../search/folder-finder.store';
+import { registerSearchActions } from '../search/search-actions';
+import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { registerOsActions } from '../osintegration/os-actions';
 import { OsStore } from '../osintegration/os.store';
@@ -75,6 +87,10 @@ import { WorkspaceStore } from './workspace.store';
     CleanFoldersDialog,
     MultiMkdirDialog,
     ToolConfigDialog,
+    ViewerDialog,
+    PropertiesDialog,
+    FindDialog,
+    FolderFinderDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -98,6 +114,12 @@ export class Workspace implements OnInit {
   private readonly cl = inject(CleanFoldersStore);
   private readonly mm = inject(MultiMkdirStore);
   private readonly os = inject(OsStore);
+  private readonly viewer = inject(ViewerStore);
+  private readonly quick = inject(QuickViewStore);
+  private readonly props = inject(PropertiesStore);
+  private readonly find = inject(FindStore);
+  private readonly search = inject(SearchStore);
+  private readonly finder = inject(FolderFinderStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -186,6 +208,12 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
     this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
+    this.destroyRef.onDestroy(
+      registerPreviewActions(this.actions, this.ws, this.viewer, this.quick, this.props),
+    );
+    this.destroyRef.onDestroy(
+      registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
+    );
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();

@@ -1,4 +1,6 @@
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { PreviewApi } from '../../core/preview/preview-api';
+import { FakePreviewApi } from '../../../testing/fake-preview-api';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { Component, input, output } from '@angular/core';
@@ -70,6 +72,7 @@ describe('FilePanel', () => {
       imports: [FilePanel],
       providers: [
         { provide: FsApi, useValue: fs },
+        { provide: PreviewApi, useValue: new FakePreviewApi() },
         { provide: JobsApi, useValue: new FakeJobsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
       ],

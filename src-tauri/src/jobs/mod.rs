@@ -11,6 +11,7 @@ pub mod group;
 pub mod manager;
 pub mod rename;
 pub mod report;
+pub mod search;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
@@ -21,12 +22,39 @@ mod tests_tools;
 use crate::clean::{CleanItem, CleanOptions};
 use crate::dirsize::DirSize;
 use crate::error::FsError;
+use crate::search::{SearchCriteria, SearchHit, SearchStats};
 use serde::{Deserialize, Serialize};
 
 pub use control::Control;
 pub use group::{GroupItem, Transfer};
 pub use manager::JobManager;
 pub use rename::RenameItem;
+
+/// Sources that lie below another source (or repeat one) are dropped – the
+/// folder brings them along (review 009 #5: search results can hold a folder
+/// and entries in it). Compared lexically, component by component; the order
+/// of the remaining sources stays.
+pub fn drop_nested(paths: &[std::path::PathBuf]) -> Vec<std::path::PathBuf> {
+    let norm: Vec<std::path::PathBuf> = paths
+        .iter()
+        .map(|p| crate::paths::normalize_lexically(p))
+        .collect();
+    paths
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| {
+            let me = &norm[*i];
+            !norm.iter().enumerate().any(|(j, other)| {
+                if other == me {
+                    j < *i // a repeated source: the first one stays
+                } else {
+                    me.starts_with(other)
+                }
+            })
+        })
+        .map(|(_, p)| p.clone())
+        .collect()
+}
 
 /// What the frontend asks for.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +118,8 @@ pub enum JobSpec {
         #[serde(default)]
         options: CleanOptions,
     },
+    /// Recursive search (design 009): hits are streamed as `searchHits` events.
+    Search { criteria: SearchCriteria },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
@@ -106,8 +136,20 @@ impl JobSpec {
             | JobSpec::Move { background, .. }
             | JobSpec::Delete { background, .. } => *background,
             JobSpec::Rename { .. } | JobSpec::Group { .. } | JobSpec::Clean { .. } => false,
-            JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Simulate { .. } => true,
+            JobSpec::DirSize { .. }
+            | JobSpec::Count { .. }
+            | JobSpec::Search { .. }
+            | JobSpec::Simulate { .. } => true,
         }
+    }
+
+    /// Helper jobs (folder size, count, search) are no tasks of the user: quitting
+    /// while they run needs no confirmation – cancelling them loses nothing.
+    pub fn is_helper(&self) -> bool {
+        matches!(
+            self,
+            JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Search { .. }
+        )
     }
 
     pub fn kind(&self) -> &'static str {
@@ -118,6 +160,7 @@ impl JobSpec {
             JobSpec::Rename { .. } => "rename",
             JobSpec::Group { .. } => "group",
             JobSpec::Clean { .. } => "clean",
+            JobSpec::Search { .. } => "search",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
@@ -274,6 +317,8 @@ pub struct Summary {
     /// Job-level error (planning failed, invalid target …).
     pub error: Option<FsError>,
     pub dir_size: Option<DirSize>,
+    /// Search job: the final statistics (`errors` = unreadable folders).
+    pub search: Option<SearchStats>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;
@@ -336,6 +381,12 @@ pub enum JobEvent {
     UndoAvailable {
         id: String,
         available: bool,
+    },
+    /// A batch of search hits (design 009) with the statistics so far.
+    SearchHits {
+        id: String,
+        hits: Vec<SearchHit>,
+        stats: SearchStats,
     },
     /// The window wants to close while jobs run – ask the user.
     QuitRequested {
@@ -423,5 +474,26 @@ mod tests {
         assert_eq!(spec.kind(), "clean");
         let e = serde_json::to_value(JobEvent::DirsChanged { dirs: vec![] }).unwrap();
         assert_eq!(e["type"], "dirsChanged");
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"search","criteria":{"roots":["/r"],"name":"*.mp3","nameMode":"regex","kinds":{"files":true,"dirs":false},"maxDepth":3,"content":{"text":"x"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(spec.kind(), "search");
+        assert!(spec.is_parallel() && spec.is_helper());
+        let JobSpec::Search { criteria } = &spec else {
+            panic!()
+        };
+        assert!(criteria.whole_name, "default on");
+        assert!(criteria.kinds.links, "default on");
+        assert!(!criteria.kinds.dirs);
+        assert_eq!(criteria.max_depth, Some(3));
+        let e = serde_json::to_value(JobEvent::SearchHits {
+            id: "j1".into(),
+            hits: vec![],
+            stats: SearchStats::default(),
+        })
+        .unwrap();
+        assert_eq!(e["type"], "searchHits");
+        assert_eq!(e["stats"]["dirsScanned"], 0);
     }
 }

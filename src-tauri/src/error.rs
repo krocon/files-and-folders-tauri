@@ -40,6 +40,8 @@ pub enum FsErrorCode {
     UnknownTool,
     /// More files than the tool's `fileLimit`.
     TooManyFiles,
+    /// A search pattern (regex, glob) is invalid or too large (design 009).
+    InvalidPattern,
     Io,
 }
 
@@ -123,5 +125,7 @@ mod tests {
             serde_json::to_value(&e).unwrap()["code"],
             "undo_unavailable"
         );
+        let e = FsError::new(FsErrorCode::InvalidPattern, "bad", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_pattern");
     }
 }

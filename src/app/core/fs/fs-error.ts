@@ -18,6 +18,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'program_not_found',
   'unknown_tool',
   'too_many_files',
+  'invalid_pattern',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -77,6 +78,8 @@ export function describeFsError(error: FsError): string {
       return 'This tool is not configured (anymore).';
     case 'too_many_files':
       return 'Too many entries for this tool.';
+    case 'invalid_pattern':
+      return 'The search pattern is invalid.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

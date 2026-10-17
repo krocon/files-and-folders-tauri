@@ -3,7 +3,49 @@
   [class.fnf-active-panel]="active()"
   [attr.aria-label]="texts.pathLabel(side())"
 >
-  @if (editingPath()) {
+  @if (tab().search; as ref) {
+    @let r = searchResult();
+    <span
+      class="crumbs search-head"
+      [id]="pathId"
+      [attr.title]="searchTexts.headerTitle"
+      [attr.aria-busy]="r?.running ? 'true' : null"
+      (dblclick)="editSearch()"
+    >
+      <b class="search-label">{{ searchTexts.header(ref.label) }}</b>
+      @if (r) {
+        <span class="search-roots">{{ searchTexts.inRoots(r.criteria.roots) }}</span>
+        <span class="search-count"
+          >· {{ searchTexts.hits(r.running ? r.stats.hits : r.hits.length) }}</span
+        >
+        @if (r.running) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="search-roots">{{
+            searchTexts.scanned(r.stats.dirsScanned, r.stats.elapsedMs)
+          }}</span>
+        } @else if (r.cancelled) {
+          <span class="warn">· {{ searchTexts.cancelled }}</span>
+        }
+        @if (r.stats.truncated) {
+          <span class="warn">· {{ searchTexts.truncated(r.stats.hits) }}</span>
+        }
+        @if (r.error) {
+          <span class="warn" role="alert">· {{ r.error.message }}</span>
+        }
+        @if (r.stats.unreadable > 0) {
+          <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
+        }
+      }
+    </span>
+    <span class="sr-only" role="status">{{ searchStatus() }}</span>
+    @if (r?.running) {
+      <button type="button" class="btn small" (click)="stopSearch()">{{ searchTexts.stop }}</button>
+    } @else {
+      <button type="button" class="btn small" (click)="rerunSearch()">
+        {{ searchTexts.again }}
+      </button>
+    }
+  } @else if (editingPath()) {
     <form class="path-form" (submit)="submitPath($event, pathInput.value)">
       <input
         #pathInput
@@ -64,7 +106,11 @@
   [id]="'fnf-pane-' + side()"
   [attr.aria-labelledby]="'fnf-tab-' + tab().id"
   [class.fnf-active-panel]="active()"
+  [class.quick-on]="quickView()"
 >
+  @if (quickView()) {
+    <app-quick-view class="quick" />
+  }
   @if (errorText(); as text) {
     <div class="error" role="alert">
       <div>

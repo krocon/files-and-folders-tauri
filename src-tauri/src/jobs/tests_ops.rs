@@ -753,3 +753,59 @@ fn rename_undo_log_keeps_the_last_jobs() {
     assert!(!available(&ids[0]) && !available(&ids[1]));
     assert!(available(&ids[2]) && available(ids.last().unwrap()));
 }
+
+/// Review 009 #5: hits of a search can contain a folder and entries below it.
+/// Sources below another source are dropped (the folder brings them along) –
+/// for copy, move and delete alike, in any order.
+#[test]
+fn sources_below_another_source_are_dropped() {
+    let t = tempdir().unwrap();
+    let d = t.path();
+    let a = d.join("A ä");
+    fs::create_dir_all(a.join("sub")).unwrap();
+    fs::write(a.join("x.txt"), "x").unwrap();
+    fs::write(a.join("sub/y.txt"), "y").unwrap();
+    let h = Harness::new();
+
+    let copy_to = d.join("copy");
+    fs::create_dir(&copy_to).unwrap();
+    let id = h.start_copy(&[&a, &a.join("x.txt")], &copy_to, CopyOptions::default());
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(copy_to.join("A ä/x.txt").exists());
+    assert!(
+        !copy_to.join("x.txt").exists(),
+        "x.txt came along with its folder"
+    );
+
+    let move_to = d.join("move");
+    fs::create_dir(&move_to).unwrap();
+    // the nested source first: it must not leave its folder before the folder moves
+    let id = h.start_move(
+        &[&a.join("sub/y.txt"), &a],
+        &move_to,
+        CopyOptions::default(),
+    );
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(move_to.join("A ä/sub/y.txt").exists());
+    assert!(!move_to.join("y.txt").exists());
+    assert!(!a.exists());
+
+    let moved = move_to.join("A ä");
+    let id = h.delete(
+        &[&moved.join("sub/y.txt"), &moved, &moved.join("x.txt")],
+        DeleteMode::Permanent,
+    );
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(info.summary.unwrap().items_failed, 0);
+    assert!(!moved.exists());
+}
+
+#[test]
+fn drop_nested_keeps_order_and_siblings() {
+    let p = |s: &str| std::path::PathBuf::from(s);
+    let got = drop_nested(&[p("/a/b/c"), p("/a/bb"), p("/a/b"), p("/a/b/"), p("/x")]);
+    assert_eq!(got, vec![p("/a/bb"), p("/a/b"), p("/x")]);
+}

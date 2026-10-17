@@ -58,6 +58,16 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   nie oberhalb des Startordners, Links werden nie verfolgt; jeder Eintrag wird vor dem Löschen erneut geprüft.
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
   Elternordner `[P]`, Schreibweise.
+- **Suche** (`Alt+F7`, Prompt 009): Name als Glob (`*.mp3;*.flac`), Regex oder Text, Groß/klein, ganzer Name/Teil;
+  Dateien/Ordner/Links, Größe, Änderungsdatum (letzte N Tage, von–bis), Text im Inhalt (mit Größenlimit), versteckte
+  Einträge, Links folgen (zyklensicher), max. Tiefe, Ausschlüsse (`.git; node_modules`), max. Treffer; Vorlagen
+  (Filme, Bilder, Audio, Comics …), eigene Vorlagen und letzte Suchen (für die Sitzung). Treffer streamen in einen
+  **Ergebnis-Tab** (Lupe, Spinner, Spalte „Folder“): markieren, kopieren, verschieben, löschen wie im Ordner,
+  „Zur Datei“ (`Strg+Shift+G` / `⌘⇧G`) öffnet den Ordner in neuem Tab mit Cursor auf der Datei, Enter auf einem Ordner
+  ebenso; `Stop`, `Search again` (`Strg+Shift+F7`), Doppelklick auf den Header ändert die Suche. Unlesbare Ordner
+  werden gemeldet; Ergebnis-Tabs werden nicht gespeichert.
+- **Ordner-Finder** (`Alt+F10`, alt „Change Dir“): alle Unterordner bis Tiefe 5 (Regler 1–10/∞), Filter unscharf und
+  live, `↑ ↓ Bild↑ Bild↓`, Enter wechselt dorthin, Esc bricht ab.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
@@ -75,6 +85,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   `{"id": "edit", "label": "Edit", "program": "gnome-text-editor", "args": ["{files}"]}` eintragen).
 - **Zwischenablage**: Namen (`Strg/⌘+Alt+N`) bzw. volle Pfade (`Strg/⌘+Alt+C`) der markierten Einträge (sonst
   Cursor, Ordner eingeschlossen) als Zeilen; als JSON über Befehlspalette/Actions-Menü.
+- **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
+  (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;
+  `←`/`→` blättert durch die Dateien des Panels (der Cursor folgt), `Esc` schließt. Der Typ wird am **Inhalt** erkannt
+  (`bild.txt`, das ein PNG ist, wird als Bild gezeigt, mit Hinweis); große Dateien zeigen nur den Anfang (1 MiB Text,
+  4 KiB Hex) – auch eine 2-GB-Datei öffnet sofort.
+- **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
+- **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
+  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -105,7 +123,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Reload | `Ctrl+R` | `⌘R` |
 | History back | `Alt+ArrowLeft` | `⌘[` |
 | History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L`, `Alt+F10` | `⌘L`, `⌘⌃D` |
+| Go to path… | `Ctrl+L` | `⌘L`, `⌘⌃D` |
+| Find folder (change dir)… | `Alt+F10` | `⌥F10` |
+| Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
 | Folder menu, right panel | `Alt+F2` | `⌥F2` |
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
@@ -137,8 +157,10 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Close tab | `Ctrl+W` | `⌘⌥W` |
 | Toggle favourite | `Ctrl+D` | `⌘D` |
 | Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
+| Search again | `Ctrl+Shift+F7` | `⌘⇧F7` |
 | View | `F3` | `F3` |
-| Edit | `F4` | `F4` |
+| Quick view in the other panel | `Ctrl+Q` | `⌃Q` |
+| Edit (default app until 011) | `F4` | `F4` |
 | Create file… | `Shift+F4` | `⇧F4` |
 | Copy… | `F5` | `F5` |
 | Move… | `F6` | `F6` |
@@ -149,6 +171,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Create several folders… | `Ctrl+F7` | `⌘F7` |
 | Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
+| Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
