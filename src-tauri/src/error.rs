@@ -10,6 +10,10 @@ pub enum FsErrorCode {
     NotFound,
     PermissionDenied,
     NotADirectory,
+    /// A file was expected (e.g. `open_file` on a folder).
+    NotAFile,
+    /// The file is executable; opening it needs an explicit confirmation.
+    Executable,
     InvalidPath,
     NoHomeDirectory,
     Io,

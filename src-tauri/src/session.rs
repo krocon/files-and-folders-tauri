@@ -21,6 +21,7 @@ pub const FILE_NAME: &str = "session.json";
 pub const MAX_TABS_PER_PANEL: usize = 50;
 pub const MAX_HISTORY: usize = 15;
 pub const MAX_FAVORITES: usize = 200;
+pub const MAX_RECENT: usize = 20;
 pub const MAX_FILTER_TEXT: usize = 1_000;
 pub const MAX_TITLE: usize = 255;
 /// Longest accepted path/id string (longer ones are dropped, no real path is that long).
@@ -46,6 +47,8 @@ pub struct Session {
     /// Share of the left side, `SPLITTER_MIN ..= SPLITTER_MAX`.
     pub splitter: f64,
     pub favorites: Vec<String>,
+    /// Recently visited folders, newest first.
+    pub recent: Vec<String>,
     pub panels: Panels,
     /// Written by Rust only (the frontend never sends it).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,6 +62,7 @@ impl Default for Session {
             active_side: Side::Left,
             splitter: 0.5,
             favorites: Vec::new(),
+            recent: Vec::new(),
             panels: Panels::default(),
             window: None,
         }
@@ -228,6 +232,11 @@ pub fn sanitize(session: &mut Session) {
         .favorites
         .retain(|f| !f.is_empty() && f.len() <= MAX_STRING && seen.insert(f.clone()));
     session.favorites.truncate(MAX_FAVORITES);
+    let mut seen_recent = HashSet::new();
+    session
+        .recent
+        .retain(|r| !r.is_empty() && r.len() <= MAX_STRING && seen_recent.insert(r.clone()));
+    session.recent.truncate(MAX_RECENT);
 
     let mut ids = HashSet::new();
     let mut next_id = 0usize;
@@ -362,6 +371,7 @@ mod tests {
             active_side: Side::Right,
             splitter: 0.3,
             favorites: vec!["/a".into(), "/Users/jörg/Mein Ordner 📁".into()],
+            recent: vec!["/r".into(), "/r".into(), "/s".into()],
             ..Session::default()
         };
         s.panels.left = PanelSession {
