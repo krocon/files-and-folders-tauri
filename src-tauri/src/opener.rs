@@ -7,14 +7,43 @@ use std::fs;
 use std::path::Path;
 
 /// Extensions treated as executable (case-insensitive).
+/// On Windows these run code through the shell's default handlers (wscript, mshta, …).
 #[cfg(windows)]
 const EXEC_EXTENSIONS: &[&str] = &[
-    "exe", "bat", "cmd", "com", "ps1", "vbs", "msi", "lnk", "scr",
+    "exe",
+    "bat",
+    "cmd",
+    "com",
+    "ps1",
+    "psm1",
+    "vbs",
+    "vbe",
+    "js",
+    "jse",
+    "wsf",
+    "wsh",
+    "hta",
+    "msi",
+    "msp",
+    "lnk",
+    "scr",
+    "cpl",
+    "msc",
+    "pif",
+    "reg",
+    "scf",
+    "url",
+    "appref-ms",
+    "application",
+    "jar",
+    "gadget",
 ];
 #[cfg(target_os = "macos")]
-const EXEC_EXTENSIONS: &[&str] = &["app", "command", "tool", "pkg"];
+const EXEC_EXTENSIONS: &[&str] = &[
+    "app", "command", "tool", "pkg", "mpkg", "terminal", "fileloc", "jar", "workflow", "scpt", "sh",
+];
 #[cfg(all(unix, not(target_os = "macos")))]
-const EXEC_EXTENSIONS: &[&str] = &["desktop", "appimage", "run", "sh"];
+const EXEC_EXTENSIONS: &[&str] = &["desktop", "appimage", "run", "sh", "bin", "jar", "py", "pl"];
 
 /// Validates that `path` is an existing file that may be opened.
 pub fn check_openable(path: &Path, allow_executable: bool) -> Result<(), FsError> {
@@ -47,10 +76,27 @@ fn is_bundle(path: &Path) -> bool {
     cfg!(target_os = "macos") && has_exec_extension(path)
 }
 
+/// Extension first; the exec bit only counts for files without extension or with a
+/// shebang – FAT/exFAT/NTFS/SMB volumes report every file as executable.
 #[cfg(unix)]
 fn is_executable(path: &Path, meta: &fs::Metadata) -> bool {
     use std::os::unix::fs::PermissionsExt;
-    (meta.is_file() && meta.permissions().mode() & 0o111 != 0) || has_exec_extension(path)
+    if has_exec_extension(path) {
+        return true;
+    }
+    if !meta.is_file() || meta.permissions().mode() & 0o111 == 0 {
+        return false;
+    }
+    path.extension().is_none() || starts_with_shebang(path)
+}
+
+#[cfg(unix)]
+fn starts_with_shebang(path: &Path) -> bool {
+    use std::io::Read;
+    let mut head = [0u8; 2];
+    fs::File::open(path)
+        .and_then(|mut f| f.read_exact(&mut head))
+        .is_ok_and(|_| &head == b"#!")
 }
 
 #[cfg(not(unix))]
@@ -104,6 +150,24 @@ mod tests {
             FsErrorCode::Executable
         );
         check_openable(&f, true).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn exec_bit_on_documents_is_ignored_unless_script() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().unwrap();
+        let pdf = dir.path().join("brief.pdf");
+        fs::write(&pdf, "%PDF").unwrap();
+        fs::set_permissions(&pdf, fs::Permissions::from_mode(0o777)).unwrap();
+        check_openable(&pdf, false).unwrap(); // e.g. on a USB stick
+        let script = dir.path().join("run.txt");
+        fs::write(&script, "#!/bin/sh").unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(
+            check_openable(&script, false).unwrap_err().code,
+            FsErrorCode::Executable
+        );
     }
 
     #[test]

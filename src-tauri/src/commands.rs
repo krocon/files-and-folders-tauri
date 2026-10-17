@@ -110,23 +110,31 @@ pub async fn calc_dir_size<R: Runtime>(
     on_progress: Channel<DirSize>,
 ) -> Result<DirSize, FsError> {
     let dir = resolve_input(&app, &path)?;
-    if !dir.is_dir() {
-        return Err(FsError::new(
-            FsErrorCode::NotADirectory,
-            "Not a folder",
-            Some(&dir),
-        ));
-    }
     let token = Arc::new(AtomicBool::new(false));
-    app.state::<DirSizeJobs>()
-        .tokens
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .insert(job_id.clone(), token.clone());
+    {
+        let jobs = app.state::<DirSizeJobs>();
+        let mut tokens = jobs.tokens.lock().unwrap_or_else(|e| e.into_inner());
+        if tokens.contains_key(&job_id) {
+            return Err(FsError::new(FsErrorCode::Io, "Duplicate job id", None));
+        }
+        tokens.insert(job_id.clone(), token.clone());
+    }
     let result = tauri::async_runtime::spawn_blocking(move || {
-        dirsize::dir_size(&dir, &token, Duration::from_millis(100), |p| {
-            let _ = on_progress.send(*p);
-        })
+        if !dir.is_dir() {
+            return Err(FsError::new(
+                FsErrorCode::NotADirectory,
+                "Not a folder",
+                Some(&dir),
+            ));
+        }
+        Ok(dirsize::dir_size(
+            &dir,
+            &token,
+            Duration::from_millis(100),
+            |p| {
+                let _ = on_progress.send(*p);
+            },
+        ))
     })
     .await;
     app.state::<DirSizeJobs>()
@@ -140,7 +148,7 @@ pub async fn calc_dir_size<R: Runtime>(
             format!("Size calculation failed: {e}"),
             None,
         )
-    })
+    })?
 }
 
 #[tauri::command]

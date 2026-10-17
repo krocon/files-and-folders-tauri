@@ -30,6 +30,7 @@ pub fn dir_size(
     let mut total = DirSize::default();
     let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
     let mut last = Instant::now();
+    let root_dev = device_of(root);
     while let Some(dir) = stack.pop() {
         if cancel.load(Ordering::Relaxed) {
             total.cancelled = true;
@@ -40,6 +41,10 @@ pub fn dir_size(
             continue;
         };
         for item in read {
+            if cancel.load(Ordering::Relaxed) {
+                total.cancelled = true;
+                return total;
+            }
             let Ok(item) = item else {
                 total.unreadable += 1;
                 continue;
@@ -54,7 +59,11 @@ pub fn dir_size(
                 }
                 Ok(t) if t.is_dir() => {
                     total.dirs += 1;
-                    stack.push(item.path());
+                    let path = item.path();
+                    // stay on the root's file system (no /proc, no network mounts below)
+                    if root_dev.is_none() || device_of(&path) == root_dev {
+                        stack.push(path);
+                    }
                 }
                 Ok(_) => {
                     total.files += 1;
@@ -72,6 +81,19 @@ pub fn dir_size(
         }
     }
     total
+}
+
+#[cfg(unix)]
+fn device_of(path: &Path) -> Option<u64> {
+    use std::os::unix::fs::MetadataExt;
+    fs::symlink_metadata(path).ok().map(|m| m.dev())
+}
+
+/// Windows: mount points inside a tree are junctions/reparse points, which are
+/// never followed (they report as symlinks), so no device check is needed.
+#[cfg(not(unix))]
+fn device_of(_path: &Path) -> Option<u64> {
+    None
 }
 
 #[cfg(test)]

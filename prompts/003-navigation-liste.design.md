@@ -145,6 +145,19 @@ Fokus-Reihenfolge je Seite: Breadcrumb → Stern → Menü ▾ → Tabs → + �
   (Cursor auf der Datei), Filter `*e*` + Esc, Menü ▾ (`Alt+F1`), kaputter Symlink → Fehlermeldung
 - [x] Phase 5/6: Doku, `pnpm check`, Debug-Build, Review durch separaten Agenten
 
+### Review (separater Agent)
+
+| Befund | Umsetzung |
+|---|---|
+| Windows/macOS: Endungen fehlten, die Code ausführen (`.js .hta .wsf .cpl .reg .url .jar …`, `.terminal .fileloc`) | Listen erweitert |
+| Ausführungsbit auf FAT/exFAT/NTFS/SMB machte jedes Dokument zum „Programm“ | Endung zuerst, Bit nur ohne Endung oder mit `#!` (Test) |
+| Markierungen eines geklonten Tabs im selben Ordner tauchten im anderen Tab auf | Tab-Wechsel gilt immer als neuer Ordner (Test) |
+| Gelöschtes Zurück-Ziel blockierte den Verlauf, alte Scrollposition blieb hängen | `not_found` entfernt den Eintrag; Scroll nur bei Erfolg (Test) |
+| Größen-Job eines alten Tabs konnte den neuen Tab umschreiben | Jobs beim Tab-Wechsel abbrechen, Fehler nur im eigenen Ordner melden |
+| Ordnergröße lief in andere Dateisysteme (`/proc`, Netzlaufwerke), Abbruch nur zwischen Ordnern, `is_dir` auf dem Async-Thread | gleiches Gerät (Unix), Abbruch je Eintrag, Prüfung im Blocking-Task |
+| Job-Ids nach WebView-Reload doppelt | zufälliges Präfix, Rust weist Dubletten ab |
+| Tab aus der Pfadeingabe sprang in die Liste; Gruppen im Menü ▾ nicht angesagt | Blur schließt nur; `role="group"` mit Label |
+
 ### Befunde
 
 - Berechnete Ordnergrößen gehen beim Verlassen des Ordners verloren (kein Cache) – bewusst einfach; Kandidat für

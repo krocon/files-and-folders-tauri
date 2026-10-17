@@ -16,7 +16,7 @@
         [attr.aria-describedby]="pathError() ? pathId + '-error' : null"
         [value]="store.path() ?? ''"
         (keydown)="onPathKeydown($event)"
-        (blur)="pathError() ? null : cancelPathEdit()"
+        (blur)="pathError() ? null : closePathEdit()"
       />
       @if (pathError(); as e) {
         <span class="path-error" role="alert" [id]="pathId + '-error'">{{ e }}</span>

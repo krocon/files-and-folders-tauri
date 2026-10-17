@@ -25,6 +25,8 @@ export interface LoadOptions {
   readonly history?: HistoryMode;
   /** Remember the folder being left in the current tab memory (default true; false on tab switch). */
   readonly remember?: boolean;
+  /** Scroll position to restore once the listing is shown (back/forward). */
+  readonly scrollTop?: number;
 }
 
 /** A folder size calculation of this panel. */
@@ -35,6 +37,7 @@ export interface SizeJob {
 }
 
 let jobSeq = 0;
+const JOB_PREFIX = Math.random().toString(36).slice(2, 10);
 
 /**
  * State of one file panel. Provided per component (not root): two panels and
@@ -136,7 +139,9 @@ export class FileBrowserStore {
         return;
       }
       recordPerf('list_directory (Rust + IPC)', since(start), `${listing.entries.length} entries`);
-      const samePath = leaving !== null && listing.path === leaving.path;
+      // a tab switch to the same folder is still "another folder": the other tab's marks must not leak
+      const samePath =
+        leaving !== null && listing.path === leaving.path && options.remember !== false;
       if (leaving && leavingState && !samePath) {
         this.cancelSizeJobs();
         if (options.remember !== false) {
@@ -157,11 +162,23 @@ export class FileBrowserStore {
           this.pendingTableState = { scroll: { left: 0, top: remembered.scrollTop } };
         }
       }
+      if (options.scrollTop !== undefined) {
+        this.pendingTableState = { scroll: { left: 0, top: options.scrollTop } };
+      }
     } catch (err) {
       if (seq !== this.requestSeq) {
         return;
       }
-      this.error.set(toFsError(err));
+      const error = toFsError(err);
+      this.error.set(error);
+      // a deleted history target must not block the history forever
+      if (
+        error.code === 'not_found' &&
+        (options.history === 'back' || options.history === 'forward')
+      ) {
+        (options.history === 'back' ? this.memoryRef.back : this.memoryRef.forward).pop();
+        this.historyVersion.update((v) => v + 1);
+      }
     } finally {
       if (seq === this.requestSeq) {
         this.loading.set(false);
@@ -201,8 +218,11 @@ export class FileBrowserStore {
     if (!entry || this.navigationLocked()) {
       return Promise.resolve();
     }
-    this.pendingTableState = { scroll: { left: 0, top: entry.scrollTop } };
-    return this.load(entry.path, { cursor: entry.cursor, history: 'back' });
+    return this.load(entry.path, {
+      cursor: entry.cursor,
+      history: 'back',
+      scrollTop: entry.scrollTop,
+    });
   }
 
   forward(): Promise<void> {
@@ -210,8 +230,11 @@ export class FileBrowserStore {
     if (!entry || this.navigationLocked()) {
       return Promise.resolve();
     }
-    this.pendingTableState = { scroll: { left: 0, top: entry.scrollTop } };
-    return this.load(entry.path, { cursor: entry.cursor, history: 'forward' });
+    return this.load(entry.path, {
+      cursor: entry.cursor,
+      history: 'forward',
+      scrollTop: entry.scrollTop,
+    });
   }
 
   /** Reloads the folder, keeping cursor and (still existing) marks. */
@@ -305,7 +328,8 @@ export class FileBrowserStore {
     if (this.sizeJobs().some((j) => j.path === entry.path)) {
       return Promise.resolve();
     }
-    const jobId = `size-${++jobSeq}`;
+    // unique across webview reloads (Rust refuses duplicate ids)
+    const jobId = `size-${JOB_PREFIX}-${++jobSeq}`;
     const folder = this.path();
     this.sizeJobs.update((jobs) => [...jobs, { path: entry.path, jobId, progress: null }]);
     return this.api
@@ -319,7 +343,11 @@ export class FileBrowserStore {
           this.applyDirSize(entry.path, result.bytes);
         }
       })
-      .catch((err) => this.error.set(toFsError(err)))
+      .catch((err) => {
+        if (this.path() === folder) {
+          this.error.set(toFsError(err));
+        }
+      })
       .finally(() => this.sizeJobs.update((jobs) => jobs.filter((j) => j.jobId !== jobId)));
   }
 

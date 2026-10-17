@@ -207,10 +207,16 @@ export class FilePanel implements OnInit {
     });
   }
 
+  /** Esc: close and give the focus back to the list. */
   protected cancelPathEdit(): void {
+    this.closePathEdit();
+    this.ws.requestFocus(this.side());
+  }
+
+  /** Focus left the input (Tab): close, but let the focus go where the user moved it. */
+  protected closePathEdit(): void {
     this.editingPath.set(false);
     this.pathError.set(null);
-    this.ws.requestFocus(this.side());
   }
 
   protected async submitPath(evt: Event, value: string): Promise<void> {
@@ -297,6 +303,7 @@ export class FilePanel implements OnInit {
       });
     }
     this.store.rememberCurrent();
+    this.store.cancelSizeJobs();
     this.shownTabId = id;
     this.listingAtSwitch = this.store.listing();
     const tab = this.ws.activeTab(this.side());

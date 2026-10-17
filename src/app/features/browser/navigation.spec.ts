@@ -101,6 +101,33 @@ describe('navigation (prompt 003)', () => {
     expect(store.cursorPath()).toBeNull(); // the other tab's memory is not visible here
   });
 
+  it('does not leak marks between tabs showing the same folder', async () => {
+    store.setMarked(['/h/x.txt'], true);
+    store.rememberCurrent();
+    store.setMemory(createTabMemory()); // switch to a clone of the tab
+    await store.load('/h', { history: 'none', remember: false, cursor: null });
+    expect(store.marked().size).toBe(0);
+  });
+
+  it('drops a deleted back target and does not keep its scroll position', async () => {
+    await store.load('/h/A');
+    await store.load('/h/B');
+    delete tree['/h/A'];
+    try {
+      await store.back();
+      expect(store.error()?.code).toBe('not_found');
+      expect(store.takePendingTableState()).toBeNull();
+      await store.back(); // the next entry is reachable again
+      expect(store.path()).toBe('/h');
+    } finally {
+      tree['/h/A'] = listing(
+        '/h/A',
+        [entry('a1', { path: '/h/A/a1' }), entry('a2', { path: '/h/A/a2' })],
+        '/h',
+      );
+    }
+  });
+
   it('filters hidden files and by pattern; ".." always passes', () => {
     const keep = () => store.rowFilter();
     const secret = tree['/h'].entries[3];
