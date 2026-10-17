@@ -1,6 +1,6 @@
 # Design 004: Fensteraufbau – zwei Seiten, Tabs, Header, Statuszeile, Button-Leiste
 
-> **Status:** ✅ umgesetzt, 🟡 **ohne ausdrückliche Freigabe** – Marc war 2–3 h abwesend und hatte gesagt „arbeite, soweit
+> **Status:** ✅ umgesetzt, Entscheidungen E1–E4 nachträglich freigegeben (2026-10-17). Ursprünglich – Marc war 2–3 h abwesend und hatte gesagt „arbeite, soweit
 > du kannst“. Alle Entscheidungen unten folgen der jeweiligen Empfehlung; sie sind auf dem Branch leicht änderbar.
 > Bitte die Entscheidungsfragen (E1–E4) nachträglich bestätigen oder korrigieren.
 > **Datum:** 2026-10-17 · **Branch:** `feat/dual-pane-tabs`
@@ -175,7 +175,7 @@ Modifier-Umschaltung baut 002, das Format (`buttons.json`) steht jetzt.
 ## 7. Fortschritt
 
 - [x] Phase 1: Bestand, Entscheidungen, Verträge (dieses Dokument)
-- [ ] Freigabe durch Marc (nachträglich – E1–E4 wurden nach Empfehlung umgesetzt)
+- [x] Freigabe durch Marc (nachträglich, 2026-10-17: E1–E4 wie umgesetzt)
 - [x] Phase 2: Rust – `session.rs` (Schema, Laden ohne Fehlschlag, `.bad`-Kopie, atomares Speichern, `sanitize`,
   Elternordner-Ersatz), `window_state.rs` (Erreichbarkeit auf Monitoren), Commands `load_session`/`save_session`;
   14 neue Rust-Tests

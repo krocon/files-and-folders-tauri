@@ -1,6 +1,6 @@
 # Design 002: Aktionssystem, Tastenkürzel und „Go to anything“
 
-> **Status:** 🛑 Entwurf, **wartet auf Freigabe** (Phase 1). Bewusst hier angehalten: 002 baut auf 004 auf, dessen
+> **Status:** ✅ freigegeben (2026-10-17: D1–D6 wie empfohlen) – Umsetzung offen. Ursprünglich angehalten (Phase 1). Bewusst hier angehalten: 002 baut auf 004 auf, dessen
 > Entscheidungen ebenfalls noch nicht bestätigt sind, und die Fragen D1–D6 ändern Datenformate, die später teuer
 > umzustellen sind.
 > **Datum:** 2026-10-17 · **Branch:** `feat/aktionen-tastatur` (von `feat/dual-pane-tabs`)
@@ -218,7 +218,7 @@ Rust prüft nur Form und Größe (max. 500 Aktionen, 8 Kürzel je Aktion, 64 Zei
 ## 7. Fortschritt
 
 - [x] Phase 1: Bestand, Entscheidungen D1–D6, Verträge, Testplan (dieses Dokument)
-- [ ] Freigabe durch Marc
+- [x] Freigabe durch Marc (2026-10-17, D1–D6 wie empfohlen)
 - [ ] Phase 2: Rust (Override-Datei)
 - [ ] Phase 3: Frontend (Register, Keymaps, Dispatcher, Auswahl, Palette, Button-Leiste, Actions-Menü, ⌨)
 - [ ] Phase 4–6
