@@ -7,6 +7,7 @@ pub mod control;
 pub mod copy;
 pub mod delete;
 pub mod manager;
+pub mod rename;
 pub mod report;
 #[cfg(test)]
 mod tests_engine;
@@ -19,6 +20,7 @@ use serde::{Deserialize, Serialize};
 
 pub use control::Control;
 pub use manager::JobManager;
+pub use rename::RenameItem;
 
 /// What the frontend asks for.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,6 +60,13 @@ pub enum JobSpec {
         #[serde(default)]
         allow_dangerous: bool,
     },
+    /// Multi-rename (design 007): every entry gets a new name in its folder.
+    /// `undo_of` = the job this one undoes (runs the valid pairs even if others fail).
+    Rename {
+        items: Vec<RenameItem>,
+        #[serde(default)]
+        undo_of: Option<String>,
+    },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
@@ -73,6 +82,7 @@ impl JobSpec {
             JobSpec::Copy { background, .. }
             | JobSpec::Move { background, .. }
             | JobSpec::Delete { background, .. } => *background,
+            JobSpec::Rename { .. } => false,
             JobSpec::DirSize { .. } | JobSpec::Count { .. } | JobSpec::Simulate { .. } => true,
         }
     }
@@ -82,6 +92,7 @@ impl JobSpec {
             JobSpec::Copy { .. } => "copy",
             JobSpec::Move { .. } => "move",
             JobSpec::Delete { .. } => "delete",
+            JobSpec::Rename { .. } => "rename",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
@@ -253,6 +264,8 @@ pub struct JobInfo {
     pub summary: Option<Summary>,
     /// Why the job paused itself (e.g. disk full) – cleared when it runs again.
     pub pause_reason: Option<FsError>,
+    /// A finished rename job that `undo_rename` can still undo.
+    pub undo_available: bool,
 }
 
 /// Everything the frontend hears about jobs.
@@ -293,6 +306,11 @@ pub enum JobEvent {
     },
     Removed {
         ids: Vec<String>,
+    },
+    /// A rename job can be undone (after it finished) – or no longer.
+    UndoAvailable {
+        id: String,
+        available: bool,
     },
     /// The window wants to close while jobs run – ask the user.
     QuitRequested {
@@ -351,6 +369,17 @@ mod tests {
         .unwrap();
         assert_eq!(e["type"], "state");
         assert_eq!(e["state"], "waitingForDecision");
+        let spec: JobSpec =
+            serde_json::from_str(r#"{"kind":"rename","items":[{"path":"/a","newName":"b"}]}"#)
+                .unwrap();
+        assert_eq!(spec.kind(), "rename");
+        assert!(!spec.is_parallel());
+        let e = serde_json::to_value(JobEvent::UndoAvailable {
+            id: "j1".into(),
+            available: true,
+        })
+        .unwrap();
+        assert_eq!(e["type"], "undoAvailable");
         let e = serde_json::to_value(JobEvent::DirsChanged { dirs: vec![] }).unwrap();
         assert_eq!(e["type"], "dirsChanged");
     }

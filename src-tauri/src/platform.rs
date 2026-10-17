@@ -123,6 +123,21 @@ pub fn file_id(meta: &Metadata) -> Option<(u64, u64)> {
     }
 }
 
+/// Number of hard links of an entry (`None` where std does not tell – Windows).
+/// Two names of one inode look like "the same entry" to a case check.
+pub fn link_count(meta: &Metadata) -> Option<u64> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        Some(meta.nlink())
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        None
+    }
+}
+
 /// Makes a write-protected entry writable for its owner only (Unix: `u+w`, never
 /// world-writable); Windows: clears the read-only attribute.
 pub fn make_writable(path: &Path, meta: &Metadata) -> io::Result<()> {

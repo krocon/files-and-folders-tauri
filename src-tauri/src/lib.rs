@@ -12,7 +12,8 @@
 //! - [`dirsize`]      recursive folder size (no symlinks, cancellable)
 //! - [`opener`]       open files with the default app (checked)
 //! - [`fileops`]      create folder/file, rename (never overwrite)
-//! - [`jobs`]         job engine: copy, move, delete, count, folder size; queue, progress, conflicts, cancel/pause
+//! - [`jobs`]         job engine: copy, move, delete, multi-rename (+ undo), count, folder size; queue, progress, conflicts, cancel/pause
+//! - [`rename_presets`] multi-rename presets file
 //! - [`commands`]     thin Tauri command layer
 
 pub mod commands;
@@ -27,6 +28,7 @@ pub mod model;
 pub mod opener;
 pub mod paths;
 pub mod platform;
+pub mod rename_presets;
 pub mod session;
 pub mod window_state;
 
@@ -38,6 +40,7 @@ pub fn run() {
         .manage(commands::SessionState::default())
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
+        .manage(commands::PresetsState::default())
         .setup(|app| {
             commands::init_session(app.handle());
             app.state::<commands::JobsState>()
@@ -80,7 +83,11 @@ pub fn run() {
             commands::resolve_conflict,
             commands::list_jobs,
             commands::clear_finished_jobs,
-            commands::cancel_all_and_quit
+            commands::cancel_all_and_quit,
+            commands::plan_rename,
+            commands::undo_rename,
+            commands::load_rename_presets,
+            commands::save_rename_presets
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

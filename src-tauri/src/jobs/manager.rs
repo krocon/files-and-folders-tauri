@@ -4,7 +4,8 @@
 
 use super::report::Reporter;
 use super::{
-    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, Summary, copy, delete,
+    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary, copy,
+    delete, rename,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -42,7 +43,12 @@ pub struct JobManager {
     home: Mutex<Option<PathBuf>>,
     /// Tests force the copy + delete path of a move (no second volume in CI).
     pub(crate) force_copy_on_move: AtomicBool,
+    /// What the last rename jobs did (job id → pairs that undo it), newest last.
+    undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
 }
+
+/// Rename jobs that can be undone (design 007 E7).
+pub const UNDO_LOG_SIZE: usize = 20;
 
 impl JobManager {
     pub fn new(sink: Sink) -> Arc<Self> {
@@ -52,6 +58,7 @@ impl JobManager {
             sink,
             home: Mutex::new(None),
             force_copy_on_move: AtomicBool::new(false),
+            undo_log: Mutex::new(VecDeque::new()),
         })
     }
 
@@ -88,6 +95,7 @@ impl JobManager {
                 conflict: None,
                 summary: None,
                 pause_reason: None,
+                undo_available: false,
             };
             inner.jobs.push(Entry {
                 info: info.clone(),
@@ -125,7 +133,7 @@ impl JobManager {
                 )),
                 ..Summary::default()
             };
-            self.finish(&id, JobState::Failed, summary, parallel);
+            self.finish(&id, JobState::Failed, summary, parallel, None);
         }
     }
 
@@ -135,11 +143,17 @@ impl JobManager {
             return;
         };
         let emit = |e: JobEvent| self.record(e);
-        let work = || {
+        let home = self.home.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let work = || -> (JobState, Summary, Option<Vec<RenameItem>>) {
             if control.is_cancelled() {
-                (JobState::Cancelled, Summary::default())
+                (JobState::Cancelled, Summary::default(), None)
+            } else if let JobSpec::Rename { items, undo_of } = &spec {
+                let partial = undo_of.is_some();
+                let (state, summary, undo) =
+                    rename::run(id, items, partial, home.as_deref(), &control, &emit);
+                (state, summary, Some(undo))
             } else {
-                match &spec {
+                let (state, summary) = match &spec {
                     JobSpec::Copy {
                         sources,
                         target_dir,
@@ -178,12 +192,14 @@ impl JobManager {
                     JobSpec::Simulate { items, item_ms } => {
                         run_simulate(id, *items, *item_ms, &control, &emit)
                     }
-                }
+                    JobSpec::Rename { .. } => unreachable!("handled above"),
+                };
+                (state, summary, None)
             }
         };
         // a panic (a bug, or inside a crate such as `trash`) must not leave the job
         // "running" forever and block the serial queue
-        let (state, summary) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
+        let (state, summary, undo) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
             .unwrap_or_else(|_| {
                 (
                     JobState::Failed,
@@ -195,14 +211,26 @@ impl JobManager {
                         )),
                         ..Summary::default()
                     },
+                    None,
                 )
             });
-        self.finish(id, state, summary, spec.is_parallel());
+        self.finish(id, state, summary, spec.is_parallel(), undo);
     }
 
     /// Records the final state and starts the next queued serial job. `parallel`
     /// comes from the spec (the entry may already be removed by `clear_finished`).
-    fn finish(self: &Arc<Self>, id: &str, state: JobState, summary: Summary, parallel: bool) {
+    fn finish(
+        self: &Arc<Self>,
+        id: &str,
+        state: JobState,
+        summary: Summary,
+        parallel: bool,
+        undo: Option<Vec<RenameItem>>,
+    ) {
+        // before "finished": whoever waits for the job sees whether it can be undone
+        if let Some(pairs) = undo.filter(|p| !p.is_empty()) {
+            self.remember_undo(id, pairs);
+        }
         self.record(JobEvent::Finished {
             id: id.to_string(),
             state,
@@ -303,6 +331,73 @@ impl JobManager {
         };
         if let Some(event) = forward {
             (self.sink)(&event);
+        }
+    }
+
+    /// Stores the pairs that undo a finished rename job (the oldest drops out).
+    fn remember_undo(&self, id: &str, pairs: Vec<RenameItem>) {
+        let dropped = {
+            let mut log = self.undo_log.lock().unwrap_or_else(|e| e.into_inner());
+            log.push_back((id.to_string(), pairs));
+            let mut dropped = Vec::new();
+            while log.len() > UNDO_LOG_SIZE {
+                if let Some((old, _)) = log.pop_front() {
+                    dropped.push(old);
+                }
+            }
+            dropped
+        };
+        self.set_undo_available(id, true);
+        for old in dropped {
+            self.set_undo_available(&old, false);
+        }
+    }
+
+    fn set_undo_available(&self, id: &str, available: bool) {
+        {
+            let mut inner = self.lock();
+            if let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) {
+                e.info.undo_available = available;
+            }
+        }
+        (self.sink)(&JobEvent::UndoAvailable {
+            id: id.to_string(),
+            available,
+        });
+    }
+
+    /// Undoes a rename job (`None` = the last one) with a new rename job of the
+    /// reversed pairs; returns its id. Entries changed since then fail one by one.
+    pub fn undo_rename(self: &Arc<Self>, id: Option<&str>) -> Result<String, FsError> {
+        let (job, pairs) = {
+            let mut log = self.undo_log.lock().unwrap_or_else(|e| e.into_inner());
+            let pos = match id {
+                Some(id) => log.iter().position(|(j, _)| j == id),
+                None => log.len().checked_sub(1),
+            };
+            pos.and_then(|p| log.remove(p)).ok_or_else(|| {
+                FsError::new(
+                    FsErrorCode::UndoUnavailable,
+                    "There is no rename to undo",
+                    None,
+                )
+            })?
+        };
+        let spec = JobSpec::Rename {
+            // reversed: the last rename is undone first
+            items: pairs.iter().rev().cloned().collect(),
+            undo_of: Some(job.clone()),
+        };
+        match self.start(spec) {
+            Ok(new_id) => {
+                self.set_undo_available(&job, false);
+                Ok(new_id)
+            }
+            Err(e) => {
+                let mut log = self.undo_log.lock().unwrap_or_else(|e| e.into_inner());
+                log.push_back((job, pairs));
+                Err(e)
+            }
         }
     }
 
@@ -543,6 +638,22 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             }
             for p in paths {
                 check_danger(&validate_input_path(p)?, home, *allow_dangerous)?;
+            }
+        }
+        JobSpec::Rename { items, .. } => {
+            if items.is_empty() {
+                return Err(nothing());
+            }
+            if items.len() > rename::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    format!("Too many entries (max. {})", rename::MAX_ITEMS),
+                    None,
+                ));
+            }
+            // the job checks names, duplicates and targets itself (file I/O, off this thread)
+            for i in items {
+                validate_input_path(&i.path)?;
             }
         }
         JobSpec::Count { paths } => {
