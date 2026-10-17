@@ -6,7 +6,8 @@ import { MAX_HITS, SearchHit } from '../../core/search/search.models';
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { filterFolders, moveActive } from './folder-finder-logic';
+import { FolderFilter, moveActive } from './folder-finder-logic';
+import { SEARCH_TEXTS } from './search-texts';
 
 export const DEFAULT_DEPTH = 5;
 /** Slider maximum; the value above it means "no limit". */
@@ -25,18 +26,28 @@ export class FolderFinderStore {
   private readonly dialogs = inject(DialogService);
   private jobId: string | null = null;
   private unsubscribe: () => void = () => undefined;
+  /** Hits of the current job (append-only; a new array per job). */
   private buffer: SearchHit[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Every start gets a number; an older start that resolves late gives up (review 009 #9). */
+  private startSeq = 0;
+  /** Hits the last publish showed. */
+  private published = 0;
+  /** Filters only the new hits while the filter text stays (review 009 #8). */
+  private readonly filterer = new FolderFilter();
 
   readonly request = signal<{ side: Side; root: string; hidden: boolean } | null>(null);
   readonly depth = signal(DEFAULT_DEPTH);
   readonly filter = signal('');
-  readonly folders = signal<readonly SearchHit[]>([]);
+  /** The found folders: the job's buffer itself (no copy per publish), hence `equal: false`. */
+  readonly folders = signal<readonly SearchHit[]>([], { equal: () => false });
   readonly running = signal(false);
   readonly error = signal<FsError | null>(null);
   readonly unreadable = signal(0);
   readonly active = signal(0);
-  readonly shown = computed(() => filterFolders(this.folders(), this.filter()));
+  /** Said once by the dialog's live region when the search ends (review 009 #11). */
+  readonly announcement = signal('');
+  readonly shown = computed(() => this.filterer.apply(this.folders(), this.filter()));
   readonly activeFolder = computed<SearchHit | null>(() => this.shown()[this.active()] ?? null);
 
   hasFolder(): boolean {
@@ -106,10 +117,14 @@ export class FolderFinderStore {
     if (!req) {
       return;
     }
+    const seq = ++this.startSeq;
     this.stop();
-    this.folders.set([]);
+    this.buffer = [];
+    this.published = 0;
+    this.folders.set(this.buffer);
     this.unreadable.set(0);
     this.error.set(null);
+    this.announcement.set('');
     this.active.set(0);
     this.running.set(true);
     const depth = this.depth();
@@ -132,42 +147,51 @@ export class FolderFinderStore {
         },
       });
     } catch (err) {
-      this.running.set(false);
-      this.error.set(toFsError(err));
+      if (seq === this.startSeq) {
+        this.running.set(false);
+        this.error.set(toFsError(err));
+      }
       return;
     }
-    if (this.request() !== req || this.depth() !== depth) {
+    if (seq !== this.startSeq || this.request() !== req) {
       void this.jobs.cancel(id); // closed or restarted meanwhile
       return;
     }
     this.jobId = id;
-    this.buffer = [];
+    const buffer = this.buffer;
+    // hits that arrived before the id (buffered by JobsStore) come at once
     this.unsubscribe = this.jobs.onSearchHits(id, (hits, stats) => {
-      this.buffer.push(...hits);
-      this.unreadable.set(stats.unreadable);
-      this.schedule();
-    });
-    void this.jobs.whenFinished(id).then((job) => {
       if (this.jobId !== id) {
         return;
       }
-      this.publish();
-      this.running.set(false);
-      this.unreadable.set(job.summary?.search?.unreadable ?? 0);
-      if (job.state === 'failed') {
-        this.error.set(job.summary?.error ?? null);
-      }
-      this.unsubscribe();
-      this.jobId = null;
+      buffer.push(...hits);
+      this.unreadable.set(stats.unreadable);
+      this.schedule();
     });
+    const job = await this.jobs.whenFinished(id);
+    if (this.jobId !== id || seq !== this.startSeq) {
+      return;
+    }
+    this.publish();
+    this.running.set(false);
+    this.unreadable.set(job.summary?.search?.unreadable ?? 0);
+    if (job.state === 'failed') {
+      this.error.set(job.summary?.error ?? null);
+    }
+    // the count is announced once, at the end (the visible counter is no live region)
+    const n = this.folders().length;
+    this.announcement.set(SEARCH_TEXTS.finderCount(n, n));
+    this.unsubscribe();
+    this.unsubscribe = () => undefined;
+    this.jobId = null;
   }
 
   private schedule(): void {
     if (this.timer !== null) {
       return;
     }
-    if (this.folders().length === 0) {
-      this.publish();
+    if (this.published === 0) {
+      this.publish(); // the first folders at once
     }
     this.timer = setTimeout(() => {
       this.timer = null;
@@ -175,9 +199,11 @@ export class FolderFinderStore {
     }, PUBLISH_MS);
   }
 
+  /** Publishes the grown buffer (the same array: the filter only looks at the new hits). */
   private publish(): void {
-    if (this.buffer.length !== this.folders().length) {
-      this.folders.set(this.buffer.slice());
+    if (this.buffer.length !== this.published) {
+      this.published = this.buffer.length;
+      this.folders.set(this.buffer);
     }
   }
 

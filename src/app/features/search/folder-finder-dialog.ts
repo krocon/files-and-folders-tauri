@@ -62,7 +62,8 @@ const COLUMNS: readonly GridColumn[] = [
             (rowClick)="onRowClick($event)"
           />
           <div class="foot">
-            <p class="summary" role="status">
+            <!-- the counter changes constantly: no live region; the end is announced below -->
+            <p class="summary">
               {{ t.finderCount(ff.shown().length, ff.folders().length) }}
               @if (ff.running()) {
                 <span class="spinner" aria-hidden="true"></span>
@@ -71,6 +72,7 @@ const COLUMNS: readonly GridColumn[] = [
                 · {{ t.unreadable(ff.unreadable()) }}
               }
             </p>
+            <p class="sr-only" role="status">{{ ff.announcement() }}</p>
             <p class="error" role="alert">{{ ff.error()?.message ?? '' }}</p>
             <p id="fnf-ff-active" class="sr-only" aria-live="polite">
               {{ ff.activeFolder()?.path ?? '' }}

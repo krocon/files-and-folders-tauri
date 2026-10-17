@@ -33,7 +33,12 @@ struct Inner {
     serial_busy: bool,
     queue: VecDeque<String>,
     running: usize,
+    /// Helper jobs removed when they finished (newest last) – for `wait_finished`.
+    retired: VecDeque<JobInfo>,
 }
+
+/// Finished helper jobs kept for `wait_finished` after their removal.
+const RETIRED_KEPT: usize = 64;
 
 pub struct JobManager {
     inner: Mutex<Inner>,
@@ -281,9 +286,22 @@ impl JobManager {
             state,
             summary: Box::new(summary),
         });
-        let next = {
+        let (next, retired) = {
             let mut inner = self.lock();
             inner.running = inner.running.saturating_sub(1);
+            // helper jobs (search, count, folder size) leave the list once their end
+            // was reported – the list does not grow with every search (review 009 #10)
+            let retired = inner
+                .jobs
+                .iter()
+                .position(|e| e.info.id == id && e.info.spec.is_helper())
+                .map(|i| inner.jobs.remove(i).info);
+            if let Some(info) = &retired {
+                if inner.retired.len() >= RETIRED_KEPT {
+                    inner.retired.pop_front();
+                }
+                inner.retired.push_back(info.clone());
+            }
             let mut next = None;
             if !parallel {
                 inner.serial_busy = false;
@@ -293,8 +311,13 @@ impl JobManager {
                 }
             }
             self.changed.notify_all();
-            next
+            (next, retired.is_some())
         };
+        if retired {
+            (self.sink)(&JobEvent::Removed {
+                ids: vec![id.to_string()],
+            });
+        }
         if let Some(n) = next {
             self.spawn(n);
         }
@@ -626,7 +649,8 @@ impl JobManager {
                 .jobs
                 .iter()
                 .find(|e| e.info.id == id)
-                .map(|e| e.info.clone())?;
+                .map(|e| e.info.clone())
+                .or_else(|| inner.retired.iter().find(|j| j.id == id).cloned())?;
             if info.state.is_finished() {
                 return Some(info);
             }

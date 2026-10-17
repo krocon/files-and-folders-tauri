@@ -30,6 +30,32 @@ pub use group::{GroupItem, Transfer};
 pub use manager::JobManager;
 pub use rename::RenameItem;
 
+/// Sources that lie below another source (or repeat one) are dropped – the
+/// folder brings them along (review 009 #5: search results can hold a folder
+/// and entries in it). Compared lexically, component by component; the order
+/// of the remaining sources stays.
+pub fn drop_nested(paths: &[std::path::PathBuf]) -> Vec<std::path::PathBuf> {
+    let norm: Vec<std::path::PathBuf> = paths
+        .iter()
+        .map(|p| crate::paths::normalize_lexically(p))
+        .collect();
+    paths
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| {
+            let me = &norm[*i];
+            !norm.iter().enumerate().any(|(j, other)| {
+                if other == me {
+                    j < *i // a repeated source: the first one stays
+                } else {
+                    me.starts_with(other)
+                }
+            })
+        })
+        .map(|(_, p)| p.clone())
+        .collect()
+}
+
 /// What the frontend asks for.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(

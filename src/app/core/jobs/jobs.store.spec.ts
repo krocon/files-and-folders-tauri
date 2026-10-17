@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { FakeJobsApi, job } from '../../../testing/fake-jobs-api';
 import { JobsApi } from './jobs-api';
-import { JobsStore } from './jobs.store';
+import { HIT_BUFFER_GRACE_MS, JobsStore } from './jobs.store';
+import { EMPTY_STATS } from '../search/search.models';
+import { entry } from '../../../testing/fs-fixtures';
 import { Summary } from './jobs.models';
 
 const copy = { kind: 'copy' as const, sources: ['/a'], targetDir: '/b' };
@@ -122,6 +124,67 @@ describe('JobsStore', () => {
     expect(store.conflictToShow()).toBeNull();
     store.reopenConflict(b);
     expect(store.conflictToShow()?.id).toBe(b);
+  });
+
+  it('review 009 #1: search hits that arrive before the listener are buffered and replayed', async () => {
+    const criteria = {
+      roots: ['/r'],
+      name: '',
+      nameMode: 'glob' as const,
+      caseSensitive: false,
+      wholeName: true,
+      kinds: { files: true, dirs: true, links: true },
+      includeHidden: false,
+      followLinks: false,
+      excludes: [],
+    };
+    const stats = (hits: number) => ({ ...EMPTY_STATS, hits });
+    const h = (name: string) => ({ ...entry(name, { path: `/r/${name}` }), dir: '/r' });
+    // the hits overtake the id: Rust streams them before `start` resolved
+    api.beforeResolve = (id) =>
+      api.emit({ type: 'searchHits', id, hits: [h('early')], stats: stats(1) });
+    const id = await store.start({ kind: 'search', criteria });
+    api.beforeResolve = null;
+    api.emit({ type: 'searchHits', id, hits: [h('second')], stats: stats(2) });
+    const got: string[] = [];
+    let last = 0;
+    const off = store.onSearchHits(id, (hits, s) => {
+      got.push(...hits.map((x) => x.name));
+      last = s.hits;
+    });
+    expect(got).toEqual(['early', 'second']);
+    expect(last).toBe(2);
+    api.emit({ type: 'searchHits', id, hits: [h('live')], stats: stats(3) });
+    expect(got).toEqual(['early', 'second', 'live']);
+    off();
+    // after unsubscribing nothing is kept
+    api.emit({ type: 'searchHits', id, hits: [h('late')], stats: stats(4) });
+    const again: string[] = [];
+    store.onSearchHits(id, (hits) => again.push(...hits.map((x) => x.name)));
+    expect(again).toEqual([]);
+  });
+
+  it('review 009 #1: the buffer of a job nobody listens to is dropped after its end', async () => {
+    vi.useFakeTimers();
+    try {
+      api.emit({ type: 'searchHits', id: 'j9', hits: [], stats: { ...EMPTY_STATS, hits: 0 } });
+      api.emit({ type: 'finished', id: 'j9', state: 'done', summary: summary() });
+      vi.advanceTimersByTime(HIT_BUFFER_GRACE_MS + 1);
+      const got: number[] = [];
+      store.onSearchHits('j9', (_, s) => got.push(s.hits));
+      expect(got).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('review 009 #10: a finished helper job removed by Rust still answers whenFinished and find', async () => {
+    const id = await store.start({ kind: 'count', paths: ['/x'] });
+    api.emit({ type: 'finished', id, state: 'done', summary: summary() });
+    api.emit({ type: 'removed', ids: [id] });
+    expect(store.jobs().some((j) => j.id === id)).toBe(false);
+    expect(store.find(id)?.state).toBe('done');
+    expect((await store.whenFinished(id)).summary?.itemsDone).toBe(1);
   });
 
   it('shows why a job paused itself (disk full) until it runs again', async () => {

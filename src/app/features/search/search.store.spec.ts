@@ -19,6 +19,7 @@ import { DEFAULT_FORM } from './find-form';
 import { FindStore } from './find.store';
 import { FolderFinderStore } from './folder-finder.store';
 import { registerSearchActions } from './search-actions';
+import { SEARCH_TEXTS } from './search-texts';
 import { PUBLISH_MS, SearchStore } from './search.store';
 
 const CRITERIA: SearchCriteria = {
@@ -268,5 +269,102 @@ describe('SearchStore and result tabs (design 009)', () => {
     await wait();
     expect(search.result(key)!.hits.map((h) => h.name)).toEqual(['2.mp3']);
     expect(left.isMarked('/r/a/1.mp3')).toBe(false);
+  });
+
+  it('review 009 #1: hits (and the end) that overtake the job id reach the result', async () => {
+    jobsApi.beforeResolve = (id, spec) => {
+      if (spec.kind === 'search') {
+        hits(id, [hit('early.mp3')]);
+      }
+    };
+    await search.search(CRITERIA, 'left');
+    const key = ws.activeTab('left').search!.key;
+    await wait(PUBLISH_MS + 50);
+    expect(search.result(key)!.hits.map((h) => h.name)).toEqual(['early.mp3']);
+    // a tiny search: hits and end before `start` resolved
+    jobsApi.beforeResolve = (id) => {
+      hits(id, [hit('a.mp3'), hit('b.mp3')]);
+      finish(id, 'done', { search: { ...EMPTY_STATS, hits: 2 } });
+    };
+    await search.rerun(key);
+    jobsApi.beforeResolve = null;
+    await wait();
+    const r = search.result(key)!;
+    expect(r.running).toBe(false);
+    expect(r.hits.map((h) => h.name)).toEqual(['a.mp3', 'b.mp3']);
+  });
+
+  it('review 009 #2: a refused new search keeps the old one (no endless "running")', async () => {
+    await search.search(CRITERIA, 'left');
+    const tab = ws.activeTab('left');
+    const key = tab.search!.key;
+    const old = jobsApi.started[0].id;
+    jobsApi.refuse = { code: 'invalid_pattern', message: 'bad (', path: null };
+    const err = await search.search(
+      { ...CRITERIA, name: '(' },
+      'left',
+      { tabId: tab.id, key },
+      DEFAULT_FORM,
+    );
+    expect(err?.code).toBe('invalid_pattern');
+    await search.rerun(key);
+    jobsApi.refuse = null;
+    expect(jobsApi.cancelled).not.toContain(old);
+    hits(old, [hit('1.mp3')]);
+    finish(old);
+    await wait();
+    const r = search.result(key)!;
+    expect(r.running).toBe(false);
+    expect(r.hits.map((h) => h.name)).toEqual(['1.mp3']);
+  });
+
+  it('review 009 #3: navigating in a result tab turns it into a folder tab and releases the result', async () => {
+    await search.search(CRITERIA, 'left');
+    const tab = ws.activeTab('left');
+    const key = tab.search!.key;
+    ws.navigated(tab.id, '/r/a', 'a');
+    TestBed.tick();
+    const now = ws.activeTab('left');
+    expect(now.id).toBe(tab.id);
+    expect(now.search ?? null).toBeNull();
+    expect([now.path, now.title]).toEqual(['/r/a', 'a']);
+    expect(search.results().has(key)).toBe(false);
+    expect(jobsApi.cancelled).toContain(jobsApi.started[0].id);
+  });
+
+  it('review 009 #5: removePaths drops the entries below a removed folder too', async () => {
+    await search.search(CRITERIA, 'left');
+    const key = ws.activeTab('left').search!.key;
+    const id = jobsApi.started[0].id;
+    const folder = { ...dir('a', { path: '/r/a' }), dir: '/r' };
+    hits(id, [folder, hit('1.mp3'), hit('2.mp3', '/r/a/deep'), hit('3.mp3', '/r/ab')]);
+    finish(id);
+    await wait();
+    search.removePaths(key, ['/r/a']);
+    expect(search.result(key)!.hits.map((h) => h.path)).toEqual(['/r/ab/3.mp3']);
+  });
+
+  it('review 009 #9/#11: quick depth changes keep only the newest folder search; the end is announced', async () => {
+    await left.load('/r');
+    const ff = TestBed.inject(FolderFinderStore);
+    ff.open();
+    ff.setDepth(3);
+    ff.setDepth(5);
+    await wait();
+    const ids = jobsApi.started.filter((j) => j.spec.kind === 'search').map((j) => j.id);
+    expect(ids).toHaveLength(3);
+    expect(jobsApi.cancelled).toEqual(expect.arrayContaining([ids[0], ids[1]]));
+    expect(jobsApi.cancelled).not.toContain(ids[2]);
+    const folder = (name: string) => ({ ...dir(name, { path: `/r/${name}` }), dir: '/r' });
+    hits(ids[0], [folder('old')]);
+    hits(ids[2], [folder('new')]);
+    await wait(250);
+    expect(ff.folders().map((f) => f.name)).toEqual(['new']);
+    expect(ff.announcement()).toBe('');
+    finish(ids[2]);
+    await wait();
+    expect(ff.running()).toBe(false);
+    expect(ff.announcement()).toBe(SEARCH_TEXTS.finderCount(1, 1));
+    ff.close();
   });
 });

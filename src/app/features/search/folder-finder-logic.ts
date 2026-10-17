@@ -14,20 +14,78 @@ export function filterFolders(hits: readonly SearchHit[], query: string): readon
   if (!q) {
     return hits;
   }
-  const scored: { hit: SearchHit; score: number; i: number }[] = [];
-  hits.forEach((hit, i) => {
+  return score(hits, q, 0).map((s) => s.hit);
+}
+
+interface Scored {
+  readonly hit: SearchHit;
+  readonly score: number;
+  readonly i: number;
+}
+
+const byScore = (a: Scored, b: Scored) => b.score - a.score || a.i - b.i;
+
+/** Scores `hits` (found order from `offset`), best first. */
+function score(hits: readonly SearchHit[], q: string, offset: number): Scored[] {
+  const scored: Scored[] = [];
+  for (let k = offset; k < hits.length; k++) {
+    const hit = hits[k];
     const byName = fuzzyMatch(q, hit.name);
     if (byName) {
-      scored.push({ hit, score: byName.score + NAME_BONUS, i });
-      return;
+      scored.push({ hit, score: byName.score + NAME_BONUS, i: k });
+      continue;
     }
     const byPath = fuzzyMatch(q, hit.path);
     if (byPath) {
-      scored.push({ hit, score: byPath.score, i });
+      scored.push({ hit, score: byPath.score, i: k });
     }
-  });
-  scored.sort((a, b) => b.score - a.score || a.i - b.i);
-  return scored.map((s) => s.hit);
+  }
+  return scored.sort(byScore);
+}
+
+/** Merges two lists sorted by {@link byScore}. */
+function merge(a: readonly Scored[], b: readonly Scored[]): Scored[] {
+  const out: Scored[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    out.push(byScore(a[i], b[j]) <= 0 ? a[i++] : b[j++]);
+  }
+  while (i < a.length) out.push(a[i++]);
+  while (j < b.length) out.push(b[j++]);
+  return out;
+}
+
+/**
+ * {@link filterFolders} for a list that only grows (review 009 #8): while the
+ * filter text and the list stay the same, only the new hits are scored and
+ * merged in. A new list (another search) or a new text filters everything.
+ * Always returns a new array (the table takes rows by reference).
+ */
+export class FolderFilter {
+  private source: readonly SearchHit[] | null = null;
+  private query = '';
+  private count = 0;
+  private scored: Scored[] = [];
+
+  apply(hits: readonly SearchHit[], query: string): readonly SearchHit[] {
+    const q = query.trim();
+    const same = hits === this.source && q === this.query && hits.length >= this.count;
+    if (!q) {
+      this.remember(hits, q, []);
+      return hits.slice();
+    }
+    const scored = same ? merge(this.scored, score(hits, q, this.count)) : score(hits, q, 0);
+    this.remember(hits, q, scored);
+    return scored.map((s) => s.hit);
+  }
+
+  private remember(hits: readonly SearchHit[], q: string, scored: Scored[]): void {
+    this.source = hits;
+    this.query = q;
+    this.count = hits.length;
+    this.scored = scored;
+  }
 }
 
 /** New active row after a key (↑ ↓ PgUp PgDn Home End), clamped; -1 for an empty list. */

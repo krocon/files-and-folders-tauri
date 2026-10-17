@@ -50,6 +50,22 @@ interface Run {
 
 let keySeq = 0;
 
+/**
+ * `path` is `ancestor` or lies below it. Paths stay opaque (CLAUDE.md §4): only a
+ * prefix comparison up to a separator, never split or joined.
+ */
+export function isSameOrBelow(path: string, ancestor: string): boolean {
+  if (path === ancestor) {
+    return true;
+  }
+  if (!path.startsWith(ancestor)) {
+    return false;
+  }
+  // a root like `/` or `C:\` already ends with its separator
+  const sep = /[/\\]$/.test(ancestor) ? '' : path.charAt(ancestor.length);
+  return sep === '' ? path.length > ancestor.length : sep === '/' || sep === '\\';
+}
+
 export function searchLabel(c: SearchCriteria): string {
   const name = c.name.trim();
   const text = c.content?.text ? ` ∋ "${c.content.text}"` : '';
@@ -145,7 +161,8 @@ export class SearchStore {
     if (r) {
       const error = await this.start(key, r.criteria, r.form);
       if (error) {
-        this.patch(key, { error, running: false });
+        // the old run (if any) goes on – the result stays "running" only while it does
+        this.patch(key, { error, running: this.runs.has(key) });
       }
     }
   }
@@ -162,20 +179,20 @@ export class SearchStore {
     }
   }
 
-  /** Entries deleted or moved away (from a result tab) leave the result. */
+  /** Entries deleted or moved away (from a result tab) leave the result – with everything below them. */
   removePaths(key: string, paths: readonly string[]): void {
     const r = this.result(key);
     if (!r || paths.length === 0) {
       return;
     }
-    const gone = new Set(paths);
+    const gone = (h: SearchHit) => paths.some((p) => isSameOrBelow(h.path, p));
     const run = this.runs.get(key);
     if (run) {
-      const keep = run.all.filter((h) => !gone.has(h.path));
+      const keep = run.all.filter((h) => !gone(h));
       run.all.length = 0;
       run.all.push(...keep);
     }
-    this.patch(key, { hits: r.hits.filter((h) => !gone.has(h.path)) });
+    this.patch(key, { hits: r.hits.filter((h) => !gone(h)) });
   }
 
   saveTemplate(label: string, form: FindForm): void {
@@ -197,13 +214,15 @@ export class SearchStore {
     );
   }
 
-  /** Cancels a running job of the result and starts a new one. */
+  /**
+   * Starts a new job for the result; a running one is cancelled only once the
+   * new one was accepted (review 009 #2: a refused pattern keeps the old run).
+   */
   private async start(
     key: string,
     criteria: SearchCriteria,
     form: FindForm | null,
   ): Promise<FsError | null> {
-    this.stopRun(key);
     const pending = { stop: false };
     this.starting.set(key, pending);
     let jobId: string;
@@ -223,17 +242,9 @@ export class SearchStore {
       timer: null,
       unsubscribe: () => undefined,
     };
-    // a start racing with another start for the same result: the newer one wins
+    // the old run of the result (or a start racing with this one): the newer one wins
     this.stopRun(key);
     this.runs.set(key, run);
-    run.unsubscribe = this.jobs.onSearchHits(jobId, (hits, stats) => {
-      if (this.runs.get(key) !== run) {
-        return;
-      }
-      run.all.push(...hits);
-      run.stats = stats;
-      this.schedulePublish(key, run);
-    });
     this.setResult({
       key,
       criteria,
@@ -245,6 +256,15 @@ export class SearchStore {
       error: null,
       cancelled: false,
       form,
+    });
+    // hits that arrived before the id (buffered by JobsStore) come at once
+    run.unsubscribe = this.jobs.onSearchHits(jobId, (hits, stats) => {
+      if (this.runs.get(key) !== run) {
+        return;
+      }
+      run.all.push(...hits);
+      run.stats = stats;
+      this.schedulePublish(key, run);
     });
     if (pending.stop) {
       void this.jobs.cancel(jobId); // Stop was pressed while the job was being started

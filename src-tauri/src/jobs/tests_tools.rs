@@ -528,3 +528,44 @@ fn search_cancel_reacts_fast() {
     assert!(t.elapsed() < std::time::Duration::from_millis(200));
     assert!(matches!(info.state, JobState::Cancelled | JobState::Done));
 }
+
+/// Review 009 #10: finished helper jobs (search, count, folder size) leave the
+/// manager as soon as their end was reported – the list does not grow with
+/// every search. Waiting for them still works.
+#[test]
+fn finished_helper_jobs_are_removed_after_their_end() {
+    let d = tempdir().unwrap();
+    fs::write(d.path().join("a.txt"), b"").unwrap();
+    let h = Harness::new();
+    let search = h.mgr.start(search_spec(d.path(), "*.txt")).unwrap();
+    let count = h
+        .mgr
+        .start(JobSpec::Count {
+            paths: vec![s(d.path())],
+        })
+        .unwrap();
+    let size = h.mgr.start(JobSpec::DirSize { path: s(d.path()) }).unwrap();
+    for id in [&search, &count, &size] {
+        assert!(h.finish(id).state.is_finished());
+    }
+    // `finish` may return before the removal: wait for it
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while !h.mgr.list().is_empty() {
+        assert!(std::time::Instant::now() < deadline, "{:?}", h.mgr.list());
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let events = h.events.lock().unwrap();
+    for id in [&search, &count, &size] {
+        let finished = events
+            .iter()
+            .position(|e| matches!(e, JobEvent::Finished { id: i, .. } if i == id))
+            .unwrap();
+        let removed = events
+            .iter()
+            .position(|e| matches!(e, JobEvent::Removed { ids } if ids.contains(id)))
+            .expect("removed event");
+        assert!(finished < removed, "the end is reported first");
+    }
+    drop(events);
+    assert_eq!(h.finish(&search).summary.unwrap().items_done, 1);
+}

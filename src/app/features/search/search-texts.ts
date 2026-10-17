@@ -61,6 +61,7 @@ export const SEARCH_TEXTS = {
   cancel: 'Cancel',
   noFolder: 'There is no folder to search in.',
   invalidNumber: 'Please enter a number.',
+  tooLarge: (max: number) => `At most ${max.toLocaleString()}.`,
   noKind: 'Choose at least one kind.',
   // folder finder
   finderTitle: (root: string) => `Find folder – ${root}`,

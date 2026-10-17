@@ -103,14 +103,26 @@ export interface FormError {
   readonly message: string;
 }
 
-function num(raw: string, field: FormField, min = 0): number | null | FormError {
+/** Rust limits (search.rs): depth, content file size; days and bytes stay exact integers. */
+export const MAX_FORM_DEPTH = 256;
+export const MAX_FORM_FILE_MB = 1024;
+export const MAX_FORM_DAYS = 100_000;
+
+function num(raw: string, field: FormField, min = 0, max = Infinity): number | null | FormError {
   const t = raw.trim();
   if (t === '') {
     return null;
   }
   const n = Number(t.replace(',', '.'));
-  return Number.isFinite(n) && n >= min ? n : { field, message: SEARCH_TEXTS.invalidNumber };
+  if (Number.isNaN(n) || n < min) {
+    return { field, message: SEARCH_TEXTS.invalidNumber };
+  }
+  // too large for Rust (u32/u64/i64) – a field error instead of a refused job (review 009 #12)
+  return n > max ? { field, message: SEARCH_TEXTS.tooLarge(max) } : n;
 }
+
+/** Largest size in `unit` that is still an exact byte count. */
+const maxIn = (unit: SizeUnit) => Math.floor(Number.MAX_SAFE_INTEGER / UNIT[unit]);
 
 function isError(v: unknown): v is FormError {
   return typeof v === 'object' && v !== null && 'field' in v;
@@ -135,11 +147,11 @@ export function formToCriteria(
   if (!f.files && !f.dirs && !f.links) {
     return { error: { field: 'kinds', message: SEARCH_TEXTS.noKind } };
   }
-  const minSize = num(f.minSize, 'minSize');
-  const maxSize = num(f.maxSize, 'maxSize');
-  const days = f.dateMode === 'days' ? num(f.days, 'days') : null;
-  const maxFileMb = num(f.maxFileSizeMb, 'maxFileSizeMb');
-  const depth = num(f.maxDepth, 'maxDepth', 1);
+  const minSize = num(f.minSize, 'minSize', 0, maxIn(f.minUnit));
+  const maxSize = num(f.maxSize, 'maxSize', 0, maxIn(f.maxUnit));
+  const days = f.dateMode === 'days' ? num(f.days, 'days', 0, MAX_FORM_DAYS) : null;
+  const maxFileMb = num(f.maxFileSizeMb, 'maxFileSizeMb', 0, MAX_FORM_FILE_MB);
+  const depth = num(f.maxDepth, 'maxDepth', 1, MAX_FORM_DEPTH);
   const hits = num(f.maxHits, 'maxHits', 1);
   for (const v of [minSize, maxSize, days, maxFileMb, depth, hits]) {
     if (isError(v)) {

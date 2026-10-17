@@ -5,6 +5,7 @@ import {
   presetGlob,
   PRESETS_BUILT_IN,
 } from './find-form';
+import { SEARCH_TEXTS } from './search-texts';
 
 const NOW = new Date(2026, 9, 17, 12, 0, 0).getTime();
 
@@ -76,6 +77,22 @@ describe('find form → criteria (design 009 E3/E5)', () => {
     expect(err({ dateMode: 'range', from: 'yesterday' })).toBe('from');
     expect(errorField({ code: 'invalid_pattern', message: '', path: null })).toBe('name');
     expect(errorField({ code: 'not_found', message: '', path: null })).toBeNull();
+  });
+
+  it('review 009 #12: numbers too large for Rust are field errors, not serde errors', () => {
+    const err = (patch: Partial<typeof DEFAULT_FORM>) => {
+      const r = formToCriteria({ ...DEFAULT_FORM, ...patch }, ['/r'], NOW);
+      return 'error' in r ? r.error : null;
+    };
+    expect(err({ maxDepth: '257' })?.field).toBe('maxDepth');
+    expect(err({ maxDepth: '1e20' })?.message).toBe(SEARCH_TEXTS.tooLarge(256));
+    expect(err({ maxDepth: '256' })).toBeNull();
+    expect(err({ minSize: '9000000', minUnit: 'GB' })?.field).toBe('minSize');
+    expect(err({ maxSize: '1e300' })?.field).toBe('maxSize');
+    expect(err({ maxSize: '1024', maxUnit: 'GB' })).toBeNull();
+    expect(err({ content: 'x', maxFileSizeMb: '2048' })?.field).toBe('maxFileSizeMb');
+    expect(err({ dateMode: 'days', days: '1e12' })?.field).toBe('days');
+    expect(err({ maxHits: '1e300' })).toBeNull(); // capped at 100 000
   });
 
   it('templates become globs (mr format)', () => {

@@ -1,6 +1,6 @@
 import { SearchHit } from '../../core/search/search.models';
 import { dir } from '../../../testing/fs-fixtures';
-import { filterFolders, moveActive } from './folder-finder-logic';
+import { FolderFilter, filterFolders, moveActive } from './folder-finder-logic';
 
 const hit = (path: string): SearchHit => ({
   ...dir(path.split('/').at(-1)!, { path }),
@@ -41,5 +41,26 @@ describe('folder finder (design 009 E6)', () => {
     expect(moveActive(5, 'End', 30)).toBe(29);
     expect(moveActive(5, 'x', 3)).toBe(2);
     expect(moveActive(0, 'ArrowDown', 0)).toBe(-1);
+  });
+
+  it('review 009 #8: the incremental filter equals the full one while the list grows', () => {
+    const all = [
+      ...hits,
+      hit('/home/u/Musik/Jazz'),
+      hit('/srv/musik'),
+      hit('/home/u/mu/sik'),
+      hit('/x/Bilder Musik'),
+    ];
+    const f = new FolderFilter();
+    const growing: SearchHit[] = [];
+    for (const [i, h] of all.entries()) {
+      growing.push(h);
+      const q = i < 5 ? 'musik' : 'mus';
+      const got = f.apply(growing, q);
+      expect(got).toEqual(filterFolders(growing, q));
+      expect(got).not.toBe(growing);
+    }
+    expect(f.apply(growing, '')).toEqual(growing);
+    expect(f.apply([...growing], 'bild')).toEqual(filterFolders(growing, 'bild'));
   });
 });

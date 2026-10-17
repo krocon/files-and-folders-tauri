@@ -340,10 +340,22 @@ export class WorkspaceStore {
     });
   }
 
-  /** A tab navigated to `path`: update path/title, remember the old folder in the history. */
+  /**
+   * A tab navigated to `path`: update path/title, remember the old folder in the
+   * history. A result tab that navigates becomes a folder tab (review 009 #3):
+   * its search goes, the `SearchStore` releases the result.
+   */
   navigated(id: string, path: string, title: string): void {
     const tab = this.findTab(id);
-    if (!tab || (tab.path === path && tab.title === title)) {
+    if (!tab) {
+      return;
+    }
+    if (tab.search) {
+      this.updateTab(id, { path, title, search: null, table: null });
+      this.addRecent(path);
+      return;
+    }
+    if (tab.path === path && tab.title === title) {
       return;
     }
     const history =

@@ -42,6 +42,8 @@ export interface SearchCriteria {
   readonly content?: ContentQuery | null;
   /** Default 10 000, max. 100 000. */
   readonly maxHits?: number | null;
+  /** Linux: do not enter /proc, /sys, /dev (Rust default: true). */
+  readonly skipVirtualFs?: boolean;
 }
 
 /** A hit: an entry as in a listing plus the full path of its folder. */

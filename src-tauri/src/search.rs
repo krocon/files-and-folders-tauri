@@ -18,7 +18,7 @@ use regex::bytes::{Regex as BytesRegex, RegexBuilder as BytesRegexBuilder};
 use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::fs::{self, File, Metadata};
+use std::fs::{self, Metadata};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -129,6 +129,10 @@ pub struct SearchCriteria {
     pub content: Option<ContentQuery>,
     #[serde(default)]
     pub max_hits: Option<u32>,
+    /// Linux: `/proc`, `/sys` and `/dev` are not entered (a root that is one of
+    /// them is still searched). Default on (review 009 #6).
+    #[serde(default = "yes")]
+    pub skip_virtual_fs: bool,
 }
 
 /// One hit: an entry as in a listing, plus its folder (shown in the result tab).
@@ -176,6 +180,7 @@ pub struct Compiled {
     excludes: Option<Regex>,
     content: Option<ContentMatcher>,
     max_hits: u64,
+    skip_virtual_fs: bool,
 }
 
 fn invalid(message: impl Into<String>) -> FsError {
@@ -355,6 +360,7 @@ pub fn compile(c: &SearchCriteria) -> Result<Compiled, FsError> {
         excludes,
         content,
         max_hits: u64::from(c.max_hits.unwrap_or(DEFAULT_MAX_HITS).clamp(1, MAX_HITS)),
+        skip_virtual_fs: c.skip_virtual_fs,
     })
 }
 
@@ -412,9 +418,18 @@ fn dir_key(path: &Path, meta: &Metadata) -> Option<DirKey> {
     fs::canonicalize(path).ok().map(DirKey::Path)
 }
 
-/// Whether the file contains the text – read in blocks, stops on cancel.
+/// Pseudo file systems that a walk does not enter (Linux): endless or blocking
+/// "files", and nothing a user searches for.
+fn is_virtual_fs(path: &Path) -> bool {
+    cfg!(target_os = "linux")
+        && [Path::new("/proc"), Path::new("/sys"), Path::new("/dev")].contains(&path)
+}
+
+/// Whether the file contains the text – read in blocks, stops on cancel. The
+/// file is opened without blocking and must still be a regular file (a FIFO or
+/// device swapped in after the listing never hangs the search).
 fn content_matches(path: &Path, m: &ContentMatcher, cancel: &AtomicBool) -> bool {
-    let Ok(mut file) = File::open(path) else {
+    let Ok(mut file) = crate::platform::open_regular_file(path) else {
         return false;
     };
     let mut buf: Vec<u8> = Vec::with_capacity(BLOCK + m.overlap);
@@ -467,13 +482,17 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             unreadable.push(e);
         }
     };
+    // following links, a folder is entered once per identity; one without an
+    // identity (no inode, canonicalize failed) is entered anyway – the depth
+    // limit ends a cycle through it (review 009 #7)
+    let mut first_visit = |path: &Path, meta: &Metadata| match dir_key(path, meta) {
+        Some(k) => visited.insert(k),
+        None => true,
+    };
     for root in &c.roots {
         match fs::metadata(root) {
             Ok(meta) if meta.is_dir() => {
-                if c.follow_links
-                    && let Some(k) = dir_key(root, &meta)
-                    && !visited.insert(k)
-                {
+                if c.follow_links && !first_visit(root, &meta) {
                     continue; // the same folder twice (a root inside a linked root …)
                 }
                 stack.push((root.clone(), 0));
@@ -485,6 +504,9 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             Err(e) => note_unreadable(&mut stats, FsError::from_io(&e, root)),
         }
     }
+    // the folder finder only wants folders: other entries need no `lstat` (review 009 #8)
+    let only_dirs = !c.kinds.files && !c.kinds.links && !c.follow_links;
+    let skip_dir = |path: &Path| c.skip_virtual_fs && is_virtual_fs(path);
     // the first root is searched first
     stack.reverse();
     'walk: while let Some((dir, depth)) = stack.pop() {
@@ -503,19 +525,40 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         let mut children: Vec<PathBuf> = Vec::new();
         let enter = depth + 1 < c.max_depth;
         // in name order: hits and the folder finder come in a stable, readable order
-        let mut entries: Vec<fs::DirEntry> = rd.filter_map(Result::ok).collect();
+        let mut entries: Vec<fs::DirEntry> = Vec::new();
+        for e in rd {
+            match e {
+                Ok(e) => entries.push(e),
+                Err(e) => {
+                    // the rest of the folder could not be read
+                    note_unreadable(&mut stats, FsError::from_io(&e, &dir));
+                    break;
+                }
+            }
+        }
         entries.sort_by_key(|e| e.file_name());
         for entry in entries {
             if cancel.load(Ordering::Relaxed) {
                 break 'walk;
             }
+            if only_dirs && entry.file_type().is_ok_and(|ft| !ft.is_dir()) {
+                stats.files_scanned += 1;
+                continue;
+            }
             let os_name = entry.file_name();
-            let lossy = os_name.to_str().is_none();
             let name = os_name.to_string_lossy().into_owned();
             let path = entry.path();
+            // below a folder with a non-UTF-8 name the path is lossy too: such a hit
+            // cannot be addressed by its path string (review 009 #4)
+            let lossy = path.to_str().is_none();
             // `DirEntry::metadata` does not follow links (lstat)
-            let Ok(meta) = entry.metadata() else {
-                continue;
+            let meta = match entry.metadata() {
+                Ok(m) => m,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue, // gone meanwhile
+                Err(e) => {
+                    note_unreadable(&mut stats, FsError::from_io(&e, &path));
+                    continue;
+                }
             };
             if (!c.include_hidden && is_hidden(&name, &meta)) || c.excluded(&name) {
                 continue;
@@ -523,26 +566,18 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             let ft = meta.file_type();
             let is_link = ft.is_symlink();
             if ft.is_dir() {
-                if enter {
-                    if c.follow_links {
-                        if let Some(k) = dir_key(&path, &meta)
-                            && visited.insert(k)
-                        {
-                            children.push(path.clone());
-                        }
-                    } else {
-                        children.push(path.clone());
-                    }
+                if enter && !skip_dir(&path) && (!c.follow_links || first_visit(&path, &meta)) {
+                    children.push(path.clone());
                 }
             } else {
                 stats.files_scanned += 1;
                 if is_link
                     && c.follow_links
                     && enter
+                    && !skip_dir(&path)
                     && let Ok(target) = fs::metadata(&path)
                     && target.is_dir()
-                    && let Some(k) = dir_key(&path, &target)
-                    && visited.insert(k)
+                    && first_visit(&path, &target)
                 {
                     children.push(path.clone());
                 }
@@ -579,6 +614,11 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             {
                 continue;
             }
+            // one hit more than allowed: only now is the result incomplete (review 009 #12)
+            if stats.hits >= c.max_hits {
+                stats.truncated = true;
+                break 'walk;
+            }
             let hit = SearchHit {
                 entry: entry_from_metadata(name, &path, &meta, lossy),
                 dir: dir_str.clone(),
@@ -586,10 +626,6 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             stats.hits += 1;
             stats.elapsed_ms = start.elapsed().as_millis() as u64;
             sink(Some(hit), &stats);
-            if stats.hits >= c.max_hits {
-                stats.truncated = true;
-                break 'walk;
-            }
         }
         // pop in name order (deterministic, like the listing)
         children.sort_by(|a, b| b.cmp(a));
@@ -626,6 +662,7 @@ mod tests {
             excludes: vec![],
             content: None,
             max_hits: None,
+            skip_virtual_fs: true,
         }
     }
 
@@ -939,6 +976,89 @@ mod tests {
         });
         assert_eq!(res.stats.hits, 3);
         assert!(!res.stats.truncated);
+    }
+
+    /// Review 009 #12: exactly `max_hits` hits is not "truncated" – only one more is.
+    #[test]
+    fn exactly_max_hits_is_not_truncated() {
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        for i in 0..10 {
+            fs::write(r.join(format!("f{i}.txt")), b"").unwrap();
+        }
+        let mut c = crit(r);
+        c.max_hits = Some(10);
+        let (names, res) = run(&c, r);
+        assert_eq!(names.len(), 10);
+        assert!(!res.stats.truncated, "all hits were found");
+        fs::write(r.join("f10.txt"), b"").unwrap();
+        let (names, res) = run(&c, r);
+        assert_eq!(names.len(), 10);
+        assert!(res.stats.truncated);
+    }
+
+    /// Review 009 #4: below a folder with a non-UTF-8 name, every hit's path is
+    /// lossy (U+FFFD) – the hits are flagged like the folder itself.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn hits_below_a_non_utf8_folder_are_lossy() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        let bad = r.join(OsStr::from_bytes(b"bad\xffdir"));
+        fs::create_dir_all(bad.join("sub")).unwrap();
+        fs::write(bad.join("sub/ok.txt"), b"").unwrap();
+        fs::write(r.join("fine.txt"), b"").unwrap();
+        let compiled = compile(&crit(r)).unwrap();
+        let mut hits = Vec::new();
+        walk(&compiled, &AtomicBool::new(false), &mut |h, _| {
+            hits.extend(h)
+        });
+        let by_name = |n: &str| hits.iter().find(|h| h.entry.name == n).unwrap();
+        assert!(!by_name("fine.txt").entry.lossy_name);
+        assert!(by_name("sub").entry.lossy_name, "child of a lossy folder");
+        assert!(
+            by_name("ok.txt").entry.lossy_name,
+            "grandchild of a lossy folder"
+        );
+        assert!(
+            hits.iter()
+                .any(|h| h.entry.lossy_name && h.entry.name.contains('\u{FFFD}'))
+        );
+    }
+
+    /// Review 009 #6: /proc, /sys and /dev are not entered by default (a root
+    /// that is one of them is still searched).
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn virtual_file_systems_are_skipped_by_default() {
+        if !Path::new("/proc/self").exists() {
+            return;
+        }
+        let mut c = crit(Path::new("/"));
+        c.name = "self".into();
+        c.max_depth = Some(2);
+        c.kinds = Kinds {
+            files: false,
+            dirs: false,
+            links: true,
+        };
+        let found = |c: &SearchCriteria| {
+            let compiled = compile(c).unwrap();
+            let mut hits = Vec::new();
+            walk(&compiled, &AtomicBool::new(false), &mut |h, _| {
+                hits.extend(h)
+            });
+            hits.iter().any(|h| h.entry.path == "/proc/self")
+        };
+        assert!(!found(&c));
+        c.skip_virtual_fs = false;
+        assert!(found(&c));
+        let mut inside = crit(Path::new("/proc"));
+        inside.name = "self".into();
+        inside.max_depth = Some(1);
+        assert!(found(&inside), "an explicit root is searched");
     }
 
     #[test]
