@@ -99,6 +99,19 @@ describe('ButtonBar', () => {
     expect(el.querySelector('[role="menu"]')).toBeNull();
   });
 
+  it('closes the colour scheme menu with a second click on its button (review 013 #10)', async () => {
+    const { fixture, el } = await render();
+    const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
+    toggle.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).not.toBeNull();
+    toggle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    toggle.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('opens the Actions menu with four columns', async () => {
     const { fixture, el } = await render();
     el.querySelector<HTMLButtonElement>('.actions-toggle')!.click();

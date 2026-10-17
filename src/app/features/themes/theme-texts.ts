@@ -18,7 +18,8 @@ export const THEME_TEXTS = {
   ratio: (label: string, ratio: number | null, min: number) =>
     ratio === null
       ? `${label}: colour not resolvable`
-      : `${label}: ${ratio.toFixed(1)}:1 (min. ${min}:1)`,
+      : // rounded down: 4.48 must not read as 4.5 (review 013 #6)
+        `${label}: ${(Math.floor(ratio * 10) / 10).toFixed(1)}:1 (min. ${min}:1)`,
   lowContrast: 'Low contrast – see the list at the top',
   save: 'Save',
   saveAs: 'Save as new',
@@ -39,6 +40,9 @@ export const THEME_TEXTS = {
     `Imported “${name}”.` +
     (unknown ? ` ${unknown} variable(s) are unknown to this version and kept.` : '') +
     (dropped ? ` ${dropped} value(s) were rejected.` : ''),
+  notSelected: (n: number) =>
+    `It is not selected: ${n === 1 ? '1 contrast problem' : `${n} contrast problems`} – fix the values and save (Save also selects it).`,
+  noPicker: 'Transparent – type a colour to replace it',
   exported: (path: string) => `Exported to ${path}`,
   menuLabel: 'Colour scheme',
   menuEdit: 'Edit colour schemes…',

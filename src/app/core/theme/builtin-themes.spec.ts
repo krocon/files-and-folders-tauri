@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
-import { checkContrast, isSafeValue, resolveColor } from './theme-logic';
+import { checkContrast, isSafeValue, resolveColor, tokenValueOk } from './theme-logic';
 import { TOKENS } from './tokens';
 
 /** `--name: value;` declarations of a block. */
@@ -20,6 +20,7 @@ describe('built-in themes', () => {
       expect(Object.keys(theme.tokens).sort()).toEqual(TOKENS.map((t) => t.name).sort());
       for (const [name, value] of Object.entries(theme.tokens)) {
         expect(isSafeValue(value), `${theme.id} ${name}`).toBe(true);
+        expect(tokenValueOk(name, value), `${theme.id} ${name}: ${value}`).toBe(true);
       }
       for (const t of TOKENS.filter((d) => d.kind === 'color')) {
         expect(resolveColor(t.name, theme.tokens), `${theme.id} ${t.name}`).not.toBeNull();

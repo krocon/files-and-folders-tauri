@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blend, contrastRatio, parseColor, toHex } from './color';
+import { blend, contrastRatio, parseColor, pickedColor, toHex } from './color';
 
 describe('color', () => {
   it('parses hex, rgb()/rgba() and names', () => {
@@ -38,5 +38,11 @@ describe('color', () => {
       a: 1,
     });
     expect(toHex(parseColor('rgb(1, 2, 255)')!)).toBe('#0102ff');
+  });
+
+  it('keeps the alpha of the old value when a colour is picked (review 013 #7)', () => {
+    expect(pickedColor('#112233', parseColor('#ffffff'))).toBe('#112233');
+    expect(pickedColor('#112233', parseColor('rgb(0 0 0 / 25%)'))).toBe('rgb(17 34 51 / 0.25)');
+    expect(pickedColor('#112233', null)).toBe('#112233');
   });
 });

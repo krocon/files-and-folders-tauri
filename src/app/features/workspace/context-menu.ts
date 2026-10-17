@@ -85,6 +85,8 @@ export class ContextMenu {
   readonly x = input(0);
   readonly y = input(0);
   readonly label = input('');
+  /** The opener: a press on it is not "outside" – its click toggles the menu (review 013 #10). */
+  readonly anchor = input<Element | null>(null);
   readonly chosen = output<string>();
   /** `key` = Escape/Tab (focus back to the opener), `outside` = click elsewhere. */
   readonly closed = output<'key' | 'outside'>();
@@ -166,7 +168,8 @@ export class ContextMenu {
   }
 
   protected onOutside(evt: PointerEvent): void {
-    if (!this.host.nativeElement.contains(evt.target as Node)) {
+    const target = evt.target as Node;
+    if (!this.host.nativeElement.contains(target) && !this.anchor()?.contains(target)) {
       this.closed.emit('outside');
     }
   }
@@ -194,6 +197,12 @@ export class ContextMenu {
     }
     if (rect.bottom > window.innerHeight) {
       menu.style.top = `${Math.max(0, window.innerHeight - rect.height - 4)}px`;
+    }
+    // never over the opener (its second click closes the menu): above it when it would cover it
+    const anchor = this.anchor()?.getBoundingClientRect();
+    const now = menu.getBoundingClientRect();
+    if (anchor && now.bottom > anchor.top && now.top < anchor.bottom) {
+      menu.style.top = `${Math.max(0, anchor.top - now.height - 2)}px`;
     }
   }
 }

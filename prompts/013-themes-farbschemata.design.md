@@ -212,6 +212,17 @@ Kontrast-Warnungen als Text (`role="status"`-Zusammenfassung), nicht nur Farbe.
 
 | # | Fund | Stand |
 |---|---|---|
+| 1 | mittel – unbekannte Tokens werden angewendet, überschreiben Layout-Variablen | ✅ Allowlist: angewendet nur Katalog-Tokens (`applicableToken`), gespeichert nur Theme-Tokens (`tokenKind`: Katalog, sonst Präfix `--color-`/`--shadow-`/`--font-size-`/`--font-`, `--fnf-*` nur gespeichert); Werte je Art (Farbe/`var(--color-…)`, Länge px 6–48 · rem 0.375–3 …, Font-Namensliste, Schatten); schlechter Wert → Basiswert. Rust `token_ok` gleich, `bound` nutzt es; Tests TS + Rust |
+| 2 | mittel – Import wählt ohne Kontrastprüfung aus | ✅ `importFile` speichert, wählt nur ohne Kontrastfehler; sonst öffnet der Dialog es im Editor mit Problemliste („not selected … Save also selects it“); Speichern ist dafür auch ohne Änderung aktiv |
+| 3 | mittel – Tab-Zeile bekommt `--color-list-bg` | ✅ `.part` ohne Hintergrund, Liste setzt ihn selbst; im Fenster geprüft (light/dark, inaktive Tab-Zeile = Kopf-Farbe, gewählter Tab hebt sich ab); Kontrastpaar „Tabs, active panel“ ergänzt |
+| 4 | mittel – Radiogruppe zeigt bei ungespeicherten Änderungen ein anderes Schema | ✅ Radio wird auf das Schema im Editor zurückgesetzt (+ Hinweis) |
+| 5 | gering – Kontrasttest-Lücken | ✅ hidden/symlink/error auf active-list-bg, active-list-text auf row-hover, Spaltenkopf aktiv, Tabs auf active-header-bg, Fokusring auf Kopf/Liste/Dialog/Statuszeile; durchscheinende Zeilen-bg auf (active-)list-bg gemischt. `marked` im aktiven Panel ist `active-marked` (Paar bestand schon). Eingebaute Schemata bleiben grün |
+| 6 | gering – Ratio gerundet statt abgerundet | ✅ abgerundet (4.48 → „4.4:1“) |
+| 7 | gering – Farbwähler verliert Alpha, zerstört `transparent` | ✅ `pickedColor` behält Alpha (`rgb(r g b / a)`), für `transparent` kein Wähler; `var()`-Werte: Wähler zeigt die aufgelöste Farbe, erst ein bewusster Pick ersetzt die Verknüpfung (Annahme) |
+| 8 | gering – TS-Regex ohne C1 | ✅ U+0080–9F abgelehnt (wie Rust `is_control`); `parseColor` mit strikten Zahlen wie Rust |
+| 9 | gering – Export-Dateiname | ✅ `export_stem`: Trenner/Windows-Zeichen/Steuerzeichen → `-`, kein Punkt/Leerzeichen am Ende, `_CON`, ≤ 200 Byte; dann `validate_name_for(…, windows)` + `validate_name`; Test |
+| 10 | gering – 🎨 schließt nicht, Menü ohne Scroll | ✅ `ContextMenu.anchor`: Druck auf den Öffner ist nicht „außen“, Menü liegt nie über dem Öffner (im Fenster geprüft); `max-height` + Scroll |
+| 11 | gering – eigene Schemata speichern alle Tokens | ✅ `saveTheme` speichert `diffTokens` gegen das Basisschema |
 
 ## 10. Fortschritt
 

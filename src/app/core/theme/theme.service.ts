@@ -5,18 +5,28 @@ import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
 import { toHex } from './color';
 import { ThemeApi, ThemeFileContent } from './theme-api';
 import {
+  applicableToken,
+  checkContrast,
   completeTokens,
+  ContrastResult,
+  diffTokens,
   ImportedTheme,
-  isSafeValue,
-  isTokenName,
   newThemeId,
   normalizeImport,
   resolveColor,
+  sanitizeTokens,
   uniqueName,
 } from './theme-logic';
 import { DEFAULT_SELECTION, Theme, ThemeSelection, ThemesFile } from './theme.models';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/** Result of an import: selected only without contrast problems. */
+export interface ImportedScheme extends ImportedTheme {
+  readonly id: string;
+  readonly problems: readonly ContrastResult[];
+  readonly selected: boolean;
+}
 
 export interface ThemeDraft {
   readonly name: string;
@@ -92,7 +102,13 @@ export class ThemeService {
   async init(): Promise<void> {
     try {
       const loaded = await this.api.load();
-      this.userThemes.set(loaded.file.themes.map((t) => ({ ...t, builtIn: false })));
+      this.userThemes.set(
+        loaded.file.themes.map((t) => ({
+          ...t,
+          tokens: sanitizeTokens(t.tokens).tokens,
+          builtIn: false,
+        })),
+      );
       this.selection.set({ ...DEFAULT_SELECTION, ...loaded.file.selection });
       if (loaded.warning) {
         this.actions.report(loaded.warning);
@@ -136,9 +152,11 @@ export class ThemeService {
 
   /**
    * Saves an own scheme: `id` of an own scheme = replace it, otherwise a new one
-   * (unique name/id). Selects it; resolves with its id.
+   * (unique name/id). Stores only what differs from the built-in scheme of the
+   * same brightness, so corrections of the base arrive (review 013 #11).
+   * Selects it unless `select` is false; resolves with its id.
    */
-  async saveTheme(draft: ThemeDraft, id?: string): Promise<string> {
+  async saveTheme(draft: ThemeDraft, id?: string, select = true): Promise<string> {
     const own = id ? this.userThemes().find((t) => t.id === id) : undefined;
     const others = this.themes().filter((t) => t.id !== own?.id);
     const name = uniqueName(
@@ -146,11 +164,15 @@ export class ThemeService {
       others.map((t) => t.name),
     );
     const themeId = own?.id ?? newThemeId(name, new Set(this.themes().map((t) => t.id)));
-    const theme: Theme = { id: themeId, name, dark: draft.dark, tokens: { ...draft.tokens } };
+    const base = (draft.dark ? DARK : LIGHT).tokens;
+    const tokens = diffTokens(sanitizeTokens(draft.tokens).tokens, base);
+    const theme: Theme = { id: themeId, name, dark: draft.dark, tokens };
     this.userThemes.update((list) =>
       own ? list.map((t) => (t.id === own.id ? theme : t)) : [...list, theme],
     );
-    this.selection.update((s) => ({ ...s, mode: 'fixed', theme: themeId }));
+    if (select) {
+      this.selection.update((s) => ({ ...s, mode: 'fixed', theme: themeId }));
+    }
     await this.save();
     return themeId;
   }
@@ -170,15 +192,20 @@ export class ThemeService {
     return this.save();
   }
 
-  /** Imports a scheme file and selects it; resolves with what was read. */
-  async importFile(path: string): Promise<ImportedTheme & { id: string }> {
+  /**
+   * Imports a scheme file as an own scheme; selects it only when it passes the
+   * contrast check (review 013 #2). Resolves with what was read.
+   */
+  async importFile(path: string): Promise<ImportedScheme> {
     const raw = await this.api.importFile(path);
     const imported = normalizeImport(raw);
     if (typeof imported === 'string') {
       throw toFsError({ code: 'invalid_path', message: imported, path });
     }
-    const id = await this.saveTheme(imported);
-    return { ...imported, id, name: this.find(id)?.name ?? imported.name };
+    const problems = checkContrast(completeTokens(imported, LIGHT, DARK)).filter((r) => !r.ok);
+    const selected = problems.length === 0;
+    const id = await this.saveTheme(imported, undefined, selected);
+    return { ...imported, id, name: this.find(id)?.name ?? imported.name, problems, selected };
   }
 
   /** Writes a scheme (complete tokens) as `<name>.theme.json` into `dir`; resolves with the path. */
@@ -221,17 +248,23 @@ export class ThemeService {
       return;
     }
     const root = document.documentElement;
+    const applied = new Set<string>();
+    const base = (theme.dark ? DARK : LIGHT).tokens;
+    for (const [name, raw] of Object.entries(theme.tokens)) {
+      // catalog tokens with a value of their kind only, never layout variables (review 013 #1);
+      // a bad value falls back to the built-in one
+      const value = applicableToken(name, raw) ? raw : base[name];
+      if (value !== undefined && applicableToken(name, value)) {
+        root.style.setProperty(name, value.trim());
+        applied.add(name);
+      }
+    }
     for (const name of this.appliedNames) {
-      if (!(name in theme.tokens)) {
+      if (!applied.has(name)) {
         root.style.removeProperty(name);
       }
     }
-    for (const [name, value] of Object.entries(theme.tokens)) {
-      if (isTokenName(name) && isSafeValue(value)) {
-        root.style.setProperty(name, value);
-      }
-    }
-    this.appliedNames = new Set(Object.keys(theme.tokens));
+    this.appliedNames = applied;
     root.dataset['theme'] = theme.dark ? 'dark' : 'light';
     root.style.colorScheme = theme.dark ? 'dark' : 'light';
     const bg = resolveColor('--color-bg', theme.tokens);

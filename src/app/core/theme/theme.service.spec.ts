@@ -145,6 +145,59 @@ describe('ThemeService', () => {
     expect(root().style.getPropertyValue('--color-bg')).toBe(LIGHT.tokens['--color-bg']);
   });
 
+  it('applies only catalog tokens with a value of their kind (review 013 #1)', async () => {
+    const s = create();
+    await s.init();
+    root().style.setProperty('--focus-ring-width', '2px');
+    s.preview.set({
+      name: 'p',
+      dark: false,
+      tokens: {
+        '--color-bg': '#123456',
+        '--focus-ring-width': '0',
+        '--font-size-md': '0px',
+        '--font-size-list': '1px',
+        '--fnf-table-bg-color': '#000000',
+      },
+    });
+    TestBed.tick();
+    expect(root().style.getPropertyValue('--color-bg')).toBe('#123456');
+    expect(root().style.getPropertyValue('--focus-ring-width')).toBe('2px');
+    expect(root().style.getPropertyValue('--font-size-md')).toBe('');
+    expect(root().style.getPropertyValue('--font-size-list')).toBe(
+      LIGHT.tokens['--font-size-list'],
+    );
+    expect(root().style.getPropertyValue('--fnf-table-bg-color')).toBe('');
+  });
+
+  it('stores only what differs from the base scheme, so fixes of the base arrive (review 013 #11)', async () => {
+    const s = create();
+    await s.init();
+    await s.saveTheme({
+      name: 'Mine',
+      dark: true,
+      tokens: { ...DARK.tokens, '--color-bg': '#000000' },
+    });
+    expect(api.saved.at(-1)?.themes[0].tokens).toEqual({ '--color-bg': '#000000' });
+    expect(s.applied().tokens['--color-text']).toBe(DARK.tokens['--color-text']);
+  });
+
+  it('imports a scheme with contrast problems without selecting it (review 013 #2)', async () => {
+    api.files.set('/t/bad.json', {
+      name: 'Pale',
+      dark: false,
+      tokens: { '--color-text': '#eeeeee' },
+    });
+    const s = create();
+    await s.init();
+    const r = await s.importFile('/t/bad.json');
+    expect(r.problems.length).toBeGreaterThan(0);
+    expect(r.selected).toBe(false);
+    expect(s.find(r.id)?.name).toBe('Pale');
+    expect(s.active().id).toBe('light');
+    expect(api.saved.at(-1)?.themes.map((t) => t.name)).toEqual(['Pale']);
+  });
+
   it('cycles with next()', async () => {
     const s = create();
     await s.init();
@@ -163,7 +216,13 @@ describe('ThemeService', () => {
     const s = create();
     await s.init();
     const r = await s.importFile('/t/old.json');
-    expect(r).toMatchObject({ name: 'coffee', dark: true, legacy: true, dropped: ['--fnf-x'] });
+    expect(r).toMatchObject({
+      name: 'coffee',
+      dark: true,
+      legacy: true,
+      dropped: ['--fnf-x'],
+      selected: true,
+    });
     expect(s.active().id).toBe(r.id);
     await expect(s.importFile('/t/bad.json')).rejects.toMatchObject({ code: 'invalid_path' });
     await expect(s.importFile('/t/missing.json')).rejects.toMatchObject({ code: 'not_found' });

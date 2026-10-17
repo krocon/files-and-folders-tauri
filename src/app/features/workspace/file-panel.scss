@@ -2,9 +2,10 @@
   display: contents;
 }
 
+/* no background here: `.part[_ngcontent]` beats the tab bar's `:host` and would paint
+   the tab row with the list colour (review 013 #3) – each part sets its own */
 .part {
   min-width: 0;
-  background: var(--color-list-bg);
 }
 
 :host(.side-left) .part {
@@ -108,6 +109,7 @@
 
 .list {
   grid-row: 3;
+  background: var(--color-list-bg);
   position: relative;
   display: flex;
   min-height: 0;

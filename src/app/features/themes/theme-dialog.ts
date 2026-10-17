@@ -10,13 +10,12 @@ import {
 } from '@angular/core';
 import { toFsError } from '../../core/fs/fs-error';
 import { DARK, LIGHT } from '../../core/theme/builtin-themes';
-import { toHex } from '../../core/theme/color';
+import { pickedColor, Rgba, toHex } from '../../core/theme/color';
 import {
   checkContrast,
   completeTokens,
-  isColorValue,
-  isSafeValue,
   resolveColor,
+  tokenValueOk,
 } from '../../core/theme/theme-logic';
 import { Theme } from '../../core/theme/theme.models';
 import { ThemeDraft, ThemeService } from '../../core/theme/theme.service';
@@ -29,8 +28,10 @@ import { THEME_TEXTS } from './theme-texts';
 interface Row {
   readonly def: TokenDef;
   readonly value: string;
-  /** `#rrggbb` for the picker, `null` = not a resolvable colour. */
+  /** `#rrggbb` for the picker, `null` = not a resolvable or a fully transparent colour. */
   readonly hex: string | null;
+  /** The resolved colour (its alpha is kept when picking, review 013 #7). */
+  readonly color: Rgba | null;
   readonly invalid: boolean;
   readonly warn: boolean;
 }
@@ -113,7 +114,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
                   [value]="s.id"
                   [checked]="s.id === editId()"
                   [attr.data-autofocus]="s.id === editId() ? '' : null"
-                  (change)="pick(s.id)"
+                  (change)="pick(s.id, $any($event.target))"
                 />
                 <span class="swatch" aria-hidden="true" [style.background]="swatch(s)"></span>
                 <span class="sname">{{ s.name }}</span>
@@ -179,7 +180,8 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
                         [value]="r.hex ?? '#000000'"
                         [disabled]="r.hex === null"
                         [attr.aria-label]="t.pickColor(r.def.label)"
-                        (input)="setToken(r.def.name, $any($event.target).value)"
+                        [attr.title]="r.hex === null ? t.noPicker : null"
+                        (input)="pickColor(r, $any($event.target).value)"
                       />
                     } @else {
                       <span class="nopicker" aria-hidden="true"></span>
@@ -219,7 +221,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
           <button
             type="button"
             class="btn primary"
-            [disabled]="!isOwn() || !dirty() || hasInvalid()"
+            [disabled]="!isOwn() || !(dirty() || !isActive()) || hasInvalid()"
             [attr.title]="isOwn() ? null : t.builtInReadOnly"
             (click)="save()"
           >
@@ -248,6 +250,8 @@ export class ThemeDialog {
 
   protected readonly dirty = computed(() => !sameDraft(this.draft(), draftOf(this.original())));
   protected readonly isOwn = computed(() => !this.original().builtIn);
+  /** The scheme in the editor is the one on screen (an import with contrast problems is not). */
+  private readonly isActive = computed(() => this.editId() === this.theme.active().id);
   protected readonly hasInvalid = computed(() => this.invalid().size > 0);
   private readonly contrast = computed(() => checkContrast(this.draft().tokens));
   protected readonly problems = computed(() => this.contrast().filter((r) => !r.ok));
@@ -261,7 +265,9 @@ export class ThemeDialog {
       return {
         def,
         value: tokens[def.name] ?? '',
-        hex: c ? toHex(c) : null,
+        // no picker for `transparent`: picking would make it opaque
+        hex: c && c.a > 0 ? toHex(c) : null,
+        color: c,
         invalid: invalid.has(def.name),
         warn: warn.has(def.name),
       };
@@ -308,8 +314,19 @@ export class ThemeDialog {
     void (on ? this.theme.followSystem() : this.theme.select(this.theme.active().id));
   }
 
-  protected pick(id: string): void {
+  protected pick(id: string, radio?: HTMLInputElement): void {
     if (this.dirty()) {
+      // the native radio has moved already: put it back on the scheme in the editor (review 013 #4)
+      if (radio) {
+        radio.checked = false;
+        const fieldset = radio.closest('fieldset');
+        const current = [
+          ...(fieldset?.querySelectorAll<HTMLInputElement>('input[type="radio"]') ?? []),
+        ].find((r) => r.value === this.editId());
+        if (current) {
+          current.checked = true;
+        }
+      }
       this.message.set(this.t.unsavedFirst);
       return;
     }
@@ -330,9 +347,12 @@ export class ThemeDialog {
     this.draft.update((d) => ({ ...d, tokens: { ...d.tokens, [name]: value } }));
   }
 
+  protected pickColor(row: Row, hex: string): void {
+    this.setToken(row.def.name, pickedColor(hex, row.color));
+  }
+
   protected setText(name: string, value: string): void {
-    const kind = TOKENS.find((d) => d.name === name)?.kind;
-    if (kind === 'color' ? isColorValue(value) : isSafeValue(value)) {
+    if (tokenValueOk(name, value)) {
       this.setToken(name, value.trim());
     } else {
       this.invalid.update((s) => new Set(s).add(name));
@@ -380,8 +400,12 @@ export class ThemeDialog {
     }
     try {
       const r = await this.theme.importFile(entry.path);
+      // with contrast problems it is only opened in the editor, not selected (review 013 #2)
       this.load(r.id);
-      this.message.set(this.t.imported(r.name, r.unknown.length, r.dropped.length));
+      this.message.set(
+        this.t.imported(r.name, r.unknown.length, r.dropped.length) +
+          (r.selected ? '' : ` ${this.t.notSelected(r.problems.length)}`),
+      );
     } catch (err) {
       this.message.set(toFsError(err).message);
     }

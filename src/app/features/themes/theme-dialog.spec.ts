@@ -119,9 +119,41 @@ describe('ThemeDialog', () => {
     await settle();
     expect(service.active().id).toBe('light');
     expect(el.textContent).toContain('Save or reset your changes first');
+    // the radio group keeps showing the scheme in the editor (review 013 #4)
+    const radios = [...el.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(radios.map((r) => r.checked)).toEqual([true, false]);
     button('Reset').click();
     await settle();
     expect(document.documentElement.style.getPropertyValue('--color-bg')).toBe('#f4f5f7');
+  });
+
+  it('keeps the alpha when a colour is picked and offers no picker for transparent (review 013 #7)', async () => {
+    const { el, service, settle } = await open();
+    const picker = (label: string) =>
+      el.querySelector<HTMLInputElement>(`input[aria-label="${label}: pick a colour"]`)!;
+    expect(picker('Marked background').disabled).toBe(true);
+    const backdrop = picker('Dialog backdrop');
+    expect(backdrop.disabled).toBe(false);
+    backdrop.value = '#112233';
+    backdrop.dispatchEvent(new Event('input'));
+    await settle();
+    expect(service.preview()?.tokens['--color-backdrop']).toBe('rgb(17 34 51 / 0.25)');
+  });
+
+  it('opens an imported scheme with contrast problems in the editor instead of selecting it (review 013 #2)', async () => {
+    api.files.set('/t/pale.theme.json', {
+      name: 'Pale',
+      dark: false,
+      tokens: { '--color-text': '#eeeeee' },
+    });
+    cursor = { path: '/t/pale.theme.json', kind: 'file' };
+    const { el, service, button, settle } = await open();
+    button('Import').click();
+    await settle();
+    expect(service.active().id).toBe('light');
+    expect(el.querySelector<HTMLInputElement>('.row.head input[type="text"]')!.value).toBe('Pale');
+    expect(el.textContent).toContain('not selected');
+    expect(el.textContent).toContain('contrast problem');
   });
 
   it('imports the file under the cursor and exports into the active folder', async () => {

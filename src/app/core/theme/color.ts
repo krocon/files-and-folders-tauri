@@ -35,6 +35,7 @@ const NAMED: Readonly<Record<string, string>> = {
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const NUMBER = /^[-+]?(\d+\.?\d*|\.\d+)%?$/;
 
 /** Parses `#rgb[a]`, `#rrggbb[aa]`, `rgb()/rgba()` (comma or space syntax) and basic names; else `null`. */
 export function parseColor(input: string): Rgba | null {
@@ -68,16 +69,14 @@ export function parseColor(input: string): Rgba | null {
   if (parts.length !== 3) {
     return null;
   }
-  const ch = parts.map((p) => (p.endsWith('%') ? (parseFloat(p) * 255) / 100 : parseFloat(p)));
-  if (ch.some((c) => Number.isNaN(c))) {
+  // strict numbers (as Rust `css_number`): `12abc` is no channel
+  if (!parts.every((p) => NUMBER.test(p)) || (alpha !== undefined && !NUMBER.test(alpha))) {
     return null;
   }
+  const ch = parts.map((p) => (p.endsWith('%') ? (parseFloat(p) * 255) / 100 : parseFloat(p)));
   let a = 1;
   if (alpha !== undefined) {
     a = alpha.endsWith('%') ? parseFloat(alpha) / 100 : parseFloat(alpha);
-    if (Number.isNaN(a)) {
-      return null;
-    }
   }
   return {
     r: clamp(Math.round(ch[0]), 0, 255),
@@ -121,4 +120,17 @@ export const WHITE: Rgba = { r: 255, g: 255, b: 255, a: 1 };
 export function toHex(c: Rgba): string {
   const h = (v: number) => v.toString(16).padStart(2, '0');
   return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
+}
+
+/**
+ * The value for a colour chosen in `<input type="color">` (`#rrggbb`): keeps the
+ * alpha of the previous colour (`rgb(r g b / a)`), review 013 #7.
+ */
+export function pickedColor(hex: string, previous: Rgba | null): string {
+  const c = parseColor(hex);
+  if (!c || !previous || previous.a >= 1) {
+    return hex;
+  }
+  const a = Math.round(previous.a * 1000) / 1000;
+  return `rgb(${c.r} ${c.g} ${c.b} / ${a})`;
 }

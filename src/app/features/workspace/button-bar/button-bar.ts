@@ -89,6 +89,7 @@ interface ToolButton {
         [x]="pos.x"
         [y]="pos.y"
         [label]="themeTexts.menuLabel"
+        [anchor]="pos.anchor"
         (chosen)="onThemeChosen($event)"
         (closed)="onThemeMenuClosed($event)"
       />
@@ -104,7 +105,7 @@ export class ButtonBar {
   private readonly theme = inject(ThemeService);
   protected readonly menuOpen = signal(false);
   /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
-  protected readonly themeMenu = signal<{ x: number; y: number } | null>(null);
+  protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
   protected readonly themeTexts = THEME_TEXTS;
 
   protected readonly themeItems = computed<MenuItem[]>(() => {
@@ -186,8 +187,9 @@ export class ButtonBar {
       this.themeMenu.set(null);
       return;
     }
-    const rect = (evt.currentTarget as HTMLElement).getBoundingClientRect();
-    this.themeMenu.set({ x: rect.left, y: rect.top });
+    const anchor = evt.currentTarget as HTMLElement;
+    const rect = anchor.getBoundingClientRect();
+    this.themeMenu.set({ x: rect.left, y: rect.top, anchor });
   }
 
   protected onThemeChosen(id: string): void {
