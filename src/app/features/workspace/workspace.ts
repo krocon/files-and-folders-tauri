@@ -70,6 +70,7 @@ export class Workspace implements OnInit {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly dragging = signal(false);
+  protected readonly modalOpen = computed(() => this.dialogs.open() !== null);
   protected readonly splitPercent = computed(() => Math.round(this.ws.splitter() * 100));
   /** Live region text: "Left panel, /Users/marc". */
   protected readonly announcement = signal('');
