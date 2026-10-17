@@ -78,7 +78,11 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   `tools.json`, z. B. `"terminal": {"program": "open", "args": ["-a", "iTerm", "{dir}"]}`).
 - **Externe Tools**: `tools.json` im App-Config-Verzeichnis (Tool configuration… → „Open tools.json“ legt sie mit den
   Defaults an). Je Tool `program` + `args` (Array, **keine Shell**), Platzhalter je Argument `{file}`, `{files}`,
-  `{name}`, `{dir}`, `{targetDir}`, `perFile`, `fileLimit`, `shortcut` (Keymap-Notation). Einträge im alten Format
+  `{name}`, `{dir}`, `{targetDir}`, `perFile` (höchstens 50 Starts je Aufruf), `fileLimit`, `shortcut`
+  (Keymap-Notation), `workingDir` (absolut nach dem Ersetzen). `program` ist ein blanker Name (Suche im `PATH`) oder
+  ein absoluter Pfad. **Empfohlen: `{file}`/`{files}`** (volle Pfade) statt `{name}` – `{name}` am Argumentanfang wird
+  bei führendem `-` zu `./-name`. Tools, die an die Standard-App übergeben (`xdg-open`, `open`, `explorer`, … oder
+  `"defaultApp": true`), fragen bei Programmen/Skripten nach wie `Enter`. Einträge im alten Format
   (`cmd`, `para`, `$file`, `$dir`) werden beim Laden umgestellt. Tools stehen in der Befehlspalette, im Actions-Menü,
   unter **Open with tool…** (`Strg/⌘+Shift+X`) und auf ihrem Kürzel; `F4` startet das Tool `edit` (macOS
   Text-Editor, Windows Notepad, Linux Standard-App – für einen Editor z. B.

@@ -809,13 +809,17 @@ pub struct ToolContextInput {
 }
 
 /// Starts the configured tool `tool_id` – program and arguments come only from the
-/// configuration. Returns the number of started processes.
+/// configuration. Returns the number of started processes. A tool that hands files
+/// to the default app (F4 `edit` = `xdg-open` …) reports an executable like Enter
+/// does (`executable`); the frontend asks and repeats with `allow_executable`.
 #[tauri::command]
 pub async fn run_tool<R: Runtime>(
     app: AppHandle<R>,
     tool_id: String,
     context: ToolContextInput,
+    allow_executable: Option<bool>,
 ) -> Result<usize, FsError> {
+    let allow_executable = allow_executable.unwrap_or(false);
     let config = tools_config(&app).await;
     let tool = config.find(&tool_id).cloned().ok_or_else(|| {
         FsError::new(
@@ -854,6 +858,7 @@ pub async fn run_tool<R: Runtime>(
         for d in dir.iter().chain(target_dir.iter()) {
             existing_dir(d)?;
         }
+        crate::tools::check_default_app_files(&tool, &files, allow_executable)?;
         let ctx = crate::tools::ResolvedContext {
             files,
             dir,

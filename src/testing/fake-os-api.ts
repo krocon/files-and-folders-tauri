@@ -52,8 +52,18 @@ export class FakeOsApi extends OsApi {
     return this.tools;
   }
 
-  async runTool(toolId: string, context: ToolContext): Promise<number> {
+  /** Files that the backend reports as `executable` for default-app tools. */
+  readonly executables = new Set<string>();
+  /** `allowExecutable` of every `runTool` call. */
+  readonly allowed: boolean[] = [];
+
+  async runTool(toolId: string, context: ToolContext, allowExecutable = false): Promise<number> {
     this.check();
+    this.allowed.push(allowExecutable);
+    const exe = context.files.find((f) => this.executables.has(f));
+    if (exe !== undefined && !allowExecutable) {
+      throw { code: 'executable', message: 'This file is a program; confirm to run it', path: exe };
+    }
     this.runs.push({ toolId, context });
     return 1;
   }

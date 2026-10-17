@@ -19,8 +19,16 @@ export abstract class OsApi {
   abstract openTerminal(dir: string): Promise<void>;
   /** (Re)loads `tools.json` (merged with the defaults of the OS). */
   abstract loadTools(): Promise<LoadedTools>;
-  /** Starts a configured tool; returns the number of started processes. */
-  abstract runTool(toolId: string, context: ToolContext): Promise<number>;
+  /**
+   * Starts a configured tool; returns the number of started processes. A tool that
+   * hands files to the default app rejects an executable with `executable` unless
+   * `allowExecutable` (the user confirmed, like Enter).
+   */
+  abstract runTool(
+    toolId: string,
+    context: ToolContext,
+    allowExecutable?: boolean,
+  ): Promise<number>;
   /** Creates `tools.json` if needed and opens it with the default app; returns its path. */
   abstract openToolsConfig(): Promise<string>;
 }
@@ -43,8 +51,8 @@ export class TauriOsApi extends OsApi {
     return call<LoadedTools>('load_tools', {});
   }
 
-  runTool(toolId: string, context: ToolContext): Promise<number> {
-    return call<number>('run_tool', { toolId, context });
+  runTool(toolId: string, context: ToolContext, allowExecutable = false): Promise<number> {
+    return call<number>('run_tool', { toolId, context, allowExecutable });
   }
 
   openToolsConfig(): Promise<string> {

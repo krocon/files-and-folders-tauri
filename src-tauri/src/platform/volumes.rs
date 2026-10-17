@@ -278,18 +278,18 @@ fn under(path: &[u8], prefix: &str) -> bool {
 }
 
 /// `\040` → space etc. (the kernel escapes space, tab, newline and backslash).
+/// Computed in `u16`: `\777` is no byte and stays as it is (review 011 #6).
 #[cfg(target_os = "linux")]
 fn unescape_octal(field: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(field.len());
     let mut i = 0;
     while i < field.len() {
-        if field[i] == b'\\'
-            && i + 3 < field.len()
-            && field[i + 1..i + 4]
-                .iter()
-                .all(|b| (b'0'..=b'7').contains(b))
-        {
-            let v = (field[i + 1] - b'0') * 64 + (field[i + 2] - b'0') * 8 + (field[i + 3] - b'0');
+        let value = (field[i] == b'\\' && i + 4 <= field.len())
+            .then(|| &field[i + 1..i + 4])
+            .filter(|d| d.iter().all(|b| (b'0'..=b'7').contains(b)))
+            .map(|d| d.iter().fold(0u16, |v, b| v * 8 + u16::from(b - b'0')))
+            .and_then(|v| u8::try_from(v).ok());
+        if let Some(v) = value {
             out.push(v);
             i += 4;
         } else {
@@ -632,6 +632,10 @@ mod tests {
     fn octal_escapes_and_non_utf8() {
         assert_eq!(unescape_octal(b"a\\040b\\134c\\011"), b"a b\\c\t");
         assert_eq!(unescape_octal(b"x\\04"), b"x\\04"); // incomplete: kept
+        // review 011 #6: at the very end, and values above \377 are no byte (kept)
+        assert_eq!(unescape_octal(b"end\\040"), b"end ");
+        assert_eq!(unescape_octal(b"a\\777b"), b"a\\777b");
+        assert_eq!(unescape_octal(b"\\377"), [0xff]);
         let c = parse_mountinfo(b"1 0 8:1 / /mnt/\xff\\040x rw - ext4 /dev/x rw\n");
         use std::os::unix::ffi::OsStrExt;
         assert!(

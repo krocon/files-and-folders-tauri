@@ -20,6 +20,22 @@ pub const MAX_ARGS: usize = 64;
 pub const MAX_TEXT: usize = 4096;
 pub const MAX_FILE_LIMIT: u32 = 1000;
 pub const DEFAULT_FILE_LIMIT: u32 = 10;
+/// `perFile` starts at most this many programs per call (review 011 #7) – more
+/// would flood the desktop with windows; `fileLimit` may be higher for `{files}`.
+pub const MAX_PER_FILE_STARTS: usize = 50;
+/// Programs that hand their arguments to the default app: their files are checked
+/// like Enter (design 003 E2) – a script would be *run*, not opened (review 011 #1).
+const DEFAULT_APP_LAUNCHERS: &[&str] = &[
+    "xdg-open",
+    "gio",
+    "kde-open",
+    "kde-open5",
+    "gnome-open",
+    "exo-open",
+    "open",
+    "explorer",
+    "explorer.exe",
+];
 
 /// A program with arguments (`{dir}` allowed) – the custom terminal.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,9 +61,14 @@ pub struct Tool {
     pub per_file: bool,
     #[serde(default = "default_limit")]
     pub file_limit: u32,
-    /// Working folder (placeholders allowed); default `{dir}`, else the home folder.
+    /// Working folder (placeholders allowed, absolute after replacing); default
+    /// `{dir}`, else the home folder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub working_dir: Option<String>,
+    /// The program hands files to the default app (like `xdg-open`): executables
+    /// need a confirmation. Known launchers count without this flag.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub default_app: bool,
 }
 
 fn default_limit() -> u32 {
@@ -158,6 +179,7 @@ fn tool(id: &str, label: &str, program: &str, args: &[&str], per_file: bool, lim
         per_file,
         file_limit: limit,
         working_dir: None,
+        default_app: false,
     }
 }
 
@@ -242,6 +264,19 @@ fn text_ok(s: &str) -> bool {
     s.len() <= MAX_TEXT && !s.contains('\0')
 }
 
+/// A program is a bare name (looked up in `PATH`) or an absolute path – never
+/// relative to the working folder, which is the panel's folder (review 011 #4).
+pub fn program_ok(p: &str) -> bool {
+    let p = p.trim();
+    if p.is_empty() || !text_ok(p) || p.contains('{') {
+        return false;
+    }
+    if Path::new(p).is_absolute() {
+        return true;
+    }
+    !p.contains(['/', '\\', ':']) && p != "." && p != ".."
+}
+
 /// Checks one tool; trims the label and clamps the file limit.
 pub fn validate(mut t: Tool) -> Result<Tool, String> {
     if !valid_id(&t.id) {
@@ -254,9 +289,9 @@ pub fn validate(mut t: Tool) -> Result<Tool, String> {
     if t.label.is_empty() || t.label.chars().count() > 100 {
         return Err(format!("tool {}: the label is empty or too long", t.id));
     }
-    if t.program.trim().is_empty() || !text_ok(&t.program) || t.program.contains('{') {
+    if !program_ok(&t.program) {
         return Err(format!(
-            "tool {}: the program is empty, too long or contains a placeholder",
+            "tool {}: the program must be a name (found in PATH) or an absolute path, without placeholders",
             t.id
         ));
     }
@@ -381,6 +416,7 @@ fn from_mr(m: MrTool) -> Result<Tool, String> {
         per_file: line.contains("$file"),
         file_limit: m.file_limit.unwrap_or(DEFAULT_FILE_LIMIT),
         working_dir: None,
+        default_app: false,
     })
 }
 
@@ -454,9 +490,7 @@ pub fn parse(text: &str, defaults: Vec<Tool>) -> ToolsConfig {
     }
     let terminal = match file.terminal {
         Some(t)
-            if t.program.trim().is_empty()
-                || !text_ok(&t.program)
-                || t.program.contains('{')
+            if !program_ok(&t.program)
                 || t.args.len() > MAX_ARGS
                 || !t.args.iter().all(|a| text_ok(a)) =>
         {
@@ -574,10 +608,17 @@ pub fn expand(
         let token = &after[..=end];
         match token {
             "{file}" | "{files}" => out.push(file.ok_or_else(|| missing("a file"))?),
-            "{name}" => out.push(
-                file.and_then(|f| f.file_name())
-                    .ok_or_else(|| missing("a file"))?,
-            ),
+            "{name}" => {
+                let name = file
+                    .and_then(|f| f.file_name())
+                    .ok_or_else(|| missing("a file"))?;
+                // at the start of an argument, `-rf` would be an option: `./-rf`
+                if out.is_empty() && name.as_encoded_bytes().first() == Some(&b'-') {
+                    out.push(".");
+                    out.push(std::path::MAIN_SEPARATOR_STR);
+                }
+                out.push(name);
+            }
             "{dir}" => out.push(ctx.dir.as_deref().ok_or_else(|| missing("a folder"))?),
             "{targetDir}" => out.push(
                 ctx.target_dir
@@ -597,6 +638,18 @@ pub fn plan(tool: &Tool, ctx: &ResolvedContext) -> Result<Vec<Invocation>, FsErr
     let files = &ctx.files;
     if needs_files(tool) && files.is_empty() {
         return Err(missing("a file (mark one or put the cursor on it)"));
+    }
+    if tool.per_file && files.len() > MAX_PER_FILE_STARTS {
+        return Err(FsError::new(
+            FsErrorCode::TooManyFiles,
+            format!(
+                "{} entries, but {} starts once per file (perFile) – at most {} at a time",
+                files.len(),
+                tool.label,
+                MAX_PER_FILE_STARTS
+            ),
+            None,
+        ));
     }
     if files.len() > tool.file_limit as usize {
         return Err(FsError::new(
@@ -620,7 +673,20 @@ pub fn plan(tool: &Tool, ctx: &ResolvedContext) -> Result<Vec<Invocation>, FsErr
             }
         }
         let cwd = match &tool.working_dir {
-            Some(w) => Some(PathBuf::from(expand(w, file, ctx)?)),
+            Some(w) => {
+                let d = PathBuf::from(expand(w, file, ctx)?);
+                if !d.is_absolute() {
+                    return Err(FsError::new(
+                        FsErrorCode::InvalidPath,
+                        format!(
+                            "{}: the working folder must be an absolute path",
+                            tool.label
+                        ),
+                        None,
+                    ));
+                }
+                Some(d)
+            }
             None => ctx.dir.clone().or_else(|| ctx.home.clone()),
         };
         Ok(Invocation {
@@ -637,6 +703,40 @@ pub fn plan(tool: &Tool, ctx: &ResolvedContext) -> Result<Vec<Invocation>, FsErr
     } else {
         Ok(vec![one(files.first().map(PathBuf::as_path), files)?])
     }
+}
+
+/// Does `tool` hand its files to the default app (flag or a known launcher)?
+pub fn uses_default_app(tool: &Tool) -> bool {
+    if tool.default_app {
+        return true;
+    }
+    let name = tool
+        .program
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    DEFAULT_APP_LAUNCHERS.contains(&name.as_str())
+}
+
+/// For default-app tools: every file passes the Enter check (design 003 E2) –
+/// an executable gives `executable` (the frontend asks, then repeats with
+/// `allow_executable`). Folders are fine (the file manager opens them).
+pub fn check_default_app_files(
+    tool: &Tool,
+    files: &[PathBuf],
+    allow_executable: bool,
+) -> Result<(), FsError> {
+    if !uses_default_app(tool) {
+        return Ok(());
+    }
+    for f in files {
+        match crate::opener::check_openable(f, allow_executable) {
+            Err(e) if e.code == FsErrorCode::NotAFile => {}
+            other => other?,
+        }
+    }
+    Ok(())
 }
 
 // ---- starting ----
@@ -923,6 +1023,108 @@ mod tests {
         let e = spawn_detached(command(&inv), &inv.program).unwrap_err();
         assert_eq!(e.code, FsErrorCode::ProgramNotFound);
         assert!(e.message.contains("fnf-no-such-program-011"));
+    }
+
+    /// Review 011 #1: tools that hand files to the default app ask like Enter does.
+    #[cfg(unix)]
+    #[test]
+    fn default_app_tools_check_executables() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().unwrap();
+        let script = dir.path().join("run");
+        fs::write(&script, "#!/bin/sh\n").unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        let doc = dir.path().join("Brief ä.txt");
+        fs::write(&doc, "x").unwrap();
+        let sub = dir.path().join("Ordner");
+        fs::create_dir(&sub).unwrap();
+        for program in [
+            "xdg-open",
+            "/usr/bin/xdg-open",
+            "open",
+            "explorer.exe",
+            "gio",
+        ] {
+            let t = tool("edit", "Edit", program, &["{file}"], true, 5);
+            assert!(uses_default_app(&t), "{program}");
+        }
+        let mut flagged = tool("x", "X", "my-launcher", &["{file}"], true, 5);
+        flagged.default_app = true;
+        assert!(uses_default_app(&flagged));
+        let editor = tool("code", "Code", "code", &["{files}"], false, 5);
+        assert!(!uses_default_app(&editor));
+        let edit = tool("edit", "Edit", "xdg-open", &["{file}"], true, 5);
+        let e = check_default_app_files(&edit, &[doc.clone(), script.clone()], false).unwrap_err();
+        assert_eq!(e.code, FsErrorCode::Executable);
+        assert_eq!(e.path.as_deref(), Some(script.to_string_lossy().as_ref()));
+        check_default_app_files(&edit, &[doc.clone(), script.clone()], true).unwrap();
+        check_default_app_files(&edit, &[doc.clone(), sub.clone()], false).unwrap();
+        // an editor gets the script as text: no question
+        check_default_app_files(&editor, std::slice::from_ref(&script), false).unwrap();
+    }
+
+    /// Review 011 #2: `{name}` at the start of an argument never becomes an option.
+    #[test]
+    fn names_with_a_leading_dash_are_no_options() {
+        let p = plan(
+            &t(&["{name}", "--title={name}", "{file}"], false),
+            &ctx(&["/a/-rf"]),
+        )
+        .unwrap();
+        assert_eq!(args(&p[0]), ["./-rf", "--title=-rf", "/a/-rf"]);
+        let p = plan(&t(&["{name}"], false), &ctx(&["/a/x-y"])).unwrap();
+        assert_eq!(args(&p[0]), ["x-y"]);
+    }
+
+    /// Review 011 #4: program = bare name (PATH) or absolute; working folder absolute.
+    #[test]
+    fn programs_and_working_folders_are_not_relative() {
+        for ok in ["code", "notepad.exe", "xdg-open"] {
+            let mut x = t(&[], false);
+            x.program = ok.into();
+            assert!(validate(x).is_ok(), "{ok}");
+        }
+        #[cfg(unix)]
+        {
+            let mut x = t(&[], false);
+            x.program = "/usr/bin/code".into();
+            assert!(validate(x).is_ok());
+        }
+        for bad in ["./run.sh", "bin/tool", "..\\x.exe", "..", ".", "C:tool.exe"] {
+            let mut x = t(&[], false);
+            x.program = bad.into();
+            assert!(validate(x).is_err(), "{bad}");
+        }
+        let c = parse(r#"{"version":1,"terminal":{"program":"./term"}}"#, vec![]);
+        assert!(c.terminal.is_none() && c.warnings.len() == 1);
+        let mut w = t(&["{file}"], false);
+        w.working_dir = Some("rel/{name}".into());
+        assert_eq!(
+            plan(&w, &ctx(&["/a/b.txt"])).unwrap_err().code,
+            FsErrorCode::InvalidPath
+        );
+    }
+
+    /// Review 011 #7: `perFile` starts at most MAX_PER_FILE_STARTS programs at once.
+    #[test]
+    fn per_file_starts_are_bounded() {
+        let mut x = t(&["{file}"], true);
+        x.file_limit = MAX_FILE_LIMIT;
+        let many: Vec<String> = (0..=MAX_PER_FILE_STARTS)
+            .map(|i| format!("/a/{i}"))
+            .collect();
+        let names: Vec<&str> = many.iter().map(String::as_str).collect();
+        let e = plan(&x, &ctx(&names)).unwrap_err();
+        assert_eq!(e.code, FsErrorCode::TooManyFiles);
+        assert!(e.message.contains("perFile"), "{}", e.message);
+        assert_eq!(
+            plan(&x, &ctx(&names[..MAX_PER_FILE_STARTS])).unwrap().len(),
+            MAX_PER_FILE_STARTS
+        );
+        // one start with all files is not bounded by this
+        x.per_file = false;
+        x.args = vec!["{files}".into()];
+        assert_eq!(plan(&x, &ctx(&names)).unwrap().len(), 1);
     }
 
     /// Acceptance criterion 011: a file name like `"; rm -rf ~"` is an argument,

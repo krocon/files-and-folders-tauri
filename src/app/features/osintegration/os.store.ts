@@ -109,7 +109,22 @@ export class OsStore {
     if (tool.needsFiles && ctx.files.length === 0) {
       throw err(OS_TEXTS.nothingSelected);
     }
-    const n = await this.api.runTool(id, ctx);
+    let n: number;
+    try {
+      n = await this.api.runTool(id, ctx);
+    } catch (e) {
+      // a default-app tool (F4 `edit` = xdg-open …) would run a program: ask like Enter
+      const error = toFsError(e);
+      const panel = this.ws.panel()?.store;
+      const exe = this.selection().find((x) => x.path === error.path);
+      if (error.code !== 'executable' || !panel || !exe) {
+        throw e;
+      }
+      if (!(await panel.confirmExecutable(exe))) {
+        return;
+      }
+      n = await this.api.runTool(id, ctx, true);
+    }
     this.status.set(OS_TEXTS.toolStarted(tool.label, n));
   }
 

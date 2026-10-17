@@ -203,6 +203,29 @@ describe('OS integration (design 011)', () => {
     expect(actions.messages().at(-1)).toContain('was not found');
   });
 
+  it('F4 (default app) asks before running a program, like Enter (review 011 #1)', async () => {
+    osApi.tools = { tools: [tool('edit')], warnings: [], file: null };
+    await os.loadTools();
+    osApi.executables.add('/src/b.txt');
+    const asked: string[] = [];
+    let answer = false;
+    left.confirmExecutable = (e) => (asked.push(e.path), Promise.resolve(answer));
+    left.setCursor('/src/b.txt');
+    await actions.run('OPEN_EDIT_DLG');
+    expect(asked).toEqual(['/src/b.txt']);
+    expect(osApi.runs).toHaveLength(0);
+    expect(osApi.allowed).toEqual([false]);
+    answer = true;
+    await actions.run('OPEN_EDIT_DLG');
+    expect(asked).toHaveLength(2);
+    expect(osApi.allowed).toEqual([false, false, true]);
+    expect(osApi.runs.at(-1)?.context.files).toEqual(['/src/b.txt']);
+    // a plain document: no question
+    osApi.executables.clear();
+    await actions.run('OPEN_EDIT_DLG');
+    expect(asked).toHaveLength(2);
+  });
+
   it('F4 without an "edit" tool explains what is missing', async () => {
     osApi.tools = { tools: [], warnings: [], file: null };
     await os.loadTools();

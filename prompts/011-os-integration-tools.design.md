@@ -260,7 +260,7 @@ Selbstprüfung (Schwerpunkte des Prompts):
   unsichere ab (CVE-2024-24576, seit 1.77).
 - **Pfad-Validierung:** jeder Pfad über `validate_input_path` (absolut, kein NUL), Dateien müssen existieren, Ordner
   Ordner sein, Arbeitsordner existieren; Tool-Id muss in der Backend-Konfiguration stehen (`unknown_tool`), mehr als
-  `fileLimit` (≤ 1 000) → `too_many_files`.
+  `fileLimit` (≤ 1 000) bzw. bei `perFile` mehr als 50 → `too_many_files`; Programme nur als blanker Name oder absolut, Arbeitsordner absolut; Standard-App-Tools prüfen Ausführbares wie Enter (Review #1–#7).
 - **Capability-Umfang:** unverändert `core:default`; kein Plugin, keine neue Crate.
 - **Netzlaufwerke:** Abfrage je Volume in eigenem Thread, 1,5 s Gesamtzeit, hängende Abfrage nicht doppelt
   (Test mit künstlich hängender Abfrage); macOS liest `/Volumes` ohne `stat` (`d_type`). Restrisiko: ein dauerhaft
@@ -272,7 +272,13 @@ Selbstprüfung (Schwerpunkte des Prompts):
 
 | # | Fund | Stand |
 |---|---|---|
-| | | |
+| 1 | mittel – F4 (Linux `xdg-open {file}`) umging die Ausführbar-Rückfrage aus 003 | ✅ `tools::uses_default_app` (Flag `defaultApp` oder Launcher `xdg-open`/`gio`/`kde-open`/`open`/`explorer` …) + `check_default_app_files` (je Datei `opener::check_openable`, Ordner erlaubt); `run_tool(…, allowExecutable)`; `OsStore.runTool` fragt bei `executable` über `confirmExecutable` des Panels und wiederholt. Tests `default_app_tools_check_executables`, `os.spec` „F4 (default app) asks …“ |
+| 2 | gering – `{name}` Option-Injection (`-rf`) | ✅ `{name}` am Argumentanfang mit führendem `-` → `./-rf` (eingebettet wie `--title={name}` unverändert); README empfiehlt `{file}`. Test `names_with_a_leading_dash_are_no_options` |
+| 3 | gering – Windows-Systemprogramme relativ (`explorer.exe`, `cmd.exe` aus dem aktuellen Ordner) | ✅ `desktop::system_programs()` = `%SystemRoot%\explorer.exe`, `%SystemRoot%\System32\cmd.exe` (Rückfall `C:\Windows`), `cfg(windows)`; Test `windows_system_programs_are_absolute` (nur unter Windows, hier nicht kompiliert – kein Windows-Target im Container) |
+| 4 | gering – `program` relativ, `workingDir` relativ | ✅ `tools::program_ok`: blanker Name (ohne `/`, `\`, `:`, nicht `.`/`..`) oder absolut, auch für `terminal`; `workingDir` nach dem Ersetzen `is_absolute()`, sonst `invalid_path`. Test `programs_and_working_folders_are_not_relative` |
+| 5 | gering – Terminal-Suche Linux (leere/relative PATH-Einträge, Ausführbar-Bit, Startfehler) | ✅ `find_in_path` überspringt relative Einträge, prüft unter Unix Datei + `x`-Bit; `spawn_first_terminal` versucht bei Startfehler das nächste. Tests `path_lookup_skips_relative_entries_and_non_executables`, `the_next_terminal_is_tried_when_one_fails_to_start` |
+| 6 | gering – `unescape_octal` (`\777` überläuft `u8`, Escape am Feldende nicht dekodiert) | ✅ in `u16`, nur ≤ `0o377`, sonst unverändert; Grenze `i + 4 <= len`. Test `octal_escapes_and_non_utf8` |
+| 7 | gering – `perFile` unbegrenzt (bis `fileLimit` 1 000 Fenster), `cmd.exe` ohne `/K` | ✅ `MAX_PER_FILE_STARTS = 50` → `too_many_files` mit Hinweis auf `perFile`; `{files}`-Aufrufe unberührt. `cmd.exe /K` wie im Design. Tests `per_file_starts_are_bounded`, `windows_terminal_never_gets_a_semicolon` |
 
 ## 9. Fortschritt
 
