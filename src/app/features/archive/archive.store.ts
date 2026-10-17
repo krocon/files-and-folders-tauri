@@ -92,6 +92,11 @@ export class ArchiveStore {
     return { target: other ?? this.folderOf(side) ?? '', targets };
   }
 
+  /** The active panel shows a folder inside an archive. */
+  inArchive(): boolean {
+    return (this.ws.panel()?.store.archive() ?? null) !== null;
+  }
+
   canPack(): boolean {
     const store = this.ws.panel()?.store;
     return (
@@ -224,16 +229,15 @@ export class ArchiveStore {
     }
     for (const job of req.jobs) {
       try {
-        this.watch(
-          await this.jobs.start({
-            kind: 'extract',
-            archive: job.archive,
-            entries: job.entries,
-            targetDir: dir,
-            intoSubfolder: input.intoSubfolder,
-            options: { conflictDefault: input.conflictDefault },
-          }),
-        );
+        const id = await this.jobs.start({
+          kind: 'extract',
+          archive: job.archive,
+          entries: job.entries,
+          targetDir: dir,
+          intoSubfolder: input.intoSubfolder,
+          options: { conflictDefault: input.conflictDefault },
+        });
+        this.watch(id, req.fromArchive ? { side: req.side, paths: job.entries } : null);
       } catch (e) {
         return toFsError(e);
       }
@@ -243,10 +247,20 @@ export class ArchiveStore {
     return null;
   }
 
-  /** Errors of a finished job go to the status message (details in Tasks). */
-  private watch(id: string): void {
+  /**
+   * Errors of a finished job go to the status message (details in Tasks);
+   * extracted entries are unmarked like copied ones (failed ones stay marked).
+   */
+  private watch(id: string, marked: { side: Side; paths: readonly string[] } | null = null): void {
     void this.jobs.whenFinished(id).then((job: JobInfo) => {
       const summary = job.summary;
+      if (marked && (job.state === 'done' || job.state === 'doneWithErrors')) {
+        const failed = new Set(summary?.errors.map((e) => e.path) ?? []);
+        this.ws.panel(marked.side)?.store.setMarked(
+          marked.paths.filter((p) => !failed.has(p)),
+          false,
+        );
+      }
       if (job.state === 'failed' && summary?.error) {
         this.jobs.report(OPS_TEXTS.failed(jobTitle(job), summary.error.message));
       } else if (job.state === 'doneWithErrors' && summary) {

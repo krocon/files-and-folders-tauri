@@ -274,5 +274,8 @@
 .dup-keep {
   display: flex;
   flex: none;
+  align-items: center;
   gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
 }

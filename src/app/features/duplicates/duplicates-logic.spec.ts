@@ -58,5 +58,6 @@ describe('duplicate selection helpers (design 016 E6)', () => {
 
   it('sums up groups, files and redundant bytes', () => {
     expect(duplicateSummary(rows)).toEqual({ groups: 2, files: 5, redundant: 2 * 10 + 5 });
+    expect(duplicateSummary(rows.slice(0, 4))).toEqual({ groups: 1, files: 3, redundant: 20 });
   });
 });

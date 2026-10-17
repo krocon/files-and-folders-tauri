@@ -102,7 +102,9 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     await left.open(left.entries()[1]);
     expect(left.error()?.message).toBe(IN_ARCHIVE_OPEN);
     expect(fsApi.opened).toEqual([]);
+    actions.register({ OPEN_VIEW_DLG: { run: () => undefined } });
     await left.up();
+    expect(actions.state('OPEN_VIEW_DLG')).toBe('ready');
     expect(left.path()).toBe('/data');
     expect(left.cursorPath()).toBe('/data/Fotos 📷.zip');
     expect(left.archive()).toBeNull();
@@ -117,6 +119,10 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     expect(actions.state('OPEN_MKDIR_DLG') === 'ready').toBe(false);
     expect(actions.state('OPEN_RENAME_DLG') === 'ready').toBe(false);
     expect(actions.state('OPEN_PACK_DLG') === 'ready').toBe(false);
+    // every action that needs real files is vetoed centrally (also those of other features)
+    actions.register({ OPEN_VIEW_DLG: { run: () => undefined } });
+    expect(actions.state('OPEN_VIEW_DLG')).toBe('disabled');
+    expect(await actions.run('OPEN_VIEW_DLG')).toBe(false);
     await ops.openCopyMove('copy');
     const req = archive.unpack()!;
     expect(TestBed.inject(DialogService).open()).toBe('unpack');
@@ -265,5 +271,46 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     await ops.openDelete('trash');
     expect(ops.del()?.wholeGroups).toBe(1);
     expect(ops.del()?.mode).toBe('trash');
+  });
+});
+
+describe('unpack and pack dialogs render (design 016)', () => {
+  it('shows the request', async () => {
+    const { UnpackDialog } = await import('./unpack-dialog');
+    const { PackDialog } = await import('./pack-dialog');
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: JobsApi, useValue: new FakeJobsApi() },
+        { provide: FsApi, useValue: new FakeFsApi() },
+        { provide: SessionApi, useValue: new FakeSessionApi() },
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
+      ],
+    });
+    const store = TestBed.inject(ArchiveStore);
+    store.unpack.set({
+      side: 'left',
+      jobs: [{ archive: '/a.zip', entries: ['/a.zip/x'] }],
+      archiveName: null,
+      fromArchive: true,
+      entryCount: 1,
+      target: '/t',
+      targets: [{ path: '/t', group: 'Other panel' }],
+    });
+    const f = TestBed.createComponent(UnpackDialog);
+    f.detectChanges();
+    expect(document.body.textContent).toContain('Extract from the archive');
+    f.destroy();
+    store.pack.set({
+      side: 'left',
+      sources: [entry('x.txt', { path: '/x.txt' })],
+      folderName: null,
+      target: '/t',
+      targets: [],
+    });
+    const p = TestBed.createComponent(PackDialog);
+    p.detectChanges();
+    const name = document.body.querySelector<HTMLInputElement>('input[type="text"]');
+    expect(name?.value).toBe('x.zip');
+    p.destroy();
   });
 });

@@ -89,6 +89,10 @@ export function duplicateSummary(rows: readonly DirEntry[]): {
   let files = 0;
   let redundant = 0;
   for (const group of groupsOf(rows).values()) {
+    // a group whose other files were deleted is no duplicate any more
+    if (group.length < 2) {
+      continue;
+    }
     groups++;
     files += group.length;
     redundant += (group[0].size ?? 0) * (group.length - 1);

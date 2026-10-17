@@ -90,10 +90,33 @@ export class ActionService {
     return this.extraIndex().labels.get(id) ?? '';
   }
 
+  /**
+   * Why an action cannot run right now, whatever its handler says (`null` =
+   * extra actions/tools) – e.g. a panel inside an archive is read-only (design 016).
+   */
+  private veto: (id: ActionId | null) => string | null = () => null;
+
+  /** Installs the veto; returns a function that removes it. */
+  setVeto(fn: (id: ActionId | null) => string | null): () => void {
+    this.veto = fn;
+    this.registered.update((n) => n + 1);
+    return () => {
+      if (this.veto === fn) {
+        this.veto = () => null;
+        this.registered.update((n) => n + 1);
+      }
+    };
+  }
+
   /** Runs an extra action; errors become a message. Returns true if it ran. */
   async runExtra(id: string): Promise<boolean> {
     const x = this.extras().find((e) => e.id === id);
     if (!x || !x.enabled()) {
+      return false;
+    }
+    const vetoed = this.veto(null);
+    if (vetoed !== null) {
+      this.report(`${x.label}: ${vetoed}`);
       return false;
     }
     try {
@@ -144,6 +167,9 @@ export class ActionService {
     if (!h) {
       return 'unavailable';
     }
+    if (this.veto(id) !== null) {
+      return 'disabled';
+    }
     return h.enabled && !h.enabled() ? 'disabled' : 'ready';
   }
 
@@ -157,6 +183,11 @@ export class ActionService {
       return false;
     }
     if (h.enabled && !h.enabled()) {
+      return false;
+    }
+    const vetoed = this.veto(id);
+    if (vetoed !== null) {
+      this.report(`${ACTIONS[id].label.replace(/…$/, '')}: ${vetoed}`);
       return false;
     }
     try {

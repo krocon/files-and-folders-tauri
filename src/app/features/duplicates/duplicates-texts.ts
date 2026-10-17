@@ -23,9 +23,10 @@ export const DUP_TEXTS = {
     `${groups.toLocaleString()} ${groups === 1 ? 'group' : 'groups'}, ${files.toLocaleString()} files, ${redundant} redundant`,
   scanning: (files: number) => `scanning… ${files.toLocaleString()} files`,
   hashing: (done: string, total: string) => `comparing contents… ${done} of ${total}`,
-  keepNewest: 'Keep newest',
-  keepOldest: 'Keep oldest',
-  keepFirst: 'Keep first',
+  keep: 'Keep:',
+  keepNewest: 'newest',
+  keepOldest: 'oldest',
+  keepFirst: 'first',
   keepTitle: 'Marks every file of each group except one – delete the marked ones with F8 (trash)',
   groupColumn: 'Group',
   wholeGroups: (n: number) =>

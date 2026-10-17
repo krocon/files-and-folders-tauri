@@ -161,7 +161,7 @@ export function createFileColumns(): ColumnDefIf[] {
     ColumnDef.create({
       property: 'group',
       headerLabel: 'Group',
-      width: px(64),
+      width: px(52),
       isVisible: FalseFn,
       sortable: TrueFn,
       sortComparator: fileComparators.group,

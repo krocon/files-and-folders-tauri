@@ -43,6 +43,7 @@
         </button>
       } @else if (r && r.hits.length > 0) {
         <span class="dup-keep" role="group" [attr.aria-label]="dupTexts.keepTitle">
+          <span aria-hidden="true">{{ dupTexts.keep }}</span>
           <button
             type="button"
             class="btn small"
