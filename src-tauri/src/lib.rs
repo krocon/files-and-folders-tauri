@@ -14,6 +14,7 @@
 //! - [`fileops`]      create folder/file, rename (never overwrite)
 //! - [`jobs`]         job engine: copy, move, delete, multi-rename (+ undo), count, folder size; queue, progress, conflicts, cancel/pause
 //! - [`rename_presets`] multi-rename presets file
+//! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod clean;
@@ -30,6 +31,7 @@ pub mod opener;
 pub mod paths;
 pub mod platform;
 pub mod rename_presets;
+pub mod search;
 pub mod session;
 pub mod window_state;
 

@@ -5,7 +5,7 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, group, rename,
+    Transfer, clean, copy, delete, group, rename, search,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -221,6 +221,7 @@ impl JobManager {
                             &emit,
                         )
                     }
+                    JobSpec::Search { criteria } => search::run(id, criteria, &control, &emit),
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         run_count(id, &paths, &control, &emit)
@@ -569,12 +570,13 @@ impl JobManager {
         }
     }
 
-    /// Jobs not finished yet (queued, running, paused, waiting).
+    /// Jobs not finished yet (queued, running, paused, waiting), without helper
+    /// jobs (folder size, count, search – quitting needs no confirmation for them).
     pub fn active_count(&self) -> usize {
         self.lock()
             .jobs
             .iter()
-            .filter(|e| !e.info.state.is_finished())
+            .filter(|e| !e.info.state.is_finished() && !e.info.spec.is_helper())
             .count()
     }
 
@@ -743,6 +745,10 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             for i in items {
                 validate_input_path(&i.path)?;
             }
+        }
+        JobSpec::Search { criteria } => {
+            // patterns and paths only – the roots are read in the job thread
+            crate::search::compile(criteria)?;
         }
         JobSpec::Count { paths } => {
             for p in paths {

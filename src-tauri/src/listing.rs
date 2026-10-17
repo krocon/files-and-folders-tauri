@@ -69,7 +69,7 @@ pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
     })
 }
 
-fn entry_from_metadata(
+pub(crate) fn entry_from_metadata(
     name: String,
     path: &Path,
     link_meta: &Metadata,
@@ -126,7 +126,7 @@ fn is_dot_name(name: &str) -> bool {
 
 /// Hidden = dot-file on every platform, plus the platform's native flag
 /// (Windows `FILE_ATTRIBUTE_HIDDEN`, macOS `UF_HIDDEN`).
-fn is_hidden(name: &str, meta: &Metadata) -> bool {
+pub(crate) fn is_hidden(name: &str, meta: &Metadata) -> bool {
     is_dot_name(name) || native_hidden_flag(meta)
 }
 
