@@ -9,9 +9,9 @@ use super::{Control, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS, Summary
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops::{already_exists, check_danger, rename_same_entry, unique_temp};
 use crate::paths::{validate_input_path, validate_name};
-use crate::platform::{file_id, link_count, rename_noreplace};
+use crate::platform::{EntryStamp, entry_stamp, file_id, link_count, rename_noreplace};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -26,6 +26,10 @@ const MAX_LIVE_ERRORS: u64 = 100;
 pub struct RenameItem {
     pub path: String,
     pub new_name: String,
+    /// Undo only: the entry at `path` must still be the one that was renamed
+    /// (review R1). Set by the engine, never taken from the frontend.
+    #[serde(skip)]
+    pub expect: Option<EntryStamp>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -74,6 +78,7 @@ struct Checked {
     error: Option<FsError>,
     target: Target,
     id: Option<(u64, u64)>,
+    stamp: Option<EntryStamp>,
     /// The source exists and is valid – it takes part in the folder's names.
     present: bool,
 }
@@ -100,37 +105,45 @@ fn err(code: FsErrorCode, message: &str, path: &Path) -> FsError {
     FsError::new(code, message, Some(path))
 }
 
-/// `Abc` → `aBC`: a name the file system can only resolve to the same entry
-/// if it ignores case.
+/// `Abc` → `aBC` (ASCII letters only – `ß` → `SS` or `İ` would test Unicode
+/// folding, not case): a name the file system can only resolve to the same
+/// entry if it ignores case.
 fn swap_case(name: &str) -> String {
     name.chars()
-        .flat_map(|c| -> Box<dyn Iterator<Item = char>> {
-            if c.is_lowercase() {
-                Box::new(c.to_uppercase())
+        .map(|c| {
+            if c.is_ascii_lowercase() {
+                c.to_ascii_uppercase()
             } else {
-                Box::new(c.to_lowercase())
+                c.to_ascii_lowercase()
             }
         })
         .collect()
 }
 
 /// Whether the folder ignores case – measured with an entry of the plan
-/// (same entry under the swapped name?), else the platform default.
+/// (same entry under the swapped name?); an unclear answer (hard link, entry
+/// gone, error) tries the next member, else the platform default.
 fn ignores_case(rows: &[Checked], members: &[usize]) -> bool {
     for &i in members {
         let r = &rows[i];
         let swapped = swap_case(&r.old_name);
         if swapped == r.old_name {
-            continue;
+            continue; // no ASCII letter
         }
         match fs::symlink_metadata(r.parent.join(&swapped)) {
-            Ok(m) => {
-                return match (file_id(&m), r.id) {
-                    (Some(a), Some(b)) => a == b,
-                    _ => true, // no ids (Windows): the swapped name exists → insensitive
-                };
+            Ok(m) => match (file_id(&m), r.id) {
+                (Some(a), Some(b)) if a != b => return false,
+                // a hard link that differs only in case looks like "the same entry"
+                (Some(_), Some(_)) if link_count(&m).is_some_and(|n| n > 1) => {}
+                (Some(_), Some(_)) => return true,
+                _ => return true, // no ids (Windows): the swapped name exists → insensitive
+            },
+            // not found while the entry itself is still there → sensitive
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                if fs::symlink_metadata(&r.src).is_ok() {
+                    return false;
+                }
             }
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return false,
             Err(_) => {}
         }
     }
@@ -160,6 +173,7 @@ fn analyze(items: &[RenameItem], home: Option<&Path>) -> Vec<Checked> {
                 error: None,
                 target: Target::Free,
                 id: None,
+                stamp: None,
                 present: false,
             };
             let src = match validate_input_path(&item.path) {
@@ -185,18 +199,30 @@ fn analyze(items: &[RenameItem], home: Option<&Path>) -> Vec<Checked> {
                 c.fail(err(FsErrorCode::InvalidPath, "Listed twice", &src));
                 return c;
             }
-            match fs::symlink_metadata(&src) {
-                Ok(m) => c.id = file_id(&m),
+            let stamp = match fs::symlink_metadata(&src) {
+                Ok(m) => {
+                    c.id = file_id(&m);
+                    entry_stamp(&m)
+                }
                 Err(e) => {
                     c.fail(FsError::from_io(&e, &src));
                     return c;
                 }
-            }
+            };
+            c.stamp = Some(stamp);
             if let Err(e) = check_danger(&src, home, false) {
                 c.fail(e);
                 return c;
             }
             c.present = true;
+            if item.expect.is_some_and(|want| want != stamp) {
+                c.fail(err(
+                    FsErrorCode::UndoUnavailable,
+                    "Not undone: the entry has changed since the rename",
+                    &src,
+                ));
+                return c;
+            }
             if item.new_name == c.old_name {
                 c.status = PlanStatus::Unchanged;
             } else if let Err(mut e) = validate_name(&item.new_name) {
@@ -270,27 +296,37 @@ fn analyze(items: &[RenameItem], home: Option<&Path>) -> Vec<Checked> {
         }
     }
 
-    // an entry that keeps its name (error) blocks everyone waiting for it
-    loop {
-        let mut changed = false;
-        for i in 0..rows.len() {
-            if let (PlanStatus::Ok, Target::Occupied(j)) = (rows[i].status, rows[i].target)
-                && rows[j].status != PlanStatus::Ok
-            {
+    block_waiters(&mut rows);
+    rows
+}
+
+/// An entry that keeps its name (error) blocks everyone waiting for it.
+fn block_waiters(rows: &mut [Checked]) {
+    // occupant → the entries waiting for its name; propagated once (O(n))
+    let mut waiters: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (i, r) in rows.iter().enumerate() {
+        if let (PlanStatus::Ok, Target::Occupied(j)) = (r.status, r.target) {
+            waiters.entry(j).or_default().push(i);
+        }
+    }
+    let mut blocked: Vec<usize> = waiters
+        .keys()
+        .copied()
+        .filter(|&j| rows[j].status != PlanStatus::Ok)
+        .collect();
+    while let Some(j) = blocked.pop() {
+        for i in waiters.remove(&j).unwrap_or_default() {
+            if rows[i].status == PlanStatus::Ok {
                 let dst = rows[i].dst.clone();
                 rows[i].fail(err(
                     FsErrorCode::AlreadyExists,
                     "The entry with this name is not renamed",
                     &dst,
                 ));
-                changed = true;
+                blocked.push(i);
             }
         }
-        if !changed {
-            break;
-        }
     }
-    rows
 }
 
 /// Who the existing target is: this entry, another source of the plan, or a
@@ -311,7 +347,12 @@ fn occupant(
                 || row.old_name.to_lowercase() == item.new_name.to_lowercase();
             return same.then_some(Target::SameEntry);
         }
-        Some(id) => by_id.get(&id).copied(),
+        // the same inode is that member's source only if it has one name, or
+        // the target really is that member's name (a hard link is a stranger)
+        Some(id) => by_id.get(&id).copied().filter(|&j| {
+            link_count(meta).is_none_or(|n| n <= 1)
+                || by_key.get(&key(&item.new_name, insensitive)) == Some(&j)
+        }),
         None => by_key.get(&key(&item.new_name, insensitive)).copied(),
     };
     match other {
@@ -351,7 +392,8 @@ fn path_string(p: &Path) -> String {
 struct Runner<'a> {
     rep: Reporter<'a>,
     summary: Summary,
-    undo: Vec<RenameItem>,
+    /// Shared with the caller: survives a panic in the middle of the job.
+    undo: &'a mut Vec<RenameItem>,
 }
 
 impl Runner<'_> {
@@ -373,6 +415,7 @@ impl Runner<'_> {
         self.undo.push(RenameItem {
             path: path_string(&r.dst),
             new_name: r.old_name.clone(),
+            expect: r.stamp,
         });
         self.summary.items_done += 1;
         self.rep.dir_changed(path_string(&r.parent));
@@ -403,20 +446,22 @@ fn rename_one(r: &Checked, new_name: &str) -> Result<(), FsError> {
 
 /// Runs a rename job. Without `partial`, any problem in the plan fails the job
 /// before anything is renamed; with it (undo), the valid pairs run and the
-/// others are reported. Returns the pairs that undo what was done.
-pub fn run(
+/// others are reported. The pairs that undo what was done are pushed to `undo`
+/// as soon as each rename is done (a panic later does not lose them).
+pub fn run<'a>(
     id: &str,
     items: &[RenameItem],
     partial: bool,
     home: Option<&Path>,
     control: &Control,
-    emit: &(dyn Fn(JobEvent) + Send + Sync),
-) -> (JobState, Summary, Vec<RenameItem>) {
+    emit: &'a (dyn Fn(JobEvent) + Send + Sync),
+    undo: &'a mut Vec<RenameItem>,
+) -> (JobState, Summary) {
     let rows = analyze(items, home);
     let mut run = Runner {
         rep: Reporter::new(id, emit),
         summary: Summary::default(),
-        undo: Vec::new(),
+        undo,
     };
     run.rep.emit(JobEvent::State {
         id: id.to_string(),
@@ -444,7 +489,7 @@ pub fn run(
             e.message = format!("Nothing was renamed: {}", e.message);
             e
         });
-        return (JobState::Failed, run.summary, run.undo);
+        return (JobState::Failed, run.summary);
     }
     for &i in &failed {
         let e = rows[i]
@@ -460,13 +505,12 @@ pub fn run(
     run.rep.tick(true);
 
     // chains: first whoever's target is free; that frees the target of the one waiting for it
-    let mut waiting_for: HashMap<usize, usize> = HashMap::new(); // occupant → dependent
+    // occupant → dependents (one at most: two would get the same name = duplicate_target)
+    let mut waiting_for: HashMap<usize, Vec<usize>> = HashMap::new();
     let mut queue: VecDeque<usize> = VecDeque::new();
     for &i in &work {
         match rows[i].target {
-            Target::Occupied(j) => {
-                waiting_for.insert(j, i);
-            }
+            Target::Occupied(j) => waiting_for.entry(j).or_default().push(i),
             _ => queue.push_back(i),
         }
     }
@@ -483,8 +527,8 @@ pub fn run(
             Err(e) => run.fail(&rows[i].src.clone(), e),
         }
         // even after a failure: the dependent fails on its own ("exists"), never overwrites
-        if let Some(&k) = waiting_for.get(&i) {
-            queue.push_back(k);
+        if let Some(ks) = waiting_for.remove(&i) {
+            queue.extend(ks);
         }
     }
 
@@ -536,7 +580,7 @@ pub fn run(
     } else {
         JobState::Done
     };
-    (state, run.summary, run.undo)
+    (state, run.summary)
 }
 
 /// `cycle[k + 1]` occupies the target of `cycle[k]`; the last one's target is
@@ -544,6 +588,16 @@ pub fn run(
 /// others follow from the end, then the first leaves the temporary name. A
 /// failure rolls back what was done, so no temporary name stays behind.
 fn run_cycle(rows: &[Checked], cycle: &[usize], run: &mut Runner<'_>) {
+    run_cycle_with(rows, cycle, run, &noreplace);
+}
+
+/// [`run_cycle`] with the rename step as a parameter (tests make it fail).
+fn run_cycle_with(
+    rows: &[Checked],
+    cycle: &[usize],
+    run: &mut Runner<'_>,
+    noreplace: &dyn Fn(&Path, &Path) -> Result<(), FsError>,
+) {
     let first = &rows[cycle[0]];
     let tmp = unique_temp(&first.parent);
     if let Err(e) = noreplace(&first.src, &tmp) {
@@ -582,13 +636,21 @@ fn run_cycle(rows: &[Checked], cycle: &[usize], run: &mut Runner<'_>) {
         }
     }
     // roll back: the moved entries return, then the first one leaves the temporary name
-    let mut stuck: Vec<usize> = Vec::new();
+    let mut stuck: HashSet<usize> = HashSet::new();
     for &k in moved.iter().rev() {
         if noreplace(&rows[k].dst, &rows[k].src).is_err() {
-            stuck.push(k);
+            stuck.insert(k);
         }
     }
     let restored = stuck.is_empty() && noreplace(&tmp, &first.src).is_ok();
+    if !restored {
+        // the first entry stays under the temporary name: undo brings it back
+        run.undo.push(RenameItem {
+            path: path_string(&tmp),
+            new_name: first.old_name.clone(),
+            expect: first.stamp,
+        });
+    }
     let (bad, e) = failure.expect("a failure");
     for &k in cycle {
         let src = rows[k].src.clone();
@@ -632,6 +694,7 @@ mod tests {
         RenameItem {
             path: path_string(&dir.join(old)),
             new_name: new.to_string(),
+            expect: None,
         }
     }
 
@@ -668,7 +731,8 @@ mod tests {
         let events: Events = Mutex::new(Vec::new());
         let control = Control::default();
         let emit = |e: JobEvent| events.lock().unwrap().push(e);
-        let (s, sum, undo) = run("j1", items, partial, None, &control, &emit);
+        let mut undo = Vec::new();
+        let (s, sum) = run("j1", items, partial, None, &control, &emit, &mut undo);
         (s, sum, undo, events)
     }
 
@@ -760,6 +824,7 @@ mod tests {
             &[RenameItem {
                 path: "/etc".into(),
                 new_name: "x".into(),
+                expect: None,
             }],
             None,
         );
@@ -912,10 +977,11 @@ mod tests {
         fs::remove_file(d.join("2")).unwrap();
         let events = Mutex::new(Vec::new());
         let emit = |e: JobEvent| events.lock().unwrap().push(e);
+        let mut undo = Vec::new();
         let mut runner = Runner {
             rep: Reporter::new("j", &emit),
             summary: Summary::default(),
-            undo: Vec::new(),
+            undo: &mut undo,
         };
         run_cycle(&rows, &[0, 1, 2], &mut runner);
         assert_eq!(runner.summary.items_done, 0);
@@ -934,7 +1000,8 @@ mod tests {
         let control = Control::default();
         control.cancel();
         let emit = |_e: JobEvent| {};
-        let (state, sum, undo) = run("j", &items, false, None, &control, &emit);
+        let mut undo = Vec::new();
+        let (state, sum) = run("j", &items, false, None, &control, &emit, &mut undo);
         assert_eq!(state, JobState::Cancelled);
         assert_eq!(sum.items_done, 0);
         assert!(undo.is_empty());
@@ -985,6 +1052,173 @@ mod tests {
             .count();
         assert!(progress < 200, "throttled progress: {progress}");
         eprintln!("[fnf:perf] plan 10 000: {planned:?}");
+    }
+
+    // ---- review findings (design 007, "Review – Ergebnis") ----
+
+    fn synthetic(status: PlanStatus, target: Target) -> Checked {
+        Checked {
+            src: PathBuf::new(),
+            parent: PathBuf::new(),
+            old_name: String::new(),
+            dst: PathBuf::new(),
+            status,
+            error: None,
+            target,
+            id: None,
+            stamp: None,
+            present: true,
+        }
+    }
+
+    /// R2: a chain of 100 000 whose last target is taken – linear, not quadratic.
+    #[test]
+    fn blocking_a_long_chain_is_linear() {
+        let n = 100_000;
+        let mut rows: Vec<Checked> = (0..n)
+            .map(|i| {
+                if i + 1 < n {
+                    synthetic(PlanStatus::Ok, Target::Occupied(i + 1))
+                } else {
+                    synthetic(PlanStatus::Error, Target::Free)
+                }
+            })
+            .collect();
+        let started = std::time::Instant::now();
+        block_waiters(&mut rows);
+        let took = started.elapsed();
+        assert!(rows.iter().all(|r| r.status == PlanStatus::Error));
+        assert!(took < std::time::Duration::from_secs(2), "took {took:?}");
+    }
+
+    /// R2: the same on disk – 20 000 entries, the last target belongs to a stranger.
+    #[test]
+    fn plan_of_a_blocked_chain_of_twenty_thousand() {
+        let t = tempdir().unwrap();
+        let d = t.path();
+        let n = 20_000;
+        let items: Vec<RenameItem> = (0..n)
+            .map(|i| {
+                let name = format!("f{i:05}");
+                fs::write(d.join(&name), "").unwrap();
+                item(d, &name, &format!("f{:05}", i + 1))
+            })
+            .collect();
+        fs::write(d.join(format!("f{n:05}")), "fremd").unwrap();
+        let started = std::time::Instant::now();
+        let p = plan(&items, None);
+        let took = started.elapsed();
+        assert_eq!(p.errors as usize, n);
+        assert!(took < std::time::Duration::from_secs(20), "took {took:?}");
+        eprintln!("[fnf:perf] plan of a blocked chain of 20 000: {took:?}");
+    }
+
+    /// R3: only ASCII letters change case (ß stays, no "SS").
+    #[test]
+    fn swap_case_is_ascii_only() {
+        assert_eq!(swap_case("straße İx"), "STRAßE İX");
+        assert_eq!(swap_case("ß"), "ß");
+    }
+
+    /// R3: a hard link that differs only in case is no proof of an insensitive folder.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn case_measurement_ignores_hard_links_and_uses_the_next_member() {
+        let t = tempdir().unwrap();
+        files(t.path(), &[("readme", "1"), ("x", "2")]);
+        fs::hard_link(t.path().join("readme"), t.path().join("README")).unwrap();
+        let rows = analyze(
+            &[item(t.path(), "readme", "q"), item(t.path(), "x", "y")],
+            None,
+        );
+        assert!(!ignores_case(&rows, &[0, 1]));
+    }
+
+    /// R4: the target is a hard link of another member's source – a stranger, not a chain.
+    #[cfg(unix)]
+    #[test]
+    fn hard_link_of_a_member_is_not_a_chain() {
+        let t = tempdir().unwrap();
+        let d = t.path();
+        files(d, &[("a", "A"), ("b", "B")]);
+        fs::hard_link(d.join("b"), d.join("c")).unwrap();
+        let p = plan(&[item(d, "a", "c"), item(d, "b", "d")], None);
+        assert_eq!(code(&p, 0), Some(FsErrorCode::AlreadyExists));
+        assert_eq!(p.rows[1].status, PlanStatus::Ok);
+    }
+
+    /// R5: a cycle whose rollback fails leaves the entry under the temporary
+    /// name – the undo log knows how to bring it back.
+    #[test]
+    fn stuck_temporary_name_is_in_the_undo_log() {
+        let t = tempdir().unwrap();
+        let d = t.path();
+        files(d, &[("1", "eins"), ("2", "zwei")]);
+        let items = vec![item(d, "1", "2"), item(d, "2", "1")];
+        let rows = analyze(&items, None);
+        let (one, two) = (rows[0].src.clone(), rows[1].src.clone());
+        let emit = |_e: JobEvent| {};
+        let mut undo = Vec::new();
+        let mut runner = Runner {
+            rep: Reporter::new("j", &emit),
+            summary: Summary::default(),
+            undo: &mut undo,
+        };
+        // 2 → 1 fails, and so does the way back from the temporary name to 1
+        let mv = |from: &Path, to: &Path| {
+            if from == two || to == one {
+                Err(err(FsErrorCode::Io, "injected", from))
+            } else {
+                noreplace(from, to)
+            }
+        };
+        run_cycle_with(&rows, &[0, 1], &mut runner, &mv);
+        assert_eq!(runner.summary.items_failed, 2);
+        assert_eq!(undo.len(), 1, "{undo:?}");
+        assert_eq!(undo[0].new_name, "1");
+        assert!(Path::new(&undo[0].path).exists());
+        let (state, sum, _, _) = exec(&undo, true);
+        assert_eq!(state, JobState::Done, "{:?}", sum.errors);
+        assert_eq!(names(d), vec!["1", "2"]);
+        assert_eq!(content(d, "1"), "eins");
+    }
+
+    /// R5: a panic after the first rename does not lose its undo pair.
+    #[test]
+    fn panic_keeps_the_pairs_done_so_far() {
+        let t = tempdir().unwrap();
+        let d = t.path();
+        files(d, &[("a", "A")]);
+        let items = vec![item(d, "a", "b")];
+        let control = Control::default();
+        let emit = |e: JobEvent| {
+            if let JobEvent::Progress { progress, .. } = &e
+                && progress.items_done > 0
+            {
+                panic!("injected");
+            }
+        };
+        let mut undo = Vec::new();
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            run("j", &items, false, None, &control, &emit, &mut undo)
+        }));
+        assert!(r.is_err());
+        assert_eq!(undo.len(), 1);
+        assert_eq!(undo[0].new_name, "a");
+    }
+
+    /// R1: `expect` (identity for undo) never crosses the wire.
+    #[test]
+    fn expect_is_not_part_of_the_wire_format() {
+        let i: RenameItem =
+            serde_json::from_str(r#"{"path":"/a","newName":"b","expect":[1,2]}"#).unwrap();
+        assert_eq!(i.expect, None);
+        let t = tempdir().unwrap();
+        files(t.path(), &[("a", "A")]);
+        let (_, _, undo, _) = exec(&[item(t.path(), "a", "b")], false);
+        assert!(undo[0].expect.is_some());
+        let v = serde_json::to_value(&undo[0]).unwrap();
+        assert!(v.get("expect").is_none(), "{v}");
     }
 
     #[test]

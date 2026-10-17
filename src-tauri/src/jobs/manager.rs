@@ -144,14 +144,23 @@ impl JobManager {
         };
         let emit = |e: JobEvent| self.record(e);
         let home = self.home.lock().unwrap_or_else(|e| e.into_inner()).clone();
-        let work = || -> (JobState, Summary, Option<Vec<RenameItem>>) {
+        // rename: the pairs that undo it – filled while it runs, kept after a panic
+        let mut undo: Vec<RenameItem> = Vec::new();
+        let is_rename = matches!(spec, JobSpec::Rename { .. });
+        let work = || -> (JobState, Summary) {
             if control.is_cancelled() {
-                (JobState::Cancelled, Summary::default(), None)
+                (JobState::Cancelled, Summary::default())
             } else if let JobSpec::Rename { items, undo_of } = &spec {
                 let partial = undo_of.is_some();
-                let (state, summary, undo) =
-                    rename::run(id, items, partial, home.as_deref(), &control, &emit);
-                (state, summary, Some(undo))
+                rename::run(
+                    id,
+                    items,
+                    partial,
+                    home.as_deref(),
+                    &control,
+                    &emit,
+                    &mut undo,
+                )
             } else {
                 let (state, summary) = match &spec {
                     JobSpec::Copy {
@@ -194,12 +203,12 @@ impl JobManager {
                     }
                     JobSpec::Rename { .. } => unreachable!("handled above"),
                 };
-                (state, summary, None)
+                (state, summary)
             }
         };
         // a panic (a bug, or inside a crate such as `trash`) must not leave the job
         // "running" forever and block the serial queue
-        let (state, summary, undo) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
+        let (state, summary) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
             .unwrap_or_else(|_| {
                 (
                     JobState::Failed,
@@ -211,10 +220,15 @@ impl JobManager {
                         )),
                         ..Summary::default()
                     },
-                    None,
                 )
             });
-        self.finish(id, state, summary, spec.is_parallel(), undo);
+        self.finish(
+            id,
+            state,
+            summary,
+            spec.is_parallel(),
+            is_rename.then_some(undo),
+        );
     }
 
     /// Records the final state and starts the next queued serial job. `parallel`
