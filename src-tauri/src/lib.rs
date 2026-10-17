@@ -7,10 +7,14 @@
 //! - [`listing`]      directory listing logic (pure, unit-tested, no Tauri dependency)
 //! - [`session`]      session file (tabs, panels, favourites; pure, unit-tested)
 //! - [`window_state`] window geometry restore/capture
+//! - [`keymap`]       user override of the keyboard shortcuts
+//! - [`fs_atomic`]    atomic writes of config files
 //! - [`commands`]     thin Tauri command layer
 
 pub mod commands;
 pub mod error;
+pub mod fs_atomic;
+pub mod keymap;
 pub mod listing;
 pub mod model;
 pub mod paths;
@@ -23,6 +27,7 @@ use tauri::{Manager, RunEvent, WindowEvent};
 pub fn run() {
     tauri::Builder::default()
         .manage(commands::SessionState::default())
+        .manage(commands::KeymapState::default())
         .setup(|app| {
             commands::init_session(app.handle());
             Ok(())
@@ -37,7 +42,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::list_directory,
             commands::load_session,
-            commands::save_session
+            commands::save_session,
+            commands::load_keymap_override,
+            commands::save_keymap_override
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
