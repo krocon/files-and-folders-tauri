@@ -105,6 +105,7 @@ export interface MenuItem {
   imports: [NgTemplateOutlet],
   host: {
     '(document:pointerdown)': 'onOutside($event)',
+    '(document:pointerup)': 'onPointerUp($event)',
     '(keydown)': 'onKeydown($event)',
     '(click)': 'onClick($event)',
   },
@@ -267,6 +268,21 @@ export class ContextMenu {
     const id = this.openSub()?.id;
     this.openSub.set(null);
     this.focusItem(this.itemElement(id));
+  }
+
+  /**
+   * The release of the right click that opened the menu: the list under it takes the
+   * focus back (GuiExpert focuses its host) – the menu keeps it.
+   */
+  protected onPointerUp(evt: PointerEvent): void {
+    const host = this.host.nativeElement;
+    if (this.autofocus() && !this.submenu() && !host.contains(evt.target as Node)) {
+      setTimeout(() => {
+        if (!host.contains(document.activeElement)) {
+          this.focusItem(this.enabled()[0]);
+        }
+      });
+    }
   }
 
   protected onOutside(evt: PointerEvent): void {

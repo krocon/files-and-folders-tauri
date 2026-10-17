@@ -27,7 +27,7 @@
   cursor: pointer;
   white-space: nowrap;
 
-  &:hover,
+  // hover moves the focus (onHover) – one highlight for mouse and keyboard
   &:focus,
   &[aria-expanded='true'] {
     color: var(--color-selection-text);
