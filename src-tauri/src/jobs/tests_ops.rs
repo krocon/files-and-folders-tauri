@@ -6,7 +6,9 @@ use super::*;
 use crate::error::FsErrorCode;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 
 fn s(p: &Path) -> String {
@@ -808,4 +810,34 @@ fn drop_nested_keeps_order_and_siblings() {
     let p = |s: &str| std::path::PathBuf::from(s);
     let got = drop_nested(&[p("/a/b/c"), p("/a/bb"), p("/a/b"), p("/a/b/"), p("/x")]);
     assert_eq!(got, vec![p("/a/bb"), p("/a/b"), p("/x")]);
+}
+
+#[test]
+fn the_fs_guard_pauses_moved_and_deleted_paths_while_the_job_runs() {
+    let tmp = tempdir().unwrap();
+    let a = tmp.path().join("a");
+    let b = tmp.path().join("b");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&a).unwrap();
+    fs::create_dir_all(&b).unwrap();
+    fs::create_dir_all(&target).unwrap();
+    let h = Harness::new();
+    let log: Arc<Mutex<Vec<String>>> = Arc::default();
+    let l = log.clone();
+    h.mgr.set_fs_guard(Arc::new(move |paths: &[PathBuf]| {
+        l.lock().unwrap().push(format!("pause {}", paths.len()));
+        let l = l.clone();
+        Box::new(move || l.lock().unwrap().push("resume".into()))
+    }));
+    let id = h.copy(&[&a], &target, false);
+    h.finish(&id);
+    assert!(log.lock().unwrap().is_empty(), "copy does not pause");
+    let id = h.start_move(&[&a], &target, CopyOptions::default());
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    let id = h.delete(&[&b], DeleteMode::Permanent);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert_eq!(
+        *log.lock().unwrap(),
+        vec!["pause 1", "resume", "pause 1", "resume"]
+    );
 }

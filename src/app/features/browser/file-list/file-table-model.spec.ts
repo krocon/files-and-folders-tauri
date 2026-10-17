@@ -36,3 +36,23 @@ describe('FileBodyModel.getCustomClassesAt', () => {
     expect(body.getCustomClassesAt(9, 0)).not.toContain('fnf-cursor');
   });
 });
+
+describe('FileBodyModel.replaceRows (review 012 #5)', () => {
+  it('replaces rows by path in place and tells whether one of them is displayed', () => {
+    const { body } = createFileTable('x');
+    const a = entry('a.txt', { path: '/w/a.txt', size: 1 });
+    const h = entry('.h', { path: '/w/.h', size: 1, hidden: true });
+    body.setRows([a, h]);
+    body.externalFilterChanged((r: { hidden: boolean }) => !r.hidden);
+    expect(body.getFilteredRows()).toEqual([a]);
+    const h2 = { ...h, size: 2 };
+    expect(body.replaceRows([h2])).toEqual({ found: 1, visible: false });
+    const a2 = { ...a, size: 3 };
+    expect(body.replaceRows([a2, entry('x', { path: '/w/x' })])).toEqual({
+      found: 1,
+      visible: true,
+    });
+    expect(body.getFilteredRows()[0]).toBe(a2);
+    expect(body.getRowByIndex(0)).toBe(a2);
+  });
+});

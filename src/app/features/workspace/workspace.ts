@@ -57,6 +57,7 @@ import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { ButtonBar } from './button-bar/button-bar';
+import { DragGhost } from '../dnd/drag-ghost';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
@@ -72,6 +73,7 @@ import { WorkspaceStore } from './workspace.store';
   selector: 'app-workspace',
   imports: [
     FilePanel,
+    DragGhost,
     ButtonBar,
     CommandPalette,
     MarkPatternDialog,

@@ -125,6 +125,7 @@
   }
   <app-file-list
     [labelledBy]="pathId"
+    [side]="side()"
     (openInNewTab)="openInNewTab($event)"
     (tableStateChanged)="onTableState($event)"
   />
@@ -148,5 +149,8 @@
   }
   @if (store.listing()?.unreadableEntries; as n) {
     <span class="warn">· {{ texts.unreadable(n) }}</span>
+  }
+  @if (watchHint(); as hint) {
+    <span class="watch" [attr.title]="texts.watchHint">· {{ hint }}</span>
   }
 </footer>

@@ -16,6 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.7.3", features = [] }
 
 [dependencies]
+notify = "8.2"
 open = "5"
 regex = "1.13"
 serde = { version = "1.0", features = ["derive"] }

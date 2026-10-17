@@ -97,6 +97,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
 - **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
   und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
+- **Automatische Aktualisierung** (012): die sichtbaren Ordner beider Panels werden überwacht (`notify`, nicht
+  rekursiv); Dateien, die andere Programme anlegen, ändern, umbenennen oder löschen, erscheinen nach < 1 s – Cursor,
+  Markierung und Scrollposition bleiben, ein gelöschter Cursor-Eintrag gibt den Cursor an den nächsten weiter.
+  Massenänderungen (z. B. 50 000 entpackte Dateien) laden höchstens alle 1,5 s neu; ein gelöschter Ordner führt zum
+  nächsten vorhandenen Elternordner. Netzlaufwerke werden nicht überwacht (Hinweis in der Statuszeile, `Strg/⌘+R`).
+- **Drag & Drop** (012): Markierung (bzw. die Zeile) in das andere Panel oder auf eine Ordnerzeile ziehen öffnet den
+  Kopieren-Dialog (mit `Shift`, macOS `⌘`: Verschieben); `Esc` bricht ab. Dateien aus Finder/Explorer/Dateimanager auf
+  ein Panel oder eine Ordnerzeile ziehen öffnet den Kopieren-Dialog. Ziehen aus der App ins System: noch nicht.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
