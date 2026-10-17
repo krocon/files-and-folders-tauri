@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Prompt 006 (Basisoperationen) auf Basis von 001–005. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 009 (Suche) auf Basis von 001–008. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
@@ -49,7 +49,7 @@ sind als solche markiert.
 | Sicherheit | Capabilities nur `core:default`; keine fs/shell-Plugins; strikte CSP | Minimale Angriffsfläche. Eigene Commands sind über `invoke_handler` registriert. |
 | CSP & Styles | `dangerousDisableAssetCspModification: ["style-src"]` | Tauri ergänzt sonst Hashes in `style-src`, wodurch `'unsafe-inline'` ignoriert wird und Angulars zur Laufzeit eingefügte Komponenten-Styles blockiert würden (in der App verifiziert). `script-src` bleibt strikt. |
 | Styling | SCSS + Design-Tokens in `src/styles.scss`, Dark-Mode per `prefers-color-scheme` | Kein UI-Framework nötig. |
-| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum), `open` 5 (seit 003: Standard-App starten ohne Shell, MIT/Apache, Basis von `tauri-plugin-opener`), `libc` (nur Unix, seit 006: Umbenennen ohne Ersetzen mit `renameat2`/`renamex_np`), `trash` 5.2 (seit 006: Papierkorb je OS, MIT, ohne Default-Features; Windows `IFileOperation` mit Rückgängig, macOS Finder mit „Zurücklegen“, Linux freedesktop – Verhalten in `prompts/006-basis-operationen.design.md` E1). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
+| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum), `open` 5 (seit 003: Standard-App starten ohne Shell, MIT/Apache, Basis von `tauri-plugin-opener`), `libc` (nur Unix, seit 006: Umbenennen ohne Ersetzen mit `renameat2`/`renamex_np`), `trash` 5.2 (seit 006: Papierkorb je OS, MIT, ohne Default-Features; Windows `IFileOperation` mit Rückgängig, macOS Finder mit „Zurücklegen“, Linux freedesktop – Verhalten in `prompts/006-basis-operationen.design.md` E1), `regex` 1.13 (seit 009: Namens-/Inhaltssuche mit garantiert linearer Laufzeit und Größenlimit – kein Backtracking, also kein ReDoS durch Nutzermuster; MIT/Apache, war über Tauri schon im Baum). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
 | Dateiliste | GuiExpert Table, **ein** `TableModel` je Panel, Ordnerwechsel nur über `setRows` + `reSort` + `repaintHard` | Spaltenbreiten und Sortierung bleiben erhalten; ein neues Modell-Objekt würde die Table neu aufbauen. Details und Belege: `prompts/001-guiexpert-dateiliste.design.md`. |
 | Cursor | Table-Fokus (`FocusModel`, Spalte 0) ↔ `FileBrowserStore.cursorPath`, Abgleich über den Pfad; Darstellung als Zeilenklasse `fnf-cursor` | Fokus der Table ist index-basiert und zellbasiert; der Pfad ist sortierfest. Nach Header-Sortierung (Doppelklick, ohne Ereignis) stellt ein Capture-Listener den Cursor per Pfad wieder her. |
 | Markierung | eigenes `Set<path>` im Store, `SelectionModel` der Table auf `none` | Das `SelectionModel` ist index-basiert und überlebt kein Sortieren. Anzeige: Klasse `fnf-marked` + Häkchen statt Icon (wie die alte Version), Screenreader-Text „marked“. |
@@ -79,6 +79,8 @@ sind als solche markiert.
 | Gruppieren (008) | Gruppe je Eintrag rechnet die TS-Engine (`features/groupfiles/group-engine.ts`, Unicode-Wörter, geprüfte Gruppennamen); Job `group` legt je Gruppe `<wurzel>/<gruppe>` an (nur echter Ordner wird zusammengeführt, Datei/Link = Fehler der Gruppe) und gibt Paare *Quelle → Zielordner* an die Copy/Move-Engine (`copy::run_pairs`) | Ein Job, eine Konfliktfrage-Reihe, ein Abbruch; Konflikte, Temp+Umbenennen und Pause wie 005/006. Design 008 E1/E2 |
 | Ordner aufräumen (008) | `find_empty_dirs` (Command, schreibt nie, abbrechbar per `scan_id` + `cancel_clean_scan`): folgt keinen Links, betritt keine fremden Dateisysteme, nie oberhalb des Startordners, Startordner nur auf Wunsch, Systemmüll und Namensmuster optional, Grenze 500 000 Einträge. Job `clean` prüft **jeden** Eintrag erneut (in einer Wurzel, kein Link auf dem Weg, nicht gefährlich, jetzt leer bzw. nur Müll, Datei passt noch) und löscht Kinder vor Eltern – Papierkorb oder endgültig – unter Unix relativ zur Wurzel per `openat(O_NOFOLLOW)` + `unlinkat` (`platform::remove_below`), nie `remove_dir_all` | Die Vorschau ist nur ein Vorschlag; was sich seit der Suche geändert hat, bleibt stehen. Design 008 E3 |
 | Multi-MkDir (008) | Namen aus der TS-Engine (`mkdir-engine.ts`), `create_folders(parent, names)` legt je Name an (nie überschreiben, Fehler je Name, max. 1 000) | Kurz und nicht destruktiv → Command wie `make_dir` |
+| Suche (009) | Job `search` (parallel, Hilfs-Job ohne Nachfrage beim Beenden): eigene Tiefensuche in `search.rs` (keine Crate `walkdir`/`ignore`), Namen per Crate `regex` (Glob → Regex, Text, Regex; Größenlimit des Automaten), Links nur mit Option und dann je Ordner-Identität (dev+ino bzw. kanonischer Pfad) höchstens einmal betreten, unlesbare Ordner gesammelt, `maxHits` ≤ 100 000, Inhalt in 64-KiB-Blöcken bis zum Größenlimit. Treffer gebündelt (≤ 500 bzw. alle 50 ms) als Ereignis `searchHits` über den **einen** Job-Kanal – nie im `JobInfo`. Frontend: `SearchStore` (Root) sammelt je Ergebnis, veröffentlicht höchstens alle 300 ms, verwirft fremde Job-Ids, neue Suche bricht die alte ab | Lange Operation = Job (Abbruch, Fehler, Ende wie alle); kleine Ereignisse statt eines riesigen DTOs (Erfahrung 001). Design 009 E1/E2 |
+| Ergebnis-Tabs (009) | `TabState.search = { key, label }` verweist auf ein Ergebnis im `SearchStore`; das Panel zeigt es über `FileBrowserStore.showSearch` (synthetisches Listing, `path()` = `null`, `locationKey()` = `search:<key>`); Spalte „Folder“ per `setColumnVisible`; Kopieren/Verschieben/Löschen arbeiten auf vollen Pfaden, Gelöschtes verlässt das Ergebnis; Such-Tabs werden beim Speichern zu Ordner-Tabs | Keine zweite Dateiliste; alles, was einen Ordner braucht, ist dort automatisch aus. Design 009 E4 |
 | Vorschau-Tabellen | `shared/preview-grid/` – GuiExpert Table mit Spalten/Zeilenklasse als Input, Modell einmal gebaut, `setRows` + `repaintHard` | Gemeinsam für Gruppieren, Aufräumen, Multi-MkDir |
 | Modale Dialoge | Fenster dahinter `inert` | Fokus und Klicks bleiben im Dialog (aria-modal allein reicht nicht). |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
@@ -124,6 +126,14 @@ flüssig bleibt), die Rust-Prüfung ~1 s später (120 ms Entprellung + Prüfung 
 
 ## Geplante Erweiterungen (noch nicht implementiert)
 
-- **Suche (Phase 4):** Streaming-Ergebnisse über Tauri-Channels, Abbruch, kein Hintergrundindex.
+- **Suchindex:** bewusst keiner (009). Sinnvoll erst bei wiederholten Suchen über sehr große Bäume (> 1 Mio.
+  Einträge) oder Inhaltssuche über viele GB – dann opt-in je Wurzel mit Überwachung (012), oder die Plattform-Indizes
+  (Spotlight, Windows Search, `locate`) als externe Werkzeuge (011). Design 009 E7.
 - **Plattform (Phase 7):** Modul `platform/` mit `cfg`-Implementierungen für Laufwerke/Mountpoints,
   „Im Finder/Explorer zeigen“, Öffnen mit Standard-App (nur über schmale, validierte Commands).
+
+### Suche (Messung Prompt 009, Okt. 2026)
+
+200 000 leere Dateien in 400 Ordnern, Linux-Container, Release (`cargo test --release search_200k -- --ignored
+--nocapture`): erster Treffer nach 2 ms, ganzer Baum 0,5 s, Abbruch-Reaktion < 1 ms (Prüfung je Eintrag). Im
+Debug-Build der App: `*.mp3` über denselben Baum ~4 s, `Stop` beendet sofort (E2E).

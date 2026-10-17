@@ -226,6 +226,23 @@ Ergebnis-Tab:  [🔍 *.mp3 ◌] …   Header: Search: "*.mp3" in /home/u/Musik �
 
 | Punkt | Design | umgesetzt | Grund |
 |---|---|---|---|
+| Reihenfolge der Treffer | Fundreihenfolge | je Ordner nach Namen (Einträge werden gelesen, sortiert, dann geprüft) | E2E: Ordner-Finder zeigte `locked, Bücher, Musik` (readdir-Reihenfolge); stabil und lesbar, kostet nur bei riesigen Ordnern etwas Speicher |
+| Spalte „Folder“ | feste 260 px | Gewicht 1 (teilt den Platz mit dem Namen), min. 60 px | E2E: im schmalen Panel bekam der Name 0 px – die GuiExpert Table wendet `minWidth` bei Gewichtsspalten nicht an und gibt ihnen 0, wenn feste Spalten den Platz füllen (s. „Lücken der Table“) |
+| Leerer Ergebnis-Tab | – | eigener Text „No hits (yet).“ per `showNoRowsOverlay`/`hideOverlay` | `overlayOptions` werden beim Erzeugen kopiert, der Text „This folder is empty.“ ist sonst fest |
+| Kopieren/Löschen im Ergebnis-Tab | über `locationKey()` | dazu `OpsStore.location()` für die Freigabe der Aktionen (F5/F6/F8) | E2E: die Buttons waren gesperrt, weil die Freigabe noch `folder()` prüfte |
+| Gelöschtes verlässt das Ergebnis | nach Löschen/Verschieben | nur wenn der Job **ganz** fertig ist (`done`, nichts übersprungen) | Fehler/Übersprungenes kann Einträge **in** einem Quellordner betreffen – dann bleibt die Zeile lieber stehen |
+| Stop während des Starts | – | wird gemerkt und bricht den Job ab, sobald seine Id da ist | Rennen zwischen „Search again“ und „Stop“ (Test) |
+| Hilfs-Jobs beim Beenden | – | `JobManager::active_count` zählt `count`, `dirSize`, `search` nicht mehr | Beenden fragt nur noch bei echten Aufgaben; die Hilfs-Jobs werden ohnehin abgebrochen |
+| Zähler im Header | Treffer laut Statistik | während der Suche Statistik, danach Zeilen im Ergebnis (nach Löschen kleiner) | E2E |
+
+### Lücken der GuiExpert Table (Vorschlag für `mono/TODO.md`)
+
+- **G15 – `minWidth` bei Gewichtsspalten:** `TableModel.recalcColumnWidths` verteilt nur den positiven Rest
+  (`a > 0`) auf Spalten mit `width.unit === "weight"` und beachtet deren `minWidth` nicht; reicht der Platz nicht,
+  bekommen sie 0 px (Spalte verschwindet, ohne horizontalen Scrollbalken für sie). Vorschlag: `minWidth` als Untergrenze
+  auch für Gewichtsspalten, dann horizontal scrollen. Hier umgangen durch kleinere feste Spalten.
+- **G16 – Overlay-Texte zur Laufzeit:** `overlayOptions` werden beim Erzeugen kopiert (`Io.create`); ein Setter
+  (`tableApi.setOverlayOptions`) fehlt. Hier: `showNoRowsOverlay(text)` + `hideOverlay()`.
 
 ## 8. Review (separater Agent) – Ergebnis
 
@@ -235,12 +252,44 @@ Ergebnis-Tab:  [🔍 *.mp3 ◌] …   Header: Search: "*.mp3" in /home/u/Musik �
 ## 9. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende
-- [ ] Phase 5 Doku · [ ] Phase 6 Abschlussprüfung
+- [x] Phase 2 Rust: `search.rs` (Kriterien, Glob → Regex, Text, Regex mit Größenlimit, Typen, Größe, Datum,
+  versteckte, Tiefe, Ausschlüsse, Inhalt in Blöcken, zyklensichere Links, unlesbare Ordner, `maxHits`), Job
+  `jobs/search.rs` (Bündelung ≤ 500 / 50 ms, Statistik alle 250 ms, Summary mit Fehlern), `JobEvent::SearchHits`,
+  Fehlercode `invalid_pattern`, `JobSpec::is_helper` – 12 neue Rust-Tests + Messung 200 000 Dateien (`--ignored`)
+- [x] Phase 3 Frontend: `core/search` (DTOs), `JobsStore.onSearchHits`, `SearchStore`, `FindStore` + Suchdialog
+  (`find-form.ts`, Vorlagen `search-presets.json`), Ergebnis-Tab (`TabState.search`, `FileBrowserStore.showSearch`,
+  Spalte Folder, Header, Tab mit Lupe/Spinner/`aria-busy`, nicht in der Sitzung), Ordner-Finder (Store, Logik, Dialog,
+  `PreviewGrid` mit aktiver Zeile und Klicks), Aktionen `OPEN_FIND_DLG`, `OPEN_FOLDER_FINDER_DLG`, `RERUN_SEARCH`,
+  `GOTO_FILE` – 21 neue Frontend-Tests (`find-form.spec.ts`, `folder-finder-logic.spec.ts`, `search.store.spec.ts`)
+- [x] Phase 4 Ende-zu-Ende (Xvfb :96, Debug-Build, eigenes `HOME`/`XDG_*` unter `/tmp/claude-0/e2e-009`, Baum mit
+  Umlauten, Emoji, Hidden, `node_modules`, Symlink-Zyklus `Musik/zurück → ..`, Link auf Ordner, gesperrtem Ordner und
+  200 000 Dateien): Suche `*.mp3` / `*.mp3;*.cb?` (versteckte und `node_modules` ausgeschlossen), Ergebnis-Tab mit
+  Lupe/Spinner, zwei Treffer markiert und per F5 in das andere Panel kopiert, ein Treffer per F8 in den Papierkorb
+  (verschwindet aus dem Ergebnis, Cursor auf dem nächsten), „Zur Datei“ (neuer Tab `🎉 Party`, Cursor auf `tanz.mp3`),
+  Inhaltssuche über 200 000 Dateien mit `Stop` (sofort „stopped“), `Search again` per Button und `Strg+Shift+F7`,
+  „Links folgen“ mit Zyklus endet (3 Treffer), Ordner-Finder (407 Ordner, Filter `ber al` → `Über alles`, Enter
+  wechselt), Ergebnis-Tab nach Neustart als Ordner-Tab. Nicht prüfbar: gesperrter Ordner (als root lesbar – nur der
+  Rust-Test `locked_folder_is_reported` prüft bedingt), macOS/Windows (Zyklusschutz über kanonische Pfade unter Windows
+  ungetestet), Dark-Mode nur über Tokens.
+- [x] Phase 5 Doku (architecture, feature-parity, roadmap, README, CLAUDE.md, prompts/README)
+- [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build), Selbstprüfung (unten)
+
+### Selbstprüfung (Schwerpunkte Sicherheit/Performance)
+
+- **Links/Zyklen:** ohne Option nie betreten (`DirEntry::metadata` = lstat); mit Option je Ordner-Identität höchstens
+  einmal (`symlink_cycles_end_and_links_are_hits`). Harte Tiefengrenze 256.
+- **Grenzen:** `maxHits` ≤ 100 000, Muster ≤ 4 096 Byte, Regex-Automat ≤ 1 MiB (`a{1000}{1000}` → `invalid_pattern`),
+  ≤ 100 Wurzeln/Ausschlüsse, Inhaltstext ≤ 1 024 Byte, Dateien nur bis `maxFileSize` (≤ 1 GiB) und blockweise.
+- **Keine Inhalte im Log/IPC:** gelesen wird nur zum Vergleich; nichts wird geloggt, übertragen wird nur der Treffer.
+- **Kein ReDoS:** Crate `regex` garantiert lineare Laufzeit.
+- **Veraltete Antworten:** Treffer nur an den Listener der eigenen Job-Id; neue Suche bricht die alte ab
+  (`search again cancels the old job and ignores its hits`).
+- **Restpunkte:** beendete Such-Jobs bleiben (wie `dirSize`) bis „Clear finished“ in der Job-Liste von Rust und
+  Frontend (klein: nur Kriterien); `canonicalize` je Ordner bei „Links folgen“ unter Windows ist langsam.
 
 ## 10. Offen
+
+- Spalte Folder: Pfadende bei schmaler Spalte abgeschnitten (Anfang sichtbar) – Ellipse links oder Tooltip.
 
 - Dauerhafte Vorlagen/letzte Suchen (015), Laufwerke als Suchort (011), Baumansicht im Ordner-Finder.
 - Umbenennen und Ordner-Werkzeuge im Ergebnis-Tab; Ergebnis-Tabs über einen Neustart hinweg.
