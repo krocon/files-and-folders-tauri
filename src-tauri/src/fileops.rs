@@ -13,7 +13,7 @@ fn exists(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
-fn already_exists(path: &Path) -> FsError {
+pub(crate) fn already_exists(path: &Path) -> FsError {
     FsError::new(
         FsErrorCode::AlreadyExists,
         "A file or folder with this name exists already",
@@ -136,23 +136,7 @@ pub fn rename_entry(
     }
     let case_only = old_name.to_lowercase() == new_name.to_lowercase();
     if case_only && exists(&target) {
-        // same entry seen through a case-insensitive file system?
-        if has_exact_entry(parent, new_name).map_err(|e| FsError::from_io(&e, parent))? {
-            return Err(already_exists(&target));
-        }
-        // APFS and NTFS change the case directly (it is the same entry – nothing to replace)
-        fs::rename(path, &target).map_err(|e| FsError::from_io(&e, path))?;
-        if has_exact_entry(parent, new_name).unwrap_or(true) {
-            return Ok(target);
-        }
-        // the file system kept the old spelling: go through a unique temporary name
-        let tmp = unique_temp(parent);
-        rename_noreplace(path, &tmp).map_err(|e| FsError::from_io(&e, path))?;
-        if let Err(e) = rename_noreplace(&tmp, &target) {
-            let _ = rename_noreplace(&tmp, path); // put it back
-            return Err(FsError::from_io(&e, &target));
-        }
-        return Ok(target);
+        return rename_same_entry(path, parent, new_name);
     }
     rename_noreplace(path, &target).map_err(|e| {
         if e.kind() == io::ErrorKind::AlreadyExists {
@@ -164,8 +148,32 @@ pub fn rename_entry(
     Ok(target)
 }
 
+/// Renames `path` to `new_name` in `parent` when the file system sees both
+/// names as the **same** entry (case change on APFS/NTFS/FAT, another Unicode
+/// normalisation on APFS). Fails with `already_exists` if `new_name` is spelled
+/// exactly like another entry. Never replaces anything.
+pub fn rename_same_entry(path: &Path, parent: &Path, new_name: &str) -> Result<PathBuf, FsError> {
+    let target = parent.join(new_name);
+    if has_exact_entry(parent, new_name).map_err(|e| FsError::from_io(&e, parent))? {
+        return Err(already_exists(&target));
+    }
+    // APFS and NTFS change the case directly (it is the same entry – nothing to replace)
+    fs::rename(path, &target).map_err(|e| FsError::from_io(&e, path))?;
+    if has_exact_entry(parent, new_name).unwrap_or(true) {
+        return Ok(target);
+    }
+    // the file system kept the old spelling: go through a unique temporary name
+    let tmp = unique_temp(parent);
+    rename_noreplace(path, &tmp).map_err(|e| FsError::from_io(&e, path))?;
+    if let Err(e) = rename_noreplace(&tmp, &target) {
+        let _ = rename_noreplace(&tmp, path); // put it back
+        return Err(FsError::from_io(&e, &target));
+    }
+    Ok(target)
+}
+
 /// A name in `dir` that no other rename uses (process id, time, counter).
-fn unique_temp(dir: &Path) -> PathBuf {
+pub fn unique_temp(dir: &Path) -> PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};
     static SEQ: AtomicU64 = AtomicU64::new(0);
     let nanos = std::time::SystemTime::now()

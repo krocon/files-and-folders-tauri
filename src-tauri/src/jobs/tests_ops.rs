@@ -564,3 +564,135 @@ fn a_panicking_job_fails_and_the_engine_goes_on() {
     let id = h.start_copy(&[&src], &dst, CopyOptions::default());
     assert_eq!(h.finish(&id).state, JobState::Done);
 }
+
+// ---- multi-rename (design 007) ----
+
+fn rename_items(dir: &Path, pairs: &[(&str, &str)]) -> Vec<RenameItem> {
+    pairs
+        .iter()
+        .map(|(a, b)| RenameItem {
+            path: s(&dir.join(a)),
+            new_name: b.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+fn rename_job_swap_undo_and_undo_of_undo() {
+    let h = Harness::new();
+    let t = tempdir().unwrap();
+    let d = t.path();
+    fs::write(d.join("a"), "A").unwrap();
+    fs::write(d.join("b"), "B").unwrap();
+    let id = h
+        .mgr
+        .start(JobSpec::Rename {
+            items: rename_items(d, &[("a", "b"), ("b", "a")]),
+            undo_of: None,
+        })
+        .unwrap();
+    let job = h.finish(&id);
+    assert_eq!(job.state, JobState::Done);
+    assert_eq!(fs::read_to_string(d.join("a")).unwrap(), "B");
+    assert!(h.mgr.list().iter().any(|j| j.id == id && j.undo_available));
+    assert!(h.events.lock().unwrap().iter().any(|e| matches!(
+        e,
+        JobEvent::UndoAvailable { id: i, available: true } if *i == id
+    )));
+    assert!(no_temp_files(d));
+    assert_eq!(
+        fs::read_dir(d).unwrap().count(),
+        2,
+        "no temporary names left"
+    );
+    // undo the last rename (no id given)
+    let undo = h.mgr.undo_rename(None).unwrap();
+    assert_eq!(h.finish(&undo).state, JobState::Done);
+    assert_eq!(fs::read_to_string(d.join("a")).unwrap(), "A");
+    assert!(
+        !h.mgr
+            .list()
+            .iter()
+            .find(|j| j.id == id)
+            .unwrap()
+            .undo_available
+    );
+    assert_eq!(
+        h.mgr.undo_rename(Some(&id)).unwrap_err().code,
+        FsErrorCode::UndoUnavailable
+    );
+    // the undo itself can be undone
+    let redo = h.mgr.undo_rename(Some(&undo)).unwrap();
+    assert_eq!(h.finish(&redo).state, JobState::Done);
+    assert_eq!(fs::read_to_string(d.join("a")).unwrap(), "B");
+}
+
+#[test]
+fn rename_undo_reports_changed_entries_and_renames_the_rest() {
+    let h = Harness::new();
+    let t = tempdir().unwrap();
+    let d = t.path();
+    for n in ["x", "y"] {
+        fs::write(d.join(n), n).unwrap();
+    }
+    let id = h
+        .mgr
+        .start(JobSpec::Rename {
+            items: rename_items(d, &[("x", "x2"), ("y", "y2")]),
+            undo_of: None,
+        })
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    fs::remove_file(d.join("x2")).unwrap(); // changed meanwhile
+    let undo = h.mgr.undo_rename(Some(&id)).unwrap();
+    let job = h.finish(&undo);
+    assert_eq!(job.state, JobState::DoneWithErrors);
+    let sum = job.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (1, 1));
+    assert_eq!(sum.errors[0].error.code, FsErrorCode::NotFound);
+    assert!(d.join("y").exists());
+    // a job without undo_of refuses everything when one pair is bad
+    let bad = h
+        .mgr
+        .start(JobSpec::Rename {
+            items: rename_items(d, &[("y", "z"), ("fehlt", "q")]),
+            undo_of: None,
+        })
+        .unwrap();
+    let job = h.finish(&bad);
+    assert_eq!(job.state, JobState::Failed);
+    assert!(d.join("y").exists() && !d.join("z").exists());
+    assert!(!job.undo_available);
+    assert!(
+        h.mgr
+            .start(JobSpec::Rename {
+                items: vec![],
+                undo_of: None
+            })
+            .is_err()
+    );
+}
+
+#[test]
+fn rename_undo_log_keeps_the_last_jobs() {
+    let h = Harness::new();
+    let t = tempdir().unwrap();
+    let d = t.path();
+    fs::write(d.join("n0"), "").unwrap();
+    let mut ids = Vec::new();
+    for i in 0..(manager::UNDO_LOG_SIZE + 2) {
+        let id = h
+            .mgr
+            .start(JobSpec::Rename {
+                items: rename_items(d, &[(&format!("n{i}"), &format!("n{}", i + 1))]),
+                undo_of: None,
+            })
+            .unwrap();
+        assert_eq!(h.finish(&id).state, JobState::Done);
+        ids.push(id);
+    }
+    let jobs = h.mgr.list();
+    let available = |id: &str| jobs.iter().find(|j| j.id == id).unwrap().undo_available;
+    assert!(!available(&ids[0]) && !available(&ids[1]));
+    assert!(available(&ids[2]) && available(ids.last().unwrap()));
+}

@@ -104,6 +104,7 @@ export function job(id: string, spec: JobSpec, patch: Partial<JobInfo> = {}): Jo
     conflict: null,
     summary: null,
     pauseReason: null,
+    undoAvailable: false,
     ...patch,
   };
 }

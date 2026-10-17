@@ -11,7 +11,8 @@ export type DialogKind =
   | 'conflict'
   | 'copy-move'
   | 'delete'
-  | 'name';
+  | 'name'
+  | 'multi-rename';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

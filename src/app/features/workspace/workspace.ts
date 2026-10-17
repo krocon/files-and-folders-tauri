@@ -25,6 +25,9 @@ import { DeleteDialog } from '../ops/delete-dialog';
 import { NameDialog } from '../ops/name-dialog';
 import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
+import { MultiRenameDialog } from '../multirename/multirename-dialog';
+import { registerMultiRenameActions } from '../multirename/multirename-actions';
+import { MultiRenameStore } from '../multirename/multirename.store';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
@@ -55,6 +58,7 @@ import { WorkspaceStore } from './workspace.store';
     CopyMoveDialog,
     DeleteDialog,
     NameDialog,
+    MultiRenameDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -73,6 +77,7 @@ export class Workspace implements OnInit {
   protected readonly jobs = inject(JobsStore);
   private readonly confirm = inject(ConfirmService);
   private readonly ops = inject(OpsStore);
+  private readonly mr = inject(MultiRenameStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -149,6 +154,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerWorkspaceActions(this.actions, this.ws, this.dialogs));
     this.destroyRef.onDestroy(registerJobActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));
+    this.destroyRef.onDestroy(registerMultiRenameActions(this.actions, this.mr, this.jobs));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();

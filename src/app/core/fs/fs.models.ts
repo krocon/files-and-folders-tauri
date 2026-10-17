@@ -43,6 +43,10 @@ export type FsErrorCode =
   | 'invalid_name'
   | 'dangerous_path'
   | 'trash_failed'
+  /** Two entries of a multi-rename would get the same name. */
+  | 'duplicate_target'
+  /** Nothing to undo (anymore). */
+  | 'undo_unavailable'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

@@ -30,6 +30,10 @@ pub enum FsErrorCode {
     DangerousPath,
     /// The item could not be moved to the trash (no trash on this volume …).
     TrashFailed,
+    /// Two entries of a multi-rename would get the same name (design 007 E5).
+    DuplicateTarget,
+    /// Nothing to undo (no rename log for this task, or it was undone already).
+    UndoUnavailable,
     Io,
 }
 
@@ -94,5 +98,15 @@ mod tests {
         let json = serde_json::to_value(&e).unwrap();
         assert_eq!(json["code"], "permission_denied");
         assert_eq!(json["path"], serde_json::Value::Null);
+        let e = FsError::new(FsErrorCode::DuplicateTarget, "dup", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "duplicate_target"
+        );
+        let e = FsError::new(FsErrorCode::UndoUnavailable, "no", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "undo_unavailable"
+        );
     }
 }

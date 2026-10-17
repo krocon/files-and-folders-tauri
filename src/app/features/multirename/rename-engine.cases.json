@@ -1,0 +1,630 @@
+{
+  "about": "Table of rename-engine cases (design 007 §5). rules = changes to DEFAULT_RULES (pattern [N].[E], counter 1/1/4, protectExtension and compoundExtensions on). replacements are merged per row; replaceEnabled is switched on when replacements are given. source.parents defaults to [\"docs\", \"marc\", \"home\"].",
+  "cases": [
+    { "title": "default keeps a plain file", "source": { "name": "a.txt" }, "expected": "a.txt" },
+    {
+      "title": "bug: README without dot stays README (was .README)",
+      "source": { "name": "README" },
+      "expected": "README"
+    },
+    {
+      "title": "folders have no extension",
+      "source": { "name": "my.folder", "isDir": true },
+      "expected": "my.folder"
+    },
+    {
+      "title": "dot file has no extension",
+      "source": { "name": ".gitignore" },
+      "expected": ".gitignore"
+    },
+    {
+      "title": "trailing dot has no extension",
+      "source": { "name": "datei." },
+      "expected": "datei."
+    },
+    {
+      "title": "suffix on README",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": "README" },
+      "expected": "README_x"
+    },
+    {
+      "title": "bug: folders are not split",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": "Ordner.v2", "isDir": true },
+      "expected": "Ordner.v2_x"
+    },
+    {
+      "title": "suffix on a dot file",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": ".gitignore" },
+      "expected": ".gitignore_x"
+    },
+    {
+      "title": "dot file with extension",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": ".config.json" },
+      "expected": ".config_x.json"
+    },
+    {
+      "title": "compound extension",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": "archiv.tar.gz" },
+      "expected": "archiv_x.tar.gz"
+    },
+    {
+      "title": "compound extension, case-insensitive",
+      "rules": { "pattern": "[N]_x.[E]" },
+      "source": { "name": "A.TAR.ZST" },
+      "expected": "A_x.TAR.ZST"
+    },
+    {
+      "title": "compound extensions off",
+      "rules": { "pattern": "[N]_x.[E]", "compoundExtensions": false },
+      "source": { "name": "archiv.tar.gz" },
+      "expected": "archiv.tar_x.gz"
+    },
+    {
+      "title": "extension only",
+      "rules": { "pattern": "[E]" },
+      "source": { "name": "a.txt" },
+      "expected": "txt"
+    },
+    {
+      "title": "range from-to (0-based, end exclusive)",
+      "rules": { "pattern": "[N2-5]" },
+      "source": { "name": "Dokument.txt" },
+      "expected": "kum"
+    },
+    {
+      "title": "range from",
+      "rules": { "pattern": "[N2-]" },
+      "source": { "name": "Dokument.txt" },
+      "expected": "kument"
+    },
+    {
+      "title": "range to",
+      "rules": { "pattern": "[N-3]" },
+      "source": { "name": "Dokument.txt" },
+      "expected": "Dok"
+    },
+    {
+      "title": "range without bounds",
+      "rules": { "pattern": "[N-]" },
+      "source": { "name": "Dokument.txt" },
+      "expected": "Dokument"
+    },
+    {
+      "title": "range of the extension",
+      "rules": { "pattern": "[N].[E1-]" },
+      "source": { "name": "a.txt" },
+      "expected": "a.xt"
+    },
+    {
+      "title": "every occurrence of a range is replaced",
+      "rules": { "pattern": "[N-1][N-1]" },
+      "source": { "name": "Dokument.txt" },
+      "expected": "DD"
+    },
+    {
+      "title": "ranges count code points (emoji stays whole)",
+      "rules": { "pattern": "[N-1]" },
+      "source": { "name": "🎉ab.txt" },
+      "expected": "🎉"
+    },
+    {
+      "title": "range after an emoji",
+      "rules": { "pattern": "[N1-]" },
+      "source": { "name": "🎉ab.txt" },
+      "expected": "ab"
+    },
+    {
+      "title": "range past the end",
+      "rules": { "pattern": "[N5-9]x" },
+      "source": { "name": "ab.txt" },
+      "expected": "x"
+    },
+    {
+      "title": "parent, grandparent, great-grandparent",
+      "rules": { "pattern": "[P]-[Q]-[R]-[N].[E]" },
+      "source": { "name": "a.txt" },
+      "expected": "docs-marc-home-a.txt"
+    },
+    {
+      "title": "range of the parent",
+      "rules": { "pattern": "[P1-3]" },
+      "source": { "name": "a.txt" },
+      "expected": "oc"
+    },
+    {
+      "title": "above the root the parent is empty",
+      "rules": { "pattern": "[P][N].[E]" },
+      "source": { "name": "a.txt", "parents": ["", "", ""] },
+      "expected": "a.txt"
+    },
+    {
+      "title": "[[ and ]] are literal brackets",
+      "rules": { "pattern": "[[N]]" },
+      "source": { "name": "a.txt" },
+      "expected": "[N]"
+    },
+    {
+      "title": "literal brackets around a token",
+      "rules": { "pattern": "[[[N]]]" },
+      "source": { "name": "a.txt" },
+      "expected": "[a]"
+    },
+    {
+      "title": "unknown tokens stay as text",
+      "rules": { "pattern": "[X][N]" },
+      "source": { "name": "a.txt" },
+      "expected": "[X]a"
+    },
+    {
+      "title": "$& in a name stays literal",
+      "rules": { "pattern": "x[N]" },
+      "source": { "name": "a$&b.txt" },
+      "expected": "xa$&b"
+    },
+    {
+      "title": "a token inside the name is not replaced again",
+      "rules": { "pattern": "[N]-[E]" },
+      "source": { "name": "x[E].txt" },
+      "expected": "x[E]-txt"
+    },
+    {
+      "title": "counter default",
+      "rules": { "pattern": "[C]" },
+      "index": 0,
+      "source": { "name": "a.txt" },
+      "expected": "0001"
+    },
+    {
+      "title": "counter third entry",
+      "rules": { "pattern": "[C]" },
+      "index": 2,
+      "source": { "name": "a.txt" },
+      "expected": "0003"
+    },
+    {
+      "title": "bug: step 50 is 50 (was 30)",
+      "rules": { "pattern": "[C]", "counter": { "start": 1, "step": 50, "digits": 4 } },
+      "index": 1,
+      "source": { "name": "a.txt" },
+      "expected": "0051"
+    },
+    {
+      "title": "counter from 0, one digit",
+      "rules": { "pattern": "[C]", "counter": { "start": 0, "step": 1, "digits": 1 } },
+      "index": 0,
+      "source": { "name": "a.txt" },
+      "expected": "0"
+    },
+    {
+      "title": "counter grows beyond its digits",
+      "rules": { "pattern": "[C]", "counter": { "start": 1, "step": 1, "digits": 1 } },
+      "index": 9,
+      "source": { "name": "a.txt" },
+      "expected": "10"
+    },
+    {
+      "title": "counter start and step",
+      "rules": { "pattern": "[C]", "counter": { "start": 100, "step": 10, "digits": 1 } },
+      "index": 3,
+      "source": { "name": "a.txt" },
+      "expected": "130"
+    },
+    {
+      "title": "counter in a pattern",
+      "rules": { "pattern": "[N] [C].[E]" },
+      "source": { "name": "a.txt" },
+      "expected": "a 0001.txt"
+    },
+    {
+      "title": "counter on a folder",
+      "rules": { "pattern": "[N]_[C]" },
+      "source": { "name": "Ordner.2026", "isDir": true },
+      "expected": "Ordner.2026_0001"
+    },
+    {
+      "title": "upper case",
+      "rules": { "capitalize": "upper" },
+      "source": { "name": "hello world.txt" },
+      "expected": "HELLO WORLD.txt"
+    },
+    {
+      "title": "lower case",
+      "rules": { "capitalize": "lower" },
+      "source": { "name": "Hello World.TXT" },
+      "expected": "hello world.TXT"
+    },
+    {
+      "title": "first letter",
+      "rules": { "capitalize": "firstLetter" },
+      "source": { "name": "hello world.txt" },
+      "expected": "Hello world.txt"
+    },
+    {
+      "title": "first letter umlaut",
+      "rules": { "capitalize": "firstLetter" },
+      "source": { "name": "über.txt" },
+      "expected": "Über.txt"
+    },
+    {
+      "title": "words",
+      "rules": { "capitalize": "words" },
+      "source": { "name": "hello big world.txt" },
+      "expected": "Hello Big World.txt"
+    },
+    {
+      "title": "words with umlauts",
+      "rules": { "capitalize": "words" },
+      "source": { "name": "über alles.txt" },
+      "expected": "Über Alles.txt"
+    },
+    {
+      "title": "extension not protected: case changes it too",
+      "rules": { "capitalize": "upper", "protectExtension": false },
+      "source": { "name": "a.txt" },
+      "expected": "A.TXT"
+    },
+    {
+      "title": "chicago: small words stay small",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "the lord of the rings.txt" },
+      "expected": "The Lord of the Rings.txt"
+    },
+    {
+      "title": "chicago: small word first",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "a tale of two cities" },
+      "expected": "A Tale of Two Cities"
+    },
+    {
+      "title": "chicago: small word last",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "what is it for" },
+      "expected": "What Is It For"
+    },
+    {
+      "title": "chicago: after a colon",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "star wars: a new hope" },
+      "expected": "Star Wars: A New Hope"
+    },
+    {
+      "title": "chicago: vs.",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "apple vs. microsoft.txt" },
+      "expected": "Apple vs. Microsoft.txt"
+    },
+    {
+      "title": "chicago: AT&T and Q&A",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "q&a with at&t" },
+      "expected": "Q&A With AT&T"
+    },
+    {
+      "title": "chicago: apostrophe",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "don't stop.mp3" },
+      "expected": "Don't Stop.mp3"
+    },
+    {
+      "title": "chicago: mixed case word untouched",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "iPhone tips" },
+      "expected": "iPhone Tips"
+    },
+    {
+      "title": "chicago: umlauts (über was never capitalised)",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "über den wolken" },
+      "expected": "Über Den Wolken"
+    },
+    {
+      "title": "chicago: dotted abbreviation untouched",
+      "rules": { "capitalize": "chicago" },
+      "source": { "name": "the u.s. story.txt" },
+      "expected": "The u.s. Story.txt"
+    },
+    {
+      "title": "umlauts",
+      "rules": { "umlauts": true },
+      "source": { "name": "Äpfel über Straße.txt" },
+      "expected": "Aepfel ueber Strasse.txt"
+    },
+    {
+      "title": "accents",
+      "rules": { "umlauts": true },
+      "source": { "name": "Crème brûlée.txt" },
+      "expected": "Creme brulee.txt"
+    },
+    {
+      "title": "risky characters",
+      "rules": { "riskyChars": true },
+      "source": { "name": "a&b#c (1).txt" },
+      "expected": "abc (1).txt"
+    },
+    {
+      "title": "risky characters keep [ ] ( ) - . _",
+      "rules": { "riskyChars": true },
+      "source": { "name": "a_[b]-(c).d.txt" },
+      "expected": "a_[b]-(c).d.txt"
+    },
+    {
+      "title": "space to underscore",
+      "rules": { "spaceToUnderscore": true },
+      "source": { "name": "a b c.txt" },
+      "expected": "a_b_c.txt"
+    },
+    {
+      "title": "remove the parent name (first occurrence)",
+      "rules": { "removeParent": true },
+      "source": { "name": "docs-report docs.txt" },
+      "expected": "-report docs.txt"
+    },
+    {
+      "title": "order: umlauts before risky characters",
+      "rules": { "umlauts": true, "riskyChars": true },
+      "source": { "name": "Ä&b.txt" },
+      "expected": "Aeb.txt"
+    },
+    {
+      "title": "order: case before umlauts",
+      "rules": { "capitalize": "upper", "umlauts": true },
+      "source": { "name": "ä.txt" },
+      "expected": "Ae.txt"
+    },
+    {
+      "title": "order: risky characters before space to underscore",
+      "rules": { "riskyChars": true, "spaceToUnderscore": true },
+      "source": { "name": "a & b.txt" },
+      "expected": "a__b.txt"
+    },
+    {
+      "title": "replace text: every occurrence",
+      "rules": { "replacements": [{ "enabled": true, "find": "a", "replace": "o" }] },
+      "source": { "name": "banana.txt" },
+      "expected": "bonono.txt"
+    },
+    {
+      "title": "replace text: $ is literal",
+      "rules": { "replacements": [{ "enabled": true, "find": "x", "replace": "$&" }] },
+      "source": { "name": "x.txt" },
+      "expected": "$&.txt"
+    },
+    {
+      "title": "regex without g: first occurrence",
+      "rules": {
+        "replacements": [{ "enabled": true, "find": "/a/", "replace": "", "regex": true }]
+      },
+      "source": { "name": "banana.txt" },
+      "expected": "bnana.txt"
+    },
+    {
+      "title": "regex with gi",
+      "rules": {
+        "replacements": [{ "enabled": true, "find": "/A/gi", "replace": "", "regex": true }]
+      },
+      "source": { "name": "bAnana.txt" },
+      "expected": "bnn.txt"
+    },
+    {
+      "title": "regex without slashes means flag g",
+      "rules": {
+        "replacements": [{ "enabled": true, "find": "a+", "replace": "o", "regex": true }]
+      },
+      "source": { "name": "baanana.txt" },
+      "expected": "bonono.txt"
+    },
+    {
+      "title": "regex groups",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "/(\\w+)-(\\w+)/", "replace": "$2-$1", "regex": true }
+        ]
+      },
+      "source": { "name": "foo-bar.txt" },
+      "expected": "bar-foo.txt"
+    },
+    {
+      "title": "regex lookahead",
+      "rules": {
+        "replacements": [{ "enabled": true, "find": "/\\d(?=x)/g", "replace": "#", "regex": true }]
+      },
+      "source": { "name": "1x2y3x.txt" },
+      "expected": "#x2y#x.txt"
+    },
+    {
+      "title": "only if (substring) matches",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "x", "replace": "y", "onlyIf": true, "condition": "keep" }
+        ]
+      },
+      "source": { "name": "x keep.txt" },
+      "expected": "y keep.txt"
+    },
+    {
+      "title": "only if (substring) does not match",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "x", "replace": "y", "onlyIf": true, "condition": "keep" }
+        ]
+      },
+      "source": { "name": "x.txt" },
+      "expected": "x.txt"
+    },
+    {
+      "title": "only if (regex)",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "x", "replace": "y", "onlyIf": true, "condition": "/^\\d/" }
+        ]
+      },
+      "source": { "name": "1x.txt" },
+      "expected": "1y.txt"
+    },
+    {
+      "title": "only if (regex with g) works for every name",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "x", "replace": "y", "onlyIf": true, "condition": "/x/g" }
+        ]
+      },
+      "source": { "name": "x.txt" },
+      "expected": "y.txt"
+    },
+    {
+      "title": "white space is collapsed before replacing",
+      "rules": { "replacements": [{ "enabled": true, "find": "b", "replace": "c" }] },
+      "source": { "name": "a   b.txt" },
+      "expected": "a c.txt"
+    },
+    {
+      "title": "protected extension is not replaced",
+      "rules": { "replacements": [{ "enabled": true, "find": "txt", "replace": "md" }] },
+      "source": { "name": "a.txt" },
+      "expected": "a.txt"
+    },
+    {
+      "title": "unprotected extension is replaced",
+      "rules": {
+        "protectExtension": false,
+        "replacements": [{ "enabled": true, "find": "txt", "replace": "md" }]
+      },
+      "source": { "name": "a.txt" },
+      "expected": "a.md"
+    },
+    {
+      "title": "a disabled row does nothing",
+      "rules": { "replacements": [{ "enabled": false, "find": "a", "replace": "b" }] },
+      "source": { "name": "a.txt" },
+      "expected": "a.txt"
+    },
+    {
+      "title": "main switch off ignores the rows",
+      "rules": {
+        "replaceEnabled": false,
+        "replacements": [{ "enabled": true, "find": "a", "replace": "b" }]
+      },
+      "source": { "name": "a.txt" },
+      "expected": "a.txt"
+    },
+    {
+      "title": "rows run in order",
+      "rules": {
+        "replacements": [
+          { "enabled": true, "find": "a", "replace": "b" },
+          { "enabled": true, "find": "b", "replace": "c" }
+        ]
+      },
+      "source": { "name": "a.txt" },
+      "expected": "c.txt"
+    },
+    {
+      "title": "macro: pseudo delimiters",
+      "macros": [0],
+      "source": { "name": "Das-Joshua-Profil.epub" },
+      "expected": "Das Joshua Profil.epub"
+    },
+    {
+      "title": "macro: first last - title",
+      "macros": [2],
+      "source": { "name": "Sebastian Fitzek - Das Joshua-Profil.epub" },
+      "expected": "Fitzek, Sebastian - Das Joshua-Profil.epub"
+    },
+    {
+      "title": "macro: title - first last",
+      "macros": [3],
+      "source": { "name": "Das Joshua-Profil - Sebastian Fitzek.epub" },
+      "expected": "Fitzek, Sebastian - Das Joshua-Profil.epub"
+    },
+    {
+      "title": "macro: title - last, first",
+      "macros": [4],
+      "source": { "name": "Das Joshua-Profil - Fitzek, Sebastian.epub" },
+      "expected": "Fitzek, Sebastian - Das Joshua-Profil.epub"
+    },
+    {
+      "title": "macros: delimiters + movie with a year",
+      "macros": [0, 1],
+      "source": { "name": "white.snow.1959.german.1080p.web.h264.mkv" },
+      "expected": "white snow (1959).mkv"
+    },
+    {
+      "title": "macro: movie without a year is left alone",
+      "macros": [1],
+      "source": { "name": "no year here.mkv" },
+      "expected": "no year here.mkv"
+    },
+    {
+      "title": "NFD name that does not change stays exactly as it is",
+      "source": { "name": "u\u0308ber.txt" },
+      "expected": "u\u0308ber.txt"
+    },
+    {
+      "title": "NFD name: the result is NFC",
+      "rules": { "capitalize": "upper" },
+      "source": { "name": "u\u0308ber.txt" },
+      "expected": "ÜBER.txt"
+    },
+    {
+      "title": "regex /ü/ matches an NFD ü",
+      "rules": {
+        "replacements": [{ "enabled": true, "find": "/ü/g", "replace": "ue", "regex": true }]
+      },
+      "source": { "name": "u\u0308ber.txt" },
+      "expected": "ueber.txt"
+    },
+    {
+      "title": "NFD search text matches an NFC name",
+      "rules": { "replacements": [{ "enabled": true, "find": "u\u0308", "replace": "ue" }] },
+      "source": { "name": "über.txt" },
+      "expected": "ueber.txt"
+    }
+  ],
+  "errors": [
+    { "title": "range end before start", "rules": { "pattern": "[N5-2]" }, "field": "pattern" },
+    {
+      "title": "invalid expression",
+      "rules": { "replacements": [{ "enabled": true, "find": "/(/", "regex": true }] },
+      "field": "find0"
+    },
+    {
+      "title": "invalid expression without slashes",
+      "rules": { "replacements": [{ "enabled": true, "find": "(", "regex": true }] },
+      "field": "find0"
+    },
+    {
+      "title": "invalid condition",
+      "rules": {
+        "replacements": [{}, { "enabled": true, "find": "a", "onlyIf": true, "condition": "/[/" }]
+      },
+      "field": "condition1"
+    },
+    {
+      "title": "invalid flags are not an expression: text with g",
+      "rules": { "replacements": [{ "enabled": true, "find": "/a/q(", "regex": true }] },
+      "field": "find0"
+    }
+  ],
+  "valid": [
+    {
+      "title": "an invalid expression in a disabled row is no error",
+      "rules": { "replacements": [{ "enabled": false, "find": "/(/", "regex": true }] }
+    },
+    {
+      "title": "an invalid expression with the main switch off is no error",
+      "rules": {
+        "replaceEnabled": false,
+        "replacements": [{ "enabled": true, "find": "/(/", "regex": true }]
+      }
+    },
+    {
+      "title": "\"(\" as plain text is fine",
+      "rules": { "replacements": [{ "enabled": true, "find": "(", "regex": false }] }
+    }
+  ]
+}

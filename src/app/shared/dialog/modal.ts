@@ -26,6 +26,8 @@ let modalSeq = 0;
         aria-modal="true"
         [attr.aria-labelledby]="titleId"
         [style.width]="width()"
+        [style.height]="height()"
+        [style.max-height]="height() ? '90vh' : null"
       >
         <h2 class="title" [id]="titleId">{{ heading() }}</h2>
         <ng-content />
@@ -39,6 +41,8 @@ let modalSeq = 0;
 export class Modal {
   readonly heading = input.required<string>();
   readonly width = input('34rem');
+  /** Fixed height for large dialogs (multi-rename); default: as high as the content. */
+  readonly height = input<string | null>(null);
   /** `alertdialog` for questions that interrupt work (conflicts). */
   readonly dialogRole = input<'dialog' | 'alertdialog'>('dialog');
   /** Id of the element that explains the question (`aria-describedby`). */

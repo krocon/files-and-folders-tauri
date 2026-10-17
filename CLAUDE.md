@@ -15,8 +15,9 @@
 - Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table), Prompt 004 (Fensteraufbau, Tabs,
   Sitzungszustand), Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste), Prompt 003
   (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen), Prompt 005 (Job-Engine: Kopieren mit
-  Fortschritt, Pause, Abbruch, Konflikten) und Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
-  anlegen, Umbenennen inkl. F2 in der Liste) sind fertig. Als Nächstes: Prompt 007 (Multi-Rename). Details: `docs/roadmap.md`, `prompts/README.md`.
+  Fortschritt, Pause, Abbruch, Konflikten), Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
+  anlegen, Umbenennen inkl. F2 in der Liste) und Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig) sind
+  fertig. Als Nächstes: Prompt 008 (Gruppieren, leere Ordner). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -48,9 +49,12 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory)
   app/core/session/          Sitzungs-DTOs, SessionApi (invoke load_session/save_session)
   app/core/jobs/             Job-DTOs, JobsApi (ein Ereigniskanal), JobsStore (Root: alle Jobs, Konflikte, Waiter)
+  app/core/rename/           Multi-Rename-DTOs, RenameApi (plan_rename, undo_rename, Vorlagen)
   app/features/jobs/         Task-Liste, Konfliktdialog (auch „schreibgeschützt“), Aktion Tasks
   app/features/ops/          Dateioperationen: OpsStore (Auswahl, Ziele, Ausführung), Dialoge Kopieren/Verschieben,
                              Löschen, Name (Ordner/Datei anlegen, Umbenennen), Aktionen F2/F5–F8
+  app/features/multirename/  rename-engine.ts (reine Regel-Engine + Testkatalog .cases.json), MultiRenameStore,
+                             Dialog mit Vorschau-Table, Aktionen OPEN_MULTIRENAME_DLG/UNDO_RENAME
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
@@ -70,7 +74,9 @@ src-tauri/                   Rust (Tauri 2)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
   src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort),
                              copy (Kopieren + Verschieben: Planung, Temp + Umbenennen, Konflikte), delete
-                             (Papierkorb/endgültig), report (Drosselung); tests_engine.rs, tests_ops.rs
+                             (Papierkorb/endgültig), rename (Multi-Rename: Prüfung, Ketten/Zyklen, Undo-Paare),
+                             report (Drosselung); tests_engine.rs, tests_ops.rs
+  src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
@@ -200,7 +206,7 @@ prompts/                     Feature-Prompts (s. o.)
 3. Container einrichten (einmal je Sitzung, im Hintergrund starten und währenddessen lesen):
    `apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev xdotool imagemagick`
    (Xvfb ist da), `pnpm install --frozen-lockfile` (~10 s), `cd src-tauri && cargo build --tests` (~3,5 min beim
-   ersten Mal). Node im Container ist 22.22.0 (< 22.22.3) – funktioniert trotzdem.
+   ersten Mal). Node im Container ist zu alt für die Angular-CLI (22.22.0 < 22.22.3, `ng lint` bricht ab): `npm pack node-linux-x64@22.23.3` (npm-Registry ist erreichbar, nodejs.org nicht), entpacken und `package/bin/node` über `/opt/node22/bin/node` kopieren. `pnpm check` dauert dann ~3 min.
 4. Zurück: Container `git bundle create /mnt/user-data/outputs/<slug>.bundle origin/main..feat/<slug>` →
    `device_commit_files` nach `.tmp-bundle/<slug>.bundle` → Marc (oder Gerät):
    `git pull --ff-only .tmp-bundle/<slug>.bundle feat/<slug>`. `.tmp-bundle/` ist in `.gitignore`.

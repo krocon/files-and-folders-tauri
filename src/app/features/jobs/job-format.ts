@@ -41,6 +41,8 @@ export const JOB_TEXTS = {
       ? '1 task is still running. Cancel it and quit?'
       : `${n} tasks are still running. Cancel them and quit?`,
   quitConfirm: 'Cancel tasks and quit',
+  undo: 'Undo',
+  undoLabel: (title: string) => `Undo: ${title}`,
 } as const;
 
 const STATE_LABELS: Readonly<Record<JobState, string>> = {
@@ -75,6 +77,11 @@ export function jobTitle(job: JobInfo): string {
       const n = spec.paths.length;
       const what = n === 1 ? spec.paths[0] : `${n} entries`;
       return spec.mode === 'trash' ? `Move ${what} to the trash` : `Delete ${what} permanently`;
+    }
+    case 'rename': {
+      const n = spec.items.length;
+      const what = n === 1 ? `${spec.items[0].path} → ${spec.items[0].newName}` : `${n} entries`;
+      return spec.undoOf ? `Undo renaming ${what}` : `Rename ${what}`;
     }
     case 'count':
       return `Count ${spec.paths.length === 1 ? spec.paths[0] : `${spec.paths.length} entries`}`;

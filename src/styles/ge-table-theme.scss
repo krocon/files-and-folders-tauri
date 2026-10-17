@@ -95,3 +95,17 @@
   border-radius: var(--radius-sm);
   outline: none;
 }
+
+/* multi-rename preview (design 007 §4): status as text in the Info column, colour only as a hint */
+.ge-table .fnf-mr-error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.ge-table .fnf-mr-unchanged {
+  color: var(--color-muted);
+}
+
+.ge-table .fnf-mr-new {
+  font-weight: 600;
+}

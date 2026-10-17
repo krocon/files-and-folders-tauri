@@ -1,0 +1,311 @@
+@if (mr.request()) {
+  <app-modal [heading]="heading()" width="92vw" height="86vh" (closed)="mr.close()">
+    <div class="mr">
+      <!-- presets -->
+      <div class="row presets">
+        <label class="inline">
+          <span>{{ t.presets }}</span>
+          <select [value]="selectedPreset() ?? ''" (change)="choosePreset($event)">
+            <option value="">{{ t.presetLast }}</option>
+            @for (p of mr.presets().presets; track p.name) {
+              <option [value]="p.name">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+        @if (presetName() === null) {
+          <button type="button" class="btn" (click)="presetName.set('')">{{ t.presetSave }}</button>
+        } @else {
+          <label class="inline">
+            <span class="sr-only">{{ t.presetName }}</span>
+            <input
+              type="text"
+              class="preset-name"
+              [placeholder]="t.presetName"
+              [value]="presetName()"
+              (input)="presetName.set(text($event))"
+              (keydown.enter)="$event.preventDefault(); savePreset()"
+            />
+          </label>
+          <button
+            type="button"
+            class="btn"
+            [disabled]="!presetName()?.trim()"
+            (click)="savePreset()"
+          >
+            {{ t.presetSaveConfirm }}
+          </button>
+        }
+        <button
+          type="button"
+          class="btn"
+          [disabled]="selectedPreset() === null"
+          (click)="deletePreset()"
+        >
+          {{ t.presetDelete }}
+        </button>
+        <button type="button" class="btn" (click)="mr.reset()">{{ t.presetReset }}</button>
+      </div>
+
+      <!-- pattern -->
+      <div class="row">
+        <label class="field grow">
+          <span>{{ t.pattern }}</span>
+          <input
+            #pattern
+            data-autofocus
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            [value]="r().pattern"
+            (input)="set('pattern', text($event))"
+            [attr.aria-invalid]="errorFor('pattern') ? 'true' : null"
+            aria-describedby="fnf-mr-pattern-help fnf-mr-pattern-error"
+          />
+        </label>
+        <div class="tokens" role="group" [attr.aria-label]="t.pattern">
+          @for (tok of tokens; track tok) {
+            <button
+              type="button"
+              class="btn token"
+              [attr.aria-label]="t.insertToken(tok)"
+              (click)="insertToken(tok)"
+            >
+              {{ tok }}
+            </button>
+          }
+        </div>
+      </div>
+      <p id="fnf-mr-pattern-help" class="help">{{ t.patternHelp }}</p>
+      <p id="fnf-mr-pattern-error" class="error" role="alert">
+        @if (errorFor('pattern'); as e) {
+          {{ e }}
+        } @else if (mr.unknownTokens().length) {
+          <span class="hint">{{ t.unknownTokens(mr.unknownTokens().join(' ')) }}</span>
+        }
+      </p>
+
+      <!-- case and counter -->
+      <div class="row">
+        <label class="inline">
+          <span>{{ t.capitalize }}</span>
+          <select (change)="set('capitalize', $any(text($event)))">
+            @for (m of modes; track m) {
+              <option [value]="m" [selected]="m === r().capitalize">
+                {{ t.capitalizeModes[m] }}
+              </option>
+            }
+          </select>
+        </label>
+        <label class="inline">
+          <span>{{ t.counterStart }}</span>
+          <select (change)="setCounter('start', $event)">
+            @for (v of starts; track v) {
+              <option [value]="'' + v" [selected]="v === r().counter.start">{{ v }}</option>
+            }
+          </select>
+        </label>
+        <label class="inline">
+          <span>{{ t.counterStep }}</span>
+          <select (change)="setCounter('step', $event)">
+            @for (v of steps; track v) {
+              <option [value]="'' + v" [selected]="v === r().counter.step">{{ v }}</option>
+            }
+          </select>
+        </label>
+        <label class="inline">
+          <span>{{ t.counterDigits }}</span>
+          <select (change)="setCounter('digits', $event)">
+            @for (v of digits; track v) {
+              <option [value]="'' + v" [selected]="v === r().counter.digits">
+                {{ digitLabel(v) }}
+              </option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <!-- options -->
+      <div class="row options">
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().protectExtension"
+            (change)="set('protectExtension', checked($event))"
+          />
+          {{ t.protectExtension }}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().compoundExtensions"
+            (change)="set('compoundExtensions', checked($event))"
+          />
+          {{ t.compoundExtensions }}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().umlauts"
+            (change)="set('umlauts', checked($event))"
+          />
+          {{ t.umlauts }}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().riskyChars"
+            (change)="set('riskyChars', checked($event))"
+          />
+          {{ t.riskyChars }}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().spaceToUnderscore"
+            (change)="set('spaceToUnderscore', checked($event))"
+          />
+          {{ t.spaceToUnderscore }}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="r().removeParent"
+            (change)="set('removeParent', checked($event))"
+          />
+          {{ t.removeParent }}
+        </label>
+      </div>
+
+      <!-- replacements -->
+      <fieldset class="replacements">
+        <legend>
+          <label class="check">
+            <input
+              type="checkbox"
+              [checked]="r().replaceEnabled"
+              (change)="set('replaceEnabled', checked($event))"
+            />
+            {{ t.replaceEnabled }}
+          </label>
+        </legend>
+        @for (rep of r().replacements; track $index; let i = $index) {
+          <div class="rep" [class.off]="!r().replaceEnabled">
+            <input
+              type="checkbox"
+              [attr.aria-label]="t.rowEnabled(i)"
+              [checked]="rep.enabled"
+              (change)="setRow(i, { enabled: checked($event) })"
+            />
+            <input
+              type="text"
+              class="mono"
+              spellcheck="false"
+              [attr.aria-label]="t.find(i)"
+              [placeholder]="t.find(i)"
+              [value]="rep.find"
+              (input)="setRow(i, { find: text($event) })"
+              [attr.aria-invalid]="errorFor('find' + i) ? 'true' : null"
+              [attr.aria-describedby]="'fnf-mr-rep-error-' + i"
+            />
+            <select
+              class="macros"
+              [attr.aria-label]="t.macrosFor(i)"
+              (change)="applyMacro(i, $event)"
+            >
+              <option value="">{{ t.macros }}…</option>
+              @for (cat of categories; track cat) {
+                <optgroup [label]="cat">
+                  @for (m of macrosOf(cat); track m.index) {
+                    <option [value]="'' + m.index" [title]="m.example">{{ m.title }}</option>
+                  }
+                </optgroup>
+              }
+            </select>
+            <input
+              type="text"
+              class="mono"
+              spellcheck="false"
+              [attr.aria-label]="t.replaceWith(i)"
+              [placeholder]="t.replaceWith(i)"
+              [value]="rep.replace"
+              (input)="setRow(i, { replace: text($event) })"
+            />
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="rep.regex"
+                (change)="setRow(i, { regex: checked($event) })"
+              />
+              {{ t.regex }}
+            </label>
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="rep.onlyIf"
+                (change)="setRow(i, { onlyIf: checked($event) })"
+              />
+              {{ t.onlyIf }}
+            </label>
+            <input
+              type="text"
+              class="mono"
+              spellcheck="false"
+              [attr.aria-label]="t.condition(i)"
+              [placeholder]="t.condition(i)"
+              [value]="rep.condition"
+              (input)="setRow(i, { condition: text($event) })"
+              [attr.aria-invalid]="errorFor('condition' + i) ? 'true' : null"
+              [attr.aria-describedby]="'fnf-mr-rep-error-' + i"
+            />
+          </div>
+          <p class="error rep-error" [id]="'fnf-mr-rep-error-' + i" role="alert">
+            {{ errorFor('find' + i) ?? errorFor('condition' + i) ?? '' }}
+          </p>
+        }
+      </fieldset>
+
+      <!-- preview -->
+      <div class="preview-head">
+        <span [id]="previewLabelId" class="preview-label">{{ t.preview }}</span>
+        <div class="filter" role="radiogroup" [attr.aria-label]="t.show">
+          <span>{{ t.show }}:</span>
+          @for (f of ['all', 'changed', 'errors']; track f) {
+            <label class="check">
+              <input
+                type="radio"
+                name="fnf-mr-filter"
+                [checked]="mr.filter() === f"
+                (change)="setFilter($any(f))"
+              />
+              {{ f === 'all' ? t.filterAll : f === 'changed' ? t.filterChanged : t.filterErrors }}
+            </label>
+          }
+        </div>
+      </div>
+      <app-mr-preview-table class="preview" [rows]="rows()" [filter]="mr.filter()" />
+
+      <div class="foot">
+        <p class="summary" aria-live="polite">{{ summaryText() }}</p>
+        <p class="error" role="alert">
+          @if (mr.runError(); as e) {
+            {{ fsError(e) }}
+          } @else if (mr.planError(); as e) {
+            {{ t.planFailed(e.message) }}
+          }
+        </p>
+        <div class="buttons">
+          <button type="button" class="btn" (click)="mr.close()">{{ t.cancel }}</button>
+          <button
+            type="button"
+            class="btn primary"
+            [disabled]="!mr.canRun()"
+            (click)="mr.run()"
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+          >
+            {{ t.rename }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </app-modal>
+}

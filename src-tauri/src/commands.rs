@@ -3,12 +3,14 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops;
+use crate::jobs::rename::{self, RenameItem, RenamePlan};
 use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
 use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
+use crate::rename_presets::{self, LoadedPresets, RenamePresets};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::window_state;
 use std::collections::HashMap;
@@ -423,6 +425,96 @@ pub async fn save_keymap_override<R: Runtime>(
             None,
         )
     })?
+}
+
+// ---- multi-rename (design 007) ----
+
+/// Checks multi-rename pairs against each other and the disk (writes nothing).
+#[tauri::command]
+pub async fn plan_rename<R: Runtime>(
+    app: AppHandle<R>,
+    items: Vec<RenameItem>,
+) -> Result<RenamePlan, FsError> {
+    if items.len() > rename::MAX_ITEMS {
+        return Err(FsError::new(
+            FsErrorCode::InvalidPath,
+            format!("Too many entries (max. {})", rename::MAX_ITEMS),
+            None,
+        ));
+    }
+    let home = home_dir(&app).ok();
+    blocking("Checking the names", move || {
+        Ok(rename::plan(&items, home.as_deref()))
+    })
+    .await
+}
+
+/// Undoes a rename job (`None` = the last one); returns the id of the undo job.
+#[tauri::command]
+pub fn undo_rename<R: Runtime>(
+    app: AppHandle<R>,
+    job_id: Option<String>,
+) -> Result<String, FsError> {
+    app.state::<JobsState>()
+        .manager
+        .undo_rename(job_id.as_deref())
+}
+
+/// Whether the presets file may be written (false after a broken file could not be moved aside).
+#[derive(Default)]
+pub struct PresetsState {
+    write_blocked: Mutex<bool>,
+}
+
+fn presets_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path()
+        .app_config_dir()
+        .map(|d| d.join(rename_presets::FILE_NAME))
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("App config directory not available: {e}"),
+                None,
+            )
+        })
+}
+
+#[tauri::command]
+pub async fn load_rename_presets<R: Runtime>(app: AppHandle<R>) -> Result<LoadedPresets, FsError> {
+    let file = presets_file(&app)?;
+    let loaded = blocking("Loading the presets", move || {
+        Ok(rename_presets::load(&file))
+    })
+    .await?;
+    *app.state::<PresetsState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = !loaded.persist;
+    Ok(loaded)
+}
+
+#[tauri::command]
+pub async fn save_rename_presets<R: Runtime>(
+    app: AppHandle<R>,
+    presets: RenamePresets,
+) -> Result<(), FsError> {
+    let file = presets_file(&app)?;
+    let blocked = *app
+        .state::<PresetsState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if blocked {
+        return Err(FsError::new(
+            FsErrorCode::Io,
+            "The existing presets file could not be moved aside; not overwriting it.",
+            Some(&file),
+        ));
+    }
+    blocking("Saving the presets", move || {
+        rename_presets::save(&file, presets).map_err(|e| FsError::from_io(&e, &file))
+    })
+    .await
 }
 
 // ---- jobs (design 005) ----

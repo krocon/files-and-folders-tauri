@@ -26,6 +26,10 @@ export class JobsStore {
   /** Messages for the user (failed start, …). */
   readonly messages = signal<readonly string[]>([]);
 
+  /** The newest rename job that can be undone (action UNDO_RENAME). */
+  readonly lastUndoable = computed(
+    () => [...this.jobs()].reverse().find((j) => j.undoAvailable) ?? null,
+  );
   /** Jobs that are not finished, without helper jobs (shown on the Tasks button). */
   readonly active = computed(() =>
     this.jobs().filter((j) => !isFinished(j.state) && !isHelperJob(j)),
@@ -208,6 +212,9 @@ export class JobsStore {
         this.jobs.update((jobs) => jobs.filter((j) => !ids.has(j.id)));
         break;
       }
+      case 'undoAvailable':
+        this.patch(event.id, (j) => ({ ...j, undoAvailable: event.available }));
+        break;
       case 'quitRequested':
         this.quitRequest.set({ running: event.running, seq: ++this.seq });
         break;

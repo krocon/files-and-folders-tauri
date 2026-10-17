@@ -6,7 +6,7 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 
 > **Status: Prompt 006 (Basisoperationen) auf Basis von 001–005.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
 > GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
-> Favoriten und Fenstergröße werden gespeichert. Kopieren, Verschieben, Löschen (Papierkorb), Ordner/Datei anlegen und Umbenennen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
+> Favoriten und Fenstergröße werden gespeichert. Kopieren, Verschieben, Löschen (Papierkorb), Ordner/Datei anlegen, Umbenennen und Multi-Rename mit Rückgängig. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
 ## Was funktioniert
 
@@ -43,6 +43,12 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Ordner anlegen** (`F7`, auch `a/b/c`; Vorschlag `S03` nach `S01`, `S02`), **Datei anlegen** (`Shift+F4`),
   **Umbenennen** (`Shift+F6` als Dialog, `F2` direkt in der Liste; die Endung ist nicht markiert). Der Cursor steht
   danach auf dem Ergebnis. Alle Operationen nehmen die markierten Einträge, sonst den unter dem Cursor.
+- **Multi-Rename** (`Strg+M`/`Strg+F6`, macOS `⌘F6`): Muster mit `[N]` `[E]` `[C]` `[P]` `[Q]` `[R]` `[D]` `[T]`,
+  Bereichen (`[N2-5]`), Zähler, Schreibweise (bis Chicago Manual of Style), Umlaute/riskante Zeichen/Leerzeichen,
+  vier Ersetzungszeilen mit Regex und „nur wenn“, Makros, Vorlagen; Live-Vorschau (GuiExpert Table, 10 000 Einträge)
+  mit Prüfung gegen die Platte. `README`, Ordner und `.gitignore` bleiben ganz, `a.tar.gz` behält `tar.gz`; Tausch
+  `a↔b` und Ketten laufen sicher, nie wird überschrieben. **Rückgängig** in der Task-Liste oder per Befehlspalette
+  („Undo last multi rename“).
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
@@ -110,7 +116,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Rename… | `Shift+F6` | `⇧F6` |
 | Create folder… | `F7`, `Shift+F7` | `F7`, `⇧F7` |
 | Delete… | `F8`, `Delete` | `F8`, `⌘Backspace` |
-| Multi rename… | `Ctrl+F6`, `Ctrl+Alt+M` | `⌘F6` |
+| Multi rename… | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M` | `⌘F6` |
 | Group files… | `Ctrl+Alt+G` | `⌘⌥G` |
 | Delete empty folders… | `Ctrl+Alt+Shift+D` | `⌘⌥⇧D` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
