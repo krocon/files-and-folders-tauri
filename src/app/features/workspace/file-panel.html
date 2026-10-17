@@ -15,9 +15,14 @@
       <b class="search-label">{{ searchTexts.header(ref.label) }}</b>
       @if (r) {
         <span class="search-roots">{{ searchTexts.inRoots(r.criteria.roots) }}</span>
-        <span class="search-count">· {{ searchTexts.hits(r.stats.hits) }}</span>
+        <span class="search-count"
+          >· {{ searchTexts.hits(r.running ? r.stats.hits : r.hits.length) }}</span
+        >
         @if (r.running) {
           <span class="spinner" aria-hidden="true"></span>
+          <span class="search-roots">{{
+            searchTexts.scanned(r.stats.dirsScanned, r.stats.elapsedMs)
+          }}</span>
         } @else if (r.cancelled) {
           <span class="warn">· {{ searchTexts.cancelled }}</span>
         }

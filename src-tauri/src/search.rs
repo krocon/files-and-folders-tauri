@@ -502,13 +502,13 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         let dir_str = dir.to_string_lossy().into_owned();
         let mut children: Vec<PathBuf> = Vec::new();
         let enter = depth + 1 < c.max_depth;
-        for entry in rd {
+        // in name order: hits and the folder finder come in a stable, readable order
+        let mut entries: Vec<fs::DirEntry> = rd.filter_map(Result::ok).collect();
+        entries.sort_by_key(|e| e.file_name());
+        for entry in entries {
             if cancel.load(Ordering::Relaxed) {
                 break 'walk;
             }
-            let Ok(entry) = entry else {
-                continue;
-            };
             let os_name = entry.file_name();
             let lossy = os_name.to_str().is_none();
             let name = os_name.to_string_lossy().into_owned();

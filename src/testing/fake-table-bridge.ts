@@ -61,6 +61,11 @@ export class FakeTableBridge implements TableBridge {
   }
 
   readonly hiddenColumns = new Set<string>(['dir']);
+  emptyText: string | null = null;
+
+  setEmptyText(text: string | null): void {
+    this.emptyText = text;
+  }
 
   setColumnVisible(property: string, visible: boolean): void {
     this.calls.push(`setColumnVisible(${property},${visible})`);

@@ -67,6 +67,8 @@ export class SearchStore {
   private readonly jobs = inject(JobsStore);
   private readonly ws = inject(WorkspaceStore);
   private readonly runs = new Map<string, Run>();
+  /** Results whose job is being started; Stop meanwhile cancels it as soon as it has an id. */
+  private readonly starting = new Map<string, { stop: boolean }>();
   /** Results whose tab is about to open – not released meanwhile. */
   private readonly fresh = new Set<string>();
 
@@ -154,6 +156,10 @@ export class SearchStore {
     if (run) {
       void this.jobs.cancel(run.jobId);
     }
+    const pending = this.starting.get(key);
+    if (pending) {
+      pending.stop = true;
+    }
   }
 
   /** Entries deleted or moved away (from a result tab) leave the result. */
@@ -198,11 +204,17 @@ export class SearchStore {
     form: FindForm | null,
   ): Promise<FsError | null> {
     this.stopRun(key);
+    const pending = { stop: false };
+    this.starting.set(key, pending);
     let jobId: string;
     try {
       jobId = await this.jobs.start({ kind: 'search', criteria });
     } catch (err) {
       return toFsError(err);
+    } finally {
+      if (this.starting.get(key) === pending) {
+        this.starting.delete(key);
+      }
     }
     const run: Run = {
       jobId,
@@ -234,6 +246,9 @@ export class SearchStore {
       cancelled: false,
       form,
     });
+    if (pending.stop) {
+      void this.jobs.cancel(jobId); // Stop was pressed while the job was being started
+    }
     void this.jobs.whenFinished(jobId).then((job) => {
       if (this.runs.get(key) !== run) {
         return;

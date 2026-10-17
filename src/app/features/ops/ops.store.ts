@@ -92,12 +92,17 @@ export class OpsStore {
     return this.ws.panel()?.store.path() ?? null;
   }
 
+  /** The folder, or the result tab (`search:<key>`) of the active panel. */
+  location(): string | null {
+    return this.ws.panel()?.store.locationKey() ?? null;
+  }
+
   // ---- open the dialogs ----
 
   async openCopyMove(kind: 'copy' | 'move'): Promise<void> {
     const side = this.ws.source();
     // a result tab (design 009) has no folder: its location key stands in for it
-    const sourceDir = this.ws.panel()?.store.locationKey() ?? null;
+    const sourceDir = this.location();
     const sources = this.selection();
     if (sourceDir === null) {
       throw err('unknown', OPS_TEXTS.noFolder);
@@ -128,7 +133,7 @@ export class OpsStore {
   }
 
   async openDelete(mode: DeleteMode): Promise<void> {
-    const sourceDir = this.ws.panel()?.store.locationKey() ?? null;
+    const sourceDir = this.location();
     const entries = this.selection();
     if (sourceDir === null) {
       throw err('unknown', OPS_TEXTS.noFolder);

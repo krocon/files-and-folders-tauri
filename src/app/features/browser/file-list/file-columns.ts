@@ -150,7 +150,9 @@ export function createFileColumns(): ColumnDefIf[] {
     ColumnDef.create({
       property: 'dir',
       headerLabel: 'Folder',
-      width: px(260),
+      // shares the free width with the name: no horizontal scrolling in a narrow panel
+      width: new Size(1, 'weight'),
+      minWidth: px(60),
       isVisible: FalseFn,
       sortable: TrueFn,
       sortComparator: fileComparators.dir,

@@ -12,6 +12,7 @@ import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { DEFAULT_FORM } from './find-form';
@@ -152,6 +153,15 @@ describe('SearchStore and result tabs (design 009)', () => {
     expect(r.running).toBe(true);
   });
 
+  it('Stop while the job is being started cancels it as soon as it has an id', async () => {
+    await search.search(CRITERIA, 'left');
+    const key = ws.activeTab('left').search!.key;
+    const again = search.rerun(key);
+    search.stop(key);
+    await again;
+    expect(jobsApi.cancelled).toContain(jobsApi.started[1].id);
+  });
+
   it('closing the result tab releases the result and cancels its job', async () => {
     await search.search(CRITERIA, 'left');
     const id = jobsApi.started[0].id;
@@ -228,6 +238,8 @@ describe('SearchStore and result tabs (design 009)', () => {
 
   it('delete and copy from a result tab: jobs with the hits; deleted hits leave the result', async () => {
     const ops = TestBed.inject(OpsStore);
+    const actions = TestBed.inject(ActionService);
+    registerOpsActions(actions, ops);
     await search.search(CRITERIA, 'left');
     const key = ws.activeTab('left').search!.key;
     const id = jobsApi.started[0].id;
@@ -236,6 +248,9 @@ describe('SearchStore and result tabs (design 009)', () => {
     await wait();
     left.showSearch(key, search.result(key)!.hits);
     left.markAll(['/r/a/1.mp3', '/r/b/2.mp3']);
+    expect(actions.state('OPEN_COPY_DLG')).toBe('ready');
+    expect(actions.state('OPEN_DELETE_DLG')).toBe('ready');
+    expect(actions.state('OPEN_MKDIR_DLG')).toBe('disabled');
     await ops.openCopyMove('copy');
     expect(ops.copyMove()!.sources.map((e) => e.path)).toEqual(['/r/a/1.mp3', '/r/b/2.mp3']);
     ops.close();
