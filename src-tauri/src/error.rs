@@ -34,6 +34,8 @@ pub enum FsErrorCode {
     DuplicateTarget,
     /// Nothing to undo (no rename log for this task, or it was undone already).
     UndoUnavailable,
+    /// A search pattern (regex, glob) is invalid or too large (design 009).
+    InvalidPattern,
     Io,
 }
 
@@ -108,5 +110,7 @@ mod tests {
             serde_json::to_value(&e).unwrap()["code"],
             "undo_unavailable"
         );
+        let e = FsError::new(FsErrorCode::InvalidPattern, "bad", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_pattern");
     }
 }

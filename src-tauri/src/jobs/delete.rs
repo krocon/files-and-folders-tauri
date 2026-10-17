@@ -243,7 +243,11 @@ pub fn run(
         kept: Vec::new(),
         parents: Vec::new(),
     };
-    let paths: Vec<PathBuf> = paths.iter().map(|p| normalize_lexically(p)).collect();
+    // entries below another one go with it (review 009 #5)
+    let paths: Vec<PathBuf> = super::drop_nested(paths)
+        .iter()
+        .map(|p| normalize_lexically(p))
+        .collect();
     for p in &paths {
         if p.parent().is_none() {
             del.summary.error = Some(FsError::new(

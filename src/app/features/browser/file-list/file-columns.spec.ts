@@ -145,7 +145,9 @@ describe('fileComparators', () => {
 describe('createFileColumns', () => {
   it('defines name, ext, size and modified columns, all sortable, name ascending', () => {
     const cols = createFileColumns();
-    expect(cols.map((c) => c.property)).toEqual(['name', 'ext', 'size', 'modifiedMs']);
+    expect(cols.map((c) => c.property)).toEqual(['name', 'ext', 'size', 'modifiedMs', 'dir']);
+    // the folder column belongs to search result tabs (design 009) and starts hidden
+    expect(cols[4].isVisible?.()).toBe(false);
     expect(cols.every((c) => c.sortable?.())).toBe(true);
     expect(cols[0].sortState).toBe('asc');
     expect(cols[1].valueGetter?.(entry('x.json'), {} as never)).toBe('json');

@@ -5,6 +5,7 @@ import { DirEntry, FsError, PathCheck } from '../../core/fs/fs.models';
 import { ConflictDefault, DeleteMode, JobInfo, JobSpec } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
+import { SearchStore } from '../search/search.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
@@ -76,6 +77,7 @@ export class OpsStore {
   private readonly jobs = inject(JobsStore);
   private readonly fs = inject(FsApi);
   private readonly dialogs = inject(DialogService);
+  private readonly search = inject(SearchStore);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -90,11 +92,17 @@ export class OpsStore {
     return this.ws.panel()?.store.path() ?? null;
   }
 
+  /** The folder, or the result tab (`search:<key>`) of the active panel. */
+  location(): string | null {
+    return this.ws.panel()?.store.locationKey() ?? null;
+  }
+
   // ---- open the dialogs ----
 
   async openCopyMove(kind: 'copy' | 'move'): Promise<void> {
     const side = this.ws.source();
-    const sourceDir = this.folder();
+    // a result tab (design 009) has no folder: its location key stands in for it
+    const sourceDir = this.location();
     const sources = this.selection();
     if (sourceDir === null) {
       throw err('unknown', OPS_TEXTS.noFolder);
@@ -117,7 +125,7 @@ export class OpsStore {
       side,
       sourceDir,
       sources,
-      target: other ?? sourceDir,
+      target: other ?? this.folder() ?? '',
       targets,
       dangers,
     });
@@ -125,7 +133,7 @@ export class OpsStore {
   }
 
   async openDelete(mode: DeleteMode): Promise<void> {
-    const sourceDir = this.folder();
+    const sourceDir = this.location();
     const entries = this.selection();
     if (sourceDir === null) {
       throw err('unknown', OPS_TEXTS.noFolder);
@@ -272,7 +280,7 @@ export class OpsStore {
     }
     this.ws.addRecent(dir);
     this.close();
-    this.afterJob(id, req.side, req.sourceDir, sources);
+    this.afterJob(id, req.side, req.sourceDir, sources, req.kind === 'move');
     return null;
   }
 
@@ -290,7 +298,7 @@ export class OpsStore {
       return toFsError(e);
     }
     this.close();
-    this.afterJob(id, req.side, req.sourceDir, paths);
+    this.afterJob(id, req.side, req.sourceDir, paths, true);
     return null;
   }
 
@@ -354,7 +362,7 @@ export class OpsStore {
    */
   private moveCursorOff(side: Side, folder: string, paths: readonly string[]): void {
     const panel = this.ws.panel(side);
-    if (!panel || panel.store.path() !== folder) {
+    if (!panel || panel.store.locationKey() !== folder) {
       return;
     }
     const list = panel.controller();
@@ -373,15 +381,31 @@ export class OpsStore {
   }
 
   /** Unmarks the processed entries (not the failed ones) and reports errors. */
-  private afterJob(id: string, side: Side, folder: string, paths: readonly string[]): void {
+  private afterJob(
+    id: string,
+    side: Side,
+    folder: string,
+    paths: readonly string[],
+    removes: boolean,
+  ): void {
+    const searchKey = this.ws.panel(side)?.store.searchKey() ?? null;
     void this.jobs.whenFinished(id).then((job: JobInfo) => {
       const store = this.ws.panel(side)?.store;
-      if ((job.state === 'done' || job.state === 'doneWithErrors') && store?.path() === folder) {
-        const failed = new Set(job.summary?.errors.map((e) => e.path) ?? []);
-        store.setMarked(
-          paths.filter((p) => !failed.has(p)),
-          false,
-        );
+      const ran = job.state === 'done' || job.state === 'doneWithErrors';
+      const failed = new Set(job.summary?.errors.map((e) => e.path) ?? []);
+      const done = paths.filter((p) => !failed.has(p));
+      // deleted or moved away from a result tab: they leave the result (design 009 E4) – only
+      // if every entry went (errors/skips may concern entries inside a source folder)
+      if (
+        job.state === 'done' &&
+        removes &&
+        searchKey !== null &&
+        (job.summary?.itemsSkipped ?? 0) === 0
+      ) {
+        this.search.removePaths(searchKey, done);
+      }
+      if (ran && store?.locationKey() === folder) {
+        store.setMarked(done, false);
       }
       const summary = job.summary;
       if (job.state === 'failed' && summary?.error) {

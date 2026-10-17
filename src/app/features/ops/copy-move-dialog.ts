@@ -11,7 +11,7 @@ import { ConflictDefault, isFinished } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Modal } from '../../shared/dialog/modal';
 import { formatSize } from '../../shared/format';
-import { dialogError } from './ops-logic';
+import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
 
@@ -99,6 +99,16 @@ const DEFAULTS: readonly ConflictDefault[] = [
             />
             {{ t.background }}
           </label>
+          @if (sameNames().length > 0) {
+            <div class="danger-box same-names" role="note">
+              <p>{{ t.sameNames(sameNames()) }}</p>
+              @if (conflictDefault() === 'overwrite' || conflictDefault() === 'overwriteIfNewer') {
+                <p>
+                  <strong>{{ t.sameNamesOverwrite }}</strong>
+                </p>
+              }
+            </div>
+          }
           @if (r.dangers.length > 0) {
             <div class="danger-box" role="group" [attr.aria-label]="t.dangerTitle">
               <strong>{{ t.dangerTitle }}</strong>
@@ -158,12 +168,15 @@ export class CopyMoveDialog {
   protected readonly allowDangerous = signal(false);
   protected readonly error = signal<FsError | null>(null);
   protected readonly busy = signal(false);
+  /** Equal names from different folders (search results) collide in the target. */
+  protected readonly sameNames = computed(() => sameNames(this.req()?.sources ?? []));
 
   /** The live count runs as a helper job; it is cancelled when the dialog closes. */
   private readonly countId = signal<string | null>(null);
   private readonly countJob = computed(() => {
     const id = this.countId();
-    return id === null ? undefined : this.jobs.jobs().find((j) => j.id === id);
+    // `find`: the count is a helper job that Rust removes right after its end
+    return id === null ? undefined : this.jobs.find(id);
   });
   protected readonly countText = computed(() => {
     const job = this.countJob();

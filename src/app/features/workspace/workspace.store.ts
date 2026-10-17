@@ -20,7 +20,15 @@ export interface PanelHandle {
   controller(): FileListController | undefined;
 }
 
-export type TabState = TabSession;
+/** A result tab of a search (design 009 E4): points to a result in the root `SearchStore`. */
+export interface SearchTabRef {
+  readonly key: string;
+  /** Shown in the tab and the header (`Search: "<label>"`). */
+  readonly label: string;
+}
+
+/** A tab: a folder, or (with `search`) the result of a search – never saved as such. */
+export type TabState = TabSession & { readonly search?: SearchTabRef | null };
 
 export interface PanelTabs {
   readonly activeTab: number;
@@ -232,11 +240,42 @@ export class WorkspaceStore {
   }
 
   /** Strg/⌘+Enter: opens a folder in a new tab after the active one. */
-  openInNewTab(side: Side, path: string, title = ''): void {
+  openInNewTab(side: Side, path: string, title = '', cursor: string | null = null): void {
     this.updatePanel(side, (p) =>
-      p.tabs.length >= MAX_TABS ? p : insertTab(p, p.activeTab + 1, newTab(path, title)),
+      p.tabs.length >= MAX_TABS
+        ? p
+        : insertTab(p, p.activeTab + 1, { ...newTab(path, title), cursor }),
     );
   }
+
+  /**
+   * Opens a search result tab after the active one (or turns tab `reuse` into it)
+   * and selects it. `root` = folder the tab falls back to when saved. Returns the tab id.
+   */
+  openSearchTab(side: Side, ref: SearchTabRef, root: string, reuse?: string): string | null {
+    if (reuse && this.findTab(reuse)) {
+      this.updateTab(reuse, { search: ref, title: ref.label, cursor: null });
+      return reuse;
+    }
+    if (this.panels()[side].tabs.length >= MAX_TABS) {
+      return null;
+    }
+    const tab: TabState = { ...newTab(root, ref.label), search: ref };
+    this.updatePanel(side, (p) => insertTab(p, p.activeTab + 1, tab));
+    return tab.id;
+  }
+
+  /** Keys of the search results some tab shows (results without a tab are released). */
+  readonly searchKeys = computed<ReadonlySet<string>>(() => {
+    const { left, right } = this.panels();
+    const keys = new Set<string>();
+    for (const t of [...left.tabs, ...right.tabs]) {
+      if (t.search) {
+        keys.add(t.search.key);
+      }
+    }
+    return keys;
+  });
 
   /** `−`: closes a tab; the last tab of a side stays. */
   closeTab(side: Side, index = this.panels()[side].activeTab): void {
@@ -301,10 +340,22 @@ export class WorkspaceStore {
     });
   }
 
-  /** A tab navigated to `path`: update path/title, remember the old folder in the history. */
+  /**
+   * A tab navigated to `path`: update path/title, remember the old folder in the
+   * history. A result tab that navigates becomes a folder tab (review 009 #3):
+   * its search goes, the `SearchStore` releases the result.
+   */
   navigated(id: string, path: string, title: string): void {
     const tab = this.findTab(id);
-    if (!tab || (tab.path === path && tab.title === title)) {
+    if (!tab) {
+      return;
+    }
+    if (tab.search) {
+      this.updateTab(id, { path, title, search: null, table: null });
+      this.addRecent(path);
+      return;
+    }
+    if (tab.path === path && tab.title === title) {
       return;
     }
     const history =
@@ -434,8 +485,15 @@ function clampSplitter(ratio: number): number {
   return Number.isFinite(ratio) ? Math.min(SPLITTER_MAX, Math.max(SPLITTER_MIN, ratio)) : 0.5;
 }
 
+/** Search tabs are not saved: they become a tab of their first folder (design 009 E4). */
 function toPanelSession(p: PanelTabs): PanelSession {
-  return { activeTab: p.activeTab, tabs: p.tabs };
+  return {
+    activeTab: p.activeTab,
+    tabs: p.tabs.map((t) => {
+      const { search, ...tab } = t;
+      return search ? { ...tab, title: '', cursor: null, table: null } : tab;
+    }),
+  };
 }
 
 /** Tabs are found by id – empty or duplicate ids (never from Rust, but cheap to guard) get new ones. */

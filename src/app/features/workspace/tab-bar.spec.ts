@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { SessionApi } from '../../core/session/session-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
+import { FakeJobsApi } from '../../../testing/fake-jobs-api';
+import { JobsApi } from '../../core/jobs/jobs-api';
 import { TabBar } from './tab-bar';
 import { newTab, WorkspaceStore } from './workspace.store';
 
@@ -10,7 +12,10 @@ describe('TabBar', () => {
   async function render() {
     TestBed.configureTestingModule({
       imports: [TabBar],
-      providers: [{ provide: SessionApi, useValue: new FakeSessionApi() }],
+      providers: [
+        { provide: SessionApi, useValue: new FakeSessionApi() },
+        { provide: JobsApi, useValue: new FakeJobsApi() },
+      ],
     });
     ws = TestBed.inject(WorkspaceStore);
     ws.restore({

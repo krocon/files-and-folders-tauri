@@ -1,171 +1,57 @@
 {
-  "NAVIGATE_OPEN": [
-    "Enter"
-  ],
-  "NAVIGATE_PARENT": [
-    "Backspace"
-  ],
-  "OPEN_IN_NEW_TAB": [
-    "Mod+Enter"
-  ],
-  "RELOAD_DIR": [
-    "Mod+R"
-  ],
-  "NAVIGATE_BACK": [
-    "Alt+ArrowLeft"
-  ],
-  "NAVIGATE_FORWARD": [
-    "Alt+ArrowRight"
-  ],
-  "OPEN_CHDIR_DLG": [
-    "Mod+L",
-    "Alt+F10"
-  ],
-  "OPEN_FOLDER_MENU_LEFT": [
-    "Alt+F1"
-  ],
-  "OPEN_FOLDER_MENU_RIGHT": [
-    "Alt+F2"
-  ],
-  "CALC_DIR_SIZES": [
-    "Alt+Shift+Enter"
-  ],
-  "TOGGLE_FILTER": [
-    "Mod+Alt+F"
-  ],
-  "TOGGLE_HIDDEN_FILES": [
-    "Mod+H"
-  ],
-  "TOGGLE_SHELL": [
-    "Shift+F11"
-  ],
-  "OPEN_COMMAND_PALETTE": [
-    "Mod+Shift+P",
-    "Mod+F12"
-  ],
-  "OPEN_CALL_ACTION_DLG": [
-    "F10"
-  ],
-  "TOGGLE_MARK_AND_ADVANCE": [
-    "Space",
-    "Insert"
-  ],
-  "MARK_DOWN": [
-    "Shift+ArrowDown"
-  ],
-  "MARK_UP": [
-    "Shift+ArrowUp"
-  ],
-  "MARK_TO_START": [
-    "Shift+Home"
-  ],
-  "MARK_TO_END": [
-    "Shift+End"
-  ],
-  "SELECT_ALL": [
-    "Mod+A",
-    "Mod+NumpadAdd"
-  ],
-  "DESELECT_ALL": [
-    "Mod+Shift+A",
-    "Mod+NumpadSubtract"
-  ],
-  "INVERT_MARKS": [
-    "NumpadMultiply"
-  ],
-  "OPEN_MARK_PATTERN_DLG": [
-    "NumpadAdd"
-  ],
-  "OPEN_UNMARK_PATTERN_DLG": [
-    "NumpadSubtract"
-  ],
-  "TOGGLE_PANEL": [
-    "Tab"
-  ],
-  "SELECT_LEFT_PANEL": [
-    "Alt+1"
-  ],
-  "SELECT_RIGHT_PANEL": [
-    "Alt+2"
-  ],
-  "NEXT_TAB": [
-    "Mod+Tab"
-  ],
-  "PREV_TAB": [
-    "Mod+Shift+Tab"
-  ],
-  "CLONE_TAB": [
-    "Mod+T"
-  ],
-  "CLOSE_TAB": [
-    "Mod+W"
-  ],
-  "TOGGLE_FAVORITE": [
-    "Mod+D"
-  ],
-  "OPEN_FIND_DLG": [
-    "Alt+F7",
-    "Mod+F"
-  ],
-  "OPEN_VIEW_DLG": [
-    "F3"
-  ],
-  "QUICK_VIEW": [
-    "Mod+Q"
-  ],
-  "OPEN_EDIT_DLG": [
-    "F4"
-  ],
-  "OPEN_CREATE_FILE_DLG": [
-    "Shift+F4"
-  ],
-  "OPEN_COPY_DLG": [
-    "F5"
-  ],
-  "OPEN_MOVE_DLG": [
-    "F6"
-  ],
-  "OPEN_RENAME_DLG": [
-    "Shift+F6"
-  ],
-  "OPEN_MKDIR_DLG": [
-    "F7",
-    "Shift+F7"
-  ],
-  "OPEN_DELETE_DLG": [
-    "F8",
-    "Delete"
-  ],
-  "DELETE_PERMANENT": [
-    "Shift+F8",
-    "Shift+Delete"
-  ],
-  "RENAME_INLINE": [
-    "F2"
-  ],
-  "OPEN_ATTRIBUTE_DLG": [
-    "Alt+Enter"
-  ],
-  "OPEN_MULTIRENAME_DLG": [
-    "Mod+F6",
-    "Mod+Alt+M",
-    "Mod+M"
-  ],
-  "OPEN_GROUPFILES_DLG": [
-    "Alt+G",
-    "Mod+Alt+G"
-  ],
-  "OPEN_DELETE_EMPTY_FOLDERS_DLG": [
-    "Mod+Alt+R",
-    "Mod+Alt+Shift+D"
-  ],
-  "OPEN_MULTIMKDIR_DLG": [
-    "Mod+F7"
-  ],
-  "OPEN_SHORTCUT_DLG": [
-    "Mod+Shift+K"
-  ],
-  "OPEN_TASK_DLG": [
-    "Mod+F11"
-  ]
+  "NAVIGATE_OPEN": ["Enter"],
+  "NAVIGATE_PARENT": ["Backspace"],
+  "OPEN_IN_NEW_TAB": ["Mod+Enter"],
+  "RELOAD_DIR": ["Mod+R"],
+  "NAVIGATE_BACK": ["Alt+ArrowLeft"],
+  "NAVIGATE_FORWARD": ["Alt+ArrowRight"],
+  "OPEN_CHDIR_DLG": ["Mod+L"],
+  "OPEN_FOLDER_MENU_LEFT": ["Alt+F1"],
+  "OPEN_FOLDER_MENU_RIGHT": ["Alt+F2"],
+  "CALC_DIR_SIZES": ["Alt+Shift+Enter"],
+  "TOGGLE_FILTER": ["Mod+Alt+F"],
+  "TOGGLE_HIDDEN_FILES": ["Mod+H"],
+  "TOGGLE_SHELL": ["Shift+F11"],
+  "OPEN_COMMAND_PALETTE": ["Mod+Shift+P", "Mod+F12"],
+  "OPEN_CALL_ACTION_DLG": ["F10"],
+  "TOGGLE_MARK_AND_ADVANCE": ["Space", "Insert"],
+  "MARK_DOWN": ["Shift+ArrowDown"],
+  "MARK_UP": ["Shift+ArrowUp"],
+  "MARK_TO_START": ["Shift+Home"],
+  "MARK_TO_END": ["Shift+End"],
+  "SELECT_ALL": ["Mod+A", "Mod+NumpadAdd"],
+  "DESELECT_ALL": ["Mod+Shift+A", "Mod+NumpadSubtract"],
+  "INVERT_MARKS": ["NumpadMultiply"],
+  "OPEN_MARK_PATTERN_DLG": ["NumpadAdd"],
+  "OPEN_UNMARK_PATTERN_DLG": ["NumpadSubtract"],
+  "TOGGLE_PANEL": ["Tab"],
+  "SELECT_LEFT_PANEL": ["Alt+1"],
+  "SELECT_RIGHT_PANEL": ["Alt+2"],
+  "NEXT_TAB": ["Mod+Tab"],
+  "PREV_TAB": ["Mod+Shift+Tab"],
+  "CLONE_TAB": ["Mod+T"],
+  "CLOSE_TAB": ["Mod+W"],
+  "TOGGLE_FAVORITE": ["Mod+D"],
+  "OPEN_FIND_DLG": ["Alt+F7", "Mod+F"],
+  "OPEN_FOLDER_FINDER_DLG": ["Alt+F10"],
+  "RERUN_SEARCH": ["Mod+Shift+F7"],
+  "GOTO_FILE": ["Mod+Shift+G"],
+  "OPEN_VIEW_DLG": ["F3"],
+  "QUICK_VIEW": ["Mod+Q"],
+  "OPEN_EDIT_DLG": ["F4"],
+  "OPEN_CREATE_FILE_DLG": ["Shift+F4"],
+  "OPEN_COPY_DLG": ["F5"],
+  "OPEN_MOVE_DLG": ["F6"],
+  "OPEN_RENAME_DLG": ["Shift+F6"],
+  "OPEN_MKDIR_DLG": ["F7", "Shift+F7"],
+  "OPEN_DELETE_DLG": ["F8", "Delete"],
+  "DELETE_PERMANENT": ["Shift+F8", "Shift+Delete"],
+  "RENAME_INLINE": ["F2"],
+  "OPEN_ATTRIBUTE_DLG": ["Alt+Enter"],
+  "OPEN_MULTIRENAME_DLG": ["Mod+F6", "Mod+Alt+M", "Mod+M"],
+  "OPEN_GROUPFILES_DLG": ["Alt+G", "Mod+Alt+G"],
+  "OPEN_DELETE_EMPTY_FOLDERS_DLG": ["Mod+Alt+R", "Mod+Alt+Shift+D"],
+  "OPEN_MULTIMKDIR_DLG": ["Mod+F7"],
+  "OPEN_SHORTCUT_DLG": ["Mod+Shift+K"],
+  "OPEN_TASK_DLG": ["Mod+F11"]
 }

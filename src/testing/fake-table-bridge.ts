@@ -60,6 +60,22 @@ export class FakeTableBridge implements TableBridge {
     this.announcements.push(text);
   }
 
+  readonly hiddenColumns = new Set<string>(['dir']);
+  emptyText: string | null = null;
+
+  setEmptyText(text: string | null): void {
+    this.emptyText = text;
+  }
+
+  setColumnVisible(property: string, visible: boolean): void {
+    this.calls.push(`setColumnVisible(${property},${visible})`);
+    if (visible) {
+      this.hiddenColumns.delete(property);
+    } else {
+      this.hiddenColumns.add(property);
+    }
+  }
+
   /** What `getTableState` returns; `applyTableState` records and merges into it. */
   tableState: Partial<TableStateIf> = { version: 1 };
 

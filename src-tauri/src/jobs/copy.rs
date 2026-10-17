@@ -612,8 +612,8 @@ pub fn run(
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
-    let pairs: Vec<(PathBuf, PathBuf)> = sources
-        .iter()
+    let pairs: Vec<(PathBuf, PathBuf)> = super::drop_nested(sources)
+        .into_iter()
         .map(|s| (s.clone(), target_dir.to_path_buf()))
         .collect();
     run_pairs(id, &pairs, options, mode, Summary::default(), control, emit)

@@ -19,6 +19,8 @@ export class FakeJobsApi extends JobsApi {
   clearCalls = 0;
   refuse: unknown = null;
   autoFinishDirSize = false;
+  /** Runs after `added`, before `start` resolves (events that overtake the id). */
+  beforeResolve: ((id: string, spec: JobSpec) => void) | null = null;
   sizes: Record<string, number> = {};
 
   subscribe(onEvent: (event: JobEvent) => void): Promise<JobInfo[]> {
@@ -37,6 +39,7 @@ export class FakeJobsApi extends JobsApi {
     const id = `j${++this.seq}`;
     this.started.push({ id, spec });
     this.emit({ type: 'added', job: job(id, spec) });
+    this.beforeResolve?.(id, spec);
     if (this.autoFinishDirSize && spec.kind === 'dirSize') {
       const bytes = this.sizes[spec.path] ?? 0;
       queueMicrotask(() =>

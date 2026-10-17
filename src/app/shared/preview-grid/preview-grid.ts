@@ -5,6 +5,7 @@ import {
   input,
   OnDestroy,
   OnInit,
+  output,
   untracked,
 } from '@angular/core';
 import { TableComponent } from '@guiexpert/angular-table';
@@ -39,6 +40,7 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
   constructor(
     columnDefs: ColumnDefIf[],
     private readonly rowClass: () => RowClassFn<T> | null,
+    private readonly activeIndex: () => number,
   ) {
     super('body', [], columnDefs, ROW_HEIGHT);
   }
@@ -52,6 +54,9 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
     const extra = this.rowClass()?.(row);
     if (extra) {
       classes.push(extra);
+    }
+    if (rowIndex === this.activeIndex()) {
+      classes.push('fnf-grid-active');
     }
     return classes;
   }
@@ -102,6 +107,11 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
   readonly rowClass = input<RowClassFn<T> | null>(null);
   /** Id of the element that labels the grid. */
   readonly labelledBy = input<string | null>(null);
+  /** Highlighted row (a list driven from an input field, design 009 folder finder); -1 = none. */
+  readonly activeIndex = input<number>(-1);
+  /** Click on a body row (displayed index). */
+  readonly rowClick = output<{ index: number; clickCount: number }>();
+  private unsubscribe: (() => void) | null = null;
 
   protected options: TableOptionsIf = new TableOptions();
   protected model: TableModelIf | null = null;
@@ -111,6 +121,15 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
     effect(() => {
       const rows = this.rows();
       untracked(() => this.show(rows));
+    });
+    effect(() => {
+      const index = this.activeIndex();
+      untracked(() => {
+        if (this.api && index >= 0) {
+          this.api.ensureRowIsVisible(index);
+        }
+        this.api?.repaint();
+      });
     });
   }
 
@@ -139,7 +158,11 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
       ariaLabelledBy: this.labelledBy() ?? undefined,
       overlayOptions: { noRowsText: '–', loadingText: '…', loadingDelayInMs: 150 },
     };
-    const body = new GridBodyModel<T>(columnDefs, () => this.rowClass());
+    const body = new GridBodyModel<T>(
+      columnDefs,
+      () => this.rowClass(),
+      () => this.activeIndex(),
+    );
     this.model = TableFactory.createTableModel({
       bodyAreaModel: body,
       columnDefs,
@@ -149,6 +172,13 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
 
   protected onReady(api: TableApi): void {
     this.api = api;
+    this.unsubscribe = api.subscribe({
+      onMouseClicked: (evt) => {
+        if (evt.areaIdent === 'body' && evt.rowIndex >= 0) {
+          this.rowClick.emit({ index: evt.rowIndex, clickCount: evt.clickCount });
+        }
+      },
+    });
     this.show(this.rows());
   }
 
@@ -162,6 +192,7 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unsubscribe?.();
     this.api = null;
   }
 }

@@ -17,7 +17,9 @@ export type DialogKind =
   | 'clean-folders'
   | 'multi-mkdir'
   | 'viewer'
-  | 'properties';
+  | 'properties'
+  | 'find'
+  | 'folder-finder';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

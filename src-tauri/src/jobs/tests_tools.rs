@@ -407,3 +407,165 @@ fn group_move_cancelled_while_planning_moves_nothing() {
     assert!(src.join("Band - Titel 01.mp3").exists());
     assert!(!dst.join("Band - Titel 01.mp3").exists());
 }
+
+// ---- search (design 009) ----
+
+fn search_spec(root: &Path, name: &str) -> JobSpec {
+    let criteria: crate::search::SearchCriteria = serde_json::from_value(serde_json::json!({
+        "roots": [s(root)],
+        "name": name,
+        "maxHits": 100000,
+    }))
+    .unwrap();
+    JobSpec::Search { criteria }
+}
+
+#[test]
+fn search_streams_batches_and_reports_stats() {
+    let d = tempdir().unwrap();
+    for i in 0..1200 {
+        fs::write(d.path().join(format!("f {i} ü.txt")), b"").unwrap();
+    }
+    fs::create_dir(d.path().join("sub")).unwrap();
+    let h = Harness::new();
+    let id = h.mgr.start(search_spec(d.path(), "*.txt")).unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done);
+    let summary = info.summary.unwrap();
+    let stats = summary.search.unwrap();
+    assert_eq!(stats.hits, 1200);
+    assert_eq!(stats.dirs_scanned, 2);
+    assert_eq!(summary.items_done, 1200);
+    let batches: Vec<(usize, u64)> = h
+        .events
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|e| match e {
+            JobEvent::SearchHits { id: i, hits, stats } if *i == id => {
+                Some((hits.len(), stats.hits))
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(batches.len() >= 3, "1200 hits come in batches: {batches:?}");
+    assert!(batches.iter().all(|(n, _)| *n <= search::BATCH_HITS));
+    assert_eq!(batches.iter().map(|(n, _)| n).sum::<usize>(), 1200);
+    assert_eq!(
+        batches.last().unwrap().1,
+        1200,
+        "final batch has the final stats"
+    );
+    // hits are not kept in the job info (only the spec and the summary)
+    assert!(!format!("{:?}", h.mgr.list()).contains("f 1 ü.txt"));
+    // helper job: quitting needs no confirmation
+    assert_eq!(h.mgr.active_count(), 0);
+}
+
+#[test]
+fn search_fails_on_bad_pattern_or_missing_root_and_reports_unreadable() {
+    let d = tempdir().unwrap();
+    let h = Harness::new();
+    let JobSpec::Search { mut criteria } = search_spec(d.path(), "(") else {
+        panic!()
+    };
+    criteria.name_mode = crate::search::NameMode::Regex;
+    let err = h
+        .mgr
+        .start(JobSpec::Search {
+            criteria: criteria.clone(),
+        })
+        .unwrap_err();
+    assert_eq!(err.code, FsErrorCode::InvalidPattern);
+    let missing = d.path().join("missing");
+    let id = h.mgr.start(search_spec(&missing, "")).unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Failed);
+    assert_eq!(
+        info.summary.unwrap().error.unwrap().code,
+        FsErrorCode::NotFound
+    );
+    // one root missing of two: done with errors, the other root is searched
+    fs::write(d.path().join("a.txt"), b"").unwrap();
+    let JobSpec::Search { mut criteria } = search_spec(d.path(), "a.txt") else {
+        panic!()
+    };
+    criteria.roots.push(s(&missing));
+    let id = h.mgr.start(JobSpec::Search { criteria }).unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    let summary = info.summary.unwrap();
+    assert_eq!(summary.items_done, 1);
+    assert_eq!(summary.items_failed, 1);
+    assert_eq!(summary.errors[0].path, s(&missing));
+}
+
+#[test]
+fn search_cancel_reacts_fast() {
+    let d = tempdir().unwrap();
+    for i in 0..40 {
+        let sub = d.path().join(format!("d{i}"));
+        fs::create_dir(&sub).unwrap();
+        for j in 0..250 {
+            fs::write(sub.join(format!("{j}.txt")), b"").unwrap();
+        }
+    }
+    let h = Harness::new();
+    // content search makes the walk slow enough to cancel in the middle
+    let JobSpec::Search { mut criteria } = search_spec(d.path(), "") else {
+        panic!()
+    };
+    criteria.content = Some(crate::search::ContentQuery {
+        text: "never".into(),
+        case_sensitive: false,
+        max_file_size: None,
+    });
+    let id = h.mgr.start(JobSpec::Search { criteria }).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let t = std::time::Instant::now();
+    h.mgr.cancel(&id);
+    let info = h.finish(&id);
+    assert!(t.elapsed() < std::time::Duration::from_millis(200));
+    assert!(matches!(info.state, JobState::Cancelled | JobState::Done));
+}
+
+/// Review 009 #10: finished helper jobs (search, count, folder size) leave the
+/// manager as soon as their end was reported – the list does not grow with
+/// every search. Waiting for them still works.
+#[test]
+fn finished_helper_jobs_are_removed_after_their_end() {
+    let d = tempdir().unwrap();
+    fs::write(d.path().join("a.txt"), b"").unwrap();
+    let h = Harness::new();
+    let search = h.mgr.start(search_spec(d.path(), "*.txt")).unwrap();
+    let count = h
+        .mgr
+        .start(JobSpec::Count {
+            paths: vec![s(d.path())],
+        })
+        .unwrap();
+    let size = h.mgr.start(JobSpec::DirSize { path: s(d.path()) }).unwrap();
+    for id in [&search, &count, &size] {
+        assert!(h.finish(id).state.is_finished());
+    }
+    // `finish` may return before the removal: wait for it
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while !h.mgr.list().is_empty() {
+        assert!(std::time::Instant::now() < deadline, "{:?}", h.mgr.list());
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let events = h.events.lock().unwrap();
+    for id in [&search, &count, &size] {
+        let finished = events
+            .iter()
+            .position(|e| matches!(e, JobEvent::Finished { id: i, .. } if i == id))
+            .unwrap();
+        let removed = events
+            .iter()
+            .position(|e| matches!(e, JobEvent::Removed { ids } if ids.contains(id)))
+            .expect("removed event");
+        assert!(finished < removed, "the end is reported first");
+    }
+    drop(events);
+    assert_eq!(h.finish(&search).summary.unwrap().items_done, 1);
+}

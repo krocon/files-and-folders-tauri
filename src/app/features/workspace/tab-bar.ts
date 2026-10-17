@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Side } from '../../core/session/session.models';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { SearchStore } from '../search/search.store';
 import { ContextMenu, MenuItem } from './context-menu';
 import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
@@ -170,7 +171,17 @@ export class TabBar {
   }
 
   protected title(tab: TabState): string {
+    if (tab.search) {
+      return tab.search.label;
+    }
     return tab.title || (tab.path === null ? TEXTS.homeTitle : '…');
+  }
+
+  private readonly search = inject(SearchStore);
+
+  /** A result tab whose search runs (spinner + `aria-busy`, design 009 E4). */
+  protected isSearching(tab: TabState): boolean {
+    return tab.search ? (this.search.results().get(tab.search.key)?.running ?? false) : false;
   }
 
   protected select(index: number): void {
