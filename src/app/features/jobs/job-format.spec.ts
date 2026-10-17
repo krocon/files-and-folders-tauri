@@ -10,6 +10,22 @@ describe('job format', () => {
     expect(jobTitle(job('j', { kind: 'copy', sources: ['/a', '/b'], targetDir: '/z' }))).toBe(
       'Copy 2 entries → /z',
     );
+    expect(
+      jobTitle(
+        job('j', {
+          kind: 'move',
+          sources: ['/a/b'],
+          targetDir: '/a',
+          options: { renameTo: 'c' },
+        }),
+      ),
+    ).toBe('Move /a/b → /a as c');
+    expect(jobTitle(job('j', { kind: 'delete', paths: ['/a', '/b'], mode: 'trash' }))).toBe(
+      'Move 2 entries to the trash',
+    );
+    expect(jobTitle(job('j', { kind: 'delete', paths: ['/a'], mode: 'permanent' }))).toBe(
+      'Delete /a permanently',
+    );
     expect(stateLabel('waitingForDecision')).toBe('Waiting for your answer');
   });
 

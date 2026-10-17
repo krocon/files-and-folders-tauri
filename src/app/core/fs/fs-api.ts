@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from './fs-error';
-import { DirectoryListing, Location } from './fs.models';
+import { DirectoryListing, Location, PathCheck } from './fs.models';
 
 /**
  * Typed facade for all file-system commands. UI code depends on this
@@ -15,6 +15,14 @@ export abstract class FsApi {
   abstract resolveLocation(input: string): Promise<Location>;
   /** Opens with the default app; rejects with code `executable` unless allowed. */
   abstract openFile(path: string, allowExecutable: boolean): Promise<void>;
+  /** Creates `parent/name` (`a/b/c` allowed); resolves to the topmost new path. */
+  abstract makeDir(parent: string, name: string): Promise<string>;
+  /** Creates an empty file (never overwrites); resolves to its path. */
+  abstract createFile(parent: string, name: string): Promise<string>;
+  /** Renames in place (never overwrites); resolves to the new path. */
+  abstract renameEntry(path: string, newName: string, allowDangerous: boolean): Promise<string>;
+  /** Root, home or system paths among `paths` (second confirmation). */
+  abstract checkPaths(paths: readonly string[]): Promise<readonly PathCheck[]>;
 }
 
 @Injectable()
@@ -29,6 +37,22 @@ export class TauriFsApi extends FsApi {
 
   openFile(path: string, allowExecutable: boolean): Promise<void> {
     return call<void>('open_file', { path, allowExecutable });
+  }
+
+  makeDir(parent: string, name: string): Promise<string> {
+    return call<string>('make_dir', { parent, name });
+  }
+
+  createFile(parent: string, name: string): Promise<string> {
+    return call<string>('create_file', { parent, name });
+  }
+
+  renameEntry(path: string, newName: string, allowDangerous: boolean): Promise<string> {
+    return call<string>('rename_entry', { path, newName, allowDangerous });
+  }
+
+  checkPaths(paths: readonly string[]): Promise<readonly PathCheck[]> {
+    return call<readonly PathCheck[]>('check_paths', { paths });
   }
 }
 

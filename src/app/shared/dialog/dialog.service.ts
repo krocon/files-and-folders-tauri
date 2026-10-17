@@ -8,7 +8,10 @@ export type DialogKind =
   | 'shortcuts'
   | 'confirm'
   | 'jobs'
-  | 'conflict';
+  | 'conflict'
+  | 'copy-move'
+  | 'delete'
+  | 'name';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

@@ -1,4 +1,4 @@
-import { DirEntry, DirectoryListing, Location } from '../app/core/fs/fs.models';
+import { Danger, DirEntry, DirectoryListing, Location, PathCheck } from '../app/core/fs/fs.models';
 import { FsApi } from '../app/core/fs/fs-api';
 
 export function entry(name: string, overrides: Partial<DirEntry> = {}): DirEntry {
@@ -54,6 +54,39 @@ export class FakeFsApi extends FsApi {
     }
     this.opened.push({ path, allowExecutable });
     return Promise.resolve();
+  }
+
+  /** Quick operations in call order, e.g. `mkdir /a x`. */
+  readonly ops: string[] = [];
+  /** Next quick operation rejects with this error (once). */
+  failNext: unknown = null;
+  dangers: Record<string, Danger> = {};
+
+  private op(text: string, result: string): Promise<string> {
+    this.ops.push(text);
+    const fail = this.failNext;
+    this.failNext = null;
+    return fail ? Promise.reject(fail) : Promise.resolve(result);
+  }
+
+  makeDir(parent: string, name: string): Promise<string> {
+    return this.op(`mkdir ${parent} ${name}`, `${parent}/${name.split('/')[0]}`);
+  }
+
+  createFile(parent: string, name: string): Promise<string> {
+    return this.op(`touch ${parent} ${name}`, `${parent}/${name}`);
+  }
+
+  renameEntry(path: string, newName: string, allowDangerous: boolean): Promise<string> {
+    const parent = path.slice(0, path.lastIndexOf('/'));
+    return this.op(
+      `rename ${path} ${newName}${allowDangerous ? ' !' : ''}`,
+      `${parent}/${newName}`,
+    );
+  }
+
+  checkPaths(paths: readonly string[]): Promise<readonly PathCheck[]> {
+    return Promise.resolve(paths.map((path) => ({ path, danger: this.dangers[path] ?? null })));
   }
 }
 

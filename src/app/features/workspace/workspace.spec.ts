@@ -83,6 +83,7 @@ describe('Workspace', () => {
       id,
       conflict: {
         conflictId: 1,
+        kind: 'exists',
         source: '/a',
         target: '/b/a',
         sourceMeta: { size: 1, modifiedMs: 0, isDir: false },

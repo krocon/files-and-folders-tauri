@@ -3,13 +3,43 @@
  */
 import { DirSize, FsError } from '../fs/fs.models';
 
+/** What happens when a target exists (copy/move dialog). */
+export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
+
+export interface CopyOptions {
+  readonly conflictDefault?: ConflictDefault;
+  /** New name of the single source in the target folder. */
+  readonly renameTo?: string | null;
+}
+
+export type DeleteMode = 'trash' | 'permanent';
+
 export type JobSpec =
   | {
       readonly kind: 'copy';
       readonly sources: readonly string[];
       readonly targetDir: string;
       readonly background?: boolean;
+      readonly options?: CopyOptions;
     }
+  | {
+      readonly kind: 'move';
+      readonly sources: readonly string[];
+      readonly targetDir: string;
+      readonly background?: boolean;
+      readonly options?: CopyOptions;
+      /** The user confirmed a root/home/system path a second time. */
+      readonly allowDangerous?: boolean;
+    }
+  | {
+      readonly kind: 'delete';
+      readonly paths: readonly string[];
+      readonly mode: DeleteMode;
+      readonly background?: boolean;
+      readonly allowDangerous?: boolean;
+    }
+  /** Counts files, folders and bytes of a selection (copy dialog). */
+  | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }
   /** Debug builds only (load tests). */
   | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number };
@@ -52,8 +82,12 @@ export interface FileMeta {
   readonly isDir: boolean;
 }
 
+/** `exists`: the target exists (copy/move); `readOnly`: permanent delete of a write-protected entry. */
+export type ConflictKind = 'exists' | 'readOnly';
+
 export interface Conflict {
   readonly conflictId: number;
+  readonly kind: ConflictKind;
   readonly source: string;
   readonly target: string;
   readonly sourceMeta: FileMeta;

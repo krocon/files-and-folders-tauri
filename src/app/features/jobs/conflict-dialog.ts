@@ -29,27 +29,41 @@ import { JOB_TEXTS } from './job-format';
         <app-modal
           dialogRole="alertdialog"
           describedBy="fnf-conflict-intro"
-          [heading]="t.conflictTitle"
+          [heading]="readOnly() ? t.readOnlyTitle : t.conflictTitle"
           width="36rem"
           (closed)="later()"
         >
-          <p class="intro" id="fnf-conflict-intro">{{ t.conflictIntro }}</p>
-          <dl class="files">
-            <dt>{{ t.source }}</dt>
-            <dd>
-              <span class="path">{{ c.source }}</span>
-              <span class="meta"
-                >{{ size(c.sourceMeta.size) }} · {{ date(c.sourceMeta.modifiedMs) }}</span
-              >
-            </dd>
-            <dt>{{ t.target }}</dt>
-            <dd>
-              <span class="path">{{ c.target }}</span>
-              <span class="meta"
-                >{{ size(c.targetMeta.size) }} · {{ date(c.targetMeta.modifiedMs) }}</span
-              >
-            </dd>
-          </dl>
+          <p class="intro" id="fnf-conflict-intro">
+            {{ readOnly() ? t.readOnlyIntro : t.conflictIntro }}
+          </p>
+          @if (readOnly()) {
+            <dl class="files">
+              <dt>{{ t.entry }}</dt>
+              <dd>
+                <span class="path">{{ c.source }}</span>
+                <span class="meta"
+                  >{{ size(c.sourceMeta.size) }} · {{ date(c.sourceMeta.modifiedMs) }}</span
+                >
+              </dd>
+            </dl>
+          } @else {
+            <dl class="files">
+              <dt>{{ t.source }}</dt>
+              <dd>
+                <span class="path">{{ c.source }}</span>
+                <span class="meta"
+                  >{{ size(c.sourceMeta.size) }} · {{ date(c.sourceMeta.modifiedMs) }}</span
+                >
+              </dd>
+              <dt>{{ t.target }}</dt>
+              <dd>
+                <span class="path">{{ c.target }}</span>
+                <span class="meta"
+                  >{{ size(c.targetMeta.size) }} · {{ date(c.targetMeta.modifiedMs) }}</span
+                >
+              </dd>
+            </dl>
+          }
           @if (renaming()) {
             <form class="rename" (submit)="submitRename($event, nameInput.value)">
               <label>
@@ -74,7 +88,7 @@ import { JOB_TEXTS } from './job-format';
             {{ t.applyToAll }}
           </label>
           <div class="buttons">
-            @for (b of buttons; track b.key) {
+            @for (b of buttons(); track b.key) {
               <button
                 type="button"
                 class="btn"
@@ -116,14 +130,27 @@ export class ConflictDialog {
     });
   }
   protected readonly applyToAll = signal(false);
+  /** Permanent delete of a write-protected entry (design 006 E6). */
+  protected readonly readOnly = computed(() => this.job()?.conflict?.kind === 'readOnly');
   /** Label split around the Alt letter (underlined). */
-  protected readonly buttons = [
-    { key: 'o', before: '', letter: 'O', after: 'verwrite' },
-    { key: 's', before: '', letter: 'S', after: 'kip' },
-    { key: 'r', before: '', letter: 'R', after: 'ename…' },
-    { key: 'n', before: 'Overwrite if ', letter: 'n', after: 'ewer' },
-    { key: 'c', before: '', letter: 'C', after: 'ancel copying' },
-  ] as const;
+  protected readonly buttons = computed(() => {
+    const kind = this.job()?.spec.kind;
+    const cancel = { key: 'c', before: '', letter: 'C', after: `ancel ${cancelVerb(kind)}` };
+    if (this.readOnly()) {
+      return [
+        { key: 'd', before: '', letter: 'D', after: 'elete anyway' },
+        { key: 's', before: '', letter: 'S', after: 'kip' },
+        cancel,
+      ];
+    }
+    return [
+      { key: 'o', before: '', letter: 'O', after: 'verwrite' },
+      { key: 's', before: '', letter: 'S', after: 'kip' },
+      { key: 'r', before: '', letter: 'R', after: 'ename…' },
+      { key: 'n', before: 'Overwrite if ', letter: 'n', after: 'ewer' },
+      cancel,
+    ];
+  });
   protected readonly renaming = signal(false);
 
   protected size(bytes: number | null): string {
@@ -170,7 +197,11 @@ export class ConflictDialog {
   }
 
   protected press(key: string): boolean {
+    if (!this.buttons().some((b) => b.key === key)) {
+      return false;
+    }
     switch (key) {
+      case 'd':
       case 'o':
         this.decide({ type: 'overwrite' });
         return true;
@@ -199,5 +230,16 @@ export class ConflictDialog {
       evt.preventDefault();
       evt.stopPropagation();
     }
+  }
+}
+
+function cancelVerb(kind: string | undefined): string {
+  switch (kind) {
+    case 'move':
+      return 'moving';
+    case 'delete':
+      return 'deleting';
+    default:
+      return 'copying';
   }
 }
