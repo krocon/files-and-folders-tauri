@@ -21,6 +21,8 @@ import { Side } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { FileList } from '../browser/file-list/file-list';
+import { QuickView } from '../preview/quick-view';
+import { QuickViewStore } from '../preview/quick-view.store';
 import { summarize } from './status';
 import { TabBar } from './tab-bar';
 import { TEXTS } from './texts';
@@ -36,7 +38,7 @@ let panelSeq = 0;
  */
 @Component({
   selector: 'app-file-panel',
-  imports: [FileList, TabBar],
+  imports: [FileList, TabBar, QuickView],
   providers: [FileBrowserStore],
   templateUrl: './file-panel.html',
   styleUrl: './file-panel.scss',
@@ -60,6 +62,9 @@ export class FilePanel implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly active = computed(() => this.ws.activeSide() === this.side());
+  private readonly quick = inject(QuickViewStore);
+  /** This side shows the quick view of the other side's cursor (design 010 E4). */
+  protected readonly quickView = computed(() => this.quick.shownOn() === this.side());
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
   private readonly tabId = computed(() => this.tab().id);
 

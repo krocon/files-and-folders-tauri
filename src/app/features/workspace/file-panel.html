@@ -64,7 +64,11 @@
   [id]="'fnf-pane-' + side()"
   [attr.aria-labelledby]="'fnf-tab-' + tab().id"
   [class.fnf-active-panel]="active()"
+  [class.quick-on]="quickView()"
 >
+  @if (quickView()) {
+    <app-quick-view class="quick" />
+  }
   @if (errorText(); as text) {
     <div class="error" role="alert">
       <div>

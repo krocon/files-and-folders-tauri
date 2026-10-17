@@ -110,6 +110,9 @@
   "OPEN_VIEW_DLG": [
     "F3"
   ],
+  "QUICK_VIEW": [
+    "Ctrl+Q"
+  ],
   "OPEN_EDIT_DLG": [
     "F4"
   ],
@@ -139,6 +142,10 @@
   ],
   "RENAME_INLINE": [
     "F2"
+  ],
+  "OPEN_ATTRIBUTE_DLG": [
+    "Alt+Enter",
+    "Mod+I"
   ],
   "OPEN_MULTIRENAME_DLG": [
     "Mod+F6"
