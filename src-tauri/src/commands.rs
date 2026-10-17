@@ -12,6 +12,7 @@ use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
 use crate::rename_presets::{self, LoadedPresets, RenamePresets};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
+use crate::themes::{self, LoadedThemes, ThemesFile};
 use crate::window_state;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -672,6 +673,89 @@ pub async fn save_rename_presets<R: Runtime>(
     }
     blocking("Saving the presets", move || {
         rename_presets::save(&file, presets).map_err(|e| FsError::from_io(&e, &file))
+    })
+    .await
+}
+
+// ---- colour schemes (design 013) ----
+
+/// Whether `themes.json` may be written (false after a broken file could not be moved aside).
+#[derive(Default)]
+pub struct ThemesState {
+    write_blocked: Mutex<bool>,
+}
+
+fn themes_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path()
+        .app_config_dir()
+        .map(|d| d.join(themes::FILE_NAME))
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("App config directory not available: {e}"),
+                None,
+            )
+        })
+}
+
+/// The user's colour schemes and the selection (defaults if there is no file).
+#[tauri::command]
+pub async fn load_themes<R: Runtime>(app: AppHandle<R>) -> Result<LoadedThemes, FsError> {
+    let file = themes_file(&app)?;
+    let loaded = blocking("Loading the colour schemes", move || {
+        Ok(themes::load(&file))
+    })
+    .await?;
+    *app.state::<ThemesState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = !loaded.persist;
+    Ok(loaded)
+}
+
+/// Replaces `themes.json` (checked and bounded, written atomically).
+#[tauri::command]
+pub async fn save_themes<R: Runtime>(app: AppHandle<R>, file: ThemesFile) -> Result<(), FsError> {
+    let path = themes_file(&app)?;
+    let blocked = *app
+        .state::<ThemesState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if blocked {
+        return Err(FsError::new(
+            FsErrorCode::Io,
+            "The existing colour scheme file could not be moved aside; not overwriting it.",
+            Some(&path),
+        ));
+    }
+    blocking("Saving the colour schemes", move || {
+        themes::save(&path, file).map_err(|e| FsError::from_io(&e, &path))
+    })
+    .await
+}
+
+/// Reads a colour scheme file (≤ 256 KiB JSON object) for the import.
+#[tauri::command]
+pub async fn import_theme<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<serde_json::Value, FsError> {
+    let path = resolve_input(&app, &path)?;
+    blocking("Importing the colour scheme", move || themes::import(&path)).await
+}
+
+/// Writes `<name>.theme.json` into `dir` (never overwrites); returns the path.
+#[tauri::command]
+pub async fn export_theme<R: Runtime>(
+    app: AppHandle<R>,
+    dir: String,
+    name: String,
+    theme: serde_json::Value,
+) -> Result<String, FsError> {
+    let dir = resolve_input(&app, &dir)?;
+    blocking("Exporting the colour scheme", move || {
+        themes::export(&dir, &name, &theme).map(|p| p.to_string_lossy().into_owned())
     })
     .await
 }

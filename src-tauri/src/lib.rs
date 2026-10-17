@@ -16,6 +16,7 @@
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
+//! - [`themes`]       colour schemes file, import/export of scheme files
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
@@ -37,6 +38,7 @@ pub mod properties;
 pub mod rename_presets;
 pub mod search;
 pub mod session;
+pub mod themes;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -48,6 +50,7 @@ pub fn run() {
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
+        .manage(commands::ThemesState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::PreviewState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
@@ -116,7 +119,11 @@ pub fn run() {
             commands::load_rename_presets,
             commands::save_rename_presets,
             commands::read_preview,
-            commands::get_properties
+            commands::get_properties,
+            commands::load_themes,
+            commands::save_themes,
+            commands::import_theme,
+            commands::export_theme
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
