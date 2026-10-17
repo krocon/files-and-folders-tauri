@@ -186,13 +186,39 @@ Fokus bleibt beim Ziehen im Quell-Panel; der Dialog übernimmt danach den Fokus 
 
 ## 6. Abweichungen bei der Umsetzung
 
-(wird in Phase 2–4 ergänzt)
+- `refresh()` übernimmt jetzt den Cursor zum Zeitpunkt der **Antwort** (`keepCursor`), nicht der Anfrage: in der
+  E2E-Flut (50 000 Dateien) sprang der Cursor sonst nach jedem Neuladen auf den alten Eintrag zurück (roter Test in
+  `watch-changes.spec.ts`).
+- WebKitGTK meldet im `keyup` einer Modifier-Taste die Taste noch als gedrückt (X11-Zustand vor dem Ereignis): die
+  Button-Leiste blieb im Shift-Satz hängen, und Shift loslassen schaltete beim Ziehen nicht auf Kopieren zurück.
+  `modifiersAfter()` in `shortcut.ts` (Dispatcher und Ziehen), roter Test in `keyboard-dispatcher.spec.ts`.
+  Betraf vermutlich schon 002 unter Linux.
+- Ein Link, dessen **Ziel** sich ändert (z. B. gelöscht), wird nicht neu gelesen – es gibt kein Ereignis für den
+  Link selbst. Erst Neuladen (`Strg/⌘+R`) oder ein Job zeigt ihn als „dangling“. Bewusst so (Ziele zu überwachen
+  hieße fremde Ordner zu beobachten).
+- Unter Xvfb (Debug-Build, Software-Rendering) kommen Zeiger-Ereignisse mit bis zu ~1 s Verzögerung an; das Ziehen
+  funktioniert, wirkt dort aber träge. Auf echter Hardware zu prüfen.
+
+### GuiExpert Table
+
+- **G18 – kein „Zeile unter dem Punkt“-API:** die Zielzeile wird über `data-area="body"` + `data-row-index` des
+  DOM gefunden (`TableBridge.rowIndexAt`, `// G18`). Vorschlag für `mono/TODO.md`:
+  `TableApi.getRowIndexAt(clientX, clientY): number` (Anzeige-Index, -1 außerhalb des Bodys).
+- **G19 – kein `updateRows`/`addRows`/`removeRows`:** Deltas tauschen die Zeilen (`setRows` + `reSort` +
+  `repaintHard`, bei 50 000 Zeilen spürbar, aber unkritisch). Vorschlag: `TableApi.upsertRows(rows, keyFn)` /
+  `removeRows(keys)` mit Sortierung und Filter, ohne Neuaufbau.
 
 ## 7. Review
 
 ### Selbstprüfung
 
-(wird in Phase 6 ergänzt)
+- Rust validiert alle Pfade (`validate_input_path`), begrenzt Ordner (8) und Drop-Pfade (10 000), blockierende
+  Arbeit (`statfs`, `stat`) nie auf dem Async-Runtime-Thread (eigener Watch-Thread, `spawn_blocking`).
+- Keine neuen Capabilities/Plugins; `onDragDropEvent` liegt in `core:default`. Kein Pfad wird im Frontend zerlegt
+  (Drop-Elternordner rechnet Rust).
+- Ablegen ist nie destruktiv: immer der Dialog aus 006 mit Konfliktvorgabe; Verschieben prüft Rust wie bei F6.
+- Speicher bei Fluten begrenzt: höchstens 500 Namen je Ordner, danach nur ein Flag.
+- Offen geprüft: Windows-`GetDriveTypeW`-Pfad und macOS-`MNT_LOCAL` sind ungetestet (nur Linux im Container).
 
 ### Review (separater Agent) – Ergebnis
 
@@ -203,13 +229,26 @@ Fokus bleibt beim Ziehen im Quell-Panel; der Dialog übernimmt danach den Fokus 
 ## 8. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende
-- [ ] Phase 5 Doku · [ ] Phase 6 Abschlussprüfung
+- [x] Phase 2 Rust: `watch/` (batch, netfs, Hub mit notify + PollWatcher), `listing::stat_entry`/`describe_paths`,
+  `commands/watch.rs`, Fehlercode `too_many` – 15 neue Rust-Tests (6 mit echtem Watcher)
+- [x] Phase 3 Frontend: `WatchApi`/`WatchService`, `DragDropApi`, `FileBrowserStore.applyChanges/requestRefresh/
+  goToExistingAncestor`, Statuszeilen-Hinweis, `DragStore`, `dnd-logic`, `DragGhost`, Pointer-Ziehen in `FileList`,
+  `OpsStore.openCopyMoveFor` – 20 neue Frontend-Tests (`watch-changes.spec.ts`, `dnd.spec.ts`, `file-panel.spec.ts`,
+  `keyboard-dispatcher.spec.ts`)
+- [x] Phase 4 Ende-zu-Ende (Xvfb :98, Debug-Build, eigenes `HOME` unter `/tmp/claude-0/e2e-012`): anlegen/löschen/
+  umbenennen/ändern von außen → nach < 0,6 s sichtbar, Cursor bleibt bzw. geht an den nächsten; 50 000 Dateien
+  (Erzeugen 3,9 s): Zwischenstände 5 628 → 28 465 → 50 000, Endstand ~7 s nach Ende, Pfeiltasten reagieren während der
+  Flut; Löschen der 50 000: nach ~2 s leer; Ordner von außen gelöscht → Panel springt zum Elternordner; Ziehen links →
+  rechts (Kopieren-Dialog), auf Ordnerzeile `Archiv` (Zeile hervorgehoben, Ziel `…/Archiv`, Kopie geprüft), zwei
+  markierte mit Shift (Verschieben-Dialog, beide verschoben, beide Panels aktuell), Esc bricht ab.
+  Nicht prüfbar: Drop aus einem Dateimanager (kein Dateimanager unter Xvfb – nur Logik), Netzlaufwerke, macOS/Windows,
+  gesperrter Ordner (als root greifen Rechte nicht), Dark-Mode nur über Tokens.
+- [x] Phase 5 Doku · [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build), Selbstprüfung (§7)
 
 ## 9. Offen
 
 - Ziehen aus der App ins System (E7).
 - Verknüpfung per Drag (E5), Modifier beim Drop von außen (E6).
 - Polling-Einstellung in der Oberfläche (015).
+- Link-Ziele werden nicht beobachtet (§6).
+- G18/G19 an das Mono-Repo melden.

@@ -17,8 +17,8 @@
   (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen), Prompt 005 (Job-Engine: Kopieren mit
   Fortschritt, Pause, Abbruch, Konflikten), Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
   anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig), Prompt
-  008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir) und Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften)
-  sind fertig. Als Nächstes: Prompt 009 (Suche).
+  008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften)
+  und Prompt 012 (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen) sind fertig. Als Nächstes: Prompt 009 (Suche).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -65,6 +65,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/preview/      Ansicht (ViewerStore + Dialog), Schnellvorschau (QuickViewStore, im Ziel-Panel),
                              Eigenschaften, Provider-Liste (views/: Text per textContent, Bild, Hex, Info), reine
                              Helfer (text-search, hex, permissions)
+  app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
+                             Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)
+  app/features/dnd/          DragStore (Root: Ziehen, Zonen, Übergabe an den Kopieren/Verschieben-Dialog), dnd-logic.ts
+                             (rein), DragGhost (Hinweis am Zeiger)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
@@ -91,6 +95,8 @@ src-tauri/                   Rust (Tauri 2)
   src/preview/               read_preview (Kopf 8 KiB, Limits), detect.rs (Magic Bytes, Endung passt nicht),
                              encoding.rs (UTF-8/16, 1252, Latin-1), ImageTokens + serve_image für Schema `fnfpreview`
   src/properties.rs          Eigenschaften (Zeiten, Unix-Modus/Eigentümer, Windows-Attribute, Link-Ziel)
+  src/watch/                 Ordner-Überwachung: mod.rs (WatchHub, notify + PollWatcher, Thread), batch.rs (Entprellen,
+                             rein), netfs.rs (Netzlaufwerk?); Commands in commands/watch.rs
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   capabilities/default.json  nur core:default

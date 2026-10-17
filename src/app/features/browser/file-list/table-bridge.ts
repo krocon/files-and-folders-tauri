@@ -107,7 +107,7 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
       return true;
     },
     rowIndexAt(element) {
-      // no "row at point" API (G18): body cells carry data-area="body" and the displayed row index
+      // TODO(guiexpert): no "row at point" API (G18): body cells carry data-area="body" and the displayed row index
       const cell = element.closest('[data-area="body"][data-row-index]');
       if (!cell || !scope.hostElement.contains(cell)) {
         return -1;
