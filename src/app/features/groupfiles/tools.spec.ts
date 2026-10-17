@@ -171,9 +171,11 @@ describe('folder tools (design 008)', () => {
         { path: '/src/Solo 1.mp3', group: 'Solo' },
       ],
     });
-    finish(0);
+    finish(0, 'done', { itemsDone: 2, itemsSkipped: 1 });
     await flush();
     expect(left.markedEntries()).toEqual([]);
+    // the report counts what happened, not what was asked for (E2E finding)
+    expect(TestBed.inject(JobsStore).messages()).toContain('Grouped 2 entries');
   });
 
   it('without a folder on the other side the source folder is the root', async () => {

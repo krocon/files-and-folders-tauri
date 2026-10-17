@@ -169,7 +169,8 @@ export class GroupFilesStore {
     } else if (job.state === 'doneWithErrors' && summary) {
       this.jobs.report(GF_TEXTS.withErrors(summary.itemsFailed));
     } else if (job.state === 'done' && summary) {
-      this.jobs.report(GF_TEXTS.done(items.length));
+      // entries already in their group are skipped – count what really happened
+      this.jobs.report(GF_TEXTS.done(summary.itemsDone));
     }
     const store = this.ws.panel(req.side)?.store;
     if (store && store.path() === req.sourceDir && job.state !== 'failed') {
