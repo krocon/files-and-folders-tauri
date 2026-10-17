@@ -215,19 +215,55 @@ function folderNames(t: MkdirTemplate, parents: [p, q, r]): { name: string; erro
 
 ## 7. Abweichungen bei der Umsetzung
 
-(wird während der Umsetzung gefüllt)
+| Punkt | Design | umgesetzt | Grund |
+|---|---|---|---|
+| „Schon in der Gruppe“ | Zeile im Frontend | erkennt nur Rust (`src.parent() == root/gruppe` → übersprungen, `itemsSkipped`) | das Frontend rechnet keine Pfade (CLAUDE.md §4) |
+| Startordner für Clean | aktueller bzw. markierte Ordner | markierte **echte** Ordner (keine Links auf Ordner), sonst der aktuelle | ein markierter Link als Startordner würde außerhalb aufräumen |
+| Reihenfolge im Clean-Job | Liste der Suche | der Job sortiert selbst „tiefer zuerst“ (stabil) und verlässt sich nicht auf die Reihenfolge des Frontends | Verteidigung in der Tiefe |
+| Optionen | – | „Startordner mitlöschen“ und Systemmüll wirken nur mit „leere Ordner löschen“; Muster und Müll ohne Groß/klein | eindeutige Bedeutung; `Thumbs.db` heißt unter Windows auch `thumbs.db` |
+| Tastatur im Gruppieren-Dialog | Strg/⌘+Enter = Ausführen | = **Verschieben** (legacy-Standard); im Clean-Dialog nur beim Papierkorb, nie endgültig | Enter darf nie endgültig löschen |
+| Multi-MkDir-Fehler | Ergebnis je Name | angelegte bleiben, die übrigen Namen stehen als Fehler im Dialog, der offen bleibt | der Nutzer kann Start/Ende anpassen |
+| Bericht nach dem Gruppieren | Anzahl der Einträge | Anzahl `itemsDone` (E2E-Fund: übersprungene Konflikte wurden mitgezählt) | – |
 
 ## 8. Review
 
-(wird am Ende gefüllt)
+Ein separater Review-Agent stand in dieser Sitzung nicht zur Verfügung (keine Subagenten-Werkzeuge). Stattdessen
+gründliche Selbstprüfung des Diffs mit Schwerpunkt auf den destruktiven Pfaden, jeweils mit Test belegt:
+
+- **Nie oberhalb des Startordners:** die Suche läuft nur abwärts; der Job lehnt jeden Pfad ab, der lexikalisch
+  (nach `normalize_lexically`, also auch `start/../x`) nicht in einer Wurzel liegt, und die Wurzel selbst ohne Option –
+  `nested_empty_children_first_never_the_root_or_above`, `clean_rechecks_every_entry` (gefälschte Einträge),
+  `clean_deletes_children_first_and_nothing_outside_the_start_folder`.
+- **Links:** nie verfolgt (Suche: `file_type` ohne Folgen, Link = Inhalt); Job: jeder Pfadteil unter der Wurzel muss
+  ein echter Ordner sein, der Eintrag selbst wird per `symlink_metadata` geprüft – `links_are_content_and_never_followed`,
+  `clean_never_deletes_through_a_link` (Ordner nach der Suche gegen einen Link getauscht).
+- **Neuer Inhalt seit der Suche:** Ordner werden nur gelöscht, wenn sie *jetzt* leer bzw. nur Müll sind; endgültig nur
+  `remove_dir` (nie `remove_dir_all`) – `clean_rechecks_every_entry`.
+- **Gruppieren:** Gruppenname per `validate_name`, Gruppenordner nur als echter Ordner zusammengeführt (Datei/Link →
+  Fehler der Gruppe, nie durch einen Link verschoben), Ordner nie in sich selbst, Verschieben gefährlicher Pfade
+  abgelehnt; Kopieren/Verschieben selbst ist die geprüfte Engine aus 005/006 – `group_*` in `tests_tools.rs`.
+- **Restrisiko (dokumentiert):** zwischen Prüfung und Löschen eines Ordners liegt ein winziges Zeitfenster; tauscht
+  ein anderer Prozess genau dann den geprüften Ordner gegen einen Link, könnte beim endgültigen Löschen eine
+  gleichnamige **Systemmüll-Datei** (`.DS_Store` …) im Link-Ziel entfernt werden. Der Ordner selbst (`remove_dir` auf
+  einen Link scheitert) und alles andere bleiben unberührt; im Papierkorb-Modus wird der Link als Ganzes verschoben.
 
 ## 9. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende
-- [ ] Phase 5 Doku · [ ] Phase 6 Abschlussprüfung
+- [x] Phase 2 Rust: `copy::run_pairs`/`check_pairs`, `jobs/group.rs` (`JobSpec::Group`), `clean.rs`
+  (`find_empty_dirs`, Muster, Müll), `jobs/clean.rs` (`JobSpec::Clean`), `fileops::create_folders`, Commands
+  `find_empty_dirs`, `create_folders` – 15 neue Rust-Tests (`clean.rs`, `tests_tools.rs`, `fileops.rs`)
+- [x] Phase 3 Frontend: `group-engine.ts` + Katalog (41 Fälle), `mkdir-engine.ts`, Stores und Dialoge für Gruppieren,
+  Aufräumen, Multi-MkDir, `shared/preview-grid`, `FoldersApi` + Fake, Kürzel `Alt+G`, `Mod+Alt+R`, `Mod+F7`
+  – 57 neue Frontend-Tests (`group-engine.spec.ts`, `mkdir-engine.spec.ts`, `tools.spec.ts`, `tools-dialogs.spec.ts`)
+- [x] Phase 4 Ende-zu-Ende (Xvfb :98, Debug-Build, eigenes `HOME`/`XDG_*` unter `/tmp/claude-0/e2e-008`):
+  Gruppieren „Laufende Nummer“ per **Verschieben** in das andere Panel mit Konflikt (Skip über den Dialog aus 005;
+  Umlaute, Emoji-Gruppe `🎉 Party`, Mindestgröße), „Erster Buchstabe“ per **Kopieren** in den Quellordner;
+  Aufräumen mit Systemmüll und `*.bak` in den Papierkorb (freedesktop-Trash geprüft), Links `link`/`link to empty`
+  und ihr Ziel unberührt, Startordner bleibt; Multi-MkDir `S[C] [P]` → `S01 clean` … mit Cursor auf dem ersten.
+  Nicht prüfbar: macOS-/Windows-Papierkorb, gesperrter Ordner (als root greifen Rechte nicht – `locked` wurde als
+  leer gefunden und gelöscht), Dark-Mode nur über Tokens.
+- [x] Phase 5 Doku · [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build), Selbst-Review (§8)
 
 ## 10. Offen
 

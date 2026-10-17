@@ -26,7 +26,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | Ursprüngliche Phase | Prompts |
 | --- | --- |
 | 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
-| 3 Sichere Basisoperationen | 005 (Job-Engine ✅), 006 (Operationen ✅), 007 (Multi-Rename ✅) |
+| 3 Sichere Basisoperationen | 005 (Job-Engine ✅), 006 (Operationen ✅), 007 (Multi-Rename ✅), 008 (Gruppieren, Ordner aufräumen, Multi-MkDir ✅) |
 | 4 Suche & Filter | 003 (Schnellfilter), 009 (Suche) |
 | 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop), 014 (Menüs) |
 | 6 Vorschau & Eigenschaften | 010 |
@@ -34,7 +34,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 8 Einstellungen & UX | 013 (Themes), 015 (Einstellungen, i18n) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
 | 10 Distribution | 017 |
-| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008, 016) |
+| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016) |
 
 Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 

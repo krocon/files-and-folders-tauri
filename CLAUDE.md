@@ -16,8 +16,9 @@
   Sitzungszustand), Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste), Prompt 003
   (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen), Prompt 005 (Job-Engine: Kopieren mit
   Fortschritt, Pause, Abbruch, Konflikten), Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
-  anlegen, Umbenennen inkl. F2 in der Liste) und Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig) sind
-  fertig. Als Nächstes: Prompt 008 (Gruppieren, leere Ordner). Details: `docs/roadmap.md`, `prompts/README.md`.
+  anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig) und
+  Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir) sind fertig. Als Nächstes: Prompt 009 (Suche).
+  Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -55,13 +56,18 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              Löschen, Name (Ordner/Datei anlegen, Umbenennen), Aktionen F2/F5–F8
   app/features/multirename/  rename-engine.ts (reine Regel-Engine + Testkatalog .cases.json), MultiRenameStore,
                              Dialog mit Vorschau-Table, Aktionen OPEN_MULTIRENAME_DLG/UNDO_RENAME
+  app/core/folders/          FoldersApi (find_empty_dirs, create_folders), DTOs der Ordner-Werkzeuge
+  app/features/groupfiles/   group-engine.ts (rein, Testkatalog .cases.json), GroupFilesStore + Dialog (Job `group`)
+  app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
+  app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
   app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
   app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
-  app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle)
+  app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
+                             tool-dialog.scss), preview-grid/ (GuiExpert Table für Vorschauen)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
   styles.scss                Design-Tokens (CSS Custom Properties, light/dark)
 src-tauri/                   Rust (Tauri 2)
@@ -75,7 +81,9 @@ src-tauri/                   Rust (Tauri 2)
   src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort),
                              copy (Kopieren + Verschieben: Planung, Temp + Umbenennen, Konflikte), delete
                              (Papierkorb/endgültig), rename (Multi-Rename: Prüfung, Ketten/Zyklen, Undo-Paare),
-                             report (Drosselung); tests_engine.rs, tests_ops.rs
+                             group (Gruppenordner + Copy/Move-Paare), clean (Aufräumen, prüft jeden Eintrag neu),
+                             report (Drosselung); tests_engine.rs, tests_ops.rs, tests_tools.rs
+  src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
