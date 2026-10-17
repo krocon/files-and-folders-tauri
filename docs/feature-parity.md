@@ -41,9 +41,11 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Suche (Find) | 4 | ⬜ | | |
 | Change-Dir-Baumdialog, „Go to anything“ | 002/003 | 🟡 | `command-palette.spec.ts` | Befehlspalette mit allen Aktionen (unscharfe Suche, Kürzel); Ordner aus Verlauf/Favoriten in 003, Baumdialog offen |
 | Bookmarks | 004/003 | ✅ | `file-panel.spec.ts` | Favoriten-Stern + Menü ▾ (Home, Favoriten, zuletzt) |
-| Namen/Pfade in Zwischenablage (Text/JSON) | 5 | ⬜ | | |
-| Externe Tools / App-Launcher, „Terminal hier“ | 7 | ⬜ | | nur über schmale, konfigurierte Commands |
-| Integriertes Terminal (xterm, -mr) | – | ⬜ | | Sicherheitsabwägung nötig |
+| Namen/Pfade in Zwischenablage (Text/JSON) | 011 | ✅ | `clipboard.spec.ts`, `os.spec.ts`, E2E (Linux) | `Strg/⌘+Alt+N` Namen, `Strg/⌘+Alt+C` Pfade, JSON über Palette/Menü; **eine Zeile je Eintrag** (alt: Tab-getrennt), **Ordner dabei** (alt: nur Dateien), Reihenfolge der Anzeige; Webview-Zwischenablage ohne Plugin. Echte Datei-Zwischenablage (im Finder/Explorer einfügen) offen |
+| Externe Tools / App-Launcher, „Terminal hier“ | 011 | ✅ | Rust `tools.rs` (inkl. Injection-Test), `platform/desktop.rs`, `os.spec.ts`, E2E (Linux) | `tools.json` (Programm + Argument-Array, Platzhalter `{file}` `{files}` `{name}` `{dir}` `{targetDir}` je Argument, `perFile`, `fileLimit`), mr-Format beim Laden umgestellt, Tools in Palette/Actions-Menü/eigenem Kürzel, `Strg/⌘+Shift+X` „Mit Tool öffnen“, F4 = Tool `edit`. **Keine Shell** (alt: String-Verkettung + `exec`). Terminal hier `Strg/⌘+Shift+C`, im Dateimanager zeigen `Strg/⌘+Shift+F`; macOS/Windows nicht E2E-geprüft |
+| Laufwerke / Startpunkte | 011 | ✅ | Rust `platform/volumes.rs`, `os.spec.ts`, E2E (Linux) | Gruppe „Drives“ im Ordnermenü (`Alt+F1`/`Alt+F2`): Linux Mountpoints ohne Pseudo-FS (alt: `/dev/*`), macOS `/Volumes`, Windows Laufwerksbuchstaben mit Label/frei/gesamt; tote Netzlaufwerke nach 1,5 s „not reachable“ ohne UI-Blockade |
+| „Öffnen mit …“ (App-Auswahl des Systems) | 011 | 🟡 | | Standard-App (003) und „Mit Tool öffnen“; System-Dialog je OS offen |
+| Integriertes Terminal (xterm, -mr) | – | ⬜ | | Sicherheitsentscheidung in Design 011 E7: nur ausdrückliche Eingabe, später PTY (`portable-pty`); `TOGGLE_SHELL` noch ohne Handler |
 | Viewer / Editor | 6 | ⬜ | | |
 | Pack/Unpack (ZIP, TAR, 7z) | 8+ | ⬜ | | |
 | Duplikate finden, Dateiattribute (-mr) | 6+ | ⬜ | | |

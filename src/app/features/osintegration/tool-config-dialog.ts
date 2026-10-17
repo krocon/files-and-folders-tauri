@@ -17,7 +17,7 @@ import { OsStore, TOOL_PREFIX } from './os.store';
     <app-modal [heading]="t.configTitle" width="40rem" (closed)="dialogs.close()">
       <p class="intro">{{ t.configIntro }}</p>
       <p class="file">
-        <span class="lbl">{{ t.configFile }}:</span>
+        <span class="lbl">{{ t.configFile }}: </span>
         <code>{{ os.file() ?? t.configNoFile }}</code>
       </p>
       @if (problems().length) {

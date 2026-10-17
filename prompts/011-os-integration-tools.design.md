@@ -228,11 +228,45 @@ bzw. die Live-Region des Workspace.
 
 ## 7. Abweichungen bei der Umsetzung
 
-(wird in Phase 2–4 ergänzt)
+- **`VolumesStore` getrennt von `OsStore`**: die Tab-Leiste braucht nur die Laufwerke; mit `OsStore` hätte sie das
+  ganze Aktionssystem gezogen (DI in den bestehenden Komponenten-Tests). `OsApi`/`ClipboardApi` sind zusätzlich
+  `providedIn: 'root'` mit der Tauri-/Webview-Implementierung als Default (außerhalb von Tauri: `no_backend`).
+- `run_tool` prüft vor dem Start auch den Arbeitsordner (sonst sähe ein fehlender Ordner wie ein fehlendes Programm aus).
+- Der Test des `ActionService` nutzte `Mod+Alt+C` als Beispiel-Override – jetzt Default von „Pfade kopieren“; der
+  Test verwendet `Mod+Alt+J`.
+- Kaputte `tools.json` wird **nicht** nach `.bad` verschoben (anders als Session/Keymap/Vorlagen): die Datei schreibt
+  nur der Nutzer von Hand; die App nimmt dann die Defaults und meldet den Fehler.
+
+## 7a. Linux-Desktops (Aufgabe 6)
+
+| Desktop | Dateimanager zeigen | Terminal |
+|---|---|---|
+| GNOME (Nautilus) | `FileManager1.ShowItems` markiert die Datei | `kgx` (GNOME Console), `ptyxis` (Fedora 41+), `gnome-terminal` – jeweils `--working-directory=` |
+| KDE (Dolphin) | `FileManager1.ShowItems` | `konsole --workdir` |
+| Xfce (Thunar ≥ 4.16), Cinnamon (Nemo), MATE (Caja) | `FileManager1` (Thunar/Nemo/Caja bieten den Dienst) | `xfce4-terminal`/`mate-terminal` `--working-directory=` |
+| ohne Dienst (Fenstermanager, Container) | Rückfall: Ordner mit der Standard-App (`xdg-open`) | `$TERMINAL`, `x-terminal-emulator` (Debian-Alternative), dann alacritty, kitty, wezterm, foot, tilix, terminator, xterm (`current_dir`) |
+
+`XDG_CURRENT_DESKTOP` entscheidet nur die Reihenfolge; Flatpak/Snap-Builds würden Portale brauchen (offen, 017).
 
 ## 8. Review
 
-Selbstprüfung: s. §9. 
+Selbstprüfung (Schwerpunkte des Prompts):
+
+- **Command-Injection:** kein Shell-Aufruf im ganzen Feature; Programme und Argumente nur aus `tools.json`, Pfade
+  als einzelne `OsString`-Argumente (`{files}` = n Argumente, eingebettet bleibt es ein Argument). Rust-Test mit
+  `"; rm -rf ~"`, `$(touch PWNED)`, Backticks, `&&`, `|`, Zeilenumbruch + E2E mit Argument-Logger: nichts ausgeführt.
+  Sonderfälle: Windows Terminal (`;` → `cmd.exe`), Explorer (`raw_arg` nur mit Pfad ohne `"`), `dbus-send`
+  (URI prozent-kodiert inkl. `,`), Windows-`.cmd`-Tools (`code.cmd`): Rust std escapt Batch-Argumente bzw. lehnt
+  unsichere ab (CVE-2024-24576, seit 1.77).
+- **Pfad-Validierung:** jeder Pfad über `validate_input_path` (absolut, kein NUL), Dateien müssen existieren, Ordner
+  Ordner sein, Arbeitsordner existieren; Tool-Id muss in der Backend-Konfiguration stehen (`unknown_tool`), mehr als
+  `fileLimit` (≤ 1 000) → `too_many_files`.
+- **Capability-Umfang:** unverändert `core:default`; kein Plugin, keine neue Crate.
+- **Netzlaufwerke:** Abfrage je Volume in eigenem Thread, 1,5 s Gesamtzeit, hängende Abfrage nicht doppelt
+  (Test mit künstlich hängender Abfrage); macOS liest `/Volumes` ohne `stat` (`d_type`). Restrisiko: ein dauerhaft
+  hängender Thread je totem Mount bleibt bis zum Ende der App bestehen (einer je Mount, nicht je Aufruf).
+- **Fehlende Programme:** `program_not_found` mit Programmname (E2E: „The program "fnf-not-installed" was not found“);
+  kein Terminal gefunden → Hinweis auf `tools.json`/`$TERMINAL`.
 
 ### Review (separater Agent) – Ergebnis
 
@@ -243,13 +277,23 @@ Selbstprüfung: s. §9.
 ## 9. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
+- [x] Phase 2 Rust: `platform/volumes.rs`, `platform/desktop.rs`, `tools.rs`, sechs Commands, drei Fehlercodes –
+  23 neue Rust-Tests (Linux; macOS/Windows-Zweige nur hinter `#[cfg]`, hier nicht kompiliert)
+- [x] Phase 3 Frontend: `OsApi`, `ClipboardApi`, `OsStore`, `VolumesStore`, `ActionService.setExtras` + Dispatcher,
+  Palette (Scope „tools“), Actions-Menü, Ordnermenü „Drives“, Tool-Konfigurationsdialog, 6 neue Aktionen/Kürzel –
+  12 neue Frontend-Tests (`clipboard.spec.ts`, `os.spec.ts`)
+- [x] Phase 4 E2E (Xvfb :95, Linux, eigenes `XDG_CONFIG_HOME`, Logger statt echter Programme): Laufwerke im Menü mit
+  Größen (`/`, `fuse.rclone`, ext4-Mounts) und Wechsel per Tastatur; Tool mit Kürzel und bösartigen Namen
+  (je ein Argument, keine `PWNED`-Datei); mr-Tool je Datei; fehlendes Programm → Meldung; `$clidir`-Tool → Warnung;
+  Zwischenablage (Einfügen ins Pfadfeld); Terminal (Fallback-Kette bis `xterm`, Arbeitsordner stimmt); Dateimanager
+  (kein FileManager1 im Container → Ordner per `xdg-open`); F4 → Tool `edit`; Tool-Dialog, „Open tools.json“;
+  Tools im Actions-Menü. **Nicht geprüft:** echtes totes Netzlaufwerk (kein NFS im Container; Unit-Test), D-Bus
+  `ShowItems` mit echtem Nautilus/Dolphin, macOS und Windows komplett, dark mode des neuen Dialogs nur über Tokens.
+- [x] Phase 5 Doku: architecture, roadmap, feature-parity, README, CLAUDE.md §1/§3, prompts/README
 
 ## 10. Offen
 
-- Echte Datei-Zwischenablage je OS (E5), System-„Öffnen mit“-Dialog (E6), Shell-Zeile/PTY (E7).
+- Echte Datei-Zwischenablage je OS (E5), System-„Öffnen mit“-Dialog (E6), Shell-Zeile/PTY (E7, `TOGGLE_SHELL`).
 - Dateityp-Konfiguration (mr `filetype/defaults/data.json`) für „Auswahl nach Typ“ und Icons.
-- Tool-Editor in der App (015).
+- Tool-Editor in der App (015); Flatpak/Snap über Portale (017).
+- macOS/Windows: `cargo check` für diese Ziele war hier nicht möglich (Ziel-Toolchains fehlen) – CI-Build nötig.

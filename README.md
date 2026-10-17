@@ -59,6 +59,22 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
   Elternordner `[P]`, Schreibweise.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
+- **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
+  Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
+  Netzlaufwerk erscheint nach 1,5 s als „not reachable“, die Oberfläche blockiert nicht.
+- **Im Dateimanager zeigen** (`Strg/⌘+Shift+F`: Finder `open -R`, Explorer `/select`, Linux über D-Bus
+  `FileManager1`, sonst der Ordner) und **Terminal hier** (`Strg/⌘+Shift+C`: macOS Terminal, Windows Terminal bzw.
+  `cmd`, Linux `$TERMINAL` → `x-terminal-emulator` → konsole/gnome-terminal/… je Desktop; eigenes Terminal in
+  `tools.json`, z. B. `"terminal": {"program": "open", "args": ["-a", "iTerm", "{dir}"]}`).
+- **Externe Tools**: `tools.json` im App-Config-Verzeichnis (Tool configuration… → „Open tools.json“ legt sie mit den
+  Defaults an). Je Tool `program` + `args` (Array, **keine Shell**), Platzhalter je Argument `{file}`, `{files}`,
+  `{name}`, `{dir}`, `{targetDir}`, `perFile`, `fileLimit`, `shortcut` (Keymap-Notation). Einträge im alten Format
+  (`cmd`, `para`, `$file`, `$dir`) werden beim Laden umgestellt. Tools stehen in der Befehlspalette, im Actions-Menü,
+  unter **Open with tool…** (`Strg/⌘+Shift+X`) und auf ihrem Kürzel; `F4` startet das Tool `edit` (macOS
+  Text-Editor, Windows Notepad, Linux Standard-App – für einen Editor z. B.
+  `{"id": "edit", "label": "Edit", "program": "gnome-text-editor", "args": ["{files}"]}` eintragen).
+- **Zwischenablage**: Namen (`Strg/⌘+Alt+N`) bzw. volle Pfade (`Strg/⌘+Alt+C`) der markierten Einträge (sonst
+  Cursor, Ordner eingeschlossen) als Zeilen; als JSON über Befehlspalette/Actions-Menü.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -96,6 +112,10 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |
+| Copy names to clipboard | `Ctrl+Alt+N` | `⌘⌥N` |
+| Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
+| Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
+| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Go to anything… | `Ctrl+Shift+P`, `Ctrl+F12` | `⌘⇧P`, `⌘⌃G` |
 | Call action… | `F10` | `F10` |
 | Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
@@ -130,6 +150,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
+| Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
 
 Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,

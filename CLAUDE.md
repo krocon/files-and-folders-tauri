@@ -16,8 +16,9 @@
   Sitzungszustand), Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste), Prompt 003
   (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen), Prompt 005 (Job-Engine: Kopieren mit
   Fortschritt, Pause, Abbruch, Konflikten), Prompt 006 (Kopieren/Verschieben/Löschen mit Papierkorb, Ordner/Datei
-  anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig) und
-  Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir) sind fertig. Als Nächstes: Prompt 009 (Suche).
+  anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig),
+  Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir) und Prompt 011 (Laufwerke im Ordnermenü, Finder/
+  Explorer/Terminal, externe Tools ohne Shell, Zwischenablage) sind fertig. Als Nächstes: Prompt 009 (Suche).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -60,6 +61,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/groupfiles/   group-engine.ts (rein, Testkatalog .cases.json), GroupFilesStore + Dialog (Job `group`)
   app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
   app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
+  app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
+  app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
+                             im Ordnermenü), Tool-Konfigurationsdialog
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
@@ -85,6 +89,9 @@ src-tauri/                   Rust (Tauri 2)
                              report (Drosselung); tests_engine.rs, tests_ops.rs, tests_tools.rs
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
+  src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
+  src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
+                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
