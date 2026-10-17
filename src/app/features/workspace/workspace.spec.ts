@@ -10,6 +10,7 @@ import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FilePanel } from './file-panel';
 import { Workspace } from './workspace';
+import { WorkspaceStore } from './workspace.store';
 import { Component, input } from '@angular/core';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 
@@ -54,6 +55,21 @@ describe('Workspace', () => {
       expect(el.querySelector(sel)?.hasAttribute('inert'), sel).toBe(true);
     }
     expect(el.querySelector('app-job-list-dialog')).not.toBeNull();
+  });
+
+  it('puts the focus back into the active list when a dialog closes onto <body>', async () => {
+    const { fixture } = await render();
+    const ws = TestBed.inject(WorkspaceStore);
+    const dialogs = TestBed.inject(DialogService);
+    dialogs.show('jobs');
+    fixture.detectChanges();
+    (document.activeElement as HTMLElement | null)?.blur();
+    const before = ws.focusRequest();
+    dialogs.close();
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    expect(ws.focusRequest()).not.toBe(before);
+    expect(ws.focusRequest()?.side).toBe(ws.activeSide());
   });
 
   it('opens the conflict question automatically and asks before quitting', async () => {

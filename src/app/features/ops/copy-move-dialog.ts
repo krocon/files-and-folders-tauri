@@ -6,12 +6,12 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { ConflictDefault, isFinished } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Modal } from '../../shared/dialog/modal';
 import { formatSize } from '../../shared/format';
+import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
 
@@ -121,10 +121,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
           }
           <p id="fnf-copy-error" class="error" role="alert">
             @if (error(); as e) {
-              {{ e.message }}
-              @if (e.message !== describe(e)) {
-                <span class="muted">({{ describe(e) }})</span>
-              }
+              {{ errorText(e) }}
             }
           </p>
           <p class="help">{{ t.ctrlEnter }}</p>
@@ -206,8 +203,8 @@ export class CopyMoveDialog {
     });
   }
 
-  protected describe(e: FsError): string {
-    return describeFsError(e);
+  protected errorText(e: FsError): string {
+    return dialogError(e);
   }
 
   protected pick(evt: Event): void {

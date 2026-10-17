@@ -1,4 +1,5 @@
 import type { TableStateIf } from '@guiexpert/table';
+import { stemLength } from '../../ops/ops-logic';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { FileBrowserStore } from '../file-browser.store';
 import { TableBridge } from './table-bridge';
@@ -201,6 +202,18 @@ export class FileListController {
 
   cursorEntry(): DirEntry | undefined {
     return this.cursorRow();
+  }
+
+  /**
+   * F2: edit the name of `entry` in place, the name without extension selected
+   * (design 006 E3). False if the list cannot edit it now (the caller opens the dialog).
+   */
+  startRename(entry: DirEntry, done: (value: string | null) => void): boolean {
+    return this.bridge.startRename(
+      entry.path,
+      stemLength(entry.name, entry.kind === 'directory'),
+      done,
+    );
   }
 
   /** Shift+↑/↓: mark the cursor entry and move. */

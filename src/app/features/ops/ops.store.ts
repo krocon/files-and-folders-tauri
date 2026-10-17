@@ -56,6 +56,8 @@ export interface NameRequest {
   readonly selectEnd: number;
   /** The entry to rename. */
   readonly entry: DirEntry | null;
+  /** Shown at once (an in-place rename failed). */
+  readonly error?: FsError | null;
 }
 
 function err(code: FsError['code'], message: string): FsError {
@@ -171,6 +173,48 @@ export class OpsStore {
     this.dialogs.show('name');
   }
 
+  /**
+   * F2: rename the cursor entry in the list itself; the dialog if the list
+   * cannot (marked entry elsewhere, table busy). A failed rename opens the
+   * dialog with the typed name and the error.
+   */
+  renameInline(): void {
+    const side = this.ws.source();
+    const panel = this.ws.panel(side);
+    const parent = panel?.store.path() ?? null;
+    const sel = this.selection();
+    const entry = sel.length === 1 ? sel[0] : null;
+    const list = panel?.controller();
+    if (!panel || parent === null || !entry || !list || panel.store.cursorPath() !== entry.path) {
+      this.openName('rename');
+      return;
+    }
+    const req: NameRequest = {
+      kind: 'rename',
+      side,
+      parent,
+      initial: entry.name,
+      selectEnd: stemLength(entry.name, entry.kind === 'directory'),
+      entry,
+    };
+    const started = list.startRename(entry, (value) => {
+      if (value !== null) {
+        void this.finishInline(req, value);
+      }
+    });
+    if (!started) {
+      this.openName('rename');
+    }
+  }
+
+  private async finishInline(req: NameRequest, value: string): Promise<void> {
+    const error = await this.runName(req, value, false);
+    if (error) {
+      this.name.set({ ...req, initial: value, selectEnd: stemLength(value), error });
+      this.dialogs.show('name');
+    }
+  }
+
   close(): void {
     this.copyMove.set(null);
     this.del.set(null);
@@ -215,10 +259,15 @@ export class OpsStore {
             options,
             allowDangerous: input.allowDangerous,
           };
+    const cursor = this.ws.panel(req.side)?.store.cursorPath() ?? null;
+    if (req.kind === 'move') {
+      this.moveCursorOff(req.side, req.sourceDir, sources);
+    }
     let id: string;
     try {
       id = await this.jobs.start(spec);
     } catch (e) {
+      this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
     }
     this.ws.addRecent(dir);
@@ -230,18 +279,15 @@ export class OpsStore {
   /** Starts the delete job; the cursor moves to the next remaining entry at once. */
   async runDelete(req: DeleteRequest, allowDangerous: boolean): Promise<FsError | null> {
     const paths = req.entries.map((e) => e.path);
-    const panel = this.ws.panel(req.side);
+    // before the job starts: its "folder changed" reload must already keep the new cursor
+    const cursor = this.ws.panel(req.side)?.store.cursorPath() ?? null;
+    this.moveCursorOff(req.side, req.sourceDir, paths);
     let id: string;
     try {
       id = await this.jobs.start({ kind: 'delete', paths, mode: req.mode, allowDangerous });
     } catch (e) {
+      this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
-    }
-    if (panel && panel.store.path() === req.sourceDir) {
-      const displayed = panel.controller()?.displayedEntries() ?? panel.store.visibleEntries();
-      panel.store.setCursor(
-        cursorAfterRemoval(displayed, new Set(paths), panel.store.cursorPath()),
-      );
     }
     this.close();
     this.afterJob(id, req.side, req.sourceDir, paths);
@@ -291,6 +337,22 @@ export class OpsStore {
       }
       void store.refresh();
     }
+  }
+
+  /**
+   * The cursor leaves entries that are about to disappear (delete, move): to the
+   * next remaining one – in the store and in the table, whose focus would
+   * otherwise put the old entry back.
+   */
+  private moveCursorOff(side: Side, folder: string, paths: readonly string[]): void {
+    const panel = this.ws.panel(side);
+    if (!panel || panel.store.path() !== folder) {
+      return;
+    }
+    const list = panel.controller();
+    const displayed = list?.displayedEntries() ?? panel.store.visibleEntries();
+    panel.store.setCursor(cursorAfterRemoval(displayed, new Set(paths), panel.store.cursorPath()));
+    list?.restoreCursor();
   }
 
   private async dangers(entries: readonly DirEntry[]): Promise<readonly PathCheck[]> {

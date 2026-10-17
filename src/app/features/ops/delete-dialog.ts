@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
 
@@ -62,12 +63,12 @@ const SHOWN = 5;
               </label>
             </div>
           }
-          <p class="error" role="alert">{{ error()?.message }}</p>
+          <p class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
             <button
               type="button"
               class="btn"
-              [attr.data-autofocus]="permanent() ? '' : null"
+              [attr.data-autofocus]="cancelFirst() ? '' : null"
               (click)="ops.close()"
             >
               {{ t.cancel }}
@@ -77,7 +78,7 @@ const SHOWN = 5;
               class="btn"
               [class.primary]="!permanent()"
               [class.danger]="permanent()"
-              [attr.data-autofocus]="permanent() ? null : ''"
+              [attr.data-autofocus]="cancelFirst() ? null : ''"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
               (click)="confirm()"
             >
@@ -96,10 +97,18 @@ export class DeleteDialog {
   protected readonly ops = inject(OpsStore);
   protected readonly req = this.ops.del;
   protected readonly permanent = computed(() => this.req()?.mode === 'permanent');
+  /** Enter must not destroy: permanent delete, or a dangerous path (its button starts disabled). */
+  protected readonly cancelFirst = computed(
+    () => this.permanent() || (this.req()?.dangers.length ?? 0) > 0,
+  );
   protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal<FsError | null>(null);
+  protected readonly errorText = computed(() => {
+    const e = this.error();
+    return e ? dialogError(e) : '';
+  });
 
   protected async confirm(): Promise<void> {
     const req = this.req();

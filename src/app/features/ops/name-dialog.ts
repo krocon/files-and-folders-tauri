@@ -8,9 +8,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
 
@@ -48,10 +48,7 @@ import { OpsStore } from './ops.store';
           }
           <p id="fnf-name-error" class="error" role="alert">
             @if (error(); as e) {
-              {{ e.message }}
-              @if (e.message !== describe(e)) {
-                <span class="muted">({{ describe(e) }})</span>
-              }
+              {{ errorText(e) }}
             }
           </p>
           <div class="buttons">
@@ -72,7 +69,7 @@ export class NameDialog {
   protected readonly ops = inject(OpsStore);
   protected readonly req = this.ops.name;
   protected readonly value = signal(this.req()?.initial ?? '');
-  protected readonly error = signal<FsError | null>(null);
+  protected readonly error = signal<FsError | null>(this.req()?.error ?? null);
   protected readonly busy = signal(false);
   /** Rust refused a root/home/system path: the next submit confirms it. */
   protected readonly dangerous = computed(() => this.error()?.code === 'dangerous_path');
@@ -108,8 +105,8 @@ export class NameDialog {
     });
   }
 
-  protected describe(e: FsError): string {
-    return describeFsError(e);
+  protected errorText(e: FsError): string {
+    return dialogError(e);
   }
 
   protected submit(evt: Event): void {

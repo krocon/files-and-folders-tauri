@@ -1,4 +1,5 @@
-import { DirEntry, isParentRow } from '../../core/fs/fs.models';
+import { describeFsError } from '../../core/fs/fs-error';
+import { DirEntry, FsError, FsErrorCode, isParentRow } from '../../core/fs/fs.models';
 
 /** What an operation needs to know about a panel. */
 export interface SelectionSource {
@@ -133,4 +134,19 @@ export function targetOptions(
     }
   }
   return out;
+}
+
+/** Codes whose message is the operating system's text: the general description comes first. */
+const OS_CODES: ReadonlySet<FsErrorCode> = new Set<FsErrorCode>([
+  'not_found',
+  'permission_denied',
+  'not_a_directory',
+  'disk_full',
+  'io',
+  'unknown',
+]);
+
+/** The error line of an operation dialog (our own messages are written for the user already). */
+export function dialogError(e: FsError): string {
+  return OS_CODES.has(e.code) ? `${describeFsError(e)} (${e.message})` : e.message;
 }

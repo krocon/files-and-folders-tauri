@@ -3,6 +3,7 @@ import { parentRow } from '../../core/fs/fs.models';
 import { dir, entry } from '../../../testing/fs-fixtures';
 import {
   cursorAfterRemoval,
+  dialogError,
   selectionForAction,
   stemLength,
   suggestFolderName,
@@ -91,5 +92,22 @@ describe('targetOptions', () => {
       { path: '/a', group: 'Tab' },
       { path: '/f', group: 'Favourite' },
     ]);
+  });
+});
+
+describe('dialogError', () => {
+  it('own messages as they are, OS messages after the general description', () => {
+    expect(dialogError({ code: 'already_exists', message: 'Exists already', path: null })).toBe(
+      'Exists already',
+    );
+    expect(
+      dialogError({
+        code: 'permission_denied',
+        message: 'Permission denied (os error 13)',
+        path: null,
+      }),
+    ).toBe(
+      'Access denied – you do not have permission to read this folder. (Permission denied (os error 13))',
+    );
   });
 });

@@ -579,19 +579,15 @@ fn run_count(
             Ok(m) if m.is_dir() => {
                 total.dirs += 1;
                 let base = total;
-                let sub = dirsize::dir_size(
-                    p,
-                    control.cancel_flag(),
-                    Duration::from_millis(100),
-                    |s| {
+                let sub =
+                    dirsize::dir_size(p, control.cancel_flag(), Duration::from_millis(100), |s| {
                         report(&DirSize {
                             files: base.files + s.files,
                             dirs: base.dirs + s.dirs,
                             bytes: base.bytes + s.bytes,
                             ..base
                         })
-                    },
-                );
+                    });
                 total.files += sub.files;
                 total.dirs += sub.dirs;
                 total.bytes += sub.bytes;

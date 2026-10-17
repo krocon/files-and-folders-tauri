@@ -97,8 +97,11 @@ import { JOB_TEXTS } from './job-format';
                 [attr.aria-keyshortcuts]="'Alt+' + b.key.toUpperCase()"
                 (click)="press(b.key)"
               >
-                {{ b.before }}<u>{{ b.letter }}</u
-                >{{ b.after }}
+                <!-- one flex item: the button's gap must not split the word -->
+                <span class="label"
+                  >{{ b.before }}<u>{{ b.letter }}</u
+                  >{{ b.after }}</span
+                >
               </button>
             }
           </div>

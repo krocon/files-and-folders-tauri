@@ -152,6 +152,20 @@ describe('operation dialogs', () => {
     expect(r.el.textContent).toContain('cannot be undone');
     expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
     expect(buttons[1].classList).toContain('danger');
+    r.fixture.destroy();
+
+    // a dangerous path: the delete button starts disabled, so Cancel gets the focus
+    ops.del.set({
+      mode: 'trash',
+      side: 'left',
+      sourceDir: '/',
+      entries: [a],
+      dangers: [{ path: '/src/a.txt', danger: 'home' }],
+    });
+    r = await render(DeleteDialog);
+    buttons = r.el.querySelectorAll<HTMLButtonElement>('.buttons button');
+    expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
+    expect(buttons[1].disabled).toBe(true);
   });
 
   it('rename: selects the name without extension, offers "Rename anyway" for dangerous paths', async () => {

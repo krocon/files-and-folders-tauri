@@ -109,6 +109,21 @@ export class Workspace implements OnInit {
         }
       });
     });
+    // a dialog closed and its opener is gone (e.g. a conflict that appeared after the copy
+    // dialog): the keyboard focus goes back to the active list instead of staying on <body>
+    effect(() => {
+      const open = this.dialogs.open();
+      untracked(() => {
+        if (open === null && this.ws.ready()) {
+          setTimeout(() => {
+            const active = document.activeElement;
+            if (this.dialogs.open() === null && (!active || active === document.body)) {
+              this.ws.requestFocus(this.ws.activeSide());
+            }
+          });
+        }
+      });
+    });
     effect(() => {
       const req = this.jobs.quitRequest();
       if (req) {

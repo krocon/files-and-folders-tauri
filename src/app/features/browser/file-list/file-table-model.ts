@@ -9,6 +9,7 @@ import {
 } from '@guiexpert/table';
 import { DirEntry } from '../../../core/fs/fs.models';
 import { createFileColumns } from './file-columns';
+import { RenameEditor } from './rename-editor';
 
 export const ROW_HEIGHT = 24;
 export const HEADER_HEIGHT = 26;
@@ -36,6 +37,22 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
 
   setRowState(state: FileRowState): void {
     this.state = state;
+  }
+
+  /** In-place rename (F2): only this entry's name cell is editable, with this editor. */
+  renaming: { readonly path: string; readonly editor: RenameEditor } | null = null;
+
+  override isEditable(rowIndex: number, columnIndex: number): boolean {
+    const r = this.renaming;
+    if (!r || this.columnDefs[columnIndex]?.property !== 'name') {
+      return false;
+    }
+    return (this.getRowByIndex(rowIndex) as DirEntry | undefined)?.path === r.path;
+  }
+
+  /** The table never writes a cell: renaming goes through Rust, then the folder reloads. */
+  override setValue(): boolean {
+    return false;
   }
 
   /** Used by the name renderer: marked rows show a check mark instead of the icon (as in the old version). */
@@ -106,6 +123,7 @@ export function createFileTable(
     shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
     ariaLabelledBy: labelledBy,
     externalFilterFunction: (row: DirEntry) => rowFilter()(row),
+    getEditRenderer: () => body.renaming?.editor,
     overlayOptions: {
       noRowsText: 'This folder is empty.',
       loadingText: 'Loading…',

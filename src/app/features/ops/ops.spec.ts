@@ -12,6 +12,8 @@ import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { FileListController } from '../browser/file-list/file-list-controller';
+import { FakeTableBridge } from '../../../testing/fake-table-bridge';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { registerOpsActions } from './ops-actions';
 import { CopyMoveInput, OpsStore } from './ops.store';
@@ -250,6 +252,60 @@ describe('file operations (design 006)', () => {
     await flush();
     expect(fs.ops).toEqual(['rename /src/a.txt z.txt !']);
     expect(left.cursorPath()).toBe('/src/z.txt');
+  });
+
+  it('F2 without a list falls back to the dialog', async () => {
+    left.setCursor('/src/a.txt');
+    await actions.run('RENAME_INLINE');
+    expect(dialogs.open()).toBe('name');
+  });
+
+  it('F2 renames in the list; a failed rename opens the dialog with the typed name', async () => {
+    const bridge = new FakeTableBridge();
+    bridge.rows = [...left.entries()];
+    const list = new FileListController(bridge, left);
+    TestBed.inject(WorkspaceStore).registerPanel('left', { store: left, controller: () => list });
+    left.setCursor('/src/a.txt');
+    await actions.run('RENAME_INLINE');
+    expect(dialogs.open()).toBeNull();
+    expect(bridge.rename).toMatchObject({ path: '/src/a.txt', selectEnd: 1 });
+    bridge.rename!.finish(null); // Escape
+    expect(fs.ops).toEqual([]);
+
+    await actions.run('RENAME_INLINE');
+    fs.failNext = { code: 'already_exists', message: 'exists', path: null };
+    bridge.rename!.finish('b.txt');
+    await flush();
+    expect(fs.ops).toEqual(['rename /src/a.txt b.txt']);
+    expect(dialogs.open()).toBe('name');
+    expect(ops.name()).toMatchObject({ initial: 'b.txt', selectEnd: 1 });
+    expect(ops.name()?.error?.code).toBe('already_exists');
+    ops.close();
+
+    created.push('c.txt');
+    await actions.run('RENAME_INLINE');
+    bridge.rename!.finish('c.txt');
+    await flush();
+    expect(left.cursorPath()).toBe('/src/c.txt');
+  });
+
+  it('delete and move put the table focus on the next entry before the job runs', async () => {
+    const bridge = new FakeTableBridge();
+    bridge.rows = [...left.entries()];
+    const list = new FileListController(bridge, left);
+    TestBed.inject(WorkspaceStore).registerPanel('left', { store: left, controller: () => list });
+    left.setCursor('/src/a.txt');
+    await ops.openDelete('trash');
+    jobsApi.refuse = { code: 'io', message: 'x', path: null };
+    await ops.runDelete(ops.del()!, false);
+    expect(left.cursorPath()).toBe('/src/a.txt'); // refused: the cursor stays
+    jobsApi.refuse = null;
+    await ops.runDelete(ops.del()!, false);
+    expect(left.cursorPath()).toBe('/src/b.txt');
+    expect(bridge.rows[bridge.focusedRow()].path).toBe('/src/b.txt');
+    await ops.openCopyMove('move');
+    await ops.runCopyMove(ops.copyMove()!, INPUT);
+    expect(left.cursorPath()).toBe('/src/a.txt'); // b.txt was the last one
   });
 
   it('reports a failed job', async () => {

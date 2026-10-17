@@ -5,8 +5,7 @@ import { OpsStore } from './ops.store';
 /**
  * The file operations of design 006 as actions. Enabled rules (mr §3):
  * copy, move and delete need at least one entry, rename exactly one, creating
- * needs a folder. F2 (inline rename) opens the rename dialog until the list
- * supports editing the name in place.
+ * needs a folder. F2 renames in the list itself.
  */
 export function registerOpsActions(actions: ActionService, ops: OpsStore): () => void {
   const some = () => ops.folder() !== null && ops.selection().length > 0;
@@ -20,7 +19,7 @@ export function registerOpsActions(actions: ActionService, ops: OpsStore): () =>
     OPEN_MKDIR_DLG: { enabled: folder, run: () => ops.openName('mkdir') },
     OPEN_CREATE_FILE_DLG: { enabled: folder, run: () => ops.openName('createFile') },
     OPEN_RENAME_DLG: { enabled: one, run: () => ops.openName('rename') },
-    RENAME_INLINE: { enabled: one, run: () => ops.openName('rename') },
+    RENAME_INLINE: { enabled: one, run: () => ops.renameInline() },
   };
   return actions.register(handlers);
 }

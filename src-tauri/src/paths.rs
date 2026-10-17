@@ -143,11 +143,18 @@ pub fn validate_name_for(name: &str, windows: bool) -> Result<(), FsError> {
             return Err(invalid(&format!("Windows does not allow {shown} in names")));
         }
         if name.ends_with(' ') || name.ends_with('.') {
-            return Err(invalid("Windows does not allow a space or dot at the end of a name"));
+            return Err(invalid(
+                "Windows does not allow a space or dot at the end of a name",
+            ));
         }
         let stem = name.split('.').next().unwrap_or("").trim_end();
-        if WINDOWS_RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem)) {
-            return Err(invalid(&format!("\"{stem}\" is a reserved name on Windows")));
+        if WINDOWS_RESERVED
+            .iter()
+            .any(|r| r.eq_ignore_ascii_case(stem))
+        {
+            return Err(invalid(&format!(
+                "\"{stem}\" is a reserved name on Windows"
+            )));
         }
     } else if name.len() > 255 {
         return Err(invalid("The name is too long (max. 255 bytes)"));
@@ -170,14 +177,44 @@ pub enum Danger {
 /// System folders whose content belongs to the OS (inside counts too).
 #[cfg(unix)]
 const SYSTEM_TREES: &[&str] = &[
-    "/System", "/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/lib", "/usr/libexec", "/usr/share",
-    "/etc", "/boot", "/dev", "/proc", "/sys", "/lib", "/lib32", "/lib64", "/private/etc",
+    "/System",
+    "/bin",
+    "/sbin",
+    "/usr/bin",
+    "/usr/sbin",
+    "/usr/lib",
+    "/usr/libexec",
+    "/usr/share",
+    "/etc",
+    "/boot",
+    "/dev",
+    "/proc",
+    "/sys",
+    "/lib",
+    "/lib32",
+    "/lib64",
+    "/private/etc",
 ];
 /// Folders that are dangerous themselves, but whose content is often the user's.
 #[cfg(unix)]
 const SYSTEM_DIRS: &[&str] = &[
-    "/usr", "/var", "/Library", "/Applications", "/Users", "/home", "/private", "/opt", "/root",
-    "/Volumes", "/mnt", "/media", "/tmp", "/private/var", "/private/tmp", "/srv", "/run",
+    "/usr",
+    "/var",
+    "/Library",
+    "/Applications",
+    "/Users",
+    "/home",
+    "/private",
+    "/opt",
+    "/root",
+    "/Volumes",
+    "/mnt",
+    "/media",
+    "/tmp",
+    "/private/var",
+    "/private/tmp",
+    "/srv",
+    "/run",
 ];
 #[cfg(windows)]
 const SYSTEM_TREES: &[&str] = &[
@@ -218,7 +255,11 @@ pub fn danger_of(path: &Path, home: Option<&Path>) -> Option<Danger> {
         let mounts = ["/Volumes", "/mnt", "/media", "/run/media"];
         let grand = parent.parent();
         if mounts.iter().any(|m| same_path(parent, Path::new(m)))
-            || grand.is_some_and(|g| ["/media", "/run/media"].iter().any(|m| same_path(g, Path::new(m))))
+            || grand.is_some_and(|g| {
+                ["/media", "/run/media"]
+                    .iter()
+                    .any(|m| same_path(g, Path::new(m)))
+            })
         {
             return Some(Danger::Root);
         }
@@ -341,8 +382,21 @@ mod tests {
     #[test]
     fn windows_name_rules() {
         for bad in [
-            "a:b", "a?", "a*", "a<b", "a>b", "a|b", "a\"b", "a\tb", "end.", "end ", "CON",
-            "con.txt", "Lpt9.tar.gz", "AUX ", "nul",
+            "a:b",
+            "a?",
+            "a*",
+            "a<b",
+            "a>b",
+            "a|b",
+            "a\"b",
+            "a\tb",
+            "end.",
+            "end ",
+            "CON",
+            "con.txt",
+            "Lpt9.tar.gz",
+            "AUX ",
+            "nul",
         ] {
             assert!(validate_name_for(bad, true).is_err(), "{bad:?}");
         }
@@ -357,18 +411,45 @@ mod tests {
     fn dangerous_paths() {
         let home = Path::new("/home/jörg");
         assert_eq!(danger_of(Path::new("/"), Some(home)), Some(Danger::Root));
-        assert_eq!(danger_of(Path::new("/Volumes/USB"), Some(home)), Some(Danger::Root));
-        assert_eq!(danger_of(Path::new("/media/jörg/USB"), Some(home)), Some(Danger::Root));
-        assert_eq!(danger_of(Path::new("/home/jörg"), Some(home)), Some(Danger::Home));
-        assert_eq!(danger_of(Path::new("/home/jörg/x/.."), Some(home)), Some(Danger::Home));
-        assert_eq!(danger_of(Path::new("/usr/bin/ls"), Some(home)), Some(Danger::System));
-        assert_eq!(danger_of(Path::new("/etc"), Some(home)), Some(Danger::System));
-        assert_eq!(danger_of(Path::new("/usr"), Some(home)), Some(Danger::System));
-        assert_eq!(danger_of(Path::new("/tmp"), Some(home)), Some(Danger::System));
+        assert_eq!(
+            danger_of(Path::new("/Volumes/USB"), Some(home)),
+            Some(Danger::Root)
+        );
+        assert_eq!(
+            danger_of(Path::new("/media/jörg/USB"), Some(home)),
+            Some(Danger::Root)
+        );
+        assert_eq!(
+            danger_of(Path::new("/home/jörg"), Some(home)),
+            Some(Danger::Home)
+        );
+        assert_eq!(
+            danger_of(Path::new("/home/jörg/x/.."), Some(home)),
+            Some(Danger::Home)
+        );
+        assert_eq!(
+            danger_of(Path::new("/usr/bin/ls"), Some(home)),
+            Some(Danger::System)
+        );
+        assert_eq!(
+            danger_of(Path::new("/etc"), Some(home)),
+            Some(Danger::System)
+        );
+        assert_eq!(
+            danger_of(Path::new("/usr"), Some(home)),
+            Some(Danger::System)
+        );
+        assert_eq!(
+            danger_of(Path::new("/tmp"), Some(home)),
+            Some(Danger::System)
+        );
         assert_eq!(danger_of(Path::new("/usr/local/x"), Some(home)), None);
         assert_eq!(danger_of(Path::new("/tmp/x"), Some(home)), None);
         assert_eq!(danger_of(Path::new("/var/folders/x"), Some(home)), None);
-        assert_eq!(danger_of(Path::new("/home/jörg/Dokumente"), Some(home)), None);
+        assert_eq!(
+            danger_of(Path::new("/home/jörg/Dokumente"), Some(home)),
+            None
+        );
         assert_eq!(danger_of(Path::new("/Volumes/USB/a"), Some(home)), None);
     }
 }

@@ -76,7 +76,9 @@ fn move_on_the_same_volume_renames_whole_entries() {
     assert_eq!(ino(&out.join("a.txt")), before, "renamed, not copied");
     // both folders reload
     let parent = s(src.parent().unwrap());
-    assert!(h.count(|e| matches!(e, JobEvent::DirsChanged { dirs } if dirs.contains(&parent))) >= 1);
+    assert!(
+        h.count(|e| matches!(e, JobEvent::DirsChanged { dirs } if dirs.contains(&parent))) >= 1
+    );
 }
 
 #[test]
@@ -156,7 +158,9 @@ fn move_across_volumes_cancelled_midway_loses_nothing() {
     let d = tempdir().unwrap();
     let src = d.path().join("q");
     fs::create_dir(&src).unwrap();
-    let names: Vec<String> = (b'a'..=b'z').map(|c| format!("{}.txt", c as char)).collect();
+    let names: Vec<String> = (b'a'..=b'z')
+        .map(|c| format!("{}.txt", c as char))
+        .collect();
     for n in &names {
         fs::write(src.join(n), n.as_bytes()).unwrap();
     }
@@ -282,7 +286,10 @@ fn copy_options_conflict_default_and_new_name() {
     };
     let id = h.start_copy(&[&src.join("a.txt")], &src, named("Kopie ä.txt"));
     assert_eq!(h.finish(&id).state, JobState::Done);
-    assert_eq!(fs::read_to_string(src.join("Kopie ä.txt")).unwrap(), "alpha");
+    assert_eq!(
+        fs::read_to_string(src.join("Kopie ä.txt")).unwrap(),
+        "alpha"
+    );
     let id = h.start_copy(&[&src.join("a.txt")], &src, named("a.txt"));
     assert_eq!(
         h.finish(&id).summary.unwrap().error.unwrap().code,
@@ -361,8 +368,16 @@ fn delete_permanently_asks_for_write_protected_entries() {
     h.answer(&id, &c, Decision::Skip, false);
     let c = h.conflict(&id);
     assert!(c.source.ends_with("ro_dir"));
+    let asked_at = h.events.lock().unwrap().len();
     h.answer(&id, &c, Decision::Overwrite, false);
     let info = h.finish(&id);
+    // the panel reloads after the entries are gone, not only when the job started
+    let parent = s(d.path());
+    assert!(
+        h.events.lock().unwrap()[asked_at..]
+            .iter()
+            .any(|e| matches!(e, JobEvent::DirsChanged { dirs } if dirs.contains(&parent)))
+    );
     assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
     assert!(root.join("ro.txt").exists());
     assert!(!root.join("ro_dir").exists());
@@ -410,7 +425,10 @@ fn delete_to_the_trash() {
     assert!(!f.exists() && !dir.exists());
     let files = data.join("Trash/files");
     assert_eq!(fs::read_to_string(files.join("weg ä.txt")).unwrap(), "x");
-    assert_eq!(fs::read_to_string(files.join("Ordner/in.txt")).unwrap(), "y");
+    assert_eq!(
+        fs::read_to_string(files.join("Ordner/in.txt")).unwrap(),
+        "y"
+    );
     // a missing entry is an error of its own, the job goes on
     let id = h.delete(&[&f], DeleteMode::Trash);
     let info = h.finish(&id);

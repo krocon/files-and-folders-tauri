@@ -272,7 +272,9 @@ pub enum Mode {
     Copy,
     /// `force_copy`: behave as if source and target were on different
     /// volumes (tests of the copy + delete path).
-    Move { force_copy: bool },
+    Move {
+        force_copy: bool,
+    },
 }
 
 struct Run<'a> {
@@ -763,7 +765,13 @@ pub fn run(
                 Decision::Rename { new_name } => {
                     let name = new_name.unwrap_or_else(|| suggest_name(&dst));
                     if let Err(e) = validate_name(&name) {
-                        run.fail(&item.src, FsError { path: Some(path_string(&dst)), ..e });
+                        run.fail(
+                            &item.src,
+                            FsError {
+                                path: Some(path_string(&dst)),
+                                ..e
+                            },
+                        );
                         run.rep.progress.items_done += 1;
                         run.rep.progress.bytes_done += size;
                         continue 'items;

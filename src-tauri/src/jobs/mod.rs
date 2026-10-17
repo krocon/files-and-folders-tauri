@@ -333,8 +333,7 @@ mod tests {
             }
         );
         let spec: JobSpec =
-            serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"permanent"}"#)
-                .unwrap();
+            serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"permanent"}"#).unwrap();
         assert_eq!(spec.kind(), "delete");
         assert!(!spec.is_parallel());
         let d: Decision =

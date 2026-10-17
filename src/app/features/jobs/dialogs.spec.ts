@@ -52,7 +52,13 @@ describe('job dialogs', () => {
     expect(el.textContent).toContain('2.0 KB');
     const skip = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Skip')!;
     expect(skip.hasAttribute('data-autofocus')).toBe(true);
-    // the underlined letter is part of the word (no gap)
+    // the underlined letter is part of the word: one flex item, so the button's gap cannot split it
+    for (const b of el.querySelectorAll('.buttons button')) {
+      const items = [...b.childNodes].filter(
+        (n) => n.nodeType === Node.ELEMENT_NODE || n.textContent?.trim(),
+      );
+      expect(items).toHaveLength(1);
+    }
     expect([...el.querySelectorAll('.buttons button')].map((b) => b.textContent?.trim())).toEqual([
       'Overwrite',
       'Skip',

@@ -2,11 +2,11 @@
 //! blocking file-system work off the async runtime threads.
 
 use crate::error::{FsError, FsErrorCode};
+use crate::fileops;
 use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
-use crate::fileops;
 use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};

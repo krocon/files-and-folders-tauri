@@ -4,8 +4,8 @@
 
 use super::report::Reporter;
 use super::{
-    Conflict, ConflictKind, Control, Decision, DeleteMode, FileMeta, ItemError, JobEvent,
-    JobState, MAX_REPORTED_ERRORS, Summary,
+    Conflict, ConflictKind, Control, Decision, DeleteMode, FileMeta, ItemError, JobEvent, JobState,
+    MAX_REPORTED_ERRORS, Summary,
 };
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::normalize_lexically;
@@ -37,6 +37,8 @@ struct Del<'a> {
     for_all: Option<Decision>,
     /// Entries left in place (skipped or failed): their folders stay as well.
     kept: Vec<PathBuf>,
+    /// Folders of the deleted entries (reported as changed while the job runs).
+    parents: Vec<String>,
 }
 
 impl Del<'_> {
@@ -63,6 +65,10 @@ impl Del<'_> {
     }
 
     fn done(&mut self) {
+        // after something happened: a reload before the deletion would show the old content
+        for p in &self.parents {
+            self.rep.dir_changed(p.clone());
+        }
         self.rep.progress.items_done += 1;
         self.rep.tick(false);
     }
@@ -191,8 +197,7 @@ fn trash_one(path: &Path) -> Result<(), String> {
                 use trash::macos::{DeleteMethod, TrashContextExtMacos};
                 let mut ctx = trash::TrashContext::default();
                 ctx.set_delete_method(DeleteMethod::NsFileManager);
-                ctx.delete(path)
-                    .map_err(|e| format!("{first}; {e}"))
+                ctx.delete(path).map_err(|e| format!("{first}; {e}"))
             }
         }
     }
@@ -217,6 +222,7 @@ pub fn run(
         conflict_seq: 0,
         for_all: None,
         kept: Vec::new(),
+        parents: Vec::new(),
     };
     let paths: Vec<PathBuf> = paths.iter().map(|p| normalize_lexically(p)).collect();
     for p in &paths {
@@ -231,7 +237,10 @@ pub fn run(
     }
     for p in &paths {
         if let Some(parent) = p.parent() {
-            del.rep.dir_changed(path_string(parent));
+            let parent = path_string(parent);
+            if !del.parents.contains(&parent) {
+                del.parents.push(parent);
+            }
         }
     }
     let cancelled = match mode {

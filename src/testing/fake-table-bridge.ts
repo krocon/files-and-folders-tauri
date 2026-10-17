@@ -75,4 +75,23 @@ export class FakeTableBridge implements TableBridge {
     this.calls.push(`applyTableState(${wanted.join(',')})`);
     this.tableState = { ...this.tableState, ...structuredClone(state) };
   }
+
+  /** The open in-place rename: `finish` simulates Enter (a name) or Escape (null). */
+  rename: { path: string; selectEnd: number; finish: (value: string | null) => void } | null = null;
+  canEdit = true;
+
+  startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean {
+    if (!this.canEdit || !this.rows.some((r) => r.path === path)) {
+      return false;
+    }
+    this.rename = {
+      path,
+      selectEnd,
+      finish: (value) => {
+        this.rename = null;
+        done(value);
+      },
+    };
+    return true;
+  }
 }
