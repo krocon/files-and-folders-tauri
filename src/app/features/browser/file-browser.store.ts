@@ -13,9 +13,17 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { isFinished } from '../../core/jobs/jobs.models';
 import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
+import { cursorAfterRemoval } from '../ops/ops-logic';
 import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
 
 const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
+
+/** Changes of a watched folder (design 012 E3). */
+interface FolderDelta {
+  readonly dir: string;
+  readonly upserted: readonly DirEntry[];
+  readonly removed: readonly string[];
+}
 
 export type HistoryMode = 'push' | 'back' | 'forward' | 'none';
 
@@ -56,6 +64,10 @@ export class FileBrowserStore {
   private memoryRef: TabMemory = createTabMemory();
   /** Bumped whenever the history stacks change (they live in a plain object). */
   private readonly historyVersion = signal(0);
+  /** Watcher deltas that arrived while a load ran – applied again to its result (design 012 E3). */
+  private deltasDuringLoad: FolderDelta[] = [];
+  /** A reload was requested while another load ran (design 012 E4). */
+  private refreshAfterLoad: string | null = null;
 
   readonly listing = signal<DirectoryListing | null>(null);
   readonly loading = signal(false);
@@ -176,6 +188,12 @@ export class FileBrowserStore {
       if (options.scrollTop !== undefined) {
         this.pendingTableState = { scroll: { left: 0, top: options.scrollTop } };
       }
+      // the listing may be older than changes reported meanwhile – they win
+      for (const d of this.deltasDuringLoad) {
+        if (d.dir === listing.path) {
+          this.applyDelta(d, null);
+        }
+      }
     } catch (err) {
       if (seq !== this.requestSeq) {
         return;
@@ -193,6 +211,12 @@ export class FileBrowserStore {
     } finally {
       if (seq === this.requestSeq) {
         this.loading.set(false);
+        this.deltasDuringLoad = [];
+        const again = this.refreshAfterLoad;
+        this.refreshAfterLoad = null;
+        if (again !== null && again === this.path()) {
+          void this.refresh();
+        }
       }
     }
   }
@@ -255,6 +279,58 @@ export class FileBrowserStore {
     }
     const path = this.path();
     return this.load(path ?? undefined, { cursor: this.cursorPath(), history: 'none' });
+  }
+
+  /**
+   * Reload requested by the watcher or a finished job (design 012 E4): while
+   * any load runs, one reload is queued instead (never several).
+   */
+  requestRefresh(): void {
+    const path = this.path();
+    if (path === null || this.navigationLocked()) {
+      return;
+    }
+    if (this.loading()) {
+      this.refreshAfterLoad = path;
+      return;
+    }
+    void this.refresh();
+  }
+
+  /**
+   * Applies a watcher delta of `dir` (design 012 E3): entries by path, marks of
+   * removed ones dropped, a removed cursor moves to the next entry of
+   * `displayed` (display order). Without a real change the listing stays the
+   * same object – no repaint.
+   */
+  applyChanges(
+    dir: string,
+    upserted: readonly DirEntry[],
+    removed: readonly string[],
+    displayed: readonly DirEntry[] = this.visibleEntries(),
+  ): void {
+    const delta: FolderDelta = { dir, upserted, removed };
+    if (this.loading()) {
+      this.deltasDuringLoad.push(delta);
+    }
+    if (dir === this.path()) {
+      this.applyDelta(delta, displayed);
+    }
+  }
+
+  /** Navigates to the nearest folder above the shown one that still exists (watched folder gone). */
+  async goToExistingAncestor(): Promise<void> {
+    const listing = this.listing();
+    if (!listing || this.navigationLocked()) {
+      return;
+    }
+    const ancestors = listing.segments.slice(0, -1).reverse();
+    for (const seg of ancestors) {
+      await this.load(seg.path, { history: 'none' });
+      if (this.path() !== listing.path) {
+        return;
+      }
+    }
   }
 
   setCursor(path: string | null): void {
@@ -415,6 +491,58 @@ export class FileBrowserStore {
     }
   }
 
+  private applyDelta(delta: FolderDelta, displayed: readonly DirEntry[] | null): void {
+    const listing = this.listing();
+    if (!listing) {
+      return;
+    }
+    const removed = new Set(delta.removed);
+    const byPath = new Map(delta.upserted.map((e) => [e.path, e]));
+    let changed = false;
+    const entries: DirEntry[] = [];
+    for (const e of listing.entries) {
+      if (removed.has(e.path)) {
+        changed = true;
+        continue;
+      }
+      const next = byPath.get(e.path);
+      if (next) {
+        byPath.delete(e.path);
+        // a calculated folder size stays (the watcher reports folders without a size)
+        const merged =
+          next.size === null && isNavigableDir(next) && e.size !== null
+            ? { ...next, size: e.size }
+            : next;
+        if (!sameEntry(e, merged)) {
+          changed = true;
+          entries.push(merged);
+          continue;
+        }
+      }
+      entries.push(e);
+    }
+    for (const e of byPath.values()) {
+      if (!removed.has(e.path)) {
+        changed = true;
+        entries.push(e);
+      }
+    }
+    if (!changed) {
+      return;
+    }
+    if (removed.size > 0) {
+      const cursor = this.cursorPath();
+      if (cursor !== null && removed.has(cursor)) {
+        this.cursorPath.set(displayed ? cursorAfterRemoval(displayed, removed, cursor) : null);
+      }
+      const marks = this.marked();
+      if ([...removed].some((p) => marks.has(p))) {
+        this.marked.set(new Set([...marks].filter((p) => !removed.has(p))));
+      }
+    }
+    this.listing.set({ ...listing, entries });
+  }
+
   private captureFolderState(): { cursor: string | null; marks: string[]; scrollTop: number } {
     return { cursor: this.cursorPath(), marks: [...this.marked()], scrollTop: this.scrollTop() };
   }
@@ -449,6 +577,18 @@ export class FileBrowserStore {
   private isParentPath(path: string): boolean {
     return path === this.parent();
   }
+}
+
+function sameEntry(a: DirEntry, b: DirEntry): boolean {
+  return (
+    a.name === b.name &&
+    a.kind === b.kind &&
+    a.targetKind === b.targetKind &&
+    a.size === b.size &&
+    a.modifiedMs === b.modifiedMs &&
+    a.hidden === b.hidden &&
+    a.lossyName === b.lossyName
+  );
 }
 
 function intersect(marks: ReadonlySet<string>, existing: Set<string>): ReadonlySet<string> {

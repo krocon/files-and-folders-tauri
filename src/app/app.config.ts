@@ -6,6 +6,8 @@ import { JobsApi, TauriJobsApi } from './core/jobs/jobs-api';
 import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
 import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
 import { PreviewApi, TauriPreviewApi } from './core/preview/preview-api';
+import { TauriWatchApi, WatchApi } from './core/watch/watch-api';
+import { DragDropApi, TauriDragDropApi } from './core/dnd/drag-drop-api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,5 +19,7 @@ export const appConfig: ApplicationConfig = {
     { provide: RenameApi, useClass: TauriRenameApi },
     { provide: FoldersApi, useClass: TauriFoldersApi },
     { provide: PreviewApi, useClass: TauriPreviewApi },
+    { provide: WatchApi, useClass: TauriWatchApi },
+    { provide: DragDropApi, useClass: TauriDragDropApi },
   ],
 };

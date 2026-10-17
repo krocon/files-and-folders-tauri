@@ -32,6 +32,8 @@ export interface TableBridge {
    * False if the entry is not displayed or the table cannot edit now.
    */
   startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean;
+  /** Displayed index of the body row containing `element` (drag and drop), -1 if none. */
+  rowIndexAt(element: Element): number;
 }
 
 /** The parts of the table state that belong to a tab. */
@@ -103,6 +105,17 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
         return false;
       }
       return true;
+    },
+    rowIndexAt(element) {
+      // no "row at point" API (G18): body cells carry data-area="body" and the displayed row index
+      const cell = element.closest('[data-area="body"][data-row-index]');
+      if (!cell || !scope.hostElement.contains(cell)) {
+        return -1;
+      }
+      const index = Number(cell.getAttribute('data-row-index'));
+      return Number.isInteger(index) && index >= 0 && index < body.getFilteredRows().length
+        ? index
+        : -1;
     },
     applyTableState(state, parts) {
       const wanted = parts.filter((p) => p in state);

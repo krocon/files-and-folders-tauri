@@ -15,6 +15,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'trash_failed',
   'duplicate_target',
   'undo_unavailable',
+  'too_many',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -68,6 +69,8 @@ export function describeFsError(error: FsError): string {
       return 'Another selected entry gets the same name.';
     case 'undo_unavailable':
       return 'There is nothing to undo.';
+    case 'too_many':
+      return 'Too many items at once.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

@@ -47,6 +47,8 @@ export type FsErrorCode =
   | 'duplicate_target'
   /** Nothing to undo (anymore). */
   | 'undo_unavailable'
+  /** More items than a command accepts (watched folders, dropped paths). */
+  | 'too_many'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

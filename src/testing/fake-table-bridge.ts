@@ -94,4 +94,11 @@ export class FakeTableBridge implements TableBridge {
     };
     return true;
   }
+
+  /** Row index `rowIndexAt` answers (tests set it). */
+  rowAt = -1;
+
+  rowIndexAt(): number {
+    return this.rowAt;
+  }
 }

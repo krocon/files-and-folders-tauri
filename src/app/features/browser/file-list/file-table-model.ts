@@ -19,6 +19,8 @@ export interface FileRowState {
   /** Displayed row index of the cursor (table focus), -1 if none. */
   cursorRow(): number;
   isMarked(path: string): boolean;
+  /** The folder row a drag would drop into (design 012 E5). */
+  isDropTarget?(path: string): boolean;
 }
 
 /**
@@ -73,6 +75,9 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     }
     if (this.state.isMarked(entry.path)) {
       classes.push('fnf-marked');
+    }
+    if (this.state.isDropTarget?.(entry.path)) {
+      classes.push('fnf-drop-target');
     }
     if (entry.hidden) {
       classes.push('fnf-hidden');
