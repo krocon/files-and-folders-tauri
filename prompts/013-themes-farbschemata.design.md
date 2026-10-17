@@ -181,11 +181,32 @@ Kontrast-Warnungen als Text (`role="status"`-Zusammenfassung), nicht nur Farbe.
 
 ## 8. Abweichungen bei der Umsetzung
 
-(siehe Fortschritt)
+- **Kontrasttest fand echte Lücken in den heutigen Tokens** – behoben (eigene Werte, keine Legacy-Farben):
+  light Cursor `#2f6fde` → `#1f56c4` (gelbe Markierung unter dem Cursor hatte 3,6:1), dark Akzent-Text weiß auf
+  `#5b8ef0` (3,2:1) → `#16181d`, dark `--color-danger` `#e5606a` → `#ef7a83` (Warnung in der Statuszeile 4,25:1),
+  light Favoriten-Stern `#c98a00` → `#a87300` (UI 3:1), neues Token `--color-on-danger` statt `#fff` am
+  Löschen-Button (dark 3,4:1).
+- Gespeichert wird je eigenem Schema der **vollständige** Token-Satz (was der Nutzer sah), nicht nur die Differenz;
+  fehlende Tokens späterer Versionen ergänzt die App weiterhin aus light/dark.
+- Farb-Tokens nehmen im Editor nur lesbare Farben oder `var(--…)` an (E2E: Tippfehler `#2c5bb80` wurde sonst
+  übernommen); Import nimmt jeden harmlosen Wert (alte Dateien enthalten `inherit`).
+- Das 🎨-Menü nutzt `menuitemradio` + `aria-checked` (ContextMenu um `checked` erweitert).
+- `--color-panel-bg` entfällt zugunsten `--color-list-bg`.
 
 ## 9. Review
 
-**Selbstprüfung:** (Phase 6)
+**Selbstprüfung** (Schwerpunkt: Werte aus Dateien landen als CSS auf `<html>`):
+
+- CSS-Injektion: Werte gehen nur über `style.setProperty(name, value)` (kein `innerHTML`, kein Stylesheet-Text) –
+  ein `;` kann keine weitere Deklaration erzeugen; trotzdem lehnen Rust (`value_ok`) **und** TS (`isSafeValue`, auch
+  direkt vor `setProperty`) `; { } < > \ @`, Steuerzeichen und `url(`/`image(`/`image-set(`/`element(`/`expression(`
+  ab – kein Nachladen von Ressourcen (die CSP blockiert es zusätzlich). Token-Namen nur `--[a-z0-9-]`.
+- Import: nur reguläre Datei ≤ 256 KiB, JSON-Objekt; Pfad über `resolve_input` wie überall. Export: Name über
+  `validate_name`, `create_new` (nie überschreiben), Fehler räumt die halbe Datei weg.
+- `themes.json`: atomar, kaputt → `.bad` + Hinweis (E2E), Lesefehler → nicht überschreiben (Test), Grenzen 50/300.
+- Swatches im Dialog setzen nur aus `toHex(parseColor())` gebaute Gradienten (keine Rohwerte in `style`).
+- Offen gelassen: Werte wie `inherit` in Farb-Tokens (aus Importen) zeigen im Editor keinen Farbwähler und gelten
+  in der Prüfung als „nicht auflösbar“ (gemeldet).
 
 ### Review (separater Agent) – Ergebnis
 
@@ -195,10 +216,23 @@ Kontrast-Warnungen als Text (`role="status"`-Zusammenfassung), nicht nur Farbe.
 ## 10. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
+- [x] Phase 2 Rust: `themes.rs` (Datei, `bound`, `value_ok`, Import/Export, 7 Tests), Commands `load_themes`,
+  `save_themes`, `import_theme`, `export_theme` (`ThemesState` blockiert Schreiben nach Lesefehler)
+- [x] Phase 3 Frontend: Tokens in `styles.scss` (+ Scrollbar), Brücke, Komponenten auf Gruppen-Tokens umgestellt
+  (Kopf, Tabs, Statuszeile, Button-Leiste, Modal, Eingaben, Buttons); `core/theme/` (Katalog, `color.ts`,
+  `theme-logic.ts`, `ThemeService`, `ThemeApi`, `themes/*.json`), `features/themes/` (Dialog, Aktionen
+  `OPEN_THEMES_DLG`, `NEXT_THEME`, `THEME_FOLLOW_SYSTEM`), 🎨-Menü, Palette-Einträge; Specs: `color`,
+  `theme-logic`, `builtin-themes` (Kontrast + Sync), `theme.service`, `theme-dialog`, Palette, Button-Leiste
+- [x] Phase 4 E2E (Xvfb, Linux, Testordner mit Umlauten, Emoji, Leerzeichen, Hidden, Symlink): Light → `NEXT_THEME`
+  → Dark (Liste, Kopf, Tabs, Fußleiste, Table inkl. markiert/markiert + Cursor folgen ohne Neustart); 🎨-Menü
+  (radio, eigene zuerst); Editor: Name/Farben ändern → Vorschau sofort, 15 Kontrastprobleme gelistet, korrigiert,
+  „Save as new“ → `themes.json`; Export → `Mein Dunkel.theme.json` im Panel; **Neustart → eigenes Schema aktiv**;
+  Import `gruen.theme.json` (Cursor) → grüner Cursor/Tab; Import alte `coffee.json` → dunkel erkannt, 72 unbekannte
+  Variablen behalten; „Follow the system“ → Light, Neustart mit `GTK_THEME=Adwaita:dark` → Dark; kaputte
+  `themes.json` → `.bad` + Hinweis. Nicht geprüft: Live-Wechsel des Systemschemas während die App läuft (nur
+  Unit-Test), macOS/Windows.
+- [x] Phase 5 Doku: architecture (Entscheidung, Brücke), roadmap, feature-parity, README (Was funktioniert,
+  Kürzel), CLAUDE.md (§1, §3, §9), prompts/README
 
 ## 11. Offen
 

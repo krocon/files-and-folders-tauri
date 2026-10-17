@@ -88,7 +88,8 @@ sind als solche markiert.
 | Bundle-Budget (Merge 009 + 010) | `angular.json`: initial Warnung 1,2 MB, Fehler 1,5 MB (vorher 500 kB / 1 MB) – mit Suche und Vorschau zusammen liegt das Initial-Bundle bei ~1,01 MB (~230 kB gzip) | Desktop-App lädt lokal aus dem Bundle, kein Netz; Budget bleibt als Wächter gegen Ausreißer. Lazy-Loading der Dialoge (`@defer`) wäre die Alternative, wenn das Bundle weiter wächst. |
 | Vorschau-Tabellen | `shared/preview-grid/` – GuiExpert Table mit Spalten/Zeilenklasse als Input, Modell einmal gebaut, `setRows` + `repaintHard` | Gemeinsam für Gruppieren, Aufräumen, Multi-MkDir |
 | Modale Dialoge | Fenster dahinter `inert` | Fokus und Klicks bleiben im Dialog (aria-modal allein reicht nicht). |
-| Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
+| Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Listen-Tokens (`--color-list-*`, im aktiven Panel `--color-active-*`); `html[data-theme]` = `light`/`dark` aus dem Schema | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 019. |
+| Farbschemata (013) | Ein Schema = `{ id, name, dark, tokens }` (CSS-Werte, `var()`-Verweise erlaubt); Katalog `core/theme/tokens.ts` (Gruppen, Art); eingebaut `light.json`/`dark.json` = `styles.scss` (Test); `ThemeService` (Root) setzt die Tokens inline auf `<html>`, ergänzt fehlende aus light/dark, Auswahl `system`/`fixed`; `<app_config_dir>/themes.json` (eigene Schemata + Auswahl), Rust prüft Form/Größe und harmlose Werte (kein `url(`, `;{}<>\@`), kaputt → `.bad`; Import/Export als Datei über `import_theme`/`export_theme` (kein Dialog-Plugin) | Ein Design ist nur ein Satz Token-Werte – 019 legt die acht alten Designs als weitere JSONs daneben. Kontrast (WCAG AA) als reine Logik + Test über alle Schemata. Design 013 |
 
 ## DTO-Vertrag
 

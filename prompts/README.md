@@ -78,4 +78,4 @@ Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprot
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
 - [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [ ] 011 ·
-  [ ] 012 · [ ] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019
+  [ ] 012 · [x] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019

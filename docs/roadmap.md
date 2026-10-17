@@ -31,7 +31,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop), 014 (Menüs) |
 | 6 Vorschau & Eigenschaften | 010 (Ansicht, Schnellvorschau, Eigenschaften ✅) |
 | 7 OS-Integration | 011, 012 (Überwachung) |
-| 8 Einstellungen & UX | 013 (Themes), 015 (Einstellungen, i18n) |
+| 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs), 015 (Einstellungen, i18n) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
 | 10 Distribution | 017 |
 | 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016) |
