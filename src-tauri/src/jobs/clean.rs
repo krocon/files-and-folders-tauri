@@ -12,6 +12,8 @@ use crate::clean::{CleanItem, CleanKind, CleanOptions, Matcher, check_roots};
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops::check_danger;
 use crate::paths::normalize_lexically;
+use crate::platform::remove_below;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -29,16 +31,16 @@ fn left(path: &Path, why: &str) -> FsError {
     )
 }
 
-/// Checks one entry against the start folders and the disk; returns the junk
-/// files to remove with a folder.
-fn verify(
+/// Checks one entry against the start folders and the disk; returns its start
+/// folder and the junk files to remove with a folder.
+fn verify<'r>(
     item: &CleanItem,
     path: &Path,
-    roots: &[PathBuf],
+    roots: &'r [PathBuf],
     o: &CleanOptions,
     m: &Matcher,
     home: Option<&Path>,
-) -> Result<Vec<PathBuf>, FsError> {
+) -> Result<(&'r Path, Vec<PathBuf>), FsError> {
     let root = roots.iter().find(|r| path.starts_with(r)).ok_or_else(|| {
         FsError::new(
             FsErrorCode::InvalidPath,
@@ -73,7 +75,7 @@ fn verify(
             if !meta.is_file() || !m.matches(name) {
                 return Err(left(path, "The entry changed"));
             }
-            Ok(Vec::new())
+            Ok((root, Vec::new()))
         }
         CleanKind::Dir => {
             if !meta.is_dir() || !o.empty_dirs {
@@ -89,7 +91,7 @@ fn verify(
                     _ => return Err(left(path, "The folder is not empty any more")),
                 }
             }
-            Ok(junk)
+            Ok((root, junk))
         }
     }
 }
@@ -97,24 +99,23 @@ fn verify(
 fn remove(
     item: &CleanItem,
     path: &Path,
+    root: &Path,
     junk: &[PathBuf],
     mode: DeleteMode,
 ) -> Result<(), FsError> {
-    match (mode, item.kind) {
-        (DeleteMode::Trash, _) => {
-            trash_one(path).map_err(|e| FsError::new(FsErrorCode::Io, e, Some(path)))
-        }
-        (DeleteMode::Permanent, CleanKind::File) => {
-            fs::remove_file(path).map_err(|e| FsError::from_io(&e, path))
-        }
-        (DeleteMode::Permanent, CleanKind::Dir) => {
-            for j in junk {
-                fs::remove_file(j).map_err(|e| FsError::from_io(&e, j))?;
-            }
-            // never remove_dir_all: something new inside makes this fail
-            fs::remove_dir(path).map_err(|e| FsError::from_io(&e, path))
-        }
+    if mode == DeleteMode::Trash {
+        // by path: the check right before is the guard (design 008, residual risk)
+        return trash_one(path).map_err(|e| FsError::new(FsErrorCode::Io, e, Some(path)));
     }
+    // relative to the start folder, never through a link on the way (review 008 #3);
+    // never remove_dir_all: something new inside makes this fail
+    let rel = path.strip_prefix(root).unwrap_or(Path::new(""));
+    let junk: Vec<OsString> = junk
+        .iter()
+        .filter_map(|j| j.file_name().map(|n| n.to_os_string()))
+        .collect();
+    remove_below(root, rel, item.kind == CleanKind::Dir, &junk)
+        .map_err(|e| FsError::from_io(&e, path))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -164,7 +165,7 @@ pub fn run(
         let item = &items[*i];
         rep.progress.current = Some(path_string(path));
         let result = verify(item, path, &roots, options, &m, home)
-            .and_then(|junk| remove(item, path, &junk, mode));
+            .and_then(|(root, junk)| remove(item, path, root, &junk, mode));
         match result {
             Ok(()) => {
                 summary.items_done += 1;

@@ -13,6 +13,7 @@ use super::{
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
 use crate::platform::{file_id, rename_noreplace};
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs::{self, File, Metadata};
 use std::io::{self, Read, Write};
@@ -99,7 +100,7 @@ pub fn check_pairs(
     rename_to: Option<&str>,
     plan: &mut Plan,
 ) -> Result<Vec<Top>, FsError> {
-    let mut checked: Vec<PathBuf> = Vec::new();
+    let mut checked: HashSet<PathBuf> = HashSet::new(); // review 008 #5: no O(n·g)
     for (_, target_dir) in pairs {
         let target_dir = normalize_lexically(target_dir);
         if checked.contains(&target_dir) {
@@ -113,7 +114,7 @@ pub fn check_pairs(
                 Some(&target_dir),
             ));
         }
-        checked.push(target_dir);
+        checked.insert(target_dir);
     }
     if let Some(n) = rename_to {
         validate_name(n)?;
@@ -653,6 +654,11 @@ pub fn run_pairs(
     let mut fast_done = 0u64;
     let mut rest = Vec::new();
     for top in tops {
+        // cancelled while planning: nothing more is renamed (review 008 #5)
+        if control.is_cancelled() {
+            run.rep.flush_dirs();
+            return (JobState::Cancelled, run.summary);
+        }
         if run.moving && !run.cross && fs::symlink_metadata(&top.dst).is_err() {
             match rename_noreplace(&top.src, &top.dst) {
                 Ok(()) => {

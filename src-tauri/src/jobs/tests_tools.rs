@@ -382,3 +382,28 @@ fn clean_with_the_start_folder_and_cancel() {
     assert!(!root.exists());
     assert!(d.path().is_dir());
 }
+
+/// Review 008 #5: a group move cancelled while planning renames nothing.
+#[test]
+fn group_move_cancelled_while_planning_moves_nothing() {
+    let (_d, src, dst) = music();
+    let pairs: Vec<(PathBuf, PathBuf)> = ["Band - Titel 01.mp3", "Über alles 01.mp3"]
+        .iter()
+        .map(|n| (src.join(n), dst.clone()))
+        .collect();
+    let control = Control::default();
+    control.cancel();
+    let (state, summary) = copy::run_pairs(
+        "j",
+        &pairs,
+        &CopyOptions::default(),
+        copy::Mode::Move { force_copy: false },
+        Summary::default(),
+        &control,
+        &|_| {},
+    );
+    assert_eq!(state, JobState::Cancelled);
+    assert_eq!(summary.items_done, 0);
+    assert!(src.join("Band - Titel 01.mp3").exists());
+    assert!(!dst.join("Band - Titel 01.mp3").exists());
+}

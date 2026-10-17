@@ -31,6 +31,8 @@ export interface CleanScan {
   readonly unreadableMore: number;
   /** The scan stopped at a limit. */
   readonly truncated: boolean;
+  /** The search was cancelled (review 008 #2); then `items` is empty. */
+  readonly cancelled: boolean;
   readonly visited: number;
 }
 

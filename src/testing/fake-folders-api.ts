@@ -6,6 +6,7 @@ const EMPTY_SCAN: CleanScan = {
   unreadable: [],
   unreadableMore: 0,
   truncated: false,
+  cancelled: false,
   visited: 0,
 };
 
@@ -15,15 +16,20 @@ const EMPTY_SCAN: CleanScan = {
  * `release()` (tests of stale answers).
  */
 export class FakeFoldersApi extends FoldersApi {
-  readonly scans: { roots: string[]; options: CleanOptions }[] = [];
+  readonly scans: { scanId: string; roots: string[]; options: CleanOptions }[] = [];
+  readonly cancels: string[] = [];
   readonly creates: { parent: string; names: string[] }[] = [];
   scan: CleanScan = EMPTY_SCAN;
   existing = new Set<string>();
   hold = false;
   private held: (() => void)[] = [];
 
-  findEmptyDirs(roots: readonly string[], options: CleanOptions): Promise<CleanScan> {
-    this.scans.push({ roots: [...roots], options });
+  findEmptyDirs(
+    scanId: string,
+    roots: readonly string[],
+    options: CleanOptions,
+  ): Promise<CleanScan> {
+    this.scans.push({ scanId, roots: [...roots], options });
     const result = this.scan;
     if (!this.hold) {
       return Promise.resolve(result);
@@ -35,6 +41,11 @@ export class FakeFoldersApi extends FoldersApi {
     const list = order === 'fifo' ? this.held : [...this.held].reverse();
     this.held = [];
     list.forEach((f) => f());
+  }
+
+  cancelScan(scanId: string): Promise<void> {
+    this.cancels.push(scanId);
+    return Promise.resolve();
   }
 
   createFolders(parent: string, names: readonly string[]): Promise<CreatedFolders> {

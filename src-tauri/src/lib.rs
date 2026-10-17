@@ -42,6 +42,7 @@ pub fn run() {
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
+        .manage(commands::CleanScanState::default())
         .setup(|app| {
             commands::init_session(app.handle());
             app.state::<commands::JobsState>()
@@ -88,6 +89,7 @@ pub fn run() {
             commands::plan_rename,
             commands::create_folders,
             commands::find_empty_dirs,
+            commands::cancel_clean_scan,
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets

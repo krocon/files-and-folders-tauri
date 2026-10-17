@@ -240,6 +240,7 @@ describe('folder tools (design 008)', () => {
       unreadable: [],
       unreadableMore: 0,
       truncated: false,
+      cancelled: false,
       visited: 4,
     };
     await actions.run('OPEN_DELETE_EMPTY_FOLDERS_DLG');
@@ -276,6 +277,32 @@ describe('folder tools (design 008)', () => {
     expect(dialogs.open()).toBeNull();
   });
 
+  it('cancels a running search when a newer one starts and when the dialog closes', async () => {
+    // review 008 #2
+    await left.load('/src');
+    folders.hold = true;
+    await actions.run('OPEN_DELETE_EMPTY_FOLDERS_DLG');
+    await new Promise((r) => setTimeout(r, 5));
+    expect(folders.scans).toHaveLength(1);
+    const first = folders.scans[0].scanId;
+    expect(folders.cancels).toEqual([]);
+    const next = cl.scanNow();
+    expect(folders.cancels).toEqual([first]);
+    const second = folders.scans[1].scanId;
+    expect(second).not.toBe(first);
+    cl.close();
+    expect(folders.cancels).toEqual([first, second]);
+    folders.release();
+    await next;
+    expect(cl.scan()).toBeNull();
+    // a finished search is not cancelled again
+    folders.hold = false;
+    await actions.run('OPEN_DELETE_EMPTY_FOLDERS_DLG');
+    await new Promise((r) => setTimeout(r, 5));
+    cl.close();
+    expect(folders.cancels).toHaveLength(2);
+  });
+
   // ---- multi mkdir ----
 
   it('creates the folders and keeps failed names in the dialog', async () => {
@@ -289,6 +316,10 @@ describe('folder tools (design 008)', () => {
     expect(folders.creates[0]).toEqual({ parent: '/src', names: ['src 01', 'src 02', 'src 03'] });
     expect(dialogs.open()).toBe('multi-mkdir');
     expect(mm.runError()).toContain('src 02');
+    // review 008 #6: no second Create with the same names until something changes
+    expect(mm.canRun()).toBe(false);
+    await mm.run();
+    expect(folders.creates).toHaveLength(1);
     mm.update({ start: 4, end: 5 });
     await mm.run();
     expect(dialogs.open()).toBeNull();
