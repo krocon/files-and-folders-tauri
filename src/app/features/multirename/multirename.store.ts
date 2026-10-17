@@ -36,6 +36,9 @@ import {
 /** Rust checks the names this long after the last change (design 007 E5). */
 export const PLAN_DEBOUNCE_MS = 120;
 export const MAX_PRESETS = 100;
+/** From this many entries the names are computed 80 ms after the last change (design 007 E10). */
+export const LARGE_SELECTION = 1000;
+export const ENGINE_DEBOUNCE_MS = 80;
 
 export interface MrSource extends RenameSource {
   readonly path: string;
@@ -64,7 +67,10 @@ export class MultiRenameStore {
   private readonly dialogs = inject(DialogService);
 
   readonly request = signal<MrRequest | null>(null);
+  /** What the form shows (changes at once). */
   readonly rules = signal<RenameRules>(DEFAULT_RULES);
+  /** What the preview is computed from: `rules`, debounced for large selections. */
+  readonly applied = signal<RenameRules>(DEFAULT_RULES);
   readonly presets = signal<RenamePresets>(EMPTY_PRESETS);
   readonly filter = signal<PreviewFilter>('all');
   readonly busy = signal(false);
@@ -78,9 +84,10 @@ export class MultiRenameStore {
   } | null>(null);
   private presetsLoaded = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private applyTimer: ReturnType<typeof setTimeout> | null = null;
   private seq = 0;
 
-  readonly compiled = computed(() => compileRules(this.rules()));
+  readonly compiled = computed(() => compileRules(this.applied()));
   readonly ruleErrors = computed<readonly RuleError[]>(() => {
     const c = this.compiled();
     return isRuleErrors(c) ? c : [];
@@ -126,7 +133,14 @@ export class MultiRenameStore {
   });
   readonly canRun = computed(() => {
     const s = this.summary();
-    return !this.busy() && this.checked() && s.errors === 0 && s.pending === 0 && s.ok > 0;
+    return (
+      !this.busy() &&
+      this.applied() === this.rules() &&
+      this.checked() &&
+      s.errors === 0 &&
+      s.pending === 0 &&
+      s.ok > 0
+    );
   });
 
   /** Enabled rule of the action: a folder and at least one entry. */
@@ -166,7 +180,9 @@ export class MultiRenameStore {
     }));
     await this.loadPresets();
     const last = this.presets().last;
-    this.rules.set(last ? sanitizeRules(last) : DEFAULT_RULES);
+    const rules = last ? sanitizeRules(last) : DEFAULT_RULES;
+    this.rules.set(rules);
+    this.applied.set(rules);
     this.planned.set(null);
     this.planError.set(null);
     this.runError.set(null);
@@ -179,6 +195,10 @@ export class MultiRenameStore {
 
   close(): void {
     this.cancelTimer();
+    if (this.applyTimer !== null) {
+      clearTimeout(this.applyTimer);
+      this.applyTimer = null;
+    }
     this.seq++; // answers still on their way are stale now
     this.request.set(null);
     this.planned.set(null);
@@ -188,7 +208,22 @@ export class MultiRenameStore {
   setRules(rules: RenameRules): void {
     this.rules.set(rules);
     this.runError.set(null);
-    this.schedulePlan();
+    if (this.applyTimer !== null) {
+      clearTimeout(this.applyTimer);
+      this.applyTimer = null;
+    }
+    const large = (this.request()?.sources.length ?? 0) >= LARGE_SELECTION;
+    if (!large) {
+      this.applied.set(rules);
+      this.schedulePlan();
+      return;
+    }
+    // typing stays fluid: the 10 000 names follow when the input pauses
+    this.applyTimer = setTimeout(() => {
+      this.applyTimer = null;
+      this.applied.set(this.rules());
+      this.schedulePlan();
+    }, ENGINE_DEBOUNCE_MS);
   }
 
   update(patch: Partial<RenameRules>): void {
@@ -243,7 +278,7 @@ export class MultiRenameStore {
   async run(): Promise<void> {
     const req = this.request();
     const items = this.items();
-    if (!req || !items || !this.canRun()) {
+    if (!req || !items || !this.canRun() || this.applied() !== this.rules()) {
       return;
     }
     this.busy.set(true);
@@ -261,7 +296,7 @@ export class MultiRenameStore {
       this.busy.set(false);
       return;
     }
-    void this.saveLast(this.rules());
+    void this.saveLast(this.applied());
     this.close();
     this.busy.set(false);
     void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, renamed));

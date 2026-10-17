@@ -112,8 +112,8 @@ export class MultiRenameDialog {
 
   protected applyMacro(i: number, evt: Event): void {
     const select = evt.target as HTMLSelectElement;
-    const macro = MACROS[Number(select.value)];
-    select.value = '';
+    // the choice stays visible; arrow keys on the closed list try one macro after the other
+    const macro = select.value === '' ? undefined : MACROS[Number(select.value)];
     if (!macro) {
       return;
     }

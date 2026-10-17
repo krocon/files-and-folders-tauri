@@ -53,6 +53,7 @@ export const MR_TEXTS = {
   summary: (ok: number, unchanged: number, errors: number) =>
     `${ok} to rename · ${unchanged} unchanged · ${errors} errors`,
   checking: 'checking…',
+  preview: 'Preview',
   colNr: 'No.',
   colOld: 'Old name',
   colInfo: 'Info',

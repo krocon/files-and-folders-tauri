@@ -88,33 +88,37 @@
       <div class="row">
         <label class="inline">
           <span>{{ t.capitalize }}</span>
-          <select [value]="r().capitalize" (change)="set('capitalize', $any(text($event)))">
+          <select (change)="set('capitalize', $any(text($event)))">
             @for (m of modes; track m) {
-              <option [value]="m">{{ t.capitalizeModes[m] }}</option>
+              <option [value]="m" [selected]="m === r().capitalize">
+                {{ t.capitalizeModes[m] }}
+              </option>
             }
           </select>
         </label>
         <label class="inline">
           <span>{{ t.counterStart }}</span>
-          <select [value]="'' + r().counter.start" (change)="setCounter('start', $event)">
+          <select (change)="setCounter('start', $event)">
             @for (v of starts; track v) {
-              <option [value]="'' + v">{{ v }}</option>
+              <option [value]="'' + v" [selected]="v === r().counter.start">{{ v }}</option>
             }
           </select>
         </label>
         <label class="inline">
           <span>{{ t.counterStep }}</span>
-          <select [value]="'' + r().counter.step" (change)="setCounter('step', $event)">
+          <select (change)="setCounter('step', $event)">
             @for (v of steps; track v) {
-              <option [value]="'' + v">{{ v }}</option>
+              <option [value]="'' + v" [selected]="v === r().counter.step">{{ v }}</option>
             }
           </select>
         </label>
         <label class="inline">
           <span>{{ t.counterDigits }}</span>
-          <select [value]="'' + r().counter.digits" (change)="setCounter('digits', $event)">
+          <select (change)="setCounter('digits', $event)">
             @for (v of digits; track v) {
-              <option [value]="'' + v">{{ digitLabel(v) }}</option>
+              <option [value]="'' + v" [selected]="v === r().counter.digits">
+                {{ digitLabel(v) }}
+              </option>
             }
           </select>
         </label>
@@ -262,7 +266,7 @@
 
       <!-- preview -->
       <div class="preview-head">
-        <span [id]="previewLabelId" class="preview-label">{{ t.colNew }}</span>
+        <span [id]="previewLabelId" class="preview-label">{{ t.preview }}</span>
         <div class="filter" role="radiogroup" [attr.aria-label]="t.show">
           <span>{{ t.show }}:</span>
           @for (f of ['all', 'changed', 'errors']; track f) {

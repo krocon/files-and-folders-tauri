@@ -72,7 +72,7 @@ function columns(): ColumnDefIf[] {
     ColumnDef.create({
       property: 'info',
       headerLabel: MR_TEXTS.colInfo,
-      width: px(220),
+      width: px(300),
       headerClasses: start,
       bodyClasses: start,
     }),

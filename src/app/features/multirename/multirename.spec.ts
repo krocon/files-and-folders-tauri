@@ -25,7 +25,7 @@ import {
   previewRows,
   selectionInDisplayOrder,
 } from './multirename-logic';
-import { MultiRenameStore } from './multirename.store';
+import { ENGINE_DEBOUNCE_MS, MultiRenameStore } from './multirename.store';
 import { DEFAULT_RULES } from './rename-engine';
 
 const SUMMARY: Summary = {
@@ -317,5 +317,33 @@ describe('multi-rename store (design 007)', () => {
     };
     await mr.undo(null);
     expect(jobs.messages().at(-1)).toBe('Undo failed: There is no rename to undo');
+  });
+
+  it('10 000 entries: names follow 80 ms after typing stops; preview is computed fast', async () => {
+    const parents: [string, string, string] = ['src', '', ''];
+    mr.request.set({
+      side: 'left',
+      folder: '/src',
+      sources: Array.from({ length: 10_000 }, (_, i) => ({
+        path: `/src/file ${i}.txt`,
+        name: `file ${i}.txt`,
+        isDir: false,
+        modifiedMs: null,
+        parents,
+      })),
+    });
+    mr.update({ pattern: '[C]-[N].[E]' });
+    expect(mr.items()![0].newName).toBe('file 0.txt'); // not yet
+    expect(mr.canRun()).toBe(false);
+    await new Promise((r) => setTimeout(r, ENGINE_DEBOUNCE_MS + 20));
+    const start = performance.now();
+    const rows = mr.rows();
+    const ms = performance.now() - start;
+    expect(rows[9999].newName).toBe('10000-file 9999.txt');
+    await mr.checkNow();
+    expect(mr.canRun()).toBe(true);
+    // engine + rows for 10 000 entries (the table is measured in the window)
+    console.debug('[fnf:perf] store 10 000 names + rows', Math.round(ms), 'ms');
+    expect(ms).toBeLessThan(1000);
   });
 });
