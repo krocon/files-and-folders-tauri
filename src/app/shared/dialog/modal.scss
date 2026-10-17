@@ -17,9 +17,9 @@
   gap: var(--spacing-2);
   padding: var(--spacing-3);
   overflow: hidden;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
+  color: var(--color-dialog-text);
+  background: var(--color-dialog-bg);
+  border: var(--border-width) solid var(--color-dialog-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popup);
 }

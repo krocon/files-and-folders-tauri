@@ -1,6 +1,8 @@
 import { RenameApi } from '../../core/rename/rename-api';
 import { PreviewApi } from '../../core/preview/preview-api';
+import { ThemeApi } from '../../core/theme/theme-api';
 import { FakePreviewApi } from '../../../testing/fake-preview-api';
+import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
 import { FakeFoldersApi } from '../../../testing/fake-folders-api';
 import { FoldersApi } from '../../core/folders/folders-api';
@@ -37,6 +39,7 @@ describe('Workspace', () => {
       providers: [
         { provide: FsApi, useValue: fs },
         { provide: PreviewApi, useValue: new FakePreviewApi() },
+        { provide: ThemeApi, useValue: new FakeThemeApi() },
         { provide: JobsApi, useValue: jobs },
         { provide: RenameApi, useValue: new FakeRenameApi() },
         { provide: FoldersApi, useValue: new FakeFoldersApi() },

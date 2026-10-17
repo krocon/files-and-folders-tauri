@@ -48,6 +48,9 @@ import { FindStore } from '../search/find.store';
 import { FolderFinderDialog } from '../search/folder-finder-dialog';
 import { FolderFinderStore } from '../search/folder-finder.store';
 import { registerSearchActions } from '../search/search-actions';
+import { ThemeService } from '../../core/theme/theme.service';
+import { registerThemeActions } from '../themes/theme-actions';
+import { ThemeDialog } from '../themes/theme-dialog';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
@@ -87,6 +90,7 @@ import { WorkspaceStore } from './workspace.store';
     PropertiesDialog,
     FindDialog,
     FolderFinderDialog,
+    ThemeDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -115,6 +119,7 @@ export class Workspace implements OnInit {
   private readonly find = inject(FindStore);
   private readonly search = inject(SearchStore);
   private readonly finder = inject(FolderFinderStore);
+  private readonly theme = inject(ThemeService);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -201,10 +206,12 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
+    this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();
     void this.actions.init();
+    void this.theme.init();
   }
 
   // ---- splitter ----

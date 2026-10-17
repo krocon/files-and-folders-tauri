@@ -15,6 +15,8 @@ export interface MenuItem {
   readonly disabled?: boolean;
   /** A group heading (not selectable). */
   readonly heading?: boolean;
+  /** Set = a radio item (`menuitemradio` + `aria-checked`, ✓ shown). */
+  readonly checked?: boolean;
 }
 
 /**
@@ -38,11 +40,15 @@ export interface MenuItem {
             <div class="heading" aria-hidden="true">{{ h }}</div>
             @for (item of group.items; track item.id) {
               <div
-                role="menuitem"
+                [attr.role]="item.checked === undefined ? 'menuitem' : 'menuitemradio'"
+                [attr.aria-checked]="item.checked === undefined ? null : item.checked"
                 tabindex="-1"
                 [attr.aria-disabled]="item.disabled ? 'true' : null"
                 [attr.data-id]="item.id"
               >
+                @if (item.checked !== undefined) {
+                  <span class="radio" aria-hidden="true">{{ item.checked ? '✓' : '' }}</span>
+                }
                 {{ item.label }}
               </div>
             }
@@ -50,11 +56,15 @@ export interface MenuItem {
         } @else {
           @for (item of group.items; track item.id) {
             <div
-              role="menuitem"
+              [attr.role]="item.checked === undefined ? 'menuitem' : 'menuitemradio'"
+              [attr.aria-checked]="item.checked === undefined ? null : item.checked"
               tabindex="-1"
               [attr.aria-disabled]="item.disabled ? 'true' : null"
               [attr.data-id]="item.id"
             >
+              @if (item.checked !== undefined) {
+                <span class="radio" aria-hidden="true">{{ item.checked ? '✓' : '' }}</span>
+              }
               {{ item.label }}
             </div>
           }
@@ -111,7 +121,7 @@ export class ContextMenu {
   }
 
   protected onClick(evt: MouseEvent): void {
-    const id = (evt.target as HTMLElement | null)?.closest<HTMLElement>('[role="menuitem"]')
+    const id = (evt.target as HTMLElement | null)?.closest<HTMLElement>('[role^="menuitem"]')
       ?.dataset['id'];
     const item = this.items().find((i) => i.id === id);
     if (item) {
@@ -164,7 +174,7 @@ export class ContextMenu {
   private enabled(): HTMLElement[] {
     return [
       ...this.host.nativeElement.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]:not([aria-disabled="true"])',
+        '[role^="menuitem"]:not([aria-disabled="true"])',
       ),
     ];
   }

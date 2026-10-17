@@ -19,7 +19,8 @@ export type DialogKind =
   | 'viewer'
   | 'properties'
   | 'find'
-  | 'folder-finder';
+  | 'folder-finder'
+  | 'themes';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

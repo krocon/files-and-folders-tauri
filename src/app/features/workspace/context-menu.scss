@@ -13,7 +13,8 @@
   box-shadow: var(--shadow-popup);
 }
 
-[role='menuitem'] {
+[role='menuitem'],
+[role='menuitemradio'] {
   padding: var(--spacing-1) var(--spacing-3);
   cursor: pointer;
   white-space: nowrap;
@@ -37,4 +38,9 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--color-muted);
+}
+
+.radio {
+  display: inline-block;
+  width: 1.2em;
 }

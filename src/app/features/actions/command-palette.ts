@@ -3,10 +3,15 @@ import { ActionService } from '../../core/actions/action.service';
 import { ACTION_IDS, ACTIONS, ActionId, CATEGORY_LABELS } from '../../core/actions/action-catalog';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { ThemeService } from '../../core/theme/theme.service';
+import { THEME_TEXTS } from '../themes/theme-texts';
 import { fuzzyMatch } from './fuzzy';
 
 interface Row {
-  readonly id: ActionId;
+  readonly key: string;
+  readonly id: ActionId | null;
+  /** A colour scheme entry (design 013 E3) instead of an action. */
+  readonly themeId: string | null;
   readonly label: string;
   readonly category: string;
   readonly shortcut: string;
@@ -45,7 +50,7 @@ const MAX_ROWS = 50;
         (keydown)="onKeydown($event)"
       />
       <ul class="list" role="listbox" [id]="listId" aria-label="Actions">
-        @for (row of rows(); track row.id; let i = $index) {
+        @for (row of rows(); track row.key; let i = $index) {
           <li
             role="option"
             [id]="optionId(i)"
@@ -90,6 +95,7 @@ export class CommandPalette {
   readonly heading = input('Go to anything');
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
+  private readonly theme = inject(ThemeService);
   protected readonly listId = 'fnf-palette-list';
   protected readonly query = signal('');
   protected readonly active = signal(0);
@@ -108,7 +114,9 @@ export class CommandPalette {
       }
       const state = this.actions.state(id);
       rows.push({
+        key: id,
         id,
+        themeId: null,
         label: meta.label,
         category: CATEGORY_LABELS[meta.category],
         shortcut: this.actions.shortcutLabel(id),
@@ -116,6 +124,25 @@ export class CommandPalette {
         hint: state === 'unavailable' ? `prompt ${meta.availableIn}` : '',
         score: match.score + (state === 'unavailable' ? -100 : 0),
         parts: split(meta.label, match.positions),
+      });
+    }
+    for (const t of this.theme.themes()) {
+      const label = THEME_TEXTS.paletteEntry(t.name);
+      const match = fuzzyMatch(q, label);
+      if (!match) {
+        continue;
+      }
+      rows.push({
+        key: `theme:${t.id}`,
+        id: null,
+        themeId: t.id,
+        label,
+        category: CATEGORY_LABELS.config,
+        shortcut: '',
+        ready: true,
+        hint: '',
+        score: match.score - 1,
+        parts: split(label, match.positions),
       });
     }
     rows.sort((a, b) => b.score - a.score);
@@ -176,7 +203,8 @@ export class CommandPalette {
     }
     this.dialogs.close();
     // after the dialog is gone, so a dialog opened by the action is not closed again
-    setTimeout(() => void this.actions.run(row.id));
+    const { id, themeId } = row;
+    setTimeout(() => void (id ? this.actions.run(id) : themeId && this.theme.select(themeId)));
   }
 
   private move(i: number): void {

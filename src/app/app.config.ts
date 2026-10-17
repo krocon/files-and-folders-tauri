@@ -6,6 +6,7 @@ import { JobsApi, TauriJobsApi } from './core/jobs/jobs-api';
 import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
 import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
 import { PreviewApi, TauriPreviewApi } from './core/preview/preview-api';
+import { TauriThemeApi, ThemeApi } from './core/theme/theme-api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,5 +18,6 @@ export const appConfig: ApplicationConfig = {
     { provide: RenameApi, useClass: TauriRenameApi },
     { provide: FoldersApi, useClass: TauriFoldersApi },
     { provide: PreviewApi, useClass: TauriPreviewApi },
+    { provide: ThemeApi, useClass: TauriThemeApi },
   ],
 };

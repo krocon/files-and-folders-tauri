@@ -5,8 +5,9 @@
   justify-content: space-between;
   gap: var(--spacing-2);
   padding: var(--spacing-1) var(--spacing-2);
+  color: var(--color-footer-text);
   background: var(--color-footer-bg);
-  border-top: var(--border-width) solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-footer-border);
 }
 
 .functions,
@@ -23,9 +24,9 @@
   padding: 2px var(--spacing-2);
   font: inherit;
   font-size: var(--font-size-sm);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
+  color: var(--color-footer-button-text);
+  background: var(--color-footer-button-bg);
+  border: var(--border-width) solid var(--color-footer-button-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
 
