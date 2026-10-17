@@ -21,6 +21,12 @@ const REPEATABLE: ReadonlySet<ActionId> = new Set<ActionId>([
   'PREV_TAB',
 ]);
 
+/**
+ * Actions about the focused element (design 014 E4): like plain keys they only fire
+ * in the file list (or with no focus) – the tab bar keeps its own Shift+F10.
+ */
+const FOCUS_SCOPED: ReadonlySet<ActionId> = new Set<ActionId>(['OPEN_CONTEXT_MENU']);
+
 export const CHORD_TIMEOUT_MS = 1500;
 
 export interface DispatchEvent extends KeyEventLike {
@@ -106,8 +112,12 @@ export class KeyboardDispatcher {
       if (extra && !evt.repeat) {
         evt.preventDefault();
         evt.stopPropagation();
+        this.actions.noteKeyRun(extra.id);
         void this.actions.runExtra(extra.id);
       }
+      return null;
+    }
+    if (FOCUS_SCOPED.has(id) && !inFileListOrNowhere(target)) {
       return null;
     }
     if (evt.repeat && !REPEATABLE.has(id)) {
@@ -121,6 +131,7 @@ export class KeyboardDispatcher {
   private fire(id: ActionId, evt: DispatchEvent): ActionId {
     evt.preventDefault();
     evt.stopPropagation();
+    this.actions.noteKeyRun(id);
     void this.actions.run(id);
     return id;
   }

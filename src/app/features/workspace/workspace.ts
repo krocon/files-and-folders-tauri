@@ -56,6 +56,9 @@ import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
+import { registerMenuActions } from '../menus/menu-actions';
+import { MenuService } from '../menus/menu.service';
+import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
@@ -91,6 +94,7 @@ import { WorkspaceStore } from './workspace.store';
     PropertiesDialog,
     FindDialog,
     FolderFinderDialog,
+    ContextMenu,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -100,6 +104,7 @@ import { WorkspaceStore } from './workspace.store';
     '[class.resizing]': 'dragging()',
     '(document:visibilitychange)': 'onVisibility()',
     '(window:pagehide)': 'onPageHide()',
+    '(document:contextmenu)': 'onContextMenu($event)',
   },
 })
 export class Workspace implements OnInit {
@@ -121,6 +126,7 @@ export class Workspace implements OnInit {
   private readonly search = inject(SearchStore);
   private readonly finder = inject(FolderFinderStore);
   private readonly keyboard = inject(KeyboardDispatcher);
+  protected readonly menus = inject(MenuService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -214,7 +220,9 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
+    this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
+    this.menus.init();
     void this.jobs.init();
     void this.ws.init();
     void this.actions.init().then(() => this.os.init());
@@ -255,6 +263,19 @@ export class Workspace implements OnInit {
 
   protected resetSplitter(): void {
     this.ws.setSplitter(0.5);
+  }
+
+  /**
+   * No WebView menu (Reload, Inspect) outside our own menus (design 014 E10) – text
+   * fields and selected text keep it (copy/paste).
+   */
+  protected onContextMenu(evt: MouseEvent): void {
+    const target = evt.target instanceof Element ? evt.target : null;
+    const editable = !!target?.closest('input, textarea, [contenteditable="true"]');
+    const selected = (document.getSelection()?.toString() ?? '') !== '';
+    if (!editable && !selected) {
+      evt.preventDefault();
+    }
   }
 
   protected onPageHide(): void {

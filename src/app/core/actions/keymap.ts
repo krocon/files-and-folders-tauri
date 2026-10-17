@@ -29,15 +29,12 @@ export const TABLE_NAVIGATION_KEYS: readonly string[] = [
   'Mod+ArrowDown',
 ];
 
-/** Taken by the application menu on macOS (Tauri default menu) – never bound there. */
-export const RESERVED_MACOS: readonly string[] = [
-  'Mod+Q',
-  'Mod+W',
-  'Mod+H',
-  'Mod+M',
-  'Mod+,',
-  'Mod+Alt+H',
-];
+/**
+ * Taken by native items of the macOS application menu (Quit, Close, Hide, Minimize,
+ * Hide others) – never bound there. `Mod+,` is not reserved: it is the default of
+ * `OPEN_SETUP_DLG`, which is the Settings item of that menu (design 014 E9).
+ */
+export const RESERVED_MACOS: readonly string[] = ['Mod+Q', 'Mod+W', 'Mod+H', 'Mod+M', 'Mod+Alt+H'];
 
 export interface ResolvedKeymap {
   readonly bindings: Bindings;

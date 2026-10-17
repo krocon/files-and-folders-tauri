@@ -124,4 +124,14 @@ describe('KeyboardDispatcher', () => {
     expect(keys.held().shift).toBe(false);
     detach();
   });
+
+  it('opens the context menu with Shift+F10 only in the list (tabs keep their own, design 014 E4)', () => {
+    actions.register({ OPEN_CONTEXT_MENU: { run: () => void ran.push('OPEN_CONTEXT_MENU') } });
+    expect(press('F10', 'F10', button, { shiftKey: true })).toEqual({ id: null, prevented: false });
+    expect(press('F10', 'F10', list, { shiftKey: true }).id).toBe('OPEN_CONTEXT_MENU');
+    expect(press('ContextMenu', 'ContextMenu', list).id).toBe('OPEN_CONTEXT_MENU');
+    expect(press('ContextMenu', 'ContextMenu', button).id).toBeNull();
+    expect(actions.ranByKeyRecently('OPEN_CONTEXT_MENU')).toBe(true);
+    expect(actions.ranByKeyRecently('OPEN_COPY_DLG')).toBe(false);
+  });
 });
