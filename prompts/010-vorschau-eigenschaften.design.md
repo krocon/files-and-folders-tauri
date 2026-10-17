@@ -216,8 +216,29 @@ Fokus Viewer: Inhalt (autofocus) → Werkzeugleiste → Suche → Schließen. Ei
 
 | Punkt | Design | umgesetzt | Grund |
 |---|---|---|---|
+| Schnellvorschau-Zustand | `WorkspaceStore.quickView` | eigener Root-Store `QuickViewStore` (`on`, `shownOn`) | WorkspaceStore bleibt schlank; die Seite folgt `activeSide` |
+| Ansicht erzwingen | – | `mode`: Automatisch / Text / Hex (Auswahl im Viewer) | Binärdatei als Text oder Text als Hex ansehen; kleiner Zusatz ohne neues Risiko (gleiche Limits) |
+| BOM vor Magic Bytes | Magic Bytes zuerst | ein Text-BOM gewinnt | UTF-16 LE `FF FE` sah wie ein MP3-Frame-Sync aus (roter Test) |
+| Zeilen im Text-View | Text je Zeile | Zeile = Grid aus Nummer (`::before`) und **einem** `<span>` | E2E-Fund: `<mark>` und Textknoten wurden sonst eigene Grid-Spalten |
+| Bild einpassen/zoomen | `max-width/height` im Grid | Einpassen absolut positioniert, Zoom mit `margin: auto` im Flex-Container | E2E-Fund: Grid-Zeilen ohne feste Höhe → Bild ragte heraus; `place-items: center` schnitt gezoomte Bilder links/oben ab |
+| F4 | eigener Handler | `FileBrowserStore.openFile` öffentlich (gleiche Rückfrage bei Programmen wie Enter) | kein doppelter Code |
 
-## 8. Review (separater Agent) – Ergebnis
+## 8. Review
+
+**Selbstprüfung** (Schwerpunkt Sicherheit):
+
+- Dateiinhalte nur über `read_preview` mit harten Grenzen (`take`), nie geloggt; Fehlertexte ohne Inhalt.
+- FIFO/Gerät: `metadata` prüft „reguläre Datei“, Öffnen mit `O_NONBLOCK` und erneute Prüfung am Handle – ein nach der
+  Prüfung eingetauschter FIFO blockiert nicht (`links_fifos`).
+- Bild-Schema: nur Token aus `read_preview` (32 Hex-Zeichen, sonst 404 ohne Dateizugriff), Abruf prüft erneut
+  (Datei, Größe, Magic Bytes), `nosniff`; SVG nur im `<img>` (keine Skripte, kein Nachladen) und mit eigener CSP.
+  Restrisiko: ein Skript in der WebView könnte ohnehin `read_preview` für beliebige Pfade aufrufen (wie
+  `list_directory`) – das Schema öffnet darüber hinaus nichts.
+- DOM: Text, Hex, Namen, Pfade nur per `textContent`/Interpolation; Test „the text view builds lines with
+  textContent only“ prüft `<img onerror>`/`<b>` im Text.
+- Eigentümernamen über `getpwuid_r`/`getgrgid_r` (reentrant, 16-KiB-Puffer, Null-Zeiger geprüft).
+
+### Review (separater Agent) – Ergebnis
 
 | # | Fund | Stand |
 |---|---|---|
@@ -225,10 +246,22 @@ Fokus Viewer: Inhalt (autofocus) → Werkzeugleiste → Suche → Schließen. Ei
 ## 9. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende
-- [ ] Phase 5 Doku · [ ] Phase 6 Abschlussprüfung
+- [x] Phase 2 Rust: `preview/` (`encoding.rs`, `detect.rs`, `mod.rs` mit `read_preview`, `ImageTokens`,
+  `serve_image`), `properties.rs`, `platform::{user_name, group_name, file_attributes}`, Commands `read_preview`,
+  `get_properties`, Schema `fnfpreview` (`commands::preview_response`), CSP `img-src` – 22 neue Rust-Tests
+- [x] Phase 3 Frontend: `core/preview/` (PreviewApi + Fake), `features/preview/` (ViewerStore/-Dialog, QuickViewStore
+  + QuickView im Ziel-Panel, PropertiesStore/-Dialog, Provider-Liste mit Text/Bild/Hex/Info, reine Helfer),
+  Aktion `QUICK_VIEW` + Kürzel, Handler für F3/F4/Alt+Enter, `FileListController.moveCursorTo`, Token
+  `--color-search-hit` (light/dark) – 16 neue Frontend-Tests (`preview.spec.ts`, `preview-logic.spec.ts`)
+- [x] Phase 4 Ende-zu-Ende (Xvfb :98, Debug-Build, eigenes `HOME`/`XDG_*` unter `/tmp/claude-0/e2e-010`):
+  Text UTF-8 mit Umlauten/Emoji, Suche mit Markierung, UTF-16 (BOM), Windows-1252 (€, „“, ä) automatisch erkannt;
+  2-GB-Datei (sparse) zeigt „first 1.0 MB of 2.0 GB“, RSS der App ~180 MB; `data.bin` → Hex mit „first 4.0 KB“;
+  `bild.txt` (PNG) als Bild mit Hinweis; Foto 4000×3000 eingepasst und gezoomt; ←/→ blättert (Cursor folgt);
+  Schnellvorschau rechts folgt dem Cursor (Bild, UTF-16, `.md` mit `<script>` als Text); Eigenschaften für Link
+  (Ziel, Rechte 644, root:root) und Ordner (750, Größe per Job). Zwei Funde behoben (s. §7).
+  Nicht prüfbar: macOS/Windows (Attribute, ⌃Q), gesperrte Dateien (als root greifen Rechte nicht), Dark-Mode nur
+  über Tokens. Langsam im Debug-Build unter Xvfb (Software-Rendering): 1 MiB Text erscheint nach ~3 s.
+- [x] Phase 5 Doku · [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build), Selbstprüfung (§8)
 
 ## 10. Offen
 

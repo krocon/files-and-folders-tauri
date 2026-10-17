@@ -59,6 +59,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
   Elternordner `[P]`, Schreibweise.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
+- **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
+  (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;
+  `←`/`→` blättert durch die Dateien des Panels (der Cursor folgt), `Esc` schließt. Der Typ wird am **Inhalt** erkannt
+  (`bild.txt`, das ein PNG ist, wird als Bild gezeigt, mit Hinweis); große Dateien zeigen nur den Anfang (1 MiB Text,
+  4 KiB Hex) – auch eine 2-GB-Datei öffnet sofort.
+- **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
+- **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
+  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) öffnet bis Prompt 011 die Standard-App.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -118,7 +126,8 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Toggle favourite | `Ctrl+D` | `⌘D` |
 | Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
 | View | `F3` | `F3` |
-| Edit | `F4` | `F4` |
+| Quick view in the other panel | `Ctrl+Q` | `⌃Q` |
+| Edit (default app until 011) | `F4` | `F4` |
 | Create file… | `Shift+F4` | `⇧F4` |
 | Copy… | `F5` | `F5` |
 | Move… | `F6` | `F6` |
@@ -129,6 +138,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Create several folders… | `Ctrl+F7` | `⌘F7` |
 | Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
+| Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
 
