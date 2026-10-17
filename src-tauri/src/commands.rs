@@ -1,15 +1,22 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
-use crate::paths::validate_input_path;
+use crate::opener;
+use crate::paths::{expand_tilde, validate_input_path};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::window_state;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::time::Duration;
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime};
 
 /// Label of the only window.
@@ -27,17 +34,150 @@ pub async fn list_directory<R: Runtime>(
         .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
 }
 
+fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path().home_dir().map_err(|e| {
+        FsError::new(
+            FsErrorCode::NoHomeDirectory,
+            format!("Home directory could not be determined: {e}"),
+            None,
+        )
+    })
+}
+
+/// Validates a path from the frontend; a leading `~` means the home folder.
+fn resolve_input<R: Runtime>(app: &AppHandle<R>, raw: &str) -> Result<PathBuf, FsError> {
+    if raw.trim_start().starts_with('~') {
+        let expanded = expand_tilde(raw, &home_dir(app)?)?;
+        return validate_input_path(&expanded.to_string_lossy());
+    }
+    validate_input_path(raw)
+}
+
 fn resolve_dir<R: Runtime>(app: &AppHandle<R>, path: Option<String>) -> Result<PathBuf, FsError> {
     match path {
-        Some(p) => validate_input_path(&p),
-        None => app.path().home_dir().map_err(|e| {
-            FsError::new(
-                FsErrorCode::NoHomeDirectory,
-                format!("Home directory could not be determined: {e}"),
-                None,
-            )
-        }),
+        Some(p) => resolve_input(app, &p),
+        None => home_dir(app),
     }
+}
+
+/// Where a typed location leads: a folder, or a file's folder with the file selected.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Location {
+    pub dir: String,
+    pub select: Option<String>,
+}
+
+/// Resolves a path typed by the user (`~` allowed): folder → itself, file → its folder.
+#[tauri::command]
+pub async fn resolve_location<R: Runtime>(
+    app: AppHandle<R>,
+    input: String,
+) -> Result<Location, FsError> {
+    let path = resolve_input(&app, &input)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let meta = std::fs::metadata(&path).map_err(|e| FsError::from_io(&e, &path))?;
+        if meta.is_dir() {
+            return Ok(Location {
+                dir: path.to_string_lossy().into_owned(),
+                select: None,
+            });
+        }
+        let parent = crate::paths::parent_of(&path).ok_or_else(|| {
+            FsError::new(FsErrorCode::NotADirectory, "No parent folder", Some(&path))
+        })?;
+        Ok(Location {
+            dir: parent.to_string_lossy().into_owned(),
+            select: Some(path.to_string_lossy().into_owned()),
+        })
+    })
+    .await
+    .map_err(|e| FsError::new(FsErrorCode::Io, format!("Resolving failed: {e}"), None))?
+}
+
+/// Running folder-size jobs (cancel tokens). Replaced by the job engine of prompt 005.
+#[derive(Default)]
+pub struct DirSizeJobs {
+    tokens: Mutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+/// Recursive size of a folder with progress; symlinks are not followed.
+#[tauri::command]
+pub async fn calc_dir_size<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    job_id: String,
+    on_progress: Channel<DirSize>,
+) -> Result<DirSize, FsError> {
+    let dir = resolve_input(&app, &path)?;
+    let token = Arc::new(AtomicBool::new(false));
+    {
+        let jobs = app.state::<DirSizeJobs>();
+        let mut tokens = jobs.tokens.lock().unwrap_or_else(|e| e.into_inner());
+        if tokens.contains_key(&job_id) {
+            return Err(FsError::new(FsErrorCode::Io, "Duplicate job id", None));
+        }
+        tokens.insert(job_id.clone(), token.clone());
+    }
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        if !dir.is_dir() {
+            return Err(FsError::new(
+                FsErrorCode::NotADirectory,
+                "Not a folder",
+                Some(&dir),
+            ));
+        }
+        Ok(dirsize::dir_size(
+            &dir,
+            &token,
+            Duration::from_millis(100),
+            |p| {
+                let _ = on_progress.send(*p);
+            },
+        ))
+    })
+    .await;
+    app.state::<DirSizeJobs>()
+        .tokens
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&job_id);
+    result.map_err(|e| {
+        FsError::new(
+            FsErrorCode::Io,
+            format!("Size calculation failed: {e}"),
+            None,
+        )
+    })?
+}
+
+#[tauri::command]
+pub fn cancel_dir_size<R: Runtime>(app: AppHandle<R>, job_id: String) {
+    if let Some(t) = app
+        .state::<DirSizeJobs>()
+        .tokens
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&job_id)
+    {
+        t.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Opens a file with the default application; executables only with `allow_executable`.
+#[tauri::command]
+pub async fn open_file<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    allow_executable: bool,
+) -> Result<(), FsError> {
+    let file = resolve_input(&app, &path)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        opener::check_openable(&file, allow_executable)?;
+        opener::open_with_default_app(&file)
+    })
+    .await
+    .map_err(|e| FsError::new(FsErrorCode::Io, format!("Opening failed: {e}"), None))?
 }
 
 /// Session file, last known session and window geometry (managed state).

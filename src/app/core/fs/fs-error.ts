@@ -4,6 +4,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'not_found',
   'permission_denied',
   'not_a_directory',
+  'not_a_file',
+  'executable',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -30,11 +32,15 @@ export function toFsError(err: unknown): FsError {
 export function describeFsError(error: FsError): string {
   switch (error.code) {
     case 'not_found':
-      return 'The folder does not exist (anymore).';
+      return 'The file or folder does not exist (anymore).';
     case 'permission_denied':
       return 'Access denied – you do not have permission to read this folder.';
     case 'not_a_directory':
       return 'This is not a folder.';
+    case 'not_a_file':
+      return 'This is a folder, not a file.';
+    case 'executable':
+      return 'This file is a program.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

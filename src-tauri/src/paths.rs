@@ -37,6 +37,28 @@ pub fn validate_input_path(raw: &str) -> Result<PathBuf, FsError> {
     Ok(normalize_lexically(&path))
 }
 
+/// Expands a leading `~` (`~`, `~/x`, `~\\x`) with `home`. `~user` is not supported.
+pub fn expand_tilde(raw: &str, home: &Path) -> Result<PathBuf, FsError> {
+    let trimmed = raw.trim();
+    let Some(rest) = trimmed.strip_prefix('~') else {
+        return Ok(PathBuf::from(trimmed));
+    };
+    if rest.is_empty() {
+        return Ok(home.to_path_buf());
+    }
+    let rest = rest
+        .strip_prefix('/')
+        .or_else(|| rest.strip_prefix(std::path::MAIN_SEPARATOR))
+        .ok_or_else(|| {
+            FsError::new(
+                FsErrorCode::InvalidPath,
+                "Only ~ for your own home folder is supported",
+                None,
+            )
+        })?;
+    Ok(home.join(rest))
+}
+
 /// Resolves `.` and `..` lexically. `..` never climbs above the root.
 pub fn normalize_lexically(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
@@ -128,6 +150,22 @@ mod tests {
         assert_eq!(normalize_lexically(&p), abs(&["a", "c"]));
         let escape = root.join("..").join("..").join("x");
         assert_eq!(normalize_lexically(&escape), abs(&["x"]));
+    }
+
+    #[test]
+    fn expands_tilde_for_the_own_home_only() {
+        let home = abs(&["home", "jörg"]);
+        assert_eq!(expand_tilde("~", &home).unwrap(), home);
+        assert_eq!(
+            expand_tilde(" ~/Mein Ordner ", &home).unwrap(),
+            home.join("Mein Ordner")
+        );
+        assert_eq!(
+            expand_tilde("~other/x", &home).unwrap_err().code,
+            FsErrorCode::InvalidPath
+        );
+        let plain = abs(&["x"]);
+        assert_eq!(expand_tilde(plain.to_str().unwrap(), &home).unwrap(), plain);
     }
 
     #[test]

@@ -29,6 +29,20 @@ describe('summarize', () => {
     expect(s.markedDirs).toBe(1);
   });
 
+  it('ignores ".." and adds calculated folder sizes', async () => {
+    const { parentRow } = await import('../../core/fs/fs.models');
+    const withSize = [
+      parentRow('/'),
+      dir('Big', { path: '/x/Big', size: 1_000_000 }),
+      ...entries.slice(2),
+    ];
+    const s = summarize(withSize, new Set(['/x/Big', '/']));
+    expect(s.dirs).toBe(1);
+    expect(s.markedDirs).toBe(1);
+    expect(s.totalSize).toBe(1_000_000 + 3_058);
+    expect(s.markedSize).toBe(1_000_000);
+  });
+
   it('is all zero for an empty folder', () => {
     expect(summarize([], new Set())).toEqual({
       markedSize: 0,

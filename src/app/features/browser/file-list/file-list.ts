@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { TableComponent } from '@guiexpert/angular-table';
 import { TableApi, TableStateIf } from '@guiexpert/table';
-import { DirEntry } from '../../../core/fs/fs.models';
+import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
@@ -40,6 +40,10 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
   `,
   styleUrl: './file-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(keydown)': 'onKeydown($event)',
+    '(mouseup)': 'onMouseUp($event)',
+  },
 })
 export class FileList implements OnDestroy {
   protected readonly store = inject(FileBrowserStore);
@@ -54,7 +58,10 @@ export class FileList implements OnDestroy {
   readonly tableStateChanged = output<Partial<TableStateIf>>();
 
   /** Model and options are created once – a new object would re-create the table. */
-  protected readonly table = computed(() => createFileTable(this.labelledBy()));
+  protected readonly table = computed(() =>
+    createFileTable(this.labelledBy(), () => this.store.rowFilter()),
+  );
+  private shownPath: string | null = null;
 
   private bridge?: TableBridge;
   private controller?: FileListController;
@@ -77,7 +84,7 @@ export class FileList implements OnDestroy {
       untracked(() => {
         if (listing && this.controller) {
           const start = performance.now();
-          this.show(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
+          this.show(listing);
           const sync = since(start);
           requestAnimationFrame(() =>
             recordPerf(
@@ -92,6 +99,15 @@ export class FileList implements OnDestroy {
     effect(() => {
       this.store.marked();
       untracked(() => this.bridge?.repaint());
+    });
+    effect(() => {
+      this.store.rowFilter();
+      untracked(() => {
+        if (this.bridge && this.controller) {
+          this.bridge.filterChanged();
+          this.controller.restoreCursor();
+        }
+      });
     });
   }
 
@@ -127,12 +143,47 @@ export class FileList implements OnDestroy {
         }),
     });
 
+    this.store.scrollTop = () => bridge.getTableState().scroll?.top ?? 0;
     const listing = this.store.listing();
     if (listing) {
-      this.show(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
+      this.show(listing);
     }
     if (this.focusWanted) {
       this.focus();
+    }
+  }
+
+  /**
+   * Type-ahead (design 003 E6): printable characters without Mod/Ctrl/Alt jump to
+   * the first matching name. Keys bound to actions never get here (the dispatcher
+   * runs in the capture phase); Space is an action.
+   */
+  protected onKeydown(evt: KeyboardEvent): void {
+    if (evt.ctrlKey || evt.metaKey || evt.altKey || !this.controller) {
+      return;
+    }
+    if (evt.key === 'Escape') {
+      this.controller.resetTypeAhead();
+      return;
+    }
+    if (evt.key.length === 1 && evt.key !== ' ') {
+      const found = this.controller.typeAhead(evt.key);
+      evt.preventDefault();
+      evt.stopPropagation();
+      if (found && this.bridge) {
+        this.bridge.announce(found);
+      }
+    }
+  }
+
+  /** Mouse buttons 4/5 (back/forward). */
+  protected onMouseUp(evt: MouseEvent): void {
+    if (evt.button === 3) {
+      evt.preventDefault();
+      void this.store.back();
+    } else if (evt.button === 4) {
+      evt.preventDefault();
+      void this.store.forward();
     }
   }
 
@@ -153,12 +204,21 @@ export class FileList implements OnDestroy {
     target?.focus();
   }
 
-  private show(entries: readonly DirEntry[], label: string): void {
+  /** Rows of a listing: the ".." row first (if there is a parent), then the entries. */
+  private show(listing: DirectoryListing): void {
+    const rows: DirEntry[] =
+      listing.parent !== null
+        ? [parentRow(listing.parent), ...listing.entries]
+        : [...listing.entries];
+    // announce only a new folder, not a refresh or a calculated folder size
+    const label =
+      listing.path !== this.shownPath ? (listing.segments.at(-1)?.name ?? listing.path) : undefined;
+    this.shownPath = listing.path;
     const state = this.store.takePendingTableState() ?? undefined;
     const seq = ++this.applySeq;
     this.applying = true;
     try {
-      this.controller?.showRows(entries, label, state);
+      this.controller?.showRows(rows, label, state);
     } finally {
       // the table reports state changes debounced (300 ms) – ignore the ones caused by applying
       setTimeout(() => {

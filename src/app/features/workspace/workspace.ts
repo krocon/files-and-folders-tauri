@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
+import { ConfirmDialog } from '../../shared/dialog/confirm-dialog';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
@@ -31,7 +32,7 @@ import { WorkspaceStore } from './workspace.store';
  */
 @Component({
   selector: 'app-workspace',
-  imports: [FilePanel, ButtonBar, CommandPalette, MarkPatternDialog, ShortcutDialog],
+  imports: [FilePanel, ButtonBar, CommandPalette, MarkPatternDialog, ShortcutDialog, ConfirmDialog],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -7,11 +7,14 @@ import {
   inject,
   input,
   OnInit,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
-import { describeFsError } from '../../core/fs/fs-error';
+import { FsApi } from '../../core/fs/fs-api';
+import { describeFsError, toFsError } from '../../core/fs/fs-error';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
@@ -42,6 +45,7 @@ let panelSeq = 0;
     '[class.side-right]': "side() === 'right'",
     '(pointerdown)': 'activate()',
     '(focusin)': 'activate()',
+    '(click)': 'onHeaderClick($event)',
   },
 })
 export class FilePanel implements OnInit {
@@ -64,7 +68,22 @@ export class FilePanel implements OnInit {
   });
   protected readonly isFavorite = computed(() => this.ws.isFavorite(this.store.path()));
   protected readonly segments = computed(() => this.store.listing()?.segments ?? []);
-  protected readonly summary = computed(() => summarize(this.store.entries(), this.store.marked()));
+  protected readonly summary = computed(() =>
+    summarize(this.store.visibleEntries(), this.store.marked()),
+  );
+  /** Path input (Strg/⌘+L, design 003 E8). */
+  protected readonly editingPath = signal(false);
+  protected readonly pathError = signal<string | null>(null);
+  protected readonly sizeProgress = computed(() => {
+    const jobs = this.store.sizeJobs();
+    if (jobs.length === 0) {
+      return null;
+    }
+    const bytes = jobs.reduce((n, j) => n + (j.progress?.bytes ?? 0), 0);
+    return `${TEXTS.calculating(jobs.length)} ${formatSize(bytes)}`;
+  });
+  private readonly fsApi = inject(FsApi);
+  private readonly confirm = inject(ConfirmService);
   protected readonly formatSize = formatSize;
 
   /** Tab that is shown or being opened. */
@@ -107,6 +126,41 @@ export class FilePanel implements OnInit {
         }
       });
     });
+    // filter and hidden state belong to the tab
+    effect(() => {
+      const state = {
+        hiddenVisible: this.store.hiddenVisible(),
+        filterActive: this.store.filterActive(),
+        filterText: this.store.filterText(),
+      };
+      untracked(() => {
+        const tab = this.tab();
+        if (
+          this.shownTabId === tab.id &&
+          (tab.hiddenVisible !== state.hiddenVisible ||
+            tab.filterActive !== state.filterActive ||
+            tab.filterText !== state.filterText)
+        ) {
+          this.ws.updateTab(tab.id, state);
+        }
+      });
+    });
+    effect(() => {
+      const req = this.ws.navigateRequest();
+      untracked(() => {
+        if (req?.side === this.side() && !this.store.navigationLocked()) {
+          void this.store.load(req.path ?? undefined);
+        }
+      });
+    });
+    effect(() => {
+      const req = this.ws.pathEditRequest();
+      untracked(() => {
+        if (req?.side === this.side()) {
+          this.startPathEdit();
+        }
+      });
+    });
     effect(() => {
       const req = this.ws.reloadRequest();
       untracked(() => {
@@ -118,6 +172,13 @@ export class FilePanel implements OnInit {
   }
 
   ngOnInit(): void {
+    this.store.confirmExecutable = (entry) =>
+      this.confirm.ask({
+        title: TEXTS.runProgramTitle,
+        message: TEXTS.runProgramMessage,
+        detail: entry.path,
+        confirmLabel: TEXTS.runProgramConfirm,
+      });
     // the side is fixed for the lifetime of a panel
     const unregister = this.ws.registerPanel(this.side(), {
       store: this.store,
@@ -133,6 +194,61 @@ export class FilePanel implements OnInit {
   protected openSegment(segment: PathSegment): void {
     if (segment.path !== this.store.path() && !this.store.navigationLocked()) {
       void this.store.load(segment.path, { cursor: this.childOf(segment) });
+    }
+  }
+
+  protected startPathEdit(): void {
+    this.pathError.set(null);
+    this.editingPath.set(true);
+    setTimeout(() => {
+      const input = document.getElementById(`${this.pathId}-input`) as HTMLInputElement | null;
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  /** Esc: close and give the focus back to the list. */
+  protected cancelPathEdit(): void {
+    this.closePathEdit();
+    this.ws.requestFocus(this.side());
+  }
+
+  /** Focus left the input (Tab): close, but let the focus go where the user moved it. */
+  protected closePathEdit(): void {
+    this.editingPath.set(false);
+    this.pathError.set(null);
+  }
+
+  protected async submitPath(evt: Event, value: string): Promise<void> {
+    evt.preventDefault();
+    try {
+      const loc = await this.fsApi.resolveLocation(value);
+      await this.store.load(loc.dir, loc.select !== null ? { cursor: loc.select } : {});
+      if (this.store.error()) {
+        this.pathError.set(describeFsError(this.store.error()!));
+        this.store.dismissError();
+        return;
+      }
+      this.editingPath.set(false);
+      this.pathError.set(null);
+      this.ws.requestFocus(this.side());
+    } catch (err) {
+      this.pathError.set(describeFsError(toFsError(err)));
+    }
+  }
+
+  protected onPathKeydown(evt: KeyboardEvent): void {
+    if (evt.key === 'Escape') {
+      evt.preventDefault();
+      evt.stopPropagation();
+      this.cancelPathEdit();
+    }
+  }
+
+  /** Click on the free space of the path bar (not on a segment) opens the path input (keyboard: Strg/⌘+L). */
+  protected onHeaderClick(evt: MouseEvent): void {
+    if ((evt.target as Element).classList.contains('crumbs')) {
+      this.startPathEdit();
     }
   }
 
@@ -186,13 +302,21 @@ export class FilePanel implements OnInit {
         ...(table ? { table } : {}),
       });
     }
+    this.store.rememberCurrent();
+    this.store.cancelSizeJobs();
     this.shownTabId = id;
     this.listingAtSwitch = this.store.listing();
     const tab = this.ws.activeTab(this.side());
+    this.store.setMemory(this.ws.memory(id));
+    this.store.setFilter(tab);
     this.store.setPendingTableState(tab.table);
     this.store.navigationLocked.set(true);
     try {
-      await this.store.load(tab.path ?? undefined, { cursor: tab.cursor });
+      await this.store.load(tab.path ?? undefined, {
+        cursor: tab.cursor,
+        history: 'none',
+        remember: false,
+      });
     } finally {
       if (this.shownTabId === id) {
         this.store.navigationLocked.set(false);

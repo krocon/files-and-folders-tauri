@@ -4,7 +4,7 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Prompt 002 (Aktionen und Tastatur) auf Basis von 004 (Fensteraufbau).** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
+> **Status: Prompt 003 (Navigation, Filter, Ordnergröße) auf Basis von 002 und 004.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
 > GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
 > Favoriten und Fenstergröße werden gespeichert. Es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
@@ -22,6 +22,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   `session.json` im App-Config-Verzeichnis gespeichert und beim Start wiederhergestellt; gelöschte Ordner →
   nächster existierender Elternordner mit Hinweis; kaputte Datei → Defaults + Warnung (alte Datei als `.bad`).
 - Ohne gespeicherte Sitzung: beide Seiten im Home-Ordner des aktuellen Benutzers.
+- **Navigation** (Prompt 003): „..“-Zeile, Zurück/Vor je Tab (auch Maustasten 4/5) mit Cursor und Scrollposition,
+  Cursor und Markierung je Ordner gemerkt, Menü ▾ mit Home, Favoriten und zuletzt besuchten Ordnern (`Alt+F1`/`Alt+F2`),
+  Pfadeingabe (`Strg/⌘+L`, `~` erlaubt, Datei → Ordner mit Cursor darauf).
+- **Versteckte Dateien** (👁, `Strg+H` / `⌘⇧.`) und **Schnellfilter** (⏷, `Strg/⌘+Alt+F`, z. B. `*.jpg -thumb`) je Tab;
+  **Typ-Ahead**: Buchstaben tippen springt zum passenden Namen.
+- **Ordnergröße**: Leertaste auf einem Ordner markiert ihn und berechnet die Größe (abbrechbar, folgt keinen Symlinks);
+  `Alt+Shift+Enter` für alle markierten Ordner.
+- **Dateien öffnen** mit der Standard-App (Enter/Doppelklick); Programme erst nach Rückfrage.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -52,7 +60,10 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Reload | `Ctrl+R` | `⌘R` |
 | History back | `Alt+ArrowLeft` | `⌘[` |
 | History forward | `Alt+ArrowRight` | `⌘]` |
-| Change folder… | `Alt+F10` | `⌘⌃D` |
+| Go to path… | `Ctrl+L`, `Alt+F10` | `⌘L`, `⌘⌃D` |
+| Folder menu, left panel | `Alt+F1` | `⌥F1` |
+| Folder menu, right panel | `Alt+F2` | `⌥F2` |
+| Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |

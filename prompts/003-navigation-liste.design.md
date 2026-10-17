@@ -1,6 +1,6 @@
 # Design 003: Navigation, Verlauf, Filter und Statuszeile
 
-> **Status:** 🛑 Entwurf, wartet auf Freigabe · **Datum:** 2026-10-17 · **Branch:** `feat/navigation-liste`
+> **Status:** ✅ umgesetzt (freigegeben 2026-10-17, E1–E10 wie empfohlen) · **Datum:** 2026-10-17 · **Branch:** `feat/navigation-liste`
 > (von `feat/aktionen-tastatur`)
 > **Grundlage:** legacy §4/§5, mr §1.3/§1.4/§3/§4, `docs/ui-layout.md` Zeilen 1–2, Designs 001/002/004.
 
@@ -134,5 +134,33 @@ Fokus-Reihenfolge je Seite: Breadcrumb → Stern → Menü ▾ → Tabs → + �
 ## 6. Fortschritt
 
 - [x] Phase 1: dieses Dokument
-- [ ] Freigabe
-- [ ] Phasen 2–6
+- [x] Freigabe (2026-10-17)
+- [x] Phase 2: Rust – `dirsize.rs`, `opener.rs`, `expand_tilde`, `resolve_location`, `calc_dir_size`/`cancel_dir_size`,
+  `open_file`, Fehlercodes `not_a_file`/`executable`, `recent` in `session.rs`; Abhängigkeit `open` 5
+- [x] Phase 3: Frontend – „..“-Zeile, Zurück/Vor + Merken je Ordner (`tab-memory.ts`), Zuletzt-Liste, Menü ▾,
+  👁/⏷ mit Filterfeld je Tab, Typ-Ahead, Ordnergröße (Leertaste, `Alt+Shift+Enter`), Pfadeingabe (`Strg/⌘+L`),
+  Datei öffnen mit Rückfrage bei Programmen (`ConfirmService`); 174 Vitest-Tests
+- [x] Phase 4: Ende-zu-Ende unter Xvfb: „..“, Hidden standardmäßig aus und `Strg+H`, Typ-Ahead „mei“, Leertaste
+  berechnet 197 KB (Symlink-Zyklus im Baum endet), Zurück/Vor mit Cursor, Pfadeingabe `~/Dokumente/brief.txt`
+  (Cursor auf der Datei), Filter `*e*` + Esc, Menü ▾ (`Alt+F1`), kaputter Symlink → Fehlermeldung
+- [x] Phase 5/6: Doku, `pnpm check`, Debug-Build, Review durch separaten Agenten
+
+### Review (separater Agent)
+
+| Befund | Umsetzung |
+|---|---|
+| Windows/macOS: Endungen fehlten, die Code ausführen (`.js .hta .wsf .cpl .reg .url .jar …`, `.terminal .fileloc`) | Listen erweitert |
+| Ausführungsbit auf FAT/exFAT/NTFS/SMB machte jedes Dokument zum „Programm“ | Endung zuerst, Bit nur ohne Endung oder mit `#!` (Test) |
+| Markierungen eines geklonten Tabs im selben Ordner tauchten im anderen Tab auf | Tab-Wechsel gilt immer als neuer Ordner (Test) |
+| Gelöschtes Zurück-Ziel blockierte den Verlauf, alte Scrollposition blieb hängen | `not_found` entfernt den Eintrag; Scroll nur bei Erfolg (Test) |
+| Größen-Job eines alten Tabs konnte den neuen Tab umschreiben | Jobs beim Tab-Wechsel abbrechen, Fehler nur im eigenen Ordner melden |
+| Ordnergröße lief in andere Dateisysteme (`/proc`, Netzlaufwerke), Abbruch nur zwischen Ordnern, `is_dir` auf dem Async-Thread | gleiches Gerät (Unix), Abbruch je Eintrag, Prüfung im Blocking-Task |
+| Job-Ids nach WebView-Reload doppelt | zufälliges Präfix, Rust weist Dubletten ab |
+| Tab aus der Pfadeingabe sprang in die Liste; Gruppen im Menü ▾ nicht angesagt | Blur schließt nur; `role="group"` mit Label |
+
+### Befunde
+
+- Berechnete Ordnergrößen gehen beim Verlassen des Ordners verloren (kein Cache) – bewusst einfach; Kandidat für
+  012 (Überwachung) bzw. einen Größen-Cache.
+- „Öffnen mit Standard-App“ nur bis zum Aufruf von `xdg-open` geprüft (Container ohne Desktop); macOS/Windows offen.
+- Fehlermeldung `not_found` heißt jetzt „Datei oder Ordner existiert nicht“ (galt vorher nur Ordnern).

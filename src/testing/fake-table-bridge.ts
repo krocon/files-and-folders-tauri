@@ -16,7 +16,21 @@ export class FakeTableBridge implements TableBridge {
 
   setRows(rows: readonly DirEntry[]): void {
     this.calls.push(`setRows(${rows.length})`);
-    this.rows = this.sortFn ? [...rows].sort(this.sortFn) : [...rows];
+    this.all = [...rows];
+    const kept = this.all.filter(this.filter);
+    this.rows = this.sortFn ? kept.sort(this.sortFn) : kept;
+  }
+
+  /** Rows hidden by the external filter (set by tests). */
+  filter: (r: DirEntry) => boolean = () => true;
+  private all: DirEntry[] = [];
+
+  filterChanged(): void {
+    this.calls.push('filterChanged');
+    this.rows = this.all.filter(this.filter);
+    if (this.sortFn) {
+      this.rows.sort(this.sortFn);
+    }
   }
 
   /** Simulates a header sort: order changes, focus index stays. */

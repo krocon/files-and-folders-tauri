@@ -3,12 +3,14 @@ import {
   Component,
   computed,
   effect,
+  untracked,
   ElementRef,
   inject,
   input,
   signal,
 } from '@angular/core';
 import { Side } from '../../core/session/session.models';
+import { FileBrowserStore } from '../browser/file-browser.store';
 import { ContextMenu, MenuItem } from './context-menu';
 import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
@@ -39,6 +41,26 @@ export class TabBar {
   protected readonly ws = inject(WorkspaceStore);
   protected readonly texts = TEXTS;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** The panel's store (TabBar lives inside the FilePanel). */
+  protected readonly store = inject(FileBrowserStore, { optional: true });
+  protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
+  protected readonly folderMenuItems = computed<MenuItem[]>(() => {
+    const t = TEXTS;
+    const favorites = [...this.ws.favorites()];
+    const recent = this.ws.recent().filter((p) => !this.ws.favorites().has(p));
+    const group = (prefix: string, label: string, paths: string[]): MenuItem[] => [
+      { id: `${prefix}-h`, label, heading: true },
+      ...(paths.length === 0
+        ? [{ id: `${prefix}-none`, label: t.menuEmpty, disabled: true }]
+        : paths.map((p, i) => ({ id: `${prefix}:${i}`, label: p }))),
+    ];
+    return [
+      { id: 'home', label: t.menuHome },
+      ...group('fav', t.menuFavorites, favorites),
+      ...group('recent', t.menuRecent, recent),
+    ];
+  });
 
   protected readonly panel = computed(() => this.ws.panels()[this.side()]);
   protected readonly menu = signal<OpenMenu | null>(null);
@@ -71,6 +93,80 @@ export class TabBar {
         this.menu.set(null);
       }
     });
+    effect(() => {
+      const req = this.ws.folderMenuRequest();
+      if (req && req.side === this.side()) {
+        untracked(() => this.openFolderMenu());
+      }
+    });
+  }
+
+  protected openFolderMenu(): void {
+    const button = this.host.nativeElement.querySelector<HTMLElement>('.folder-menu');
+    const rect = button?.getBoundingClientRect();
+    this.ws.setActive(this.side());
+    this.folderMenuOpen.set({ x: rect?.left ?? 0, y: rect?.bottom ?? 0 });
+  }
+
+  protected onFolderChosen(id: string): void {
+    this.folderMenuOpen.set(null);
+    const favorites = [...this.ws.favorites()];
+    const recent = this.ws.recent().filter((p) => !this.ws.favorites().has(p));
+    let path: string | null | undefined;
+    if (id === 'home') {
+      path = null;
+    } else if (id.startsWith('fav:')) {
+      path = favorites[Number(id.slice(4))];
+    } else if (id.startsWith('recent:')) {
+      path = recent[Number(id.slice(7))];
+    }
+    if (path !== undefined) {
+      this.ws.requestNavigate(this.side(), path);
+    }
+    this.ws.requestFocus(this.side());
+  }
+
+  protected onFolderMenuClosed(reason: 'key' | 'outside'): void {
+    this.folderMenuOpen.set(null);
+    if (reason === 'key') {
+      this.host.nativeElement.querySelector<HTMLElement>('.folder-menu')?.focus();
+    }
+  }
+
+  protected toggleHidden(): void {
+    this.store?.hiddenVisible.update((v) => !v);
+  }
+
+  protected toggleFilter(): void {
+    if (!this.store) {
+      return;
+    }
+    const on = !this.store.filterActive();
+    this.store.filterActive.set(on);
+    if (on) {
+      setTimeout(() =>
+        this.host.nativeElement.querySelector<HTMLInputElement>('.filter-input')?.focus(),
+      );
+    } else {
+      this.ws.requestFocus(this.side());
+    }
+  }
+
+  protected onFilterInput(value: string): void {
+    this.store?.filterText.set(value);
+  }
+
+  protected onFilterKeydown(evt: KeyboardEvent): void {
+    if (evt.key === 'Escape') {
+      evt.preventDefault();
+      evt.stopPropagation();
+      this.store?.filterText.set('');
+      this.store?.filterActive.set(false);
+      this.ws.requestFocus(this.side());
+    } else if (evt.key === 'Enter' || evt.key === 'ArrowDown') {
+      evt.preventDefault();
+      this.ws.requestFocus(this.side());
+    }
   }
 
   protected title(tab: TabState): string {

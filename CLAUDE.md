@@ -13,8 +13,8 @@
 ## 1. Stand
 
 - Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table), Prompt 004 (Fensteraufbau, Tabs,
-  Sitzungszustand) und Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste) sind fertig. Als
-  Nächstes: Prompt 003 (Navigation, Filter, Hidden). Details: `docs/roadmap.md`, `prompts/README.md`.
+  Sitzungszustand), Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste) und Prompt 003
+  (Navigation, Verlauf, Filter/Hidden, Ordnergröße, Datei öffnen) sind fertig. Als Nächstes: Prompt 005 (Job-Engine). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -60,6 +60,7 @@ src-tauri/                   Rust (Tauri 2)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
+  src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/

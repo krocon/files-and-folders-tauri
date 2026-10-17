@@ -5,7 +5,7 @@ import {
   DomServiceIf,
   RendererCleanupFnType,
 } from '@guiexpert/table';
-import { DirEntry, isNavigableDir } from '../../../core/fs/fs.models';
+import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { formatModified, formatSize } from '../../../shared/format';
 
 /**
@@ -24,6 +24,9 @@ function rowOf(areaModel: AreaModelIf, rowIndex: number): DirEntry | undefined {
 
 /** Visible icon per entry (decorative, `aria-hidden`). */
 export function iconFor(entry: DirEntry): string {
+  if (isParentRow(entry)) {
+    return '↑';
+  }
   if (isNavigableDir(entry)) {
     return entry.kind === 'symlink' ? '📁↗' : '📁';
   }
@@ -82,6 +85,17 @@ export class NameCellRenderer implements CellRendererIf {
   }
 }
 
+/** `<DIR>` for folders until their size was calculated (Space, design 003 E7); nothing for "..". */
+export function sizeText(entry: DirEntry): string {
+  if (isParentRow(entry)) {
+    return '';
+  }
+  if (isNavigableDir(entry) && entry.size === null) {
+    return '<DIR>';
+  }
+  return formatSize(entry.size);
+}
+
 export class SizeCellRenderer implements CellRendererIf {
   render(
     cellDiv: HTMLDivElement,
@@ -94,7 +108,7 @@ export class SizeCellRenderer implements CellRendererIf {
   ): RendererCleanupFnType | undefined {
     const entry = rowOf(areaModel, rowIndex);
     if (entry) {
-      setText(cellDiv, domService, isNavigableDir(entry) ? '<DIR>' : formatSize(entry.size));
+      setText(cellDiv, domService, sizeText(entry));
     }
     return undefined;
   }

@@ -2,6 +2,7 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  computed,
   ElementRef,
   inject,
   input,
@@ -12,6 +13,8 @@ export interface MenuItem {
   readonly id: string;
   readonly label: string;
   readonly disabled?: boolean;
+  /** A group heading (not selectable). */
+  readonly heading?: boolean;
 }
 
 /**
@@ -22,24 +25,42 @@ export interface MenuItem {
 @Component({
   selector: 'app-context-menu',
   template: `
-    <ul
+    <div
       class="menu"
       role="menu"
       [attr.aria-label]="label()"
       [style.left.px]="x()"
       [style.top.px]="y()"
     >
-      @for (item of items(); track item.id) {
-        <li
-          role="menuitem"
-          tabindex="-1"
-          [attr.aria-disabled]="item.disabled ? 'true' : null"
-          [attr.data-id]="item.id"
-        >
-          {{ item.label }}
-        </li>
+      @for (group of groups(); track $index) {
+        @if (group.heading; as h) {
+          <div role="group" [attr.aria-label]="h">
+            <div class="heading" aria-hidden="true">{{ h }}</div>
+            @for (item of group.items; track item.id) {
+              <div
+                role="menuitem"
+                tabindex="-1"
+                [attr.aria-disabled]="item.disabled ? 'true' : null"
+                [attr.data-id]="item.id"
+              >
+                {{ item.label }}
+              </div>
+            }
+          </div>
+        } @else {
+          @for (item of group.items; track item.id) {
+            <div
+              role="menuitem"
+              tabindex="-1"
+              [attr.aria-disabled]="item.disabled ? 'true' : null"
+              [attr.data-id]="item.id"
+            >
+              {{ item.label }}
+            </div>
+          }
+        }
       }
-    </ul>
+    </div>
   `,
   styleUrl: './context-menu.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,6 +80,22 @@ export class ContextMenu {
   readonly closed = output<'key' | 'outside'>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** Items split at headings into groups (`role="group"` with the heading as label). */
+  protected readonly groups = computed(() => {
+    const groups: { heading: string | null; items: MenuItem[] }[] = [];
+    for (const item of this.items()) {
+      if (item.heading) {
+        groups.push({ heading: item.label, items: [] });
+      } else {
+        if (groups.length === 0) {
+          groups.push({ heading: null, items: [] });
+        }
+        groups[groups.length - 1].items.push(item);
+      }
+    }
+    return groups;
+  });
 
   constructor() {
     afterNextRender(() => {
