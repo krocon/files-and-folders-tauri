@@ -200,25 +200,12 @@ describe('FilePanel', () => {
     expect(store.cursorPath()).toBe('/data/b.txt');
   });
 
-  it('activates its side on pointer down and switches sides with Tab in the list', async () => {
-    const { el, fixture } = await render();
+  it('activates its side on pointer down and registers itself for actions', async () => {
+    const { el, store } = await render();
     ws.setActive('right');
     el.querySelector('.status')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     expect(ws.activeSide()).toBe('left');
-    const list = el.querySelector('.stub-list')!;
-    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
-    list.dispatchEvent(tab);
-    fixture.detectChanges();
-    expect(ws.activeSide()).toBe('right');
-    expect(tab.defaultPrevented).toBe(true);
-    const shiftTab = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      shiftKey: true,
-      bubbles: true,
-      cancelable: true,
-    });
-    list.dispatchEvent(shiftTab);
-    expect(shiftTab.defaultPrevented).toBe(false);
+    expect(ws.panel('left')?.store).toBe(store);
   });
 
   it('shows an error when the tab folder is gone and keeps the panel usable', async () => {

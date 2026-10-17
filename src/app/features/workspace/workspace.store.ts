@@ -8,7 +8,16 @@ import {
   Side,
   TabSession,
 } from '../../core/session/session.models';
+import type { FileBrowserStore } from '../browser/file-browser.store';
+import type { FileListController } from '../browser/file-list/file-list-controller';
 import { TEXTS } from './texts';
+
+/** What a panel offers to window-wide actions (registered by `FilePanel`). */
+export interface PanelHandle {
+  readonly store: FileBrowserStore;
+  /** Undefined until the table is ready. */
+  controller(): FileListController | undefined;
+}
 
 export type TabState = TabSession;
 
@@ -89,6 +98,7 @@ export class WorkspaceStore {
   readonly rightActiveTab = computed(() => activeTabOf(this.panels().right));
 
   private seq = 0;
+  private readonly handles = new Map<Side, PanelHandle>();
 
   constructor() {
     effect(() => {
@@ -117,6 +127,19 @@ export class WorkspaceStore {
     }
     this.ready.set(true);
     this.requestFocus(this.activeSide());
+  }
+
+  registerPanel(side: Side, handle: PanelHandle): () => void {
+    this.handles.set(side, handle);
+    return () => {
+      if (this.handles.get(side) === handle) {
+        this.handles.delete(side);
+      }
+    };
+  }
+
+  panel(side: Side = this.activeSide()): PanelHandle | undefined {
+    return this.handles.get(side);
   }
 
   activeTab(side: Side): TabState {

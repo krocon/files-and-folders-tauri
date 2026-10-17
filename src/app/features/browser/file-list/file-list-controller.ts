@@ -21,18 +21,9 @@ export type FileListStore = Pick<
   | 'markRange'
   | 'markAll'
   | 'clearMarks'
+  | 'invertMarks'
   | 'isMarked'
 >;
-
-export interface KeyInput {
-  key: string;
-  shiftKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  altKey: boolean;
-  /** Ctrl (Windows/Linux) or ⌘ (macOS) – set by the component, absent = false. */
-  toggleKey?: boolean;
-}
 
 export interface ClickInput {
   area: 'header' | 'body' | 'footer' | undefined;
@@ -48,8 +39,8 @@ export interface ClickInput {
  * (talks to a {@link TableBridge}). The store is the source of truth for
  * cursor and marks; the table owns the display order.
  *
- * Interim keyboard handling for prompt 001 – moves into the action system in
- * prompt 002.
+ * Keys reach it as actions (prompt 002: `ActionService` → `FilePanel`); the
+ * methods here are what those actions do.
  */
 export class FileListController {
   /** Cursor before the latest focus change – anchor for Shift+click. */
@@ -124,61 +115,6 @@ export class FileListController {
     }
   }
 
-  /** Keys the table does not consume (they bubble to the list). Returns true if handled. */
-  onKey(key: KeyInput): boolean {
-    const plain = !key.ctrlKey && !key.metaKey && !key.altKey;
-    switch (key.key) {
-      case 'Enter':
-        if (plain && !key.shiftKey) {
-          return this.openCursor();
-        }
-        if (key.toggleKey && !key.shiftKey && !key.altKey) {
-          return this.openCursorInNewTab();
-        }
-        return false;
-      case 'Backspace':
-        if (plain && !key.shiftKey) {
-          void this.store.up();
-          return true;
-        }
-        return false;
-      case 'Insert':
-        if (plain) {
-          this.toggleMarkAndAdvance();
-          return true;
-        }
-        return false;
-      case 'ArrowDown':
-      case 'ArrowUp':
-        if (plain && key.shiftKey) {
-          this.markAndMove(key.key === 'ArrowDown' ? 1 : -1);
-          return true;
-        }
-        return false;
-      default:
-        return false;
-    }
-  }
-
-  /** Table actions (keys the table maps itself). Returns true if consumed. */
-  onAction(actionId: string): boolean {
-    switch (actionId) {
-      case 'TOGGLE_SELECTION':
-        this.toggleMarkAndAdvance();
-        return true;
-      case 'SELECT_ALL':
-        this.store.markAll(this.displayedPaths());
-        this.bridge.repaint();
-        return true;
-      case 'DESELECT_ALL':
-        this.store.clearMarks();
-        this.bridge.repaint();
-        return true;
-      default:
-        return false;
-    }
-  }
-
   openCursor(): boolean {
     const row = this.cursorRow();
     if (!row) {
@@ -206,6 +142,58 @@ export class FileListController {
     }
     this.store.toggleMark(row.path);
     this.move(1);
+  }
+
+  /** Shift+Pos1/Ende: mark from the cursor to the first/last entry and move there. */
+  markToEdge(edge: 'start' | 'end'): void {
+    const rows = this.bridge.displayedRows();
+    const current = this.bridge.focusedRow();
+    if (rows.length === 0 || current < 0) {
+      return;
+    }
+    const target = edge === 'start' ? 0 : rows.length - 1;
+    const [from, to] = current <= target ? [current, target] : [target, current];
+    this.store.setMarked(
+      rows.slice(from, to + 1).map((r) => r.path),
+      true,
+    );
+    this.bridge.setFocusedRow(target);
+    this.onFocusChanged(target);
+    this.bridge.repaint();
+  }
+
+  markAll(): void {
+    this.store.markAll(this.displayedPaths());
+    this.bridge.repaint();
+  }
+
+  clearMarks(): void {
+    this.store.clearMarks();
+    this.bridge.repaint();
+  }
+
+  invertMarks(): void {
+    this.store.invertMarks(this.displayedPaths());
+    this.bridge.repaint();
+  }
+
+  /** Marks (or unmarks) every displayed entry whose name matches. Returns the number of matches. */
+  markMatching(matches: (name: string) => boolean, mark: boolean): number {
+    const paths = this.bridge
+      .displayedRows()
+      .filter((r) => matches(r.name))
+      .map((r) => r.path);
+    this.store.setMarked(paths, mark);
+    this.bridge.repaint();
+    return paths.length;
+  }
+
+  displayedEntries(): readonly DirEntry[] {
+    return this.bridge.displayedRows();
+  }
+
+  cursorEntry(): DirEntry | undefined {
+    return this.cursorRow();
   }
 
   /** Shift+↑/↓: mark the cursor entry and move. */

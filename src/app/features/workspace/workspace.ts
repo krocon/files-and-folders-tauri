@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -9,13 +10,18 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { ActionService } from '../../core/actions/action.service';
+import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
+import { DialogService } from '../../shared/dialog/dialog.service';
+import { CommandPalette } from '../actions/command-palette';
+import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
+import { ShortcutDialog } from '../actions/shortcut-dialog';
+import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { ButtonBar } from './button-bar/button-bar';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
 import { WorkspaceStore } from './workspace.store';
-
-const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
 /**
  * The main window (`docs/ui-layout.md`): a CSS grid with the rows header · tabs ·
@@ -25,20 +31,23 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
  */
 @Component({
   selector: 'app-workspace',
-  imports: [FilePanel, ButtonBar],
+  imports: [FilePanel, ButtonBar, CommandPalette, MarkPatternDialog, ShortcutDialog],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[style.--fnf-split]': 'ws.splitter()',
     '[class.resizing]': 'dragging()',
-    '(keydown)': 'onKeydown($event)',
     '(document:visibilitychange)': 'onVisibility()',
     '(window:pagehide)': 'onPageHide()',
   },
 })
 export class Workspace implements OnInit {
   protected readonly ws = inject(WorkspaceStore);
+  protected readonly actions = inject(ActionService);
+  protected readonly dialogs = inject(DialogService);
+  private readonly keyboard = inject(KeyboardDispatcher);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -65,7 +74,10 @@ export class Workspace implements OnInit {
   }
 
   ngOnInit(): void {
+    this.destroyRef.onDestroy(registerWorkspaceActions(this.actions, this.ws, this.dialogs));
+    this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.ws.init();
+    void this.actions.init();
   }
 
   // ---- splitter ----
@@ -103,25 +115,6 @@ export class Workspace implements OnInit {
 
   protected resetSplitter(): void {
     this.ws.setSplitter(0.5);
-  }
-
-  // ---- window-wide keys (interim until the action system of prompt 002) ----
-
-  protected onKeydown(evt: KeyboardEvent): void {
-    const side = this.ws.activeSide();
-    const primary = IS_MAC ? evt.metaKey : evt.ctrlKey;
-    if (evt.key === 'Tab' && evt.ctrlKey && !evt.altKey && !evt.metaKey) {
-      this.ws.cycleTab(side, evt.shiftKey ? -1 : 1);
-    } else if (primary && evt.altKey && !evt.shiftKey && evt.code === 'KeyT') {
-      this.ws.cloneTab(side);
-    } else if (primary && evt.altKey && !evt.shiftKey && evt.code === 'KeyW') {
-      this.ws.closeTab(side);
-    } else {
-      return;
-    }
-    evt.preventDefault();
-    evt.stopPropagation();
-    this.ws.requestFocus(side);
   }
 
   protected onPageHide(): void {

@@ -2,9 +2,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
+  OnInit,
   untracked,
   viewChild,
 } from '@angular/core';
@@ -40,10 +42,9 @@ let panelSeq = 0;
     '[class.side-right]': "side() === 'right'",
     '(pointerdown)': 'activate()',
     '(focusin)': 'activate()',
-    '(keydown)': 'onKeydown($event)',
   },
 })
-export class FilePanel {
+export class FilePanel implements OnInit {
   readonly side = input.required<Side>();
 
   protected readonly store = inject(FileBrowserStore);
@@ -51,6 +52,7 @@ export class FilePanel {
   protected readonly texts = TEXTS;
   protected readonly pathId = `fnf-path-${++panelSeq}`;
   private readonly list = viewChild(FileList);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly active = computed(() => this.ws.activeSide() === this.side());
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
@@ -115,17 +117,17 @@ export class FilePanel {
     });
   }
 
-  protected activate(): void {
-    this.ws.setActive(this.side());
+  ngOnInit(): void {
+    // the side is fixed for the lifetime of a panel
+    const unregister = this.ws.registerPanel(this.side(), {
+      store: this.store,
+      controller: () => this.list()?.listController,
+    });
+    this.destroyRef.onDestroy(unregister);
   }
 
-  protected onKeydown(evt: KeyboardEvent): void {
-    const plain = !evt.ctrlKey && !evt.metaKey && !evt.altKey && !evt.shiftKey;
-    const inList = evt.target instanceof Element && evt.target.closest('app-file-list') !== null;
-    if (evt.key === 'Tab' && plain && inList) {
-      evt.preventDefault();
-      this.ws.toggleActive();
-    }
+  protected activate(): void {
+    this.ws.setActive(this.side());
   }
 
   protected openSegment(segment: PathSegment): void {

@@ -32,4 +32,28 @@
       <button type="button" class="btn" (click)="ws.dismissNotice(i)">{{ texts.dismiss }}</button>
     </div>
   }
+  @for (n of actions.messages(); track $index; let i = $index) {
+    <div class="notice">
+      <span>{{ n }}</span>
+      <button type="button" class="btn" (click)="actions.dismiss(i)">{{ texts.dismiss }}</button>
+    </div>
+  }
 </div>
+
+@switch (dialogs.open()) {
+  @case ('palette') {
+    <app-command-palette />
+  }
+  @case ('call-action') {
+    <app-command-palette heading="Call action" />
+  }
+  @case ('mark-pattern') {
+    <app-mark-pattern-dialog [mark]="true" />
+  }
+  @case ('unmark-pattern') {
+    <app-mark-pattern-dialog [mark]="false" />
+  }
+  @case ('shortcuts') {
+    <app-shortcut-dialog />
+  }
+}
