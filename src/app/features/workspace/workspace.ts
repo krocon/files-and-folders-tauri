@@ -28,6 +28,15 @@ import { OpsStore } from '../ops/ops.store';
 import { MultiRenameDialog } from '../multirename/multirename-dialog';
 import { registerMultiRenameActions } from '../multirename/multirename-actions';
 import { MultiRenameStore } from '../multirename/multirename.store';
+import { GroupFilesDialog } from '../groupfiles/groupfiles-dialog';
+import { registerGroupFilesActions } from '../groupfiles/groupfiles-actions';
+import { GroupFilesStore } from '../groupfiles/groupfiles.store';
+import { CleanFoldersDialog } from '../cleanfolders/clean-dialog';
+import { registerCleanFoldersActions } from '../cleanfolders/clean-actions';
+import { CleanFoldersStore } from '../cleanfolders/clean.store';
+import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
+import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
+import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { CommandPalette } from '../actions/command-palette';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
@@ -59,6 +68,9 @@ import { WorkspaceStore } from './workspace.store';
     DeleteDialog,
     NameDialog,
     MultiRenameDialog,
+    GroupFilesDialog,
+    CleanFoldersDialog,
+    MultiMkdirDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -78,6 +90,9 @@ export class Workspace implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly ops = inject(OpsStore);
   private readonly mr = inject(MultiRenameStore);
+  private readonly gf = inject(GroupFilesStore);
+  private readonly cl = inject(CleanFoldersStore);
+  private readonly mm = inject(MultiMkdirStore);
   private readonly keyboard = inject(KeyboardDispatcher);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
@@ -155,6 +170,9 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerJobActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));
     this.destroyRef.onDestroy(registerMultiRenameActions(this.actions, this.mr, this.jobs));
+    this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
+    this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
+    this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();

@@ -83,6 +83,17 @@ export function jobTitle(job: JobInfo): string {
       const what = n === 1 ? `${spec.items[0].path} → ${spec.items[0].newName}` : `${n} entries`;
       return spec.undoOf ? `Undo renaming ${what}` : `Rename ${what}`;
     }
+    case 'group': {
+      const n = spec.items.length;
+      const verb = spec.transfer === 'copy' ? 'Copy' : 'Move';
+      return `Group files: ${verb} ${n === 1 ? spec.items[0].path : `${n} entries`} → ${spec.root}`;
+    }
+    case 'clean': {
+      const n = spec.items.length;
+      const where = spec.roots.length === 1 ? spec.roots[0] : `${spec.roots.length} folders`;
+      const how = spec.mode === 'trash' ? 'to the trash' : 'permanently';
+      return `Clean ${where}: ${n === 1 ? '1 entry' : `${n} entries`} ${how}`;
+    }
     case 'count':
       return `Count ${spec.paths.length === 1 ? spec.paths[0] : `${spec.paths.length} entries`}`;
     case 'dirSize':

@@ -161,7 +161,7 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   UNDO_RENAME: m('Undo last multi rename', 'files', '007'),
   OPEN_MULTIMKDIR_DLG: m('Create several folders…', 'files', '008'),
   OPEN_GROUPFILES_DLG: m('Group files…', 'files', '008'),
-  OPEN_DELETE_EMPTY_FOLDERS_DLG: m('Delete empty folders…', 'files', '008'),
+  OPEN_DELETE_EMPTY_FOLDERS_DLG: m('Clean folders (delete empty folders)…', 'files', '008'),
   OPEN_FIND_DUPLICATES_DLG: m('Find duplicates…', 'files', '016'),
   OPEN_SHORTCUT_DLG: m('Keyboard shortcuts…', 'config', '002'),
   OPEN_SETUP_DLG: m('Settings…', 'config', '015'),

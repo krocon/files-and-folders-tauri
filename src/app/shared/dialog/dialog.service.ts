@@ -12,7 +12,10 @@ export type DialogKind =
   | 'copy-move'
   | 'delete'
   | 'name'
-  | 'multi-rename';
+  | 'multi-rename'
+  | 'group-files'
+  | 'clean-folders'
+  | 'multi-mkdir';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard
