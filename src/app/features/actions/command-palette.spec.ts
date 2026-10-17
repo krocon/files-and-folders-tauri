@@ -1,15 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../core/actions/action.service';
 import { KeymapApi } from '../../core/actions/keymap-api';
+import { ThemeApi } from '../../core/theme/theme-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { ThemeService } from '../../core/theme/theme.service';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
+import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { CommandPalette } from './command-palette';
 
 describe('CommandPalette', () => {
   async function render() {
     TestBed.configureTestingModule({
       imports: [CommandPalette],
-      providers: [{ provide: KeymapApi, useValue: new FakeKeymapApi() }],
+      providers: [
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
+        { provide: ThemeApi, useValue: new FakeThemeApi() },
+      ],
     });
     const actions = TestBed.inject(ActionService);
     actions.platform.set('linux');
@@ -41,6 +47,16 @@ describe('CommandPalette', () => {
     const options = el.querySelectorAll('[role="option"]');
     expect(options.length).toBeGreaterThan(20);
     expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+  });
+
+  it('lists the colour schemes and switches to one (design 013 E3)', async () => {
+    const { el, type, key } = await render();
+    type('colour scheme dark');
+    const first = el.querySelector('[role="option"]')!;
+    expect(first.textContent).toContain('Colour scheme: Dark');
+    key('Enter');
+    await new Promise((r) => setTimeout(r));
+    expect(TestBed.inject(ThemeService).active().id).toBe('dark');
   });
 
   it('filters fuzzily, shows the shortcut and runs with Enter', async () => {

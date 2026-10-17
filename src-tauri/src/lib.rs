@@ -16,6 +16,7 @@
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
+//! - [`themes`]       colour schemes file, import/export of scheme files
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
@@ -40,6 +41,7 @@ pub mod properties;
 pub mod rename_presets;
 pub mod search;
 pub mod session;
+pub mod themes;
 pub mod tools;
 pub mod watch;
 pub mod window_state;
@@ -53,6 +55,7 @@ pub fn run() {
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
+        .manage(commands::ThemesState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
@@ -148,6 +151,10 @@ pub fn run() {
             commands::open_tools_config,
             commands::read_preview,
             commands::get_properties,
+            commands::load_themes,
+            commands::save_themes,
+            commands::import_theme,
+            commands::export_theme,
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths

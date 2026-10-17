@@ -4,9 +4,12 @@ import { FakeJobsApi } from '../../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../../core/actions/action.service';
 import { KeymapApi } from '../../../core/actions/keymap-api';
+import { ThemeApi } from '../../../core/theme/theme-api';
 import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
 import { NO_MODIFIERS } from '../../../core/actions/shortcut';
 import { FakeKeymapApi } from '../../../../testing/fake-keymap-api';
+import { FakeThemeApi } from '../../../../testing/fake-theme-api';
+import { ThemeService } from '../../../core/theme/theme.service';
 import { ButtonBar } from './button-bar';
 
 describe('ButtonBar', () => {
@@ -18,6 +21,7 @@ describe('ButtonBar', () => {
       imports: [ButtonBar],
       providers: [
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
+        { provide: ThemeApi, useValue: new FakeThemeApi() },
         { provide: JobsApi, useValue: jobsApi },
       ],
     });
@@ -65,6 +69,47 @@ describe('ButtonBar', () => {
     copy.click();
     await Promise.resolve();
     expect(copies).toBe(1);
+  });
+
+  it('opens the colour scheme menu (radio items, own first) and selects a scheme', async () => {
+    const { fixture, el } = await render();
+    const theme = TestBed.inject(ThemeService);
+    await theme.saveTheme({ name: 'Mine', dark: false, tokens: {} });
+    await theme.followSystem();
+    fixture.detectChanges();
+    const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
+    expect(toggle.getAttribute('aria-haspopup')).toBe('menu');
+    toggle.click();
+    fixture.detectChanges();
+    const items = [
+      ...el.querySelectorAll<HTMLElement>('[role="menuitemradio"], [role="menuitem"]'),
+    ];
+    expect(items.map((i) => i.textContent?.replace('✓', '').trim())).toEqual([
+      'Follow the system',
+      'Mine',
+      'Light',
+      'Dark',
+      'Edit colour schemes…',
+    ]);
+    expect(items[0].getAttribute('aria-checked')).toBe('true');
+    items[3].click();
+    fixture.detectChanges();
+    expect(theme.active().id).toBe('dark');
+    expect(theme.selection().mode).toBe('fixed');
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('closes the colour scheme menu with a second click on its button (review 013 #10)', async () => {
+    const { fixture, el } = await render();
+    const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
+    toggle.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).not.toBeNull();
+    toggle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    toggle.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('opens the Actions menu with four columns', async () => {

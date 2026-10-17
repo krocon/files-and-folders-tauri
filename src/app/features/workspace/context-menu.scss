@@ -2,6 +2,9 @@
   position: fixed;
   z-index: 100;
   min-width: 14rem;
+  /* many schemes (019): scroll instead of leaving the window */
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
   margin: 0;
   padding: var(--spacing-1) 0;
   list-style: none;
@@ -13,7 +16,8 @@
   box-shadow: var(--shadow-popup);
 }
 
-[role='menuitem'] {
+[role='menuitem'],
+[role='menuitemradio'] {
   padding: var(--spacing-1) var(--spacing-3);
   cursor: pointer;
   white-space: nowrap;
@@ -37,4 +41,9 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--color-muted);
+}
+
+.radio {
+  display: inline-block;
+  width: 1.2em;
 }

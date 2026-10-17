@@ -19,8 +19,9 @@
   anlegen, Umbenennen inkl. F2 in der Liste), Prompt 007 (Multi-Rename mit Vorschau, Vorlagen, Rückgängig),
   Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir), Prompt 009 (Suche mit Ergebnis-Tabs,
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
-  Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage) und Prompt 012
-  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen) sind fertig. Als Nächstes: Prompt 013 (Themes).
+  Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
+  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen) und Prompt 013 (Farbschemata: Mechanik,
+  Live-Editor, System folgen) sind fertig. Als Nächstes: Prompt 014.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -73,6 +74,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/preview/      Ansicht (ViewerStore + Dialog), Schnellvorschau (QuickViewStore, im Ziel-Panel),
                              Eigenschaften, Provider-Liste (views/: Text per textContent, Bild, Hex, Info), reine
                              Helfer (text-search, hex, permissions)
+  app/core/theme/            Farbschemata: Token-Katalog (tokens.ts), eingebaute Schemata (themes/*.json = styles.scss),
+                             Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi
+  app/features/themes/       Dialog „Colour schemes…“ (Live-Editor, Import/Export), Aktionen, Texte
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)
   app/features/dnd/          DragStore (Root: Ziehen, Zonen, Übergabe an den Kopieren/Verschieben-Dialog), dnd-logic.ts
@@ -86,7 +90,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
                              tool-dialog.scss), preview-grid/ (GuiExpert Table für Vorschauen)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
-  styles.scss                Design-Tokens (CSS Custom Properties, light/dark)
+  styles.scss                Design-Tokens (CSS Custom Properties, light/dark) – Quelle der eingebauten Schemata
+  styles/ge-table-theme.scss GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
@@ -110,6 +115,7 @@ src-tauri/                   Rust (Tauri 2)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
+  src/themes.rs              Farbschemata (`themes.json`, harmlose CSS-Werte), Import/Export von `.theme.json`
   src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
@@ -265,5 +271,9 @@ prompts/                     Feature-Prompts (s. o.)
   `modal.ts`, `workspace.ts` (bindet die Dialoge ein), `core/actions/action-catalog.ts` (`m(label, group, prompt)` =
   noch ohne Handler), Keymaps `core/actions/keymaps/{linux,macos,windows}.json`, `button-bar/buttons.json`,
   `browser/file-list/file-table-model.ts` (Muster für ein GuiExpert-Modell mit Zeilenklassen).
+- E2E unter Xvfb (013): `xdotool click` geht im WebKitGTK-Fenster manchmal verloren – `mousedown`, kurz warten,
+  `mouseup`; `xdotool type` kann keine Mehrbyte-Zeichen (Umlaute, Emoji) – solche Namen per Datei anlegen.
+  `GTK_THEME=Adwaita:dark` beim Start schaltet `prefers-color-scheme: dark` der WebView. Specs dürfen Dateien mit
+  `node:fs` lesen (`// @ts-expect-error` am Import, s. `builtin-themes.spec.ts`).
 - Bekannte Fakten: `FileBrowserStore.markedEntries` hat die Reihenfolge des Listings aus Rust, **nicht** die
   aktuelle Sortierung der Table. `DirectoryListing.segments` beginnt mit der Wurzel (Name = Wurzelpfad, z. B. `/`).

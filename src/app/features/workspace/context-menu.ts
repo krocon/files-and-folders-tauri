@@ -15,6 +15,8 @@ export interface MenuItem {
   readonly disabled?: boolean;
   /** A group heading (not selectable). */
   readonly heading?: boolean;
+  /** Set = a radio item (`menuitemradio` + `aria-checked`, ✓ shown). */
+  readonly checked?: boolean;
 }
 
 /**
@@ -38,11 +40,15 @@ export interface MenuItem {
             <div class="heading" aria-hidden="true">{{ h }}</div>
             @for (item of group.items; track item.id) {
               <div
-                role="menuitem"
+                [attr.role]="item.checked === undefined ? 'menuitem' : 'menuitemradio'"
+                [attr.aria-checked]="item.checked === undefined ? null : item.checked"
                 tabindex="-1"
                 [attr.aria-disabled]="item.disabled ? 'true' : null"
                 [attr.data-id]="item.id"
               >
+                @if (item.checked !== undefined) {
+                  <span class="radio" aria-hidden="true">{{ item.checked ? '✓' : '' }}</span>
+                }
                 {{ item.label }}
               </div>
             }
@@ -50,11 +56,15 @@ export interface MenuItem {
         } @else {
           @for (item of group.items; track item.id) {
             <div
-              role="menuitem"
+              [attr.role]="item.checked === undefined ? 'menuitem' : 'menuitemradio'"
+              [attr.aria-checked]="item.checked === undefined ? null : item.checked"
               tabindex="-1"
               [attr.aria-disabled]="item.disabled ? 'true' : null"
               [attr.data-id]="item.id"
             >
+              @if (item.checked !== undefined) {
+                <span class="radio" aria-hidden="true">{{ item.checked ? '✓' : '' }}</span>
+              }
               {{ item.label }}
             </div>
           }
@@ -75,6 +85,8 @@ export class ContextMenu {
   readonly x = input(0);
   readonly y = input(0);
   readonly label = input('');
+  /** The opener: a press on it is not "outside" – its click toggles the menu (review 013 #10). */
+  readonly anchor = input<Element | null>(null);
   readonly chosen = output<string>();
   /** `key` = Escape/Tab (focus back to the opener), `outside` = click elsewhere. */
   readonly closed = output<'key' | 'outside'>();
@@ -111,7 +123,7 @@ export class ContextMenu {
   }
 
   protected onClick(evt: MouseEvent): void {
-    const id = (evt.target as HTMLElement | null)?.closest<HTMLElement>('[role="menuitem"]')
+    const id = (evt.target as HTMLElement | null)?.closest<HTMLElement>('[role^="menuitem"]')
       ?.dataset['id'];
     const item = this.items().find((i) => i.id === id);
     if (item) {
@@ -156,7 +168,8 @@ export class ContextMenu {
   }
 
   protected onOutside(evt: PointerEvent): void {
-    if (!this.host.nativeElement.contains(evt.target as Node)) {
+    const target = evt.target as Node;
+    if (!this.host.nativeElement.contains(target) && !this.anchor()?.contains(target)) {
       this.closed.emit('outside');
     }
   }
@@ -164,7 +177,7 @@ export class ContextMenu {
   private enabled(): HTMLElement[] {
     return [
       ...this.host.nativeElement.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]:not([aria-disabled="true"])',
+        '[role^="menuitem"]:not([aria-disabled="true"])',
       ),
     ];
   }
@@ -184,6 +197,12 @@ export class ContextMenu {
     }
     if (rect.bottom > window.innerHeight) {
       menu.style.top = `${Math.max(0, window.innerHeight - rect.height - 4)}px`;
+    }
+    // never over the opener (its second click closes the menu): above it when it would cover it
+    const anchor = this.anchor()?.getBoundingClientRect();
+    const now = menu.getBoundingClientRect();
+    if (anchor && now.bottom > anchor.top && now.top < anchor.bottom) {
+      menu.style.top = `${Math.max(0, anchor.top - now.height - 2)}px`;
     }
   }
 }

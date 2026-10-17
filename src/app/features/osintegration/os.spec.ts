@@ -9,11 +9,13 @@ import { ClipboardApi } from '../../core/os/clipboard';
 import { OsApi } from '../../core/os/os-api';
 import { ToolInfo } from '../../core/os/os.models';
 import { SessionApi } from '../../core/session/session-api';
+import { ThemeApi } from '../../core/theme/theme-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeClipboardApi, FakeOsApi } from '../../../testing/fake-os-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
+import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { CommandPalette } from '../actions/command-palette';
 import { FileBrowserStore } from '../browser/file-browser.store';
@@ -71,6 +73,7 @@ describe('OS integration (design 011)', () => {
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
         { provide: OsApi, useValue: osApi },
         { provide: ClipboardApi, useValue: clip },
+        { provide: ThemeApi, useValue: new FakeThemeApi() },
       ],
     });
     actions = TestBed.inject(ActionService);

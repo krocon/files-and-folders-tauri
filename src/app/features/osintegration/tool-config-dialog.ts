@@ -126,9 +126,9 @@ import { OsStore, TOOL_PREFIX } from './os.store';
       white-space: nowrap;
     }
     .primary {
-      color: var(--color-accent-text);
-      background: var(--color-accent);
-      border-color: var(--color-accent);
+      color: var(--color-button-primary-text);
+      background: var(--color-button-primary-bg);
+      border-color: var(--color-button-primary-bg);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

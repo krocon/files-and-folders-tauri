@@ -116,7 +116,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - Zeilen-Cursor (aktiv/inaktiv), markierte Einträge rot mit Häkchen, versteckte Einträge gedimmt.
 - Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht bleibt bei Fehlern.
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
-- Helles/dunkles Farbschema über CSS Custom Properties (`prefers-color-scheme`).
+- **Farbschemata** (Prompt 013): `Light` und `Dark` mitgeliefert, „Follow the system“ (Standard, folgt
+  `prefers-color-scheme` live) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
+  („Colour scheme: …“) oder `Strg+Alt+Shift+T` / `⌘⌃⌥T` (nächstes Schema). Der Dialog **Colour schemes…** ist ein
+  Live-Editor: jede Farbe (Liste, Cursor aktiv/inaktiv, markiert, versteckt, Symlink, Kopf, Tabs, Statuszeile,
+  Buttons, Dialoge, Scrollbar, Tooltip) mit Farbwähler und Textfeld, Vorschau sofort, Kontrastprüfung (WCAG AA) mit
+  Liste der verletzten Paare; „Save as new“/„Save“/„Delete“/„Reset“. **Import** liest die Datei unter dem Cursor
+  (auch alte `{name, colors}`-Dateien), **Export** schreibt `<Name>.theme.json` in den Ordner des aktiven Panels.
+  Gespeichert in `themes.json` im App-Config-Verzeichnis.
 
 ### Tastenkürzel (Stand Prompt 002)
 
@@ -187,6 +194,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
+| Next colour scheme | `Ctrl+Alt+Shift+T` | `⌘⌃⌥T` |
 
 Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
 Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,
