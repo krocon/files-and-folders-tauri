@@ -29,6 +29,7 @@ Phase 1 (Walking Skeleton) und der GuiExpert Table 1.1.99 als Dateiliste.
 | 011 | [011-os-integration-tools.md](011-os-integration-tools.md) | Laufwerke, Finder/Explorer, Terminal, externe Tools (ohne Shell), Zwischenablage | 002, 004 | M |
 | 012 | [012-ueberwachung-drag-drop.md](012-ueberwachung-drag-drop.md) | Verzeichnis-Überwachung, Drag & Drop | 006 | M |
 | 013 | [013-themes-farbschemata.md](013-themes-farbschemata.md) | Farbschemata (light/dark/blackboard/classic), Live-Editor, GuiExpert-Brücke | 001 | S–M |
+| 019 | [019-alte-designs.md](019-alte-designs.md) | die acht Default-Designs der alten Version (light, paper, bitbucket, cypress, blackboard, coffee, combat, norton) | 013, 004, 006 | M |
 | 014 | [014-kontextmenue-menueleiste.md](014-kontextmenue-menueleiste.md) | Kontextmenü, Menüleiste (nativ/HTML) | 002, 006 | S–M |
 | 015 | [015-einstellungen-i18n.md](015-einstellungen-i18n.md) | Einstellungsdienst + Dialog, Deutsch/Englisch | 002–004, 013 | M |
 | 016 | [016-archive-duplikate.md](016-archive-duplikate.md) | Archive (ZIP/TAR), Duplikate – optional | 005, 006, 009 | L |
@@ -50,6 +51,9 @@ Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Pla
   Die Engine trägt später auch Multi-Rename, Gruppieren, Suche und Duplikate.
 - **007–009:** die Spezialwerkzeuge, die das alte Programm ausmachten (Multi-Rename, Gruppieren, Ordner-Finder).
 - **010–014:** Komfort und Integration; untereinander weitgehend unabhängig, Reihenfolge nach Bedarf tauschbar.
+- **019 nach 013:** die Designs der alten Version (`docs/legacy-themes/`) brauchen die Theme-Mechanik aus 013
+  sowie aktives Panel (004) und Dialoge (006), damit alle Variablengruppen eine Entsprechung haben. Nummer 019,
+  weil der Prompt nachträglich dazukam – ausgeführt wird er nach 013.
 - **015 spät:** sammelt die bis dahin verstreuten Einstellungen in einem Dienst und einem Dialog.
 - **017 jederzeit:** CI lohnt sich früh – sobald Marc den Workflow eingecheckt hat (Remote-Sitzungen dürfen
   `.github/workflows/` nicht schreiben).
@@ -68,4 +72,4 @@ Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprot
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
 - [ ] 001 · [ ] 002 · [ ] 003 · [ ] 004 · [ ] 005 · [ ] 006 · [ ] 007 · [ ] 008 · [ ] 009 · [ ] 010 · [ ] 011 ·
-  [ ] 012 · [ ] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018
+  [ ] 012 · [ ] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019

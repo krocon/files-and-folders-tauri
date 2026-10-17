@@ -6,8 +6,8 @@
 
 ## Ziel
 
-Farbschemata als Dateien mit CSS-Variablen – wie im alten Programm, aber vollständig: Hell, Dunkel, Blackboard und
-ein klassisches Total-Commander-Schema, Auswahl „System folgen“, ein Live-Editor mit Speichern, und eine saubere
+Farbschemata als Dateien mit CSS-Variablen – wie im alten Programm, aber vollständig: die Mechanik für mitgelieferte und eigene Schemata (die acht
+Designs der alten Version folgen in Prompt 019), Auswahl „System folgen“, ein Live-Editor mit Speichern, und eine saubere
 Brücke zu den `--ge-table-*`-Variablen der GuiExpert Table.
 
 ## Aufgaben
@@ -18,8 +18,10 @@ Brücke zu den `--ge-table-*`-Variablen der GuiExpert Table.
    Cursor, versteckt, Symlink, Fehler, Panel-Kopf aktiv/inaktiv, Fußleiste, Scrollbar.
 2. **GuiExpert-Brücke**: jedes relevante `--ge-table-*` auf ein Token mappen (eine Stelle, z. B.
    `src/styles/ge-table-theme.scss`); `html[data-theme]` der Table mit unserem Theme-Schalter synchronisieren.
-3. **Schemata**: `light`, `dark`, `blackboard` (Werte aus legacy §8 übernehmen), `classic` (TC-Blau);
-   Auswahl in Einstellungen + Befehlspalette, „System folgen“ (Default, `prefers-color-scheme` live).
+3. **Schemata**: Mechanik für beliebig viele Schemata; mitgeliefert zunächst nur `light` und `dark` aus den
+   heutigen Tokens. Die acht Default-Designs der alten Version (`docs/legacy-themes/`) bringt **Prompt 019** –
+   das Format hier so wählen, dass sie ohne Umbau hineinpassen (Gruppen: Liste, aktives Panel, Kopf, Fußleiste,
+   Dialoge, Scrollbar, Tooltip). Auswahl in Einstellungen + Befehlspalette, „System folgen“ (`prefers-color-scheme` live).
 4. **Live-Editor**: Liste der Tokens mit nativer Farbauswahl (`<input type="color">` + Texteingabe), Vorschau
    sofort, Speichern als eigenes Schema (JSON im App-Config-Verzeichnis), Import/Export, Zurücksetzen.
    Kontrast-Hinweis (WCAG AA) für Text/Hintergrund-Paare.
@@ -27,6 +29,6 @@ Brücke zu den `--ge-table-*`-Variablen der GuiExpert Table.
 
 ## Akzeptanzkriterien
 
-- Vier Schemata + „System folgen“; Wechsel ohne Neustart, auch in der Table.
+- `light`, `dark` + „System folgen“; Wechsel ohne Neustart, auch in der Table.
 - Eigenes Schema speichern, nach Neustart aktiv; Export/Import einer JSON-Datei.
 - Alle Schemata erfüllen die Kontrastprüfung für Liste, Cursor und Markierung (Test, der die Werte prüft).
