@@ -152,4 +152,28 @@ describe('FileListController', () => {
     ctrl.restoreCursor();
     expect(store.marked().size).toBe(0);
   });
+
+  it('Ctrl/⌘+Enter opens the folder under the cursor in a new tab', () => {
+    const opened: string[] = [];
+    const withHooks = new FileListController(bridge, store, {
+      openInNewTab: (e) => opened.push(e.path),
+    });
+    bridge.focus = 0;
+    expect(withHooks.onKey(key('Enter', { ctrlKey: true, toggleKey: true }))).toBe(true);
+    expect(opened).toEqual(['/h/Sub']);
+    bridge.focus = 1; // a file: not a folder
+    expect(withHooks.onKey(key('Enter', { ctrlKey: true, toggleKey: true }))).toBe(false);
+    expect(opened).toHaveLength(1);
+  });
+
+  it('applies a tab table state around the cursor: columns + sort first, scroll last', () => {
+    bridge.calls = [];
+    ctrl.showRows(rows, 'h', { version: 1, sort: [], scroll: { left: 0, top: 48 } });
+    expect(bridge.calls).toEqual([
+      'setRows(4)',
+      'applyTableState(sort)',
+      'setFocusedRow(0)',
+      'applyTableState(scroll)',
+    ]);
+  });
 });

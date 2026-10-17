@@ -1,0 +1,35 @@
+@if (ws.ready()) {
+  <app-file-panel side="left" />
+  <div
+    class="splitter"
+    role="separator"
+    tabindex="0"
+    aria-orientation="vertical"
+    aria-valuemin="15"
+    aria-valuemax="85"
+    [attr.aria-valuenow]="splitPercent()"
+    [attr.aria-label]="texts.splitter"
+    [attr.title]="texts.splitter"
+    (pointerdown)="onSplitterDown($event)"
+    (pointermove)="onSplitterMove($event)"
+    (pointerup)="onSplitterUp()"
+    (pointercancel)="onSplitterUp()"
+    (dblclick)="resetSplitter()"
+    (keydown)="onSplitterKey($event)"
+  ></div>
+  <app-file-panel side="right" />
+  <app-button-bar class="buttons" />
+}
+
+<div class="sr-only" aria-live="polite">{{ announcement() }}</div>
+
+@if (ws.notices().length > 0) {
+  <div class="notices" role="status">
+    @for (n of ws.notices(); track $index; let i = $index) {
+      <div class="notice">
+        <span>{{ n }}</span>
+        <button type="button" class="btn" (click)="ws.dismissNotice(i)">{{ texts.dismiss }}</button>
+      </div>
+    }
+  </div>
+}

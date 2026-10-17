@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, DirectoryListing, FsError, isNavigableDir } from '../../core/fs/fs.models';
@@ -29,6 +30,12 @@ export class FileBrowserStore {
   readonly error = signal<FsError | null>(null);
   readonly cursorPath = signal<string | null>(null);
   readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
+
+  /**
+   * Table state (columns, sort, scroll) of a tab that is being opened; the file
+   * list applies it together with the next listing (design 004 E2).
+   */
+  private pendingTableState: Partial<TableStateIf> | null = null;
 
   readonly path = computed(() => this.listing()?.path ?? null);
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
@@ -153,6 +160,16 @@ export class FileBrowserStore {
   invertMarks(displayed: readonly string[]): void {
     const current = this.marked();
     this.marked.set(new Set(displayed.filter((p) => !current.has(p))));
+  }
+
+  setPendingTableState(state: Partial<TableStateIf> | null): void {
+    this.pendingTableState = state;
+  }
+
+  takePendingTableState(): Partial<TableStateIf> | null {
+    const state = this.pendingTableState;
+    this.pendingTableState = null;
+    return state;
   }
 
   dismissError(): void {

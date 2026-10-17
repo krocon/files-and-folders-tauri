@@ -21,6 +21,7 @@ pub const MAX_TABS_PER_PANEL: usize = 50;
 pub const MAX_HISTORY: usize = 15;
 pub const MAX_FAVORITES: usize = 200;
 pub const MAX_FILTER_TEXT: usize = 1_000;
+pub const MAX_TITLE: usize = 255;
 /// Upper bound for the opaque table state of one tab (serialised JSON bytes).
 pub const MAX_TABLE_STATE_BYTES: usize = 64 * 1024;
 pub const SPLITTER_MIN: f64 = 0.15;
@@ -90,6 +91,8 @@ pub struct TabSession {
     pub id: String,
     /// `None` = home directory.
     pub path: Option<String>,
+    /// Display name of the folder (last path segment), computed by Rust when listing.
+    pub title: String,
     /// Newest first.
     pub history: Vec<String>,
     pub cursor: Option<String>,
@@ -141,6 +144,13 @@ pub struct LoadedSession {
 /// without warning; an unreadable, unparsable or incompatible file yields
 /// defaults with a warning and is kept next to it as `<name>.bad`.
 pub fn load(file: &Path) -> LoadOutcome {
+    let mut outcome = load_unsanitized(file);
+    // defaults too: their tabs need ids
+    sanitize(&mut outcome.session);
+    outcome
+}
+
+fn load_unsanitized(file: &Path) -> LoadOutcome {
     let text = match fs::read_to_string(file) {
         Ok(t) => t,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
@@ -157,13 +167,10 @@ pub fn load(file: &Path) -> LoadOutcome {
         }
     };
     match parse(&text) {
-        Ok(mut session) => {
-            sanitize(&mut session);
-            LoadOutcome {
-                session,
-                warning: None,
-            }
-        }
+        Ok(session) => LoadOutcome {
+            session,
+            warning: None,
+        },
         Err(reason) => {
             let kept = keep_broken_file(file);
             let mut warning =
@@ -258,6 +265,9 @@ pub fn sanitize(session: &mut Session) {
             }
             tab.history.retain(|h| !h.is_empty());
             tab.history.truncate(MAX_HISTORY);
+            if tab.title.chars().count() > MAX_TITLE {
+                tab.title = tab.title.chars().take(MAX_TITLE).collect();
+            }
             if tab.filter_text.chars().count() > MAX_FILTER_TEXT {
                 tab.filter_text = tab.filter_text.chars().take(MAX_FILTER_TEXT).collect();
             }
@@ -294,6 +304,7 @@ pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
             };
             let to = replacement.map(|p| p.to_string_lossy().into_owned());
             tab.path = to.clone();
+            tab.title = String::new();
             tab.cursor = None;
             tab.table = tab.table.take().map(drop_scroll);
             adjusted.push(AdjustedPath { from: raw, to });
@@ -322,6 +333,23 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tempfile::tempdir;
+
+    /// Defaults as `load` returns them: sanitised, so every tab has a unique id.
+    fn defaults() -> Session {
+        let mut s = Session::default();
+        sanitize(&mut s);
+        s
+    }
+
+    #[test]
+    fn loaded_defaults_have_unique_tab_ids() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("session.json");
+        fs::write(&file, "garbage").unwrap();
+        let s = load(&file).session;
+        let (l, r) = (&s.panels.left.tabs[0].id, &s.panels.right.tabs[0].id);
+        assert!(!l.is_empty() && !r.is_empty() && l != r);
+    }
 
     fn tab(id: &str, path: Option<&str>) -> TabSession {
         TabSession {
@@ -386,7 +414,7 @@ mod tests {
     fn missing_file_gives_defaults_without_warning() {
         let dir = tempdir().unwrap();
         let out = load(&dir.path().join("session.json"));
-        assert_eq!(out.session, Session::default());
+        assert_eq!(out.session, defaults());
         assert_eq!(out.warning, None);
     }
 
@@ -396,7 +424,7 @@ mod tests {
         let file = dir.path().join("session.json");
         fs::write(&file, "{ not json").unwrap();
         let out = load(&file);
-        assert_eq!(out.session, Session::default());
+        assert_eq!(out.session, defaults());
         assert!(out.warning.as_deref().unwrap().contains("invalid"));
         assert!(!file.exists());
         assert_eq!(
@@ -417,7 +445,7 @@ mod tests {
         ] {
             fs::write(&file, text).unwrap();
             let out = load(&file);
-            assert_eq!(out.session, Session::default(), "{text}");
+            assert_eq!(out.session, defaults(), "{text}");
             assert!(out.warning.is_some(), "{text}");
         }
     }
@@ -459,6 +487,7 @@ mod tests {
         };
         s.panels.left.tabs[0].history = (0..30).map(|i| format!("/h{i}")).collect();
         s.panels.left.tabs[0].filter_text = "ä".repeat(2_000);
+        s.panels.left.tabs[0].title = "x".repeat(300);
         s.panels.left.tabs[0].path = Some(String::new());
         s.panels.left.tabs[1].table = Some(json!({"custom": "x".repeat(MAX_TABLE_STATE_BYTES)}));
         s.panels.right = PanelSession {
@@ -475,6 +504,7 @@ mod tests {
         assert_eq!(ids.len(), MAX_TABS_PER_PANEL, "ids must be unique");
         assert_eq!(left.tabs[0].history.len(), MAX_HISTORY);
         assert_eq!(left.tabs[0].filter_text.chars().count(), MAX_FILTER_TEXT);
+        assert_eq!(left.tabs[0].title.len(), MAX_TITLE);
         assert_eq!(left.tabs[0].path, None);
         assert_eq!(left.tabs[1].table, None);
         assert_eq!(s.panels.right.tabs.len(), 1);

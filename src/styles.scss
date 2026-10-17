@@ -25,6 +25,20 @@
   --color-cursor-marked-text: #ffe066;
   --color-cursor-inactive-bg: #dde6f7;
 
+  /* window skeleton (prompt 004; prompt 019 maps the --fnf-* designs onto these) */
+  --color-panel-bg: var(--color-surface);
+  --color-header-bg: var(--color-surface-raised);
+  --color-footer-bg: var(--color-surface-raised);
+  --color-tab-selected-bg: var(--color-surface);
+  --color-active-panel-accent: #2f6fde;
+  --color-active-panel-tab-bg: #2f6fde;
+  --color-active-panel-tab-text: #ffffff;
+  --color-splitter-active: #7fb2ff;
+  --color-favorite: #c98a00;
+  --color-shortcut-bg: #444a55;
+  --color-shortcut-text: #f2f4f7;
+  --shadow-popup: 0 4px 16px rgb(0 0 0 / 18%);
+
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
   --spacing-3: 0.75rem;
@@ -64,6 +78,15 @@
     --color-cursor-text: #ffffff;
     --color-cursor-marked-text: #ffe066;
     --color-cursor-inactive-bg: #2a3240;
+
+    --color-active-panel-accent: #5b8ef0;
+    --color-active-panel-tab-bg: #2c5bb8;
+    --color-active-panel-tab-text: #ffffff;
+    --color-splitter-active: #3d6fd1;
+    --color-favorite: #f2c14e;
+    --color-shortcut-bg: #d5d9e0;
+    --color-shortcut-text: #16181d;
+    --shadow-popup: 0 4px 16px rgb(0 0 0 / 55%);
   }
 }
 

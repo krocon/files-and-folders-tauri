@@ -160,4 +160,11 @@ describe('FileBrowserStore', () => {
       expect(store.cursorPath()).toBeNull();
     });
   });
+
+  it('hands a pending table state out exactly once', () => {
+    const store = TestBed.inject(FileBrowserStore);
+    store.setPendingTableState({ version: 1, sort: [] });
+    expect(store.takePendingTableState()).toEqual({ version: 1, sort: [] });
+    expect(store.takePendingTableState()).toBeNull();
+  });
 });

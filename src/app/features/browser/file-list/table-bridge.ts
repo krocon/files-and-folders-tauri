@@ -1,4 +1,4 @@
-import { TableApi } from '@guiexpert/table';
+import { TableApi, TableStateIf, TableStatePart } from '@guiexpert/table';
 import { DirEntry } from '../../../core/fs/fs.models';
 import { FileBodyModel } from './file-table-model';
 
@@ -19,7 +19,14 @@ export interface TableBridge {
   setFocusedRow(index: number): void;
   repaint(): void;
   announce(text: string): void;
+  /** Column layout, sort and scroll position (per tab, design 004 E2). */
+  getTableState(): Partial<TableStateIf>;
+  /** Applies parts of a saved table state (sort also re-sorts the rows). */
+  applyTableState(state: Partial<TableStateIf>, parts: readonly TableStatePart[]): void;
 }
+
+/** The parts of the table state that belong to a tab. */
+export const TAB_TABLE_PARTS: readonly TableStatePart[] = ['columns', 'sort', 'scroll'];
 
 export function createTableBridge(api: TableApi, body: FileBodyModel): TableBridge {
   const scope = api.getTableScope();
@@ -43,6 +50,19 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
     },
     repaint: () => api.repaint(),
     announce: (text) => api.announce(text),
+    getTableState: () => api.getState([...TAB_TABLE_PARTS]),
+    applyTableState(state, parts) {
+      const wanted = parts.filter((p) => p in state);
+      if (wanted.length === 0) {
+        return;
+      }
+      api.applyState(state, wanted);
+      if (wanted.includes('sort')) {
+        // applyState sets the sort icons; the rows follow with reSort (as after setRows, G4)
+        api.reSort();
+        api.repaintHard();
+      }
+    },
   };
 }
 

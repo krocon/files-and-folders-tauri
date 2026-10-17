@@ -7,10 +7,12 @@ import {
   inject,
   input,
   OnDestroy,
+  output,
   untracked,
 } from '@angular/core';
 import { TableComponent } from '@guiexpert/angular-table';
-import { TableApi } from '@guiexpert/table';
+import { TableApi, TableStateIf } from '@guiexpert/table';
+import { DirEntry } from '../../../core/fs/fs.models';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
@@ -49,13 +51,21 @@ export class FileList implements OnDestroy {
   /** Id of the element naming the list (the path display) – `aria-labelledby`. */
   readonly labelledBy = input.required<string>();
 
+  /** Strg/⌘+Enter on a folder. */
+  readonly openInNewTab = output<DirEntry>();
+  /** Column layout, sort or scroll changed by the user (debounced by the table). */
+  readonly tableStateChanged = output<Partial<TableStateIf>>();
+
   /** Model and options are created once – a new object would re-create the table. */
   protected readonly table = computed(() => createFileTable(this.labelledBy()));
 
   private bridge?: TableBridge;
   private controller?: FileListController;
   private unsubscribe?: () => void;
-  private focusedOnce = false;
+  private focusWanted = false;
+  /** While rows/state are being applied, state events are ours, not the user's. */
+  private applying = false;
+  private applySeq = 0;
 
   constructor() {
     // A header double-click sorts synchronously and stops propagation (no "sorted" event, G14).
@@ -70,7 +80,7 @@ export class FileList implements OnDestroy {
       untracked(() => {
         if (listing && this.controller) {
           const start = performance.now();
-          this.controller.showRows(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
+          this.show(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
           const sync = since(start);
           requestAnimationFrame(() =>
             recordPerf(
@@ -79,7 +89,6 @@ export class FileList implements OnDestroy {
               `sync ${Math.round(sync)} ms, ${listing.entries.length} rows`,
             ),
           );
-          this.focusTableOnce();
         }
       });
     });
@@ -92,7 +101,9 @@ export class FileList implements OnDestroy {
   protected onTableReady(api: TableApi): void {
     const table = this.table();
     const bridge = createTableBridge(api, table.body);
-    const controller = new FileListController(bridge, this.store);
+    const controller = new FileListController(bridge, this.store, {
+      openInNewTab: (entry) => this.openInNewTab.emit(entry),
+    });
     this.bridge = bridge;
     this.controller = controller;
 
@@ -106,6 +117,11 @@ export class FileList implements OnDestroy {
     });
     this.unsubscribe = api.subscribe({
       onFocusChanged: (model) => controller.onFocusChanged(model.getFocus()[0]),
+      onStateChanged: (evt) => {
+        if (!this.applying) {
+          this.tableStateChanged.emit(evt.state);
+        }
+      },
       // core event, not the wrapper output: no 150 ms debounce (design E5)
       onMouseClicked: (evt) =>
         controller.onClick({
@@ -119,13 +135,53 @@ export class FileList implements OnDestroy {
 
     const listing = this.store.listing();
     if (listing) {
-      controller.showRows(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
-      this.focusTableOnce();
+      this.show(listing.entries, listing.segments.at(-1)?.name ?? listing.path);
+    }
+    if (this.focusWanted) {
+      this.focus();
+    }
+  }
+
+  /** The table state of the current tab (columns, sort, scroll). */
+  captureTableState(): Partial<TableStateIf> | null {
+    return this.bridge?.getTableState() ?? null;
+  }
+
+  /** Moves the keyboard focus into the table (now, or as soon as it exists). */
+  focus(): void {
+    const target = this.host.nativeElement.querySelector<HTMLElement>('[tabindex="0"]');
+    this.focusWanted = !target;
+    target?.focus();
+  }
+
+  private show(entries: readonly DirEntry[], label: string): void {
+    const state = this.store.takePendingTableState() ?? undefined;
+    const seq = ++this.applySeq;
+    this.applying = true;
+    try {
+      this.controller?.showRows(entries, label, state);
+    } finally {
+      // the table reports state changes debounced (300 ms) – ignore the ones caused by applying
+      setTimeout(() => {
+        if (seq === this.applySeq) {
+          this.applying = false;
+        }
+      }, 400);
     }
   }
 
   protected onKeydown(evt: KeyboardEvent): void {
-    if (this.controller?.onKey(evt)) {
+    const toggleKey = IS_MAC ? evt.metaKey : evt.ctrlKey;
+    if (
+      this.controller?.onKey({
+        key: evt.key,
+        shiftKey: evt.shiftKey,
+        ctrlKey: evt.ctrlKey,
+        metaKey: evt.metaKey,
+        altKey: evt.altKey,
+        toggleKey,
+      })
+    ) {
       evt.preventDefault();
       evt.stopPropagation();
     }
@@ -133,13 +189,5 @@ export class FileList implements OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubscribe?.();
-  }
-
-  private focusTableOnce(): void {
-    if (this.focusedOnce) {
-      return;
-    }
-    this.focusedOnce = true;
-    this.host.nativeElement.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
   }
 }

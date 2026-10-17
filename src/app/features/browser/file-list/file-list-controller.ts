@@ -1,6 +1,13 @@
-import { DirEntry } from '../../../core/fs/fs.models';
+import type { TableStateIf } from '@guiexpert/table';
+import { DirEntry, isNavigableDir } from '../../../core/fs/fs.models';
 import { FileBrowserStore } from '../file-browser.store';
 import { TableBridge } from './table-bridge';
+
+/** Callbacks into the surrounding panel. */
+export interface FileListHooks {
+  /** Strg/⌘+Enter on a folder. */
+  openInNewTab?(entry: DirEntry): void;
+}
 
 /** The store API the controller uses (keeps tests independent of Angular DI). */
 export type FileListStore = Pick<
@@ -23,6 +30,8 @@ export interface KeyInput {
   ctrlKey: boolean;
   metaKey: boolean;
   altKey: boolean;
+  /** Ctrl (Windows/Linux) or ⌘ (macOS) – set by the component, absent = false. */
+  toggleKey?: boolean;
 }
 
 export interface ClickInput {
@@ -49,12 +58,23 @@ export class FileListController {
   constructor(
     private readonly bridge: TableBridge,
     private readonly store: FileListStore,
+    private readonly hooks: FileListHooks = {},
   ) {}
 
-  /** New listing: rows to the table, cursor to the wanted entry (or the first row). */
-  showRows(rows: readonly DirEntry[], label?: string): void {
+  /**
+   * New listing: rows to the table, cursor to the wanted entry (or the first row).
+   * `tableState` (tab switch): columns and sort before the cursor, scroll last –
+   * so the saved scroll position wins over "scroll the cursor into view".
+   */
+  showRows(rows: readonly DirEntry[], label?: string, tableState?: Partial<TableStateIf>): void {
     this.bridge.setRows(rows);
+    if (tableState) {
+      this.bridge.applyTableState(tableState, ['columns', 'sort']);
+    }
     this.restoreCursor();
+    if (tableState) {
+      this.bridge.applyTableState(tableState, ['scroll']);
+    }
     if (label !== undefined) {
       const n = rows.length;
       this.bridge.announce(`${label}, ${n} ${n === 1 ? 'entry' : 'entries'}`);
@@ -112,6 +132,9 @@ export class FileListController {
         if (plain && !key.shiftKey) {
           return this.openCursor();
         }
+        if (key.toggleKey && !key.shiftKey && !key.altKey) {
+          return this.openCursorInNewTab();
+        }
         return false;
       case 'Backspace':
         if (plain && !key.shiftKey) {
@@ -162,6 +185,16 @@ export class FileListController {
       return false;
     }
     void this.store.open(row);
+    return true;
+  }
+
+  /** Strg/⌘+Enter: open the folder under the cursor in a new tab. */
+  openCursorInNewTab(): boolean {
+    const row = this.cursorRow();
+    if (!row || !isNavigableDir(row) || row.lossyName || !this.hooks.openInNewTab) {
+      return false;
+    }
+    this.hooks.openInNewTab(row);
     return true;
   }
 

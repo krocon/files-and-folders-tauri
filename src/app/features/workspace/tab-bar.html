@@ -1,0 +1,51 @@
+<div class="tablist" role="tablist" [attr.aria-label]="texts.tabsLabel(side())">
+  @for (tab of panel().tabs; track tab.id; let i = $index) {
+    @let selected = i === panel().activeTab;
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [class.selected]="selected"
+      [attr.aria-selected]="selected"
+      [attr.tabindex]="selected ? 0 : -1"
+      [attr.title]="tab.path ?? texts.homeFolder"
+      (click)="select(i)"
+      (dblclick)="reload(i)"
+      (auxclick)="onAuxClick($event, i)"
+      (contextmenu)="onContextMenu($event, i)"
+      (keydown)="onTabKeydown($event, i)"
+    >
+      {{ title(tab) }}
+    </button>
+  }
+</div>
+<button
+  type="button"
+  class="icon-btn"
+  [attr.aria-label]="texts.newTab"
+  [attr.title]="texts.newTab"
+  (click)="cloneActive()"
+>
+  <span aria-hidden="true">+</span>
+</button>
+<button
+  type="button"
+  class="icon-btn"
+  [attr.aria-label]="texts.closeTab"
+  [attr.title]="texts.closeTab"
+  [disabled]="panel().tabs.length <= 1"
+  (click)="closeActive()"
+>
+  <span aria-hidden="true">−</span>
+</button>
+
+@if (menu(); as m) {
+  <app-context-menu
+    [items]="menuItems()"
+    [x]="m.x"
+    [y]="m.y"
+    [label]="title(panel().tabs[m.index])"
+    (chosen)="onMenuChosen($event)"
+    (closed)="onMenuClosed()"
+  />
+}
