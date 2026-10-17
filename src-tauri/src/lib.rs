@@ -19,8 +19,10 @@
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
+//! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
 
+pub mod app_menu;
 pub mod clean;
 pub mod commands;
 pub mod dirsize;
@@ -54,6 +56,8 @@ pub fn run() {
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
+        .manage(commands::MenuState::default())
+        .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -126,7 +130,10 @@ pub fn run() {
             commands::run_tool,
             commands::open_tools_config,
             commands::read_preview,
-            commands::get_properties
+            commands::get_properties,
+            commands::set_app_menu,
+            commands::subscribe_menu,
+            commands::close_main_window
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

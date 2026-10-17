@@ -55,6 +55,7 @@ export type FsErrorCode =
   | 'too_many_files'
   /** A search pattern (regex, glob) is invalid (design 009). */
   | 'invalid_pattern'
+  | 'invalid_menu'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'
