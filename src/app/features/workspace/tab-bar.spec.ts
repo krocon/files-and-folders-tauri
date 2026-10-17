@@ -72,7 +72,8 @@ describe('TabBar', () => {
 
   it('clones with + and closes with −, the last tab stays', async () => {
     const { fixture, el, tabs } = await render();
-    const [plus, minus] = [...el.querySelectorAll<HTMLButtonElement>('.icon-btn')];
+    const plus = el.querySelector<HTMLButtonElement>('[aria-label="Clone tab"]')!;
+    const minus = el.querySelector<HTMLButtonElement>('[aria-label="Close tab"]')!;
     plus.click();
     fixture.detectChanges();
     expect(tabs()).toHaveLength(4);

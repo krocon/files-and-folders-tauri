@@ -12,6 +12,8 @@ export interface MenuItem {
   readonly id: string;
   readonly label: string;
   readonly disabled?: boolean;
+  /** A group heading (not selectable). */
+  readonly heading?: boolean;
 }
 
 /**
@@ -30,14 +32,18 @@ export interface MenuItem {
       [style.top.px]="y()"
     >
       @for (item of items(); track item.id) {
-        <li
-          role="menuitem"
-          tabindex="-1"
-          [attr.aria-disabled]="item.disabled ? 'true' : null"
-          [attr.data-id]="item.id"
-        >
-          {{ item.label }}
-        </li>
+        @if (item.heading) {
+          <li role="presentation" class="heading">{{ item.label }}</li>
+        } @else {
+          <li
+            role="menuitem"
+            tabindex="-1"
+            [attr.aria-disabled]="item.disabled ? 'true' : null"
+            [attr.data-id]="item.id"
+          >
+            {{ item.label }}
+          </li>
+        }
       }
     </ul>
   `,

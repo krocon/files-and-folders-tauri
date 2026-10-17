@@ -3,24 +3,46 @@
   [class.fnf-active-panel]="active()"
   [attr.aria-label]="texts.pathLabel(side())"
 >
-  <span class="crumbs" [id]="pathId" [attr.title]="store.path()">
-    @for (seg of segments(); track seg.path; let i = $index; let last = $last) {
-      @if (needsSeparator(i)) {
-        <span class="sep" aria-hidden="true">/</span>
+  @if (editingPath()) {
+    <form class="path-form" (submit)="submitPath($event, pathInput.value)">
+      <input
+        #pathInput
+        class="path-input"
+        type="text"
+        spellcheck="false"
+        [id]="pathId + '-input'"
+        [attr.aria-label]="texts.pathInput"
+        [attr.aria-invalid]="pathError() ? 'true' : null"
+        [attr.aria-describedby]="pathError() ? pathId + '-error' : null"
+        [value]="store.path() ?? ''"
+        (keydown)="onPathKeydown($event)"
+        (blur)="pathError() ? null : cancelPathEdit()"
+      />
+      @if (pathError(); as e) {
+        <span class="path-error" role="alert" [id]="pathId + '-error'">{{ e }}</span>
       }
-      <button
-        type="button"
-        class="crumb"
-        [class.current]="last"
-        [attr.aria-current]="last ? 'location' : null"
-        (click)="openSegment(seg)"
-      >
-        {{ seg.name }}
-      </button>
-    } @empty {
-      <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
-    }
-  </span>
+    </form>
+    <span class="crumbs" [id]="pathId" hidden>{{ store.path() }}</span>
+  } @else {
+    <span class="crumbs" [id]="pathId" [attr.title]="store.path()">
+      @for (seg of segments(); track seg.path; let i = $index; let last = $last) {
+        @if (needsSeparator(i)) {
+          <span class="sep" aria-hidden="true">/</span>
+        }
+        <button
+          type="button"
+          class="crumb"
+          [class.current]="last"
+          [attr.aria-current]="last ? 'location' : null"
+          (click)="openSegment(seg)"
+        >
+          {{ seg.name }}
+        </button>
+      } @empty {
+        <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
+      }
+    </span>
+  }
   <button
     type="button"
     class="star"
@@ -72,6 +94,12 @@
     in <b class="sel">{{ s.markedFiles }}</b> / {{ s.files }} Files,
     <b class="sel">{{ s.markedDirs }}</b> / {{ s.dirs }} Folders
   </span>
+  @if (store.hiddenMarkedCount(); as n) {
+    <span class="warn">· {{ texts.hiddenMarked(n) }}</span>
+  }
+  @if (sizeProgress(); as p) {
+    <span class="busy">· {{ p }}</span>
+  }
   @if (store.listing()?.unreadableEntries; as n) {
     <span class="warn">· {{ texts.unreadable(n) }}</span>
   }

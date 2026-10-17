@@ -1,5 +1,5 @@
 import { ColumnDef, ColumnDefIf, Size, TrueFn, ValueRowSortComparator } from '@guiexpert/table';
-import { DirEntry, isNavigableDir } from '../../../core/fs/fs.models';
+import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
 
 /** Column properties of the file list. `ext` is computed from the name. */
@@ -51,6 +51,10 @@ function fileComparator(
   return (_va: unknown, _vb: unknown, rowA?: DirEntry, rowB?: DirEntry, f = 1) => {
     if (!rowA || !rowB) {
       return 0;
+    }
+    // ".." stays on top in both directions (design 003 E1)
+    if (isParentRow(rowA) !== isParentRow(rowB)) {
+      return f * (isParentRow(rowA) ? -1 : 1);
     }
     const dirA = isNavigableDir(rowA);
     const dirB = isNavigableDir(rowB);

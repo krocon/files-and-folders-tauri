@@ -1,4 +1,4 @@
-import { DirEntry, isNavigableDir } from '../../core/fs/fs.models';
+import { DirEntry, isNavigableDir, isParentRow } from '../../core/fs/fs.models';
 
 export interface PanelSummary {
   /** Bytes of the marked files. */
@@ -14,8 +14,7 @@ export interface PanelSummary {
 /**
  * Numbers of the status line (`docs/ui-layout.md`, row 4). Folders count as
  * folders, everything else (incl. symlinks to files and unreadable entries)
- * as files; only file sizes are summed – folder sizes come with prompt 003.
- * A future `..` row is not part of the entries.
+ * as files; folder sizes are summed once calculated. The `..` row never counts.
  */
 export function summarize(entries: readonly DirEntry[], marked: ReadonlySet<string>): PanelSummary {
   let markedSize = 0;
@@ -26,10 +25,16 @@ export function summarize(entries: readonly DirEntry[], marked: ReadonlySet<stri
   let dirs = 0;
   for (const e of entries) {
     const isMarked = marked.has(e.path);
+    if (isParentRow(e)) {
+      continue;
+    }
     if (isNavigableDir(e)) {
       dirs++;
+      // folder sizes count once calculated (Space, design 003 E7)
+      totalSize += e.size ?? 0;
       if (isMarked) {
         markedDirs++;
+        markedSize += e.size ?? 0;
       }
     } else {
       files++;

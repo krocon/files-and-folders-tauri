@@ -1,3 +1,14 @@
+<button
+  type="button"
+  class="icon-btn folder-menu"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="folderMenuOpen() !== null"
+  [attr.aria-label]="texts.folderMenu"
+  [attr.title]="texts.folderMenu"
+  (click)="openFolderMenu()"
+>
+  <span aria-hidden="true">▾</span>
+</button>
 <div class="tablist" role="tablist" [attr.aria-label]="texts.tabsLabel(side())">
   @for (tab of panel().tabs; track tab.id; let i = $index) {
     @let selected = i === panel().activeTab;
@@ -40,6 +51,56 @@
 >
   <span aria-hidden="true">−</span>
 </button>
+
+<span class="spacer"></span>
+@if (store; as st) {
+  <button
+    type="button"
+    class="icon-btn"
+    [attr.aria-pressed]="st.hiddenVisible()"
+    [attr.aria-label]="texts.showHidden"
+    [attr.title]="texts.showHidden"
+    (click)="toggleHidden()"
+  >
+    <span aria-hidden="true">{{ st.hiddenVisible() ? '👁' : '◌' }}</span>
+  </button>
+  <button
+    type="button"
+    class="icon-btn"
+    [attr.aria-pressed]="st.filterActive()"
+    [attr.aria-label]="texts.filter"
+    [attr.title]="texts.filter"
+    (click)="toggleFilter()"
+  >
+    <span aria-hidden="true">⏷</span>
+  </button>
+  @if (st.filterActive()) {
+    <input
+      class="filter-input"
+      type="search"
+      role="searchbox"
+      spellcheck="false"
+      [attr.aria-label]="texts.filter"
+      [attr.aria-controls]="'fnf-pane-' + side()"
+      [placeholder]="texts.filterPlaceholder"
+      [value]="st.filterText()"
+      (input)="onFilterInput($any($event.target).value)"
+      (keydown)="onFilterKeydown($event)"
+      (dblclick)="onFilterInput('')"
+    />
+  }
+}
+
+@if (folderMenuOpen(); as fm) {
+  <app-context-menu
+    [items]="folderMenuItems()"
+    [x]="fm.x"
+    [y]="fm.y"
+    [label]="texts.folderMenu"
+    (chosen)="onFolderChosen($event)"
+    (closed)="onFolderMenuClosed($event)"
+  />
+}
 
 @if (menu(); as m) {
   <app-context-menu

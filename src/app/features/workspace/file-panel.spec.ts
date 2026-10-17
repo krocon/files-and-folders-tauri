@@ -245,4 +245,56 @@ describe('FilePanel', () => {
     expect(ws.panels().left.tabs[1].path).toBe('/other');
     expect(ws.panels().left.tabs[0].path).toBe('/data');
   });
+
+  it('path input: Strg/⌘+L, errors stay in the field, a file opens its folder with the cursor on it', async () => {
+    const { el, store, settle } = await render();
+    fs.locations['~/other/x'] = { dir: '/other', select: '/other/x' };
+    ws.requestPathEdit('left');
+    await settle();
+    const input = () => el.querySelector<HTMLInputElement>('.path-input');
+    expect(input()?.value).toBe('/data');
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    input()!.value = '/nope';
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.path-error')?.textContent).toContain('does not exist');
+    input()!.value = '~/other/x';
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+    await settle();
+    expect(store.path()).toBe('/other');
+    expect(store.cursorPath()).toBe('/other/x');
+    expect(input()).toBeNull();
+  });
+
+  it('keeps hidden/filter per tab and opens folders from the folder menu', async () => {
+    const { el, store, settle } = await render();
+    (el.querySelector('[aria-label="Show hidden files"]') as HTMLButtonElement).click();
+    (el.querySelector('[aria-label="Filter"]') as HTMLButtonElement).click();
+    await settle();
+    const filter = el.querySelector<HTMLInputElement>('.filter-input')!;
+    filter.value = '*.txt';
+    filter.dispatchEvent(new Event('input'));
+    await settle();
+    expect(ws.activeTab('left')).toMatchObject({
+      hiddenVisible: true,
+      filterActive: true,
+      filterText: '*.txt',
+    });
+    expect(el.querySelector('.status')?.textContent).toContain('0 / 2 Files, 0 / 0 Folders');
+    filter.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(store.filterActive()).toBe(false);
+
+    ws.toggleFavorite('/other');
+    (el.querySelector('.folder-menu') as HTMLButtonElement).click();
+    await settle();
+    const items = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.map((i) => i.textContent?.trim())).toContain('/other');
+    items.find((i) => i.textContent?.trim() === '/other')!.click();
+    await settle();
+    await settle();
+    expect(store.path()).toBe('/other');
+    expect(ws.recent()[0]).toBe('/other');
+  });
 });

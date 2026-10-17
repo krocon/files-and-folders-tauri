@@ -34,6 +34,8 @@ export type FsErrorCode =
   | 'not_found'
   | 'permission_denied'
   | 'not_a_directory'
+  | 'not_a_file'
+  | 'executable'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'
@@ -46,6 +48,42 @@ export interface FsError {
   readonly code: FsErrorCode;
   readonly message: string;
   readonly path: string | null;
+}
+
+/** A row of the file list: a directory entry or the synthetic ".." row (design 003 E1). */
+export type ListRow = DirEntry & { readonly parentLink?: true };
+
+export function parentRow(parentPath: string): ListRow {
+  return {
+    name: '..',
+    path: parentPath,
+    kind: 'directory',
+    targetKind: null,
+    size: null,
+    modifiedMs: null,
+    hidden: false,
+    lossyName: false,
+    parentLink: true,
+  };
+}
+
+export function isParentRow(entry: DirEntry): boolean {
+  return (entry as ListRow).parentLink === true;
+}
+
+/** Result of `calc_dir_size` (Rust `dirsize.rs`). */
+export interface DirSize {
+  readonly files: number;
+  readonly dirs: number;
+  readonly bytes: number;
+  readonly unreadable: number;
+  readonly cancelled: boolean;
+}
+
+/** Result of `resolve_location`: a folder, plus the file to select if a file was typed. */
+export interface Location {
+  readonly dir: string;
+  readonly select: string | null;
 }
 
 export function isNavigableDir(entry: DirEntry): boolean {

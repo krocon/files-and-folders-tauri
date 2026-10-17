@@ -38,6 +38,8 @@ export interface Session {
   /** Share of the left side (0.15 … 0.85). */
   readonly splitter: number;
   readonly favorites: readonly string[];
+  /** Recently visited folders, newest first (max. 20). */
+  readonly recent: readonly string[];
   readonly panels: { readonly left: PanelSession; readonly right: PanelSession };
 }
 

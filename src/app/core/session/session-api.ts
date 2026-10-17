@@ -53,6 +53,7 @@ export function defaultSession(): Session {
     activeSide: 'left',
     splitter: 0.5,
     favorites: [],
+    recent: [],
     panels: {
       left: { activeTab: 0, tabs: [tab('t1')] },
       right: { activeTab: 0, tabs: [tab('t2')] },

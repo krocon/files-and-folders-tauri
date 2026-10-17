@@ -9,8 +9,10 @@ import { FileBodyModel } from './file-table-model';
  * end-to-end.
  */
 export interface TableBridge {
-  /** Replaces the rows, re-applies the current sort and repaints. */
+  /** Replaces the rows, re-applies filter and sort and repaints. */
   setRows(rows: readonly DirEntry[]): void;
+  /** The external row filter changed (hidden files, quick filter). */
+  filterChanged(): void;
   /** Rows in display order (sorted/filtered). */
   displayedRows(): readonly DirEntry[];
   /** Displayed index of the focused row, -1 if none. */
@@ -33,7 +35,13 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
   return {
     setRows(rows) {
       api.setRows([...rows]);
+      api.externalFilterChanged();
       // setRows resets the order (G4) – re-apply the sort of the header
+      api.reSort();
+      api.repaintHard();
+    },
+    filterChanged() {
+      api.externalFilterChanged();
       api.reSort();
       api.repaintHard();
     },

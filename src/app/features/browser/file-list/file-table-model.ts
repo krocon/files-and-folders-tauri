@@ -84,8 +84,14 @@ export const FILE_LIST_SHORTCUTS: ShortcutActionIdMapping = {
   end: 'NAVIGATE_LAST_CELL',
 };
 
-/** Creates model + options once per panel. A new object would re-create the table. */
-export function createFileTable(labelledBy: string): FileTable {
+/**
+ * Creates model + options once per panel. A new object would re-create the table.
+ * `rowFilter` is read on every filter run (hidden files, quick filter – design 003 E5).
+ */
+export function createFileTable(
+  labelledBy: string,
+  rowFilter: () => (row: DirEntry) => boolean = () => () => true,
+): FileTable {
   const columnDefs = createFileColumns();
   const body = new FileBodyModel([], columnDefs, NO_STATE);
   const options: TableOptionsIf = {
@@ -99,6 +105,7 @@ export function createFileTable(labelledBy: string): FileTable {
     getSelectionModel: () => new SelectionModel('none', 'single'),
     shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
     ariaLabelledBy: labelledBy,
+    externalFilterFunction: (row: DirEntry) => rowFilter()(row),
     overlayOptions: {
       noRowsText: 'This folder is empty.',
       loadingText: 'Loading…',

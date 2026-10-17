@@ -1,5 +1,5 @@
 import type { TableStateIf } from '@guiexpert/table';
-import { DirEntry, isNavigableDir } from '../../../core/fs/fs.models';
+import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { FileBrowserStore } from '../file-browser.store';
 import { TableBridge } from './table-bridge';
 
@@ -42,6 +42,13 @@ export interface ClickInput {
  * Keys reach it as actions (prompt 002: `ActionService` → `FilePanel`); the
  * methods here are what those actions do.
  */
+export const TYPE_AHEAD_RESET_MS = 1500;
+
+/** Case- and accent-insensitive form for type-ahead (`Ä` → `a`). */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+}
+
 export class FileListController {
   /** Cursor before the latest focus change – anchor for Shift+click. */
   private previousCursor: string | null = null;
@@ -223,6 +230,42 @@ export class FileListController {
   }
 
   private displayedPaths(): string[] {
-    return this.bridge.displayedRows().map((r) => r.path);
+    return this.bridge
+      .displayedRows()
+      .filter((r) => !isParentRow(r))
+      .map((r) => r.path);
+  }
+
+  // ---- type-ahead (design 003 E6) ----
+
+  private typed = '';
+  private typedAt = 0;
+
+  /**
+   * A printable character typed in the list: extends the prefix (reset after
+   * {@link TYPE_AHEAD_RESET_MS}) and moves the cursor to the first entry starting
+   * with it (accent- and case-insensitive), otherwise to the first containing it.
+   * Returns the name found, or null.
+   */
+  typeAhead(char: string, now = Date.now()): string | null {
+    this.typed = now - this.typedAt > TYPE_AHEAD_RESET_MS ? char : this.typed + char;
+    this.typedAt = now;
+    const needle = fold(this.typed);
+    const rows = this.bridge.displayedRows();
+    let index = rows.findIndex((r) => !isParentRow(r) && fold(r.name).startsWith(needle));
+    if (index < 0) {
+      index = rows.findIndex((r) => !isParentRow(r) && fold(r.name).includes(needle));
+    }
+    if (index < 0) {
+      return null;
+    }
+    this.bridge.setFocusedRow(index);
+    this.onFocusChanged(index);
+    return rows[index].name;
+  }
+
+  resetTypeAhead(): void {
+    this.typed = '';
+    this.typedAt = 0;
   }
 }

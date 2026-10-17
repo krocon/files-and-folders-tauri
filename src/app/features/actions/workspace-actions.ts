@@ -25,7 +25,61 @@ export function registerWorkspaceActions(
     },
     OPEN_IN_NEW_TAB: { run: () => void list()?.openCursorInNewTab(), enabled: hasCursor },
     RELOAD_DIR: { run: () => panel()?.store.refresh() },
-    TOGGLE_MARK_AND_ADVANCE: { run: () => list()?.toggleMarkAndAdvance(), enabled: hasCursor },
+    TOGGLE_MARK_AND_ADVANCE: {
+      // Space on a folder also calculates its size (design 002 D3 / 003 E7)
+      run: () => {
+        const entry = list()?.cursorEntry();
+        if (entry && !panel()?.store.isMarked(entry.path)) {
+          void panel()?.store.calcDirSize(entry);
+        }
+        list()?.toggleMarkAndAdvance();
+      },
+      enabled: hasCursor,
+    },
+    CALC_DIR_SIZES: {
+      run: () => {
+        const store = panel()?.store;
+        const targets = store?.markedEntries().length
+          ? store.markedEntries()
+          : [list()?.cursorEntry()];
+        for (const e of targets) {
+          if (e) {
+            void store?.calcDirSize(e);
+          }
+        }
+      },
+    },
+    NAVIGATE_BACK: {
+      run: () => panel()?.store.back(),
+      enabled: () => panel()?.store.canGoBack() ?? false,
+    },
+    NAVIGATE_FORWARD: {
+      run: () => panel()?.store.forward(),
+      enabled: () => panel()?.store.canGoForward() ?? false,
+    },
+    TOGGLE_HIDDEN_FILES: { run: () => panel()?.store.hiddenVisible.update((v) => !v) },
+    TOGGLE_FILTER: {
+      run: () => {
+        const store = panel()?.store;
+        if (!store) {
+          return;
+        }
+        const on = !store.filterActive();
+        store.filterActive.set(on);
+        if (on) {
+          setTimeout(() =>
+            document
+              .querySelector<HTMLInputElement>(`.side-${ws.activeSide()} .filter-input`)
+              ?.focus(),
+          );
+        } else {
+          focusActive();
+        }
+      },
+    },
+    OPEN_CHDIR_DLG: { run: () => ws.requestPathEdit(ws.activeSide()) },
+    OPEN_FOLDER_MENU_LEFT: { run: () => ws.requestFolderMenu('left') },
+    OPEN_FOLDER_MENU_RIGHT: { run: () => ws.requestFolderMenu('right') },
     MARK_DOWN: { run: () => list()?.markAndMove(1), enabled: hasCursor },
     MARK_UP: { run: () => list()?.markAndMove(-1), enabled: hasCursor },
     MARK_TO_START: { run: () => list()?.markToEdge('start'), enabled: hasCursor },

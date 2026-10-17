@@ -9,6 +9,7 @@ import {
   TabSession,
 } from '../../core/session/session.models';
 import type { FileBrowserStore } from '../browser/file-browser.store';
+import { createTabMemory, TabMemory } from '../browser/tab-memory';
 import type { FileListController } from '../browser/file-list/file-list-controller';
 import { TEXTS } from './texts';
 
@@ -35,6 +36,7 @@ export const SPLITTER_MIN = 0.15;
 export const SPLITTER_MAX = 0.85;
 export const MAX_HISTORY = 15;
 export const MAX_TABS = 50;
+export const MAX_RECENT = 20;
 /** Delay before a changed state is written (Rust writes atomically). */
 export const SAVE_DEBOUNCE_MS = 400;
 
@@ -84,6 +86,8 @@ export class WorkspaceStore {
   readonly activeSide = signal<Side>('left');
   readonly splitter = signal(0.5);
   readonly favorites = signal<ReadonlySet<string>>(new Set());
+  /** Recently visited folders, newest first (design 003 E3). */
+  readonly recent = signal<readonly string[]>([]);
   readonly panels = signal<Panels>(EMPTY_PANELS);
   /** Messages for the user (session warnings, replaced folders, save errors). */
   readonly notices = signal<readonly string[]>([]);
@@ -91,6 +95,13 @@ export class WorkspaceStore {
   readonly focusRequest = signal<{ side: Side; seq: number } | null>(null);
   /** Asks a panel to reload its folder. */
   readonly reloadRequest = signal<{ side: Side; seq: number } | null>(null);
+  /** Asks a panel to open a folder (menu ▾). */
+  readonly navigateRequest = signal<{ side: Side; path: string | null; seq: number } | null>(null);
+  /** Asks a panel to show the path input (Strg/⌘+L). */
+  readonly pathEditRequest = signal<{ side: Side; seq: number } | null>(null);
+  /** Asks a panel to open its folder menu ▾ (Alt+F1/F2). */
+  readonly folderMenuRequest = signal<{ side: Side; seq: number } | null>(null);
+  private readonly memories = new Map<string, TabMemory>();
 
   readonly source = computed(() => this.activeSide());
   readonly target = computed(() => otherSide(this.activeSide()));
@@ -161,6 +172,28 @@ export class WorkspaceStore {
 
   requestFocus(side: Side): void {
     this.focusRequest.set({ side, seq: ++this.seq });
+  }
+
+  requestNavigate(side: Side, path: string | null): void {
+    this.navigateRequest.set({ side, path, seq: ++this.seq });
+  }
+
+  requestPathEdit(side: Side): void {
+    this.pathEditRequest.set({ side, seq: ++this.seq });
+  }
+
+  requestFolderMenu(side: Side): void {
+    this.folderMenuRequest.set({ side, seq: ++this.seq });
+  }
+
+  /** In-memory navigation state of a tab (back/forward, per-folder cursor/marks/scroll). */
+  memory(tabId: string): TabMemory {
+    let m = this.memories.get(tabId);
+    if (!m) {
+      m = createTabMemory();
+      this.memories.set(tabId, m);
+    }
+    return m;
   }
 
   requestReload(side: Side): void {
@@ -282,9 +315,14 @@ export class WorkspaceStore {
           )
         : tab.history;
     this.updateTab(id, { path, title, history });
+    this.addRecent(path);
   }
 
   // ---- favourites ----
+
+  addRecent(path: string): void {
+    this.recent.update((r) => [path, ...r.filter((p) => p !== path)].slice(0, MAX_RECENT));
+  }
 
   isFavorite(path: string | null): boolean {
     return path !== null && this.favorites().has(path);
@@ -310,6 +348,7 @@ export class WorkspaceStore {
     activeSide: this.activeSide(),
     splitter: this.splitter(),
     favorites: [...this.favorites()],
+    recent: this.recent(),
     panels: {
       left: toPanelSession(this.panels().left),
       right: toPanelSession(this.panels().right),
@@ -320,6 +359,7 @@ export class WorkspaceStore {
     this.activeSide.set(session.activeSide === 'right' ? 'right' : 'left');
     this.splitter.set(clampSplitter(session.splitter));
     this.favorites.set(new Set(session.favorites));
+    this.recent.set((session.recent ?? []).slice(0, MAX_RECENT));
     const ids = new Set<string>();
     this.panels.set({
       left: fromPanelSession(session.panels.left, ids),
