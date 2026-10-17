@@ -4,7 +4,7 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Prompt 004 (Fensteraufbau).** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
+> **Status: Prompt 002 (Aktionen und Tastatur) auf Basis von 004 (Fensteraufbau).** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
 > GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
 > Favoriten und Fenstergröße werden gespeichert. Es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
@@ -35,28 +35,66 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
 - Helles/dunkles Farbschema über CSS Custom Properties (`prefers-color-scheme`).
 
-### Tastatur und Maus (Stand Prompt 004)
+### Tastenkürzel (Stand Prompt 002)
 
-| Taste / Maus | Wirkung |
-| --- | --- |
-| `↑` `↓` `Bild↑` `Bild↓` | Cursor bewegen |
-| `Pos1` / `Ende` (macOS zusätzlich `⌘↑` / `⌘↓`) | erste / letzte Zeile |
-| `Enter`, Doppelklick | Ordner öffnen |
-| `Backspace`, Klick auf ein Breadcrumb-Segment | Elternordner (Cursor auf dem Herkunftsordner) |
-| `Leertaste`, `Einfg` | markieren/entmarkieren und Cursor weiter |
-| `Shift+↑` / `Shift+↓` | markieren und Cursor bewegen |
-| `Strg/⌘+Klick` | Markierung umschalten |
-| `Shift+Klick` | Bereich ab vorherigem Cursor markieren |
-| `Strg/⌘+A` / `Strg/⌘+Shift+A` | alles markieren / Markierung aufheben |
-| Doppelklick auf Spaltenkopf | sortieren (auf-/absteigend) |
-| `Tab` (in der Liste) | andere Seite aktivieren |
-| `Strg+Tab` / `Strg+Shift+Tab` | nächster / vorheriger Tab |
-| `Strg/⌘+Alt+T` / `Strg/⌘+Alt+W` | Tab klonen / schließen |
-| `Strg/⌘+Enter` | Ordner unter dem Cursor in neuem Tab öffnen |
-| Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10` | Tab wechseln, schließen, Kontextmenü |
-| Splitter: Ziehen, `←` `→` `Pos1` `Ende`, Doppelklick/`Enter` | Breite ändern, 50 / 50 |
+Jede Funktion ist eine Aktion mit stabiler Id; Kürzel kommen aus einer Keymap je Betriebssystem
+(`src/app/core/actions/keymaps/`) und lassen sich im Dialog **Keyboard shortcuts** (⌨ in der Button-Leiste,
+`Strg+Shift+K` / `⌘⇧K`) ändern – gespeichert in `keymap.json` im App-Config-Verzeichnis. Alle Aktionen findet die
+Befehlspalette (`Strg+Shift+P` / `⌘⇧P`). Aktionen späterer Prompts sind schon gelistet und gedimmt.
+Einfache Tasten (Leertaste, Enter, Tab, Buchstaben) wirken nur, wenn die Dateiliste den Fokus hat; die
+Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 
-Das vollständige, konfigurierbare Tastaturmodell folgt in Prompt 002.
+| Aktion | Windows / Linux | macOS |
+| --- | --- | --- |
+| Open | `Enter` | `Enter` |
+| Parent folder | `Backspace` | `Backspace` |
+| Open folder in new tab | `Ctrl+Enter` | `⌘Enter` |
+| Reload | `Ctrl+R` | `⌘R` |
+| History back | `Alt+ArrowLeft` | `⌘[` |
+| History forward | `Alt+ArrowRight` | `⌘]` |
+| Change folder… | `Alt+F10` | `⌘⌃D` |
+| Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
+| Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
+| Toggle shell | `Shift+F11` | `⇧F11` |
+| Go to anything… | `Ctrl+Shift+P`, `Ctrl+F12` | `⌘⇧P`, `⌘⌃G` |
+| Call action… | `F10` | `F10` |
+| Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
+| Mark and move down | `Shift+ArrowDown` | `⇧ArrowDown` |
+| Mark and move up | `Shift+ArrowUp` | `⇧ArrowUp` |
+| Mark to the first entry | `Shift+Home` | `⇧Home` |
+| Mark to the last entry | `Shift+End` | `⇧End` |
+| Mark all | `Ctrl+A`, `Ctrl+NumpadAdd` | `⌘A`, `⌘NumpadAdd` |
+| Unmark all | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract` | `⌘⇧A`, `⌘NumpadSubtract` |
+| Invert marks | `NumpadMultiply` | `NumpadMultiply` |
+| Mark by pattern… | `NumpadAdd` | `NumpadAdd` |
+| Unmark by pattern… | `NumpadSubtract` | `NumpadSubtract` |
+| Switch panel | `Tab` | `Tab` |
+| Left panel | `Alt+1` | `⌥1` |
+| Right panel | `Alt+2` | `⌥2` |
+| Next tab | `Ctrl+Tab` | `⌃Tab` |
+| Previous tab | `Ctrl+Shift+Tab` | `⌃⇧Tab` |
+| Clone tab | `Ctrl+T` | `⌘⌥T` |
+| Close tab | `Ctrl+W` | `⌘⌥W` |
+| Toggle favourite | `Ctrl+D` | `⌘D` |
+| Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
+| View | `F3` | `F3` |
+| Edit | `F4` | `F4` |
+| Create file… | `Shift+F4` | `⇧F4` |
+| Copy… | `F5` | `F5` |
+| Move… | `F6` | `F6` |
+| Rename… | `Shift+F6` | `⇧F6` |
+| Create folder… | `F7`, `Shift+F7` | `F7`, `⇧F7` |
+| Delete… | `F8`, `Delete` | `F8`, `⌘Backspace` |
+| Multi rename… | `Ctrl+F6`, `Ctrl+Alt+M` | `⌘F6` |
+| Group files… | `Ctrl+Alt+G` | `⌘⌥G` |
+| Delete empty folders… | `Ctrl+Alt+Shift+D` | `⌘⌥⇧D` |
+| Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
+| Tasks… | `Ctrl+F11` | `⌃K F6` |
+
+Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
+Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,
+`←` `→` `Pos1` `Ende`, Doppelklick/`Enter` = 50 / 50. Mit gedrückter Shift-/Alt-/⌘- bzw. Strg-Taste zeigt die
+Button-Leiste den passenden Satz (Total-Commander-Prinzip).
 
 ## Voraussetzungen
 

@@ -25,7 +25,7 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Referenzfunktion (dokumentiert in README von node-files-and-folders / -mr) | Phase | Status | Tests | Anmerkung |
 | --- | --- | --- | --- | --- |
 | Verzeichnis anzeigen, navigieren | 1/001 | ✅ | Rust + Angular | GuiExpert Table |
-| Markieren: Einfg/Leertaste, Shift, Strg/⌘+Klick, alles/nichts | 001 | ✅ | `file-list-controller.spec.ts` | Markierung per Pfad, übersteht Sortieren; Num+/−/* und Muster in 002 |
+| Markieren: Einfg/Leertaste, Shift, Strg/⌘+Klick, alles/nichts, Num+/−/*, Muster | 001/002 | ✅ | `file-list-controller.spec.ts`, `pattern.spec.ts`, `dialogs.spec.ts` | Markierung per Pfad, übersteht Sortieren; Muster mit Wildcards **und** Regex, Vorlagen; `Shift+Bild↑/↓` offen |
 | Markierte Zeilen rot mit Häkchen | 001 | ✅ | `file-renderers.spec.ts` | wie in der alten Version |
 | Hidden-Dateien umschalten | 2 | 🟡 | Rust (Flag) | Flag wird geliefert und gedimmt angezeigt, Toggle fehlt |
 | Sortierung („smart sorting“) | 001 | ✅ | `file-columns.spec.ts` | Spaltenkopf (Doppelklick), Ordner oben in beiden Richtungen, natürlich statt `localeCompare` (bewusst besser) |
@@ -39,7 +39,7 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Umbenennen, Multi-Rename (Muster/Makros) | 3/8 | ⬜ | | AI-Rename von -mr: offen, ggf. ✖ |
 | Group Files (nach Namensmuster in Ordner) | 8+ | ⬜ | | |
 | Suche (Find) | 4 | ⬜ | | |
-| Change-Dir-Baumdialog, „Go to anything“ | 5 | ⬜ | | |
+| Change-Dir-Baumdialog, „Go to anything“ | 002/003 | 🟡 | `command-palette.spec.ts` | Befehlspalette mit allen Aktionen (unscharfe Suche, Kürzel); Ordner aus Verlauf/Favoriten in 003, Baumdialog offen |
 | Bookmarks | 004/003 | 🟡 | `file-panel.spec.ts` | Favoriten-Stern im Pfad-Header, gespeichert; Menü in 003 |
 | Namen/Pfade in Zwischenablage (Text/JSON) | 5 | ⬜ | | |
 | Externe Tools / App-Launcher, „Terminal hier“ | 7 | ⬜ | | nur über schmale, konfigurierte Commands |
@@ -48,8 +48,8 @@ Status: ✅ umgesetzt+getestet · 🟡 teilweise · ⬜ offen · ✖ bewusst abw
 | Pack/Unpack (ZIP, TAR, 7z) | 8+ | ⬜ | | |
 | Duplikate finden, Dateiattribute (-mr) | 6+ | ⬜ | | |
 | Farbschemata (Light/Dark/…) | 1/8 | 🟡 | – | Light/Dark via Tokens; weitere Themes offen |
-| Tastaturkürzel pro OS, konfigurierbar | 5/8 | 🟡 | Angular | Basis-Navigation fest verdrahtet |
+| Tastaturkürzel pro OS, konfigurierbar | 002 | ✅ | `keymap.spec.ts`, `shortcut.spec.ts`, `keyboard-dispatcher.spec.ts`, Rust `keymap.rs` | macOS/Windows/**Linux** (alt: fehlte), kanonische Notation (mr-Matching-Fehler behoben), Override je Aktion gemischt (mr: ersetzte alles), Editor mit Tastenaufnahme |
 | Sitzung wiederherstellen (Tabs, aktive Seite, Fenster) | 004 | ✅ | Rust `session.rs`, E2E | alt: localStorage; jetzt Datei, gelöschter Ordner → Elternordner mit Hinweis, kaputte Datei → Defaults + Warnung |
-| Button-Leiste mit Modifier-Sätzen | 004/002 | 🟡 | `button-config.spec.ts` | Gerüst und `buttons.json`; Umschaltung und Aktionen in 002 |
+| Button-Leiste mit Modifier-Sätzen, Actions-Menü | 002 | ✅ | `button-bar.spec.ts` | Sätze default/Shift/⌘ bzw. Strg/Alt, Badge ohne gehaltene Modifier, Freigaben; Actions-Menü in 4 Spalten |
 | Auth-Modul | – | ✖ | | Desktop-App, nicht nötig |
 | Docker-/Web-Betrieb | – | ✖ | | Desktop-only |

@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Prompt 004 (Fensteraufbau: zwei Seiten, Tabs, Sitzungszustand). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 002 (Aktionssystem, Keymaps) auf Basis von 004 (Fensteraufbau, Sitzungszustand). Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
@@ -58,6 +58,9 @@ sind als solche markiert.
 | Fensteraufbau | CSS-Grid mit gemeinsamer Spaltenbreite (`--fnf-split`), Panels als `display: contents`, ein Trenner über die Zeilen 1–4 | Ein Splitter verschiebt alle Zeilen; Zeilenhöhen beider Seiten bleiben gleich. Details: `prompts/004-dual-pane-tabs.design.md`. |
 | Tabs | Tab-Liste beider Seiten im Root-`WorkspaceStore`; **eine** Table je Panel, beim Tab-Wechsel Zustand über `getState/applyState(['columns','sort','scroll'])` | n Tables wären n× Speicher und versteckte Tables ohne Layout; der Ordner wird beim Wechsel ohnehin neu gelesen. |
 | Sitzungszustand | eigene JSON-Datei `<app_config_dir>/session.json` (`version: 1`), geschrieben von Rust (temp + rename), Frontend speichert entprellt (400 ms) und beim Verstecken; kaputte Datei → Defaults + Warnung + `session.json.bad` | Keine Plugins mit generischem Zugriff; Rust begrenzt alle Werte (`sanitize`). Fenstergeometrie schreibt/liest nur Rust (Fenster startet unsichtbar, Position nur auf vorhandenem Monitor) – das Frontend braucht keine Fenster-Berechtigungen. |
+| Aktionen | Katalog mit stabilen Ids (`core/actions/action-catalog.ts`), Handler registrieren Features beim Root-`ActionService`; fehlende Handler = gedimmt mit „kommt in Prompt …“ | Jede Funktion ist über Kürzel, Button, Menü und Palette gleich erreichbar; spätere Prompts registrieren nur. Details: `prompts/002-aktionen-tastatur.design.md`. |
+| Tastatur | ein Capture-Handler an `document` (`KeyboardDispatcher`), kanonische Notation `Mod+Ctrl+Alt+Shift+Taste` aus `key` mit `code`-Rückfall (Ziffern, Numpad, ⌥ auf macOS), Auswertung auf `keydown` | Vermeidet die Matching-Fehler von mr (Modifier-Reihenfolge, Aliasse) und funktioniert mit deutscher Tastatur; einfache Tasten wirken nur in der Liste, Navigationstasten bleiben bei der GuiExpert Table. |
+| Keymaps | Defaults als JSON je OS im Frontend, Nutzer-Override `keymap.json` (Rust schreibt atomar, kaputt → `.bad`), je Aktion gemischt, Konflikte/Fehler als Hinweis | Eine Quelle für Dispatcher, Badges, Menü und Palette; Rust prüft nur Form und Größe. |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
 ## DTO-Vertrag

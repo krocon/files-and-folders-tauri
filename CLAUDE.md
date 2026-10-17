@@ -12,9 +12,9 @@
 
 ## 1. Stand
 
-- Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table) und Prompt 004 (Fensteraufbau: zwei
-  Seiten, Tabs, Splitter, Statuszeile, Button-Leiste als Gerüst, Sitzungszustand) sind fertig. Als Nächstes:
-  Prompt 002 (Aktionen und Tastatur). Details: `docs/roadmap.md`, `prompts/README.md`.
+- Phase 1 (Walking Skeleton), Prompt 001 (Dateiliste mit der GuiExpert Table), Prompt 004 (Fensteraufbau, Tabs,
+  Sitzungszustand) und Prompt 002 (Aktionssystem, Keymaps je OS, Befehlspalette, Button-Leiste) sind fertig. Als
+  Nächstes: Prompt 003 (Navigation, Filter, Hidden). Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -45,10 +45,13 @@ Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die B
 src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory)
   app/core/session/          Sitzungs-DTOs, SessionApi (invoke load_session/save_session)
+  app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
+                             KeymapApi (invoke load/save_keymap_override)
+  app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
   app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
   app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
-  app/shared/                Formatierung (Größe, Datum)
+  app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
   styles.scss                Design-Tokens (CSS Custom Properties, light/dark)
 src-tauri/                   Rust (Tauri 2)
@@ -56,6 +59,7 @@ src-tauri/                   Rust (Tauri 2)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
+  src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
   capabilities/default.json  nur core:default
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
@@ -74,6 +78,9 @@ prompts/                     Feature-Prompts (s. o.)
 - **Tabs und Seiten**: der Root-`WorkspaceStore` hält die Tabs beider Seiten; ein `FilePanel` liest seinen aktiven
   Tab dort und schreibt Pfad, Titel, Cursor und Table-Zustand zurück – Tabs werden **per Id** adressiert, nie per
   Index über Seiten hinweg.
+- **Jede Funktion ist eine Aktion**: Id in `core/actions/action-catalog.ts`, Handler per `ActionService.register`,
+  Kürzel nur in den Keymap-JSONs. Keine eigenen `keydown`-Handler für Funktionen (Ausnahmen: Dialoge, Menüs,
+  Tab-Leiste, Splitter – also Widgets nach APG).
 - **Zustand je Panel**: Stores sind `@Injectable()` ohne `providedIn: 'root'` und werden im Komponenten-Provider
   erzeugt – Dual-Pane und Tabs brauchen unabhängige Instanzen. Globales (Einstellungen, Job-Queue, Keymap) in
   Root-Services.

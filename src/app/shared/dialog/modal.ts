@@ -45,7 +45,11 @@ export class Modal {
   constructor() {
     afterNextRender(() => {
       const el = this.host.nativeElement;
-      (el.querySelector<HTMLElement>('[data-autofocus]') ?? this.focusables()[0])?.focus();
+      const target = el.querySelector<HTMLElement>('[data-autofocus]') ?? this.focusables()[0];
+      target?.focus();
+      if (target instanceof HTMLInputElement) {
+        target.select(); // typing replaces a suggested value
+      }
     });
   }
 
