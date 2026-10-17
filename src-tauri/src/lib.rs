@@ -17,6 +17,9 @@
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
 //! - [`themes`]       colour schemes file, import/export of scheme files
+//! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
+//! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
+//! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`commands`]     thin Tauri command layer
 
@@ -39,6 +42,8 @@ pub mod rename_presets;
 pub mod search;
 pub mod session;
 pub mod themes;
+pub mod tools;
+pub mod watch;
 pub mod window_state;
 
 use tauri::{Manager, RunEvent, WindowEvent};
@@ -52,7 +57,9 @@ pub fn run() {
         .manage(commands::PresetsState::default())
         .manage(commands::ThemesState::default())
         .manage(commands::CleanScanState::default())
+        .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
+        .manage(commands::watch::WatchState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -73,6 +80,24 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // Windows: a watched folder keeps itself and its parents from being
+            // renamed or deleted – pause the watches below what a job changes (review 012 #3)
+            if cfg!(windows) {
+                let handle = app.handle().clone();
+                app.state::<commands::JobsState>()
+                    .manager
+                    .set_fs_guard(std::sync::Arc::new(move |paths| {
+                        let state = handle.state::<commands::watch::WatchState>();
+                        let paused = state.hub().pause_under(paths);
+                        let handle = handle.clone();
+                        Box::new(move || {
+                            handle
+                                .state::<commands::watch::WatchState>()
+                                .hub()
+                                .resume(&paused)
+                        })
+                    }));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -118,12 +143,21 @@ pub fn run() {
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets,
+            commands::list_volumes,
+            commands::reveal_in_file_manager,
+            commands::open_terminal,
+            commands::load_tools,
+            commands::run_tool,
+            commands::open_tools_config,
             commands::read_preview,
             commands::get_properties,
             commands::load_themes,
             commands::save_themes,
             commands::import_theme,
-            commands::export_theme
+            commands::export_theme,
+            commands::watch::subscribe_watch,
+            commands::watch::watch_dirs,
+            commands::watch::describe_paths
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

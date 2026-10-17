@@ -1,6 +1,8 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod watch;
+
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops;
 use crate::jobs::rename::{self, RenameItem, RenamePlan};
@@ -673,6 +675,226 @@ pub async fn save_rename_presets<R: Runtime>(
     }
     blocking("Saving the presets", move || {
         rename_presets::save(&file, presets).map_err(|e| FsError::from_io(&e, &file))
+    })
+    .await
+}
+
+// ---- OS integration and external tools (design 011) ----
+
+/// Drives / volumes / mount points; a dead network mount is `reachable: false`, never a hang.
+#[tauri::command]
+pub async fn list_volumes() -> Result<Vec<crate::platform::volumes::Volume>, FsError> {
+    blocking("Listing the drives", || {
+        Ok(crate::platform::volumes::list_volumes(
+            crate::platform::volumes::DEFAULT_TIMEOUT,
+        ))
+    })
+    .await
+}
+
+fn existing(path: &std::path::Path) -> Result<std::fs::Metadata, FsError> {
+    std::fs::symlink_metadata(path).map_err(|e| FsError::from_io(&e, path))
+}
+
+fn existing_dir(path: &std::path::Path) -> Result<(), FsError> {
+    let meta = std::fs::metadata(path).map_err(|e| FsError::from_io(&e, path))?;
+    if meta.is_dir() {
+        Ok(())
+    } else {
+        Err(FsError::new(
+            FsErrorCode::NotADirectory,
+            "This is not a folder",
+            Some(path),
+        ))
+    }
+}
+
+/// Shows the entry in Finder / Explorer / the desktop's file manager.
+#[tauri::command]
+pub async fn reveal_in_file_manager<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<(), FsError> {
+    let path = resolve_input(&app, &path)?;
+    blocking("Showing in the file manager", move || {
+        existing(&path)?;
+        crate::platform::desktop::reveal(&path)
+    })
+    .await
+}
+
+/// Effective tools configuration (defaults + `tools.json`), loaded once and on `load_tools`.
+#[derive(Default)]
+pub struct ToolsState {
+    config: Mutex<Option<crate::tools::ToolsConfig>>,
+}
+
+fn tools_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path()
+        .app_config_dir()
+        .map(|d| d.join(crate::tools::FILE_NAME))
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("App config directory not available: {e}"),
+                None,
+            )
+        })
+}
+
+/// The current configuration (loaded from the file the first time).
+async fn tools_config<R: Runtime>(app: &AppHandle<R>) -> crate::tools::ToolsConfig {
+    if let Some(c) = app
+        .state::<ToolsState>()
+        .config
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+    {
+        return c;
+    }
+    reload_tools(app).await
+}
+
+async fn reload_tools<R: Runtime>(app: &AppHandle<R>) -> crate::tools::ToolsConfig {
+    let file = tools_file(app).ok();
+    let config = tauri::async_runtime::spawn_blocking(move || match file {
+        Some(f) => crate::tools::load(&f),
+        None => crate::tools::ToolsConfig {
+            tools: crate::tools::defaults(),
+            ..Default::default()
+        },
+    })
+    .await
+    .unwrap_or_default();
+    *app.state::<ToolsState>()
+        .config
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some(config.clone());
+    config
+}
+
+/// Opens a terminal in `dir` (custom terminal from `tools.json`, else the OS default).
+#[tauri::command]
+pub async fn open_terminal<R: Runtime>(app: AppHandle<R>, dir: String) -> Result<(), FsError> {
+    let dir = resolve_input(&app, &dir)?;
+    let custom = tools_config(&app).await.terminal;
+    blocking("Opening the terminal", move || {
+        existing_dir(&dir)?;
+        crate::platform::desktop::open_terminal(&dir, custom.as_ref())
+    })
+    .await
+}
+
+/// (Re)loads `tools.json`; the frontend gets labels and shortcuts, never sends programs.
+#[tauri::command]
+pub async fn load_tools<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<crate::tools::LoadedTools, FsError> {
+    let config = reload_tools(&app).await;
+    Ok(crate::tools::LoadedTools {
+        tools: config.tools.iter().map(Into::into).collect(),
+        warnings: config.warnings,
+        file: tools_file(&app)
+            .ok()
+            .map(|f| f.to_string_lossy().into_owned()),
+    })
+}
+
+/// What a tool works on: paths from the panels (checked here).
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolContextInput {
+    #[serde(default)]
+    pub files: Vec<String>,
+    pub dir: Option<String>,
+    pub target_dir: Option<String>,
+}
+
+/// Starts the configured tool `tool_id` – program and arguments come only from the
+/// configuration. Returns the number of started processes. A tool that hands files
+/// to the default app (F4 `edit` = `xdg-open` …) reports an executable like Enter
+/// does (`executable`); the frontend asks and repeats with `allow_executable`.
+#[tauri::command]
+pub async fn run_tool<R: Runtime>(
+    app: AppHandle<R>,
+    tool_id: String,
+    context: ToolContextInput,
+    allow_executable: Option<bool>,
+) -> Result<usize, FsError> {
+    let allow_executable = allow_executable.unwrap_or(false);
+    let config = tools_config(&app).await;
+    let tool = config.find(&tool_id).cloned().ok_or_else(|| {
+        FsError::new(
+            FsErrorCode::UnknownTool,
+            format!("There is no tool \"{tool_id}\""),
+            None,
+        )
+    })?;
+    if context.files.len() > crate::tools::MAX_FILE_LIMIT as usize {
+        return Err(FsError::new(
+            FsErrorCode::TooManyFiles,
+            "Too many entries",
+            None,
+        ));
+    }
+    let files = context
+        .files
+        .iter()
+        .map(|f| resolve_input(&app, f))
+        .collect::<Result<Vec<_>, _>>()?;
+    let dir = context
+        .dir
+        .as_deref()
+        .map(|d| resolve_input(&app, d))
+        .transpose()?;
+    let target_dir = context
+        .target_dir
+        .as_deref()
+        .map(|d| resolve_input(&app, d))
+        .transpose()?;
+    let home = home_dir(&app).ok();
+    blocking("Starting the tool", move || {
+        for f in &files {
+            existing(f)?;
+        }
+        for d in dir.iter().chain(target_dir.iter()) {
+            existing_dir(d)?;
+        }
+        crate::tools::check_default_app_files(&tool, &files, allow_executable)?;
+        let ctx = crate::tools::ResolvedContext {
+            files,
+            dir,
+            target_dir,
+            home,
+        };
+        let plan = crate::tools::plan(&tool, &ctx)?;
+        for inv in &plan {
+            // a missing working folder would look like a missing program
+            if let Some(cwd) = &inv.cwd {
+                existing_dir(cwd)?;
+            }
+        }
+        for inv in &plan {
+            crate::tools::spawn_detached(crate::tools::command(inv), &inv.program)?;
+        }
+        Ok(plan.len())
+    })
+    .await
+}
+
+/// Creates `tools.json` with the defaults if it is missing and opens it with the
+/// default app; returns its path.
+#[tauri::command]
+pub async fn open_tools_config<R: Runtime>(app: AppHandle<R>) -> Result<String, FsError> {
+    let file = tools_file(&app)?;
+    blocking("Opening the tools file", move || {
+        if !file.exists() {
+            crate::fs_atomic::write_atomic(&file, crate::tools::default_file_text().as_bytes())
+                .map_err(|e| FsError::from_io(&e, &file))?;
+        }
+        opener::open_with_default_app(&file)?;
+        Ok(file.to_string_lossy().into_owned())
     })
     .await
 }

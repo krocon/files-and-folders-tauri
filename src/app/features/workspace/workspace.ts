@@ -53,10 +53,14 @@ import { registerThemeActions } from '../themes/theme-actions';
 import { ThemeDialog } from '../themes/theme-dialog';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
+import { registerOsActions } from '../osintegration/os-actions';
+import { OsStore } from '../osintegration/os.store';
+import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { ButtonBar } from './button-bar/button-bar';
+import { DragGhost } from '../dnd/drag-ghost';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
@@ -72,6 +76,7 @@ import { WorkspaceStore } from './workspace.store';
   selector: 'app-workspace',
   imports: [
     FilePanel,
+    DragGhost,
     ButtonBar,
     CommandPalette,
     MarkPatternDialog,
@@ -86,6 +91,7 @@ import { WorkspaceStore } from './workspace.store';
     GroupFilesDialog,
     CleanFoldersDialog,
     MultiMkdirDialog,
+    ToolConfigDialog,
     ViewerDialog,
     PropertiesDialog,
     FindDialog,
@@ -113,6 +119,7 @@ export class Workspace implements OnInit {
   private readonly gf = inject(GroupFilesStore);
   private readonly cl = inject(CleanFoldersStore);
   private readonly mm = inject(MultiMkdirStore);
+  private readonly os = inject(OsStore);
   private readonly viewer = inject(ViewerStore);
   private readonly quick = inject(QuickViewStore);
   private readonly props = inject(PropertiesStore);
@@ -171,6 +178,13 @@ export class Workspace implements OnInit {
         }
       });
     });
+    // success messages of design 011 (copied, tool started) for screen readers
+    effect(() => {
+      const text = this.os.status();
+      if (text) {
+        untracked(() => this.announcement.set(text));
+      }
+    });
     effect(() => {
       const req = this.jobs.quitRequest();
       if (req) {
@@ -200,6 +214,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
+    this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
     this.destroyRef.onDestroy(
       registerPreviewActions(this.actions, this.ws, this.viewer, this.quick, this.props),
     );
@@ -210,7 +225,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.jobs.init();
     void this.ws.init();
-    void this.actions.init();
+    void this.actions.init().then(() => this.os.init());
     void this.theme.init();
   }
 

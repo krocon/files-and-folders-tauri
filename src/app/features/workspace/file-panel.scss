@@ -222,6 +222,12 @@
   color: var(--color-accent);
 }
 
+.status .watch {
+  /* status line tokens (013): muted is not checked against the footer background */
+  color: var(--color-footer-text);
+  font-style: italic;
+}
+
 /* result tab header (design 009 E4) */
 .search-head {
   justify-content: flex-start;

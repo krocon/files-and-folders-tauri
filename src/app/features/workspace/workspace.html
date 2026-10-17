@@ -55,6 +55,12 @@
   @case ('call-action') {
     <app-command-palette heading="Call action" />
   }
+  @case ('tools') {
+    <app-command-palette heading="Open with tool" scope="tools" />
+  }
+  @case ('tool-config') {
+    <app-tool-config-dialog />
+  }
   @case ('mark-pattern') {
     <app-mark-pattern-dialog [mark]="true" />
   }
@@ -110,3 +116,4 @@
     <app-theme-dialog />
   }
 }
+<app-drag-ghost />

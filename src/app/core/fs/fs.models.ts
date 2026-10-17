@@ -47,6 +47,14 @@ export type FsErrorCode =
   | 'duplicate_target'
   /** Nothing to undo (anymore). */
   | 'undo_unavailable'
+  /** An external program (tool, terminal, file manager) is not installed. */
+  | 'program_not_found'
+  /** The tool id is not in the configuration (anymore). */
+  | 'unknown_tool'
+  /** More entries than the tool takes (`fileLimit`). */
+  | 'too_many_files'
+  /** More items than a command accepts (watched folders, dropped paths). */
+  | 'too_many'
   /** A search pattern (regex, glob) is invalid (design 009). */
   | 'invalid_pattern'
   | 'invalid_path'

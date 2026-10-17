@@ -77,5 +77,5 @@ Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Pla
 Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprotokoll liegen.
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
-- [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [ ] 011 ·
-  [ ] 012 · [x] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019
+- [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [x] 011 ·
+  [x] 012 (Ziehen ins System offen) · [x] 013 · [ ] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019

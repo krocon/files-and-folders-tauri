@@ -12,6 +12,10 @@
   "TOGGLE_FILTER": ["Mod+Alt+F"],
   "TOGGLE_HIDDEN_FILES": ["Mod+H"],
   "TOGGLE_SHELL": ["Shift+F11"],
+  "COPY_2_CLIPBOARD_NAMES": ["Mod+Alt+N"],
+  "COPY_2_CLIPBOARD_FULLNAMES": ["Mod+Alt+C"],
+  "REVEAL_IN_FILE_MANAGER": ["Mod+Shift+F"],
+  "OPEN_TERMINAL_HERE": ["Mod+Shift+C"],
   "OPEN_COMMAND_PALETTE": ["Mod+Shift+P", "Mod+F12"],
   "OPEN_CALL_ACTION_DLG": ["F10"],
   "TOGGLE_MARK_AND_ADVANCE": ["Space", "Insert"],
@@ -53,6 +57,7 @@
   "OPEN_DELETE_EMPTY_FOLDERS_DLG": ["Mod+Alt+R", "Mod+Alt+Shift+D"],
   "OPEN_MULTIMKDIR_DLG": ["Mod+F7"],
   "OPEN_SHORTCUT_DLG": ["Mod+Shift+K"],
+  "OPEN_TOOLS_DLG": ["Mod+Shift+X"],
   "OPEN_TASK_DLG": ["Mod+F11"],
   "NEXT_THEME": ["Ctrl+Alt+Shift+T"]
 }

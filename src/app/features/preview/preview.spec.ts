@@ -97,10 +97,9 @@ describe('viewer, quick view and properties (design 010)', () => {
     await left.load('/src');
   });
 
-  it('F3 and F4 need a file under the cursor, properties anything but ".."', () => {
+  it('F3 needs a file under the cursor, properties anything but ".."', () => {
     left.setCursor('/src/Ordner');
     expect(actions.state('OPEN_VIEW_DLG')).toBe('disabled');
-    expect(actions.state('OPEN_EDIT_DLG')).toBe('disabled');
     expect(actions.state('OPEN_ATTRIBUTE_DLG')).toBe('ready');
     expect(actions.state('QUICK_VIEW')).toBe('ready');
     left.setCursor('/src/link');
@@ -266,19 +265,6 @@ describe('viewer, quick view and properties (design 010)', () => {
     });
     props.close();
     expect(dialogs.open()).toBeNull();
-  });
-
-  it('F4 opens the file with the default app, programs only after confirmation', async () => {
-    left.setCursor('/src/a.txt');
-    await actions.run('OPEN_EDIT_DLG');
-    expect(fsApi.opened).toEqual([{ path: '/src/a.txt', allowExecutable: false }]);
-    fsApi.executables.add('/src/bild.txt');
-    let asked = 0;
-    left.confirmExecutable = () => (asked++, Promise.resolve(false));
-    left.setCursor('/src/bild.txt');
-    await actions.run('OPEN_EDIT_DLG');
-    expect(asked).toBe(1);
-    expect(fsApi.opened).toHaveLength(1);
   });
 
   it('rows of the properties dialog are platform-specific', () => {

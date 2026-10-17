@@ -4,7 +4,7 @@ import { ACTIONS, ActionId } from './action-catalog';
 import { KeymapApi } from './keymap-api';
 import { DEFAULT_KEYMAPS, RawBindings, resolveKeymap } from './keymap';
 import { detectPlatform, Platform } from './platform';
-import { formatShortcut } from './shortcut';
+import { canonicalShortcut, formatShortcut } from './shortcut';
 
 export interface ActionHandler {
   run(): void | Promise<void>;
@@ -13,6 +13,19 @@ export interface ActionHandler {
 }
 
 export type ActionState = 'ready' | 'disabled' | 'unavailable';
+
+/**
+ * An action that is not in the catalog – an external tool from `tools.json`
+ * (design 011 E4). Id `tool:<id>`; its shortcut uses the keymap notation and
+ * never wins over a keymap binding.
+ */
+export interface ExtraAction {
+  readonly id: string;
+  readonly label: string;
+  readonly shortcut: string | null;
+  enabled(): boolean;
+  run(): void | Promise<unknown>;
+}
 
 /**
  * Central place for actions: handlers registered by the features, the effective
@@ -32,6 +45,65 @@ export class ActionService {
   readonly keymap = computed(() =>
     resolveKeymap(this.platform(), this.override(), DEFAULT_KEYMAPS[this.platform()]),
   );
+
+  readonly extras = signal<readonly ExtraAction[]>([]);
+
+  /** Canonical shortcut → extra action; taken or invalid shortcuts are left out (see `extraProblems`). */
+  private readonly extraIndex = computed(() => {
+    const platform = this.platform();
+    const taken = this.keymap().lookup;
+    const lookup = new Map<string, ExtraAction>();
+    const labels = new Map<string, string>();
+    const problems: string[] = [];
+    for (const x of this.extras()) {
+      if (!x.shortcut) {
+        continue;
+      }
+      const canon = canonicalShortcut(x.shortcut, platform);
+      if (!canon) {
+        problems.push(`${x.label}: the shortcut "${x.shortcut}" is not valid.`);
+      } else if (taken.has(canon) || lookup.has(canon)) {
+        const other = taken.get(canon);
+        const owner = other ? ACTIONS[other].label : lookup.get(canon)!.label;
+        problems.push(`${x.label}: the shortcut ${x.shortcut} is taken by "${owner}".`);
+      } else {
+        lookup.set(canon, x);
+        labels.set(x.id, formatShortcut(canon, platform));
+      }
+    }
+    return { lookup, labels, problems };
+  });
+
+  /** Problems with the shortcuts of the extra actions. */
+  readonly extraProblems = computed(() => this.extraIndex().problems);
+
+  /** Replaces the extra actions (tools). */
+  setExtras(list: readonly ExtraAction[]): void {
+    this.extras.set(list);
+  }
+
+  extraFor(canonical: string): ExtraAction | null {
+    return this.extraIndex().lookup.get(canonical) ?? null;
+  }
+
+  extraShortcutLabel(id: string): string {
+    return this.extraIndex().labels.get(id) ?? '';
+  }
+
+  /** Runs an extra action; errors become a message. Returns true if it ran. */
+  async runExtra(id: string): Promise<boolean> {
+    const x = this.extras().find((e) => e.id === id);
+    if (!x || !x.enabled()) {
+      return false;
+    }
+    try {
+      await x.run();
+      return true;
+    } catch (err) {
+      this.report(`${x.label}: ${toFsError(err).message}`);
+      return false;
+    }
+  }
 
   /** Loads the user's override and reports its problems. */
   async init(): Promise<void> {

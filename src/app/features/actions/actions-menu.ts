@@ -38,8 +38,8 @@ const COLUMNS: readonly ActionCategory[] = ['navigation', 'selection', 'files', 
               [attr.data-row]="r"
               [attr.aria-disabled]="item.ready ? null : 'true'"
               [attr.title]="item.hint"
-              (click)="choose(item.id, item.ready)"
-              (keydown.enter)="choose(item.id, item.ready)"
+              (click)="choose(item.id, item.ready, item.extra)"
+              (keydown.enter)="choose(item.id, item.ready, item.extra)"
             >
               <span>{{ item.label }}</span>
               @if (item.shortcut) {
@@ -64,18 +64,30 @@ export class ActionsMenu {
     COLUMNS.map((category) => ({
       category,
       label: CATEGORY_LABELS[category],
-      items: ACTION_IDS.filter(
-        (id) => ACTIONS[id].category === category && !ACTIONS[id].hiddenInMenu,
-      ).map((id) => {
-        const state = this.actions.state(id);
-        return {
-          id,
-          label: ACTIONS[id].label,
-          shortcut: this.actions.shortcutLabel(id),
-          ready: state === 'ready',
-          hint: state === 'unavailable' ? `Coming in prompt ${ACTIONS[id].availableIn}` : '',
-        };
-      }),
+      items: [
+        ...ACTION_IDS.filter(
+          (id) => ACTIONS[id].category === category && !ACTIONS[id].hiddenInMenu,
+        ).map((id) => {
+          const state = this.actions.state(id);
+          return {
+            id: id as string,
+            extra: false,
+            label: ACTIONS[id].label,
+            shortcut: this.actions.shortcutLabel(id),
+            ready: state === 'ready',
+            hint: state === 'unavailable' ? `Coming in prompt ${ACTIONS[id].availableIn}` : '',
+          };
+        }),
+        // the tools at the end of the configuration column (mr §1.8)
+        ...(category === 'config' ? this.actions.extras() : []).map((x) => ({
+          id: x.id,
+          extra: true,
+          label: x.label,
+          shortcut: this.actions.extraShortcutLabel(x.id),
+          ready: x.enabled(),
+          hint: '',
+        })),
+      ],
     })),
   );
 
@@ -83,12 +95,14 @@ export class ActionsMenu {
     afterNextRender(() => this.item(0, 0)?.focus());
   }
 
-  protected choose(id: ActionId, ready: boolean): void {
+  protected choose(id: string, ready: boolean, extra = false): void {
     if (!ready) {
       return;
     }
     this.closed.emit('chosen');
-    setTimeout(() => void this.actions.run(id));
+    setTimeout(() =>
+      extra ? void this.actions.runExtra(id) : void this.actions.run(id as ActionId),
+    );
   }
 
   protected onKeydown(evt: KeyboardEvent): void {

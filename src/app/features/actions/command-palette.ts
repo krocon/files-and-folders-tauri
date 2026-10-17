@@ -9,9 +9,9 @@ import { fuzzyMatch } from './fuzzy';
 
 interface Row {
   readonly key: string;
-  readonly id: ActionId | null;
-  /** A colour scheme entry (design 013 E3) instead of an action. */
-  readonly themeId: string | null;
+  /** What `id` names: an `ActionId`, an extra action (tool, design 011 E4) or a colour scheme (013 E3). */
+  readonly kind: 'action' | 'extra' | 'theme';
+  readonly id: string;
   readonly label: string;
   readonly category: string;
   readonly shortcut: string;
@@ -23,11 +23,13 @@ interface Row {
 }
 
 const MAX_ROWS = 50;
+const TOOLS_CATEGORY = 'Tools';
 
 /**
  * "Go to anything" (Mod+Shift+P) and "Call action" (F10): all actions, fuzzy
  * search, shortcut on the right. APG combobox with listbox; Enter runs, Esc
- * closes and returns the focus. Favourites/history join in prompt 003, tools in 011.
+ * closes and returns the focus. Tools (design 011 E4) are listed too; `scope="tools"`
+ * lists only them ("Open with tool…").
  */
 @Component({
   selector: 'app-command-palette',
@@ -43,7 +45,7 @@ const MAX_ROWS = 50;
         aria-expanded="true"
         [attr.aria-controls]="listId"
         [attr.aria-activedescendant]="rows().length ? optionId(active()) : null"
-        placeholder="Type to search actions…"
+        [placeholder]="scope() === 'tools' ? 'Type to search tools…' : 'Type to search actions…'"
         spellcheck="false"
         [value]="query()"
         (input)="onInput($event)"
@@ -78,7 +80,7 @@ const MAX_ROWS = 50;
           </li>
         } @empty {
           <li class="empty" role="option" aria-selected="false" aria-disabled="true">
-            No matching action
+            {{ scope() === 'tools' ? 'No matching tool' : 'No matching action' }}
           </li>
         }
       </ul>
@@ -93,6 +95,7 @@ const MAX_ROWS = 50;
 })
 export class CommandPalette {
   readonly heading = input('Go to anything');
+  readonly scope = input<'all' | 'tools'>('all');
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
   private readonly theme = inject(ThemeService);
@@ -103,7 +106,8 @@ export class CommandPalette {
   protected readonly rows = computed<Row[]>(() => {
     const q = this.query();
     const rows: Row[] = [];
-    for (const id of ACTION_IDS) {
+    const ids = this.scope() === 'tools' ? [] : ACTION_IDS;
+    for (const id of ids) {
       if (id === 'OPEN_COMMAND_PALETTE' || id === 'OPEN_CALL_ACTION_DLG') {
         continue;
       }
@@ -116,7 +120,7 @@ export class CommandPalette {
       rows.push({
         key: id,
         id,
-        themeId: null,
+        kind: 'action',
         label: meta.label,
         category: CATEGORY_LABELS[meta.category],
         shortcut: this.actions.shortcutLabel(id),
@@ -126,7 +130,26 @@ export class CommandPalette {
         parts: split(meta.label, match.positions),
       });
     }
-    for (const t of this.theme.themes()) {
+    for (const x of this.actions.extras()) {
+      const match = fuzzyMatch(q, x.label);
+      if (!match) {
+        continue;
+      }
+      rows.push({
+        key: `extra:${x.id}`,
+        kind: 'extra',
+        id: x.id,
+        label: x.label,
+        category: TOOLS_CATEGORY,
+        shortcut: this.actions.extraShortcutLabel(x.id),
+        ready: x.enabled(),
+        hint: '',
+        score: match.score,
+        parts: split(x.label, match.positions),
+      });
+    }
+    const themes = this.scope() === 'tools' ? [] : this.theme.themes();
+    for (const t of themes) {
       const label = THEME_TEXTS.paletteEntry(t.name);
       const match = fuzzyMatch(q, label);
       if (!match) {
@@ -134,8 +157,8 @@ export class CommandPalette {
       }
       rows.push({
         key: `theme:${t.id}`,
-        id: null,
-        themeId: t.id,
+        kind: 'theme',
+        id: t.id,
         label,
         category: CATEGORY_LABELS.config,
         shortcut: '',
@@ -203,8 +226,16 @@ export class CommandPalette {
     }
     this.dialogs.close();
     // after the dialog is gone, so a dialog opened by the action is not closed again
-    const { id, themeId } = row;
-    setTimeout(() => void (id ? this.actions.run(id) : themeId && this.theme.select(themeId)));
+    const { kind, id } = row;
+    setTimeout(() => {
+      if (kind === 'theme') {
+        void this.theme.select(id);
+      } else if (kind === 'extra') {
+        void this.actions.runExtra(id);
+      } else {
+        void this.actions.run(id as ActionId);
+      }
+    });
   }
 
   private move(i: number): void {

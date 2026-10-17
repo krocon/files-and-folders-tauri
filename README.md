@@ -69,6 +69,26 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Ordner-Finder** (`Alt+F10`, alt „Change Dir“): alle Unterordner bis Tiefe 5 (Regler 1–10/∞), Filter unscharf und
   live, `↑ ↓ Bild↑ Bild↓`, Enter wechselt dorthin, Esc bricht ab.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
+- **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
+  Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
+  Netzlaufwerk erscheint nach 1,5 s als „not reachable“, die Oberfläche blockiert nicht.
+- **Im Dateimanager zeigen** (`Strg/⌘+Shift+F`: Finder `open -R`, Explorer `/select`, Linux über D-Bus
+  `FileManager1`, sonst der Ordner) und **Terminal hier** (`Strg/⌘+Shift+C`: macOS Terminal, Windows Terminal bzw.
+  `cmd`, Linux `$TERMINAL` → `x-terminal-emulator` → konsole/gnome-terminal/… je Desktop; eigenes Terminal in
+  `tools.json`, z. B. `"terminal": {"program": "open", "args": ["-a", "iTerm", "{dir}"]}`).
+- **Externe Tools**: `tools.json` im App-Config-Verzeichnis (Tool configuration… → „Open tools.json“ legt sie mit den
+  Defaults an). Je Tool `program` + `args` (Array, **keine Shell**), Platzhalter je Argument `{file}`, `{files}`,
+  `{name}`, `{dir}`, `{targetDir}`, `perFile` (höchstens 50 Starts je Aufruf), `fileLimit`, `shortcut`
+  (Keymap-Notation), `workingDir` (absolut nach dem Ersetzen). `program` ist ein blanker Name (Suche im `PATH`) oder
+  ein absoluter Pfad. **Empfohlen: `{file}`/`{files}`** (volle Pfade) statt `{name}` – `{name}` am Argumentanfang wird
+  bei führendem `-` zu `./-name`. Tools, die an die Standard-App übergeben (`xdg-open`, `open`, `explorer`, … oder
+  `"defaultApp": true`), fragen bei Programmen/Skripten nach wie `Enter`. Einträge im alten Format
+  (`cmd`, `para`, `$file`, `$dir`) werden beim Laden umgestellt. Tools stehen in der Befehlspalette, im Actions-Menü,
+  unter **Open with tool…** (`Strg/⌘+Shift+X`) und auf ihrem Kürzel; `F4` startet das Tool `edit` (macOS
+  Text-Editor, Windows Notepad, Linux Standard-App – für einen Editor z. B.
+  `{"id": "edit", "label": "Edit", "program": "gnome-text-editor", "args": ["{files}"]}` eintragen).
+- **Zwischenablage**: Namen (`Strg/⌘+Alt+N`) bzw. volle Pfade (`Strg/⌘+Alt+C`) der markierten Einträge (sonst
+  Cursor, Ordner eingeschlossen) als Zeilen; als JSON über Befehlspalette/Actions-Menü.
 - **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
   (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;
   `←`/`→` blättert durch die Dateien des Panels (der Cursor folgt), `Esc` schließt. Der Typ wird am **Inhalt** erkannt
@@ -76,7 +96,15 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   4 KiB Hex) – auch eine 2-GB-Datei öffnet sofort.
 - **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
 - **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
-  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) öffnet bis Prompt 011 die Standard-App.
+  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
+- **Automatische Aktualisierung** (012): die sichtbaren Ordner beider Panels werden überwacht (`notify`, nicht
+  rekursiv); Dateien, die andere Programme anlegen, ändern, umbenennen oder löschen, erscheinen nach < 1 s – Cursor,
+  Markierung und Scrollposition bleiben, ein gelöschter Cursor-Eintrag gibt den Cursor an den nächsten weiter.
+  Massenänderungen (z. B. 50 000 entpackte Dateien) laden höchstens alle 1,5 s neu; ein gelöschter Ordner führt zum
+  nächsten vorhandenen Elternordner. Netzlaufwerke werden nicht überwacht (Hinweis in der Statuszeile, `Strg/⌘+R`).
+- **Drag & Drop** (012): Markierung (bzw. die Zeile) in das andere Panel oder auf eine Ordnerzeile ziehen öffnet den
+  Kopieren-Dialog (mit `Shift`, macOS `⌘`: Verschieben); `Esc` bricht ab. Dateien aus Finder/Explorer/Dateimanager auf
+  ein Panel oder eine Ordnerzeile ziehen öffnet den Kopieren-Dialog. Ziehen aus der App ins System: noch nicht.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -123,6 +151,10 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |
+| Copy names to clipboard | `Ctrl+Alt+N` | `⌘⌥N` |
+| Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
+| Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
+| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Go to anything… | `Ctrl+Shift+P`, `Ctrl+F12` | `⌘⇧P`, `⌘⌃G` |
 | Call action… | `F10` | `F10` |
 | Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
@@ -160,6 +192,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
 | Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
+| Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
 | Next colour scheme | `Ctrl+Alt+Shift+T` | `⌘⌃⌥T` |
 

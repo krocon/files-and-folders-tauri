@@ -33,6 +33,11 @@ export const TEXTS = {
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,
   loading: 'Loading…',
   unreadable: (n: number) => `${n} unreadable`,
+  /** Folder watching (design 012 E2). */
+  notWatched: (reason: string | null) =>
+    reason === 'network' ? 'not auto-refreshed (network drive)' : 'not auto-refreshed',
+  slowWatched: 'auto-refresh by polling',
+  watchHint: 'Reload with the Reload action (Ctrl+R / ⌘R)',
   calculating: (n: number) =>
     n === 1 ? 'Calculating folder size…' : `Calculating ${n} folder sizes…`,
   hiddenMarked: (n: number) => `+${n} marked but filtered out`,
@@ -40,7 +45,7 @@ export const TEXTS = {
   runProgramMessage: 'This file is a program. Run it only if you trust it.',
   runProgramConfirm: 'Run',
   pathInput: 'Go to path',
-  folderMenu: 'Folders: home, favourites, recent',
+  folderMenu: 'Folders: home, drives, favourites, recent',
   showHidden: 'Show hidden files',
   filter: 'Filter',
   filterPlaceholder: '*.txt -draft',
