@@ -14,28 +14,29 @@ Legende: ✅ erledigt · 🟡 teilweise · ⬜ offen
 - ✅ `list_directory(path?)`, Home als Startordner
 - ✅ Tabelle, Ordner öffnen, „Up“, Tastatur, Lade-/Leer-/Fehlerzustände
 - ✅ Rust-Tests (Pfade, Listing, Symlinks, Unicode, Fehler), Angular-Tests (Store, UI-Zustände, Tastatur)
-- ✅ ESLint, Prettier, rustfmt, clippy, CI-Workflow
+- ✅ ESLint, Prettier, rustfmt, clippy
+- 🟡 CI-Workflow als Entwurf (`.github/workflows/ci.yml` muss Marc einchecken, s. Prompt 017)
 - 🟡 Manuell geprüft nur unter Linux (Xvfb); macOS/Windows noch nicht praktisch getestet
 
-## Phase 2 – Navigation & Liste ⬜
+## Ab hier: Feature-Prompts
 
-Breadcrumbs (Daten liegen schon in `segments`), Zurück/Vorwärts, Sortierung per Spaltenkopf,
-Hidden-Toggle (Flag vorhanden), Mehrfachauswahl (Shift/Ctrl/Insert), Spaltenbreiten,
-Performance-Messung mit ≥ 50 000 Einträgen → ggf. Virtualisierung (CDK).
+Die weiteren Phasen sind als Arbeitsaufträge in [`prompts/`](../prompts/README.md) beschrieben, abgeleitet aus der
+Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu den ursprünglichen Phasen:
 
-## Phase 3 – Sichere Basisoperationen ⬜
+| Ursprüngliche Phase | Prompts |
+| --- | --- |
+| 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
+| 3 Sichere Basisoperationen | 005 (Job-Engine), 006 (Operationen) |
+| 4 Suche & Filter | 003 (Schnellfilter), 009 (Suche) |
+| 5 Total-Commander-Bedienung | 002 (Aktionen/Tastatur), 004 (Dual-Pane/Tabs), 012 (Drag & Drop), 014 (Menüs) |
+| 6 Vorschau & Eigenschaften | 010 |
+| 7 OS-Integration | 011, 012 (Überwachung) |
+| 8 Einstellungen & UX | 013 (Themes), 015 (Einstellungen, i18n) |
+| 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
+| 10 Distribution | 017 |
+| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007, 008, 016) |
 
-Mkdir, Rename, Copy, Move, Delete (Papierkorb), Konflikte, Fortschritt/Abbruch, Fehler pro Eintrag –
-alles im Rust-Backend validiert und getestet.
-
-## Phase 4 – Suche & Filter ⬜
-## Phase 5 – Total-Commander-Bedienung (Tabs, Dual-Pane, F-Tasten, Kontextmenü, DnD) ⬜
-## Phase 6 – Vorschau & Eigenschaften ⬜
-## Phase 7 – OS-Integration (Laufwerke, Öffnen mit, Im Finder zeigen, Papierkorb) ⬜
-## Phase 8 – Einstellungen & UX-Politur (Themes, i18n de/en) ⬜
-## Phase 9 – Stabilität, Sicherheit, Performance ⬜
-## Phase 10 – Distribution & Release (Signierung, Notarisierung, Pakete) ⬜
-## Phase 11 – Abgleich mit `files-and-folders` ⬜ (Matrix vorbereitet)
+Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 
 ## Bekannte Einschränkungen (aktuell)
 

@@ -1,7 +1,8 @@
 # Prompt 001: Dateiliste mit der GuiExpert Table
 
 > **Slug:** `guiexpert-dateiliste` · **Braucht:** Phase 1 (MVP) · **Umfang:** M
-> Lies zuerst `prompts/000-arbeitsweise.md` und `CLAUDE.md` §5.
+> Lies zuerst `prompts/000-arbeitsweise.md` und `CLAUDE.md` §5. Altes Verhalten: `docs/legacy-analysis.md` §4
+> (Spalten, Smart-Sortierung, Auswahlmodell, Cursor-Tasten).
 
 ## Ziel
 

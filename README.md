@@ -6,7 +6,7 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 
 > **Status: Phase 1 (MVP / Walking Skeleton).** Die App listet Verzeichnisse über Rust, zeigt sie
 > in Angular an und erlaubt Navigation in Unterordner und nach oben. Dateien werden nur angezeigt
-> und ausgewählt – es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md).
+> und ausgewählt – es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
 ## Was funktioniert (Phase 1)
 
@@ -76,7 +76,9 @@ src-tauri/                 Rust-Backend (Tauri 2)
   src/listing.rs           Verzeichnis-Listing (rein std, getestet)
   src/paths.rs             Pfadvalidierung, Eltern-/Breadcrumb-Logik
   src/model.rs, error.rs   DTOs und strukturierte Fehler
-docs/                      Architektur, Roadmap, Feature-Parität
+docs/                      Architektur, Roadmap, Feature-Parität, Analyse des alten Codes
+prompts/                   Feature-Prompts für die nächsten Ausbaustufen (Index: prompts/README.md)
+CLAUDE.md                  Leitfaden für die Arbeit am Repo (Regeln, Befehle, GuiExpert Table)
 ```
 
 ## Referenzen und Lizenzen

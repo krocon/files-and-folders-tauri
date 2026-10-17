@@ -1,7 +1,8 @@
 # Feature-Parität mit `files-and-folders`
 
-Vorläufige Inventur (Phase 0). Wird in Phase 11 systematisch vervollständigt; „kompatibel“ gilt erst,
-wenn Implementierung **und** Tests vorliegen.
+Vorläufige Inventur (Phase 0). Die detaillierte Analyse des alten Codes steht in
+[legacy-analysis.md](legacy-analysis.md); Prompt 018 baut diese Matrix daraus vollständig neu auf.
+„Kompatibel“ gilt erst, wenn Implementierung **und** Tests vorliegen.
 
 ## Quellen
 
