@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal permissions for the main window. App commands (list_directory) are registered via invoke_handler; no fs/shell plugins are enabled.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

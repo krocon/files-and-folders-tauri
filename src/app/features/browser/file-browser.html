@@ -1,0 +1,58 @@
+<div class="toolbar">
+  <button
+    type="button"
+    class="btn"
+    (click)="store.up()"
+    [disabled]="!store.canGoUp()"
+    title="Go to parent folder (Backspace)"
+  >
+    <span aria-hidden="true">↑</span> Up
+  </button>
+  <button
+    type="button"
+    class="btn"
+    (click)="store.refresh()"
+    [disabled]="store.loading()"
+    title="Reload folder"
+  >
+    <span aria-hidden="true">⟳</span> Refresh
+  </button>
+  <output class="path" [attr.title]="store.path()" aria-label="Current folder">
+    {{ store.path() ?? '…' }}
+  </output>
+</div>
+
+@if (errorText(); as text) {
+  <div class="error" role="alert">
+    <div>
+      <strong>{{ text }}</strong>
+      @if (store.error()?.path; as p) {
+        <div class="error-path">{{ p }}</div>
+      }
+      <div class="error-detail">{{ store.error()?.message }}</div>
+    </div>
+    <button type="button" class="btn" (click)="store.dismissError()">Dismiss</button>
+  </div>
+}
+
+<app-file-table
+  [entries]="store.entries()"
+  [selectedPath]="store.selectedPath()"
+  [loading]="store.loading()"
+  (selectEntry)="store.select($event)"
+  (openEntry)="store.open($event)"
+  (moveSelection)="store.moveSelection($event)"
+  (selectEdge)="store.selectEdge($event)"
+  (goUp)="store.up()"
+/>
+
+<footer class="status" role="status" aria-live="polite">
+  @if (store.loading()) {
+    <span>Loading…</span>
+  } @else if (store.listing()) {
+    <span>{{ status() }}</span>
+  }
+  @if (store.selectedEntry(); as sel) {
+    <span class="selection" [attr.title]="sel.path">{{ sel.name }}</span>
+  }
+</footer>

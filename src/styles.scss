@@ -1,0 +1,103 @@
+/* Design tokens. Components must use these variables instead of literal values. */
+:root {
+  color-scheme: light dark;
+
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-raised: #eef0f3;
+  --color-text: #1d2027;
+  --color-muted: #5d6573;
+  --color-border: #d3d7de;
+  --color-accent: #2f6fde;
+  --color-accent-text: #ffffff;
+  --color-row-hover: #eef3fc;
+  --color-selection: #2f6fde;
+  --color-selection-text: #ffffff;
+  --color-focus: #1f5bc7;
+  --color-danger: #c62f3a;
+  --color-danger-bg: #fdecee;
+  --color-danger-text: #7d1720;
+
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.875rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #16181d;
+    --color-surface: #1e2128;
+    --color-surface-raised: #262a33;
+    --color-text: #e4e7ec;
+    --color-muted: #9aa3b2;
+    --color-border: #353a45;
+    --color-accent: #5b8ef0;
+    --color-row-hover: #262d3b;
+    --color-selection: #2c5bb8;
+    --color-selection-text: #ffffff;
+    --color-focus: #8fb3ff;
+    --color-danger: #e5606a;
+    --color-danger-bg: #3a1c20;
+    --color-danger-text: #ffc9cd;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+    outline-offset: 1px;
+  }
+}

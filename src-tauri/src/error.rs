@@ -1,0 +1,78 @@
+use serde::Serialize;
+use std::io;
+use std::path::Path;
+
+/// Machine-readable error codes. Serialised as `snake_case` strings so the
+/// frontend can map them to user-facing messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FsErrorCode {
+    NotFound,
+    PermissionDenied,
+    NotADirectory,
+    InvalidPath,
+    NoHomeDirectory,
+    Io,
+}
+
+/// Error returned by Tauri commands. Serialised as
+/// `{ "code": "...", "message": "...", "path": "..." | null }`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FsError {
+    pub code: FsErrorCode,
+    pub message: String,
+    pub path: Option<String>,
+}
+
+impl FsError {
+    pub fn new(code: FsErrorCode, message: impl Into<String>, path: Option<&Path>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            path: path.map(|p| p.to_string_lossy().into_owned()),
+        }
+    }
+
+    pub fn from_io(err: &io::Error, path: &Path) -> Self {
+        let code = match err.kind() {
+            io::ErrorKind::NotFound => FsErrorCode::NotFound,
+            io::ErrorKind::PermissionDenied => FsErrorCode::PermissionDenied,
+            io::ErrorKind::NotADirectory => FsErrorCode::NotADirectory,
+            _ => FsErrorCode::Io,
+        };
+        Self::new(code, err.to_string(), Some(path))
+    }
+}
+
+impl std::fmt::Display for FsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for FsError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_io_error_kinds() {
+        let p = Path::new("x");
+        let e = FsError::from_io(&io::Error::from(io::ErrorKind::NotFound), p);
+        assert_eq!(e.code, FsErrorCode::NotFound);
+        let e = FsError::from_io(&io::Error::from(io::ErrorKind::PermissionDenied), p);
+        assert_eq!(e.code, FsErrorCode::PermissionDenied);
+        let e = FsError::from_io(&io::Error::other("boom"), p);
+        assert_eq!(e.code, FsErrorCode::Io);
+        assert_eq!(e.path.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn serialises_code_as_snake_case() {
+        let e = FsError::new(FsErrorCode::PermissionDenied, "denied", None);
+        let json = serde_json::to_value(&e).unwrap();
+        assert_eq!(json["code"], "permission_denied");
+        assert_eq!(json["path"], serde_json::Value::Null);
+    }
+}

@@ -1,0 +1,51 @@
+<div
+  class="scroller"
+  tabindex="0"
+  role="grid"
+  aria-readonly="true"
+  [attr.aria-label]="label()"
+  [attr.aria-busy]="loading()"
+  [attr.aria-rowcount]="rows().length + 1"
+  [attr.aria-activedescendant]="activeRowId()"
+  (keydown)="onKeydown($event)"
+>
+  <table>
+    <thead>
+      <tr role="row">
+        <th role="columnheader" scope="col" class="col-name">Name</th>
+        <th role="columnheader" scope="col" class="col-type">Type</th>
+        <th role="columnheader" scope="col" class="col-size">Size</th>
+        <th role="columnheader" scope="col" class="col-modified">Modified</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.entry.path) {
+        <tr
+          role="row"
+          [id]="row.id"
+          [class.selected]="row.id === activeRowId()"
+          [class.hidden-entry]="row.entry.hidden"
+          [attr.aria-selected]="row.id === activeRowId()"
+          [attr.title]="
+            row.entry.lossyName
+              ? 'Name contains invalid characters – navigation not supported yet'
+              : null
+          "
+          (click)="selectEntry.emit(row.entry)"
+          (dblclick)="openEntry.emit(row.entry)"
+        >
+          <td role="gridcell" class="col-name">
+            <span class="icon" aria-hidden="true">{{ row.icon }}</span>
+            <span class="name">{{ row.entry.name }}</span>
+          </td>
+          <td role="gridcell" class="col-type">{{ row.typeLabel }}</td>
+          <td role="gridcell" class="col-size">{{ row.size }}</td>
+          <td role="gridcell" class="col-modified">{{ row.modified }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  @if (rows().length === 0 && !loading()) {
+    <p class="empty" role="status">This folder is empty.</p>
+  }
+</div>
