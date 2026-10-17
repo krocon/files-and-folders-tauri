@@ -4,8 +4,11 @@ import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { ActionService } from '../actions/action.service';
 import { KeymapApi } from '../actions/keymap-api';
-import { DARK, LIGHT } from './builtin-themes';
-import { ThemeApi } from './theme-api';
+// @ts-expect-error -- node types are not part of the app's tsconfig; vitest runs in node
+import { readFileSync } from 'node:fs';
+import { CLASSIC_ADJUSTMENTS, CLASSIC_THEMES, DARK, LIGHT } from './builtin-themes';
+import { LegacyThemeFileContent, ThemeApi, ThemeFileContent } from './theme-api';
+import { completeTokens } from './theme-logic';
 import { ThemeService } from './theme.service';
 
 /** A controllable `prefers-color-scheme: dark` query. */
@@ -43,7 +46,56 @@ describe('ThemeService', () => {
 
   beforeEach(() => {
     api = new FakeThemeApi();
+    // most tests check the 013 mechanics with the base pair light/dark (019 defaults: own test)
+    api.loaded = {
+      file: {
+        version: 1,
+        selection: { mode: 'system', theme: 'light', light: 'light', dark: 'dark' },
+        themes: [],
+      },
+      warning: null,
+    };
     media = fakeMedia(false);
+  });
+
+  it('starts with the old light design and follows the system with light/coffee (019)', async () => {
+    api = new FakeThemeApi();
+    const s = create();
+    await s.init();
+    expect(s.selection()).toEqual({
+      mode: 'fixed',
+      theme: 'classic-light',
+      light: 'classic-light',
+      dark: 'classic-coffee',
+    });
+    expect(s.active().id).toBe('classic-light');
+    await s.followSystem();
+    media.set(true);
+    expect(s.active().id).toBe('classic-coffee');
+    TestBed.tick();
+    expect(root().dataset['theme']).toBe('dark');
+    expect(root().style.getPropertyValue('--color-list-bg')).toBe('#1a1a1a');
+  });
+
+  it('imports an old file as the same scheme as the shipped design (019)', async () => {
+    api.files.set(
+      '/t/coffee.json',
+      JSON.parse(readFileSync('docs/legacy-themes/coffee.json', 'utf8')),
+    );
+    const s = create();
+    await s.init();
+    const r = await s.importFile('/t/coffee.json');
+    const shipped = CLASSIC_THEMES.find((t) => t.id === 'classic-coffee')!;
+    expect(r).toMatchObject({ legacy: true, dark: true, selected: true, unknown: [] });
+    expect(r.adjusted).toBe(CLASSIC_ADJUSTMENTS.get('classic-coffee')!.length);
+    expect(s.active().id).toBe(r.id);
+    expect(s.applied().tokens).toEqual(completeTokens(shipped, LIGHT, DARK));
+
+    await s.exportLegacy('/t', s.applied());
+    const out = api.exported[0].theme as LegacyThemeFileContent;
+    expect(out.name).toBe('coffee');
+    expect(Object.keys(out.colors)).toHaveLength(76);
+    expect(out.colors['--fnf-table-bg-color']).toBe('#1a1a1a');
   });
 
   afterEach(() => {
@@ -92,7 +144,12 @@ describe('ThemeService', () => {
       tokens: { ...DARK.tokens, '--color-bg': '#000000' },
     });
     expect(id).toBe('user-mein-schema');
-    expect(s.themes().map((t) => t.id)).toEqual(['user-mein-schema', 'light', 'dark']);
+    expect(s.themes().map((t) => t.id)).toEqual([
+      'user-mein-schema',
+      ...CLASSIC_THEMES.map((t) => t.id),
+      'light',
+      'dark',
+    ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();
     expect(root().style.getPropertyValue('--color-bg')).toBe('#000000');
@@ -102,18 +159,18 @@ describe('ThemeService', () => {
     await s.saveTheme({ name: 'Mein Schema', dark: true, tokens: { '--color-bg': '#111111' } }, id);
     expect(s.userThemes()).toHaveLength(1);
     // a copy of a built-in scheme gets a unique name
-    const copy = await s.saveTheme({ name: 'Dark', dark: true, tokens: {} }, 'dark');
-    expect(s.find(copy)?.name).toBe('Dark (2)');
+    const copy = await s.saveTheme({ name: 'Modern dark', dark: true, tokens: {} }, 'dark');
+    expect(s.find(copy)?.name).toBe('Modern dark (2)');
 
     await s.deleteTheme(copy);
     await s.deleteTheme(id);
     expect(s.userThemes()).toEqual([]);
-    expect(s.selection()).toMatchObject({ mode: 'system', theme: 'light' });
+    expect(s.selection()).toMatchObject({ mode: 'system', theme: 'classic-light' });
     await s.deleteTheme('light'); // built-in: ignored
     expect(s.find('light')).toBeDefined();
   });
 
-  it('falls back to light/dark when the selected scheme is gone, completes missing tokens', async () => {
+  it('falls back to the default when the selected scheme is gone, completes missing tokens', async () => {
     api.loaded = {
       file: {
         version: 1,
@@ -124,7 +181,7 @@ describe('ThemeService', () => {
     };
     const s = create();
     await s.init();
-    expect(s.active().id).toBe('light');
+    expect(s.active().id).toBe('classic-light');
     expect(TestBed.inject(ActionService).messages()).toContain(
       'The colour scheme file was invalid',
     );
@@ -204,7 +261,9 @@ describe('ThemeService', () => {
     await s.next();
     expect(s.active().id).toBe('dark');
     await s.next();
-    expect(s.active().id).toBe('light');
+    expect(s.active().id).toBe('classic-light');
+    await s.next();
+    expect(s.active().id).toBe('classic-paper');
   });
 
   it('imports own and old files and exports complete schemes', async () => {
@@ -233,7 +292,7 @@ describe('ThemeService', () => {
       tokens: { '--x': '#fff' },
     });
     expect(path).toBe('/t/Mine.theme.json');
-    const out = api.exported[0].theme;
+    const out = api.exported[0].theme as ThemeFileContent;
     expect(out.tokens['--x']).toBe('#fff');
     expect(out.tokens['--color-bg']).toBe(LIGHT.tokens['--color-bg']);
   });

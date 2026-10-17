@@ -27,9 +27,10 @@ export const THEME_TEXTS = {
   reset: 'Reset',
   import: 'Import',
   export: 'Export',
+  exportLegacy: 'Export (old format)',
   close: 'Close',
   importHelp:
-    'Import reads the file under the cursor; export writes into the active panel’s folder.',
+    'Import reads the file under the cursor (also old *.json schemes); export writes into the active panel’s folder.',
   unsavedFirst: 'Save or reset your changes first.',
   builtInReadOnly: 'Built-in schemes are read-only – use “Save as new”.',
   saved: (name: string) => `Saved “${name}”.`,
@@ -40,6 +41,8 @@ export const THEME_TEXTS = {
     `Imported “${name}”.` +
     (unknown ? ` ${unknown} variable(s) are unknown to this version and kept.` : '') +
     (dropped ? ` ${dropped} value(s) were rejected.` : ''),
+  adjusted: (n: number) =>
+    `${n === 1 ? '1 colour was' : `${n} colours were`} slightly adjusted for contrast (WCAG AA).`,
   notSelected: (n: number) =>
     `It is not selected: ${n === 1 ? '1 contrast problem' : `${n} contrast problems`} – fix the values and save (Save also selects it).`,
   noPicker: 'Transparent – type a colour to replace it',

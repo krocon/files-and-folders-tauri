@@ -4,7 +4,7 @@
 
 /** A colour scheme: CSS values per token (`--color-…` → `#fff` | `var(--other)` | …). */
 export interface Theme {
-  /** `[a-z0-9-]`; built-in: `light`, `dark` (019: the old designs); own: `user-…`. */
+  /** `[a-z0-9-]`; built-in: `light`, `dark`, the old designs `classic-…` (019); own: `user-…`. */
   readonly id: string;
   readonly name: string;
   /** Dark scheme: `color-scheme`, `html[data-theme]` of the table, fallback scheme. */
@@ -36,11 +36,12 @@ export interface LoadedThemes {
   readonly warning: string | null;
 }
 
+/** First start: the old `light`, fixed; following the system: old `light` / `coffee` (design 019 E6). */
 export const DEFAULT_SELECTION: ThemeSelection = {
-  mode: 'system',
-  theme: 'light',
-  light: 'light',
-  dark: 'dark',
+  mode: 'fixed',
+  theme: 'classic-light',
+  light: 'classic-light',
+  dark: 'classic-coffee',
 };
 
 export const EMPTY_THEMES_FILE: ThemesFile = {

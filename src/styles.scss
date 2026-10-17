@@ -56,6 +56,7 @@
   --color-active-list-bg: var(--color-list-bg);
   --color-active-list-text: var(--color-list-text);
   --color-active-list-header-bg: var(--color-list-header-bg);
+  --color-active-list-border: var(--color-list-border);
   --color-active-marked: var(--color-marked);
   --color-active-marked-bg: var(--color-marked-bg);
   --color-active-panel-accent: #2f6fde;
@@ -73,6 +74,7 @@
   --color-tab-text: var(--color-muted);
   --color-tab-selected-bg: var(--color-surface);
   --color-tab-selected-text: var(--color-text);
+  --color-header-focus: var(--color-focus);
 
   /* footer: status line, button bar */
   --color-footer-bg: var(--color-surface-raised);
@@ -84,6 +86,7 @@
   --color-shortcut-bg: #444a55;
   --color-shortcut-text: #f2f4f7;
   --color-footer-error-text: var(--color-danger);
+  --color-footer-focus: var(--color-focus);
 
   /* dialogs */
   --color-dialog-bg: var(--color-surface);
@@ -97,6 +100,7 @@
   --color-button-border: var(--color-border);
   --color-button-primary-bg: var(--color-accent);
   --color-button-primary-text: var(--color-accent-text);
+  --color-dialog-focus: var(--color-focus);
 
   /* scrollbar */
   --color-scrollbar-track: var(--color-surface);

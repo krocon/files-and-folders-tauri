@@ -3,6 +3,7 @@ import { ActionService } from '../actions/action.service';
 import { toFsError } from '../fs/fs-error';
 import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
 import { toHex } from './color';
+import { convertLegacy, toLegacyFile } from './legacy-theme';
 import { ThemeApi, ThemeFileContent } from './theme-api';
 import {
   applicableToken,
@@ -24,6 +25,8 @@ const DARK_QUERY = '(prefers-color-scheme: dark)';
 /** Result of an import: selected only without contrast problems. */
 export interface ImportedScheme extends ImportedTheme {
   readonly id: string;
+  /** Old `{name, colors}` file: colours corrected for contrast (design 019 E4). */
+  readonly adjusted: number;
   readonly problems: readonly ContrastResult[];
   readonly selected: boolean;
 }
@@ -67,12 +70,15 @@ export class ThemeService {
     return this.systemDark() ? s.dark : s.light;
   });
 
-  /** The active scheme; a missing id falls back to light/dark by the system. */
-  readonly active = computed<Theme>(
-    () =>
+  /** The active scheme; a missing id falls back to the default (019), then light/dark. */
+  readonly active = computed<Theme>(() => {
+    const dark = this.selection().mode === 'system' && this.systemDark();
+    return (
       this.find(this.activeId()) ??
-      (this.selection().mode === 'fixed' ? LIGHT : this.systemDark() ? DARK : LIGHT),
-  );
+      this.find(dark ? DEFAULT_SELECTION.dark : DEFAULT_SELECTION.light) ??
+      (dark ? DARK : LIGHT)
+    );
+  });
 
   /** What is on screen: the preview or the active scheme, completed from light/dark. */
   readonly applied = computed<ThemeDraft>(() => {
@@ -185,9 +191,9 @@ export class ThemeService {
     this.userThemes.update((list) => list.filter((t) => t.id !== id));
     this.selection.update((s) => ({
       mode: s.mode === 'fixed' && s.theme === id ? 'system' : s.mode,
-      theme: s.theme === id ? LIGHT.id : s.theme,
-      light: s.light === id ? LIGHT.id : s.light,
-      dark: s.dark === id ? DARK.id : s.dark,
+      theme: s.theme === id ? DEFAULT_SELECTION.theme : s.theme,
+      light: s.light === id ? DEFAULT_SELECTION.light : s.light,
+      dark: s.dark === id ? DEFAULT_SELECTION.dark : s.dark,
     }));
     return this.save();
   }
@@ -198,14 +204,28 @@ export class ThemeService {
    */
   async importFile(path: string): Promise<ImportedScheme> {
     const raw = await this.api.importFile(path);
-    const imported = normalizeImport(raw);
+    let imported = normalizeImport(raw);
     if (typeof imported === 'string') {
       throw toFsError({ code: 'invalid_path', message: imported, path });
+    }
+    let adjusted = 0;
+    if (imported.legacy) {
+      // the old `--fnf-*` variables → our tokens, same way as the built-in old designs (019)
+      const c = convertLegacy(imported.tokens, LIGHT, DARK);
+      imported = { ...imported, dark: c.dark, tokens: c.tokens, unknown: c.unknown };
+      adjusted = c.adjustments.length;
     }
     const problems = checkContrast(completeTokens(imported, LIGHT, DARK)).filter((r) => !r.ok);
     const selected = problems.length === 0;
     const id = await this.saveTheme(imported, undefined, selected);
-    return { ...imported, id, name: this.find(id)?.name ?? imported.name, problems, selected };
+    return {
+      ...imported,
+      id,
+      name: this.find(id)?.name ?? imported.name,
+      problems,
+      selected,
+      adjusted,
+    };
   }
 
   /** Writes a scheme (complete tokens) as `<name>.theme.json` into `dir`; resolves with the path. */
@@ -215,6 +235,12 @@ export class ThemeService {
       dark: theme.dark,
       tokens: completeTokens(theme, LIGHT, DARK),
     };
+    return this.api.exportFile(dir, theme.name, content);
+  }
+
+  /** Writes a scheme in the old format `{ name, colors: { "--fnf-…" } }` (design 019 E7). */
+  exportLegacy(dir: string, theme: ThemeDraft): Promise<string> {
+    const content = toLegacyFile(theme.name, completeTokens(theme, LIGHT, DARK));
     return this.api.exportFile(dir, theme.name, content);
   }
 

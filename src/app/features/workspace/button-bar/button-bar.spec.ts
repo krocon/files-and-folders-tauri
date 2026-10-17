@@ -88,11 +88,19 @@ describe('ButtonBar', () => {
       'Follow the system',
       'Mine',
       'Light',
-      'Dark',
+      'Paper',
+      'Bitbucket',
+      'Cypress',
+      'Blackboard',
+      'Coffee',
+      'Combat',
+      'Norton',
+      'Modern light',
+      'Modern dark',
       'Edit colour schemes…',
     ]);
     expect(items[0].getAttribute('aria-checked')).toBe('true');
-    items[3].click();
+    items[11].click();
     fixture.detectChanges();
     expect(theme.active().id).toBe('dark');
     expect(theme.selection().mode).toBe('fixed');
