@@ -1,30 +1,26 @@
-import { BUTTON_META, BUTTON_SETS, buttonsFor, ModifierSet } from './button-config';
+import { NO_MODIFIERS } from '../../../core/actions/shortcut';
+import { BUTTON_SETS, modifierSet, ModifierSet } from './button-config';
 
 describe('button configuration', () => {
-  it('has five buttons per modifier set, all with labels', () => {
+  it('has five known actions per modifier set', () => {
     for (const set of Object.keys(BUTTON_SETS) as ModifierSet[]) {
-      expect(BUTTON_SETS[set]).toHaveLength(5);
-      for (const id of BUTTON_SETS[set]) {
-        expect(BUTTON_META[id], `${set}: ${id}`).toBeDefined();
-      }
+      expect(BUTTON_SETS[set], set).toHaveLength(5);
     }
+    expect(BUTTON_SETS.default).toEqual([
+      'OPEN_EDIT_DLG',
+      'OPEN_COPY_DLG',
+      'OPEN_MOVE_DLG',
+      'OPEN_MKDIR_DLG',
+      'OPEN_DELETE_DLG',
+    ]);
+    expect(BUTTON_SETS.shift[2]).toBe('OPEN_RENAME_DLG');
   });
 
-  it('shows the default set in the order of docs/ui-layout.md', () => {
-    expect(buttonsFor('default').map((b) => `${b.key} ${b.label}`)).toEqual([
-      'F4 Edit',
-      'F5 Copy',
-      'F6 Move',
-      'F7 MkDir',
-      'F8 Delete',
-    ]);
-    expect(buttonsFor('shift').map((b) => b.label)).toEqual([
-      'Create File',
-      'Copy',
-      'Rename',
-      'MkDir',
-      'Delete',
-    ]);
-    expect(buttonsFor('cmd')[2].label).toBe('Multi Rename');
+  it('picks the set for the held modifiers (⌘ > Alt > Shift; Ctrl on Windows/Linux)', () => {
+    expect(modifierSet(NO_MODIFIERS, 'macos')).toBe('default');
+    expect(modifierSet({ ...NO_MODIFIERS, shift: true }, 'macos')).toBe('shift');
+    expect(modifierSet({ ...NO_MODIFIERS, alt: true, shift: true }, 'linux')).toBe('alt');
+    expect(modifierSet({ ...NO_MODIFIERS, mod: true, alt: true }, 'macos')).toBe('cmd');
+    expect(modifierSet({ ...NO_MODIFIERS, mod: true }, 'windows')).toBe('ctrl');
   });
 });

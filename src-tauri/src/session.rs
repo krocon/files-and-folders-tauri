@@ -7,11 +7,12 @@
 //! frontend or from disk is bounded by [`sanitize`].
 //! Keep in sync with `src/app/core/session/session.models.ts`.
 
+use crate::fs_atomic::{keep_broken_file, write_atomic};
 use crate::paths::validate_input_path;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 
 pub const SESSION_VERSION: u32 = 1;
@@ -207,35 +208,10 @@ fn parse(text: &str) -> Result<Session, String> {
     serde_json::from_value(value).map_err(|e| e.to_string())
 }
 
-fn keep_broken_file(file: &Path) -> Option<PathBuf> {
-    let mut name = file.file_name()?.to_os_string();
-    name.push(".bad");
-    let bad = file.with_file_name(name);
-    fs::rename(file, &bad).ok().map(|_| bad)
-}
-
-/// Writes the session atomically: temp file in the target directory, flush,
-/// rename. Creates the directory if needed. On error the old file is untouched.
+/// Writes the session atomically (see [`write_atomic`]).
 pub fn save(file: &Path, session: &Session) -> io::Result<()> {
-    let dir = file.parent().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "session file has no directory")
-    })?;
-    fs::create_dir_all(dir)?;
     let json = serde_json::to_vec_pretty(session).map_err(io::Error::other)?;
-    let mut tmp_name = file.file_name().unwrap_or_default().to_os_string();
-    tmp_name.push(format!(".tmp-{}", std::process::id()));
-    let tmp = file.with_file_name(tmp_name);
-    let result = (|| {
-        let mut f = fs::File::create(&tmp)?;
-        f.write_all(&json)?;
-        f.sync_all()?;
-        drop(f);
-        fs::rename(&tmp, file)
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&tmp);
-    }
-    result
+    write_atomic(file, &json)
 }
 
 /// Bounds every value so that neither a broken file nor a buggy frontend can

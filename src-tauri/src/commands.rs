@@ -2,6 +2,7 @@
 //! blocking file-system work off the async runtime threads.
 
 use crate::error::{FsError, FsErrorCode};
+use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::listing;
 use crate::model::DirectoryListing;
 use crate::paths::validate_input_path;
@@ -194,4 +195,78 @@ fn write<R: Runtime>(
     session::save(file, session).map_err(|e| FsError::from_io(&e, file))?;
     *written = seq;
     Ok(())
+}
+
+/// Whether the keymap override may be written (false after a broken file could not be moved aside).
+#[derive(Default)]
+pub struct KeymapState {
+    write_blocked: Mutex<bool>,
+}
+
+fn keymap_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path()
+        .app_config_dir()
+        .map(|d| d.join(keymap::FILE_NAME))
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("App config directory not available: {e}"),
+                None,
+            )
+        })
+}
+
+/// The user's shortcut override (empty if there is none).
+#[tauri::command]
+pub async fn load_keymap_override<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<LoadedOverride, FsError> {
+    let file = keymap_file(&app)?;
+    let loaded = tauri::async_runtime::spawn_blocking(move || keymap::load(&file))
+        .await
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("Loading the shortcuts failed: {e}"),
+                None,
+            )
+        })?;
+    let state = app.state::<KeymapState>();
+    *state
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = !loaded.persist;
+    Ok(loaded)
+}
+
+/// Replaces the user's shortcut override.
+#[tauri::command]
+pub async fn save_keymap_override<R: Runtime>(
+    app: AppHandle<R>,
+    bindings: Bindings,
+) -> Result<(), FsError> {
+    let file = keymap_file(&app)?;
+    let blocked = *app
+        .state::<KeymapState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if blocked {
+        return Err(FsError::new(
+            FsErrorCode::Io,
+            "The existing shortcut file could not be moved aside; not overwriting it.",
+            Some(&file),
+        ));
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        keymap::save(&file, bindings).map_err(|e| FsError::from_io(&e, &file))
+    })
+    .await
+    .map_err(|e| {
+        FsError::new(
+            FsErrorCode::Io,
+            format!("Saving the shortcuts failed: {e}"),
+            None,
+        )
+    })?
 }

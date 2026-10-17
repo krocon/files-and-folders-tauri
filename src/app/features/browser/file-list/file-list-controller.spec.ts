@@ -4,16 +4,7 @@ import { DirEntry } from '../../../core/fs/fs.models';
 import { FakeTableBridge } from '../../../../testing/fake-table-bridge';
 import { dir, entry, FakeFsApi, listing } from '../../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../file-browser.store';
-import { ClickInput, FileListController, KeyInput } from './file-list-controller';
-
-const key = (k: string, mods: Partial<KeyInput> = {}): KeyInput => ({
-  key: k,
-  shiftKey: false,
-  ctrlKey: false,
-  metaKey: false,
-  altKey: false,
-  ...mods,
-});
+import { ClickInput, FileListController } from './file-list-controller';
 const click = (rowIndex: number, mods: Partial<ClickInput> = {}): ClickInput => ({
   area: 'body',
   rowIndex,
@@ -86,10 +77,10 @@ describe('FileListController', () => {
     expect(store.cursorPath()).toBe('/h/b.txt');
   });
 
-  it('opens the cursor folder with Enter and goes up with Backspace', async () => {
-    expect(ctrl.onKey(key('Enter'))).toBe(true);
+  it('opens the cursor folder and goes up again', async () => {
+    expect(ctrl.openCursor()).toBe(true);
     await vi.waitFor(() => expect(store.path()).toBe('/h/Sub'));
-    expect(ctrl.onKey(key('Backspace'))).toBe(true);
+    await store.up();
     await vi.waitFor(() => expect(store.path()).toBe('/h'));
     expect(store.cursorPath()).toBe('/h/Sub');
   });
@@ -101,32 +92,50 @@ describe('FileListController', () => {
     await vi.waitFor(() => expect(store.path()).toBe('/h/Sub'));
   });
 
-  it('Space/Insert toggles the mark and moves the cursor down', () => {
+  it('toggles the mark and moves the cursor down (Space/Insert)', () => {
     focusRow(1);
-    expect(ctrl.onAction('TOGGLE_SELECTION')).toBe(true);
+    ctrl.toggleMarkAndAdvance();
     expect(store.isMarked('/h/a.txt')).toBe(true);
     expect(store.cursorPath()).toBe('/h/b.txt');
-    expect(ctrl.onKey(key('Insert'))).toBe(true);
+    ctrl.toggleMarkAndAdvance();
     expect(store.isMarked('/h/b.txt')).toBe(true);
     expect(store.cursorPath()).toBe('/h/c.txt');
-    ctrl.onAction('TOGGLE_SELECTION'); // last row: marks, cursor stays
+    ctrl.toggleMarkAndAdvance(); // last row: marks, cursor stays
     expect(store.isMarked('/h/c.txt')).toBe(true);
     expect(store.cursorPath()).toBe('/h/c.txt');
   });
 
-  it('Shift+↓/↑ marks and moves', () => {
-    expect(ctrl.onKey(key('ArrowDown', { shiftKey: true }))).toBe(true);
-    expect(ctrl.onKey(key('ArrowDown', { shiftKey: true }))).toBe(true);
+  it('marks and moves (Shift+↓/↑)', () => {
+    ctrl.markAndMove(1);
+    ctrl.markAndMove(1);
     expect([...store.marked()].sort()).toEqual(['/h/Sub', '/h/a.txt']);
-    expect(ctrl.onKey(key('ArrowDown'))).toBe(false); // plain arrows belong to the table
+    expect(store.cursorPath()).toBe('/h/b.txt');
   });
 
-  it('select all / deselect all work on the displayed rows', () => {
-    expect(ctrl.onAction('SELECT_ALL')).toBe(true);
+  it('marks to the first/last entry (Shift+Pos1/Ende)', () => {
+    focusRow(2);
+    ctrl.markToEdge('end');
+    expect([...store.marked()].sort()).toEqual(['/h/b.txt', '/h/c.txt']);
+    expect(store.cursorPath()).toBe('/h/c.txt');
+    ctrl.markToEdge('start');
     expect(store.marked().size).toBe(4);
-    expect(ctrl.onAction('DESELECT_ALL')).toBe(true);
+    expect(store.cursorPath()).toBe('/h/Sub');
+  });
+
+  it('marks all, unmarks all and inverts on the displayed rows', () => {
+    ctrl.markAll();
+    expect(store.marked().size).toBe(4);
+    ctrl.clearMarks();
     expect(store.marked().size).toBe(0);
-    expect(ctrl.onAction('NAVIGATE_DOWN')).toBe(false);
+    store.setMarked(['/h/a.txt'], true);
+    ctrl.invertMarks();
+    expect([...store.marked()].sort()).toEqual(['/h/Sub', '/h/b.txt', '/h/c.txt']);
+  });
+
+  it('marks and unmarks by a name predicate', () => {
+    expect(ctrl.markMatching((n) => n.endsWith('.txt'), true)).toBe(3);
+    expect(ctrl.markMatching((n) => n.startsWith('a'), false)).toBe(1);
+    expect([...store.marked()].sort()).toEqual(['/h/b.txt', '/h/c.txt']);
   });
 
   it('Ctrl/⌘+click toggles, Shift+click marks a range from the previous cursor', () => {
@@ -138,16 +147,10 @@ describe('FileListController', () => {
     expect([...store.marked()].sort()).toEqual(['/h/a.txt', '/h/b.txt', '/h/c.txt']);
   });
 
-  it('ignores keys with modifiers it does not own', () => {
-    expect(ctrl.onKey(key('Enter', { ctrlKey: true }))).toBe(false);
-    expect(ctrl.onKey(key('Backspace', { metaKey: true }))).toBe(false);
-    expect(ctrl.onKey(key('a'))).toBe(false);
-  });
-
   it('does nothing on an empty folder', () => {
     bridge.setRows([]);
     bridge.focus = -1;
-    expect(ctrl.onKey(key('Enter'))).toBe(false);
+    expect(ctrl.openCursor()).toBe(false);
     ctrl.toggleMarkAndAdvance();
     ctrl.restoreCursor();
     expect(store.marked().size).toBe(0);
@@ -159,10 +162,10 @@ describe('FileListController', () => {
       openInNewTab: (e) => opened.push(e.path),
     });
     bridge.focus = 0;
-    expect(withHooks.onKey(key('Enter', { ctrlKey: true, toggleKey: true }))).toBe(true);
+    expect(withHooks.openCursorInNewTab()).toBe(true);
     expect(opened).toEqual(['/h/Sub']);
     bridge.focus = 1; // a file: not a folder
-    expect(withHooks.onKey(key('Enter', { ctrlKey: true, toggleKey: true }))).toBe(false);
+    expect(withHooks.openCursorInNewTab()).toBe(false);
     expect(opened).toHaveLength(1);
   });
 

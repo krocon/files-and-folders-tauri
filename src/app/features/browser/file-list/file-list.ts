@@ -40,9 +40,6 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
   `,
   styleUrl: './file-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(keydown)': 'onKeydown($event)',
-  },
 })
 export class FileList implements OnDestroy {
   protected readonly store = inject(FileBrowserStore);
@@ -112,9 +109,6 @@ export class FileList implements OnDestroy {
       cursorRow: () => bridge.focusedRow(),
       isMarked: (path) => this.store.isMarked(path),
     });
-    api.getTableScope().shortcutService.addListener({
-      onActionTriggered: (actionId) => controller.onAction(actionId),
-    });
     this.unsubscribe = api.subscribe({
       onFocusChanged: (model) => controller.onFocusChanged(model.getFocus()[0]),
       onStateChanged: (evt) => {
@@ -142,6 +136,11 @@ export class FileList implements OnDestroy {
     }
   }
 
+  /** Behaviour of this list for the panel's actions (undefined until the table is ready). */
+  get listController(): FileListController | undefined {
+    return this.controller;
+  }
+
   /** The table state of the current tab (columns, sort, scroll). */
   captureTableState(): Partial<TableStateIf> | null {
     return this.bridge?.getTableState() ?? null;
@@ -167,23 +166,6 @@ export class FileList implements OnDestroy {
           this.applying = false;
         }
       }, 400);
-    }
-  }
-
-  protected onKeydown(evt: KeyboardEvent): void {
-    const toggleKey = IS_MAC ? evt.metaKey : evt.ctrlKey;
-    if (
-      this.controller?.onKey({
-        key: evt.key,
-        shiftKey: evt.shiftKey,
-        ctrlKey: evt.ctrlKey,
-        metaKey: evt.metaKey,
-        altKey: evt.altKey,
-        toggleKey,
-      })
-    ) {
-      evt.preventDefault();
-      evt.stopPropagation();
     }
   }
 

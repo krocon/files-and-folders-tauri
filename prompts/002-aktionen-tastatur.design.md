@@ -1,6 +1,6 @@
 # Design 002: Aktionssystem, Tastenkürzel und „Go to anything“
 
-> **Status:** ✅ freigegeben (2026-10-17: D1–D6 wie empfohlen) – Umsetzung offen. Ursprünglich angehalten (Phase 1). Bewusst hier angehalten: 002 baut auf 004 auf, dessen
+> **Status:** ✅ umgesetzt (freigegeben 2026-10-17: D1–D6 wie empfohlen). Ursprünglich angehalten (Phase 1). Bewusst hier angehalten: 002 baut auf 004 auf, dessen
 > Entscheidungen ebenfalls noch nicht bestätigt sind, und die Fragen D1–D6 ändern Datenformate, die später teuer
 > umzustellen sind.
 > **Datum:** 2026-10-17 · **Branch:** `feat/aktionen-tastatur` (von `feat/dual-pane-tabs`)
@@ -219,6 +219,27 @@ Rust prüft nur Form und Größe (max. 500 Aktionen, 8 Kürzel je Aktion, 64 Zei
 
 - [x] Phase 1: Bestand, Entscheidungen D1–D6, Verträge, Testplan (dieses Dokument)
 - [x] Freigabe durch Marc (2026-10-17, D1–D6 wie empfohlen)
-- [ ] Phase 2: Rust (Override-Datei)
-- [ ] Phase 3: Frontend (Register, Keymaps, Dispatcher, Auswahl, Palette, Button-Leiste, Actions-Menü, ⌨)
-- [ ] Phase 4–6
+- [x] Phase 2: Rust – `keymap.rs` (laden/speichern, `.bad`, Größen), `fs_atomic.rs` (gemeinsam mit `session.rs`),
+  Commands `load_keymap_override`/`save_keymap_override`; 6 neue Rust-Tests
+- [x] Phase 3: Frontend – `core/actions/` (Katalog, Notation, Keymaps, `ActionService`, `KeyboardDispatcher`),
+  `features/actions/` (Palette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen), Button-Leiste mit
+  Sätzen/Badges/Freigaben, `shared/dialog/` (Modal mit Fokusfalle); Interim-Handler aus 001/004 entfernt;
+  157 Vitest-Tests
+- [x] Phase 4: Ende-zu-Ende unter Xvfb: Leertaste markiert, F5 → Hinweis „kommt in Prompt 006“, Palette (Suche,
+  Enter führt aus), Num+ mit Vorschlag und Zählung, Num− + Esc, Shift gehalten → Shift-Satz mit Badges, Kürzel
+  aufnehmen → `keymap.json` → wirkt nach Neustart, kaputte `keymap.json` → `.bad` + Hinweis, Actions-Menü
+- [x] Phase 5: Doku (README-Tabelle, Feature-Parität, Architektur, CLAUDE.md)
+- [x] Phase 6: `pnpm check`, Debug-Build
+
+### Befunde während der Umsetzung
+
+- Abweichung von §3.3: Tabs auf Windows/Linux jetzt `Strg+T`/`Strg+W` (TC), auf macOS bleibt `⌘⌥T`/`⌘⌥W`.
+- `Shift+Bild↑/↓` (Markieren seitenweise) fehlt: Die Seitengröße kennt nur die Table – mit 003 nachziehen oder
+  als Table-API vorschlagen (G16 `TableApi.getVisibleRowCount()`).
+- Hervorhebung in der Palette war erst durch Leerräume im Template zerrissen („Copy …“) – Test hat es gefunden.
+- WebView2-Beschleuniger (F5/Strg+R unter Windows) nicht prüfbar (nur Linux) – siehe §3.3.
+
+### Offen
+
+- Windows/macOS praktisch prüfen (WebView2-F5, ⌘-Kombinationen, ⌥-Ziffern).
+- Ordnergröße per Leertaste bei Ordnern (003).
