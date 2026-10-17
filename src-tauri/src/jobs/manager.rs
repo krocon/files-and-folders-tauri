@@ -135,50 +135,68 @@ impl JobManager {
             return;
         };
         let emit = |e: JobEvent| self.record(e);
-        let (state, summary) = if control.is_cancelled() {
-            (JobState::Cancelled, Summary::default())
-        } else {
-            match &spec {
-                JobSpec::Copy {
-                    sources,
-                    target_dir,
-                    options,
-                    ..
-                } => {
-                    let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
-                    let target = PathBuf::from(target_dir);
-                    let mode = copy::Mode::Copy;
-                    copy::run(id, &sources, &target, options, mode, &control, &emit)
-                }
-                JobSpec::Move {
-                    sources,
-                    target_dir,
-                    options,
-                    ..
-                } => {
-                    let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
-                    let target = PathBuf::from(target_dir);
-                    let mode = copy::Mode::Move {
-                        force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
-                    };
-                    copy::run(id, &sources, &target, options, mode, &control, &emit)
-                }
-                JobSpec::Delete { paths, mode, .. } => {
-                    let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-                    delete::run(id, &paths, *mode, &control, &emit)
-                }
-                JobSpec::Count { paths } => {
-                    let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-                    run_count(id, &paths, &control, &emit)
-                }
-                JobSpec::DirSize { path } => {
-                    run_dir_size(id, &PathBuf::from(path), &control, &emit)
-                }
-                JobSpec::Simulate { items, item_ms } => {
-                    run_simulate(id, *items, *item_ms, &control, &emit)
+        let work = || {
+            if control.is_cancelled() {
+                (JobState::Cancelled, Summary::default())
+            } else {
+                match &spec {
+                    JobSpec::Copy {
+                        sources,
+                        target_dir,
+                        options,
+                        ..
+                    } => {
+                        let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        let target = PathBuf::from(target_dir);
+                        let mode = copy::Mode::Copy;
+                        copy::run(id, &sources, &target, options, mode, &control, &emit)
+                    }
+                    JobSpec::Move {
+                        sources,
+                        target_dir,
+                        options,
+                        ..
+                    } => {
+                        let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        let target = PathBuf::from(target_dir);
+                        let mode = copy::Mode::Move {
+                            force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
+                        };
+                        copy::run(id, &sources, &target, options, mode, &control, &emit)
+                    }
+                    JobSpec::Delete { paths, mode, .. } => {
+                        let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                        delete::run(id, &paths, *mode, &control, &emit)
+                    }
+                    JobSpec::Count { paths } => {
+                        let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                        run_count(id, &paths, &control, &emit)
+                    }
+                    JobSpec::DirSize { path } => {
+                        run_dir_size(id, &PathBuf::from(path), &control, &emit)
+                    }
+                    JobSpec::Simulate { items, item_ms } => {
+                        run_simulate(id, *items, *item_ms, &control, &emit)
+                    }
                 }
             }
         };
+        // a panic (a bug, or inside a crate such as `trash`) must not leave the job
+        // "running" forever and block the serial queue
+        let (state, summary) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
+            .unwrap_or_else(|_| {
+                (
+                    JobState::Failed,
+                    Summary {
+                        error: Some(FsError::new(
+                            FsErrorCode::Io,
+                            "The task stopped because of an internal error",
+                            None,
+                        )),
+                        ..Summary::default()
+                    },
+                )
+            });
         self.finish(id, state, summary, spec.is_parallel());
     }
 
@@ -668,6 +686,10 @@ fn run_dir_size(
     (state, summary)
 }
 
+/// `item_ms` that makes a test job panic (tests of the panic guard).
+#[cfg(test)]
+pub const PANIC_FOR_TESTS: u32 = 4_242_424;
+
 /// Debug-only test job: `items` steps of `item_ms` each, 1 000 "bytes" per step.
 fn run_simulate(
     id: &str,
@@ -676,6 +698,10 @@ fn run_simulate(
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
+    #[cfg(test)]
+    if item_ms == PANIC_FOR_TESTS {
+        panic!("simulated failure");
+    }
     let mut rep = Reporter::new(id, emit);
     rep.progress.items_total = u64::from(items);
     rep.progress.bytes_total = u64::from(items) * 1000;

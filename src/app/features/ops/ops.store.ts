@@ -322,6 +322,14 @@ export class OpsStore {
     }
     this.close();
     this.refreshFolder(req.parent, req.side, result);
+    if (req.kind === 'rename' && req.entry) {
+      // a panel showing the renamed folder itself follows it
+      for (const s of ['left', 'right'] as const) {
+        if (this.ws.panel(s)?.store.path() === req.entry.path) {
+          this.ws.requestNavigate(s, result);
+        }
+      }
+    }
     return null;
   }
 

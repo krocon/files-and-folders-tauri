@@ -453,3 +453,114 @@ fn count_files_folders_and_bytes() {
     assert_eq!(size.dirs, 3);
     assert_eq!(size.bytes, 200_010);
 }
+
+/// Review 006 #1: folders the move never reached (cancel) or could not create
+/// stay in the source – an empty folder must not vanish from both places.
+#[test]
+fn move_keeps_source_folders_that_did_not_arrive() {
+    for force in [false, true] {
+        let h = Harness::new();
+        h.mgr.force_copy_on_move.store(force, Ordering::SeqCst);
+        let d = tempdir().unwrap();
+        let q = d.path().join("q");
+        fs::create_dir_all(q.join("zz")).unwrap();
+        fs::write(q.join("m.txt"), "neu").unwrap();
+        let z = d.path().join("z");
+        fs::create_dir_all(z.join("q")).unwrap();
+        fs::write(z.join("q/m.txt"), "alt").unwrap();
+        let id = h.start_move(&[&q], &z, CopyOptions::default());
+        let c = h.conflict(&id);
+        h.mgr.cancel(&id);
+        let _ = c;
+        assert_eq!(h.finish(&id).state, JobState::Cancelled);
+        assert!(
+            q.join("zz").is_dir() || z.join("q/zz").is_dir(),
+            "force {force}"
+        );
+        assert_eq!(fs::read_to_string(q.join("m.txt")).unwrap(), "neu");
+    }
+    // the target of a folder is a file: the source folder stays
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let q = d.path().join("q");
+    fs::create_dir_all(q.join("zz")).unwrap();
+    let z = d.path().join("z");
+    fs::create_dir_all(z.join("q")).unwrap();
+    fs::write(z.join("q/zz"), "datei").unwrap();
+    let id = h.start_move(&[&q], &z, CopyOptions::default());
+    assert_eq!(h.finish(&id).state, JobState::DoneWithErrors);
+    assert!(q.join("zz").is_dir());
+}
+
+/// Review 006 #2: a folder replaced by a link while the job waits is never
+/// followed – nothing outside the tree is deleted.
+#[cfg(unix)]
+#[test]
+fn delete_does_not_follow_a_folder_swapped_for_a_link() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let a = d.path().join("a");
+    fs::create_dir_all(a.join("sub")).unwrap();
+    fs::write(a.join("sub/x"), "x").unwrap();
+    fs::write(a.join("0-ro.txt"), "ro").unwrap();
+    let mut p = fs::metadata(a.join("0-ro.txt")).unwrap().permissions();
+    p.set_readonly(true);
+    fs::set_permissions(a.join("0-ro.txt"), p).unwrap();
+    let outside = d.path().join("outside");
+    fs::create_dir(&outside).unwrap();
+    fs::write(outside.join("x"), "bleibt").unwrap();
+    let id = h.delete(&[&a], DeleteMode::Permanent);
+    let c = h.conflict(&id);
+    // swap while asking
+    fs::remove_dir_all(a.join("sub")).unwrap();
+    std::os::unix::fs::symlink(&outside, a.join("sub")).unwrap();
+    h.answer(&id, &c, Decision::Overwrite, false);
+    h.finish(&id);
+    assert_eq!(fs::read_to_string(outside.join("x")).unwrap(), "bleibt");
+}
+
+/// Review 006 #2 for a move across volumes: the source is deleted only if
+/// its path still names the copied entry.
+#[cfg(unix)]
+#[test]
+fn move_across_volumes_never_deletes_through_a_swapped_folder() {
+    let h = Harness::new();
+    h.mgr.force_copy_on_move.store(true, Ordering::SeqCst);
+    let d = tempdir().unwrap();
+    let q = d.path().join("q");
+    fs::create_dir_all(q.join("sub")).unwrap();
+    fs::write(q.join("a.txt"), "a").unwrap();
+    fs::write(q.join("sub/x"), "x").unwrap();
+    let z = d.path().join("z");
+    fs::create_dir_all(z.join("q")).unwrap();
+    fs::write(z.join("q/a.txt"), "alt").unwrap();
+    let outside = d.path().join("outside");
+    fs::create_dir(&outside).unwrap();
+    fs::write(outside.join("x"), "bleibt").unwrap();
+    let id = h.start_move(&[&q], &z, CopyOptions::default());
+    let c = h.conflict(&id); // a.txt comes before sub
+    fs::remove_dir_all(q.join("sub")).unwrap();
+    std::os::unix::fs::symlink(&outside, q.join("sub")).unwrap();
+    h.answer(&id, &c, Decision::Skip, false);
+    h.finish(&id);
+    assert_eq!(fs::read_to_string(outside.join("x")).unwrap(), "bleibt");
+}
+
+/// Review 006 #4: a panicking job ends as failed instead of running forever.
+#[test]
+fn a_panicking_job_fails_and_the_engine_goes_on() {
+    let h = Harness::new();
+    let id = h
+        .mgr
+        .start(JobSpec::Simulate {
+            items: 1,
+            item_ms: manager::PANIC_FOR_TESTS,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Failed);
+    assert!(h.mgr.wait_idle(std::time::Duration::from_secs(5)));
+    let (_d, src, dst) = tree();
+    let id = h.start_copy(&[&src], &dst, CopyOptions::default());
+    assert_eq!(h.finish(&id).state, JobState::Done);
+}

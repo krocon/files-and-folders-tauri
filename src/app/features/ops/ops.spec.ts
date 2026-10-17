@@ -308,6 +308,16 @@ describe('file operations (design 006)', () => {
     expect(left.cursorPath()).toBe('/src/a.txt'); // b.txt was the last one
   });
 
+  it('a panel showing a renamed folder follows it', async () => {
+    const ws = TestBed.inject(WorkspaceStore);
+    await right.load('/src/Ordner').catch(() => undefined);
+    right.listing.set(listing('/src/Ordner', []));
+    left.setCursor('/src/Ordner');
+    await ops.openName('rename');
+    await ops.runName(ops.name()!, 'Neu', false);
+    expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/src/Neu' });
+  });
+
   it('reports a failed job', async () => {
     left.setCursor('/src/a.txt');
     await ops.openCopyMove('move');

@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Prompt 005 (Job-Engine) auf Basis von 001–004. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
+Stand: Prompt 006 (Basisoperationen) auf Basis von 001–005. Dieses Dokument beschreibt Entscheidungen, nicht Wünsche – geplante Teile
 sind als solche markiert.
 
 ## Überblick
@@ -49,7 +49,7 @@ sind als solche markiert.
 | Sicherheit | Capabilities nur `core:default`; keine fs/shell-Plugins; strikte CSP | Minimale Angriffsfläche. Eigene Commands sind über `invoke_handler` registriert. |
 | CSP & Styles | `dangerousDisableAssetCspModification: ["style-src"]` | Tauri ergänzt sonst Hashes in `style-src`, wodurch `'unsafe-inline'` ignoriert wird und Angulars zur Laufzeit eingefügte Komponenten-Styles blockiert würden (in der App verifiziert). `script-src` bleibt strikt. |
 | Styling | SCSS + Design-Tokens in `src/styles.scss`, Dark-Mode per `prefers-color-scheme` | Kein UI-Framework nötig. |
-| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum), `open` 5 (seit 003: Standard-App starten ohne Shell, MIT/Apache, Basis von `tauri-plugin-opener`). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
+| Abhängigkeiten | Laufzeit: Angular, `@tauri-apps/api`, `@guiexpert/table` + `@guiexpert/angular-table` (Major = Angular-Major), `tauri`, `serde`, `serde_json` (seit 004: Sitzungsdatei lesen/schreiben; ohnehin über Tauri im Baum), `open` 5 (seit 003: Standard-App starten ohne Shell, MIT/Apache, Basis von `tauri-plugin-opener`), `libc` (nur Unix, seit 006: Umbenennen ohne Ersetzen mit `renameat2`/`renamex_np`), `trash` 5.2 (seit 006: Papierkorb je OS, MIT, ohne Default-Features; Windows `IFileOperation` mit Rückgängig, macOS Finder mit „Zurücklegen“, Linux freedesktop – Verhalten in `prompts/006-basis-operationen.design.md` E1). Dev: `tempfile`, angular-eslint, Prettier, Vitest/jsdom | GuiExpert Table: virtuelles Scrollen für 100 000+ Zeilen, 0 Runtime-Abhängigkeiten, MIT, gleicher Autor (Lücken werden im Mono-Repo geschlossen). Router, Forms und das Log-Plugin des Templates wurden entfernt. |
 | Dateiliste | GuiExpert Table, **ein** `TableModel` je Panel, Ordnerwechsel nur über `setRows` + `reSort` + `repaintHard` | Spaltenbreiten und Sortierung bleiben erhalten; ein neues Modell-Objekt würde die Table neu aufbauen. Details und Belege: `prompts/001-guiexpert-dateiliste.design.md`. |
 | Cursor | Table-Fokus (`FocusModel`, Spalte 0) ↔ `FileBrowserStore.cursorPath`, Abgleich über den Pfad; Darstellung als Zeilenklasse `fnf-cursor` | Fokus der Table ist index-basiert und zellbasiert; der Pfad ist sortierfest. Nach Header-Sortierung (Doppelklick, ohne Ereignis) stellt ein Capture-Listener den Cursor per Pfad wieder her. |
 | Markierung | eigenes `Set<path>` im Store, `SelectionModel` der Table auf `none` | Das `SelectionModel` ist index-basiert und überlebt kein Sortieren. Anzeige: Klasse `fnf-marked` + Häkchen statt Icon (wie die alte Version), Screenreader-Text „marked“. |
@@ -67,6 +67,12 @@ sind als solche markiert.
 | Dateien öffnen | eigener Command `open_file` + Crate `open` (Argument-Array), Programme nur nach Rückfrage | Kein `tauri-plugin-opener` mit breiter Pfad-Capability. |
 | Jobs | Rust `jobs/`: `JobManager` mit serieller Warteschlange (+ Hintergrund-Jobs), ein Thread je laufendem Job, `Control` (Abbruch-Flag, Pause und Konfliktantwort über `Mutex`+`Condvar`, jede Wartestelle wacht beim Abbruch auf); Ereignisse über **einen** `Channel` je WebView; Fortschritt max. 10/s | Jobs blockieren absichtlich (Frage, Pause) – nicht im Tokio-Pool. Details: `prompts/005-job-queue.design.md`. |
 | Kopieren | Planung zuerst (Ziel in Quelle / auf sich selbst abgelehnt), Datei → `.fnf-<job>-<n>.part` im Zielordner → Hard-Link bzw. `rename`; Symlinks als Link; Konflikte als Frage; Fehler je Eintrag gesammelt; „Platte voll“ pausiert | Nie eine halbe Datei unter dem echten Namen; eine während des Kopierens aufgetauchte Datei wird nicht ersetzt. |
+| Verschieben | gleiches Volume: `rename` (ganzer Eintrag, Ordner mit freiem Ziel ebenso); sonst und beim Zusammenführen je Datei: Hard-Link + Quellname löschen (scheitert atomar, wenn das Ziel existiert) bzw. Kopie wie oben und Quelle **erst danach** löschen; geleerte Quellordner nur per `remove_dir` | Abbruch, Fehler oder „Platte voll“ lassen jede Datei an genau einem Ort. |
+| Löschen | Papierkorb (Standard) mit Crate `trash`; endgültig: Kinder zuerst, Links werden entfernt, nie verfolgt; schreibgeschützte Einträge fragen (`Conflict.kind = readOnly`) | Sicherer Default; Windows warnt selbst, wenn ein Laufwerk keinen Papierkorb hat. |
+| Schnelle Operationen | `make_dir` (auch `a/b/c`), `create_file`, `rename_entry` als Commands ohne Job – sie überschreiben nie | Kein Fortschritt nötig; Umbenennen nur der Groß-/Kleinschreibung über einen Zwischennamen. |
+| Schutz | `paths::validate_name` (Windows-Regeln unter Windows), `paths::danger_of` (Wurzel, Volume, Home, Systemordner): Verschieben, Umbenennen, Löschen nur mit `allowDangerous` nach zweiter Bestätigung | Rust entscheidet, das Frontend zeigt nur an. |
+| Dialoge der Operationen | `OpsStore` (Root) baut die Anfrage (Auswahl „Markierung, sonst Cursor“, Zielvorschläge, Live-Zählung als Hilfs-Job `count`) und führt aus; Dialoge sind dünn | Nach der Operation: Cursor auf das Ergebnis bzw. den nächsten Eintrag, Markierungen weg, betroffene Ordner laden über `dirsChanged` neu. Details: `prompts/006-basis-operationen.design.md`. |
+| Umbenennen in der Liste (F2) | Editor der GuiExpert Table in der Namenszelle (`startEditing`, eigener `CellRendererIf`); das Modell schreibt nie (`setValue` → false), der Name geht an Rust | Kein Overlay nötig; Entwurf überlebt Repaints. |
 | Modale Dialoge | Fenster dahinter `inert` | Fokus und Klicks bleiben im Dialog (aria-modal allein reicht nicht). |
 | Farbbrücke | `src/styles/ge-table-theme.scss` setzt `--ge-table-*` auf dem Table-Host aus unseren Tokens | Einzige Stelle, die die Table-Variablen kennt; Grundlage für Prompt 013/019. |
 
@@ -103,9 +109,6 @@ Table. Auf dem Mac noch zu messen (Konsole: `[fnf:perf]`). Optionen (noch nicht 
 
 ## Geplante Erweiterungen (noch nicht implementiert)
 
-- **Dateioperationen (Phase 3):** eigener Rust-Job-Manager mit IDs, Fortschritt über Tauri-Events,
-  Abbruch per Cancel-Token, Konflikt-Callbacks; Papierkorb über eine plattformübergreifende Crate
-  (Kandidat: `trash`, vor Einführung prüfen).
 - **Suche (Phase 4):** Streaming-Ergebnisse über Tauri-Channels, Abbruch, kein Hintergrundindex.
 - **Plattform (Phase 7):** Modul `platform/` mit `cfg`-Implementierungen für Laufwerke/Mountpoints,
   „Im Finder/Explorer zeigen“, Öffnen mit Standard-App (nur über schmale, validierte Commands).

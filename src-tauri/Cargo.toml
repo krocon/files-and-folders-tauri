@@ -24,3 +24,6 @@ trash = { version = "5.2.9", default-features = false, features = ["coinit_apart
 
 [dev-dependencies]
 tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

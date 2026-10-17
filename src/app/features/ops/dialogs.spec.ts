@@ -120,6 +120,14 @@ describe('operation dialogs', () => {
     expect(jobsApi.cancelled).toEqual([jobsApi.started[0].id]);
   });
 
+  it('copy: a count that starts after the dialog closed is cancelled', async () => {
+    copyRequest();
+    const fixture = TestBed.createComponent(CopyMoveDialog);
+    fixture.destroy(); // before the start of the count resolved
+    await flush();
+    expect(jobsApi.cancelled).toEqual([jobsApi.started[0].id]);
+  });
+
   it('copy: dangerous paths need the extra tick', async () => {
     copyRequest(true);
     const { fixture, el } = await render(CopyMoveDialog);

@@ -194,6 +194,11 @@ const SYSTEM_TREES: &[&str] = &[
     "/lib32",
     "/lib64",
     "/private/etc",
+    "/var/lib",
+    "/usr/include",
+    "/nix",
+    "/snap",
+    "/efi",
 ];
 /// Folders that are dangerous themselves, but whose content is often the user's.
 #[cfg(unix)]
@@ -215,16 +220,68 @@ const SYSTEM_DIRS: &[&str] = &[
     "/private/tmp",
     "/srv",
     "/run",
+    "/usr/local",
 ];
+/// Windows: the folders come from the environment (the system may not be on C:).
 #[cfg(windows)]
-const SYSTEM_TREES: &[&str] = &[
-    "C:\\Windows",
-    "C:\\Program Files",
-    "C:\\Program Files (x86)",
-    "C:\\ProgramData",
-];
-#[cfg(windows)]
-const SYSTEM_DIRS: &[&str] = &["C:\\Users"];
+fn windows_folders(vars: &[&str], fallback: &[&str]) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = vars
+        .iter()
+        .filter_map(|v| std::env::var_os(v))
+        .map(PathBuf::from)
+        .collect();
+    out.extend(fallback.iter().map(PathBuf::from));
+    out
+}
+
+fn system_trees() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        windows_folders(
+            &[
+                "SystemRoot",
+                "ProgramFiles",
+                "ProgramFiles(x86)",
+                "ProgramData",
+            ],
+            &[
+                "C:\\Windows",
+                "C:\\Program Files",
+                "C:\\Program Files (x86)",
+                "C:\\ProgramData",
+            ],
+        )
+    }
+    #[cfg(unix)]
+    {
+        SYSTEM_TREES.iter().map(PathBuf::from).collect()
+    }
+}
+
+fn system_dirs() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        let users = std::env::var_os("PUBLIC")
+            .map(PathBuf::from)
+            .and_then(|p| p.parent().map(Path::to_path_buf));
+        let mut v: Vec<PathBuf> = users.into_iter().collect();
+        v.push(PathBuf::from("C:\\Users"));
+        v
+    }
+    #[cfg(unix)]
+    {
+        SYSTEM_DIRS.iter().map(PathBuf::from).collect()
+    }
+}
+
+/// `\\?\C:\x` → `C:\x` (the verbatim prefix must not hide a system folder).
+fn without_verbatim(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    match s.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC") => PathBuf::from(rest),
+        _ => path.to_path_buf(),
+    }
+}
 
 /// Case-insensitive on macOS and Windows (their default file systems are).
 fn same_path(a: &Path, b: &Path) -> bool {
@@ -246,7 +303,7 @@ fn inside(path: &Path, tree: &Path) -> bool {
 
 /// Classifies a (validated, absolute) path – design 006 E7.
 pub fn danger_of(path: &Path, home: Option<&Path>) -> Option<Danger> {
-    let path = normalize_lexically(path);
+    let path = without_verbatim(&normalize_lexically(path));
     if path.parent().is_none() {
         return Some(Danger::Root);
     }
@@ -264,11 +321,14 @@ pub fn danger_of(path: &Path, home: Option<&Path>) -> Option<Danger> {
             return Some(Danger::Root);
         }
     }
-    if home.is_some_and(|h| same_path(&path, &normalize_lexically(h))) {
-        return Some(Danger::Home);
+    if let Some(h) = home {
+        // the home folder and every folder above it (e.g. /data when home is /data/marc)
+        if inside(&normalize_lexically(h), &path) {
+            return Some(Danger::Home);
+        }
     }
-    if SYSTEM_TREES.iter().any(|t| inside(&path, Path::new(t)))
-        || SYSTEM_DIRS.iter().any(|d| same_path(&path, Path::new(d)))
+    if system_trees().iter().any(|t| inside(&path, t))
+        || system_dirs().iter().any(|d| same_path(&path, d))
     {
         return Some(Danger::System);
     }
@@ -377,6 +437,18 @@ mod tests {
         // 128 × "ä" = 256 bytes but 128 UTF-16 units
         assert!(validate_name_for(&"ä".repeat(128), false).is_err());
         assert!(validate_name_for(&"ä".repeat(128), true).is_ok());
+    }
+
+    #[test]
+    fn verbatim_prefix_is_ignored() {
+        assert_eq!(
+            without_verbatim(Path::new(r"\\?\C:\Windows")),
+            PathBuf::from(r"C:\Windows")
+        );
+        assert_eq!(
+            without_verbatim(Path::new(r"\\?\UNC\srv\x")),
+            PathBuf::from(r"\\?\UNC\srv\x")
+        );
     }
 
     #[test]

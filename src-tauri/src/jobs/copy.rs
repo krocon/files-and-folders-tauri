@@ -12,6 +12,7 @@ use super::{
 };
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
+use crate::platform::{file_id, rename_noreplace};
 use std::ffi::OsStr;
 use std::fs::{self, File, Metadata};
 use std::io::{self, Read, Write};
@@ -34,6 +35,10 @@ pub struct Item {
     pub src: PathBuf,
     pub dst: PathBuf,
     pub kind: ItemKind,
+    /// Device + inode at planning time: a move deletes or renames the source
+    /// only if the path still names this entry (a folder swapped for a link
+    /// must not lead outside the tree).
+    pub id: Option<(u64, u64)>,
 }
 
 #[derive(Debug, Default)]
@@ -155,12 +160,14 @@ pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
                     src: s,
                     dst: d,
                     kind: ItemKind::Symlink,
+                    id: file_id(&m),
                 });
             } else if ft.is_dir() {
                 plan.items.push(Item {
                     src: s.clone(),
                     dst: d.clone(),
                     kind: ItemKind::Dir,
+                    id: file_id(&m),
                 });
                 let read = match fs::read_dir(&s) {
                     Ok(r) => r,
@@ -187,6 +194,7 @@ pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
                     src: s,
                     dst: d,
                     kind: ItemKind::File { size: m.len() },
+                    id: file_id(&m),
                 });
             } else {
                 // pipes, sockets, devices: reading could block forever or never end
@@ -401,6 +409,10 @@ impl Run<'_> {
     /// unless `overwrite`). Other volume: copy, and delete the source only
     /// after the copy is complete under its real name.
     fn move_entry(&mut self, item: &Item, dst: &Path, overwrite: bool) -> Outcome {
+        if !unchanged(item) {
+            self.fail(&item.src, changed_error(&item.src));
+            return Outcome::Failed;
+        }
         if !self.cross {
             match rename_no_clobber(item, dst, overwrite) {
                 Ok(()) => {
@@ -415,6 +427,12 @@ impl Run<'_> {
             }
         }
         let outcome = self.copy_entry(item, dst, overwrite);
+        if outcome == Outcome::Done && !unchanged(item) {
+            // the copy stays, the source path names something else now: never delete that
+            self.summary.items_done -= 1;
+            self.fail(&item.src, changed_error(&item.src));
+            return Outcome::Failed;
+        }
         if outcome == Outcome::Done
             && let Err(e) = remove_entry(&item.src)
         {
@@ -481,39 +499,35 @@ fn remove_entry(path: &Path) -> io::Result<()> {
     }
 }
 
-/// Same-volume move of one file or link. Without `overwrite` a regular file
-/// is hard-linked first (fails atomically if the target exists) and the
-/// source name removed; links and file systems without hard links use check +
-/// rename. `CrossesDevices` tells the caller to copy instead.
+/// Same-volume move of one file or link; never replaces a target unless
+/// `overwrite`. `CrossesDevices` tells the caller to copy instead.
 fn rename_no_clobber(item: &Item, dst: &Path, overwrite: bool) -> io::Result<()> {
     if overwrite {
-        return fs::rename(&item.src, dst);
+        fs::rename(&item.src, dst)
+    } else {
+        rename_noreplace(&item.src, dst)
     }
-    let appeared = || {
-        io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "The target appeared while moving",
-        )
-    };
-    if matches!(item.kind, ItemKind::File { .. }) {
-        match fs::hard_link(&item.src, dst) {
-            Ok(()) => {
-                if let Err(e) = fs::remove_file(&item.src) {
-                    // keep exactly one name: undo the link
-                    let _ = fs::remove_file(dst);
-                    return Err(e);
-                }
-                return Ok(());
-            }
-            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => return Err(appeared()),
-            Err(e) if is_cross_device(&e) => return Err(e),
-            Err(_) => {} // no hard links here: check + rename
+}
+
+/// True if `path` still names the entry that was planned (same device + inode).
+fn unchanged(item: &Item) -> bool {
+    match item.id {
+        None => true,
+        Some(id) => {
+            fs::symlink_metadata(&item.src)
+                .ok()
+                .and_then(|m| file_id(&m))
+                == Some(id)
         }
     }
-    if fs::symlink_metadata(dst).is_ok() {
-        return Err(appeared());
-    }
-    fs::rename(&item.src, dst)
+}
+
+fn changed_error(path: &Path) -> FsError {
+    FsError::new(
+        FsErrorCode::NotFound,
+        "The entry changed while moving – left in place",
+        Some(path),
+    )
 }
 
 /// Moves the finished temporary file to its real name. Without `overwrite` a
@@ -524,21 +538,16 @@ fn place(tmp: &Path, dst: &Path, overwrite: bool) -> io::Result<()> {
     if overwrite {
         return fs::rename(tmp, dst);
     }
-    let appeared = || {
-        io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "The target appeared while copying",
-        )
-    };
-    match fs::hard_link(tmp, dst) {
-        Ok(()) => {
-            let _ = fs::remove_file(tmp);
-            Ok(())
+    rename_noreplace(tmp, dst).map_err(|e| {
+        if e.kind() == io::ErrorKind::AlreadyExists {
+            io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "The target appeared while copying",
+            )
+        } else {
+            e
         }
-        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Err(appeared()),
-        Err(_) if fs::symlink_metadata(dst).is_ok() => Err(appeared()),
-        Err(_) => fs::rename(tmp, dst),
-    }
+    })
 }
 
 #[cfg(test)]
@@ -561,13 +570,8 @@ fn copy_symlink(src: &Path, dst: &Path, tmp: &Path, overwrite: bool) -> io::Resu
     made?;
     let placed = if overwrite {
         fs::rename(tmp, dst)
-    } else if fs::symlink_metadata(dst).is_ok() {
-        Err(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "The target appeared while copying",
-        ))
     } else {
-        fs::rename(tmp, dst)
+        rename_noreplace(tmp, dst)
     };
     if placed.is_err() {
         let _ = fs::remove_file(tmp);
@@ -610,7 +614,7 @@ pub fn run(
     let mut rest = Vec::new();
     for top in tops {
         if run.moving && !run.cross && fs::symlink_metadata(&top.dst).is_err() {
-            match fs::rename(&top.src, &top.dst) {
+            match rename_noreplace(&top.src, &top.dst) {
                 Ok(()) => {
                     fast_done += 1;
                     run.summary.items_done += 1;
@@ -620,6 +624,8 @@ pub fn run(
                     continue;
                 }
                 Err(e) if is_cross_device(&e) => run.cross = true,
+                // appeared meanwhile: merge / ask like any other existing target
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
                 Err(e) => {
                     run.fail(&top.src, FsError::from_io(&e, &top.src));
                     continue;
@@ -650,6 +656,8 @@ pub fn run(
     let mut failed_dirs: Vec<PathBuf> = Vec::new();
     // moving: source folders renamed as a whole (their items are done)
     let mut moved_dirs: Vec<PathBuf> = Vec::new();
+    // moving: source folders whose target folder exists now (only these may go when empty)
+    let mut placed_dirs: Vec<PathBuf> = Vec::new();
     let mut cancelled = false;
     'items: for item in &plan.items {
         if control.is_cancelled() || !control.wait_while_paused() {
@@ -683,7 +691,10 @@ pub fn run(
         }
         if item.kind == ItemKind::Dir {
             match fs::symlink_metadata(&item.dst) {
-                Ok(m) if m.is_dir() => run.summary.items_done += 1, // merge into the existing folder
+                Ok(m) if m.is_dir() => {
+                    run.summary.items_done += 1; // merge into the existing folder
+                    placed_dirs.push(item.src.clone());
+                }
                 Ok(_) => {
                     run.fail(
                         &item.dst,
@@ -697,8 +708,8 @@ pub fn run(
                 }
                 Err(_) => {
                     let mut renamed = false;
-                    if run.moving && !run.cross {
-                        match fs::rename(&item.src, &item.dst) {
+                    if run.moving && !run.cross && unchanged(item) {
+                        match rename_noreplace(&item.src, &item.dst) {
                             Ok(()) => renamed = true,
                             Err(e) if is_cross_device(&e) => run.cross = true,
                             Err(_) => {} // move the content one by one
@@ -709,7 +720,10 @@ pub fn run(
                         moved_dirs.push(item.src.clone());
                     } else {
                         match fs::create_dir(&item.dst) {
-                            Ok(()) => run.summary.items_done += 1,
+                            Ok(()) => {
+                                run.summary.items_done += 1;
+                                placed_dirs.push(item.src.clone());
+                            }
                             Err(e) => {
                                 run.fail(&item.dst, FsError::from_io(&e, &item.dst));
                                 failed_dirs.push(item.dst.clone());
@@ -801,9 +815,10 @@ pub fn run(
         run.rep.tick(false);
     }
     if run.moving {
-        // emptied source folders go (deepest first); anything left keeps its folder
+        // emptied source folders go (deepest first) – only those that arrived at the target;
+        // a folder the job never reached (cancel) or could not create stays where it is
         for item in plan.items.iter().rev() {
-            if item.kind == ItemKind::Dir && !moved_dirs.iter().any(|d| item.src.starts_with(d)) {
+            if item.kind == ItemKind::Dir && placed_dirs.contains(&item.src) && unchanged(item) {
                 let _ = fs::remove_dir(&item.src);
             }
         }

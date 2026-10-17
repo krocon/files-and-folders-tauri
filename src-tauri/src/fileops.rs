@@ -4,6 +4,7 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{Danger, danger_of, validate_name};
+use crate::platform::rename_noreplace;
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -134,26 +135,49 @@ pub fn rename_entry(
         return Ok(target);
     }
     let case_only = old_name.to_lowercase() == new_name.to_lowercase();
-    if exists(&target) {
+    if case_only && exists(&target) {
         // same entry seen through a case-insensitive file system?
-        let same = case_only
-            && !has_exact_entry(parent, new_name).map_err(|e| FsError::from_io(&e, parent))?;
-        if !same {
+        if has_exact_entry(parent, new_name).map_err(|e| FsError::from_io(&e, parent))? {
             return Err(already_exists(&target));
         }
-        let tmp = parent.join(format!(".fnf-rename-{}", std::process::id()));
-        if exists(&tmp) {
-            return Err(already_exists(&tmp));
+        // APFS and NTFS change the case directly (it is the same entry – nothing to replace)
+        fs::rename(path, &target).map_err(|e| FsError::from_io(&e, path))?;
+        if has_exact_entry(parent, new_name).unwrap_or(true) {
+            return Ok(target);
         }
-        fs::rename(path, &tmp).map_err(|e| FsError::from_io(&e, path))?;
-        if let Err(e) = fs::rename(&tmp, &target) {
-            let _ = fs::rename(&tmp, path); // put it back
+        // the file system kept the old spelling: go through a unique temporary name
+        let tmp = unique_temp(parent);
+        rename_noreplace(path, &tmp).map_err(|e| FsError::from_io(&e, path))?;
+        if let Err(e) = rename_noreplace(&tmp, &target) {
+            let _ = rename_noreplace(&tmp, path); // put it back
             return Err(FsError::from_io(&e, &target));
         }
         return Ok(target);
     }
-    fs::rename(path, &target).map_err(|e| FsError::from_io(&e, path))?;
+    rename_noreplace(path, &target).map_err(|e| {
+        if e.kind() == io::ErrorKind::AlreadyExists {
+            already_exists(&target)
+        } else {
+            FsError::from_io(&e, path)
+        }
+    })?;
     Ok(target)
+}
+
+/// A name in `dir` that no other rename uses (process id, time, counter).
+fn unique_temp(dir: &Path) -> PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    dir.join(format!(
+        ".fnf-rename-{}-{}-{}",
+        std::process::id(),
+        nanos,
+        SEQ.fetch_add(1, Ordering::Relaxed)
+    ))
 }
 
 #[cfg(test)]

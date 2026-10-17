@@ -4,16 +4,16 @@ Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung 
 gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
 **Rust**-Backend.
 
-> **Status: Prompt 005 (Job-Engine) auf Basis von 001–004.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
+> **Status: Prompt 006 (Basisoperationen) auf Basis von 001–005.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
 > GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
-> Favoriten und Fenstergröße werden gespeichert. Es gibt noch **keine** Dateioperationen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
+> Favoriten und Fenstergröße werden gespeichert. Kopieren, Verschieben, Löschen (Papierkorb), Ordner/Datei anlegen und Umbenennen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
 
 ## Was funktioniert
 
 - **Fensteraufbau** nach [docs/ui-layout.md](docs/ui-layout.md): links und rechts je Pfad-Header (Breadcrumb,
   klickbar, bei langen Pfaden rechtsbündig; Favoriten-Stern), Tab-Leiste, Dateiliste und Statuszeile
-  (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (Funktionen
-  noch gedimmt, „kommt in Prompt …“).
+  (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (noch
+  fehlende Funktionen gedimmt, „kommt in Prompt …“).
 - **Aktive Seite** = Quelle, andere = Ziel; Klick in eine Seite oder `Tab` wechselt, Ansage für Screenreader.
 - **Tabs je Seite**: klonen (`+`), schließen (`−`, der letzte bleibt), Kontextmenü (Neu laden, Schließen, ins andere
   Panel verschieben/klonen, nach links/rechts), Doppelklick lädt neu, Mittelklick schließt; jeder Tab behält Pfad,
@@ -30,12 +30,20 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Ordnergröße**: Leertaste auf einem Ordner markiert ihn und berechnet die Größe (abbrechbar, folgt keinen Symlinks);
   `Alt+Shift+Enter` für alle markierten Ordner.
 - **Dateien öffnen** mit der Standard-App (Enter/Doppelklick); Programme erst nach Rückfrage.
-- **Kopieren als Job** (Prompt 005): `F5` kopiert die markierten Einträge (oder den unter dem Cursor) in den Ordner der
-  anderen Seite – nach einer Rückfrage. Fortschritt mit Rate und Restzeit im Tasks-Button und in der Task-Liste
-  (`Strg+F11` / `⌃K F6`), Pause, Weiter, Abbruch; nie eine halbe Datei unter dem echten Namen. Existiert eine Datei
-  schon, fragt ein Dialog: Überschreiben, Überspringen (Vorgabe), Umbenennen, Überschreiben wenn neuer, Abbrechen –
-  auch „für alle“. Fehler einzelner Dateien werden gesammelt und am Ende gelistet. Beenden mit laufenden Jobs fragt
-  nach. Der vollständige Kopierdialog sowie Verschieben, Löschen, Ordner anlegen folgen in Prompt 006.
+- **Kopieren und Verschieben** (`F5`/`F6`, Prompt 005/006): Dialog mit Live-Zählung (Dateien, Ordner, Größe), Zielordner
+  (Textfeld + Vorschläge: andere Seite, Tabs, Favoriten, zuletzt besucht), neuem Namen bei einer einzelnen Quelle
+  (Kopie im selben Ordner), Vorgabe bei vorhandenen Dateien und „im Hintergrund“. Läuft als Job mit Fortschritt, Rate
+  und Restzeit (Tasks-Button, Task-Liste `Strg+F11` / `⌃K F6`), Pause, Weiter, Abbruch; nie eine halbe Datei unter dem
+  echten Namen. Existiert eine Datei schon: Überschreiben, Überspringen (Vorgabe), Umbenennen, wenn neuer, Abbrechen –
+  auch „für alle“. Verschieben benennt auf demselben Laufwerk nur um; über Laufwerke wird jede Datei erst kopiert und
+  dann gelöscht.
+- **Löschen**: `F8`/`Entf` (macOS `⌘⌫`) in den Papierkorb, `Shift+F8`/`Shift+Entf` (macOS `⌘⌥⌫`) endgültig mit rotem
+  Dialog (Enter = Abbrechen); schreibgeschützte Einträge fragen nach. Wurzel, Laufwerke, Home- und Systemordner
+  brauchen eine zweite Bestätigung.
+- **Ordner anlegen** (`F7`, auch `a/b/c`; Vorschlag `S03` nach `S01`, `S02`), **Datei anlegen** (`Shift+F4`),
+  **Umbenennen** (`Shift+F6` als Dialog, `F2` direkt in der Liste; die Endung ist nicht markiert). Der Cursor steht
+  danach auf dem Ergebnis. Alle Operationen nehmen die markierten Einträge, sonst den unter dem Cursor.
+- Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).

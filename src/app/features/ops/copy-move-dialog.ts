@@ -189,13 +189,21 @@ export class CopyMoveDialog {
 
   constructor() {
     const req = this.req();
+    let destroyed = false;
     if (req) {
       this.jobs
         .start({ kind: 'count', paths: req.sources.map((e) => e.path) })
-        .then((id) => this.countId.set(id))
+        .then((id) => {
+          if (destroyed) {
+            void this.jobs.cancel(id); // the dialog closed before the count started
+          } else {
+            this.countId.set(id);
+          }
+        })
         .catch(() => undefined);
     }
     inject(DestroyRef).onDestroy(() => {
+      destroyed = true;
       const job = this.countJob();
       if (job && !isFinished(job.state)) {
         void this.jobs.cancel(job.id);

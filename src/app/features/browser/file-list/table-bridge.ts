@@ -44,12 +44,25 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
   };
   return {
     setRows(rows) {
-      stopRename(); // the folder changed under the editor
+      // a reload under the F2 editor (e.g. a background copy into this folder): close it
+      // while the rows change, then reopen it with the typed text if the entry is still there
+      const renaming = body.renaming;
+      if (renaming) {
+        body.renaming = null;
+        api.stopEditing(true);
+      }
       api.setRows([...rows]);
       api.externalFilterChanged();
       // setRows resets the order (G4) – re-apply the sort of the header
       api.reSort();
       api.repaintHard();
+      if (renaming) {
+        const index = body.getFilteredRows().findIndex((r) => r.path === renaming.path);
+        body.renaming = renaming;
+        if (index < 0 || !api.startEditing(index, 'name')) {
+          renaming.editor.cancel();
+        }
+      }
     },
     filterChanged() {
       api.externalFilterChanged();

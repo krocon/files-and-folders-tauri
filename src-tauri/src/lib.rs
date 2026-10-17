@@ -26,6 +26,7 @@ pub mod listing;
 pub mod model;
 pub mod opener;
 pub mod paths;
+pub mod platform;
 pub mod session;
 pub mod window_state;
 
