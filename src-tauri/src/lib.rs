@@ -17,7 +17,7 @@ pub mod paths;
 pub mod session;
 pub mod window_state;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +39,12 @@ pub fn run() {
             commands::load_session,
             commands::save_session
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Cmd+Q / quit from the menu does not send CloseRequested
+            if let RunEvent::ExitRequested { .. } = event {
+                commands::save_on_close(app);
+            }
+        });
 }

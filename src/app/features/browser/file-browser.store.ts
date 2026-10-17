@@ -30,6 +30,11 @@ export class FileBrowserStore {
   readonly error = signal<FsError | null>(null);
   readonly cursorPath = signal<string | null>(null);
   readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
+  /**
+   * True while a tab's folder is being opened: navigation relative to the old
+   * listing (up, open, refresh) would land in the wrong tab and is ignored.
+   */
+  readonly navigationLocked = signal(false);
 
   /**
    * Table state (columns, sort, scroll) of a tab that is being opened; the file
@@ -86,6 +91,9 @@ export class FileBrowserStore {
 
   /** Opens a directory entry; files only get the cursor in this version. */
   open(entry: DirEntry): Promise<void> {
+    if (this.navigationLocked()) {
+      return Promise.resolve();
+    }
     this.setCursor(entry.path);
     if (isNavigableDir(entry) && !entry.lossyName) {
       return this.load(entry.path);
@@ -96,7 +104,7 @@ export class FileBrowserStore {
   /** Navigates to the parent and puts the cursor on the folder we came from. */
   up(): Promise<void> {
     const parent = this.parent();
-    if (parent === null) {
+    if (parent === null || this.navigationLocked()) {
       return Promise.resolve();
     }
     return this.load(parent, { cursor: this.path() });
@@ -104,6 +112,9 @@ export class FileBrowserStore {
 
   /** Reloads the folder, keeping cursor and (still existing) marks. */
   refresh(): Promise<void> {
+    if (this.navigationLocked()) {
+      return Promise.resolve();
+    }
     const path = this.path();
     return this.load(path ?? undefined, { cursor: this.cursorPath() });
   }

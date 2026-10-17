@@ -34,6 +34,7 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
     '[class.resizing]': 'dragging()',
     '(keydown)': 'onKeydown($event)',
     '(document:visibilitychange)': 'onVisibility()',
+    '(window:pagehide)': 'onPageHide()',
   },
 })
 export class Workspace implements OnInit {
@@ -73,9 +74,11 @@ export class Workspace implements OnInit {
     if (evt.button !== 0) {
       return;
     }
-    (evt.target as HTMLElement).setPointerCapture?.(evt.pointerId);
+    const el = evt.target as HTMLElement;
+    el.setPointerCapture?.(evt.pointerId);
     this.dragging.set(true);
-    evt.preventDefault();
+    evt.preventDefault(); // no text selection while dragging …
+    el.focus(); // … but the separator gets the focus (arrow keys)
   }
 
   protected onSplitterMove(evt: PointerEvent): void {
@@ -119,6 +122,10 @@ export class Workspace implements OnInit {
     evt.preventDefault();
     evt.stopPropagation();
     this.ws.requestFocus(side);
+  }
+
+  protected onPageHide(): void {
+    void this.ws.flush();
   }
 
   protected onVisibility(): void {

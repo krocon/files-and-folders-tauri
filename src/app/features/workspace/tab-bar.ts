@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   input,
@@ -13,7 +14,8 @@ import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
 
 interface OpenMenu {
-  readonly index: number;
+  /** The menu belongs to a tab, not to a position – tabs can move or close meanwhile. */
+  readonly tabId: string;
   readonly x: number;
   readonly y: number;
 }
@@ -40,8 +42,17 @@ export class TabBar {
 
   protected readonly panel = computed(() => this.ws.panels()[this.side()]);
   protected readonly menu = signal<OpenMenu | null>(null);
-  protected readonly menuItems = computed<MenuItem[]>(() => {
+  /** Index of the menu's tab, -1 when it is gone (closed by a shortcut while the menu was open). */
+  private readonly menuIndex = computed(() => {
     const open = this.menu();
+    return open ? this.panel().tabs.findIndex((t) => t.id === open.tabId) : -1;
+  });
+  protected readonly menuLabel = computed(() => {
+    const tab = this.panel().tabs[this.menuIndex()];
+    return tab ? this.title(tab) : '';
+  });
+  protected readonly menuItems = computed<MenuItem[]>(() => {
+    const index = this.menuIndex();
     const count = this.panel().tabs.length;
     const m = TEXTS.tabMenu;
     return [
@@ -49,10 +60,18 @@ export class TabBar {
       { id: 'close', label: m.close, disabled: count <= 1 },
       { id: 'moveToOther', label: m.moveToOther(this.side()), disabled: count <= 1 },
       { id: 'cloneToOther', label: m.cloneToOther(this.side()) },
-      { id: 'moveLeft', label: m.moveLeft, disabled: !open || open.index === 0 },
-      { id: 'moveRight', label: m.moveRight, disabled: !open || open.index >= count - 1 },
+      { id: 'moveLeft', label: m.moveLeft, disabled: index <= 0 },
+      { id: 'moveRight', label: m.moveRight, disabled: index < 0 || index >= count - 1 },
     ];
   });
+
+  constructor() {
+    effect(() => {
+      if (this.menu() && this.menuIndex() < 0) {
+        this.menu.set(null);
+      }
+    });
+  }
 
   protected title(tab: TabState): string {
     return tab.title || (tab.path === null ? TEXTS.homeTitle : '…');
@@ -78,7 +97,7 @@ export class TabBar {
 
   protected onContextMenu(evt: MouseEvent, index: number): void {
     evt.preventDefault();
-    this.menu.set({ index, x: evt.clientX, y: evt.clientY });
+    this.menu.set({ tabId: this.panel().tabs[index].id, x: evt.clientX, y: evt.clientY });
   }
 
   protected onTabKeydown(evt: KeyboardEvent, index: number): void {
@@ -122,13 +141,12 @@ export class TabBar {
   }
 
   protected onMenuChosen(id: string): void {
-    const open = this.menu();
+    const i = this.menuIndex();
     this.menu.set(null);
-    if (!open) {
+    if (i < 0) {
       return;
     }
     const side = this.side();
-    const i = open.index;
     switch (id) {
       case 'reload':
         this.reload(i);
@@ -152,11 +170,12 @@ export class TabBar {
     this.focusTab(this.panel().activeTab);
   }
 
-  protected onMenuClosed(): void {
-    const open = this.menu();
+  /** Escape/Tab give the focus back to the tab; a click elsewhere keeps it where it went. */
+  protected onMenuClosed(reason: 'key' | 'outside'): void {
+    const i = this.menuIndex();
     this.menu.set(null);
-    if (open) {
-      this.focusTab(open.index);
+    if (reason === 'key' && i >= 0) {
+      this.focusTab(i);
     }
   }
 
@@ -168,12 +187,18 @@ export class TabBar {
   protected closeActive(): void {
     this.ws.setActive(this.side());
     this.ws.closeTab(this.side());
+    // the − button may now be disabled – never leave the focus on it
+    this.focusTab(this.panel().activeTab);
   }
 
   private openMenuAt(index: number): void {
     const el = this.tabElement(index);
     const rect = el?.getBoundingClientRect();
-    this.menu.set({ index, x: rect ? rect.left : 0, y: rect ? rect.bottom : 0 });
+    this.menu.set({
+      tabId: this.panel().tabs[index].id,
+      x: rect ? rect.left : 0,
+      y: rect ? rect.bottom : 0,
+    });
   }
 
   private focusTab(index: number): void {

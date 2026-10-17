@@ -152,4 +152,22 @@ describe('TabBar', () => {
     expect(ws.panels().left.activeTab).toBe(2);
     expect(ws.reloadRequest()?.side).toBe('left');
   });
+
+  it('closes the context menu when its tab disappears meanwhile', async () => {
+    const { fixture, el, tabs } = await render();
+    tabs()[2].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).not.toBeNull();
+    ws.closeTab('left', 2); // e.g. Ctrl/⌘+Alt+W while the menu is open
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it('links each tab to the panel list (aria-controls)', async () => {
+    const { tabs } = await render();
+    expect(tabs()[0].getAttribute('aria-controls')).toBe('fnf-pane-left');
+    expect(tabs()[0].id).toMatch(/^fnf-tab-/);
+  });
 });

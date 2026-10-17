@@ -22,6 +22,8 @@ pub const MAX_HISTORY: usize = 15;
 pub const MAX_FAVORITES: usize = 200;
 pub const MAX_FILTER_TEXT: usize = 1_000;
 pub const MAX_TITLE: usize = 255;
+/// Longest accepted path/id string (longer ones are dropped, no real path is that long).
+pub const MAX_STRING: usize = 32 * 1024;
 /// Upper bound for the opaque table state of one tab (serialised JSON bytes).
 pub const MAX_TABLE_STATE_BYTES: usize = 64 * 1024;
 pub const SPLITTER_MIN: f64 = 0.15;
@@ -120,6 +122,8 @@ pub struct WindowGeometry {
 pub struct LoadOutcome {
     pub session: Session,
     pub warning: Option<String>,
+    /// `false` = the existing file could neither be used nor moved aside – do not save.
+    pub persist: bool,
 }
 
 /// A tab path that no longer existed and was replaced on start.
@@ -151,38 +155,45 @@ pub fn load(file: &Path) -> LoadOutcome {
 }
 
 fn load_unsanitized(file: &Path) -> LoadOutcome {
-    let text = match fs::read_to_string(file) {
-        Ok(t) => t,
+    let failure = match fs::read_to_string(file) {
+        Ok(text) => match parse(&text) {
+            Ok(session) => {
+                return LoadOutcome {
+                    session,
+                    warning: None,
+                    persist: true,
+                };
+            }
+            Err(reason) => format!("The saved session was invalid ({reason})"),
+        },
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             return LoadOutcome {
                 session: Session::default(),
                 warning: None,
+                persist: true,
             };
         }
-        Err(e) => {
-            return LoadOutcome {
-                session: Session::default(),
-                warning: Some(format!("The saved session could not be read ({e}).")),
-            };
-        }
+        // e.g. not UTF-8, or locked by another program (Windows)
+        Err(e) => format!("The saved session could not be read ({e})"),
     };
-    match parse(&text) {
-        Ok(session) => LoadOutcome {
-            session,
-            warning: None,
+    // Never overwrite a file we could not use: move it aside first. If even that
+    // fails, this run must not save at all.
+    match keep_broken_file(file) {
+        Some(bad) => LoadOutcome {
+            session: Session::default(),
+            warning: Some(format!(
+                "{failure}; defaults are used. The old file was kept as {}.",
+                bad.display()
+            )),
+            persist: true,
         },
-        Err(reason) => {
-            let kept = keep_broken_file(file);
-            let mut warning =
-                format!("The saved session was invalid ({reason}); defaults are used.");
-            if let Some(bad) = kept {
-                warning.push_str(&format!(" The old file was kept as {}.", bad.display()));
-            }
-            LoadOutcome {
-                session: Session::default(),
-                warning: Some(warning),
-            }
-        }
+        None => LoadOutcome {
+            session: Session::default(),
+            warning: Some(format!(
+                "{failure}; defaults are used and changes are not saved in this session."
+            )),
+            persist: false,
+        },
     }
 }
 
@@ -239,7 +250,7 @@ pub fn sanitize(session: &mut Session) {
     let mut seen = HashSet::new();
     session
         .favorites
-        .retain(|f| !f.is_empty() && seen.insert(f.clone()));
+        .retain(|f| !f.is_empty() && f.len() <= MAX_STRING && seen.insert(f.clone()));
     session.favorites.truncate(MAX_FAVORITES);
 
     let mut ids = HashSet::new();
@@ -250,6 +261,9 @@ pub fn sanitize(session: &mut Session) {
             panel.tabs.push(TabSession::default());
         }
         for tab in &mut panel.tabs {
+            if tab.id.len() > 64 {
+                tab.id.clear();
+            }
             if tab.id.is_empty() || !ids.insert(tab.id.clone()) {
                 loop {
                     next_id += 1;
@@ -260,10 +274,18 @@ pub fn sanitize(session: &mut Session) {
                     }
                 }
             }
-            if tab.path.as_deref().is_some_and(str::is_empty) {
+            if tab
+                .path
+                .as_deref()
+                .is_some_and(|p| p.is_empty() || p.len() > MAX_STRING)
+            {
                 tab.path = None;
             }
-            tab.history.retain(|h| !h.is_empty());
+            if tab.cursor.as_deref().is_some_and(|c| c.len() > MAX_STRING) {
+                tab.cursor = None;
+            }
+            tab.history
+                .retain(|h| !h.is_empty() && h.len() <= MAX_STRING);
             tab.history.truncate(MAX_HISTORY);
             if tab.title.chars().count() > MAX_TITLE {
                 tab.title = tab.title.chars().take(MAX_TITLE).collect();
@@ -448,6 +470,60 @@ mod tests {
             assert_eq!(out.session, defaults(), "{text}");
             assert!(out.warning.is_some(), "{text}");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unreadable_file_is_moved_aside_before_defaults_are_used() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("session.json");
+        fs::write(&file, b"{\"version\":1,\"favorites\":[\"\xff\"]}").unwrap();
+        let out = load(&file);
+        assert!(out.persist);
+        assert!(
+            out.warning
+                .as_deref()
+                .unwrap()
+                .contains("could not be read")
+        );
+        assert!(dir.path().join("session.json.bad").exists());
+        assert!(!file.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn broken_file_that_cannot_be_moved_disables_saving() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("session.json");
+        fs::write(&file, "garbage").unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o555)).unwrap();
+        let out = load(&file);
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+        if file.exists() {
+            // not root: the rename failed, the file must stay untouched and saving is off
+            assert!(!out.persist);
+            assert_eq!(fs::read_to_string(&file).unwrap(), "garbage");
+        }
+    }
+
+    #[test]
+    fn sanitize_drops_oversized_strings() {
+        let huge = "x".repeat(MAX_STRING + 1);
+        let mut s = Session {
+            favorites: vec![huge.clone(), "/ok".into()],
+            ..Session::default()
+        };
+        s.panels.left.tabs[0].path = Some(huge.clone());
+        s.panels.left.tabs[0].cursor = Some(huge.clone());
+        s.panels.left.tabs[0].history = vec![huge.clone(), "/h".into()];
+        s.panels.left.tabs[0].id = huge;
+        sanitize(&mut s);
+        assert_eq!(s.favorites, vec!["/ok".to_string()]);
+        let t = &s.panels.left.tabs[0];
+        assert_eq!((t.path.clone(), t.cursor.clone()), (None, None));
+        assert_eq!(t.history, vec!["/h".to_string()]);
+        assert!(t.id.len() <= 64);
     }
 
     #[test]

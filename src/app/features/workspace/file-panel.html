@@ -36,7 +36,13 @@
 
 <app-tab-bar class="part tabs" [class.fnf-active-panel]="active()" [side]="side()" />
 
-<div class="part list" [class.fnf-active-panel]="active()">
+<div
+  class="part list"
+  role="tabpanel"
+  [id]="'fnf-pane-' + side()"
+  [attr.aria-labelledby]="'fnf-tab-' + tab().id"
+  [class.fnf-active-panel]="active()"
+>
   @if (errorText(); as text) {
     <div class="error" role="alert">
       <div>

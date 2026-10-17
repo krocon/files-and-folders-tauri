@@ -1,6 +1,6 @@
 # Design 004: Fensteraufbau – zwei Seiten, Tabs, Header, Statuszeile, Button-Leiste
 
-> **Status:** 🟡 umgesetzt **ohne ausdrückliche Freigabe** – Marc war 2–3 h abwesend und hatte gesagt „arbeite, soweit
+> **Status:** ✅ umgesetzt, 🟡 **ohne ausdrückliche Freigabe** – Marc war 2–3 h abwesend und hatte gesagt „arbeite, soweit
 > du kannst“. Alle Entscheidungen unten folgen der jeweiligen Empfehlung; sie sind auf dem Branch leicht änderbar.
 > Bitte die Entscheidungsfragen (E1–E4) nachträglich bestätigen oder korrigieren.
 > **Datum:** 2026-10-17 · **Branch:** `feat/dual-pane-tabs`
@@ -66,8 +66,8 @@ Tauri im Baum).
 | `Tab` (in der Liste) | andere Seite aktivieren | wie alt/mr/TC |
 | `Shift+Tab` (in der Liste) | normaler Fokuswechsel rückwärts (zur Tab-Leiste) | **Abweichung**: alt = nächster Tab. So bleiben Tab-Leiste und Header per Tastatur erreichbar (Barrierefreiheit) |
 | `Strg+Tab` / `Strg+Shift+Tab` | nächster / vorheriger Tab | in Tauri gibt es keinen Browser-Tab-Konflikt; auf macOS ebenfalls `Strg` (⌘+Tab gehört dem System) |
-| `Strg/⌘+T` | Tab klonen (`+`) | mr: `cmd+alt+t` – in 002 als zweites Kürzel |
-| `Strg/⌘+W` | Tab schließen (`−`) | mr: `cmd+alt+w`; schließt nie das Fenster |
+| `Strg/⌘+Alt+T` | Tab klonen (`+`) | wie mr (`cmd+alt+t`). Nicht `⌘T`/`⌘W`: Das Standardmenü von Tauri unter macOS belegt `⌘W` mit „Fenster schließen“ |
+| `Strg/⌘+Alt+W` | Tab schließen (`−`) | wie mr (`cmd+alt+w`); schließt nie das Fenster |
 | `Strg/⌘+Enter` | Ordner unter dem Cursor im neuen Tab | Prompt 004 §4 |
 | in der Tab-Leiste | `←/→`, `Pos1/Ende` wechseln den Tab (APG, automatische Aktivierung), `Entf` schließt, `Shift+F10`/Kontextmenütaste öffnet das Kontextmenü | |
 
@@ -175,9 +175,46 @@ Modifier-Umschaltung baut 002, das Format (`buttons.json`) steht jetzt.
 ## 7. Fortschritt
 
 - [x] Phase 1: Bestand, Entscheidungen, Verträge (dieses Dokument)
-- [ ] Freigabe durch Marc (nachträglich)
-- [ ] Phase 2: Rust
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: Ende-zu-Ende
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschluss
+- [ ] Freigabe durch Marc (nachträglich – E1–E4 wurden nach Empfehlung umgesetzt)
+- [x] Phase 2: Rust – `session.rs` (Schema, Laden ohne Fehlschlag, `.bad`-Kopie, atomares Speichern, `sanitize`,
+  Elternordner-Ersatz), `window_state.rs` (Erreichbarkeit auf Monitoren), Commands `load_session`/`save_session`;
+  14 neue Rust-Tests
+- [x] Phase 3: Frontend – `features/workspace/` (Workspace, WorkspaceStore, FilePanel, TabBar, ContextMenu,
+  ButtonBar, Splitter, Status), `core/session/`; `FileBrowser` entfernt; 42 neue Vitest-Tests (100 gesamt)
+- [x] Phase 4: Ende-zu-Ende unter Xvfb (Debug-Build, Linux) – s. Befunde
+- [x] Phase 5: Doku
+- [x] Phase 6: `pnpm check`, Debug-Build, Review durch separaten Agenten
+
+### Befunde während der Umsetzung
+
+- **Doppelte Tab-Ids:** Die Defaults bei kaputter/fehlender Datei liefen nicht durch `sanitize` → beide Tabs mit
+  Id `""`; das rechte Panel schrieb Pfad/Titel in den linken Tab. In der echten App gefunden (Xvfb, kaputte Datei),
+  behoben in Rust (`load` sanitisiert immer) und im Frontend (`restore` vergibt fehlende/doppelte Ids neu), beides
+  mit Test.
+- **Zugehörigkeit des Listings:** Ob ein Listing schon zum neuen Tab gehört, entscheidet jetzt der Vergleich mit dem
+  Listing zum Zeitpunkt des Wechsels (der Store verwirft veraltete Antworten) – unabhängig von der Reihenfolge, in
+  der Angular Effekte und die `await`-Fortsetzung ausführt.
+- **Splitter per Tastatur:** `preventDefault` auf `pointerdown` verhinderte den Fokus → Fokus explizit setzen.
+- **`⌘W`** ist unter macOS vom Standardmenü belegt → Tabs schließen mit `⌘⌥W` (wie mr).
+- **Schließen des Fensters** (`CloseRequested` → letzte Geometrie schreiben) ist unter Xvfb ohne Fenstermanager
+  nicht auslösbar; die Geometrie wird aber bei jedem (entprellten) Speichern mitgeschrieben.
+
+### Review (separater Agent, nach Phase 3)
+
+| Befund | Umsetzung |
+|---|---|
+| Deadlock beim Schließen: `remember()` hielt den Zustands-Mutex während der Fenster-Getter (die außerhalb des Hauptthreads auf die Event-Loop warten) | Geometrie wird **ohne** Lock gelesen |
+| Unlesbare Datei (kein UTF-8, unter Windows gesperrt) wurde nicht beiseitegelegt und nach 400 ms mit Defaults überschrieben | jede unbrauchbare Datei → `.bad`; klappt das nicht, wird in dieser Sitzung nicht gespeichert; Frontend speichert nach fehlgeschlagenem Laden nie (Tests) |
+| Neu laden/Navigieren während ein Tab-Ordner noch lädt schrieb den alten Ordner in den neuen Tab | `FileBrowserStore.navigationLocked` während des Tab-Wechsels (Test) |
+| Speichern in falscher Reihenfolge möglich | Sequenznummer je Snapshot, ältere werden nicht mehr geschrieben |
+| Kontextmenü hielt einen Tab-Index | Menü gehört einer Tab-Id, schließt sich, wenn der Tab verschwindet (Test) |
+| Barrierefreiheit: Fokus beim Klick außerhalb des Menüs zurückgeholt, Fokus auf deaktiviertem „−“, Live-Region für Hinweise erst mit Text erzeugt, `aria-controls` an Splitter/Tabs, `tabpanel` fehlte | alles umgesetzt |
+| Zeichenkettenlängen aus dem Frontend unbegrenzt | `MAX_STRING` (32 KB) für Pfade/Cursor/Verlauf/Favoriten, Ids max. 64 (Test) |
+| Letzte Änderungen vor dem Schließen gehen verloren (400 ms Entprellung), `⌘Q` sendet kein `CloseRequested` | teilweise: Rust speichert zusätzlich bei `ExitRequested`, Frontend flusht bei `pagehide`/`visibilitychange`. **Offen:** Schließen anhalten, bis das Frontend geflusht hat (Event + Command) |
+| Breadcrumb-Trenner `/` fest im Frontend (Windows) | offen – Anzeige, keine Pfadlogik; mit 003 klären (Rust könnte das Trennzeichen liefern) |
+
+### Offen
+
+- Schließen anhalten, bis das Frontend die letzte Änderung geschrieben hat (s. Review).
+- Mittelklick auf eine Ordnerzeile (neuer Tab) – G15 im Mono-Repo vorschlagen.
+- macOS/Windows nicht praktisch getestet (Fenstergeometrie mit mehreren Monitoren, HiDPI).

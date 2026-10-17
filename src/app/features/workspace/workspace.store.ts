@@ -68,6 +68,8 @@ const EMPTY_PANELS: Panels = {
 export class WorkspaceStore {
   private readonly api = inject(SessionApi);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Off when loading failed – never overwrite a session we could not read. */
+  private saveEnabled = false;
 
   readonly ready = signal(false);
   readonly activeSide = signal<Side>('left');
@@ -109,6 +111,7 @@ export class WorkspaceStore {
       }
       notices.push(...loaded.adjusted.map(describeAdjusted));
       this.notices.set(notices);
+      this.saveEnabled = true;
     } catch (err) {
       this.notices.set([`${TEXTS.sessionLoadFailed} ${describeFsError(toFsError(err))}`]);
     }
@@ -312,6 +315,9 @@ export class WorkspaceStore {
   }
 
   private scheduleSave(snapshot: Session): void {
+    if (!this.saveEnabled) {
+      return;
+    }
     if (this.saveTimer !== null) {
       clearTimeout(this.saveTimer);
     }

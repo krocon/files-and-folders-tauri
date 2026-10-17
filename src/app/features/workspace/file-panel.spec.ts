@@ -239,4 +239,23 @@ describe('FilePanel', () => {
     await settle();
     expect(el.querySelectorAll('.fnf-active-panel').length).toBe(0);
   });
+
+  it('does not let a reload during a pending tab switch overwrite the new tab', async () => {
+    const { store, settle } = await render();
+    const slow = deferred<DirectoryListing>();
+    const original = fs.handler;
+    fs.handler = (p) => (p === '/other' ? slow.promise : original(p));
+    ws.selectTab('left', 1);
+    await settle();
+    ws.requestReload('left'); // double click on the tab while /other is still loading
+    await settle();
+    expect(fs.calls.filter((c) => c === '/data')).toHaveLength(1);
+    slow.resolve(
+      withSegments(listing('/other', [entry('x', { path: '/other/x' })]), ['/', 'other']),
+    );
+    await settle();
+    expect(store.path()).toBe('/other');
+    expect(ws.panels().left.tabs[1].path).toBe('/other');
+    expect(ws.panels().left.tabs[0].path).toBe('/data');
+  });
 });

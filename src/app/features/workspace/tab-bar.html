@@ -5,6 +5,8 @@
       type="button"
       role="tab"
       class="tab"
+      [id]="'fnf-tab-' + tab.id"
+      [attr.aria-controls]="'fnf-pane-' + side()"
       [class.selected]="selected"
       [attr.aria-selected]="selected"
       [attr.tabindex]="selected ? 0 : -1"
@@ -44,8 +46,8 @@
     [items]="menuItems()"
     [x]="m.x"
     [y]="m.y"
-    [label]="title(panel().tabs[m.index])"
+    [label]="menuLabel()"
     (chosen)="onMenuChosen($event)"
-    (closed)="onMenuClosed()"
+    (closed)="onMenuClosed($event)"
   />
 }

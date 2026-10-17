@@ -129,7 +129,7 @@ export class FilePanel {
   }
 
   protected openSegment(segment: PathSegment): void {
-    if (segment.path !== this.store.path()) {
+    if (segment.path !== this.store.path() && !this.store.navigationLocked()) {
       void this.store.load(segment.path, { cursor: this.childOf(segment) });
     }
   }
@@ -188,7 +188,14 @@ export class FilePanel {
     this.listingAtSwitch = this.store.listing();
     const tab = this.ws.activeTab(this.side());
     this.store.setPendingTableState(tab.table);
-    await this.store.load(tab.path ?? undefined, { cursor: tab.cursor });
+    this.store.navigationLocked.set(true);
+    try {
+      await this.store.load(tab.path ?? undefined, { cursor: tab.cursor });
+    } finally {
+      if (this.shownTabId === id) {
+        this.store.navigationLocked.set(false);
+      }
+    }
     if (this.shownTabId !== id) {
       return;
     }

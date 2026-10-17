@@ -219,4 +219,21 @@ describe('WorkspaceStore', () => {
     await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS + 10);
     expect(ws.notices()).toEqual(['The session could not be saved: disk full']);
   });
+
+  it('never saves after loading the session failed', async () => {
+    vi.useFakeTimers();
+    const failing = new FakeSessionApi();
+    failing.load = () => Promise.reject({ code: 'io', message: 'locked', path: null });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: SessionApi, useValue: failing }] });
+    const store = TestBed.inject(WorkspaceStore);
+    await store.init();
+    expect(store.ready()).toBe(true);
+    expect(store.notices()[0]).toContain('could not be loaded');
+    store.setSplitter(0.3);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS + 10);
+    await store.flush();
+    expect(failing.saved).toHaveLength(0);
+  });
 });

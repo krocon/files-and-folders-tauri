@@ -167,4 +167,14 @@ describe('FileBrowserStore', () => {
     expect(store.takePendingTableState()).toEqual({ version: 1, sort: [] });
     expect(store.takePendingTableState()).toBeNull();
   });
+
+  it('ignores up/open/refresh while a tab folder is being opened', async () => {
+    const store = TestBed.inject(FileBrowserStore);
+    store.navigationLocked.set(true);
+    const before = api.calls.length;
+    await store.refresh();
+    await store.open(dir('X', { path: '/x' }));
+    await store.up();
+    expect(api.calls.length).toBe(before);
+  });
 });

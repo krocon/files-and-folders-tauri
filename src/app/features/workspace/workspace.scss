@@ -42,6 +42,10 @@
   grid-row: 5;
 }
 
+.notices:empty {
+  display: none;
+}
+
 .notices {
   position: absolute;
   right: var(--spacing-3);

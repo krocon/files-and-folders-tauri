@@ -55,7 +55,8 @@ export class ContextMenu {
   readonly y = input(0);
   readonly label = input('');
   readonly chosen = output<string>();
-  readonly closed = output<void>();
+  /** `key` = Escape/Tab (focus back to the opener), `outside` = click elsewhere. */
+  readonly closed = output<'key' | 'outside'>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -108,7 +109,7 @@ export class ContextMenu {
       }
       case 'Escape':
       case 'Tab':
-        this.closed.emit();
+        this.closed.emit('key');
         break;
       default:
         return;
@@ -119,7 +120,7 @@ export class ContextMenu {
 
   protected onOutside(evt: PointerEvent): void {
     if (!this.host.nativeElement.contains(evt.target as Node)) {
-      this.closed.emit();
+      this.closed.emit('outside');
     }
   }
 
