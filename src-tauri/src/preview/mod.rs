@@ -293,12 +293,21 @@ impl ServeSlots {
 
     /// A slot, or `None` if `max` requests are already being served.
     pub fn try_acquire(self: &Arc<Self>) -> Option<ServeSlot> {
-        self.busy
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
-                (n < self.max).then_some(n + 1)
-            })
-            .ok()
-            .map(|_| ServeSlot(Arc::clone(self)))
+        // compare-exchange loop instead of `fetch_update`, which newer Rust versions
+        // deprecate in favour of `try_update` (not available in our minimum version 1.90)
+        let mut n = self.busy.load(Ordering::Acquire);
+        loop {
+            if n >= self.max {
+                return None;
+            }
+            match self
+                .busy
+                .compare_exchange_weak(n, n + 1, Ordering::AcqRel, Ordering::Acquire)
+            {
+                Ok(_) => return Some(ServeSlot(Arc::clone(self))),
+                Err(current) => n = current,
+            }
+        }
     }
 }
 
