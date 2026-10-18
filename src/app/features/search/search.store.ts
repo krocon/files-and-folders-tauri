@@ -4,7 +4,9 @@ import { FsError } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { ItemError } from '../../core/jobs/jobs.models';
 import { Side } from '../../core/session/session.models';
+import { JobSpec } from '../../core/jobs/jobs.models';
 import {
+  DuplicateCriteria,
   EMPTY_STATS,
   SearchCriteria,
   SearchHit,
@@ -17,10 +19,17 @@ import type { FindForm } from './find-form';
 export const PUBLISH_MS = 300;
 export const MAX_RECENT_SEARCHES = 10;
 
+/** What a result tab shows: hits of a search, or groups of duplicate files (design 016 E6). */
+export type ResultKind = 'search' | 'duplicates';
+
 /** The result of one search, shown by one or more result tabs. */
 export interface SearchResult {
   readonly key: string;
+  readonly kind: ResultKind;
+  /** The search (duplicates: only the roots are set). */
   readonly criteria: SearchCriteria;
+  /** Set for a duplicate search. */
+  readonly duplicates: DuplicateCriteria | null;
   readonly label: string;
   /** Hits shown so far (published throttled while running). */
   readonly hits: readonly SearchHit[];
@@ -64,6 +73,34 @@ export function isSameOrBelow(path: string, ancestor: string): boolean {
   // a root like `/` or `C:\` already ends with its separator
   const sep = /[/\\]$/.test(ancestor) ? '' : path.charAt(ancestor.length);
   return sep === '' ? path.length > ancestor.length : sep === '/' || sep === '\\';
+}
+
+export const DUPLICATES_LABEL = 'Duplicates';
+
+/** What the result header shows of a duplicate search: only its folders. */
+function rootsOnly(roots: readonly string[]): SearchCriteria {
+  return {
+    roots,
+    name: '',
+    nameMode: 'glob',
+    caseSensitive: false,
+    wholeName: true,
+    kinds: { files: true, dirs: false, links: false },
+    includeHidden: false,
+    followLinks: false,
+    excludes: [],
+  };
+}
+
+/** The job and the result fields of a search or a duplicate search. */
+type Query =
+  | { readonly kind: 'search'; readonly criteria: SearchCriteria }
+  | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria };
+
+function queryOf(r: SearchResult): Query {
+  return r.kind === 'duplicates' && r.duplicates
+    ? { kind: 'duplicates', criteria: r.duplicates }
+    : { kind: 'search', criteria: r.criteria };
 }
 
 export function searchLabel(c: SearchCriteria): string {
@@ -111,6 +148,11 @@ export class SearchStore {
     return this.results().get(key);
   }
 
+  /** A duplicate result that compared sizes only – contents unknown (review 016 #6). */
+  sizeOnly(key: string | null | undefined): boolean {
+    return key != null && this.result(key)?.duplicates?.compare === 'size';
+  }
+
   /**
    * Starts a search and shows it in a result tab on `side`: a new tab, or the
    * result tab `reuseTab`. Returns an error for the dialog (nothing opened) or null.
@@ -124,7 +166,24 @@ export class SearchStore {
     const key = reuseTab?.key ?? `s${++keySeq}`;
     this.fresh.add(key);
     try {
-      return await this.startAndOpen(key, criteria, side, reuseTab?.tabId, form);
+      return await this.startAndOpen(
+        key,
+        { kind: 'search', criteria },
+        side,
+        reuseTab?.tabId,
+        form,
+      );
+    } finally {
+      this.fresh.delete(key);
+    }
+  }
+
+  /** Starts a duplicate search (design 016 E6) and shows it in a new result tab on `side`. */
+  async findDuplicates(criteria: DuplicateCriteria, side: Side): Promise<FsError | null> {
+    const key = `s${++keySeq}`;
+    this.fresh.add(key);
+    try {
+      return await this.startAndOpen(key, { kind: 'duplicates', criteria }, side, undefined, null);
     } finally {
       this.fresh.delete(key);
     }
@@ -132,20 +191,21 @@ export class SearchStore {
 
   private async startAndOpen(
     key: string,
-    criteria: SearchCriteria,
+    query: Query,
     side: Side,
     reuseTab: string | undefined,
     form: FindForm | null,
   ): Promise<FsError | null> {
-    const error = await this.start(key, criteria, form);
+    const error = await this.start(key, query, form);
     if (error) {
       return error;
     }
     if (form) {
       this.remember(form);
     }
-    const label = searchLabel(criteria);
-    const tabId = this.ws.openSearchTab(side, { key, label }, criteria.roots[0] ?? '', reuseTab);
+    const label = query.kind === 'search' ? searchLabel(query.criteria) : DUPLICATES_LABEL;
+    const roots = query.criteria.roots;
+    const tabId = this.ws.openSearchTab(side, { key, label }, roots[0] ?? '', reuseTab);
     if (tabId === null) {
       this.release(key);
       return { code: 'unknown', message: 'Too many tabs', path: null };
@@ -159,7 +219,7 @@ export class SearchStore {
   async rerun(key: string): Promise<void> {
     const r = this.result(key);
     if (r) {
-      const error = await this.start(key, r.criteria, r.form);
+      const error = await this.start(key, queryOf(r), r.form);
       if (error) {
         // the old run (if any) goes on – the result stays "running" only while it does
         this.patch(key, { error, running: this.runs.has(key) });
@@ -218,16 +278,16 @@ export class SearchStore {
    * Starts a new job for the result; a running one is cancelled only once the
    * new one was accepted (review 009 #2: a refused pattern keeps the old run).
    */
-  private async start(
-    key: string,
-    criteria: SearchCriteria,
-    form: FindForm | null,
-  ): Promise<FsError | null> {
+  private async start(key: string, query: Query, form: FindForm | null): Promise<FsError | null> {
     const pending = { stop: false };
     this.starting.set(key, pending);
     let jobId: string;
+    const spec: JobSpec =
+      query.kind === 'search'
+        ? { kind: 'search', criteria: query.criteria }
+        : { kind: 'duplicates', criteria: query.criteria };
     try {
-      jobId = await this.jobs.start({ kind: 'search', criteria });
+      jobId = await this.jobs.start(spec);
     } catch (err) {
       return toFsError(err);
     } finally {
@@ -245,10 +305,13 @@ export class SearchStore {
     // the old run of the result (or a start racing with this one): the newer one wins
     this.stopRun(key);
     this.runs.set(key, run);
+    const dup = query.kind === 'duplicates';
     this.setResult({
       key,
-      criteria,
-      label: searchLabel(criteria),
+      kind: query.kind,
+      criteria: dup ? rootsOnly(query.criteria.roots) : query.criteria,
+      duplicates: dup ? query.criteria : null,
+      label: dup ? DUPLICATES_LABEL : searchLabel(query.criteria),
       hits: [],
       running: true,
       stats: EMPTY_STATS,

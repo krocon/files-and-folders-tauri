@@ -22,6 +22,7 @@ export interface ContrastAdjustment {
  */
 export const ADJUST_BACKGROUND: ReadonlySet<string> = new Set([
   '--color-row-hover',
+  '--color-group-alt-bg',
   '--color-search-hit',
   '--color-cursor-inactive-bg',
 ]);

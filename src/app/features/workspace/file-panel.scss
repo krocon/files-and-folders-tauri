@@ -266,3 +266,28 @@
   flex: none;
   padding: 0 var(--spacing-2);
 }
+
+// inside an archive (design 016 E1): read-only hint next to the breadcrumbs
+.archive-badge {
+  flex: none;
+  padding: 0 var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+
+  .warn {
+    color: var(--color-danger);
+  }
+}
+
+// selection helpers of a duplicate tab (design 016 E6)
+.dup-keep {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+}

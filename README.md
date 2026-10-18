@@ -68,6 +68,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   werden gemeldet; Ergebnis-Tabs werden nicht gespeichert.
 - **Ordner-Finder** (`Alt+F10`, alt „Change Dir“): alle Unterordner bis Tiefe 5 (Regler 1–10/∞), Filter unscharf und
   live, `↑ ↓ Bild↑ Bild↓`, Enter wechselt dorthin, Esc bricht ab.
+- **Archive** (Prompt 016): Enter auf `.zip`, `.tar`, `.tar.gz`/`.tgz` öffnet das Archiv wie einen Ordner (nur
+  lesend, Hinweis im Header, Einträge mit unsicheren Namen ausgeblendet und gezählt). `F5` im Archiv entpackt die
+  Markierung, `Alt+F9` entpackt markierte Archive (optional in einen Unterordner ihres Namens), `Alt+F5` packt die
+  Markierung als ZIP, TAR oder TAR.GZ. Zip-Slip (`../`, absolute Pfade, Laufwerke), Links im Archiv und Zip-Bomben
+  werden abgewiesen; vorhandene Dateien lösen die Konfliktfrage aus.
+- **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
+  Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
+  eine Datei je Gruppe, `F8` löscht in den Papierkorb (Warnung, wenn von einer Gruppe nichts übrig bliebe).
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
@@ -205,6 +213,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
 | Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
+| Pack… | `Alt+F5` | `⌥F5` |
+| Unpack… | `Alt+F9` | `⌥F9` |
+| Find duplicates… | `Alt+Shift+F7` | `⌥⇧F7` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |

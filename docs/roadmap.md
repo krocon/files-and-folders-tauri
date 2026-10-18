@@ -35,7 +35,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs ✅), 015 (Einstellungen, i18n) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
 | 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Lizenz, Signierung, Prüfung macOS/Windows) |
-| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016) |
+| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016 Archive/Duplikate ✅ – 7z/Passwörter offen) |
 
 Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 

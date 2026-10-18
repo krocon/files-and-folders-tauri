@@ -122,6 +122,8 @@ export function convertLegacy(
     '--color-muted': muted,
     '--color-hidden-text': muted,
     '--color-cursor-inactive-bg': formatColor(mix(listBg, cursorBg, 0.3)),
+    // every other duplicate group (design 016 E6) – the old version had no such rows
+    '--color-group-alt-bg': formatColor(mix(listBg, listFg, 0.05)),
     '--color-cursor-inactive-text': formatColor(listFg),
   });
   // marked under the cursor: between the marked colour and the cursor text (the old version showed only the cursor)

@@ -67,6 +67,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-list-header-bg', 'list', 'Column header background'),
   t('--color-list-header-text', 'list', 'Column header text'),
   t('--color-row-hover', 'list', 'Row under the mouse'),
+  t('--color-group-alt-bg', 'list', 'Every other group (duplicates)'),
   t('--color-cursor-bg', 'list', 'Cursor background'),
   t('--color-cursor-text', 'list', 'Cursor text'),
   t('--color-cursor-inactive-bg', 'list', 'Cursor background, inactive panel'),

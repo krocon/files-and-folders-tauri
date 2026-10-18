@@ -122,12 +122,14 @@ export interface TargetOption {
 /** Target suggestions without duplicates, in the order given (first group wins). */
 export function targetOptions(
   groups: readonly { readonly group: string; readonly paths: readonly (string | null)[] }[],
+  /** Paths that can never be a target (folders inside archives, review 016 #7). */
+  exclude: (path: string) => boolean = () => false,
 ): readonly TargetOption[] {
   const seen = new Set<string>();
   const out: TargetOption[] = [];
   for (const g of groups) {
     for (const p of g.paths) {
-      if (p !== null && p !== '' && !seen.has(p)) {
+      if (p !== null && p !== '' && !seen.has(p) && !exclude(p)) {
         seen.add(p);
         out.push({ path: p, group: g.group });
       }

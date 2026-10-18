@@ -44,6 +44,12 @@ pub enum FsErrorCode {
     TooMany,
     /// A search pattern (regex, glob) is invalid or too large (design 009).
     InvalidPattern,
+    /// An archive is broken or uses an unsupported feature (encryption, method …) (design 016).
+    ArchiveError,
+    /// An archive entry would leave the target folder or is a link (zip slip, design 016 E3).
+    UnsafeEntry,
+    /// An archive exceeds the safety limits (entries, unpacked size, ratio – zip bomb).
+    ArchiveTooLarge,
     /// The frontend sent a menu spec that is malformed or too large (design 014).
     InvalidMenu,
     Io,
@@ -133,6 +139,15 @@ mod tests {
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "too_many");
         let e = FsError::new(FsErrorCode::InvalidPattern, "bad", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_pattern");
+        let e = FsError::new(FsErrorCode::UnsafeEntry, "slip", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "unsafe_entry");
+        let e = FsError::new(FsErrorCode::ArchiveTooLarge, "bomb", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "archive_too_large"
+        );
+        let e = FsError::new(FsErrorCode::ArchiveError, "broken", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "archive_error");
         let e = FsError::new(FsErrorCode::InvalidMenu, "bad", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_menu");
     }

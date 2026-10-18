@@ -22,8 +22,9 @@
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
   Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
-  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur) und Prompt 017 (Version aus einer Quelle,
-  App-Icon, Pakete je OS, About, CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 015.
+  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
+  Packen/Entpacken, Duplikate) und Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
+  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 015 (läuft) und 018.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -82,6 +83,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              legacy/*.json (= docs/legacy-themes), legacy-theme-map.ts (76 `--fnf-*` → Tokens),
                              legacy-theme.ts (Umrechnung, alter Export), contrast-fix.ts (minimale WCAG-Korrektur)
   app/features/themes/       Dialog „Colour schemes…“ (Live-Editor, Import/Export), Aktionen, Texte
+  app/core/archive/          archive-names.ts (Endungen wie Rust, Default-Archivname) – Archive kommen über
+                             `list_directory` (virtuelle Pfade, `DirectoryListing.archive`)
+  app/features/archive/      ArchiveStore (Pack/Unpack/Extract als Jobs), Dialoge, Aktionen + Veto im Archiv
+  app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)
   app/features/dnd/          DragStore (Root: Ziehen, Zonen, Übergabe an den Kopieren/Verschieben-Dialog), dnd-logic.ts
@@ -122,6 +127,10 @@ src-tauri/                   Rust (Tauri 2)
   src/properties.rs          Eigenschaften (Zeiten, Unix-Modus/Eigentümer, Windows-Attribute, Link-Ziel)
   src/watch/                 Ordner-Überwachung: mod.rs (WatchHub, notify + PollWatcher, Thread), batch.rs (Entprellen,
                              rein), netfs.rs (Netzlaufwerk?); Commands in commands/watch.rs
+  src/archive/               Archive: Index (ZIP/TAR/TAR.GZ), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
+                             `list_directory_or_archive` (virtuelle Pfade); Jobs `jobs/extract.rs`, `jobs/pack.rs`,
+                             `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`
+  src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)

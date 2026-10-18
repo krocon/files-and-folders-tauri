@@ -29,6 +29,7 @@
     "--color-list-header-bg": "var(--color-surface-raised)",
     "--color-list-header-text": "var(--color-muted)",
     "--color-row-hover": "#eef3fc",
+    "--color-group-alt-bg": "#f3f5f8",
     "--color-cursor-bg": "#1f56c4",
     "--color-cursor-text": "#ffffff",
     "--color-cursor-inactive-bg": "#dde6f7",

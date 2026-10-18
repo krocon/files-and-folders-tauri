@@ -441,6 +441,14 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
 
   p('--color-list-text', '--color-list-bg', 'List'),
   p('--color-list-text', '--color-row-hover', 'List, row under the mouse', TEXT, LIST),
+  p('--color-list-text', '--color-group-alt-bg', 'List, every other duplicate group', TEXT, LIST),
+  p(
+    '--color-active-list-text',
+    '--color-group-alt-bg',
+    'Active panel list, every other duplicate group',
+    TEXT,
+    ACTIVE_LIST,
+  ),
   p('--color-list-header-text', '--color-list-header-bg', 'Column header', TEXT, LIST),
   p('--color-marked', '--color-marked-bg', 'Marked', TEXT, LIST),
   p('--color-hidden-text', '--color-list-bg', 'Hidden entries'),

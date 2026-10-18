@@ -22,12 +22,28 @@ export interface PathSegment {
   readonly path: string;
 }
 
+export type ArchiveFormat = 'zip' | 'tar' | 'tarGz';
+
+/** Set when a listing is a folder inside an archive (design 016 E1). Rust `archive::ArchiveInfo`. */
+export interface ArchiveInfo {
+  /** The archive file (a real path). */
+  readonly path: string;
+  /** Folder inside the archive, `/`-separated, `''` = root – display only. */
+  readonly inner: string;
+  readonly format: ArchiveFormat;
+  /** Entries hidden because of an unsafe name (`..`, absolute, drive letter). */
+  readonly unsafeEntries: number;
+  readonly entries: number;
+}
+
 export interface DirectoryListing {
   readonly path: string;
   readonly parent: string | null;
   readonly segments: readonly PathSegment[];
   readonly entries: readonly DirEntry[];
   readonly unreadableEntries: number;
+  /** Inside an archive: `path` and the entry paths are virtual (`…/a.zip/dir`). */
+  readonly archive?: ArchiveInfo | null;
 }
 
 export type FsErrorCode =
@@ -57,6 +73,12 @@ export type FsErrorCode =
   | 'too_many'
   /** A search pattern (regex, glob) is invalid (design 009). */
   | 'invalid_pattern'
+  /** An archive is broken or uses an unsupported feature (design 016). */
+  | 'archive_error'
+  /** An archive entry would leave the target or is a link (zip slip, design 016 E3). */
+  | 'unsafe_entry'
+  /** An archive exceeds the limits (entries, size, ratio – zip bomb). */
+  | 'archive_too_large'
   | 'invalid_menu'
   | 'invalid_path'
   | 'no_home_directory'

@@ -143,6 +143,9 @@ pub struct SearchHit {
     pub entry: DirEntryDto,
     /// Full path of the folder that contains the entry.
     pub dir: String,
+    /// Duplicate search (design 016 E6): the group the file belongs to (1 = most wasted bytes).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -155,6 +158,10 @@ pub struct SearchStats {
     pub elapsed_ms: u64,
     /// Stopped at `max_hits`.
     pub truncated: bool,
+    /// Duplicate search: groups found so far, and the bytes to hash / hashed (design 016 E6).
+    pub groups: u64,
+    pub bytes_to_hash: u64,
+    pub bytes_hashed: u64,
 }
 
 struct ContentMatcher {
@@ -181,6 +188,14 @@ pub struct Compiled {
     content: Option<ContentMatcher>,
     max_hits: u64,
     skip_virtual_fs: bool,
+}
+
+impl Compiled {
+    /// Another hit limit than the dialog's (duplicate search: files to compare).
+    pub(crate) fn with_max_hits(mut self, max_hits: u64) -> Self {
+        self.max_hits = max_hits;
+        self
+    }
 }
 
 fn invalid(message: impl Into<String>) -> FsError {
@@ -622,6 +637,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             let hit = SearchHit {
                 entry: entry_from_metadata(name, &path, &meta, lossy),
                 dir: dir_str.clone(),
+                group: None,
             };
             stats.hits += 1;
             stats.elapsed_ms = start.elapsed().as_millis() as u64;

@@ -39,6 +39,8 @@
   --color-list-header-bg: var(--color-surface-raised);
   --color-list-header-text: var(--color-muted);
   --color-row-hover: #eef3fc;
+  /* every other group of a duplicate tab (design 016 E6) */
+  --color-group-alt-bg: #f3f5f8;
   --color-cursor-bg: #1f56c4;
   --color-cursor-text: #ffffff;
   --color-cursor-inactive-bg: #dde6f7;
@@ -157,6 +159,7 @@
     --shadow-popup: 0 4px 16px rgb(0 0 0 / 55%);
 
     --color-row-hover: #262d3b;
+    --color-group-alt-bg: #232730;
     --color-cursor-bg: #2c5bb8;
     --color-cursor-text: #ffffff;
     --color-cursor-inactive-bg: #2a3240;

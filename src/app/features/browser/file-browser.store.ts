@@ -9,6 +9,7 @@ import {
   isNavigableDir,
   isParentRow,
 } from '../../core/fs/fs.models';
+import { isArchiveEntry } from '../../core/archive/archive-names';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { isFinished } from '../../core/jobs/jobs.models';
 import { recordPerf, since } from '../../shared/perf';
@@ -17,6 +18,10 @@ import { cursorAfterRemoval } from '../ops/ops-logic';
 import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
 
 const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
+
+/** Enter/F3 on a file inside an archive (opening via a temporary copy is open, design 016). */
+export const IN_ARCHIVE_OPEN =
+  'Files inside an archive cannot be opened yet – extract them first (F5).';
 
 /** Changes of a watched folder (design 012 E3). */
 interface FolderDelta {
@@ -108,6 +113,12 @@ export class FileBrowserStore {
 
   /** Set while the panel shows a search result (design 009 E4) – then there is no folder. */
   readonly searchKey = signal<string | null>(null);
+  /** What the result tab shows: hits of a search, or groups of duplicates (design 016 E6). */
+  readonly searchKind = signal<'search' | 'duplicates'>('search');
+  /** Set while the panel shows a folder inside an archive (design 016 E1): read-only, virtual paths. */
+  readonly archive = computed(() =>
+    this.searchKey() !== null ? null : (this.listing()?.archive ?? null),
+  );
   /** Opens a folder in a new tab (result tab: Enter on a folder, "go to file"; set by the panel). */
   openInNewTab: (path: string, cursor: string | null) => void = () => undefined;
 
@@ -252,12 +263,21 @@ export class FileBrowserStore {
    * Shows the hits of search result `key` (design 009 E4): no ".." row, no
    * breadcrumbs. Cursor and marks stay while the same result grows or shrinks.
    */
-  showSearch(key: string, hits: readonly DirEntry[]): void {
+  showSearch(
+    key: string,
+    hits: readonly DirEntry[],
+    kind: 'search' | 'duplicates' = 'search',
+  ): void {
     this.supersede(); // a folder still loading must not replace the result
     const same = this.searchKey() === key;
     if (!same) {
       this.cancelSizeJobs();
+      // duplicates are read group by group (design 016 E6)
+      if (kind === 'duplicates' && this.pendingTableState === null) {
+        this.pendingTableState = { sort: [{ property: 'group', sortState: 'asc' }] };
+      }
     }
+    this.searchKind.set(kind);
     const paths = new Set(hits.map((h) => h.path));
     this.searchKey.set(key);
     this.listing.set({
@@ -284,7 +304,7 @@ export class FileBrowserStore {
     if (this.searchKey() !== null) {
       // result tab: a folder opens in a new tab, the result stays
       this.setCursor(entry.path);
-      if (isNavigableDir(entry)) {
+      if (isNavigableDir(entry) || isArchiveEntry(entry)) {
         if (!entry.lossyName) {
           this.openInNewTab(entry.path, null);
         }
@@ -296,10 +316,16 @@ export class FileBrowserStore {
       return this.up();
     }
     this.setCursor(entry.path);
-    if (isNavigableDir(entry)) {
+    // an archive opens like a folder (design 016 E1); an archive inside an archive is not opened (E3.4)
+    const inArchive = this.archive() !== null;
+    if (isNavigableDir(entry) || (isArchiveEntry(entry) && !inArchive)) {
       if (!entry.lossyName) {
         await this.load(entry.path);
       }
+      return;
+    }
+    if (inArchive) {
+      this.error.set({ code: 'archive_error', message: IN_ARCHIVE_OPEN, path: entry.path });
       return;
     }
     await this.openFile(entry);
@@ -490,7 +516,13 @@ export class FileBrowserStore {
 
   /** Starts the size calculation of a folder as a job (no-op for files or if already running). */
   async calcDirSize(entry: DirEntry): Promise<void> {
-    if (!isNavigableDir(entry) || isParentRow(entry) || entry.kind === 'symlink') {
+    // inside an archive Rust lists folder sizes already
+    if (
+      !isNavigableDir(entry) ||
+      isParentRow(entry) ||
+      entry.kind === 'symlink' ||
+      this.archive() !== null
+    ) {
       return;
     }
     if ([...this.ownSizeJobs().values()].includes(entry.path)) {

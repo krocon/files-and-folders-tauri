@@ -145,11 +145,29 @@ describe('fileComparators', () => {
 describe('createFileColumns', () => {
   it('defines name, ext, size and modified columns, all sortable, name ascending', () => {
     const cols = createFileColumns();
-    expect(cols.map((c) => c.property)).toEqual(['name', 'ext', 'size', 'modifiedMs', 'dir']);
-    // the folder column belongs to search result tabs (design 009) and starts hidden
+    expect(cols.map((c) => c.property)).toEqual([
+      'name',
+      'ext',
+      'size',
+      'modifiedMs',
+      'group',
+      'dir',
+    ]);
+    // the group column belongs to duplicate tabs (design 016), the folder column to
+    // search result tabs (design 009) – both start hidden
     expect(cols[4].isVisible?.()).toBe(false);
+    expect(cols[5].isVisible?.()).toBe(false);
     expect(cols.every((c) => c.sortable?.())).toBe(true);
     expect(cols[0].sortState).toBe('asc');
     expect(cols[1].valueGetter?.(entry('x.json'), {} as never)).toBe('json');
+  });
+
+  it('sorts duplicates by group, then by folder (design 016)', () => {
+    const cmp = fileComparators.group;
+    const d = (name: string, group: number | undefined, dirName: string) =>
+      ({ ...entry(name), dir: dirName, group }) as DirEntry;
+    const rows = [d('x', 2, '/a'), d('y', 1, '/b'), d('z', 1, '/a'), d('n', undefined, '/a')];
+    const sorted = [...rows].sort((a, b) => cmp(null, null, a, b, 1));
+    expect(sorted.map((r) => r.name)).toEqual(['z', 'y', 'x', 'n']);
   });
 });

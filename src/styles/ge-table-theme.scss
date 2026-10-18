@@ -98,6 +98,11 @@
   color: var(--color-error-text);
 }
 
+/* every other duplicate group (design 016 E6) – before marked, so a marked background wins */
+.ge-table .fnf-group-alt {
+  background-color: var(--color-group-alt-bg);
+}
+
 .ge-table .fnf-marked {
   color: var(--color-marked);
   background-color: var(--color-marked-bg);

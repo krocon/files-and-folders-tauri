@@ -113,6 +113,11 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     if (entry.kind === 'unknown') {
       classes.push('fnf-unreadable');
     }
+    // duplicate tab: every other group shaded (design 016 E6)
+    const group = (entry as DirEntry & { group?: number }).group;
+    if (group !== undefined && group % 2 === 0) {
+      classes.push('fnf-group-alt');
+    }
     return classes;
   }
 }

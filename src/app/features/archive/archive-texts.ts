@@ -1,0 +1,35 @@
+import { ArchiveFormat } from '../../core/fs/fs.models';
+
+/** Texts of pack/unpack (design 016), in one place for prompt 015 (i18n). */
+export const ARCHIVE_TEXTS = {
+  packTitle: 'Pack',
+  unpackTitle: 'Unpack',
+  extractTitle: 'Extract from the archive',
+  entries: (n: number) => (n === 1 ? '1 entry' : `${n} entries`),
+  archives: (n: number) => (n === 1 ? '1 archive' : `${n} archives`),
+  name: 'Archive name',
+  format: 'Format',
+  formats: { zip: 'ZIP', tar: 'TAR', tarGz: 'TAR.GZ' } as Readonly<Record<ArchiveFormat, string>>,
+  level: 'Compression',
+  levelHint: (n: number) => (n === 1 ? '1 (fastest)' : n === 9 ? '9 (smallest)' : `${n}`),
+  to: 'To folder',
+  suggestions: 'Suggestions',
+  chooseTarget: 'Choose a folder…',
+  intoSubfolder: (name: string) => `Into a subfolder “${name}”`,
+  intoSubfolderMany: 'Each archive into a subfolder of its name',
+  ifExists: 'If a file exists',
+  linksHint: 'Links are not packed (they are reported).',
+  unpackHint: 'Links and entries with unsafe names (.., absolute paths) are never extracted.',
+  pack: 'Pack',
+  unpack: 'Unpack',
+  cancel: 'Cancel',
+  emptyName: 'Enter a name.',
+  emptyTarget: 'Enter a target folder.',
+  targetIsFile: 'The target is a file – choose a folder.',
+  noArchive: 'No archive selected – put the cursor on a .zip, .tar or .tar.gz file.',
+  readOnly: 'Archives are read-only here – extract the entries first (F5).',
+  intoArchive: 'Cannot copy into an archive – pack instead (Alt+F5).',
+  unsafeHidden: (n: number) => (n === 1 ? '1 unsafe entry hidden' : `${n} unsafe entries hidden`),
+  archiveBadge: (format: ArchiveFormat) =>
+    `${format === 'zip' ? 'ZIP' : format === 'tar' ? 'TAR' : 'TAR.GZ'} · read-only`,
+};
