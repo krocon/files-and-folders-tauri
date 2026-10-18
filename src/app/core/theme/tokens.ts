@@ -83,6 +83,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-active-list-bg', 'activePanel', 'List background'),
   t('--color-active-list-text', 'activePanel', 'List text'),
   t('--color-active-list-header-bg', 'activePanel', 'Column header background'),
+  t('--color-active-list-border', 'activePanel', 'List lines'),
   t('--color-active-marked', 'activePanel', 'Marked text'),
   t('--color-active-marked-bg', 'activePanel', 'Marked background'),
   t('--color-active-panel-accent', 'activePanel', 'Accent line'),
@@ -99,6 +100,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-tab-text', 'header', 'Tab text'),
   t('--color-tab-selected-bg', 'header', 'Selected tab background'),
   t('--color-tab-selected-text', 'header', 'Selected tab text'),
+  t('--color-header-focus', 'header', 'Focus ring'),
 
   t('--color-footer-bg', 'footer', 'Background'),
   t('--color-footer-text', 'footer', 'Text'),
@@ -109,6 +111,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-shortcut-bg', 'footer', 'Shortcut badge background'),
   t('--color-shortcut-text', 'footer', 'Shortcut badge text'),
   t('--color-footer-error-text', 'footer', 'Warning text'),
+  t('--color-footer-focus', 'footer', 'Focus ring'),
 
   t('--color-dialog-bg', 'dialog', 'Background'),
   t('--color-dialog-text', 'dialog', 'Text'),
@@ -121,6 +124,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-button-border', 'dialog', 'Button border'),
   t('--color-button-primary-bg', 'dialog', 'Primary button background'),
   t('--color-button-primary-text', 'dialog', 'Primary button text'),
+  t('--color-dialog-focus', 'dialog', 'Focus ring'),
 
   t('--color-scrollbar-track', 'scrollbar', 'Track'),
   t('--color-scrollbar-thumb', 'scrollbar', 'Thumb'),

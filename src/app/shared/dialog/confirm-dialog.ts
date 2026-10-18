@@ -47,9 +47,9 @@ import { Modal } from './modal';
       gap: var(--spacing-2);
     }
     .primary {
-      color: var(--color-accent-text);
-      background: var(--color-accent);
-      border-color: var(--color-accent);
+      color: var(--color-button-primary-text);
+      background: var(--color-button-primary-bg);
+      border-color: var(--color-button-primary-bg);
     }
     .danger {
       color: var(--color-danger-text);

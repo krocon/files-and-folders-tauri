@@ -45,10 +45,11 @@ pub struct Selection {
 impl Default for Selection {
     fn default() -> Self {
         Self {
-            mode: "system".into(),
-            theme: "light".into(),
-            light: "light".into(),
-            dark: "dark".into(),
+            // design 019 E6: the old `light`, fixed; system pair old `light` / `coffee`
+            mode: "fixed".into(),
+            theme: "classic-light".into(),
+            light: "classic-light".into(),
+            dark: "classic-coffee".into(),
         }
     }
 }
@@ -429,7 +430,11 @@ pub fn bound(f: ThemesFile) -> ThemesFile {
     ThemesFile {
         version: VERSION,
         selection: Selection {
-            mode: if s.mode == "fixed" { s.mode } else { d.mode },
+            mode: if s.mode == "fixed" || s.mode == "system" {
+                s.mode
+            } else {
+                d.mode
+            },
             theme: pick(s.theme, d.theme),
             light: pick(s.light, d.light),
             dark: pick(s.dark, d.dark),
@@ -851,7 +856,13 @@ mod tests {
             themes,
         });
         assert_eq!(out.version, VERSION);
-        assert_eq!(out.selection, Selection::default());
+        assert_eq!(
+            out.selection,
+            Selection {
+                light: "light".into(),
+                ..Selection::default()
+            }
+        );
         assert_eq!(out.themes.len(), MAX_THEMES);
         assert_eq!(out.themes[0].id, "t0");
         assert_eq!(out.themes[0].tokens.len(), 1);
@@ -859,6 +870,28 @@ mod tests {
         assert_eq!(out.themes[1].tokens.len(), MAX_TOKENS);
         assert_eq!(out.themes.iter().filter(|t| t.id == "t0").count(), 1);
         assert!(!out.themes.iter().any(|t| t.id == "empty-name"));
+    }
+
+    #[test]
+    fn default_selection_is_the_old_light_and_system_mode_is_kept() {
+        let d = Selection::default();
+        assert_eq!(
+            (d.mode.as_str(), d.theme.as_str()),
+            ("fixed", "classic-light")
+        );
+        assert_eq!(
+            (d.light.as_str(), d.dark.as_str()),
+            ("classic-light", "classic-coffee")
+        );
+        let out = bound(ThemesFile {
+            version: VERSION,
+            selection: Selection {
+                mode: "system".into(),
+                ..Selection::default()
+            },
+            themes: vec![],
+        });
+        assert_eq!(out.selection.mode, "system");
     }
 
     #[test]

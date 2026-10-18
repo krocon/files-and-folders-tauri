@@ -15,6 +15,15 @@ describe('ThemeDialog', () => {
 
   beforeEach(() => {
     api = new FakeThemeApi();
+    // the 013 mechanics on the base scheme `light` (019 default: the old light design)
+    api.loaded = {
+      file: {
+        version: 1,
+        selection: { mode: 'fixed', theme: 'light', light: 'light', dark: 'dark' },
+        themes: [],
+      },
+      warning: null,
+    };
     cursor = null;
     const ws = {
       source: () => 'left',
@@ -68,9 +77,21 @@ describe('ThemeDialog', () => {
     };
     const { el, service, settle } = await open();
     const radios = [...el.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
-    expect(radios.map((r) => r.value)).toEqual(['user-a', 'light', 'dark']);
+    expect(radios.map((r) => r.value)).toEqual([
+      'user-a',
+      'classic-light',
+      'classic-paper',
+      'classic-bitbucket',
+      'classic-cypress',
+      'classic-blackboard',
+      'classic-coffee',
+      'classic-combat',
+      'classic-norton',
+      'light',
+      'dark',
+    ]);
     expect(el.textContent).toContain('All contrast checks pass');
-    radios[2].click();
+    radios.find((r) => r.value === 'dark')!.click();
     await settle();
     expect(service.active().id).toBe('dark');
     expect(document.documentElement.dataset['theme']).toBe('dark');
@@ -100,7 +121,7 @@ describe('ThemeDialog', () => {
     button('Save as new').click();
     await settle();
     expect(service.userThemes()).toHaveLength(1);
-    expect(service.active().name).toBe('Light (2)');
+    expect(service.active().name).toBe('Modern light (2)');
     expect(api.saved.at(-1)?.themes[0].tokens['--color-cursor-bg']).toBe('#8899aa');
     expect(button('Delete').disabled).toBe(false);
 
@@ -121,7 +142,7 @@ describe('ThemeDialog', () => {
     expect(el.textContent).toContain('Save or reset your changes first');
     // the radio group keeps showing the scheme in the editor (review 013 #4)
     const radios = [...el.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
-    expect(radios.map((r) => r.checked)).toEqual([true, false]);
+    expect(radios.filter((r) => r.checked).map((r) => r.value)).toEqual(['light']);
     button('Reset').click();
     await settle();
     expect(document.documentElement.style.getPropertyValue('--color-bg')).toBe('#f4f5f7');

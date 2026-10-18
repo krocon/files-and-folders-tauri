@@ -123,13 +123,17 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - Zeilen-Cursor (aktiv/inaktiv), markierte Einträge rot mit Häkchen, versteckte Einträge gedimmt.
 - Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht bleibt bei Fehlern.
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
-- **Farbschemata** (Prompt 013): `Light` und `Dark` mitgeliefert, „Follow the system“ (Standard, folgt
-  `prefers-color-scheme` live) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
+- **Farbschemata** (Prompt 013, 019): die acht Designs der alten Version (**Light** – Standard beim ersten Start –,
+  Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat, Norton) plus „Modern light/dark“; „Follow the system“ (folgt
+  `prefers-color-scheme` live, Paar Light/Coffee) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
   („Colour scheme: …“) oder `Strg+Alt+Shift+T` / `⌘⌃⌥T` (nächstes Schema). Der Dialog **Colour schemes…** ist ein
   Live-Editor: jede Farbe (Liste, Cursor aktiv/inaktiv, markiert, versteckt, Symlink, Kopf, Tabs, Statuszeile,
   Buttons, Dialoge, Scrollbar, Tooltip) mit Farbwähler und Textfeld, Vorschau sofort, Kontrastprüfung (WCAG AA) mit
   Liste der verletzten Paare; „Save as new“/„Save“/„Delete“/„Reset“. **Import** liest die Datei unter dem Cursor
-  (auch alte `{name, colors}`-Dateien), **Export** schreibt `<Name>.theme.json` in den Ordner des aktiven Panels.
+  (auch alte `{name, colors}`-Dateien – ergibt dasselbe Design wie das mitgelieferte), **Export** schreibt
+  `<Name>.theme.json` in den Ordner des aktiven Panels, **Export (old format)** im alten `--fnf-*`-Format. Alle
+  Designs bestehen WCAG AA; wo die alten Farben das nicht schafften, sind sie minimal angepasst
+  ([Kontrastbericht](docs/legacy-themes-contrast.md)).
   Gespeichert in `themes.json` im App-Config-Verzeichnis.
 
 ### Tastenkürzel (Stand Prompt 002)

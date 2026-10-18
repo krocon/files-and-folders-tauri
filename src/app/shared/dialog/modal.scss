@@ -22,6 +22,8 @@
   border: var(--border-width) solid var(--color-dialog-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popup);
+  /* own focus ring colour in dialogs (design 019 E5) */
+  --color-focus: var(--color-dialog-focus);
 }
 
 .title {

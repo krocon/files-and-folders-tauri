@@ -21,8 +21,8 @@
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
-  Live-Editor, System folgen) und Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell) sind
-  fertig. Als Nächstes: Prompt 015.
+  Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell) und Prompt 019
+  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur) sind fertig. Als Nächstes: Prompt 015.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -76,7 +76,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              Eigenschaften, Provider-Liste (views/: Text per textContent, Bild, Hex, Info), reine
                              Helfer (text-search, hex, permissions)
   app/core/theme/            Farbschemata: Token-Katalog (tokens.ts), eingebaute Schemata (themes/*.json = styles.scss),
-                             Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi
+                             Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi; alte Designs:
+                             legacy/*.json (= docs/legacy-themes), legacy-theme-map.ts (76 `--fnf-*` → Tokens),
+                             legacy-theme.ts (Umrechnung, alter Export), contrast-fix.ts (minimale WCAG-Korrektur)
   app/features/themes/       Dialog „Colour schemes…“ (Live-Editor, Import/Export), Aktionen, Texte
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)

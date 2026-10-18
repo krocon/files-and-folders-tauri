@@ -54,6 +54,13 @@
 /* the panel with the focus (mr: --fnf-activepanel-*) */
 .fnf-active-panel .ge-table {
   --ge-table-bg: var(--color-active-list-bg);
+  --ge-table-border: var(--color-active-list-border);
+  --ge-table-header-west-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-center-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-east-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-west-vertical-border: var(--color-active-list-border);
+  --ge-table-header-center-vertical-border: var(--color-active-list-border);
+  --ge-table-header-east-vertical-border: var(--color-active-list-border);
   --ge-table-header-west-bg: var(--color-active-list-header-bg);
   --ge-table-header-center-bg: var(--color-active-list-header-bg);
   --ge-table-header-east-bg: var(--color-active-list-header-bg);

@@ -33,8 +33,8 @@ input.num.small {
 input[type='date'] {
   padding: 2px var(--spacing-1);
   font: inherit;
-  color: var(--color-text);
-  background: var(--color-bg);
-  border: var(--border-width) solid var(--color-border);
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-input-border);
   border-radius: var(--radius-sm);
 }

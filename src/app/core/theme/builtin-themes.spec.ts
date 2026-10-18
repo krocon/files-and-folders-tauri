@@ -17,7 +17,9 @@ function declarations(block: string): Record<string, string> {
 describe('built-in themes', () => {
   it('define every catalog token with a safe, resolvable value', () => {
     for (const theme of BUILT_IN_THEMES) {
-      expect(Object.keys(theme.tokens).sort()).toEqual(TOKENS.map((t) => t.name).sort());
+      // the old designs also keep their `--fnf-*` variables without a token (old-format export)
+      const own = Object.keys(theme.tokens).filter((k) => !k.startsWith('--fnf-'));
+      expect(own.sort(), theme.id).toEqual(TOKENS.map((t) => t.name).sort());
       for (const [name, value] of Object.entries(theme.tokens)) {
         expect(isSafeValue(value), `${theme.id} ${name}`).toBe(true);
         expect(tokenValueOk(name, value), `${theme.id} ${name}: ${value}`).toBe(true);
@@ -28,6 +30,19 @@ describe('built-in themes', () => {
     }
     expect(LIGHT.dark).toBe(false);
     expect(DARK.dark).toBe(true);
+    expect(BUILT_IN_THEMES.map((t) => t.id)).toEqual([
+      'classic-light',
+      'classic-paper',
+      'classic-bitbucket',
+      'classic-cypress',
+      'classic-blackboard',
+      'classic-coffee',
+      'classic-combat',
+      'classic-norton',
+      'light',
+      'dark',
+    ]);
+    expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });
 
   it('pass the WCAG AA contrast check (list, cursor, marked, header, footer, dialogs)', () => {

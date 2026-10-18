@@ -25,6 +25,8 @@
   color: var(--color-header-text);
   background: var(--color-header-bg);
   border-bottom: var(--border-width) solid var(--color-header-border);
+  /* own focus ring colour on the header bar (design 019 E5) */
+  --color-focus: var(--color-header-focus);
 
   &.fnf-active-panel {
     background: var(--color-active-header-bg);
@@ -167,6 +169,7 @@
   color: var(--color-footer-text);
   background: var(--color-footer-bg);
   border-top: var(--border-width) solid var(--color-footer-border);
+  --color-focus: var(--color-footer-focus);
 
   b {
     font-weight: normal;

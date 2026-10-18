@@ -499,14 +499,21 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-shortcut-text', '--color-shortcut-bg', 'Shortcut badges'),
 
   p('--color-dialog-text', '--color-dialog-bg', 'Dialogs'),
+  p('--color-muted', '--color-dialog-bg', 'Muted text in dialogs'),
   p('--color-input-text', '--color-input-bg', 'Inputs'),
   p('--color-button-text', '--color-button-bg', 'Buttons'),
   p('--color-button-primary-text', '--color-button-primary-bg', 'Primary buttons'),
 
-  p('--color-focus', '--color-header-bg', 'Focus ring on the panel header', UI),
+  p('--color-header-focus', '--color-header-bg', 'Focus ring on the panel header', UI),
+  p(
+    '--color-header-focus',
+    '--color-active-header-bg',
+    'Focus ring on the panel header, active panel',
+    UI,
+  ),
   p('--color-focus', '--color-list-bg', 'Focus ring on the list', UI),
-  p('--color-focus', '--color-dialog-bg', 'Focus ring in dialogs', UI),
-  p('--color-focus', '--color-footer-bg', 'Focus ring on the status line', UI),
+  p('--color-dialog-focus', '--color-dialog-bg', 'Focus ring in dialogs', UI),
+  p('--color-footer-focus', '--color-footer-bg', 'Focus ring on the status line', UI),
 
   p('--color-tooltip-text', '--color-tooltip-bg', 'Tooltip'),
   p('--color-tooltip-input-text', '--color-tooltip-input-bg', 'Tooltip input'),
@@ -521,17 +528,22 @@ export interface ContrastResult {
 
 /** Checks all pairs on the (complete) tokens of a scheme. */
 export function checkContrast(tokens: Readonly<Record<string, string>>): ContrastResult[] {
+  return CONTRAST_PAIRS.map((pair) => {
+    const ratio = pairRatio(pair, tokens);
+    return { pair, ratio, ok: ratio !== null && ratio >= pair.min };
+  });
+}
+
+/** Contrast of one pair (translucent colours painted on `over`, else the window); `null` = not resolvable. */
+export function pairRatio(
+  pair: ContrastPair,
+  tokens: Readonly<Record<string, string>>,
+): number | null {
   const win = resolveColor('--color-bg', tokens) ?? WHITE;
   const base = win.a < 1 ? blend(win, WHITE) : win;
-  return CONTRAST_PAIRS.map((pair) => {
-    const fg = resolveColor(pair.fg, tokens);
-    const bg = resolveColor(pair.bg, tokens);
-    const under = pair.over ? resolveColor(pair.over, tokens) : null;
-    const over = under ? (under.a < 1 ? blend(under, base) : under) : base;
-    if (!fg || !bg) {
-      return { pair, ratio: null, ok: false };
-    }
-    const ratio = contrastRatio(fg, bg, over);
-    return { pair, ratio, ok: ratio >= pair.min };
-  });
+  const fg = resolveColor(pair.fg, tokens);
+  const bg = resolveColor(pair.bg, tokens);
+  const under = pair.over ? resolveColor(pair.over, tokens) : null;
+  const over = under ? (under.a < 1 ? blend(under, base) : under) : base;
+  return fg && bg ? contrastRatio(fg, bg, over) : null;
 }
