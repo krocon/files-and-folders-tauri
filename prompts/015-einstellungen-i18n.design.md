@@ -220,8 +220,9 @@ Kürzel: `OPEN_SETUP_DLG` = `Mod+,` (vorhanden, 014). Keine neuen Aktionen auße
 ## 8. Fortschritt
 
 - [x] Phase 1 Design
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend (Settings, i18n, Dialog)
+- [x] Phase 2 Rust (`settings.json`, Schema, sanitize, Export/Import-Bündel)
+- [x] Phase 3 Frontend (Settings-Store, Dialog, Laufzeit-i18n de/en, Specs) – Stand 2026-10-18: `pnpm check` grün;
+  nicht gemergt, weil Review und E2E fehlen (Arbeit wegen Nutzungslimit unterbrochen)
 - [ ] Phase 4 E2E
 - [ ] Phase 5 Doku
 - [ ] Phase 6 Abschluss
