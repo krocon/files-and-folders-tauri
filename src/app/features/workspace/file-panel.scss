@@ -24,7 +24,7 @@
   padding: var(--spacing-1) var(--spacing-2);
   color: var(--color-header-text);
   background: var(--color-header-bg);
-  border-bottom: var(--border-width) solid var(--color-header-border);
+  border-bottom: 0; /* no border in the middle of the 'header'  */
   /* own focus ring colour on the header bar (design 019 E5) */
   --color-focus: var(--color-header-focus);
 

@@ -7,7 +7,7 @@
   padding: var(--spacing-1) var(--spacing-2);
   color: var(--color-footer-text);
   background: var(--color-footer-bg);
-  border-top: var(--border-width) solid var(--color-footer-border);
+  border-top: 0; /* no border in the middle of the 'footer'  */
   --color-focus: var(--color-footer-focus);
 }
 
