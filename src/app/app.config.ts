@@ -8,6 +8,7 @@ import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
 import { OsApi, TauriOsApi } from './core/os/os-api';
 import { ClipboardApi, WebClipboardApi } from './core/os/clipboard';
 import { PreviewApi, TauriPreviewApi } from './core/preview/preview-api';
+import { TauriThemeApi, ThemeApi } from './core/theme/theme-api';
 import { TauriWatchApi, WatchApi } from './core/watch/watch-api';
 import { DragDropApi, TauriDragDropApi } from './core/dnd/drag-drop-api';
 
@@ -23,6 +24,7 @@ export const appConfig: ApplicationConfig = {
     { provide: OsApi, useClass: TauriOsApi },
     { provide: ClipboardApi, useClass: WebClipboardApi },
     { provide: PreviewApi, useClass: TauriPreviewApi },
+    { provide: ThemeApi, useClass: TauriThemeApi },
     { provide: WatchApi, useClass: TauriWatchApi },
     { provide: DragDropApi, useClass: TauriDragDropApi },
   ],

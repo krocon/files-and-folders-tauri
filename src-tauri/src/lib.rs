@@ -16,14 +16,17 @@
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
+//! - [`themes`]       colour schemes file, import/export of scheme files
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ index, name checks, zip-bomb limits (design 016)
 //! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
+//! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
 
+pub mod app_menu;
 pub mod archive;
 pub mod clean;
 pub mod commands;
@@ -44,6 +47,7 @@ pub mod properties;
 pub mod rename_presets;
 pub mod search;
 pub mod session;
+pub mod themes;
 pub mod tools;
 pub mod watch;
 pub mod window_state;
@@ -57,9 +61,12 @@ pub fn run() {
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
+        .manage(commands::ThemesState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
+        .manage(commands::MenuState::default())
+        .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
         .manage(commands::watch::WatchState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
@@ -152,6 +159,14 @@ pub fn run() {
             commands::open_tools_config,
             commands::read_preview,
             commands::get_properties,
+            commands::load_themes,
+            commands::save_themes,
+            commands::import_theme,
+            commands::export_theme,
+            commands::set_app_menu,
+            commands::set_menu_enabled,
+            commands::subscribe_menu,
+            commands::close_main_window,
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths

@@ -54,6 +54,9 @@ import { FindStore } from '../search/find.store';
 import { FolderFinderDialog } from '../search/folder-finder-dialog';
 import { FolderFinderStore } from '../search/folder-finder.store';
 import { registerSearchActions } from '../search/search-actions';
+import { ThemeService } from '../../core/theme/theme.service';
+import { registerThemeActions } from '../themes/theme-actions';
+import { ThemeDialog } from '../themes/theme-dialog';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { registerOsActions } from '../osintegration/os-actions';
@@ -62,6 +65,9 @@ import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
+import { registerMenuActions } from '../menus/menu-actions';
+import { MenuService } from '../menus/menu.service';
+import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
 import { DragGhost } from '../dnd/drag-ghost';
 import { FilePanel } from './file-panel';
@@ -102,6 +108,8 @@ import { WorkspaceStore } from './workspace.store';
     PackDialog,
     UnpackDialog,
     DuplicatesDialog,
+    ThemeDialog,
+    ContextMenu,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.scss',
@@ -111,6 +119,7 @@ import { WorkspaceStore } from './workspace.store';
     '[class.resizing]': 'dragging()',
     '(document:visibilitychange)': 'onVisibility()',
     '(window:pagehide)': 'onPageHide()',
+    '(document:contextmenu)': 'onContextMenu($event)',
   },
 })
 export class Workspace implements OnInit {
@@ -133,7 +142,9 @@ export class Workspace implements OnInit {
   private readonly finder = inject(FolderFinderStore);
   private readonly archive = inject(ArchiveStore);
   private readonly dup = inject(DuplicatesStore);
+  private readonly theme = inject(ThemeService);
   private readonly keyboard = inject(KeyboardDispatcher);
+  protected readonly menus = inject(MenuService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly texts = TEXTS;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -228,10 +239,14 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
+    this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
+    this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
+    this.menus.init();
     void this.jobs.init();
     void this.ws.init();
     void this.actions.init().then(() => this.os.init());
+    void this.theme.init();
   }
 
   // ---- splitter ----
@@ -271,6 +286,16 @@ export class Workspace implements OnInit {
     this.ws.setSplitter(0.5);
   }
 
+  /**
+   * No WebView menu (Reload, Inspect) outside our own menus (design 014 E10) – text
+   * fields and selected text keep it (copy/paste).
+   */
+  protected onContextMenu(evt: MouseEvent): void {
+    if (!keepsWebViewMenu(evt.target instanceof Element ? evt.target : null)) {
+      evt.preventDefault();
+    }
+  }
+
   protected onPageHide(): void {
     void this.ws.flush();
   }
@@ -280,4 +305,32 @@ export class Workspace implements OnInit {
       void this.ws.flush();
     }
   }
+}
+
+/**
+ * The WebView's own menu (copy/paste) stays for text fields, editable content
+ * (any `contenteditable` value) and a text selection under the pointer – a
+ * selection elsewhere does not unlock it on rows or buttons (review 014 #6).
+ */
+export function keepsWebViewMenu(target: Element | null): boolean {
+  if (!target) {
+    return false;
+  }
+  if (
+    (target as HTMLElement).isContentEditable === true ||
+    target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
+  ) {
+    return true;
+  }
+  const sel = target.ownerDocument.getSelection();
+  if (!sel || sel.toString() === '') {
+    return false;
+  }
+  // not containsNode(…, true): it misses an element that holds the whole selection
+  for (let i = 0; i < sel.rangeCount; i++) {
+    if (sel.getRangeAt(i).intersectsNode(target)) {
+      return true;
+    }
+  }
+  return false;
 }

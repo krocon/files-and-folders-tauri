@@ -18,6 +18,7 @@ import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
 import { SearchStore } from '../search/search.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
+import { contextMenuFor, nativeEnabled, resolveMenu, toNativeSpec } from '../menus/menu-model';
 import { registerArchiveActions } from './archive-actions';
 import { ArchiveStore } from './archive.store';
 
@@ -149,6 +150,35 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     });
     await expect(ops.openCopyMove('move')).rejects.toBeTruthy();
     await expect(ops.openDelete('trash')).rejects.toBeTruthy();
+  });
+
+  it('the veto also dims menu and context-menu entries, tools included (merge 014)', async () => {
+    actions.extras.set([
+      { id: 'tool:edit', label: 'Edit', shortcut: null, enabled: () => true, run: () => undefined },
+    ]);
+    const states = () => {
+      const items = resolveMenu(
+        [...contextMenuFor('empty'), ...contextMenuFor('archive'), '@tools'],
+        actions,
+        'linux',
+      );
+      return new Map(items.map((i) => [i.id, i.disabled === true]));
+    };
+    expect(states().get('OPEN_MKDIR_DLG')).toBe(false);
+    expect(states().get('tool:edit')).toBe(false);
+    await left.load('/data/Fotos 📷.zip');
+    left.setMarked(['/data/Fotos 📷.zip/Über'], true);
+    const s = states();
+    expect(s.get('OPEN_MKDIR_DLG')).toBe(true);
+    expect(s.get('OPEN_CREATE_FILE_DLG')).toBe(true);
+    expect(s.get('tool:edit')).toBe(true);
+    expect(s.get('OPEN_UNPACK_DLG')).toBe(false);
+    expect(s.get('OPEN_COPY_DLG')).toBe(false);
+    const native = nativeEnabled(toNativeSpec(actions, 'linux', false));
+    expect(native.get('OPEN_DELETE_DLG')).toBe(false);
+    expect(native.get('tool:edit')).toBe(false);
+    expect(native.get('OPEN_UNPACK_DLG')).toBe(true);
+    expect(await actions.runAny('tool:edit')).toBe(false);
   });
 
   it('a panel inside an archive is never a copy target', async () => {

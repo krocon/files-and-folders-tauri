@@ -24,6 +24,17 @@
   <app-button-bar class="buttons" [attr.inert]="modalOpen() ? '' : null" />
 }
 
+@if (menus.context(); as cm) {
+  <app-context-menu
+    [items]="cm.items"
+    [x]="cm.x"
+    [y]="cm.y"
+    [label]="cm.label"
+    (chosen)="menus.choose($event)"
+    (closed)="menus.close($event)"
+  />
+}
+
 <div class="sr-only" aria-live="polite">{{ announcement() }}</div>
 
 <!-- always rendered: a live region that appears together with its text is often not read -->
@@ -120,6 +131,9 @@
   }
   @case ('duplicates') {
     <app-duplicates-dialog />
+  }
+  @case ('themes') {
+    <app-theme-dialog />
   }
 }
 <app-drag-ghost />

@@ -90,6 +90,8 @@ export class FileList implements OnDestroy {
 
   /** Strg/⌘+Enter on a folder. */
   readonly openInNewTab = output<DirEntry>();
+  /** Right click in the body (`rowIndex` -1 = free space), design 014 E3. */
+  readonly contextMenu = output<{ rowIndex: number; x: number; y: number }>();
   /** Column layout, sort or scroll changed by the user (debounced by the table). */
   readonly tableStateChanged = output<Partial<TableStateIf>>();
 
@@ -186,6 +188,24 @@ export class FileList implements OnDestroy {
         if (!this.applying) {
           this.tableStateChanged.emit(evt.state);
         }
+      },
+      onContextmenu: (evt) => {
+        const e = evt.originalEvent;
+        if (evt.areaIdent === 'header' || !e) {
+          return; // the header has no menu (the WebView's is suppressed globally)
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.dragging) {
+          return; // no menu in the middle of a drag (012 × 014)
+        }
+        // macOS Ctrl+click is a button-0 press: it must not turn into a drag behind the menu
+        this.endPress();
+        this.contextMenu.emit({
+          rowIndex: evt.areaIdent === 'body' ? evt.rowIndex : -1,
+          x: e.clientX,
+          y: e.clientY,
+        });
       },
       // core event, not the wrapper output: no 150 ms debounce (design E5)
       onMouseClicked: (evt) =>

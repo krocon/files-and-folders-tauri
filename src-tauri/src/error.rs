@@ -50,6 +50,8 @@ pub enum FsErrorCode {
     UnsafeEntry,
     /// An archive exceeds the safety limits (entries, unpacked size, ratio – zip bomb).
     ArchiveTooLarge,
+    /// The frontend sent a menu spec that is malformed or too large (design 014).
+    InvalidMenu,
     Io,
 }
 
@@ -146,5 +148,7 @@ mod tests {
         );
         let e = FsError::new(FsErrorCode::ArchiveError, "broken", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "archive_error");
+        let e = FsError::new(FsErrorCode::InvalidMenu, "bad", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_menu");
     }
 }

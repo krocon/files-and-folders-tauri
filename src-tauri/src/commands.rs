@@ -13,6 +13,7 @@ use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
 use crate::rename_presets::{self, LoadedPresets, RenamePresets};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
+use crate::themes::{self, LoadedThemes, ThemesFile};
 use crate::window_state;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -897,6 +898,89 @@ pub async fn open_tools_config<R: Runtime>(app: AppHandle<R>) -> Result<String, 
     .await
 }
 
+// ---- colour schemes (design 013) ----
+
+/// Whether `themes.json` may be written (false after a broken file could not be moved aside).
+#[derive(Default)]
+pub struct ThemesState {
+    write_blocked: Mutex<bool>,
+}
+
+fn themes_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path()
+        .app_config_dir()
+        .map(|d| d.join(themes::FILE_NAME))
+        .map_err(|e| {
+            FsError::new(
+                FsErrorCode::Io,
+                format!("App config directory not available: {e}"),
+                None,
+            )
+        })
+}
+
+/// The user's colour schemes and the selection (defaults if there is no file).
+#[tauri::command]
+pub async fn load_themes<R: Runtime>(app: AppHandle<R>) -> Result<LoadedThemes, FsError> {
+    let file = themes_file(&app)?;
+    let loaded = blocking("Loading the colour schemes", move || {
+        Ok(themes::load(&file))
+    })
+    .await?;
+    *app.state::<ThemesState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = !loaded.persist;
+    Ok(loaded)
+}
+
+/// Replaces `themes.json` (checked and bounded, written atomically).
+#[tauri::command]
+pub async fn save_themes<R: Runtime>(app: AppHandle<R>, file: ThemesFile) -> Result<(), FsError> {
+    let path = themes_file(&app)?;
+    let blocked = *app
+        .state::<ThemesState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if blocked {
+        return Err(FsError::new(
+            FsErrorCode::Io,
+            "The existing colour scheme file could not be moved aside; not overwriting it.",
+            Some(&path),
+        ));
+    }
+    blocking("Saving the colour schemes", move || {
+        themes::save(&path, file).map_err(|e| FsError::from_io(&e, &path))
+    })
+    .await
+}
+
+/// Reads a colour scheme file (≤ 256 KiB JSON object) for the import.
+#[tauri::command]
+pub async fn import_theme<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<serde_json::Value, FsError> {
+    let path = resolve_input(&app, &path)?;
+    blocking("Importing the colour scheme", move || themes::import(&path)).await
+}
+
+/// Writes `<name>.theme.json` into `dir` (never overwrites); returns the path.
+#[tauri::command]
+pub async fn export_theme<R: Runtime>(
+    app: AppHandle<R>,
+    dir: String,
+    name: String,
+    theme: serde_json::Value,
+) -> Result<String, FsError> {
+    let dir = resolve_input(&app, &dir)?;
+    blocking("Exporting the colour scheme", move || {
+        themes::export(&dir, &name, &theme).map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+}
+
 // ---- jobs (design 005) ----
 
 /// The job manager and the channels of the frontends listening to it.
@@ -1053,5 +1137,110 @@ mod tests {
             st.cancel(&format!("late {i}")); // after the search ended: bounded
         }
         assert!(st.lock().len() <= MAX_SCAN_TOKENS);
+    }
+}
+
+// ---- application menu (design 014) ----
+
+/// Channel of the menu events and the ids of the current native menu.
+#[derive(Default)]
+pub struct MenuState {
+    channel: Mutex<Option<Channel<crate::app_menu::MenuEvent>>>,
+    ids: Mutex<std::collections::HashSet<String>>,
+}
+
+/// Installs the native menu bar (macOS, or `FNF_NATIVE_MENU=1`). Returns false when
+/// this platform uses the in-app menu bar – the frontend then shows its own.
+#[tauri::command]
+pub fn set_app_menu<R: Runtime>(
+    app: AppHandle<R>,
+    spec: crate::app_menu::MenuSpec,
+) -> Result<bool, FsError> {
+    crate::app_menu::validate_spec(&spec)
+        .map_err(|m| FsError::new(FsErrorCode::InvalidMenu, m, None))?;
+    if !crate::app_menu::native_menu_wanted() {
+        return Ok(false);
+    }
+    let menu = crate::app_menu::build_menu(&app, &spec)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))?;
+    *app.state::<MenuState>()
+        .ids
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = crate::app_menu::item_ids(&spec);
+    app.set_menu(menu)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))?;
+    Ok(true)
+}
+
+/// Enables/disables items of the installed native menu without rebuilding it
+/// (selection, dialogs and tabs change states often, review 014 #7). Unknown ids
+/// (an older spec) are skipped; without a native menu this does nothing.
+#[tauri::command]
+pub fn set_menu_enabled<R: Runtime>(
+    app: AppHandle<R>,
+    items: Vec<crate::app_menu::MenuEnabled>,
+) -> Result<(), FsError> {
+    let wanted = {
+        let ids = app
+            .state::<MenuState>()
+            .ids
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        crate::app_menu::validate_enabled(&items, &ids)
+            .map_err(|m| FsError::new(FsErrorCode::InvalidMenu, m, None))?
+    };
+    if wanted.is_empty() || !crate::app_menu::native_menu_wanted() {
+        return Ok(());
+    }
+    let Some(menu) = app.menu() else {
+        return Ok(());
+    };
+    crate::app_menu::apply_enabled(&menu, &wanted)
+        .map_err(|e| FsError::new(FsErrorCode::InvalidMenu, e.to_string(), None))
+}
+
+/// Menu events (ids of chosen items) go to this channel.
+#[tauri::command]
+pub fn subscribe_menu<R: Runtime>(
+    app: AppHandle<R>,
+    on_event: Channel<crate::app_menu::MenuEvent>,
+) {
+    *app.state::<MenuState>()
+        .channel
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some(on_event);
+}
+
+/// Called by Tauri for every chosen menu item: forwards ids of our spec only.
+pub fn forward_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    let state = app.state::<MenuState>();
+    if !state
+        .ids
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .contains(id)
+    {
+        return;
+    }
+    if let Some(channel) = state
+        .channel
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        let _ = channel.send(crate::app_menu::MenuEvent { id: id.to_string() });
+    }
+}
+
+/// Quit from the in-app menu: closes the main window like its close button
+/// (running jobs ask first, the session is saved).
+#[tauri::command]
+pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
+    match app.get_webview_window(MAIN_WINDOW) {
+        Some(w) => w
+            .close()
+            .map_err(|e| FsError::new(FsErrorCode::Io, e.to_string(), None)),
+        None => Ok(()),
     }
 }

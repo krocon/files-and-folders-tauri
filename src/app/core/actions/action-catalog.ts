@@ -26,6 +26,8 @@ export const ACTION_IDS = [
   'OPEN_TERMINAL_HERE',
   'OPEN_COMMAND_PALETTE',
   'OPEN_CALL_ACTION_DLG',
+  'OPEN_CONTEXT_MENU',
+  'FOCUS_MENU_BAR',
   // selection
   'TOGGLE_MARK_AND_ADVANCE',
   'MARK_DOWN',
@@ -79,11 +81,14 @@ export const ACTION_IDS = [
   'OPEN_SHORTCUT_DLG',
   'OPEN_SETUP_DLG',
   'OPEN_THEMES_DLG',
+  'NEXT_THEME',
+  'THEME_FOLLOW_SYSTEM',
   'OPEN_BUTTON_CONFIG_DLG',
   'OPEN_TOOL_CONFIG_DLG',
   'OPEN_TOOLS_DLG',
   'OPEN_TASK_DLG',
   'OPEN_ABOUT_DLG',
+  'QUIT_APP',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
@@ -136,6 +141,8 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_TERMINAL_HERE: m('Open terminal here', 'navigation', '011'),
   OPEN_COMMAND_PALETTE: m('Go to anything…', 'navigation', '002'),
   OPEN_CALL_ACTION_DLG: m('Call action…', 'navigation', '002', true),
+  OPEN_CONTEXT_MENU: m('Context menu', 'navigation', '014', true),
+  FOCUS_MENU_BAR: m('Menu bar', 'navigation', '014', true),
   TOGGLE_MARK_AND_ADVANCE: m('Toggle mark and move down', 'selection', '002'),
   MARK_DOWN: m('Mark and move down', 'selection', '002', true),
   MARK_UP: m('Mark and move up', 'selection', '002', true),
@@ -184,12 +191,15 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   DUP_MARK_KEEP_FIRST: m('Duplicates: mark all but the first (shortest path)', 'selection', '016'),
   OPEN_SHORTCUT_DLG: m('Keyboard shortcuts…', 'config', '002'),
   OPEN_SETUP_DLG: m('Settings…', 'config', '015'),
-  OPEN_THEMES_DLG: m('Themes…', 'config', '013'),
+  OPEN_THEMES_DLG: m('Colour schemes…', 'config', '013'),
+  NEXT_THEME: m('Next colour scheme', 'config', '013'),
+  THEME_FOLLOW_SYSTEM: m('Colour scheme: follow the system', 'config', '013'),
   OPEN_BUTTON_CONFIG_DLG: m('Button configuration…', 'config', '015'),
   OPEN_TOOL_CONFIG_DLG: m('Tool configuration…', 'config', '011'),
   OPEN_TOOLS_DLG: m('Open with tool…', 'config', '011'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
   OPEN_ABOUT_DLG: m('About…', 'config', '015'),
+  QUIT_APP: m('Quit', 'config', '014'),
 };
 
 export function isActionId(id: string): id is ActionId {

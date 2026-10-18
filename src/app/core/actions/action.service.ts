@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../fs/fs-error';
-import { ACTIONS, ActionId } from './action-catalog';
+import { ACTIONS, ActionId, isActionId } from './action-catalog';
 import { KeymapApi } from './keymap-api';
 import { DEFAULT_KEYMAPS, RawBindings, resolveKeymap } from './keymap';
 import { detectPlatform, Platform } from './platform';
@@ -108,6 +108,13 @@ export class ActionService {
     };
   }
 
+  /** An extra action (tool) can run now: enabled and not vetoed (menus, design 016). */
+  extraReady(id: string): boolean {
+    this.registered();
+    const x = this.extras().find((e) => e.id === id);
+    return !!x && x.enabled() && this.veto(null) === null;
+  }
+
   /** Runs an extra action; errors become a message. Returns true if it ran. */
   async runExtra(id: string): Promise<boolean> {
     const x = this.extras().find((e) => e.id === id);
@@ -197,6 +204,42 @@ export class ActionService {
       this.report(`${ACTIONS[id].label}: ${toFsError(err).message}`);
       return false;
     }
+  }
+
+  /** Runs a catalog action or an extra action (tool) by id – what every menu item does. */
+  runAny(id: string): Promise<boolean> {
+    return isActionId(id) ? this.run(id) : this.runExtra(id);
+  }
+
+  private lastKey: { id: string; at: number } | null = null;
+
+  /** The keyboard dispatcher started `id` (native menus ignore their echo, design 014 E6). */
+  noteKeyRun(id: string, now = Date.now()): void {
+    this.lastKey = { id, at: now };
+  }
+
+  /** True if the keyboard started `id` less than `windowMs` ago. */
+  ranByKeyRecently(id: string, windowMs = 400, now = Date.now()): boolean {
+    return this.lastKey !== null && this.lastKey.id === id && now - this.lastKey.at < windowMs;
+  }
+
+  private lastSuppressed: { id: string; at: number } | null = null;
+
+  /**
+   * The dispatcher held the shortcut of `id` back on purpose (text input, focus-scoped
+   * key): a native accelerator for the same key must not run it either (review 014 #1).
+   */
+  noteKeySuppressed(id: string, now = Date.now()): void {
+    this.lastSuppressed = { id, at: now };
+  }
+
+  /** True if the keyboard ran `id` or held it back less than `windowMs` ago. */
+  handledByKeyRecently(id: string, windowMs = 400, now = Date.now()): boolean {
+    const s = this.lastSuppressed;
+    return (
+      this.ranByKeyRecently(id, windowMs, now) ||
+      (s !== null && s.id === id && now - s.at < windowMs)
+    );
   }
 
   shortcuts(id: ActionId): readonly string[] {

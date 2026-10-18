@@ -14,7 +14,7 @@ import { FileBrowserStore } from '../browser/file-browser.store';
 import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
 import { VolumesStore } from '../osintegration/volumes.store';
 import { SearchStore } from '../search/search.store';
-import { ContextMenu, MenuItem } from './context-menu';
+import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
 import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
 
@@ -143,9 +143,9 @@ export class TabBar {
     this.ws.requestFocus(this.side());
   }
 
-  protected onFolderMenuClosed(reason: 'key' | 'outside'): void {
+  protected onFolderMenuClosed(reason: MenuCloseReason): void {
     this.folderMenuOpen.set(null);
-    if (reason === 'key') {
+    if (reason !== 'outside') {
       this.host.nativeElement.querySelector<HTMLElement>('.folder-menu')?.focus();
     }
   }
@@ -294,10 +294,10 @@ export class TabBar {
   }
 
   /** Escape/Tab give the focus back to the tab; a click elsewhere keeps it where it went. */
-  protected onMenuClosed(reason: 'key' | 'outside'): void {
+  protected onMenuClosed(reason: MenuCloseReason): void {
     const i = this.menuIndex();
     this.menu.set(null);
-    if (reason === 'key' && i >= 0) {
+    if (reason !== 'outside' && i >= 0) {
       this.focusTab(i);
     }
   }

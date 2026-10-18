@@ -5,7 +5,10 @@ import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
 import { badgeFor } from '../../../core/actions/shortcut';
 import { isFinished } from '../../../core/jobs/jobs.models';
 import { JobsStore } from '../../../core/jobs/jobs.store';
+import { ThemeService } from '../../../core/theme/theme.service';
 import { ActionsMenu } from '../../actions/actions-menu';
+import { THEME_TEXTS } from '../../themes/theme-texts';
+import { ContextMenu, MenuCloseReason, MenuItem } from '../context-menu';
 import { TEXTS } from '../texts';
 import { BUTTON_SETS, modifierSet } from './button-config';
 
@@ -24,7 +27,7 @@ interface ToolButton {
  */
 @Component({
   selector: 'app-button-bar',
-  imports: [ActionsMenu],
+  imports: [ActionsMenu, ContextMenu],
   template: `
     <div class="functions" role="toolbar" aria-label="Functions">
       @for (b of buttons(); track $index) {
@@ -59,7 +62,10 @@ interface ToolButton {
           [attr.aria-disabled]="t.ready ? null : 'true'"
           [attr.aria-label]="t.label"
           [attr.title]="t.title"
-          (click)="run(t.id, t.ready)"
+          [attr.aria-haspopup]="t.id === 'OPEN_THEMES_DLG' ? 'menu' : null"
+          [attr.aria-expanded]="t.id === 'OPEN_THEMES_DLG' ? themeMenu() !== null : null"
+          [class.theme-toggle]="t.id === 'OPEN_THEMES_DLG'"
+          (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
           <span aria-hidden="true">{{ t.icon }}</span>
@@ -77,6 +83,17 @@ interface ToolButton {
     @if (menuOpen()) {
       <app-actions-menu (closed)="onMenuClosed($event)" />
     }
+    @if (themeMenu(); as pos) {
+      <app-context-menu
+        [items]="themeItems()"
+        [x]="pos.x"
+        [y]="pos.y"
+        [label]="themeTexts.menuLabel"
+        [anchor]="pos.anchor"
+        (chosen)="onThemeChosen($event)"
+        (closed)="onThemeMenuClosed($event)"
+      />
+    }
   `,
   styleUrl: './button-bar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,7 +102,25 @@ export class ButtonBar {
   private readonly actions = inject(ActionService);
   private readonly keys = inject(KeyboardDispatcher);
   private readonly jobs = inject(JobsStore);
+  private readonly theme = inject(ThemeService);
   protected readonly menuOpen = signal(false);
+  /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
+  protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
+  protected readonly themeTexts = THEME_TEXTS;
+
+  protected readonly themeItems = computed<MenuItem[]>(() => {
+    const system = this.theme.selection().mode === 'system';
+    const active = this.theme.active().id;
+    return [
+      { id: 'system', label: THEME_TEXTS.menuFollow, checked: system },
+      ...this.theme.themes().map((t) => ({
+        id: `theme:${t.id}`,
+        label: t.name,
+        checked: !system && t.id === active,
+      })),
+      { id: 'edit', label: THEME_TEXTS.menuEdit },
+    ];
+  });
 
   private readonly toolDefs: readonly Omit<ToolButton, 'label'>[] = [
     { id: 'OPEN_TASK_DLG', icon: '⚙', showLabel: true },
@@ -145,6 +180,40 @@ export class ButtonBar {
     if (ready) {
       void this.actions.run(id);
     }
+  }
+
+  protected openThemeMenu(evt: MouseEvent): void {
+    if (this.themeMenu()) {
+      this.themeMenu.set(null);
+      return;
+    }
+    const anchor = evt.currentTarget as HTMLElement;
+    const rect = anchor.getBoundingClientRect();
+    this.themeMenu.set({ x: rect.left, y: rect.top, anchor });
+  }
+
+  protected onThemeChosen(id: string): void {
+    this.themeMenu.set(null);
+    if (id === 'system') {
+      void this.theme.followSystem();
+    } else if (id === 'edit') {
+      void this.actions.run('OPEN_THEMES_DLG');
+      return;
+    } else if (id.startsWith('theme:')) {
+      void this.theme.select(id.slice('theme:'.length));
+    }
+    this.focusThemeToggle();
+  }
+
+  protected onThemeMenuClosed(reason: MenuCloseReason): void {
+    this.themeMenu.set(null);
+    if (reason !== 'outside') {
+      this.focusThemeToggle();
+    }
+  }
+
+  private focusThemeToggle(): void {
+    setTimeout(() => document.querySelector<HTMLElement>('.theme-toggle')?.focus());
   }
 
   protected onMenuClosed(reason: 'key' | 'outside' | 'chosen'): void {

@@ -1,9 +1,16 @@
 @use 'styles/ge-table-theme';
 
-/* Design tokens. Components must use these variables instead of literal values. */
+/*
+ * Design tokens (design 013 §3). Components use these variables instead of literal values.
+ * The colour tokens are the source of the built-in schemes `src/app/core/theme/themes/light.json`
+ * (= :root) and `dark.json` (= :root + the dark block) – a test keeps them equal. At runtime the
+ * ThemeService sets the active scheme's values on <html> (inline), so this file is the first frame
+ * and the fallback. Catalog (groups, labels, kinds): `src/app/core/theme/tokens.ts`.
+ */
 :root {
   color-scheme: light dark;
 
+  /* general */
   --color-bg: #f4f5f7;
   --color-surface: #ffffff;
   --color-surface-raised: #eef0f3;
@@ -12,36 +19,102 @@
   --color-border: #d3d7de;
   --color-accent: #2f6fde;
   --color-accent-text: #ffffff;
+  --color-focus: #1f5bc7;
+  --color-selection: #2f6fde;
+  --color-selection-text: #ffffff;
+  --color-danger: #c62f3a;
+  --color-on-danger: #ffffff;
+  --color-danger-bg: #fdecee;
+  --color-danger-text: #7d1720;
+  --color-favorite: #a87300;
+  --color-search-hit: #ffe58a;
+  --color-splitter-active: #7fb2ff;
+  --color-backdrop: rgb(0 0 0 / 25%);
+  --shadow-popup: 0 4px 16px rgb(0 0 0 / 18%);
+
+  /* file list (GuiExpert bridge: src/styles/ge-table-theme.scss) */
+  --color-list-bg: var(--color-surface);
+  --color-list-text: var(--color-text);
+  --color-list-border: var(--color-border);
+  --color-list-header-bg: var(--color-surface-raised);
+  --color-list-header-text: var(--color-muted);
   --color-row-hover: #eef3fc;
   /* every other group of a duplicate tab (design 016 E6) */
   --color-group-alt-bg: #f3f5f8;
-  --color-selection: #2f6fde;
-  --color-selection-text: #ffffff;
-  --color-focus: #1f5bc7;
-  --color-danger: #c62f3a;
-  --color-danger-bg: #fdecee;
-  --color-danger-text: #7d1720;
-  --color-marked: #c8102e;
-  --color-cursor-bg: #2f6fde;
+  --color-cursor-bg: #1f56c4;
   --color-cursor-text: #ffffff;
-  --color-cursor-marked-text: #ffe066;
   --color-cursor-inactive-bg: #dde6f7;
+  --color-cursor-inactive-text: var(--color-list-text);
+  --color-marked: #c8102e;
+  --color-marked-bg: transparent;
+  --color-cursor-marked-text: #ffe066;
+  --color-hidden-text: var(--color-muted);
+  --color-symlink-text: #6a3fb5;
+  --color-error-text: var(--color-danger);
+  --font-list: var(--font-sans);
+  --font-size-list: 0.8125rem;
 
-  /* window skeleton (prompt 004; prompt 019 maps the --fnf-* designs onto these) */
-  --color-panel-bg: var(--color-surface);
-  --color-header-bg: var(--color-surface-raised);
-  --color-footer-bg: var(--color-surface-raised);
-  --color-tab-selected-bg: var(--color-surface);
+  /* active panel */
+  --color-active-list-bg: var(--color-list-bg);
+  --color-active-list-text: var(--color-list-text);
+  --color-active-list-header-bg: var(--color-list-header-bg);
+  --color-active-list-border: var(--color-list-border);
+  --color-active-marked: var(--color-marked);
+  --color-active-marked-bg: var(--color-marked-bg);
   --color-active-panel-accent: #2f6fde;
+  --color-active-header-bg: var(--color-header-bg);
   --color-active-panel-tab-bg: #2f6fde;
   --color-active-panel-tab-text: #ffffff;
-  --color-splitter-active: #7fb2ff;
-  --color-favorite: #c98a00;
-  --color-search-hit: #ffe58a;
+
+  /* panel header: path, tabs */
+  --color-header-bg: var(--color-surface-raised);
+  --color-header-text: var(--color-text);
+  --color-header-border: var(--color-border);
+  --color-header-input-bg: var(--color-surface);
+  --color-header-input-text: var(--color-text);
+  --color-header-input-border: var(--color-border);
+  --color-tab-text: var(--color-muted);
+  --color-tab-selected-bg: var(--color-surface);
+  --color-tab-selected-text: var(--color-text);
+  --color-header-focus: var(--color-focus);
+
+  /* footer: status line, button bar */
+  --color-footer-bg: var(--color-surface-raised);
+  --color-footer-text: var(--color-muted);
+  --color-footer-border: var(--color-border);
+  --color-footer-button-bg: var(--color-surface);
+  --color-footer-button-text: var(--color-text);
+  --color-footer-button-border: var(--color-border);
   --color-shortcut-bg: #444a55;
   --color-shortcut-text: #f2f4f7;
-  --shadow-popup: 0 4px 16px rgb(0 0 0 / 18%);
-  --color-backdrop: rgb(0 0 0 / 25%);
+  --color-footer-error-text: var(--color-danger);
+  --color-footer-focus: var(--color-focus);
+
+  /* dialogs */
+  --color-dialog-bg: var(--color-surface);
+  --color-dialog-text: var(--color-text);
+  --color-dialog-border: var(--color-border);
+  --color-input-bg: var(--color-bg);
+  --color-input-text: var(--color-text);
+  --color-input-border: var(--color-border);
+  --color-button-bg: var(--color-surface);
+  --color-button-text: var(--color-text);
+  --color-button-border: var(--color-border);
+  --color-button-primary-bg: var(--color-accent);
+  --color-button-primary-text: var(--color-accent-text);
+  --color-dialog-focus: var(--color-focus);
+
+  /* scrollbar */
+  --color-scrollbar-track: var(--color-surface);
+  --color-scrollbar-thumb: #c3c8d0;
+  --color-scrollbar-thumb-border: var(--color-surface);
+  --color-scrollbar-thumb-active: #8a919c;
+
+  /* tooltip */
+  --color-tooltip-bg: #2b2f37;
+  --color-tooltip-text: #ffffff;
+  --color-tooltip-input-bg: #ffffff;
+  --color-tooltip-input-text: #1d2027;
 
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
@@ -61,6 +134,7 @@
   --font-size-md: 0.875rem;
 }
 
+/* first frame in a dark system before the ThemeService runs (= dark.json) */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: #16181d;
@@ -70,30 +144,43 @@
     --color-muted: #9aa3b2;
     --color-border: #353a45;
     --color-accent: #5b8ef0;
-    --color-row-hover: #262d3b;
-    --color-group-alt-bg: #232730;
+    --color-accent-text: #16181d;
+    --color-focus: #8fb3ff;
     --color-selection: #2c5bb8;
     --color-selection-text: #ffffff;
-    --color-focus: #8fb3ff;
-    --color-danger: #e5606a;
+    --color-danger: #ef7a83;
+    --color-on-danger: #16181d;
     --color-danger-bg: #3a1c20;
     --color-danger-text: #ffc9cd;
-    --color-marked: #ff7a85;
+    --color-favorite: #f2c14e;
+    --color-search-hit: #6b5a12;
+    --color-splitter-active: #3d6fd1;
+    --color-backdrop: rgb(0 0 0 / 50%);
+    --shadow-popup: 0 4px 16px rgb(0 0 0 / 55%);
+
+    --color-row-hover: #262d3b;
+    --color-group-alt-bg: #232730;
     --color-cursor-bg: #2c5bb8;
     --color-cursor-text: #ffffff;
-    --color-cursor-marked-text: #ffe066;
     --color-cursor-inactive-bg: #2a3240;
+    --color-marked: #ff7a85;
+    --color-cursor-marked-text: #ffe066;
+    --color-symlink-text: #c4a5ff;
 
     --color-active-panel-accent: #5b8ef0;
     --color-active-panel-tab-bg: #2c5bb8;
     --color-active-panel-tab-text: #ffffff;
-    --color-splitter-active: #3d6fd1;
-    --color-favorite: #f2c14e;
-    --color-search-hit: #6b5a12;
+
     --color-shortcut-bg: #d5d9e0;
     --color-shortcut-text: #16181d;
-    --shadow-popup: 0 4px 16px rgb(0 0 0 / 55%);
-    --color-backdrop: rgb(0 0 0 / 50%);
+
+    --color-scrollbar-thumb: #4a505c;
+    --color-scrollbar-thumb-active: #6b7383;
+
+    --color-tooltip-bg: #e4e7ec;
+    --color-tooltip-text: #16181d;
+    --color-tooltip-input-bg: #1e2128;
+    --color-tooltip-input-text: #e4e7ec;
   }
 }
 
@@ -123,9 +210,9 @@ body {
   padding: var(--spacing-1) var(--spacing-3);
   font: inherit;
   font-size: var(--font-size-sm);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
+  color: var(--color-button-text);
+  background: var(--color-button-bg);
+  border: var(--border-width) solid var(--color-button-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
 
@@ -141,6 +228,28 @@ body {
   &:focus-visible {
     outline: var(--focus-ring-width) solid var(--color-focus);
     outline-offset: 1px;
+  }
+}
+
+/* Scrollbars (WebKitGTK, WKWebView and WebView2 all support ::-webkit-scrollbar). */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: var(--color-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border: 3px solid var(--color-scrollbar-thumb-border);
+  border-radius: 6px;
+
+  &:hover,
+  &:active {
+    background: var(--color-scrollbar-thumb-active);
   }
 }
 

@@ -24,7 +24,8 @@ export type DialogKind =
   | 'folder-finder'
   | 'pack'
   | 'unpack'
-  | 'duplicates';
+  | 'duplicates'
+  | 'themes';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

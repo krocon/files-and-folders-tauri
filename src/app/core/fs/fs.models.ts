@@ -79,6 +79,7 @@ export type FsErrorCode =
   | 'unsafe_entry'
   /** An archive exceeds the limits (entries, size, ratio – zip bomb). */
   | 'archive_too_large'
+  | 'invalid_menu'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

@@ -23,6 +23,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'archive_error',
   'unsafe_entry',
   'archive_too_large',
+  'invalid_menu',
   'invalid_path',
   'no_home_directory',
   'io',
@@ -92,6 +93,8 @@ export function describeFsError(error: FsError): string {
       return 'An archive entry would leave the target folder or is a link – not extracted.';
     case 'archive_too_large':
       return 'The archive exceeds the safety limits (size, number of entries).';
+    case 'invalid_menu':
+      return 'The menu could not be built.';
     case 'invalid_path':
       return 'The path is invalid.';
     case 'no_home_directory':

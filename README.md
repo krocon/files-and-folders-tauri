@@ -113,6 +113,13 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - **Drag & Drop** (012): Markierung (bzw. die Zeile) in das andere Panel oder auf eine Ordnerzeile ziehen öffnet den
   Kopieren-Dialog (mit `Shift`, macOS `⌘`: Verschieben); `Esc` bricht ab. Dateien aus Finder/Explorer/Dateimanager auf
   ein Panel oder eine Ordnerzeile ziehen öffnet den Kopieren-Dialog. Ziehen aus der App ins System: noch nicht.
+- **Kontextmenü** (Rechtsklick, `Shift+F10`, Kontextmenü-Taste): passend zu Datei, Ordner, Markierung, freier
+  Fläche oder Ergebnis-Tab, mit Kürzeln und Untermenüs (**Open with tool** mit den Tools, **Copy to clipboard**);
+  nicht verfügbare Einträge sind gedimmt. Rechtsklick setzt den Cursor, die Markierung bleibt – mit Markierung wirkt
+  das Menü auf die markierten Einträge (Überschrift „N marked entries“).
+- **Menüleiste** File · Edit · View · Go · Tools · Window · Help mit allen Aktionen und ihren Kürzeln: unter macOS
+  nativ (App-Menü mit About, Settings `⌘,`, Services, Hide, Quit; Edit mit Copy/Paste für Textfelder), unter
+  Windows/Linux in der App (`Alt+M` fokussiert sie). Kürzel kommen aus der Keymap inkl. Override.
 - Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
   inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
   Hidden-Flag unter Windows/macOS).
@@ -124,7 +131,18 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
 - Zeilen-Cursor (aktiv/inaktiv), markierte Einträge rot mit Häkchen, versteckte Einträge gedimmt.
 - Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht bleibt bei Fehlern.
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
-- Helles/dunkles Farbschema über CSS Custom Properties (`prefers-color-scheme`).
+- **Farbschemata** (Prompt 013, 019): die acht Designs der alten Version (**Light** – Standard beim ersten Start –,
+  Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat, Norton) plus „Modern light/dark“; „Follow the system“ (folgt
+  `prefers-color-scheme` live, Paar Light/Coffee) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
+  („Colour scheme: …“) oder `Strg+Alt+Shift+T` / `⌘⌃⌥T` (nächstes Schema). Der Dialog **Colour schemes…** ist ein
+  Live-Editor: jede Farbe (Liste, Cursor aktiv/inaktiv, markiert, versteckt, Symlink, Kopf, Tabs, Statuszeile,
+  Buttons, Dialoge, Scrollbar, Tooltip) mit Farbwähler und Textfeld, Vorschau sofort, Kontrastprüfung (WCAG AA) mit
+  Liste der verletzten Paare; „Save as new“/„Save“/„Delete“/„Reset“. **Import** liest die Datei unter dem Cursor
+  (auch alte `{name, colors}`-Dateien – ergibt dasselbe Design wie das mitgelieferte), **Export** schreibt
+  `<Name>.theme.json` in den Ordner des aktiven Panels, **Export (old format)** im alten `--fnf-*`-Format. Alle
+  Designs bestehen WCAG AA; wo die alten Farben das nicht schafften, sind sie minimal angepasst
+  ([Kontrastbericht](docs/legacy-themes-contrast.md)).
+  Gespeichert in `themes.json` im App-Config-Verzeichnis.
 
 ### Tastenkürzel (Stand Prompt 002)
 
@@ -149,6 +167,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
 | Folder menu, right panel | `Alt+F2` | `⌥F2` |
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
+| Context menu | `Shift+F10`, Kontextmenü-Taste | `⇧F10` |
+| Menu bar | `Alt+M` | – (nativ) |
+| Settings… (ab 015) | `Ctrl+,` | `⌘,` |
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |
@@ -198,6 +219,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |
+| Next colour scheme | `Ctrl+Alt+Shift+T` | `⌘⌃⌥T` |
 
 Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
 Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,

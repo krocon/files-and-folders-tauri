@@ -216,6 +216,7 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 | Duplikat-Header | Buttons „Keep newest/oldest/first“ | „Keep: newest · oldest · first“, Gruppe mit nur noch einer Datei zählt nicht mehr | E2E: im schmalen Panel verdeckten die Buttons die Zusammenfassung |
 | Sitzung | Tabs laufen unverändert durch | `session::resolve_missing_paths` behält Pfade in ein vorhandenes Archiv (Test `tabs_inside_an_archive_are_kept`) | E2E (Neustart): ein Tab im Archiv wurde als „Folder no longer exists“ auf den Ordner des Archivs gesetzt |
 | Hilfs-Job | – | `duplicates` ist Hilfs-Job (nicht in Tasks, kein Nachfragen beim Beenden) wie `search` | ein Abbruch verliert nichts |
+| Merge mit 013/014/019 | – | `--color-group-alt-bg` als Katalog-Token (`core/theme/tokens.ts`, Gruppe Liste, Kontrastpaare Liste/aktive Liste, `ADJUST_BACKGROUND`), in `themes/*.json` und für die acht alten Designs abgeleitet (Liste 5 % Richtung Text); Menüs: Packen/Entpacken/Duplikate im Datei-Menü, Untermenü „Duplicates“ (Edit + Ergebnis-Kontext), Kontext `archiveFile` (Entpacken) und `archive` (im Archiv: Entpacken, Kopieren, Marken); das Veto gilt für Menü-/Kontextmenü-Einträge (über `ActionService.state`) und Tools (`extraReady`) | 014 brachte ein Menümodell, 013 einen Token-Katalog |
 
 ## 7. Review
 

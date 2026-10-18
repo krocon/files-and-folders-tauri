@@ -53,8 +53,8 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
       text-overflow: ellipsis;
     }
     .ghost.no-target {
-      color: var(--color-text);
-      background: var(--color-surface-raised);
+      color: var(--color-tooltip-text);
+      background: var(--color-tooltip-bg);
       border: var(--border-width) solid var(--color-border);
     }
     .what {
