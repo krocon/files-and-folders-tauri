@@ -276,6 +276,13 @@ prompts/                     Feature-Prompts (s. o.)
    `device_commit_files` nach `.tmp-bundle/<slug>.bundle` → Marc (oder Gerät):
    `git pull --ff-only .tmp-bundle/<slug>.bundle feat/<slug>`. `.tmp-bundle/` ist in `.gitignore`.
 
+- Seit 2026-10-17 darf gepusht werden (§7): im Container `origin` = GitHub (Zugang über `add_repo` mit `push`),
+  dann ist der Bundle-Weg (Schritt 4) unnötig – Marc holt mit `git pull`. Git-Identität im Container:
+  `Claude <noreply@anthropic.com>` (Stop-Hook verlangt das).
+- Parallel arbeiten mit `git worktree add` (je Worktree eigenes `src-tauri/target`, ~5 GB!). Platte ist knapp:
+  `export CARGO_INCREMENTAL=0`, `target/release` nach Messungen löschen, `df -h /` im Blick. Eigene Xvfb-Displays je
+  Worktree, Prozesse nur per PID beenden. Offene Punkte für die nächste Sitzung: `TODO.md`.
+
 **Referenzquellen (lesbar ohne Marcs Mac)**
 - Alte Version (AngularJS): `git clone --depth 1 https://github.com/krocon/node-files-and-folders-client` – z. B.
   `src/fnf/commands/multirename/` (Makros, Umlaut-Tabelle, `titleCaps`).
