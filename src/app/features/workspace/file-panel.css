@@ -118,7 +118,7 @@
   border-top: var(--border-width) solid transparent;
 
   &.fnf-active-panel {
-    border-top-color: var(--color-active-panel-accent);
+    /* perhaps later border-top-color: var(--color-active-panel-accent); */
   }
 
   /* quick view (design 010 E4): the list stays (table state), hidden behind the preview */

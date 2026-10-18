@@ -11,8 +11,8 @@ import { DirEntry } from '../../../core/fs/fs.models';
 import { createFileColumns } from './file-columns';
 import { RenameEditor } from './rename-editor';
 
-export const ROW_HEIGHT = 24;
-export const HEADER_HEIGHT = 26;
+export const ROW_HEIGHT = 30;
+export const HEADER_HEIGHT = 30;
 
 /** What the body model needs to know to style rows (read at render time). */
 export interface FileRowState {
