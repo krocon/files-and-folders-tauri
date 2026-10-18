@@ -46,6 +46,8 @@ pub enum FsErrorCode {
     InvalidPattern,
     /// The frontend sent a menu spec that is malformed or too large (design 014).
     InvalidMenu,
+    /// A file to import is no settings export, has another version or is too big (design 015).
+    InvalidSettings,
     Io,
 }
 

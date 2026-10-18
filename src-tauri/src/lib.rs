@@ -43,6 +43,7 @@ pub mod properties;
 pub mod rename_presets;
 pub mod search;
 pub mod session;
+pub mod settings;
 pub mod themes;
 pub mod tools;
 pub mod watch;
@@ -58,6 +59,7 @@ pub fn run() {
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
         .manage(commands::ThemesState::default())
+        .manage(commands::SettingsState::default())
         .manage(commands::CleanScanState::default())
         .manage(commands::ToolsState::default())
         .manage(commands::PreviewState::default())
@@ -123,6 +125,10 @@ pub fn run() {
             commands::list_directory,
             commands::load_session,
             commands::save_session,
+            commands::load_settings,
+            commands::save_settings,
+            commands::export_settings,
+            commands::import_settings,
             commands::load_keymap_override,
             commands::save_keymap_override,
             commands::resolve_location,
