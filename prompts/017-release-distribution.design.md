@@ -103,5 +103,11 @@ Skripte: `pnpm version:check`, `pnpm version:set X.Y.Z`, `pnpm release:notes [fr
 - [x] Bundle-Konfiguration je OS
 - [x] About: Rust `about.rs` + Command, `AboutApi`, Dialog, Aktion
 - [x] CI-/Release-Vorlagen `docs/ci/`, `docs/release.md`, README
-- [ ] Linux-Pakete gebaut und geprüft
-- [ ] `pnpm check`, Debug-Build, E2E About
+- [x] Linux-Pakete gebaut (`pnpm tauri build --bundles deb,rpm,appimage`, Release, 12 min Kompilieren):
+  `.deb` 4,8 MiB, `.rpm` 4,8 MiB, `.AppImage` 79,6 MiB (bringt WebKitGTK mit); Binary 17 MiB. `.deb` mit `dpkg -i`
+  installiert (Depends `libwebkit2gtk-4.1-0, libgtk-3-0`, Desktop-Datei Kategorie `Utility`, Icons hicolor 32/128/256),
+  `/usr/bin/files-and-folders-tauri` unter Xvfb gestartet, About über die Befehlspalette: „Version 0.1.0 · release ·
+  Linux · x86_64 · Tauri 2.12.4“, neues Icon sichtbar; danach `dpkg -r`. AppImage mit `--appimage-extract-and-run`
+  gestartet (kein FUSE im Container) – Fenster erscheint. `target/release` danach gelöscht.
+- [x] `pnpm check` grün (inkl. `version:check`, `scripts:test` 10, Vitest 587, Rust 269), Debug-Build `--no-bundle` grün
+- Hinweis: `Maintainer` im `.deb` kommt aus `authors` in `Cargo.toml` (`krocon`) – bei Bedarf mit Name/E-Mail füllen.
