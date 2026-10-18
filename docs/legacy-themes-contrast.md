@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-10 von 54 Paaren unter AA im Original, 9 Farben angepasst.
+10 von 55 Paaren unter AA im Original, 9 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -42,7 +42,7 @@
 
 ## paper (hell)
 
-35 von 54 Paaren unter AA im Original, 26 Farben angepasst.
+36 von 55 Paaren unter AA im Original, 26 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -93,7 +93,7 @@
 
 ## bitbucket (hell)
 
-27 von 54 Paaren unter AA im Original, 21 Farben angepasst.
+28 von 55 Paaren unter AA im Original, 21 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -139,7 +139,7 @@
 
 ## cypress (dunkel)
 
-23 von 54 Paaren unter AA im Original, 16 Farben angepasst.
+24 von 55 Paaren unter AA im Original, 16 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -180,7 +180,7 @@
 
 ## blackboard (dunkel)
 
-12 von 54 Paaren unter AA im Original, 9 Farben angepasst.
+13 von 55 Paaren unter AA im Original, 9 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -214,7 +214,7 @@
 
 ## coffee (dunkel)
 
-6 von 54 Paaren unter AA im Original, 5 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+6 von 55 Paaren unter AA im Original, 5 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -244,7 +244,7 @@
 
 ## combat (dunkel)
 
-8 von 54 Paaren unter AA im Original, 7 Farben angepasst.
+8 von 55 Paaren unter AA im Original, 7 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -276,7 +276,7 @@
 
 ## norton (dunkel)
 
-14 von 54 Paaren unter AA im Original, 12 Farben angepasst, aus Fallbacks: `--fnf-table-selected-row-fg-color`, `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+15 von 55 Paaren unter AA im Original, 13 Farben angepasst, aus Fallbacks: `--fnf-table-selected-row-fg-color`, `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -305,6 +305,7 @@
 | `--color-footer-error-text` | `#e00034` | `#e41d4b` | Status line warning |
 | `--color-footer-button-bg` | `#008080` | `#058383` | Function buttons |
 | `--color-dialog-bg` | `#05a8a8` | `#048080` | Dialogs |
+| `--color-muted` | `#b3b3d9` | `#fafafc` | Muted text in dialogs |
 | `--color-input-text` | `#a8a8a8` | `#737373` | Inputs |
 | `--color-button-text` | `#a8a8a8` | `#757575` | Buttons |
 | `--color-dialog-focus` | `#0098db` | `#9dd8f1` | Focus ring in dialogs |

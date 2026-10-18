@@ -499,6 +499,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-shortcut-text', '--color-shortcut-bg', 'Shortcut badges'),
 
   p('--color-dialog-text', '--color-dialog-bg', 'Dialogs'),
+  p('--color-muted', '--color-dialog-bg', 'Muted text in dialogs'),
   p('--color-input-text', '--color-input-bg', 'Inputs'),
   p('--color-button-text', '--color-button-bg', 'Buttons'),
   p('--color-button-primary-text', '--color-button-primary-bg', 'Primary buttons'),

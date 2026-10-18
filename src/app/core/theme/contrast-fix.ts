@@ -32,6 +32,7 @@ export const ADJUST_BACKGROUND: ReadonlySet<string> = new Set([
  */
 export const ADJUST_FOREGROUND: ReadonlySet<string> = new Set([
   '--color-accent-text',
+  '--color-muted',
   '--color-button-primary-text',
   '--color-on-danger',
   '--color-cursor-marked-text',
