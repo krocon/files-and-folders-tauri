@@ -192,7 +192,7 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_TOOL_CONFIG_DLG: m('Tool configuration…', 'config', '011'),
   OPEN_TOOLS_DLG: m('Open with tool…', 'config', '011'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
-  OPEN_ABOUT_DLG: m('About…', 'config', '015'),
+  OPEN_ABOUT_DLG: m('About…', 'config', '017'),
   QUIT_APP: m('Quit', 'config', '014'),
 };
 

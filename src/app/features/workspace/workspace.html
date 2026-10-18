@@ -60,6 +60,9 @@
 </div>
 
 @switch (dialogs.open()) {
+  @case ('about') {
+    <app-about-dialog />
+  }
   @case ('palette') {
     <app-command-palette />
   }
