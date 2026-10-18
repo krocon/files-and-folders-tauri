@@ -41,3 +41,7 @@ Fertig, reviewt und in `main`: **001–014, 016, 017, 019** (Details: `prompts/R
 - [ ] 016: 7z/RAR, Dateien im Archiv ansehen, ZIP-Zeiten als UTC, Konfliktdialog sagt „Cancel copying“.
 - [ ] 012: Ziehen aus der App ins System, Verknüpfung per Drag.
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).
+
+## 5. Logo
+
+- [ ] Nutze als App-Logo das Logo in 'docs/logo'
