@@ -291,3 +291,16 @@ body {
     animation-duration: 3s;
   }
 }
+
+*:has(> app-modal) {
+  z-index: 99998;
+}
+.menu {
+  z-index: 99999;
+}
+
+div.ge-table-header-border,
+.ge-table-body-west-vertical-border {
+  border: 0;
+  display: none !important;
+}

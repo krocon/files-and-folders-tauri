@@ -1,6 +1,6 @@
 .menu {
   position: fixed;
-  z-index: 100;
+  z-index: 99999;
   min-width: 14rem;
   /* many schemes (019): scroll instead of leaving the window */
   max-height: calc(100vh - 8px);
@@ -16,7 +16,7 @@
   box-shadow: var(--shadow-popup);
 
   &.sub {
-    z-index: 101;
+    z-index: 199999;
   }
 }
 

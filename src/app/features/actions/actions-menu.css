@@ -2,7 +2,7 @@
   position: absolute;
   right: var(--spacing-2);
   bottom: calc(100% + 4px);
-  z-index: 100;
+  z-index: 99999;
   display: grid;
   grid-template-columns: repeat(4, minmax(12rem, max-content));
   gap: var(--spacing-3);

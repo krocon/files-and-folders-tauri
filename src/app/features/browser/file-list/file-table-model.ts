@@ -153,7 +153,7 @@ export function createFileTable(
     hoverRowVisible: true,
     verticalBorderVisible: false,
     horizontalBorderVisible: false,
-    headerSeparatorBorderVisible: true,
+    headerSeparatorBorderVisible: false,
     getSelectionModel: () => new SelectionModel('none', 'single'),
     shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
     ariaLabelledBy: labelledBy,
