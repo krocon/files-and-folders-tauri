@@ -53,7 +53,7 @@ interface ToolButton {
         [attr.aria-expanded]="menuOpen()"
         (click)="menuOpen.set(!menuOpen())"
       >
-        <span>Actions</span> <span aria-hidden="true">▴</span>
+        <span>Actions</span> <i class="fa fa-caret-up" aria-hidden="true"></i>
       </button>
       @for (t of tools(); track t.id) {
         <button
@@ -68,7 +68,7 @@ interface ToolButton {
           (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
-          <span aria-hidden="true">{{ t.icon }}</span>
+          <i [class]="t.icon" aria-hidden="true"></i>
           @if (t.showLabel) {
             <span aria-hidden="true">{{ t.label }}</span>
           }
@@ -123,9 +123,9 @@ export class ButtonBar {
   });
 
   private readonly toolDefs: readonly Omit<ToolButton, 'label'>[] = [
-    { id: 'OPEN_TASK_DLG', icon: '⚙', showLabel: true },
-    { id: 'OPEN_THEMES_DLG', icon: '🎨', showLabel: false },
-    { id: 'OPEN_SHORTCUT_DLG', icon: '⌨', showLabel: false },
+    { id: 'OPEN_TASK_DLG', icon: 'fa fa-cog', showLabel: true },
+    { id: 'OPEN_THEMES_DLG', icon: 'fa fa-paint-brush', showLabel: false },
+    { id: 'OPEN_SHORTCUT_DLG', icon: 'fa fa-keyboard-o', showLabel: false },
   ];
 
   protected readonly buttons = computed(() => {

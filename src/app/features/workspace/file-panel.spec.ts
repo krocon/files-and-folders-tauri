@@ -228,7 +228,7 @@ describe('FilePanel', () => {
     await settle();
     expect(ws.isFavorite('/data')).toBe(true);
     expect(star.getAttribute('aria-pressed')).toBe('true');
-    expect(star.textContent?.trim()).toBe('★');
+    expect(star.querySelector('i')?.classList.contains('fa-star')).toBe(true);
   });
 
   it('saves the cursor of the old tab and restores cursor and table state of the new one', async () => {

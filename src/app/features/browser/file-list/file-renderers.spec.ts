@@ -30,7 +30,7 @@ describe('file renderers', () => {
       isMarkedAt: () => true,
     } as unknown as AreaModelIf;
     new NameCellRenderer().render(cell, 0, 0, 'body', areaModel, 'm', new SimpleDomService());
-    expect(cell.querySelector('.fnf-icon')?.textContent).toBe('✔');
+    expect(cell.querySelector('.fnf-icon i')?.className).toBe('fa fa-check');
     expect(cell.querySelector('.ge-table-sr-only')?.textContent).toBe('marked, ');
   });
 
@@ -61,12 +61,16 @@ describe('file renderers', () => {
     );
   });
 
-  it('chooses icons per kind', () => {
-    expect(iconFor(dir('d'))).toBe('📁');
-    expect(iconFor(entry('l', { kind: 'symlink', targetKind: 'directory' }))).toBe('📁↗');
-    expect(iconFor(entry('l', { kind: 'symlink', targetKind: 'file' }))).toBe('📄↗');
-    expect(iconFor(entry('l', { kind: 'symlink', targetKind: null }))).toBe('⛓');
-    expect(iconFor(entry('u', { kind: 'unknown' }))).toBe('⚠');
-    expect(iconFor(entry('f'))).toBe('📄');
+  it('chooses icons per kind and extension', () => {
+    expect(iconFor(dir('d'))).toBe('fa fa-folder');
+    expect(iconFor(entry('l', { kind: 'symlink', targetKind: 'directory' }))).toBe('fa fa-folder');
+    expect(iconFor(entry('l.pdf', { kind: 'symlink', targetKind: 'file' }))).toBe(
+      'fa fa-file-pdf-o',
+    );
+    expect(iconFor(entry('l', { kind: 'symlink', targetKind: null }))).toBe('fa fa-chain-broken');
+    expect(iconFor(entry('u', { kind: 'unknown' }))).toBe('fa fa-question-circle');
+    expect(iconFor(entry('video.mp4'))).toBe('fa fa-file-video-o');
+    expect(iconFor(entry('track.mp3'))).toBe('fa fa-file-audio-o');
+    expect(iconFor(entry('f.unknown'))).toBe('fa fa-file-o');
   });
 });

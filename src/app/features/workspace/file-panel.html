@@ -179,7 +179,12 @@
     [disabled]="store.path() === null"
     (click)="toggleFavorite()"
   >
-    <span aria-hidden="true">{{ isFavorite() ? '★' : '☆' }}</span>
+    <i
+      class="fa"
+      [class.fa-star]="isFavorite()"
+      [class.fa-star-o]="!isFavorite()"
+      aria-hidden="true"
+    ></i>
   </button>
 </nav>
 

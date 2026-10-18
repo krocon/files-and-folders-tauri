@@ -41,7 +41,7 @@
     "--color-symlink-text": "#6a3fb5",
     "--color-error-text": "var(--color-danger)",
     "--font-list": "var(--font-sans)",
-    "--font-size-list": "0.8125rem",
+    "--font-size-list": "0.875rem",
     "--color-active-list-bg": "var(--color-list-bg)",
     "--color-active-list-text": "var(--color-list-text)",
     "--color-active-list-header-bg": "var(--color-list-header-bg)",

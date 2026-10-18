@@ -437,11 +437,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_next_terminal_is_tried_when_one_fails_to_start() {
-        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let broken = dir.path().join("broken-term");
-        std::fs::write(&broken, [0u8, 1, 2, 3]).unwrap(); // executable bit, no valid format
-        std::fs::set_permissions(&broken, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::create_dir(&broken).unwrap(); // directory cannot be executed as a binary
         let ok = ["/usr/bin/true", "/bin/true"]
             .into_iter()
             .map(PathBuf::from)

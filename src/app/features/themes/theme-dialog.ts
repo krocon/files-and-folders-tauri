@@ -152,9 +152,14 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
 
             <div class="contrast" role="status">
               @if (problems().length === 0) {
-                <span class="ok">✓ {{ t.contrastOk }}</span>
+                <span class="ok"
+                  ><i class="fa fa-check" aria-hidden="true"></i> {{ t.contrastOk }}</span
+                >
               } @else {
-                <span class="warn">⚠ {{ t.contrastProblems(problems().length) }}</span>
+                <span class="warn"
+                  ><i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                  {{ t.contrastProblems(problems().length) }}</span
+                >
                 <ul>
                   @for (r of problems(); track r.pair.label) {
                     <li>{{ t.ratio(r.pair.label, r.ratio, r.pair.min) }}</li>
@@ -171,7 +176,9 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
                     <span class="tlabel" [id]="labelId(r.def.name)">
                       {{ r.def.label }}
                       @if (r.warn) {
-                        <span class="warn" [attr.title]="t.lowContrast">⚠</span>
+                        <span class="warn" [attr.title]="t.lowContrast"
+                          ><i class="fa fa-exclamation-triangle" aria-hidden="true"></i
+                        ></span>
                       }
                     </span>
                     @if (r.def.kind === 'color') {

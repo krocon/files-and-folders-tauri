@@ -69,6 +69,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
   app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
   app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
+  app/core/file-icon/        FileIconService (Icon-Zuordnung nach Dateiendung/Kategorie zu Font Awesome)
   app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
                              im Ordnermenü), Tool-Konfigurationsdialog
   app/core/search/           Such-DTOs (Kriterien, Treffer, Statistik) – Treffer kommen als Job-Ereignis `searchHits`
@@ -103,9 +104,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
   app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
                              tool-dialog.scss), preview-grid/ (GuiExpert Table für Vorschauen)
+  assets/                    font-awesome-4.5.0/ (Font Awesome 4.5.0 Fonts + CSS)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
-  styles.scss                Design-Tokens (CSS Custom Properties, light/dark) – Quelle der eingebauten Schemata
-  styles/ge-table-theme.scss GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
+  styles.css                 Design-Tokens, Font-Awesome-Import (@import assets/font-awesome-4.5.0/...)
+  styles/ge-table-theme.css  GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
@@ -181,6 +183,9 @@ prompts/                     Feature-Prompts (s. o.)
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit SCSS + Tokens.
+- **Icons**: In der gesamten UI nutzen wir die **Font Awesome 4.5.0**-Icons (Assets unter `src/assets/font-awesome-4.5.0/`,
+  eingebunden in `src/styles.css`). Datei-Icons werden im Dateipanel über den `FileIconService`
+  (`app/core/file-icon/file-icon.service.ts`) dynamisch anhand der Dateierweiterung bzw. Kategorie aufgelöst.
 
 ## 5. GuiExpert Table als Dateiliste
 

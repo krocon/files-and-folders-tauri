@@ -391,7 +391,7 @@ fn candidates() -> Vec<Candidate> {
                 _ => {}
             }
         }
-        mounts.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+        mounts.sort_by_key(|a| a.label.to_lowercase());
         out.extend(mounts);
     }
     out
