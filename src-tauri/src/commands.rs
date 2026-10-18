@@ -28,6 +28,13 @@ use tauri::{AppHandle, Manager, Runtime};
 /// Label of the only window.
 pub const MAIN_WINDOW: &str = "main";
 
+/// Name, version and platform for the About dialog (design 017).
+#[tauri::command]
+pub fn get_app_info<R: Runtime>(app: AppHandle<R>) -> crate::about::AppInfo {
+    let info = app.package_info();
+    crate::about::app_info(&info.name, &info.version.to_string())
+}
+
 /// Lists a directory. `path = None` lists the current user's home directory.
 #[tauri::command]
 pub async fn list_directory<R: Runtime>(

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Files and Folders app icon (own design, 017). Two panes: a folder on the left,
+       a file list on the right. Canvas follows the macOS grid (824 px body, 100 px margin). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f6aa3"/>
+      <stop offset="1" stop-color="#1b3f66"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd25e"/>
+      <stop offset="1" stop-color="#f4a92a"/>
+    </linearGradient>
+    <clipPath id="pane"><rect x="526" y="230" width="318" height="564" rx="40"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <!-- left pane -->
+  <rect x="180" y="230" width="318" height="564" rx="40" fill="#eef3f9"/>
+  <path d="M222 380 h86 l30 34 h118 a18 18 0 0 1 18 18 v196 a18 18 0 0 1 -18 18 h-234 a18 18 0 0 1 -18 -18 v-230 a18 18 0 0 1 18 -18 z" fill="url(#folder)"/>
+  <rect x="204" y="450" width="270" height="12" rx="6" fill="#ffffff" opacity="0.55"/>
+  <!-- right pane: file list with cursor row -->
+  <rect x="526" y="230" width="318" height="564" rx="40" fill="#eef3f9"/>
+  <rect x="526" y="402" width="318" height="70" fill="#9cc3ea" clip-path="url(#pane)"/>
+  <g fill="#2f6aa3">
+    <rect x="566" y="300" width="238" height="26" rx="13"/>
+    <rect x="566" y="424" width="200" height="26" rx="13"/>
+    <rect x="566" y="548" width="226" height="26" rx="13" opacity="0.6"/>
+    <rect x="566" y="672" width="170" height="26" rx="13" opacity="0.6"/>
+  </g>
+</svg>
