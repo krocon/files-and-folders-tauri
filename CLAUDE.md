@@ -3,8 +3,9 @@
 > Leitfaden für Claude (und Menschen) zur Arbeit an **Files and Folders**: einem plattformübergreifenden
 > Dateimanager für macOS, Windows und Linux in Richtung Total Commander.
 > Autor: Marc Kronberg · Repo: https://github.com/krocon/files-and-folders-tauri
+> MIT
 >
-> Neuauflage der älteren Projekte `node-files-and-folders-client` (AngularJS) und `node-files-and-folders-server`
+> Neuauflage des älteren Projektes , siehe Folder: '/old_project', (https://github.com/krocon/files-and-folders-mr)
 > (Node, WebSockets) als **Desktop-App**: Tauri 2 + Angular 22 + Rust. Die Dateiliste ist eine
 > **GuiExpert Table** (`@guiexpert/table`, Quellcode im Mono-Repo `guiexperttable/mono`, gleicher Autor).
 
