@@ -151,9 +151,12 @@ export function convertLegacy(
       continue;
     }
     const kind = lv.name === '--fnf-table-font-size' ? 'length' : 'color';
-    const val = value(lv.name, kind);
+    let val = value(lv.name, kind);
     if (val === null) {
       continue;
+    }
+    if (lv.name === '--fnf-table-font-size' && val === '13px') {
+      val = '14px';
     }
     for (const t of lv.tokens) {
       tokens[t] = val;

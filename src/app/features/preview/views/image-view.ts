@@ -62,7 +62,7 @@ import { PV_TEXTS } from '../preview-texts';
       image-orientation: from-image;
     }
     .dims {
-      font-size: 0.8rem;
+      font-size: var(--font-size-xs);
       color: var(--color-muted);
       padding: 0.15rem 0.4rem;
     }

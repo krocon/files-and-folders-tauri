@@ -11,7 +11,7 @@ import type { PreviewContext } from '../preview-providers';
     .hex {
       margin: 0;
       font-family: var(--font-mono);
-      font-size: 0.85rem;
+      font-size: var(--font-size-xs);
       line-height: 1.35;
     }
   `,

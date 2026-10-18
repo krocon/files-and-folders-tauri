@@ -91,7 +91,7 @@ describe('old designs (prompt 019)', () => {
           expect(theme.tokens[token], `${n} ${token}`).toBe(value);
         }
       }
-      expect(theme.tokens['--font-size-list']).toBe('13px');
+      expect(theme.tokens['--font-size-list']).toBe('14px');
     }
   });
 

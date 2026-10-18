@@ -1,7 +1,7 @@
 :host {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: var(--font-size-xs);
   line-height: 1.35;
 }
 
