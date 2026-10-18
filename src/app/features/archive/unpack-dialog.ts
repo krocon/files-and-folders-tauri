@@ -90,7 +90,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
       </app-modal>
     }
   `,
-  styleUrl: '../ops/ops-dialog.scss',
+  styleUrl: '../ops/ops-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UnpackDialog {

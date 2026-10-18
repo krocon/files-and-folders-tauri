@@ -42,7 +42,7 @@ function scrollParent(el: HTMLElement): HTMLElement | null {
 @Component({
   selector: 'app-text-view',
   template: `<div #lines class="lines" [class.wrap]="context().wrap"></div>`,
-  styleUrl: './text-view.scss',
+  styleUrl: './text-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[style.--fnf-gutter]': 'gutter()' },
 })

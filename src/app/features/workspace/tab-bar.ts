@@ -35,7 +35,7 @@ interface OpenMenu {
   selector: 'app-tab-bar',
   imports: [ContextMenu],
   templateUrl: './tab-bar.html',
-  styleUrl: './tab-bar.scss',
+  styleUrl: './tab-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TabBar {

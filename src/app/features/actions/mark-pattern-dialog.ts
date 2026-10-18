@@ -82,7 +82,7 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
       </form>
     </app-modal>
   `,
-  styleUrl: './dialog-form.scss',
+  styleUrl: './dialog-form.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MarkPatternDialog {

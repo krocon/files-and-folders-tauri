@@ -100,7 +100,7 @@ const SHOWN = 5;
       </app-modal>
     }
   `,
-  styleUrl: './ops-dialog.scss',
+  styleUrl: './ops-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeleteDialog {

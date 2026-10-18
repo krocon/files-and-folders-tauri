@@ -115,7 +115,7 @@ import { WorkspaceStore } from './workspace.store';
     ContextMenu,
   ],
   templateUrl: './workspace.html',
-  styleUrl: './workspace.scss',
+  styleUrl: './workspace.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[style.--fnf-split]': 'ws.splitter()',

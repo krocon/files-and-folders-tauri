@@ -86,7 +86,7 @@ const TOOLS_CATEGORY = 'Tools';
       </ul>
     </app-modal>
   `,
-  styleUrl: './command-palette.scss',
+  styleUrl: './command-palette.css',
   host: {
     '(pointerdown)': 'onPointerDown($event)',
     '(click)': 'onClick($event)',

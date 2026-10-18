@@ -52,7 +52,7 @@ let panelSeq = 0;
   imports: [FileList, TabBar, QuickView],
   providers: [FileBrowserStore],
   templateUrl: './file-panel.html',
-  styleUrl: './file-panel.scss',
+  styleUrl: './file-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.side-left]': "side() === 'left'",

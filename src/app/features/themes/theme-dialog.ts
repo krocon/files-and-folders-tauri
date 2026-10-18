@@ -233,7 +233,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
       </div>
     </app-modal>
   `,
-  styleUrls: ['../../shared/dialog/tool-dialog.scss', './theme-dialog.scss'],
+  styleUrls: ['../../shared/dialog/tool-dialog.css', './theme-dialog.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ThemeDialog {

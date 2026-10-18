@@ -14,7 +14,7 @@ import { Theme } from './theme.models';
 
 /**
  * The schemes shipped with the app. `light`/`dark` (design 013) are the base
- * schemes – same values as `src/styles.scss` (test) – that fill the gaps of
+ * schemes – same values as `src/styles.css` (test) – that fill the gaps of
  * every other scheme. The eight designs of the old version (design 019) are
  * converted from `legacy/*.json` (= `docs/legacy-themes/`, unchanged, test).
  */

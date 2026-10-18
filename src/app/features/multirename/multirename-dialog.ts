@@ -47,7 +47,7 @@ const CATEGORIES = [...new Set(MACROS.map((m) => m.category))];
   selector: 'app-multi-rename-dialog',
   imports: [Modal, PreviewTable],
   templateUrl: './multirename-dialog.html',
-  styleUrl: './multirename-dialog.scss',
+  styleUrl: './multirename-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
 })

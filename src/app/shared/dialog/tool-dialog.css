@@ -1,5 +1,5 @@
-// Shared layout of the tool dialogs with a preview grid (design 008: group
-// files, clean folders, multi-mkdir) – the same look as multi-rename (007).
+/* Shared layout of the tool dialogs with a preview grid (design 008: group */
+/* files, clean folders, multi-mkdir) – the same look as multi-rename (007). */
 .tool {
   display: flex;
   flex-direction: column;

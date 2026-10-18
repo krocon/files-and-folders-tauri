@@ -3,6 +3,8 @@
 Fertig, reviewt und in `main`: **001–014, 016, 017, 019** (Details: `prompts/README.md`, Design-Dokumente
 `prompts/NNN-*.design.md` mit Abschnitten „Review“ und „Offen“). `pnpm check` auf `main` grün (Linux).
 
+## 0. Achtung: ich habe das SCSS auf CSS umgestellt
+
 ## 1. Laufende Prompts
 
 - [ ] **015 Einstellungen/i18n** – Branch `feat/einstellungen-i18n` (PR #9, noch nicht mergen).

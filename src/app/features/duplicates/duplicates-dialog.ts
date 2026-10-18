@@ -134,7 +134,7 @@ const ERR = 'fnf-dup-error';
       </app-modal>
     }
   `,
-  styleUrls: ['../../shared/dialog/tool-dialog.scss', '../search/find-dialog.scss'],
+  styleUrls: ['../../shared/dialog/tool-dialog.css', '../search/find-dialog.css'],
   styles: [
     `
       .col {

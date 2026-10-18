@@ -267,7 +267,7 @@
   padding: 0 var(--spacing-2);
 }
 
-// inside an archive (design 016 E1): read-only hint next to the breadcrumbs
+/* inside an archive (design 016 E1): read-only hint next to the breadcrumbs */
 .archive-badge {
   flex: none;
   padding: 0 var(--spacing-1);
@@ -282,7 +282,7 @@
   }
 }
 
-// selection helpers of a duplicate tab (design 016 E6)
+/* selection helpers of a duplicate tab (design 016 E6) */
 .dup-keep {
   display: flex;
   flex: none;

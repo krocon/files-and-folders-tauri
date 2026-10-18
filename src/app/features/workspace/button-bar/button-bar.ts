@@ -95,7 +95,7 @@ interface ToolButton {
       />
     }
   `,
-  styleUrl: './button-bar.scss',
+  styleUrl: './button-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ButtonBar {

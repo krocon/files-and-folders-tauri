@@ -171,7 +171,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
       </app-modal>
     }
   `,
-  styleUrl: './viewer-dialog.scss',
+  styleUrl: './viewer-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ViewerDialog {

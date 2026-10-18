@@ -52,7 +52,7 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
       (tableReady)="onTableReady($event)"
     />
   `,
-  styleUrl: './file-list.scss',
+  styleUrl: './file-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(keydown)': 'onKeydown($event)',

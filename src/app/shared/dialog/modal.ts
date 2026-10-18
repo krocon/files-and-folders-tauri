@@ -34,7 +34,7 @@ let modalSeq = 0;
       </div>
     </div>
   `,
-  styleUrl: './modal.scss',
+  styleUrl: './modal.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
 })

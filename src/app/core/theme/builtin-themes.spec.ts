@@ -54,8 +54,8 @@ describe('built-in themes', () => {
     }
   });
 
-  it('match the tokens in src/styles.scss (light = :root, dark = :root + dark block)', () => {
-    const scss = readFileSync('src/styles.scss', 'utf8');
+  it('match the tokens in src/styles.css (light = :root, dark = :root + dark block)', () => {
+    const scss = readFileSync('src/styles.css', 'utf8');
     const media = scss.indexOf('@media (prefers-color-scheme: dark)');
     const root = declarations(scss.slice(scss.indexOf(':root {'), media));
     const darkBlock = scss.slice(media, scss.indexOf('\n}\n', media));

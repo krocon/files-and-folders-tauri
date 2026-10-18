@@ -1,7 +1,7 @@
 /**
  * Catalog of the theme tokens (design 013 E2/§3): the one place for the editor,
  * the contrast check and the completeness tests. Values live in
- * `src/styles.scss` and the built-in schemes `themes/*.json`.
+ * `src/styles.css` and the built-in schemes `themes/*.json`.
  */
 export type TokenGroup =
   'general' | 'list' | 'activePanel' | 'header' | 'footer' | 'dialog' | 'scrollbar' | 'tooltip';

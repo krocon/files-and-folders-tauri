@@ -362,7 +362,7 @@ const ERR = 'fnf-find-error';
       </app-modal>
     }
   `,
-  styleUrls: ['../../shared/dialog/tool-dialog.scss', './find-dialog.scss'],
+  styleUrls: ['../../shared/dialog/tool-dialog.css', './find-dialog.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FindDialog {

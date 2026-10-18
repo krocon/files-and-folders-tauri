@@ -1,4 +1,4 @@
-// Colour scheme dialog (design 013 E6). Uses the shared tool-dialog look for inputs and buttons.
+/* Colour scheme dialog (design 013 E6). Uses the shared tool-dialog look for inputs and buttons. */
 
 .themes {
   display: flex;

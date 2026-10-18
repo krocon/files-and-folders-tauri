@@ -93,7 +93,7 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
       </app-modal>
     }
   `,
-  styleUrl: '../ops/ops-dialog.scss',
+  styleUrl: '../ops/ops-dialog.css',
   styles: [
     `
       .radios {

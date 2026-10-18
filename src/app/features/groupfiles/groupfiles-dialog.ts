@@ -121,7 +121,7 @@ function rowClass(r: GroupRow): string | null {
       </app-modal>
     }
   `,
-  styleUrl: '../../shared/dialog/tool-dialog.scss',
+  styleUrl: '../../shared/dialog/tool-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
 })

@@ -117,7 +117,7 @@ export interface MenuItem {
       />
     }
   `,
-  styleUrl: './context-menu.scss',
+  styleUrl: './context-menu.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet],
   host: {

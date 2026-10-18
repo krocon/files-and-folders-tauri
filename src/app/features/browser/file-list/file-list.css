@@ -11,7 +11,7 @@
     outline: var(--focus-ring-width) solid var(--color-focus);
   }
 
-  // a drag would drop into this panel's folder (design 012 E5)
+  /* a drag would drop into this panel's folder (design 012 E5) */
   &.drop-target {
     outline: var(--focus-ring-width) dashed var(--color-accent);
     background: var(--color-row-hover);

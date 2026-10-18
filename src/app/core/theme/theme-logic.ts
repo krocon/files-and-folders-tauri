@@ -39,7 +39,7 @@ export function isSafeValue(value: string): boolean {
 /** `--fnf-*` of old scheme files: kept for prompt 019, never applied. */
 export type StoredKind = TokenKind | 'legacy';
 
-/** Layout variables of `styles.scss` that share a theme prefix – never theme tokens. */
+/** Layout variables of `styles.css` that share a theme prefix – never theme tokens. */
 const LAYOUT_TOKENS: ReadonlySet<string> = new Set([
   '--font-sans',
   '--font-mono',

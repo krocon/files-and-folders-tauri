@@ -1,5 +1,5 @@
 /*
- * Bridge between our design tokens (src/styles.scss, design 013 §3) and the GuiExpert Table.
+ * Bridge between our design tokens (src/styles.css, design 013 §3) and the GuiExpert Table.
  * The table defines its --ge-table-* variables on <html> (light, or html[data-theme="dark"],
  * which the ThemeService sets from the scheme's `dark` flag); redefining them on the table host
  * (.ge-table) wins by inheritance. Only this file knows --ge-table-*.
