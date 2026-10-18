@@ -184,11 +184,32 @@ Tooltips aus Dialog-, sonst Kopffarben.
 
 ## 6. Abweichungen bei der Umsetzung
 
-- (während der Umsetzung ergänzt)
+- **Dialoge aus 005–009 nutzten noch allgemeine Tokens** (`--color-text/bg/border` für Eingaben, `--color-accent` für
+  den Primärknopf) – im E2E zeigte Norton blaue statt gelber Knöpfe. Umgestellt auf `--color-input-*` bzw.
+  `--color-button-primary-*` (Ops-, Konflikt-, Job-, Multi-Rename-, Such-, Kürzel-Dialog, Palette, Bestätigung).
+- Neues Kontrastpaar „Muted text in dialogs“ (Hinweistexte auf der Dialogfläche; Norton: Teal). Ein Paar „Fehlertext
+  in Dialogen“ (`--color-danger` auf Dialogfläche) wurde probiert und wieder entfernt: Norton (#a80000 auf Teal) ist
+  nur mit einem eigenen Token lösbar, sonst würde der Löschen-Knopf weiß (→ Offen).
+- Korrektur-Regeln nach dem ersten Lauf geschärft (E4): kleinste Änderung statt immer der Text (Light: Cursor-Blau
+  minimal dunkler statt dunkler Schrift), Highlight-Hintergründe nur Richtung Listenhintergrund (sonst pendelte
+  der inaktive Cursor von cypress), „dienende“ Farben (Fokus, Text auf Akzent, …) zuerst.
+- Light: „markiert unter dem Cursor“ ist weiß wie der Cursortext (die Mischfarbe erreicht auf dem Cursor-Blau keine
+  4,5:1) – wie in der alten Version (Screenshot 2016: weißer Text, rotes Häkchen); das Häkchen bleibt sichtbar.
 
 ## 7. Review
 
-**Selbstprüfung:** (Phase 5)
+**Selbstprüfung:**
+
+- Werte aus alten Dateien gehen durch `sanitizeTokens` (013: `isSafeValue`, kein `url(` …) **vor** der Umrechnung;
+  die Umrechnung erzeugt nur `#rrggbb`/`rgb(r g b / a)` aus `parseColor`, Längen nur über `tokenValueOk`; angewendet
+  werden weiter nur Katalog-Tokens (`applicableToken`). Behaltene `--fnf-*` werden nie gesetzt.
+- `fixContrast` terminiert (≤ 12 Runden × Paare, Binärsuche 24 Schritte); Ergebnis für alle acht Dateien im Test
+  ohne verletztes Paar; Import einer beliebigen Datei kann Paare offen lassen → wie 013: nicht ausgewählt, Liste.
+- Container-Override `--color-focus: var(--color-…-focus)`: kein Zyklus, weil `--color-…-focus` auf `<html>` aufgelöst
+  und als Wert geerbt wird (im Fenster geprüft: Fokusring am Eingabefeld des Norton-Dialogs in `--color-dialog-focus`;
+  Kopf/Statuszeile nicht eigens angesehen).
+- Rust: `bound` ließ bisher nur `fixed` durch (alles andere → Default `system`); mit Default `fixed` wäre `system`
+  verloren gegangen – jetzt beide erlaubt (Test).
 
 ### Review (separater Agent) – Ergebnis
 
@@ -198,11 +219,29 @@ Tooltips aus Dialog-, sonst Kopffarben.
 ## 8. Fortschritt
 
 - [x] Phase 1: dieses Dokument · [x] Freigabe (Empfehlungen übernommen)
-- [ ] Phase 2 Rust: Default-Auswahl, `system` bleibt (Test)
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
+- [x] Phase 2 Rust: Default-Auswahl (fest `classic-light`, Paar light/coffee), `system` bleibt (Test)
+- [x] Phase 3 Frontend: `legacy/*.json`, `legacy-theme-map.ts`, `legacy-theme.ts`, `contrast-fix.ts`, eingebaute
+  Schemata (10), 4 neue Tokens + Brücke (`active-list-border`), Fokus-Overrides, Import/Export alt im Dialog,
+  Dialoge auf Dialog-Tokens; Specs `legacy-theme` (9), `builtin-themes`, `theme.service` (+2), Dialog/Palette/Menü;
+  Bericht `docs/legacy-themes-contrast.md`
+- [x] Phase 4 E2E (Xvfb :94, Linux, Testordner mit Umlauten, Emoji, Leerzeichen, Hidden, Symlink): erster Start →
+  Light (alt); alle acht Designs per „nächstes Schema“ ohne Neustart – je Screenshot Liste (Cursor aktiv/inaktiv,
+  markiert, markiert unter dem Cursor, Symlink, aktives Panel) und Dialog „Create folder“; Norton zusätzlich
+  „Delete“ (Teal-Dialog, gelber Primärknopf mit roter Schrift, weißer Abbrechen-Knopf); Theme-Dialog listet
+  eigene/8 alte/Modern; Import `norton.json` unter dem Cursor → „13 colours … adjusted“, sieht aus wie das
+  mitgelieferte; „Export (old format)“ → `norton.theme.json` mit 76 Variablen. Vergleich mit
+  `docs/legacy-screenshots/fnf-node-2016.png` (nur Light-artig vorhanden): weiße Liste, blauer Cursor, rote
+  Markierung, grauer Kopf/Fuß – passt (Cursor-Blau leicht dunkler, `#007db5` statt `#0098db`). Für die anderen
+  sieben gibt es keine Screenshots der alten Version. Nicht geprüft: macOS/Windows.
+- [x] Phase 5 Doku: architecture, roadmap, feature-parity, README, CLAUDE.md (§1, §3), prompts/README
 
 ## 9. Offen
 
-- (Phase 5)
+- Eigenes Token für Fehlertexte in Dialogen (`--color-dialog-error-text`) + Kontrastpaar – Norton: Fehlertext
+  `#a80000` auf Teal heute 1,9:1 (Text auf Liste/Statuszeile ist geprüft).
+- Marc: die Korrekturen in `docs/legacy-themes-contrast.md` durchsehen (größte: paper 26 Farben, Bitbucket
+  Hover dunkelblau → hell, Norton Dialog `#05a8a8` → `#048080`); einzelne Werte lassen sich als eigenes Schema
+  zurückdrehen.
+- Hinweis im Editor, welche Werte eines alten Designs korrigiert sind (heute nur im Bericht und in der Import-Meldung).
+- Kurzer Erst-Frame: `styles.scss` hat die Werte von „Modern light“, bis der ThemeService das alte Light setzt
+  (ein Frame; 015 kann den Default in `styles.scss` übernehmen).
