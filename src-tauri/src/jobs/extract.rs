@@ -120,9 +120,16 @@ impl Run<'_> {
         let mut written = 0u64;
         let result = (|| -> Result<(), WriteError> {
             // `create_new`: never opens an existing file or a link planted under the temporary name
-            let mut out = OpenOptions::new()
-                .write(true)
-                .create_new(true)
+            let mut options = OpenOptions::new();
+            options.write(true).create_new(true);
+            // the archive's permission bits at creation, so the umask applies (like `tar`
+            // without `-p`); never setuid/setgid/sticky (review 016 #3)
+            #[cfg(unix)]
+            if let Some(m) = entry.mode {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(m & 0o777);
+            }
+            let mut out = options
                 .open(&tmp)
                 .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
             let mut buf = vec![0u8; BLOCK];
@@ -164,7 +171,6 @@ impl Run<'_> {
                 let _ = out.set_modified(UNIX_EPOCH + Duration::from_millis(ms));
             }
             drop(out);
-            set_mode(&tmp, entry.mode);
             let placed = if overwrite {
                 fs::rename(&tmp, dst)
             } else {
@@ -432,19 +438,6 @@ fn read_error(e: &io::Error, path: &Path) -> FsError {
     }
 }
 
-/// Unix permission bits from the archive (never setuid/setgid/sticky).
-fn set_mode(path: &Path, mode: Option<u32>) {
-    #[cfg(unix)]
-    if let Some(m) = mode {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(path, fs::Permissions::from_mode(m & 0o777));
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = (path, mode);
-    }
-}
-
 /// The entries to extract with their place below the target root: a selected
 /// folder brings everything below it, each selection under its own name.
 fn plan(index: &archive::ArchiveIndex, selections: &[Vec<String>]) -> (Vec<Item>, Vec<usize>) {
@@ -663,21 +656,21 @@ fn extract_tar(
     };
     let mut tar = tar::Archive::new(archive::tar_stream(file, format, archive_size));
     let entries = match tar.entries() {
-        Ok(e) => e,
+        Ok(e) => archive::TarEntries::new(e),
         Err(e) => {
             run.fail(archive_path, archive::tar_error(&e, archive_path));
             return false;
         }
     };
     let mut next = items.iter().peekable();
-    for (pos, entry) in entries.enumerate() {
+    for entry in entries {
         if run.control.is_cancelled() || !run.control.wait_while_paused() {
             return true;
         }
         let Some(item) = next.peek().copied() else {
             break; // nothing more to extract
         };
-        let mut entry = match entry {
+        let (pos, _, mut entry) = match entry {
             Ok(e) => e,
             Err(e) => {
                 // the stream is broken: the rest cannot be reached

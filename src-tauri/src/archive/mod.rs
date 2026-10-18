@@ -19,7 +19,7 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
 /// Entries per archive at most (listing and extraction).
 pub const MAX_ENTRIES: usize = 200_000;
@@ -31,6 +31,12 @@ pub const MAX_RATIO: u64 = 1100;
 pub const RATIO_SLACK: u64 = 1 << 20;
 /// Archives whose index is kept (path + size + modification time as key).
 const CACHE_SIZE: usize = 4;
+/// Longest TAR metadata header (GNU long name/link, PAX) read into memory (review 016 #1).
+pub const MAX_TAR_META: u64 = 64 << 10;
+/// Bytes of entry names an index may hold (200 000 entries × long names would fill the RAM).
+pub const MAX_NAME_BYTES: usize = 64 << 20;
+/// How long indexing a TAR stream may take (a huge TAR.GZ must not hold a worker for minutes).
+pub const INDEX_TIME: Duration = Duration::from_secs(30);
 /// Path components examined when resolving a virtual path.
 const MAX_INNER_DEPTH: usize = 256;
 
@@ -124,6 +130,8 @@ pub struct ArchiveIndex {
     pub unsafe_entries: u32,
     pub total_entries: u32,
     pub archive_size: u64,
+    /// Bytes of all stored names (bounded by [`MAX_NAME_BYTES`]).
+    pub name_bytes: usize,
 }
 
 pub(crate) fn archive_error(message: impl Into<String>, path: &Path) -> FsError {
@@ -329,14 +337,17 @@ fn push_entry(
     index.total_entries += 1;
     match sanitize(raw) {
         Ok(name) if name.is_empty() => {}
-        Ok(name) => index.entries.push(IndexEntry {
+        Ok(name) => {
+            index.name_bytes += name.iter().map(|n| n.len() + 1).sum::<usize>();
+            index.entries.push(IndexEntry {
             name,
             kind,
             size: if kind == EntryType::Dir { 0 } else { size },
             modified_ms,
             mode,
             pos,
-        }),
+            })
+        }
         Err(_) => index.unsafe_entries += 1,
     }
 }
@@ -349,8 +360,14 @@ fn too_many(path: &Path) -> FsError {
 }
 
 /// Reads the index of an archive (no data is extracted; TAR.GZ is decompressed
-/// once as a stream). Fails on broken archives and on the zip-bomb limits.
+/// once as a stream). Fails on broken archives, on the zip-bomb limits and when
+/// a TAR stream takes longer than [`INDEX_TIME`].
 pub fn read_index(path: &Path) -> Result<ArchiveIndex, FsError> {
+    read_index_until(path, Instant::now() + INDEX_TIME)
+}
+
+/// [`read_index`] with an explicit deadline for TAR streams (tests).
+pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, FsError> {
     let format = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -367,6 +384,7 @@ pub fn read_index(path: &Path) -> Result<ArchiveIndex, FsError> {
         unsafe_entries: 0,
         total_entries: 0,
         archive_size: meta.len(),
+        name_bytes: 0,
     };
     match format {
         ArchiveFormat::Zip => {
@@ -400,26 +418,197 @@ pub fn read_index(path: &Path) -> Result<ArchiveIndex, FsError> {
                 let mode = e.unix_mode().map(|m| m & 0o777);
                 push_entry(&mut index, &name, kind, e.size(), modified, mode, i);
             }
+            if index.name_bytes > MAX_NAME_BYTES {
+                return Err(too_large(
+                    format!(
+                        "The names in the archive exceed {} MiB – refused",
+                        MAX_NAME_BYTES >> 20
+                    ),
+                    path,
+                ));
+            }
         }
         ArchiveFormat::Tar | ArchiveFormat::TarGz => {
             let mut archive = tar::Archive::new(tar_stream(file, format, meta.len()));
-            let entries = archive.entries().map_err(|e| tar_error(&e, path))?;
-            for (pos, entry) in entries.enumerate() {
-                let entry = entry.map_err(|e| tar_error(&e, path))?;
+            let raw = archive.entries().map_err(|e| tar_error(&e, path))?;
+            for item in TarEntries::new(raw) {
+                let (pos, name, entry) = item.map_err(|e| tar_error(&e, path))?;
                 if index.total_entries as usize >= MAX_ENTRIES {
                     return Err(too_many(path));
                 }
+                if Instant::now() >= deadline {
+                    return Err(too_large(
+                        format!(
+                            "Listing the archive took longer than {} s – too large to show as a folder (it can still be unpacked)",
+                            INDEX_TIME.as_secs()
+                        ),
+                        path,
+                    ));
+                }
                 let header = entry.header();
                 let kind = tar_kind(header.entry_type());
-                let raw = String::from_utf8_lossy(&entry.path_bytes()).into_owned();
+                let raw = name_string(name);
                 let modified = header.mtime().ok().map(|s| (s as i64).saturating_mul(1000));
                 let mode = header.mode().ok().map(|m| m & 0o777);
                 push_entry(&mut index, &raw, kind, entry.size(), modified, mode, pos);
+                if index.name_bytes > MAX_NAME_BYTES {
+                    return Err(too_large(
+                        format!(
+                            "The names in the archive exceed {} MiB – refused",
+                            MAX_NAME_BYTES >> 20
+                        ),
+                        path,
+                    ));
+                }
             }
         }
     }
     check_limits(&index, path)?;
     Ok(index)
+}
+
+/// The real entries of a TAR stream (review 016 #1/#2). The `tar` crate runs in
+/// raw mode – its own handling reads GNU long names and PAX headers with
+/// `read_all`, without any limit – and the metadata headers are handled here:
+/// GNU `L`/`K` and PAX `x`/`g` with at most [`MAX_TAR_META`] bytes, the name
+/// from `L` or PAX `path` goes to the next entry; `g`, `K`, volume and
+/// multi-volume headers are skipped. Metadata headers are never entries and do
+/// not count for `pos` (index and extraction count alike).
+pub(crate) struct TarEntries<'a, R: 'a + Read> {
+    inner: tar::Entries<'a, R>,
+    pos: usize,
+}
+
+/// One real TAR entry: position, raw name bytes, the entry (for its data).
+pub(crate) type TarItem<'a, R> = (usize, Vec<u8>, tar::Entry<'a, R>);
+
+impl<'a, R: Read> TarEntries<'a, R> {
+    pub(crate) fn new(entries: tar::Entries<'a, R>) -> Self {
+        Self {
+            inner: entries.raw(true),
+            pos: 0,
+        }
+    }
+}
+
+fn meta_error(message: &str) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, message.to_string())
+}
+
+/// The data of a metadata header, at most [`MAX_TAR_META`] bytes.
+fn read_meta<R: Read>(entry: &mut tar::Entry<'_, R>) -> io::Result<Vec<u8>> {
+    if entry.size() > MAX_TAR_META {
+        return Err(meta_error(&format!(
+            "metadata header larger than {} KiB – refused",
+            MAX_TAR_META >> 10
+        )));
+    }
+    let mut buf = Vec::with_capacity(entry.size() as usize);
+    entry.take(MAX_TAR_META + 1).read_to_end(&mut buf)?;
+    Ok(buf)
+}
+
+/// The value of `key` in PAX records (`"<len> key=value\n"`); malformed → error.
+fn pax_value(mut data: &[u8], key: &[u8]) -> io::Result<Option<Vec<u8>>> {
+    let mut found = None;
+    while !data.is_empty() {
+        let sp = data
+            .iter()
+            .position(|b| *b == b' ')
+            .ok_or_else(|| meta_error("malformed PAX header"))?;
+        let len: usize = std::str::from_utf8(&data[..sp])
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .filter(|l| *l > sp + 1 && *l <= data.len())
+            .ok_or_else(|| meta_error("malformed PAX header"))?;
+        let record = &data[sp + 1..len];
+        let record = record.strip_suffix(b"\n").unwrap_or(record);
+        if let Some(eq) = record.iter().position(|b| *b == b'=') {
+            if &record[..eq] == key {
+                found = Some(record[eq + 1..].to_vec());
+            }
+        }
+        data = &data[len..];
+    }
+    Ok(found)
+}
+
+impl<'a, R: Read> Iterator for TarEntries<'a, R> {
+    type Item = io::Result<TarItem<'a, R>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut long_name: Option<Vec<u8>> = None;
+        let mut pax_path: Option<Vec<u8>> = None;
+        let mut pending = false;
+        loop {
+            let mut entry = match self.inner.next() {
+                None if pending => {
+                    return Some(Err(meta_error("metadata header without an entry")));
+                }
+                None => return None,
+                Some(Err(e)) => return Some(Err(e)),
+                Some(Ok(e)) => e,
+            };
+            let t = entry.header().entry_type();
+            let meta = t.is_gnu_longname()
+                || t.is_gnu_longlink()
+                || t.is_pax_local_extensions()
+                || t.is_pax_global_extensions()
+                || matches!(t.as_byte(), b'V' | b'M' | b'N');
+            if meta {
+                let data = match read_meta(&mut entry) {
+                    Ok(d) => d,
+                    Err(e) => return Some(Err(e)),
+                };
+                if t.is_gnu_longname() {
+                    let end = data.iter().position(|b| *b == 0).unwrap_or(data.len());
+                    long_name = Some(data[..end].to_vec());
+                    pending = true;
+                } else if t.is_pax_local_extensions() {
+                    match pax_value(&data, b"path") {
+                        Ok(v) => pax_path = v.or(pax_path),
+                        Err(e) => return Some(Err(e)),
+                    }
+                    // raw mode reads the header size: a PAX size (files > 8 GiB) would desync the stream
+                    match pax_value(&data, b"size") {
+                        Ok(Some(_)) => {
+                            return Some(Err(meta_error(
+                                "PAX size headers (files over 8 GiB) are not supported",
+                            )));
+                        }
+                        Ok(None) => {}
+                        Err(e) => return Some(Err(e)),
+                    }
+                    pending = true;
+                } else if t.is_gnu_longlink() {
+                    pending = true;
+                }
+                continue;
+            }
+            if t.is_gnu_sparse()
+                && entry
+                    .header()
+                    .as_gnu()
+                    .is_some_and(tar::GnuHeader::is_extended)
+            {
+                return Some(Err(meta_error(
+                    "GNU sparse files with extended headers are not supported",
+                )));
+            }
+            let name = pax_path
+                .take()
+                .or(long_name.take())
+                .unwrap_or_else(|| entry.path_bytes().into_owned());
+            let pos = self.pos;
+            self.pos += 1;
+            return Some(Ok((pos, name, entry)));
+        }
+    }
+}
+
+/// A raw TAR name as text without a second copy when it is valid UTF-8.
+pub(crate) fn name_string(raw: Vec<u8>) -> String {
+    String::from_utf8(raw).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
 
 pub(crate) fn tar_kind(t: tar::EntryType) -> EntryType {

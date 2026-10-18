@@ -291,8 +291,10 @@ pub fn sanitize(session: &mut Session) {
 
 /// Replaces tab paths that are no longer directories by the nearest existing
 /// parent directory (lexically, symlinks are not resolved), or by the home
-/// directory (`None`) if nothing exists. Paths into an existing archive stay.
-/// Returns every replacement.
+/// directory (`None`) if nothing exists. A tab in (or on) an existing archive
+/// comes back at the archive's folder with the cursor on the archive – archives
+/// are never opened at start-up (a broken or huge one would do it at every
+/// start, review 016 #1); that is not reported. Returns every replacement.
 pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
     let mut adjusted = Vec::new();
     for panel in [&mut session.panels.left, &mut session.panels.right] {
@@ -303,11 +305,17 @@ pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
             let replacement = match validate_input_path(&raw) {
                 Ok(p) => {
                     let found = nearest_existing_dir(&p);
-                    // a folder inside an archive (design 016 E1) stays while the archive exists
-                    if found.as_deref() == Some(p.as_path())
-                        || crate::archive::resolve(&p).is_some()
-                    {
+                    if found.as_deref() == Some(p.as_path()) {
                         continue;
+                    }
+                    if let Some((archive, _)) = crate::archive::resolve(&p) {
+                        if let Some(folder) = archive.parent() {
+                            tab.path = Some(folder.to_string_lossy().into_owned());
+                            tab.title = String::new();
+                            tab.cursor = Some(archive.to_string_lossy().into_owned());
+                            tab.table = tab.table.take().map(drop_scroll);
+                            continue;
+                        }
                     }
                     found
                 }
@@ -674,9 +682,11 @@ mod tests {
         assert_eq!(s.panels.right.tabs[0].path, None);
     }
 
-    /// E2E 016: a tab inside an archive (virtual path) survives a restart while the archive exists.
+    /// E2E 016 + review 016 #1: a tab inside an archive comes back at the folder of the
+    /// archive with the cursor on it – a broken or huge archive must not be opened at
+    /// every start (crash loop).
     #[test]
-    fn tabs_inside_an_archive_are_kept() {
+    fn tabs_inside_an_archive_reopen_at_its_folder() {
         let dir = tempdir().unwrap();
         let zip = dir.path().join("a ü.zip");
         crate::archive::tests::make_zip(
@@ -692,8 +702,20 @@ mod tests {
             .into_owned();
         let mut s = Session::default();
         s.panels.left.tabs = vec![tab("a", Some(&inside)), tab("b", Some(&gone))];
+        s.panels.left.tabs[0].cursor = Some(zip.join("ordner/x.txt").to_string_lossy().into_owned());
         let adjusted = resolve_missing_paths(&mut s);
-        assert_eq!(s.panels.left.tabs[0].path.as_deref(), Some(inside.as_str()));
+        let folder = dir.path().to_string_lossy().into_owned();
+        let left = &s.panels.left.tabs[0];
+        assert_eq!(left.path.as_deref(), Some(folder.as_str()));
+        assert_eq!(left.cursor.as_deref(), Some(zip.to_string_lossy().as_ref()));
+        // the archive file itself is a file, never a folder to open
+        s.panels.left.tabs = vec![tab("c", Some(&zip.to_string_lossy()))];
+        assert_eq!(resolve_missing_paths(&mut s).len(), 0);
+        assert_eq!(s.panels.left.tabs[0].path.as_deref(), Some(folder.as_str()));
+        assert_eq!(
+            s.panels.left.tabs[0].cursor.as_deref(),
+            Some(zip.to_string_lossy().as_ref())
+        );
         assert_eq!(
             adjusted.len(),
             1,

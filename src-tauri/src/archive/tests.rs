@@ -286,6 +286,7 @@ fn zip_bombs_are_refused() {
         unsafe_entries: 0,
         total_entries: 2,
         archive_size: 42_000,
+        name_bytes: 0,
     };
     assert_eq!(
         check_limits(&index, p).unwrap_err().code,
@@ -335,4 +336,126 @@ fn the_cache_notices_a_changed_archive() {
     make_zip(&z, &[E::File("eins", b"1"), E::File("zwei", b"22")]);
     // another size → another key
     assert_eq!(list(&z, &[]).unwrap().entries.len(), 2);
+}
+
+/// A PAX record `"<len> key=value\n"` (the length counts itself).
+fn pax_record(key: &str, value: &str) -> Vec<u8> {
+    let body = format!(" {key}={value}\n");
+    let mut len = body.len() + 1;
+    while format!("{len}").len() + body.len() != len {
+        len += 1;
+    }
+    format!("{len}{body}").into_bytes()
+}
+
+fn meta_header(kind: tar::EntryType, name: &str, size: usize) -> tar::Header {
+    let mut h = tar::Header::new_ustar();
+    h.set_path(name).unwrap();
+    h.set_entry_type(kind);
+    h.set_size(size as u64);
+    h.set_mode(0o644);
+    h.set_cksum();
+    h
+}
+
+/// The long name of [`make_meta_tar`] (GNU `L` header).
+pub(crate) const LONG_NAME: &str = "lang/ein sehr langer Ordnername mit Ümlauten und mehr als hundert Zeichen damit der Header nicht reicht/datei.txt";
+
+/// A TAR with the metadata headers of real archives: a PAX global header
+/// (`g`), a PAX local header (`x`) carrying the path, and a GNU long name (`L`).
+pub(crate) fn make_meta_tar(path: &Path) {
+    let mut data: Vec<u8> = Vec::new();
+    {
+        let mut b = tar::Builder::new(&mut data);
+        let global = pax_record("comment", "made by a test");
+        b.append(
+            &meta_header(tar::EntryType::XGlobalHeader, "pax_global_header", global.len()),
+            &global[..],
+        )
+        .unwrap();
+        let local = pax_record("path", "pax/über lange Wege.txt");
+        b.append(
+            &meta_header(tar::EntryType::XHeader, "PaxHeaders/x", local.len()),
+            &local[..],
+        )
+        .unwrap();
+        let mut h = tar::Header::new_ustar();
+        h.set_path("short-ignored.txt").unwrap();
+        h.set_size(3);
+        h.set_mode(0o644);
+        h.set_cksum();
+        b.append(&h, &b"pax"[..]).unwrap();
+        let mut h = tar::Header::new_gnu();
+        h.set_size(4);
+        h.set_mode(0o644);
+        b.append_data(&mut h, LONG_NAME, &b"lang"[..]).unwrap();
+        b.finish().unwrap();
+    }
+    fs::write(path, data).unwrap();
+}
+
+/// Review 016 #1: a 400 KB TAR.GZ whose GNU long name unpacks to ~400 MB – it is
+/// refused at the header, nothing of it is read into memory.
+#[test]
+fn a_huge_long_name_header_is_refused_without_reading_it() {
+    let d = tempdir().unwrap();
+    let p = d.path().join("longname.tgz");
+    fs::write(&p, include_bytes!("testdata/longname-400k.tgz")).unwrap();
+    let start = std::time::Instant::now();
+    let err = read_index(&p).unwrap_err();
+    assert_eq!(err.code, FsErrorCode::ArchiveError, "{err:?}");
+    assert!(err.message.contains("header"), "{}", err.message);
+    assert!(start.elapsed() < std::time::Duration::from_secs(3));
+}
+
+/// Review 016 #1: the same for PAX headers (`x`) above the limit.
+#[test]
+fn a_huge_pax_header_is_refused() {
+    let d = tempdir().unwrap();
+    let p = d.path().join("pax.tar");
+    let mut data: Vec<u8> = Vec::new();
+    {
+        let mut b = tar::Builder::new(&mut data);
+        let big = pax_record("comment", &"x".repeat(80 << 10));
+        b.append(
+            &meta_header(tar::EntryType::XHeader, "PaxHeaders/x", big.len()),
+            &big[..],
+        )
+        .unwrap();
+        let mut h = tar::Header::new_ustar();
+        h.set_path("a.txt").unwrap();
+        h.set_size(0);
+        h.set_cksum();
+        b.append(&h, io::empty()).unwrap();
+        b.finish().unwrap();
+    }
+    fs::write(&p, data).unwrap();
+    assert_eq!(read_index(&p).unwrap_err().code, FsErrorCode::ArchiveError);
+}
+
+/// Review 016 #2: PAX/GNU metadata headers are no entries; their names apply.
+#[test]
+fn tar_metadata_headers_are_not_entries() {
+    let d = tempdir().unwrap();
+    let p = d.path().join("meta.tar");
+    make_meta_tar(&p);
+    let index = read_index(&p).unwrap();
+    let names: Vec<String> = index.entries.iter().map(|e| e.name.join("/")).collect();
+    assert_eq!(names, vec!["pax/über lange Wege.txt", LONG_NAME]);
+    assert_eq!(index.total_entries, 2);
+    assert_eq!(index.unsafe_entries, 0);
+    assert_eq!(index.entries[0].size, 3);
+    assert_eq!(index.entries[1].size, 4);
+}
+
+/// Review 016 #1: indexing a TAR stream stops at its deadline (a huge TAR.GZ
+/// must not hold a worker for minutes).
+#[test]
+fn tar_indexing_has_a_deadline() {
+    let d = tempdir().unwrap();
+    let t = d.path().join("a.tgz");
+    make_tar(&t, &[E::File("a.txt", b"a"), E::File("b.txt", b"b")], true);
+    let err = read_index_until(&t, std::time::Instant::now()).unwrap_err();
+    assert_eq!(err.code, FsErrorCode::ArchiveTooLarge, "{err:?}");
+    assert!(read_index(&t).is_ok());
 }

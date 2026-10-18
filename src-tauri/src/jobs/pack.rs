@@ -14,7 +14,7 @@ use super::{
 use crate::archive::{ArchiveFormat, zip_time};
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
-use crate::platform::{open_regular_file, rename_noreplace};
+use crate::platform::{open_regular_file_no_follow, rename_noreplace};
 use std::collections::HashSet;
 use std::fs::{self, File, Metadata, OpenOptions};
 use std::io::{self, BufWriter, Read};
@@ -40,6 +40,38 @@ impl<R: Read> Read for Counting<'_, '_, R> {
         let n = self.inner.read(buf)?;
         self.rep.progress.bytes_done += n as u64;
         self.rep.tick(false);
+        Ok(n)
+    }
+}
+
+/// Yields exactly `left` bytes or fails with `UnexpectedEof` (review 016 #4): a
+/// TAR header is written before the data, so a file that shrinks while it is
+/// read must fail its entry (and the job) instead of desyncing the archive.
+struct ExactLen<'r> {
+    inner: &'r mut dyn Read,
+    left: u64,
+}
+
+impl<'r> ExactLen<'r> {
+    fn new(inner: &'r mut dyn Read, len: u64) -> Self {
+        Self { inner, left: len }
+    }
+}
+
+impl Read for ExactLen<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.left == 0 {
+            return Ok(0);
+        }
+        let max = buf.len().min(usize::try_from(self.left).unwrap_or(usize::MAX));
+        let n = self.inner.read(&mut buf[..max])?;
+        if n == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "The file became shorter while it was packed",
+            ));
+        }
+        self.left -= n as u64;
         Ok(n)
     }
 }
@@ -108,8 +140,9 @@ impl Writer {
                     .map_err(|e| io::Error::other(e.to_string()))?;
                 io::copy(reader, z.as_mut()).map(|_| ())
             }
-            Writer::Tar(b) => b.append_data(&mut header(), rel, reader),
-            Writer::TarGz(b) => b.append_data(&mut header(), rel, reader),
+            // the header promises `len` bytes: a file that shrank fails instead of a broken archive
+            Writer::Tar(b) => b.append_data(&mut header(), rel, ExactLen::new(reader, len)),
+            Writer::TarGz(b) => b.append_data(&mut header(), rel, ExactLen::new(reader, len)),
         }
     }
 
@@ -380,7 +413,7 @@ pub fn run(
                     summary.items_done += 1;
                 }
                 ItemKind::File { .. } => {
-                    let opened = open_regular_file(&item.src).and_then(|f| {
+                    let opened = open_regular_file_no_follow(&item.src).and_then(|f| {
                         let m = f.metadata()?;
                         Ok((f, m))
                     });
@@ -461,4 +494,34 @@ pub fn run(
 fn secs(t: Option<std::time::SystemTime>) -> u64 {
     t.and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map_or(0, |d| d.as_secs())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    /// Review 016 #4: a file that shrinks while it is packed must not leave a TAR
+    /// whose header promises more data than follows (broken archive).
+    #[test]
+    fn a_file_shorter_than_its_size_fails_its_tar_entry() {
+        let d = tempdir().unwrap();
+        let f = d.path().join("zehn.txt");
+        fs::write(&f, b"0123456789").unwrap();
+        let meta = fs::metadata(&f).unwrap();
+        for gz in [false, true] {
+            let out = BufWriter::new(File::create(d.path().join("x.tar")).unwrap());
+            let mut w = if gz {
+                Writer::TarGz(Box::new(tar::Builder::new(
+                    flate2::write::GzEncoder::new(out, flate2::Compression::fast()),
+                )))
+            } else {
+                Writer::Tar(Box::new(tar::Builder::new(out)))
+            };
+            let err = w
+                .add_file("zehn.txt", &meta, 6, &mut &b"0123"[..])
+                .unwrap_err();
+            assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof, "gz {gz}");
+        }
+    }
 }

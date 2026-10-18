@@ -537,3 +537,75 @@ fn wire_format_of_the_archive_jobs() {
     assert_eq!((*format, *level), (ArchiveFormat::TarGz, Some(9)));
     assert!(spec.changed_paths().is_empty());
 }
+
+/// Review 016 #2: entries behind PAX/GNU metadata headers are extracted under
+/// their long names (index and extraction count the same positions).
+#[test]
+fn entries_behind_tar_metadata_headers_are_extracted() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let t = d.path().join("meta.tar");
+    crate::archive::tests::make_meta_tar(&t);
+    let target = d.path().join("ziel");
+    fs::create_dir(&target).unwrap();
+    let info = h.finish(&h.extract(&t, &[], &target, false, ConflictDefault::Ask));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(
+        fs::read(target.join("pax/über lange Wege.txt")).unwrap(),
+        b"pax"
+    );
+    assert_eq!(
+        fs::read(target.join(crate::archive::tests::LONG_NAME)).unwrap(),
+        b"lang"
+    );
+    assert_eq!(info.summary.as_ref().unwrap().items_done, 2);
+    // a single entry behind the headers
+    let one = d.path().join("eins");
+    fs::create_dir(&one).unwrap();
+    let entry = t.join(crate::archive::tests::LONG_NAME);
+    let info = h.finish(&h.extract(&t, &[entry], &one, false, ConflictDefault::Ask));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(fs::read(one.join("datei.txt")).unwrap(), b"lang");
+}
+
+/// The umask of this process (Linux: `/proc/self/status`).
+#[cfg(target_os = "linux")]
+fn umask() -> u32 {
+    let status = fs::read_to_string("/proc/self/status").unwrap();
+    let line = status.lines().find(|l| l.starts_with("Umask:")).unwrap();
+    u32::from_str_radix(line[6..].trim(), 8).unwrap()
+}
+
+/// Review 016 #3: permission bits from the archive go through the umask (like
+/// `tar` without `-p`); setuid/setgid/sticky never.
+#[cfg(target_os = "linux")]
+#[test]
+fn extracted_modes_respect_the_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let t = d.path().join("modes.tar");
+    let mut data: Vec<u8> = Vec::new();
+    {
+        let mut b = tar::Builder::new(&mut data);
+        for (name, mode) in [("offen.sh", 0o777), ("suid", 0o4777)] {
+            let mut hd = tar::Header::new_gnu();
+            hd.set_path(name).unwrap();
+            hd.set_size(1);
+            hd.set_mode(mode);
+            hd.set_cksum();
+            b.append(&hd, &b"x"[..]).unwrap();
+        }
+        b.finish().unwrap();
+    }
+    fs::write(&t, data).unwrap();
+    let target = d.path().join("ziel");
+    fs::create_dir(&target).unwrap();
+    let info = h.finish(&h.extract(&t, &[], &target, false, ConflictDefault::Ask));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let expected = 0o777 & !umask();
+    for name in ["offen.sh", "suid"] {
+        let mode = fs::metadata(target.join(name)).unwrap().permissions().mode() & 0o7777;
+        assert_eq!(mode, expected, "{name}: {mode:o}");
+    }
+}
