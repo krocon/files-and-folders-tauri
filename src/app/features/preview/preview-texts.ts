@@ -1,7 +1,9 @@
-import { formatSize } from '../../shared/format';
+import { formatCount, formatSize } from '../../shared/format';
+import { translatable } from '../../core/i18n/i18n';
+import { PV_DE } from './preview-texts.de';
 
 /** Texts of the viewer, quick view and properties (central, i18n in 015). */
-export const PV_TEXTS = {
+export const PV_EN = {
   viewTitle: (name: string) => `View – ${name}`,
   propertiesTitle: (name: string) => `Properties – ${name}`,
   position: (i: number, n: number) => `${i} / ${n}`,
@@ -42,7 +44,7 @@ export const PV_TEXTS = {
   path: 'Path',
   type: 'Type',
   size: 'Size',
-  bytes: (n: number) => `${n.toLocaleString()} bytes`,
+  bytes: (n: number) => `${formatCount(n)} bytes`,
   created: 'Created',
   modified: 'Modified',
   accessed: 'Accessed',
@@ -62,7 +64,7 @@ export const PV_TEXTS = {
   calculating: 'Calculating…',
   cancel: 'Cancel',
   dirSize: (bytes: number, files: number, dirs: number, unreadable: number) =>
-    `${formatSize(bytes)} (${bytes.toLocaleString()} bytes) in ${files} files, ${dirs} folders` +
+    `${formatSize(bytes)} (${formatCount(bytes)} bytes) in ${files} files, ${dirs} folders` +
     (unreadable ? `, ${unreadable} unreadable` : ''),
   kinds: {
     file: 'File',
@@ -72,3 +74,5 @@ export const PV_TEXTS = {
   } as const,
   changeLater: 'Changing permissions and attributes follows in a later version.',
 } as const;
+
+export const PV_TEXTS = translatable('preview', PV_EN, { de: PV_DE });

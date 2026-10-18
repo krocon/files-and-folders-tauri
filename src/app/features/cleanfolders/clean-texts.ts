@@ -1,5 +1,7 @@
+import { translatable } from '../../core/i18n/i18n';
+import { CL_DE } from './clean-texts.de';
 /** Texts of the clean-folders dialog (central for prompt 015). */
-export const CL_TEXTS = {
+export const CL_EN = {
   title: (where: string) => `Clean folders – ${where}`,
   folders: (n: number) => `${n} folders`,
   startFolders: 'Start folders',
@@ -35,3 +37,5 @@ export const CL_TEXTS = {
     `Cleaning finished – ${n === 1 ? '1 entry' : `${n} entries`} left in place`,
   done: (n: number) => `Cleaned up ${n === 1 ? '1 entry' : `${n} entries`}`,
 };
+
+export const CL_TEXTS = translatable('cleanfolders', CL_EN, { de: CL_DE });

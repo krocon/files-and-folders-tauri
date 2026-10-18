@@ -67,6 +67,13 @@ import { DragGhost } from '../dnd/drag-ghost';
 import { FilePanel } from './file-panel';
 import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
+import { ACT_TEXTS } from '../actions/actions-texts';
+import { SettingsDialog } from '../settings/settings-dialog';
+import { AboutDialog } from '../settings/about-dialog';
+import { registerSettingsActions } from '../settings/settings-actions';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { SETTINGS_TEXTS } from '../settings/settings-texts';
+import { describeSettingsWarning } from '../settings/settings-warnings';
 import { WorkspaceStore } from './workspace.store';
 
 /**
@@ -100,6 +107,8 @@ import { WorkspaceStore } from './workspace.store';
     FindDialog,
     FolderFinderDialog,
     ThemeDialog,
+    SettingsDialog,
+    AboutDialog,
     ContextMenu,
   ],
   templateUrl: './workspace.html',
@@ -114,6 +123,8 @@ import { WorkspaceStore } from './workspace.store';
   },
 })
 export class Workspace implements OnInit {
+  protected readonly act = ACT_TEXTS;
+  private readonly settings = inject(SettingsStore);
   protected readonly ws = inject(WorkspaceStore);
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
@@ -191,6 +202,22 @@ export class Workspace implements OnInit {
         untracked(() => this.announcement.set(text));
       }
     });
+    // problems with settings.json (codes from Rust, design 015) and failed saves
+    effect(() => {
+      const warnings = this.settings.warnings();
+      const failed = this.settings.saveError();
+      untracked(() => {
+        for (const w of warnings) {
+          this.actions.report(describeSettingsWarning(w));
+        }
+        if (failed) {
+          this.actions.report(SETTINGS_TEXTS.saveFailed(failed));
+        }
+        if (warnings.length > 0 || failed) {
+          this.settings.dismissWarnings();
+        }
+      });
+    });
     effect(() => {
       const req = this.jobs.quitRequest();
       if (req) {
@@ -213,7 +240,10 @@ export class Workspace implements OnInit {
   }
 
   ngOnInit(): void {
-    this.destroyRef.onDestroy(registerWorkspaceActions(this.actions, this.ws, this.dialogs));
+    this.destroyRef.onDestroy(
+      registerWorkspaceActions(this.actions, this.ws, this.dialogs, this.settings),
+    );
+    this.destroyRef.onDestroy(registerSettingsActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerJobActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));
     this.destroyRef.onDestroy(registerMultiRenameActions(this.actions, this.mr, this.jobs));
@@ -230,6 +260,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
+    void this.settings.init();
     this.menus.init();
     void this.jobs.init();
     void this.ws.init();

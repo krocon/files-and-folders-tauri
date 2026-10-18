@@ -1,4 +1,5 @@
-import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { toFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -11,7 +12,7 @@ import {
   SearchStats,
 } from '../../core/search/search.models';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import type { FindForm } from './find-form';
+import { FindForm, restoreForm } from './find-form';
 
 /** Hits are shown at most this often while a search runs (`setRows` + sort of up to 100 000 rows). */
 export const PUBLISH_MS = 300;
@@ -89,8 +90,15 @@ export class SearchStore {
   private readonly fresh = new Set<string>();
 
   readonly results = signal<ReadonlyMap<string, SearchResult>>(new Map());
-  /** Last searches (dialog fields), newest first (session only, design 009 E5). */
-  readonly recent = signal<readonly FindForm[]>([]);
+  private readonly settings = inject(SettingsStore);
+  /** Last searches (dialog fields), newest first – kept in the settings (design 009 E5 / 015). */
+  readonly recent = computed<readonly FindForm[]>(() =>
+    this.settings
+      .get('search.recent')
+      .map(restoreForm)
+      .filter((f): f is FindForm => f !== null)
+      .slice(0, MAX_RECENT_SEARCHES),
+  );
   /** Own templates (session only). */
   readonly templates = signal<readonly SearchTemplate[]>([]);
 
@@ -209,9 +217,11 @@ export class SearchStore {
 
   private remember(c: FindForm): void {
     const same = JSON.stringify(c);
-    this.recent.update((r) =>
-      [c, ...r.filter((x) => JSON.stringify(x) !== same)].slice(0, MAX_RECENT_SEARCHES),
+    const next = [c, ...this.recent().filter((x) => JSON.stringify(x) !== same)].slice(
+      0,
+      MAX_RECENT_SEARCHES,
     );
+    this.settings.set('search.recent', next);
   }
 
   /**

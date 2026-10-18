@@ -1,7 +1,7 @@
 import { computed, effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { isParentRow } from '../../core/fs/fs.models';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
 import { MenuApi } from '../../core/menu/menu-api';
 import { NativeMenuSpec } from '../../core/menu/menu.models';
 import { Side } from '../../core/session/session.models';
@@ -20,6 +20,7 @@ import {
 } from './menu-model';
 import { MENU_TEXTS } from './menu-texts';
 import { MenuCloseReason } from '../workspace/context-menu';
+import { ACTION_TEXTS } from '../../core/actions/action-texts';
 
 /** How long the native spec waits for more changes before it is sent (design 014 E7). */
 export const NATIVE_DEBOUNCE_MS = 150;
@@ -78,7 +79,7 @@ export class MenuService {
     this.started = true;
     void this.api
       .subscribe((evt) => this.onNativeEvent(evt.id))
-      .catch((err) => this.actions.report(`Menu: ${toFsError(err).message}`));
+      .catch((err) => this.actions.report(ACTION_TEXTS.menuFailed(errorText(toFsError(err)))));
     const spec = computed(() =>
       toNativeSpec(this.actions, this.actions.platform(), this.dialogs.open() !== null),
     );
@@ -103,7 +104,7 @@ export class MenuService {
           .then((native) => this.mode.set(native ? 'native' : 'html'))
           .catch((err) => {
             this.mode.set('html');
-            this.actions.report(`Menu: ${toFsError(err).message}`);
+            this.actions.report(ACTION_TEXTS.menuFailed(errorText(toFsError(err))));
           });
         return;
       }
@@ -117,7 +118,7 @@ export class MenuService {
       if (changes.length > 0) {
         void this.api
           .setMenuEnabled(changes)
-          .catch((err) => this.actions.report(`Menu: ${toFsError(err).message}`));
+          .catch((err) => this.actions.report(ACTION_TEXTS.menuFailed(errorText(toFsError(err)))));
       }
     };
     effect(

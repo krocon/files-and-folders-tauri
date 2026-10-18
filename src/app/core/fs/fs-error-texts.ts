@@ -1,0 +1,63 @@
+import { translatable, Translation } from '../i18n/i18n';
+import { FsErrorCode } from './fs.models';
+
+/** User-facing description per error code; Rust's `message` stays technical. */
+export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
+  not_found: 'The file or folder does not exist (anymore).',
+  permission_denied: 'Access denied – you do not have permission to read this folder.',
+  not_a_directory: 'This is not a folder.',
+  not_a_file: 'This is a folder, not a file.',
+  executable: 'This file is a program.',
+  target_inside_source: 'The target folder lies inside the source folder.',
+  same_source_target: 'Source and target folder are the same.',
+  disk_full: 'The disk is full.',
+  already_exists: 'A file or folder with this name exists already.',
+  invalid_name: 'This name is not allowed.',
+  dangerous_path: 'This is a drive, your home folder or a system folder.',
+  trash_failed: 'The item could not be moved to the trash.',
+  duplicate_target: 'Another selected entry gets the same name.',
+  undo_unavailable: 'There is nothing to undo.',
+  program_not_found: 'The program was not found – is it installed? (tools.json)',
+  unknown_tool: 'This tool is not configured (anymore).',
+  too_many_files: 'Too many entries for this tool.',
+  too_many: 'Too many items at once.',
+  invalid_pattern: 'The search pattern is invalid.',
+  invalid_menu: 'The menu could not be built.',
+  invalid_settings: 'This file is not a settings export of Files and Folders.',
+  invalid_path: 'The path is invalid.',
+  no_home_directory: 'Your home folder could not be determined.',
+  no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
+  io: 'The folder could not be read.',
+  unknown: 'The folder could not be read.',
+};
+
+const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
+  not_found: 'Die Datei oder der Ordner existiert nicht (mehr).',
+  permission_denied: 'Zugriff verweigert – Sie dürfen diesen Ordner nicht lesen.',
+  not_a_directory: 'Das ist kein Ordner.',
+  not_a_file: 'Das ist ein Ordner, keine Datei.',
+  executable: 'Diese Datei ist ein Programm.',
+  target_inside_source: 'Der Zielordner liegt im Quellordner.',
+  same_source_target: 'Quell- und Zielordner sind gleich.',
+  disk_full: 'Der Datenträger ist voll.',
+  already_exists: 'Eine Datei oder ein Ordner mit diesem Namen existiert bereits.',
+  invalid_name: 'Dieser Name ist nicht erlaubt.',
+  dangerous_path: 'Das ist ein Laufwerk, Ihr Home-Ordner oder ein Systemordner.',
+  trash_failed: 'Das Element konnte nicht in den Papierkorb verschoben werden.',
+  duplicate_target: 'Ein anderer ausgewählter Eintrag bekommt denselben Namen.',
+  undo_unavailable: 'Es gibt nichts rückgängig zu machen.',
+  program_not_found: 'Das Programm wurde nicht gefunden – ist es installiert? (tools.json)',
+  unknown_tool: 'Dieses Tool ist (nicht mehr) konfiguriert.',
+  too_many_files: 'Zu viele Einträge für dieses Tool.',
+  too_many: 'Zu viele Elemente auf einmal.',
+  invalid_pattern: 'Das Suchmuster ist ungültig.',
+  invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
+  invalid_settings: 'Diese Datei ist kein Einstellungs-Export von Files and Folders.',
+  invalid_path: 'Der Pfad ist ungültig.',
+  no_home_directory: 'Ihr Home-Ordner konnte nicht ermittelt werden.',
+  no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',
+  io: 'Der Ordner konnte nicht gelesen werden.',
+  unknown: 'Der Ordner konnte nicht gelesen werden.',
+};
+
+export const FS_ERROR_TEXTS = translatable('fsErrors', FS_ERROR_EN, { de: FS_ERROR_DE });

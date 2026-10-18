@@ -58,6 +58,8 @@ export type FsErrorCode =
   /** A search pattern (regex, glob) is invalid (design 009). */
   | 'invalid_pattern'
   | 'invalid_menu'
+  /** A file to import is no settings export (design 015). */
+  | 'invalid_settings'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

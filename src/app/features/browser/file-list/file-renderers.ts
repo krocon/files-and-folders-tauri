@@ -7,6 +7,8 @@ import {
 } from '@guiexpert/table';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { formatModified, formatSize } from '../../../shared/format';
+import { DISPLAY } from '../../../core/settings/display';
+import { TEXTS } from '../../workspace/texts';
 
 /**
  * Plain-DOM renderers (no Angular) for the file list. File names are user data:
@@ -67,22 +69,41 @@ export class NameCellRenderer implements CellRendererIf {
     if (marked) {
       const srText = domService.createElement<HTMLSpanElement>('span');
       domService.addClass(srText, 'ge-table-sr-only');
-      domService.appendChild(srText, domService.createText('marked, '));
+      domService.appendChild(srText, domService.createText(TEXTS.marked));
       domService.appendChild(cellDiv, srText);
     }
     const name = domService.createElement<HTMLSpanElement>('span');
     domService.addClass(name, 'fnf-name');
-    domService.appendChild(name, domService.createText(String(cellValue ?? '')));
+    domService.appendChild(
+      name,
+      domService.createText(entry ? displayName(entry) : String(cellValue ?? '')),
+    );
     domService.appendChild(cellDiv, name);
     if (entry?.lossyName) {
-      domService.setAttribute(
-        cellDiv,
-        'title',
-        'Name contains invalid characters – navigation not supported yet',
-      );
+      domService.setAttribute(cellDiv, 'title', TEXTS.lossyName);
     }
     return undefined;
   }
+}
+
+/**
+ * The name as shown (design 015): folders as `[Name]`, files without extension –
+ * if chosen in the settings. Sorting and operations keep the real name.
+ */
+export function displayName(entry: DirEntry): string {
+  if (isParentRow(entry)) {
+    return entry.name;
+  }
+  if (isNavigableDir(entry)) {
+    return DISPLAY.folderBrackets() ? `[${entry.name}]` : entry.name;
+  }
+  if (DISPLAY.hideExtension()) {
+    const dot = entry.name.lastIndexOf('.');
+    if (dot > 0 && dot < entry.name.length - 1) {
+      return entry.name.slice(0, dot);
+    }
+  }
+  return entry.name;
 }
 
 /** `<DIR>` for folders until their size was calculated (Space, design 003 E7); nothing for "..". */

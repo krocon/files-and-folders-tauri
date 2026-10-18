@@ -1,5 +1,6 @@
 import {
   AreaModelObjectArrayWithColumndefs,
+  ColumnDefIf,
   SelectionModel,
   ShortcutActionIdMapping,
   TableFactory,
@@ -10,6 +11,7 @@ import {
 import { DirEntry } from '../../../core/fs/fs.models';
 import { createFileColumns } from './file-columns';
 import { RenameEditor } from './rename-editor';
+import { TEXTS } from '../../workspace/texts';
 
 export const ROW_HEIGHT = 24;
 export const HEADER_HEIGHT = 26;
@@ -121,6 +123,7 @@ const NO_STATE: FileRowState = { cursorRow: () => -1, isMarked: () => false };
 
 export interface FileTable {
   readonly model: TableModelIf;
+  readonly columnDefs: readonly ColumnDefIf[];
   readonly body: FileBodyModel;
   readonly options: TableOptionsIf;
 }
@@ -155,8 +158,8 @@ export function createFileTable(
     externalFilterFunction: (row: DirEntry) => rowFilter()(row),
     getEditRenderer: () => body.renaming?.editor,
     overlayOptions: {
-      noRowsText: 'This folder is empty.',
-      loadingText: 'Loading…',
+      noRowsText: TEXTS.emptyFolder,
+      loadingText: TEXTS.loading,
       loadingDelayInMs: 150,
     },
   };
@@ -165,5 +168,5 @@ export function createFileTable(
     columnDefs,
     tableOptions: options,
   });
-  return { model, body, options };
+  return { model, columnDefs, body, options };
 }

@@ -1,5 +1,5 @@
 import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
-import { describeFsError, toFsError } from '../../core/fs/fs-error';
+import { describeFsError, errorText, toFsError } from '../../core/fs/fs-error';
 import { SessionApi } from '../../core/session/session-api';
 import {
   AdjustedPath,
@@ -12,6 +12,8 @@ import type { FileBrowserStore } from '../browser/file-browser.store';
 import { createTabMemory, TabMemory } from '../browser/tab-memory';
 import type { FileListController } from '../browser/file-list/file-list-controller';
 import { TEXTS } from './texts';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { DISPLAY } from '../../core/settings/display';
 
 /** What a panel offers to window-wide actions (registered by `FilePanel`). */
 export interface PanelHandle {
@@ -65,7 +67,8 @@ export function newTab(path: string | null, title = ''): TabState {
     title,
     history: [],
     cursor: null,
-    hiddenVisible: false,
+    // default of new tabs (setting `view.showHidden`, design 015)
+    hiddenVisible: DISPLAY.showHidden(),
     filterActive: false,
     filterText: '',
     table: null,
@@ -86,6 +89,7 @@ const EMPTY_PANELS: Panels = {
 @Injectable({ providedIn: 'root' })
 export class WorkspaceStore {
   private readonly api = inject(SessionApi);
+  private readonly settings = inject(SettingsStore);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Off when loading failed – never overwrite a session we could not read. */
   private saveEnabled = false;
@@ -132,8 +136,15 @@ export class WorkspaceStore {
   /** Loads the saved session; without one both sides show the home folder. */
   async init(): Promise<void> {
     try {
-      const loaded = await this.api.load();
+      const [loaded] = await Promise.all([this.api.load(), this.settings.init()]);
       this.restore(loaded.session);
+      if (this.settings.get('general.startFolder') === 'home') {
+        // design 015: both sides start in the home folder (favourites, splitter stay)
+        this.panels.set({
+          left: { activeTab: 0, tabs: [newTab(null)] },
+          right: { activeTab: 0, tabs: [newTab(null)] },
+        });
+      }
       const notices: string[] = [];
       if (loaded.warning) {
         notices.push(loaded.warning);
@@ -445,7 +456,7 @@ export class WorkspaceStore {
     try {
       await this.api.save(snapshot);
     } catch (err) {
-      const text = `${TEXTS.sessionSaveFailed} ${toFsError(err).message}`;
+      const text = `${TEXTS.sessionSaveFailed} ${errorText(toFsError(err))}`;
       if (!this.notices().includes(text)) {
         this.notices.update((n) => [...n, text]);
       }

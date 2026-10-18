@@ -1,4 +1,4 @@
-import { TableApi, TableStateIf, TableStatePart } from '@guiexpert/table';
+import { ColumnDefIf, TableApi, TableStateIf, TableStatePart } from '@guiexpert/table';
 import { DirEntry } from '../../../core/fs/fs.models';
 import { FileBodyModel } from './file-table-model';
 import { RenameEditor } from './rename-editor';
@@ -44,12 +44,24 @@ export interface TableBridge {
   startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean;
   /** Displayed index of the body row containing `element` (drag and drop), -1 if none. */
   rowIndexAt(element: Element): number;
+  /**
+   * Column titles (by property) and row height changed (language, density – design
+   * 015): applied to the live model and repainted, no new table.
+   */
+  setPresentation(p: {
+    readonly headers: Readonly<Record<string, string>>;
+    readonly rowHeight: number;
+  }): void;
 }
 
 /** The parts of the table state that belong to a tab. */
 export const TAB_TABLE_PARTS: readonly TableStatePart[] = ['columns', 'sort', 'scroll'];
 
-export function createTableBridge(api: TableApi, body: FileBodyModel): TableBridge {
+export function createTableBridge(
+  api: TableApi,
+  body: FileBodyModel,
+  columnDefs: readonly ColumnDefIf[] = [],
+): TableBridge {
   const scope = api.getTableScope();
   let manualOverlay = false;
   const stopRename = () => {
@@ -159,6 +171,21 @@ export function createTableBridge(api: TableApi, body: FileBodyModel): TableBrid
       return Number.isInteger(index) && index >= 0 && index < body.getFilteredRows().length
         ? index
         : -1;
+    },
+    setPresentation({ headers, rowHeight }) {
+      const header = api.getTableModel().getAreaModel('header');
+      columnDefs.forEach((def, i) => {
+        const label = headers[def.property];
+        if (label !== undefined && label !== def.headerLabel) {
+          def.headerLabel = label;
+          // the header row is a copy of the titles made at creation (public AreaModel API)
+          header.setValue(0, i, label);
+        }
+      });
+      if (body.defaultRowHeight !== rowHeight) {
+        body.defaultRowHeight = rowHeight;
+      }
+      api.repaintHard();
     },
     applyTableState(state, parts) {
       const wanted = parts.filter((p) => p in state);

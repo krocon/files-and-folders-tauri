@@ -347,6 +347,11 @@ export class MultiRenameStore {
 
   // ---- presets (design 007 E9) ----
 
+  /** The presets file changed (settings import, design 015): read it on next use. */
+  invalidatePresets(): void {
+    this.presetsLoaded = false;
+  }
+
   private async loadPresets(): Promise<void> {
     if (this.presetsLoaded) {
       return;

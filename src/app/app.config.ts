@@ -11,6 +11,7 @@ import { PreviewApi, TauriPreviewApi } from './core/preview/preview-api';
 import { TauriThemeApi, ThemeApi } from './core/theme/theme-api';
 import { TauriWatchApi, WatchApi } from './core/watch/watch-api';
 import { DragDropApi, TauriDragDropApi } from './core/dnd/drag-drop-api';
+import { SettingsApi, TauriSettingsApi } from './core/settings/settings-api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -27,5 +28,6 @@ export const appConfig: ApplicationConfig = {
     { provide: ThemeApi, useClass: TauriThemeApi },
     { provide: WatchApi, useClass: TauriWatchApi },
     { provide: DragDropApi, useClass: TauriDragDropApi },
+    { provide: SettingsApi, useClass: TauriSettingsApi },
   ],
 };

@@ -204,7 +204,7 @@ describe('FilePanel', () => {
     await settle();
     const text = el.querySelector('.status')?.textContent?.replace(/\s+/g, ' ').trim();
     expect(text).toBe('1.5 KB / 2.0 KB in 1 / 2 Files, 1 / 1 Folders');
-    expect(el.querySelector('.status span')?.getAttribute('title')).toBe('1536 / 2048 bytes');
+    expect(el.querySelector('.status span')?.getAttribute('title')).toBe('1,536 / 2,048 bytes');
   });
 
   it('navigates via a breadcrumb segment, cursor on the folder it came from', async () => {

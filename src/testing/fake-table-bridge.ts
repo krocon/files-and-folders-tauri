@@ -78,6 +78,12 @@ export class FakeTableBridge implements TableBridge {
     this.emptyText = text;
   }
 
+  presentation: { headers: Readonly<Record<string, string>>; rowHeight: number } | null = null;
+
+  setPresentation(p: { headers: Readonly<Record<string, string>>; rowHeight: number }): void {
+    this.presentation = p;
+  }
+
   setColumnVisible(property: string, visible: boolean): void {
     this.calls.push(`setColumnVisible(${property},${visible})`);
     if (visible) {

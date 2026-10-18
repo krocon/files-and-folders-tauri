@@ -1,3 +1,4 @@
+import { ACT_TEXTS } from '../../actions/actions-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActionService } from '../../../core/actions/action.service';
 import { ACTIONS, ActionId, shortLabel } from '../../../core/actions/action-catalog';
@@ -29,7 +30,7 @@ interface ToolButton {
   selector: 'app-button-bar',
   imports: [ActionsMenu, ContextMenu],
   template: `
-    <div class="functions" role="toolbar" aria-label="Functions">
+    <div class="functions" role="toolbar" [attr.aria-label]="t.functions">
       @for (b of buttons(); track $index) {
         <button
           type="button"
@@ -45,7 +46,7 @@ interface ToolButton {
         </button>
       }
     </div>
-    <div class="tools" role="toolbar" aria-label="Tools">
+    <div class="tools" role="toolbar" [attr.aria-label]="t.tools">
       <button
         type="button"
         class="fbtn actions-toggle"
@@ -53,7 +54,7 @@ interface ToolButton {
         [attr.aria-expanded]="menuOpen()"
         (click)="menuOpen.set(!menuOpen())"
       >
-        <span>Actions</span> <span aria-hidden="true">▴</span>
+        <span>{{ t.actions }}</span> <span aria-hidden="true">▴</span>
       </button>
       @for (t of tools(); track t.id) {
         <button
@@ -99,6 +100,7 @@ interface ToolButton {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ButtonBar {
+  protected readonly t = ACT_TEXTS;
   private readonly actions = inject(ActionService);
   private readonly keys = inject(KeyboardDispatcher);
   private readonly jobs = inject(JobsStore);

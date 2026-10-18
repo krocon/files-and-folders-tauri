@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { FsApi } from '../../core/fs/fs-api';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { DirEntry, FsError, PathCheck } from '../../core/fs/fs.models';
 import { ConflictDefault, DeleteMode, JobInfo, JobSpec } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -78,6 +79,7 @@ export class OpsStore {
   private readonly fs = inject(FsApi);
   private readonly dialogs = inject(DialogService);
   private readonly search = inject(SearchStore);
+  private readonly settings = inject(SettingsStore);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -139,7 +141,7 @@ export class OpsStore {
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
     const targets = targetOptions([
-      { group: 'Other panel', paths: [other] },
+      { group: OPS_TEXTS.otherPanel, paths: [other] },
       { group: 'Tab', paths: tabPaths },
       { group: 'Favourite', paths: [...this.ws.favorites()] },
       { group: 'Recent', paths: this.ws.recent() },
@@ -159,7 +161,28 @@ export class OpsStore {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
     const dangers = await this.dangers(entries);
-    this.del.set({ mode, side: this.ws.source(), sourceDir, entries, dangers });
+    // settings (design 015): F8 deletes permanently when the trash is switched off
+    const effective: DeleteMode =
+      mode === 'trash' && !this.settings.get('behavior.deleteToTrash') ? 'permanent' : mode;
+    const req: DeleteRequest = {
+      mode: effective,
+      side: this.ws.source(),
+      sourceDir,
+      entries,
+      dangers,
+    };
+    if (
+      effective === 'trash' &&
+      dangers.length === 0 &&
+      !this.settings.get('behavior.confirmTrash')
+    ) {
+      const e = await this.runDelete(req, false);
+      if (e) {
+        this.jobs.report(OPS_TEXTS.failed(OPS_TEXTS.deleteTitle, errorText(e)));
+      }
+      return;
+    }
+    this.del.set(req);
     this.dialogs.show('delete');
   }
 

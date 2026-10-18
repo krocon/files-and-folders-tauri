@@ -1,5 +1,7 @@
+import { translatable } from '../../core/i18n/i18n';
+import { THEME_DE } from './theme-texts.de';
 /** Texts of the colour scheme dialog and menu (design 013; i18n with prompt 015). */
-export const THEME_TEXTS = {
+export const THEME_EN = {
   heading: 'Colour schemes',
   followSystem: 'Follow the system',
   lightScheme: 'Light system',
@@ -49,3 +51,5 @@ export const THEME_TEXTS = {
   menuFollow: 'Follow the system',
   paletteEntry: (name: string) => `Colour scheme: ${name}`,
 } as const;
+
+export const THEME_TEXTS = translatable('themes', THEME_EN, { de: THEME_DE });

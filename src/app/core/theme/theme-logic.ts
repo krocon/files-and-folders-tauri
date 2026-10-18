@@ -1,6 +1,6 @@
 import { blend, contrastRatio, luminance, parseColor, Rgba, WHITE } from './color';
 import { Theme } from './theme.models';
-import { TOKEN_NAMES, tokenDef, TokenKind } from './tokens';
+import { themeLabel, TOKEN_NAMES, tokenDef, TokenKind } from './tokens';
 
 /**
  * Pure theme logic (design 013): resolving `var()` chains, checking values,
@@ -335,7 +335,7 @@ export interface ImportedTheme {
 /** Normalises an imported file: `{name, dark, tokens}` or the old `{name, colors}`. */
 export function normalizeImport(raw: unknown): ImportedTheme | string {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return 'The file is not a colour scheme.';
+    return themeLabel('The file is not a colour scheme.');
   }
   const o = raw as Record<string, unknown>;
   const legacy = o['tokens'] === undefined && o['colors'] !== undefined;
@@ -345,7 +345,7 @@ export function normalizeImport(raw: unknown): ImportedTheme | string {
   }
   const { tokens, dropped } = sanitizeTokens(source);
   if (Object.keys(tokens).length === 0) {
-    return 'The colour scheme has no usable values.';
+    return themeLabel('The colour scheme has no usable values.');
   }
   const name =
     typeof o['name'] === 'string' && o['name'].trim()
@@ -419,7 +419,9 @@ const ACTIVE_LIST = '--color-active-list-bg';
 const p = (fg: string, bg: string, label: string, min = TEXT, over?: string): ContrastPair => ({
   fg,
   bg,
-  label,
+  get label() {
+    return themeLabel(label);
+  },
   min,
   over,
 });

@@ -217,7 +217,9 @@ describe('WorkspaceStore', () => {
     ws.setSplitter(0.7);
     TestBed.tick();
     await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS + 10);
-    expect(ws.notices()).toEqual(['The session could not be saved: disk full']);
+    expect(ws.notices()).toEqual([
+      'The session could not be saved: The folder could not be read. (disk full)',
+    ]);
   });
 
   it('never saves after loading the session failed', async () => {

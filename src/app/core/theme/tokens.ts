@@ -3,6 +3,9 @@
  * the contrast check and the completeness tests. Values live in
  * `src/styles.scss` and the built-in schemes `themes/*.json`.
  */
+import { phrasebook } from '../i18n/i18n';
+import { THEME_LABELS_DE } from './theme-labels.de';
+
 export type TokenGroup =
   'general' | 'list' | 'activePanel' | 'header' | 'footer' | 'dialog' | 'scrollbar' | 'tooltip';
 
@@ -16,7 +19,10 @@ export interface TokenDef {
   readonly kind: TokenKind;
 }
 
-export const GROUP_LABELS: Readonly<Record<TokenGroup, string>> = {
+/** Token, group and contrast labels by their English text (design 015). */
+export const themeLabel = phrasebook('themeLabels', { de: THEME_LABELS_DE });
+
+const GROUP_LABELS_EN: Readonly<Record<TokenGroup, string>> = {
   general: 'General',
   list: 'File list',
   activePanel: 'Active panel',
@@ -27,6 +33,14 @@ export const GROUP_LABELS: Readonly<Record<TokenGroup, string>> = {
   tooltip: 'Tooltip',
 };
 
+/** Group labels in the current language. */
+export const GROUP_LABELS: Readonly<Record<TokenGroup, string>> = new Proxy(GROUP_LABELS_EN, {
+  get: (target, prop) => themeLabel(Reflect.get(target, prop) as string),
+});
+
+/** English group labels (completeness test). */
+export const GROUP_LABEL_SOURCES: readonly string[] = Object.values(GROUP_LABELS_EN);
+
 const t = (
   name: string,
   group: TokenGroup,
@@ -35,7 +49,9 @@ const t = (
 ): TokenDef => ({
   name,
   group,
-  label,
+  get label() {
+    return themeLabel(label);
+  },
   kind,
 });
 

@@ -1,10 +1,8 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { SettingsStore } from '../settings/settings.store';
 import { Side } from '../session/session.models';
 import { WatchApi } from './watch-api';
 import { WatchEvent, WatchStatus } from './watch.models';
-
-/** Polling of network folders – a setting of prompt 015; until then off (design 012 E2). */
-export const POLL_NETWORK = false;
 
 /**
  * A folder changed this long before its listing was requested still counts as
@@ -21,6 +19,7 @@ export const MTIME_SLACK_MS = 2000;
 export class WatchService {
   /** Optional: specs without a backend simply do not watch. */
   private readonly api = inject(WatchApi, { optional: true });
+  private readonly settings = inject(SettingsStore);
   private readonly dirs = new Map<Side, string | null>();
   /** When the panels' listings were requested (for the first watch of a folder). */
   private readonly listedAt = new Map<string, number>();
@@ -28,6 +27,20 @@ export class WatchService {
   private again = false;
   private readonly listeners = new Set<(event: WatchEvent) => void>();
   private subscribed: Promise<void> | null = null;
+
+  constructor() {
+    // switching the polling setting re-sends the folders
+    let first = true;
+    effect(() => {
+      this.settings.get('watch.pollNetwork');
+      untracked(() => {
+        if (!first) {
+          this.schedule();
+        }
+        first = false;
+      });
+    });
+  }
   private sentKey: string | null = null;
   private scheduled = false;
   private seq = 0;
@@ -106,7 +119,9 @@ export class WatchService {
       return;
     }
     const dirs = this.watchedDirs();
-    const key = dirs.join('\0');
+    // polling of network folders is a setting (design 012 E2 / 015)
+    const poll = this.settings.get('watch.pollNetwork');
+    const key = `${poll}\u0001${dirs.join('\0')}`;
     if (key === this.sentKey) {
       return;
     }
@@ -115,7 +130,7 @@ export class WatchService {
     const seq = ++this.seq;
     try {
       await this.ensureSubscribed();
-      const result = await api.watchDirs(dirs, POLL_NETWORK);
+      const result = await api.watchDirs(dirs, poll);
       if (seq === this.seq) {
         const before = this.statuses();
         this.statuses.set(new Map(result.map((s) => [s.dir, s])));

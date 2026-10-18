@@ -1,6 +1,6 @@
 import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { ActionService } from '../actions/action.service';
-import { toFsError } from '../fs/fs-error';
+import { errorText, toFsError } from '../fs/fs-error';
 import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
 import { toHex } from './color';
 import { ThemeApi, ThemeFileContent } from './theme-api';
@@ -18,6 +18,7 @@ import {
   uniqueName,
 } from './theme-logic';
 import { DEFAULT_SELECTION, Theme, ThemeSelection, ThemesFile } from './theme.models';
+import { ACTION_TEXTS } from '../actions/action-texts';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -116,7 +117,7 @@ export class ThemeService {
     } catch (err) {
       const e = toFsError(err);
       if (e.code !== 'no_backend') {
-        this.actions.report(`The colour schemes could not be loaded: ${e.message}`);
+        this.actions.report(ACTION_TEXTS.themesLoadFailed(errorText(e)));
       }
     } finally {
       this.loaded.set(true);
@@ -237,7 +238,7 @@ export class ThemeService {
           this.persist = false;
           return;
         }
-        this.actions.report(`The colour schemes could not be saved: ${e.message}`);
+        this.actions.report(ACTION_TEXTS.themesSaveFailed(errorText(e)));
       }
     });
     return this.saving;

@@ -1,7 +1,9 @@
 import { GroupMode } from './group-engine';
+import { translatable } from '../../core/i18n/i18n';
+import { GF_DE } from './groupfiles-texts.de';
 
 /** Texts of the group-files dialog (central for prompt 015). */
-export const GF_TEXTS = {
+export const GF_EN = {
   title: (n: number, groups: number) =>
     `Group files – ${n === 1 ? '1 entry' : `${n} entries`} → ${groups === 1 ? '1 group' : `${groups} groups`}`,
   mode: 'Mode',
@@ -42,4 +44,10 @@ export const GF_TEXTS = {
   failed: (msg: string) => `Grouping failed: ${msg}`,
   withErrors: (n: number) => `Grouping finished – ${n === 1 ? '1 entry' : `${n} entries`} failed`,
   done: (n: number) => `Grouped ${n === 1 ? '1 entry' : `${n} entries`}`,
+  nameInvalid: 'not a valid folder name',
+  nameChars: 'contains / \\ : * ? " < > | or control characters',
+  nameEnd: 'ends with a dot or space',
+  nameLong: 'too long',
 };
+
+export const GF_TEXTS = translatable('groupfiles', GF_EN, { de: GF_DE });

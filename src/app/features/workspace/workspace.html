@@ -64,13 +64,19 @@
     <app-command-palette />
   }
   @case ('call-action') {
-    <app-command-palette heading="Call action" />
+    <app-command-palette [heading]="act.callAction" />
   }
   @case ('tools') {
-    <app-command-palette heading="Open with tool" scope="tools" />
+    <app-command-palette [heading]="act.openWithTool" scope="tools" />
   }
   @case ('tool-config') {
     <app-tool-config-dialog />
+  }
+  @case ('settings') {
+    <app-settings-dialog />
+  }
+  @case ('about') {
+    <app-about-dialog />
   }
   @case ('mark-pattern') {
     <app-mark-pattern-dialog [mark]="true" />
