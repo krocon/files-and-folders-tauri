@@ -215,7 +215,35 @@ Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende
 `←` `→` `Pos1` `Ende`, Doppelklick/`Enter` = 50 / 50. Mit gedrückter Shift-/Alt-/⌘- bzw. Strg-Taste zeigt die
 Button-Leiste den passenden Satz (Total-Commander-Prinzip).
 
-## Voraussetzungen
+## Installation für Nutzer
+
+Noch gibt es **kein veröffentlichtes Release**. Pakete entstehen über den Release-Workflow (Vorlage
+[`docs/ci/release.yml`](docs/ci/release.yml), Ablauf: [docs/release.md](docs/release.md)) als Entwurf eines
+GitHub-Releases:
+
+| OS | Paket | Installation |
+| --- | --- | --- |
+| macOS 12+ (Apple Silicon und Intel) | `Files and Folders_<v>_universal.dmg` | DMG öffnen, App nach „Programme“ ziehen |
+| Windows 10/11 | `Files and Folders_<v>_x64-setup.exe` (ohne Admin) oder `.msi` | Installer starten; WebView2 wird bei Bedarf nachgeladen |
+| Linux (x86_64) | `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE), `.AppImage` | `sudo apt install ./files-and-folders_<v>_amd64.deb` bzw. `sudo dnf install ./….rpm`; AppImage: `chmod +x` und starten |
+
+**Bekannte Einschränkungen je Plattform**
+
+- **Unsignierte Pakete** (solange keine Zertifikate eingerichtet sind): macOS meldet „nicht verifizierter
+  Entwickler“ → im Finder Rechtsklick → *Öffnen* (bzw. Systemeinstellungen → Datenschutz & Sicherheit → *Trotzdem
+  öffnen*); Windows SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*.
+- **macOS:** Zugriff auf Schreibtisch, Dokumente, Downloads, externe/Netz-Volumes fragt das System beim ersten
+  Mal ab. Papierkorb über den Finder (einmalige Erlaubnis „Finder steuern“). Praktisch erst wenig getestet.
+- **Windows:** Auf Laufwerken ohne Papierkorb (Netz, manche USB-Sticks) kann Windows beim „Löschen in den
+  Papierkorb“ endgültig löschen (eigene Prüfung noch offen, Design 006 E1). Praktisch erst wenig getestet (die CI
+  kompiliert und testet, s. `docs/ci/`).
+- **Linux:** braucht WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 36+). AppImage benötigt FUSE
+  (`libfuse2`) oder `--appimage-extract-and-run`.
+- Keine automatischen Updates (Updater bewertet, nicht aktiviert).
+
+Die Version steht im Dialog **About** (Menü Hilfe bzw. macOS „Über Files and Folders“, oder Befehlspalette).
+
+## Voraussetzungen (Entwicklung)
 
 | Werkzeug | Version                                                                                   |
 | -------- | ----------------------------------------------------------------------------------------- |
@@ -249,11 +277,17 @@ pnpm build            # Production-Build des Frontends
 pnpm rust:fmt         # cargo fmt --check
 pnpm rust:lint        # cargo clippy -D warnings
 pnpm rust:test        # cargo test
+pnpm version:check    # Version gleich in package.json, tauri.conf.json, Cargo.toml/.lock
+pnpm scripts:test     # Tests der Skripte (Version, Release Notes, Lizenzbericht)
 pnpm check            # alles oben nacheinander
 ```
 
-Release-Build: `pnpm tauri build` (Bundles in `src-tauri/target/release/bundle/`). Signierung und
-Notarisierung sind noch nicht eingerichtet.
+Release-Build: `pnpm tauri build` (Bundles in `src-tauri/target/release/bundle/`; Linux: deb, rpm, AppImage).
+Version setzen: `pnpm version:set X.Y.Z`; Release Notes: `pnpm release:notes`; Lizenzbericht:
+`pnpm licenses:report > docs/licenses.md`. Signierung und Notarisierung sind vorbereitet, nicht eingerichtet –
+[docs/release.md](docs/release.md), CI-Vorlagen: [docs/ci/](docs/ci/README.md). App-Icon: Quelle
+`src-tauri/icons/source/app-icon.svg` → `pnpm tauri icon src-tauri/icons/source/app-icon.svg` (danach die
+Ordner `android/`, `ios/` und `64x64.png` löschen).
 
 ## Projektstruktur
 
@@ -284,4 +318,5 @@ Fachliche Referenzen (nur Funktionsumfang, kein übernommener Code):
 - [krocon/files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) – Custom Source-Available License (CSAL) v1.0 (Rechteinhaber: GUI Expert GmbH); Nutzung als Referenz, Code-Übernahme nur nach Marcs ausdrücklicher Freigabe
 - [GuiExpert Table](https://github.com/guiexperttable/mono) – MIT (aktuelle Releases)
 
-Die Lizenz dieses Projekts ist noch nicht festgelegt (`license` in `Cargo.toml`/`package.json` leer).
+Die Lizenz dieses Projekts ist noch nicht festgelegt (`license` in `Cargo.toml`/`package.json` leer) – Voraussetzung
+für das erste Release. Lizenzen der Abhängigkeiten: [docs/licenses.md](docs/licenses.md).

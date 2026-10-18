@@ -15,7 +15,12 @@
     "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --check",
     "rust:lint": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "check": "pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test"
+    "version:check": "node scripts/version.mjs check",
+    "version:set": "node scripts/version.mjs set",
+    "release:notes": "node scripts/release-notes.mjs",
+    "scripts:test": "node --test \"scripts/*.test.mjs\"",
+    "licenses:report": "node scripts/licenses.mjs",
+    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test"
   },
   "private": true,
   "packageManager": "pnpm@10.28.0",

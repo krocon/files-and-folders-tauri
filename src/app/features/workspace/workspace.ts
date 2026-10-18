@@ -60,6 +60,8 @@ import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { registerMenuActions } from '../menus/menu-actions';
+import { AboutDialog } from '../about/about-dialog';
+import { registerAboutActions } from '../about/about-actions';
 import { MenuService } from '../menus/menu.service';
 import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
@@ -100,6 +102,7 @@ import { WorkspaceStore } from './workspace.store';
     FindDialog,
     FolderFinderDialog,
     ThemeDialog,
+    AboutDialog,
     ContextMenu,
   ],
   templateUrl: './workspace.html',
@@ -229,6 +232,7 @@ export class Workspace implements OnInit {
     );
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
+    this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     this.menus.init();
     void this.jobs.init();

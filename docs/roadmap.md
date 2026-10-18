@@ -15,7 +15,8 @@ Legende: ✅ erledigt · 🟡 teilweise · ⬜ offen
 - ✅ Tabelle, Ordner öffnen, „Up“, Tastatur, Lade-/Leer-/Fehlerzustände
 - ✅ Rust-Tests (Pfade, Listing, Symlinks, Unicode, Fehler), Angular-Tests (Store, UI-Zustände, Tastatur)
 - ✅ ESLint, Prettier, rustfmt, clippy
-- 🟡 CI-Workflow als Entwurf (`.github/workflows/ci.yml` muss Marc einchecken, s. Prompt 017)
+- 🟡 CI: `.github/workflows/ci.yml` (Marc) läuft auf ubuntu/macOS/Windows; Erweiterung + Release-Workflow als
+  Vorlagen in `docs/ci/` (017), von Marc zu übernehmen
 - 🟡 Manuell geprüft nur unter Linux (Xvfb); macOS/Windows noch nicht praktisch getestet
 
 ## Ab hier: Feature-Prompts
@@ -33,7 +34,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 7 OS-Integration | 011 (Laufwerke, Tools, Zwischenablage ✅), 012 (Überwachung, Drag & Drop ✅) |
 | 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs ✅), 015 (Einstellungen, i18n) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
-| 10 Distribution | 017 |
+| 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Lizenz, Signierung, Prüfung macOS/Windows) |
 | 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016) |
 
 Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).

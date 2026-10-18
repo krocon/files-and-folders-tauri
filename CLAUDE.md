@@ -21,8 +21,9 @@
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
-  Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell) und Prompt 019
-  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur) sind fertig. Als Nächstes: Prompt 015.
+  Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
+  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur) und Prompt 017 (Version aus einer Quelle,
+  App-Icon, Pakete je OS, About, CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 015.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -42,7 +43,8 @@
 | Frontend-Build | `pnpm build` |
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
 | Alles prüfen | `pnpm check` |
-| Release-Build | `pnpm tauri build` (Signierung/Notarisierung noch nicht eingerichtet) |
+| Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
+| Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
 Nicht ausführbare Checks im Abschlussbericht mit Grund nennen. `pnpm tauri dev` braucht ein Fenster – in einer
 Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die Binary unter `Xvfb` starten
@@ -87,6 +89,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
+  app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
   app/core/menu/             MenuApi (set_app_menu, subscribe_menu, close_main_window), DTOs des nativen Menüs
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
@@ -104,6 +107,7 @@ src-tauri/                   Rust (Tauri 2)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
+  src/about.rs               Daten für About (Version aus tauri.conf.json → package.json, Plattform)
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
@@ -127,7 +131,10 @@ src-tauri/                   Rust (Tauri 2)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
   capabilities/default.json  nur core:default
-docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
+  icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
+scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test)
+docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md, release.md, licenses.md,
+                             ci/ (Workflow-Vorlagen),
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
 prompts/                     Feature-Prompts (s. o.)
 ```
