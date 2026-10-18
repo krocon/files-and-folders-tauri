@@ -52,7 +52,7 @@
   --color-symlink-text: #6a3fb5;
   --color-error-text: var(--color-danger);
   --font-list: var(--font-sans);
-  --font-size-list: 0.8125rem;
+  --font-size-list: 0.875rem;
 
   /* active panel */
   --color-active-list-bg: var(--color-list-bg);
@@ -129,9 +129,9 @@
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.8125rem;
-  --font-size-md: 0.875rem;
+  --font-size-xs: 0.8125rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 0.9375rem;
 }
 
 /* first frame in a dark system before the ThemeService runs (= dark.json) */
