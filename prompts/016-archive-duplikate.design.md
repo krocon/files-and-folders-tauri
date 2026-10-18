@@ -214,6 +214,7 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 | Zip-Bomben-Test | Testarchiv mit überlappenden Einträgen | Grenzen über synthetischen Index (`check_limits`), `LimitedReader` für gzip, ZIP mit gepatchter Größe (Job) | überlappende Einträge lassen sich mit dem `zip`-Writer nicht erzeugen; die Grenzen selbst sind getestet |
 | Zeiten in ZIP | – | DOS-Zeit wird als UTC gelesen und geschrieben | ohne Zeitzonen-Crate; eigene Archive sind exakt, fremde um die Zeitzone verschoben (Offen: Extended-Timestamp-Feld) |
 | Duplikat-Header | Buttons „Keep newest/oldest/first“ | „Keep: newest · oldest · first“, Gruppe mit nur noch einer Datei zählt nicht mehr | E2E: im schmalen Panel verdeckten die Buttons die Zusammenfassung |
+| Sitzung | Tabs laufen unverändert durch | `session::resolve_missing_paths` behält Pfade in ein vorhandenes Archiv (Test `tabs_inside_an_archive_are_kept`) | E2E (Neustart): ein Tab im Archiv wurde als „Folder no longer exists“ auf den Ordner des Archivs gesetzt |
 | Hilfs-Job | – | `duplicates` ist Hilfs-Job (nicht in Tasks, kein Nachfragen beim Beenden) wie `search` | ein Abbruch verliert nichts |
 
 ## 7. Review
@@ -262,7 +263,8 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
   Link/leerem Ordner als TAR.GZ gepackt (Link gemeldet, `tar tzvf` korrekt) und im Panel geöffnet; Duplikate (2
   Gruppen, versteckte und „gleicher Kopf, anderer Inhalt“ ausgeschlossen), „Keep newest“, F8 → Papierkorb, Zeilen
   verlassen das Ergebnis; 100 000 Dateien (eine Größengruppe) in ~2 s, `/usr` mit `Stop` beim Scannen und beim
-  Vergleichen (< 0,5 s „stopped“); im Archiv F7/F8/F4 gesperrt. Nicht prüfbar: gesperrter Ordner (root),
+  Vergleichen (< 0,5 s „stopped“); im Archiv F7/F8/F4 gesperrt; Entpacken auf vorhandene Datei → Konfliktfrage, „Skip“
+  lässt sie unverändert; Neustart mit Tab im Archiv (Fund → behoben). Nicht prüfbar: gesperrter Ordner (root),
   macOS/Windows.
 - [x] Phase 5 Doku (architecture, feature-parity, roadmap, README, CLAUDE.md, prompts/README)
 - [x] Phase 6 Abschlussprüfung (`pnpm check`, Debug-Build)
@@ -280,4 +282,6 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 - Suche in Archiven; Abbruch des Auflistens großer `.tar.gz`.
 - Duplikate: Ordner-Duplikate, Bild-Ähnlichkeit, „durch Hardlink ersetzen“, Fortschritt in Prozent im Tab.
 - ZIP-Zeiten aus dem Extended-Timestamp-Feld (UTC) statt DOS-Zeit; Entpacken per Drag aus einem Archiv-Panel.
+- Konfliktdialog beim Entpacken/Packen sagt „Cancel copying“ (Text des Kopierens); Pfad-Eingabe (`Strg/⌘+L`) und
+  Ziel-Eingaben kennen keine virtuellen Pfade (nur Navigation per Enter/Breadcrumbs).
 - E2E einmal beobachtet (nicht reproduzierbar): der erste F5 im Archiv öffnete keinen Dialog; danach stets korrekt.

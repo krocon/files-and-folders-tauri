@@ -291,7 +291,8 @@ pub fn sanitize(session: &mut Session) {
 
 /// Replaces tab paths that are no longer directories by the nearest existing
 /// parent directory (lexically, symlinks are not resolved), or by the home
-/// directory (`None`) if nothing exists. Returns every replacement.
+/// directory (`None`) if nothing exists. Paths into an existing archive stay.
+/// Returns every replacement.
 pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
     let mut adjusted = Vec::new();
     for panel in [&mut session.panels.left, &mut session.panels.right] {
@@ -302,7 +303,10 @@ pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
             let replacement = match validate_input_path(&raw) {
                 Ok(p) => {
                     let found = nearest_existing_dir(&p);
-                    if found.as_deref() == Some(p.as_path()) {
+                    // a folder inside an archive (design 016 E1) stays while the archive exists
+                    if found.as_deref() == Some(p.as_path())
+                        || crate::archive::resolve(&p).is_some()
+                    {
                         continue;
                     }
                     found
@@ -668,5 +672,33 @@ mod tests {
         assert_eq!(left[1].table, Some(json!({"version":1,"sort":[]})));
         assert_eq!(left[2].path, None);
         assert_eq!(s.panels.right.tabs[0].path, None);
+    }
+
+    /// E2E 016: a tab inside an archive (virtual path) survives a restart while the archive exists.
+    #[test]
+    fn tabs_inside_an_archive_are_kept() {
+        let dir = tempdir().unwrap();
+        let zip = dir.path().join("a ü.zip");
+        crate::archive::tests::make_zip(
+            &zip,
+            &[crate::archive::tests::E::File("ordner/x.txt", b"x")],
+        );
+        let inside = zip.join("ordner").to_string_lossy().into_owned();
+        let gone = dir
+            .path()
+            .join("weg.zip")
+            .join("ordner")
+            .to_string_lossy()
+            .into_owned();
+        let mut s = Session::default();
+        s.panels.left.tabs = vec![tab("a", Some(&inside)), tab("b", Some(&gone))];
+        let adjusted = resolve_missing_paths(&mut s);
+        assert_eq!(s.panels.left.tabs[0].path.as_deref(), Some(inside.as_str()));
+        assert_eq!(
+            adjusted.len(),
+            1,
+            "only the tab of the missing archive moves"
+        );
+        assert_eq!(adjusted[0].from, gone);
     }
 }
