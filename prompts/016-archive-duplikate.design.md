@@ -244,6 +244,14 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 
 | # | Befund | Schwere | Umgang |
 |---|---|---|---|
+| 1 | TAR.GZ mit riesigem GNU-LongName/PAX-Header füllt den RAM (`entries()` liest `L`/`K`/`x` per `read_all`); großes TAR.GZ blockiert beim Auflisten; Archiv-Tab in `session.json` → Absturz-Loop | mittel–kritisch | behoben: `archive::TarEntries` (Rohmodus, `L`/`K`/`x`/`g` selbst, max. 64 KiB, sonst Fehler; Name ohne zweite Kopie), Grenze 64 MiB Namen je Index, 30 s Indexierzeit (danach `archive_too_large`); Tabs in Archiven starten im Ordner des Archivs mit Cursor darauf. Tests `a_huge_long_name_header_is_refused_without_reading_it` (400-KB-Datei `archive/testdata/longname-400k.tgz`), `a_huge_pax_header_is_refused`, `tar_indexing_has_a_deadline`, `tabs_inside_an_archive_reopen_at_its_folder` |
+| 2 | `pax_global_header` (`g`) und XHeader/GNU-Metatypen als Einträge gezeigt/gezählt | gering–mittel | behoben: Metatypen (`g`, `x`, `L`, `K`, `V`, `M`, `N`) sind keine Einträge, zählen nicht für `pos`; PAX `path` gilt. Tests `tar_metadata_headers_are_not_entries`, `entries_behind_tar_metadata_headers_are_extracted`. Annahme: PAX `size` (Dateien > 8 GiB) und GNU-Sparse mit Erweiterungsblöcken → Fehler statt falscher Synchronisation |
+| 3 | Rechte beim Entpacken ohne umask | gering | behoben: Temp-Datei mit `mode(m & 0o777)` angelegt, der Kernel wendet die umask an. Test `extracted_modes_respect_the_umask` (Linux) |
+| 4 | TAR-Packen einer schrumpfenden Datei → kaputtes Archiv | gering | behoben: `ExactLen` liefert genau `len` Bytes, sonst `UnexpectedEof` → Job-Fehler, halbes Archiv nie unter dem echten Namen. Test `a_file_shorter_than_its_size_fails_its_tar_entry` |
+| 5 | Packen folgt nachträglich untergeschobenem Link | gering | behoben: `platform::open_regular_file_no_follow` (Unix `O_NOFOLLOW`). Test `open_regular_file_no_follow_refuses_links` |
+| 6 | Duplikate „nur Größe“: Auswahlhilfen markieren ggf. Unikate | gering–mittel | behoben: `DUP_MARK_*` gesperrt, Keep-Buttons ausgeblendet, Hinweis im Tab-Kopf und Warnbox im Löschdialog (`DeleteRequest.sizeOnly`). Test in `archive.spec.ts` |
+| 7 | Veto nur fürs aktive Panel: Tools-`targetDir`, Zielvorschläge, `resolve_location` mit Archivpfaden | gering | behoben: `targetDir` = null, wenn das andere Panel im Archiv ist; Vorschläge filtern Archive dieser Sitzung (`WorkspaceStore.archiveRoots`) und aktuelle (`ArchiveStore.isArchivePath`); `resolve_location` lehnt Pfade in Archiven mit `archive_error` ab. Tests `archive.spec.ts`, `commands::tests::locations_inside_an_archive_are_refused` |
+| 8 | reservierte Windows-Namen ohne `COM¹–³`, `LPT¹–³`, `CONIN$`, `CONOUT$` | gering | behoben (`WINDOWS_RESERVED`, Test `windows_name_rules`) |
 
 ## 8. Fortschritt
 
@@ -280,7 +288,7 @@ Dialoge mit `role="dialog"`, Fokusfalle (`Modal`), Enter = Start, Esc = Abbreche
 - 7z lesen (`sevenz-rust2`), RAR nur über externes Tool; `.tar.bz2`/`.tar.xz`.
 - Passwörter (ZIP AES/ZipCrypto) beim Packen und Entpacken.
 - In ein geöffnetes Archiv packen/löschen/umbenennen; Datei im Archiv öffnen/ansehen (F3, Enter) über Temp-Kopie.
-- Suche in Archiven; Abbruch des Auflistens großer `.tar.gz`.
+- Suche in Archiven; echter Abbruch des Auflistens großer `.tar.gz` (jetzt: 30-s-Grenze); PAX-`size` > 8 GiB, GNU-Sparse mit Erweiterungsblöcken.
 - Duplikate: Ordner-Duplikate, Bild-Ähnlichkeit, „durch Hardlink ersetzen“, Fortschritt in Prozent im Tab.
 - ZIP-Zeiten aus dem Extended-Timestamp-Feld (UTC) statt DOS-Zeit; Entpacken per Drag aus einem Archiv-Panel.
 - Konfliktdialog beim Entpacken/Packen sagt „Cancel copying“ (Text des Kopierens); Pfad-Eingabe (`Strg/⌘+L`) und

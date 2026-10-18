@@ -308,14 +308,14 @@ pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
                     if found.as_deref() == Some(p.as_path()) {
                         continue;
                     }
-                    if let Some((archive, _)) = crate::archive::resolve(&p) {
-                        if let Some(folder) = archive.parent() {
-                            tab.path = Some(folder.to_string_lossy().into_owned());
-                            tab.title = String::new();
-                            tab.cursor = Some(archive.to_string_lossy().into_owned());
-                            tab.table = tab.table.take().map(drop_scroll);
-                            continue;
-                        }
+                    if let Some((archive, _)) = crate::archive::resolve(&p)
+                        && let Some(folder) = archive.parent()
+                    {
+                        tab.path = Some(folder.to_string_lossy().into_owned());
+                        tab.title = String::new();
+                        tab.cursor = Some(archive.to_string_lossy().into_owned());
+                        tab.table = tab.table.take().map(drop_scroll);
+                        continue;
                     }
                     found
                 }
@@ -702,7 +702,8 @@ mod tests {
             .into_owned();
         let mut s = Session::default();
         s.panels.left.tabs = vec![tab("a", Some(&inside)), tab("b", Some(&gone))];
-        s.panels.left.tabs[0].cursor = Some(zip.join("ordner/x.txt").to_string_lossy().into_owned());
+        s.panels.left.tabs[0].cursor =
+            Some(zip.join("ordner/x.txt").to_string_lossy().into_owned());
         let adjusted = resolve_missing_paths(&mut s);
         let folder = dir.path().to_string_lossy().into_owned();
         let left = &s.panels.left.tabs[0];

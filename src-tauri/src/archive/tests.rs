@@ -369,7 +369,11 @@ pub(crate) fn make_meta_tar(path: &Path) {
         let mut b = tar::Builder::new(&mut data);
         let global = pax_record("comment", "made by a test");
         b.append(
-            &meta_header(tar::EntryType::XGlobalHeader, "pax_global_header", global.len()),
+            &meta_header(
+                tar::EntryType::XGlobalHeader,
+                "pax_global_header",
+                global.len(),
+            ),
             &global[..],
         )
         .unwrap();

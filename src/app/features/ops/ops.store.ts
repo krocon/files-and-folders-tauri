@@ -51,6 +51,8 @@ export interface DeleteRequest {
   readonly dangers: readonly PathCheck[];
   /** Duplicate tab (design 016 E6): groups of which every file would be deleted. */
   readonly wholeGroups?: number;
+  /** Duplicate tab compared by size only: the files may well differ (review 016 #6). */
+  readonly sizeOnly?: boolean;
 }
 
 export interface NameRequest {
@@ -175,12 +177,15 @@ export class OpsStore {
     const other = this.targetFolder(otherSide(args.side));
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
-    const targets = targetOptions([
-      { group: 'Other panel', paths: [other] },
-      { group: 'Tab', paths: tabPaths },
-      { group: 'Favourite', paths: [...this.ws.favorites()] },
-      { group: 'Recent', paths: this.ws.recent() },
-    ]);
+    const targets = targetOptions(
+      [
+        { group: 'Other panel', paths: [other] },
+        { group: 'Tab', paths: tabPaths },
+        { group: 'Favourite', paths: [...this.ws.favorites()] },
+        { group: 'Recent', paths: this.ws.recent() },
+      ],
+      (p) => this.archive.isArchivePath(p),
+    );
     const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
     this.copyMove.set({ ...args, targets, dangers });
     this.dialogs.show('copy-move');
@@ -211,6 +216,7 @@ export class OpsStore {
       entries,
       dangers,
       wholeGroups: whole,
+      sizeOnly: store?.searchKind() === 'duplicates' && this.search.sizeOnly(store.searchKey()),
     });
     this.dialogs.show('delete');
   }

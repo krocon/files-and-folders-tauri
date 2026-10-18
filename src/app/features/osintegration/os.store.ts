@@ -92,7 +92,9 @@ export class OsStore {
   }
 
   context(): ToolContext {
-    const other = this.ws.panel(otherSide(this.ws.activeSide()))?.store.path() ?? null;
+    // a folder inside an archive is no target for a tool (virtual path, review 016 #7)
+    const otherStore = this.ws.panel(otherSide(this.ws.activeSide()))?.store;
+    const other = otherStore && otherStore.archive() === null ? otherStore.path() : null;
     return {
       files: this.selection().map((e) => e.path),
       dir: this.folder(),

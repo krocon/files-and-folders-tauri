@@ -14,6 +14,10 @@ import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { FileBrowserStore, IN_ARCHIVE_OPEN } from '../browser/file-browser.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
+import { ClipboardApi } from '../../core/os/clipboard';
+import { OsApi } from '../../core/os/os-api';
+import { FakeClipboardApi, FakeOsApi } from '../../../testing/fake-os-api';
+import { OsStore } from '../osintegration/os.store';
 import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
 import { SearchStore } from '../search/search.store';
@@ -78,6 +82,8 @@ describe('archives and duplicates in the frontend (design 016)', () => {
         { provide: FsApi, useValue: fsApi },
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
+        { provide: OsApi, useValue: new FakeOsApi() },
+        { provide: ClipboardApi, useValue: new FakeClipboardApi() },
       ],
     });
     await TestBed.inject(JobsStore).init();
@@ -197,6 +203,31 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     ).rejects.toMatchObject({ message: expect.stringContaining('into an archive') });
   });
 
+  it('archive folders are never suggested as targets; tools get no archive targetDir (review 016 #7)', async () => {
+    await right.load('/data/Fotos 📷.zip');
+    ws.toggleFavorite('/data/Fotos 📷.zip/Über');
+    ws.toggleFavorite('/target');
+    ws.addRecent('/data/Fotos 📷.zip');
+    left.setCursor('/data/a.txt');
+    await ops.openCopyMove('copy');
+    const paths = ops.copyMove()!.targets.map((t) => t.path);
+    expect(paths).toContain('/target');
+    expect(paths.filter((p) => p.startsWith('/data/Fotos'))).toEqual([]);
+    ops.close();
+    archive.openPack();
+    expect(
+      archive
+        .pack()!
+        .targets.map((t) => t.path)
+        .filter((p) => p.startsWith('/data/Fotos')),
+    ).toEqual([]);
+    archive.close();
+    const os = TestBed.inject(OsStore);
+    expect(os.context().targetDir).toBeNull();
+    await right.load('/target');
+    expect(os.context().targetDir).toBe('/target');
+  });
+
   it('Alt+F9 unpacks the selected archives, Alt+F5 packs the selection', async () => {
     left.setCursor('/data/Fotos 📷.zip');
     expect(actions.state('OPEN_UNPACK_DLG') === 'ready').toBe(true);
@@ -239,6 +270,38 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     left.setCursor('/data/a.txt');
     expect(actions.state('OPEN_UNPACK_DLG') === 'ready').toBe(false);
     expect(() => archive.openUnpack()).toThrow();
+  });
+
+  it('duplicates by size only: no keep helpers, a warning when deleting (review 016 #6)', async () => {
+    const search = TestBed.inject(SearchStore);
+    const dup = TestBed.inject(DuplicatesStore);
+    dup.open();
+    dup.update({ compare: 'size' });
+    await dup.run();
+    const started = jobsApi.started.at(-1)!;
+    expect(started.spec).toMatchObject({ kind: 'duplicates', criteria: { compare: 'size' } });
+    const tab = ws.activeTab('left');
+    const hit = (name: string): SearchHit => ({
+      ...entry(name, { path: `/data/1/${name}`, size: 100 }),
+      dir: '/data/1',
+      group: 1,
+    });
+    jobsApi.emit({
+      type: 'searchHits',
+      id: started.id,
+      hits: [hit('a.bin'), hit('b.bin')],
+      stats: { ...EMPTY_STATS, hits: 2 },
+    });
+    await wait();
+    const r = search.result(tab.search!.key)!;
+    left.showSearch(r.key, r.hits, r.kind);
+    expect(dup.sizeOnly()).toBe(true);
+    expect(actions.state('DUP_MARK_KEEP_NEWEST')).toBe('disabled');
+    expect(await actions.run('DUP_MARK_KEEP_FIRST')).toBe(false);
+    expect(left.marked().size).toBe(0);
+    left.setMarked(['/data/1/a.bin'], true);
+    await ops.openDelete('trash');
+    expect(ops.del()?.sizeOnly).toBe(true);
   });
 
   it('duplicates: a result tab with groups, selection helpers and the delete warning', async () => {

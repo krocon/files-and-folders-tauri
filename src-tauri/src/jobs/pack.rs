@@ -63,7 +63,9 @@ impl Read for ExactLen<'_> {
         if self.left == 0 {
             return Ok(0);
         }
-        let max = buf.len().min(usize::try_from(self.left).unwrap_or(usize::MAX));
+        let max = buf
+            .len()
+            .min(usize::try_from(self.left).unwrap_or(usize::MAX));
         let n = self.inner.read(&mut buf[..max])?;
         if n == 0 {
             return Err(io::Error::new(
@@ -512,9 +514,10 @@ mod tests {
         for gz in [false, true] {
             let out = BufWriter::new(File::create(d.path().join("x.tar")).unwrap());
             let mut w = if gz {
-                Writer::TarGz(Box::new(tar::Builder::new(
-                    flate2::write::GzEncoder::new(out, flate2::Compression::fast()),
-                )))
+                Writer::TarGz(Box::new(tar::Builder::new(flate2::write::GzEncoder::new(
+                    out,
+                    flate2::Compression::fast(),
+                ))))
             } else {
                 Writer::Tar(Box::new(tar::Builder::new(out)))
             };

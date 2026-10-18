@@ -44,6 +44,11 @@ const SHOWN = 5;
           @if (!permanent()) {
             <p class="help">{{ t.trashHint }}</p>
           }
+          @if (r.sizeOnly) {
+            <div class="danger-box" role="note">
+              <strong>{{ dup.sizeOnlyDelete }}</strong>
+            </div>
+          }
           @if (r.wholeGroups) {
             <div class="danger-box" role="note">
               <strong>{{ dup.wholeGroups(r.wholeGroups) }}</strong>

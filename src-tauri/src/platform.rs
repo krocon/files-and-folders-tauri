@@ -445,7 +445,10 @@ mod tests {
         fs::remove_file(&file).unwrap();
         std::os::unix::fs::symlink(&secret, &file).unwrap();
         assert!(open_regular_file_no_follow(&file).is_err());
-        assert!(open_regular_file(&file).is_ok(), "the plain open still follows");
+        assert!(
+            open_regular_file(&file).is_ok(),
+            "the plain open still follows"
+        );
     }
 
     #[test]

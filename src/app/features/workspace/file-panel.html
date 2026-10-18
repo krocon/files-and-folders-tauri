@@ -21,6 +21,9 @@
             <span class="search-roots">· {{ dupProgress() }}</span>
           } @else {
             <span class="search-count">· {{ dupSummary() }}</span>
+            @if (r.duplicates?.compare === 'size') {
+              <span class="warn" role="note">· {{ dupTexts.sizeOnlyHeader }}</span>
+            }
             @if (r.cancelled) {
               <span class="warn">· {{ searchTexts.cancelled }}</span>
             }
@@ -41,7 +44,7 @@
         <button type="button" class="btn small" (click)="stopSearch()">
           {{ searchTexts.stop }}
         </button>
-      } @else if (r && r.hits.length > 0) {
+      } @else if (r && r.hits.length > 0 && r.duplicates?.compare !== 'size') {
         <span class="dup-keep" role="group" [attr.aria-label]="dupTexts.keepTitle">
           <span aria-hidden="true">{{ dupTexts.keep }}</span>
           <button

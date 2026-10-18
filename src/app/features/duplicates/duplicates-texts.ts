@@ -29,6 +29,9 @@ export const DUP_TEXTS = {
   keepFirst: 'first',
   keepTitle: 'Marks every file of each group except one – delete the marked ones with F8 (trash)',
   groupColumn: 'Group',
+  sizeOnlyHeader: 'same size only – contents not compared, no keep helpers',
+  sizeOnlyDelete:
+    'These files only have the same size – their contents were not compared, they may well differ.',
   wholeGroups: (n: number) =>
     n === 1
       ? 'Every file of 1 group of duplicates is marked – no copy of it would remain.'

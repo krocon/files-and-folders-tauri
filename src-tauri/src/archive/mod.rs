@@ -340,12 +340,12 @@ fn push_entry(
         Ok(name) => {
             index.name_bytes += name.iter().map(|n| n.len() + 1).sum::<usize>();
             index.entries.push(IndexEntry {
-            name,
-            kind,
-            size: if kind == EntryType::Dir { 0 } else { size },
-            modified_ms,
-            mode,
-            pos,
+                name,
+                kind,
+                size: if kind == EntryType::Dir { 0 } else { size },
+                modified_ms,
+                mode,
+                pos,
             })
         }
         Err(_) => index.unsafe_entries += 1,
@@ -523,10 +523,10 @@ fn pax_value(mut data: &[u8], key: &[u8]) -> io::Result<Option<Vec<u8>>> {
             .ok_or_else(|| meta_error("malformed PAX header"))?;
         let record = &data[sp + 1..len];
         let record = record.strip_suffix(b"\n").unwrap_or(record);
-        if let Some(eq) = record.iter().position(|b| *b == b'=') {
-            if &record[..eq] == key {
-                found = Some(record[eq + 1..].to_vec());
-            }
+        if let Some(eq) = record.iter().position(|b| *b == b'=')
+            && &record[..eq] == key
+        {
+            found = Some(record[eq + 1..].to_vec());
         }
         data = &data[len..];
     }

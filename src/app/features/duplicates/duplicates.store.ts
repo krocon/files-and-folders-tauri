@@ -116,10 +116,23 @@ export class DuplicatesStore {
     }
   }
 
-  /** The active panel shows duplicates (the selection helpers work there). */
+  /**
+   * The active panel shows duplicates (the selection helpers work there) – not
+   * for "same size only": nothing says those files are copies (review 016 #6).
+   */
   canMark(): boolean {
     const store = this.ws.panel()?.store;
-    return !!store && store.searchKey() !== null && store.searchKind() === 'duplicates';
+    return (
+      !!store &&
+      store.searchKey() !== null &&
+      store.searchKind() === 'duplicates' &&
+      !this.sizeOnly()
+    );
+  }
+
+  /** The duplicates shown on `side` were compared by size only. */
+  sizeOnly(side: Side = this.ws.activeSide()): boolean {
+    return this.search.sizeOnly(this.ws.panel(side)?.store.searchKey());
   }
 
   /** Marks every shown file of each group except the one `rule` keeps. */

@@ -605,7 +605,11 @@ fn extracted_modes_respect_the_umask() {
     assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
     let expected = 0o777 & !umask();
     for name in ["offen.sh", "suid"] {
-        let mode = fs::metadata(target.join(name)).unwrap().permissions().mode() & 0o7777;
+        let mode = fs::metadata(target.join(name))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o7777;
         assert_eq!(mode, expected, "{name}: {mode:o}");
     }
 }

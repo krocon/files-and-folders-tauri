@@ -185,6 +185,9 @@ export class FilePanel implements OnInit {
       const listing = this.store.listing();
       untracked(() => {
         const id = this.tabId();
+        if (listing?.archive) {
+          this.ws.noteArchive(listing.archive.path);
+        }
         if (listing && this.ownsListing(id) && this.store.searchKey() === null) {
           this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
         }

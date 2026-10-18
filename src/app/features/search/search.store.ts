@@ -148,6 +148,11 @@ export class SearchStore {
     return this.results().get(key);
   }
 
+  /** A duplicate result that compared sizes only – contents unknown (review 016 #6). */
+  sizeOnly(key: string | null | undefined): boolean {
+    return key != null && this.result(key)?.duplicates?.compare === 'size';
+  }
+
   /**
    * Starts a search and shows it in a result tab on `side`: a new tab, or the
    * result tab `reuseTab`. Returns an error for the dialog (nothing opened) or null.

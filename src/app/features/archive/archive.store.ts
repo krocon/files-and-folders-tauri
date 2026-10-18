@@ -11,6 +11,7 @@ import { jobTitle } from '../jobs/job-format';
 import { selectionForAction, TargetOption, targetOptions } from '../ops/ops-logic';
 import { OPS_TEXTS } from '../ops/ops-texts';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
+import { isSameOrBelow } from '../search/search.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
 
 export interface PackRequest {
@@ -78,17 +79,35 @@ export class ArchiveStore {
     return store && store.archive() === null ? store.path() : null;
   }
 
+  /**
+   * `path` is an archive shown as a folder, or lies inside one (archives seen
+   * this session + those shown now) – never a target (review 016 #7).
+   */
+  isArchivePath(path: string): boolean {
+    const roots = new Set(this.ws.archiveRoots());
+    for (const s of ['left', 'right'] as const) {
+      const info = this.ws.panel(s)?.store.archive();
+      if (info) {
+        roots.add(info.path);
+      }
+    }
+    return [...roots].some((r) => isSameOrBelow(path, r));
+  }
+
   private targetsFor(side: Side): { target: string; targets: readonly TargetOption[] } {
     const other = this.folderOf(otherSide(side));
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
-    const targets = targetOptions([
-      { group: 'Other panel', paths: [other] },
-      { group: 'This panel', paths: [this.folderOf(side)] },
-      { group: 'Tab', paths: tabPaths },
-      { group: 'Favourite', paths: [...this.ws.favorites()] },
-      { group: 'Recent', paths: this.ws.recent() },
-    ]);
+    const targets = targetOptions(
+      [
+        { group: 'Other panel', paths: [other] },
+        { group: 'This panel', paths: [this.folderOf(side)] },
+        { group: 'Tab', paths: tabPaths },
+        { group: 'Favourite', paths: [...this.ws.favorites()] },
+        { group: 'Recent', paths: this.ws.recent() },
+      ],
+      (p) => this.isArchivePath(p),
+    );
     return { target: other ?? this.folderOf(side) ?? '', targets };
   }
 
