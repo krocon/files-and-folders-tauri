@@ -1,3 +1,4 @@
+import { TargetField } from '../ops/target-field';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { defaultArchiveName, withFormat } from '../../core/archive/archive-names';
 import { ArchiveFormat, FsError } from '../../core/fs/fs.models';
@@ -15,10 +16,10 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
  */
 @Component({
   selector: 'app-pack-dialog',
-  imports: [Modal],
+  imports: [Modal, TargetField],
   template: `
     @if (req(); as r) {
-      <app-modal [heading]="t.packTitle" width="36rem" (closed)="store.close()">
+      <app-modal [heading]="t.packTitle" width="min(52rem, 94vw)" (closed)="store.close()">
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
           <p class="source">
             <strong>{{
@@ -62,27 +63,13 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
               </select>
             </label>
           }
-          <label class="field">
-            <span>{{ t.to }}</span>
-            <input
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              [value]="target()"
-              (input)="target.set($any($event.target).value); error.set(null)"
-            />
-          </label>
-          @if (r.targets.length > 0) {
-            <label class="field">
-              <span>{{ t.suggestions }}</span>
-              <select (change)="pick($event)">
-                <option value="" selected>{{ t.chooseTarget }}</option>
-                @for (o of r.targets; track o.path) {
-                  <option [value]="o.path">{{ o.group }}: {{ o.path }}</option>
-                }
-              </select>
-            </label>
-          }
+          <app-target-field
+            [label]="t.to"
+            [suggestionsLabel]="t.suggestions"
+            [value]="target()"
+            [targets]="r.targets"
+            (valueChange)="target.set($event); error.set(null)"
+          />
           <p class="help">{{ t.linksHint }}</p>
           <p id="fnf-pack-error" class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
@@ -138,14 +125,6 @@ export class PackDialog {
     const next = withFormat(this.name(), f);
     if (next !== '') {
       this.name.set(next);
-    }
-  }
-
-  protected pick(evt: Event): void {
-    const select = evt.target as HTMLSelectElement;
-    if (select.value) {
-      this.target.set(select.value);
-      this.error.set(null);
     }
   }
 

@@ -16,7 +16,6 @@ export const ARCHIVE_EN = {
   levelHint: (n: number) => (n === 1 ? '1 (fastest)' : n === 9 ? '9 (smallest)' : `${n}`),
   to: 'To folder',
   suggestions: 'Suggestions',
-  chooseTarget: 'Choose a folder…',
   intoSubfolder: (name: string) => `Into a subfolder “${name}”`,
   intoSubfolderMany: 'Each archive into a subfolder of its name',
   ifExists: 'If a file exists',

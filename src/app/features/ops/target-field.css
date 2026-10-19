@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.row {
+  display: flex;
+  gap: var(--spacing-1);
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.pick {
+  flex: none;
+  min-width: 2.5rem;
+  font-weight: 600;
+}

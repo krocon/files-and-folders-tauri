@@ -14,6 +14,7 @@ import { formatSize } from '../../shared/format';
 import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
+import { TargetField } from './target-field';
 
 const DEFAULTS: readonly ConflictDefault[] = [
   'ask',
@@ -30,12 +31,12 @@ const DEFAULTS: readonly ConflictDefault[] = [
  */
 @Component({
   selector: 'app-copy-move-dialog',
-  imports: [Modal],
+  imports: [Modal, TargetField],
   template: `
     @if (req(); as r) {
       <app-modal
         [heading]="r.kind === 'copy' ? t.copy : t.move"
-        width="38rem"
+        width="min(60rem, 94vw)"
         (closed)="ops.close()"
       >
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
@@ -45,30 +46,16 @@ const DEFAULTS: readonly ConflictDefault[] = [
             }}</strong>
             <span class="count" aria-live="polite">{{ countText() }}</span>
           </p>
-          <label class="field">
-            <span>{{ t.to }}</span>
-            <input
-              data-autofocus
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              [value]="target()"
-              (input)="target.set($any($event.target).value); error.set(null)"
-              [attr.aria-invalid]="error() ? 'true' : null"
-              aria-describedby="fnf-copy-error"
-            />
-          </label>
-          @if (r.targets.length > 0) {
-            <label class="field">
-              <span>{{ t.suggestions }}</span>
-              <select (change)="pick($event)">
-                <option value="" selected>{{ t.chooseTarget }}</option>
-                @for (o of r.targets; track o.path) {
-                  <option [value]="o.path">{{ o.group }}: {{ o.path }}</option>
-                }
-              </select>
-            </label>
-          }
+          <app-target-field
+            [label]="t.to"
+            [suggestionsLabel]="t.suggestions"
+            [value]="target()"
+            [targets]="r.targets"
+            [autofocus]="true"
+            [invalid]="!!error()"
+            describedBy="fnf-copy-error"
+            (valueChange)="target.set($event); error.set(null)"
+          />
           @if (r.sources.length === 1) {
             <label class="field">
               <span>{{ t.newName }}</span>
@@ -226,14 +213,6 @@ export class CopyMoveDialog {
 
   protected errorText(e: FsError): string {
     return dialogError(e);
-  }
-
-  protected pick(evt: Event): void {
-    const select = evt.target as HTMLSelectElement;
-    if (select.value) {
-      this.target.set(select.value);
-      this.error.set(null);
-    }
   }
 
   protected onKeydown(evt: KeyboardEvent): void {

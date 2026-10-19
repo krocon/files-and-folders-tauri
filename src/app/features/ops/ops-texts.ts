@@ -13,7 +13,6 @@ export const OPS_EN = {
   unreadable: (n: number) => ` (${n} not readable)`,
   to: 'To folder',
   suggestions: 'Suggestions',
-  chooseTarget: 'Choose a folder…',
   newName: 'Name in the target folder',
   ifExists: 'If a file exists',
   conflictDefaults: {

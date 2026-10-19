@@ -1,3 +1,4 @@
+import { TargetField } from '../ops/target-field';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { ConflictDefault } from '../../core/jobs/jobs.models';
@@ -22,12 +23,12 @@ const DEFAULTS: readonly ConflictDefault[] = [
  */
 @Component({
   selector: 'app-unpack-dialog',
-  imports: [Modal],
+  imports: [Modal, TargetField],
   template: `
     @if (req(); as r) {
       <app-modal
         [heading]="r.fromArchive ? t.extractTitle : t.unpackTitle"
-        width="36rem"
+        width="min(52rem, 94vw)"
         (closed)="store.close()"
       >
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
@@ -36,30 +37,16 @@ const DEFAULTS: readonly ConflictDefault[] = [
               r.fromArchive ? t.entries(r.entryCount) : t.archives(r.entryCount)
             }}</strong>
           </p>
-          <label class="field">
-            <span>{{ t.to }}</span>
-            <input
-              data-autofocus
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              [value]="target()"
-              aria-describedby="fnf-unpack-error"
-              [attr.aria-invalid]="error() ? 'true' : null"
-              (input)="target.set($any($event.target).value); error.set(null)"
-            />
-          </label>
-          @if (r.targets.length > 0) {
-            <label class="field">
-              <span>{{ t.suggestions }}</span>
-              <select (change)="pick($event)">
-                <option value="" selected>{{ t.chooseTarget }}</option>
-                @for (o of r.targets; track o.path) {
-                  <option [value]="o.path">{{ o.group }}: {{ o.path }}</option>
-                }
-              </select>
-            </label>
-          }
+          <app-target-field
+            [label]="t.to"
+            [suggestionsLabel]="t.suggestions"
+            [value]="target()"
+            [targets]="r.targets"
+            [autofocus]="true"
+            [invalid]="!!error()"
+            describedBy="fnf-unpack-error"
+            (valueChange)="target.set($event); error.set(null)"
+          />
           @if (!r.fromArchive) {
             <label class="check">
               <input
@@ -108,14 +95,6 @@ export class UnpackDialog {
   protected errorText(): string {
     const e = this.error();
     return e ? dialogError(e) : '';
-  }
-
-  protected pick(evt: Event): void {
-    const select = evt.target as HTMLSelectElement;
-    if (select.value) {
-      this.target.set(select.value);
-      this.error.set(null);
-    }
   }
 
   protected onKeydown(evt: KeyboardEvent): void {

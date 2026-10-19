@@ -12,7 +12,6 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
   unreadable: (n) => ` (${n} nicht lesbar)`,
   to: 'In den Ordner',
   suggestions: 'Vorschläge',
-  chooseTarget: 'Ordner wählen…',
   newName: 'Name im Zielordner',
   ifExists: 'Wenn eine Datei existiert',
   conflictDefaults: {
