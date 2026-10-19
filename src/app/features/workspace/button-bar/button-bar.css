@@ -11,6 +11,13 @@
   --color-focus: var(--color-footer-focus);
 }
 
+/* the menus are positioned on their own: their hosts take no place in the flex row
+   (else `space-between` moved Actions/Tasks… to the middle while a menu was open) */
+app-actions-menu,
+app-context-menu {
+  display: contents;
+}
+
 .functions,
 .tools {
   display: flex;

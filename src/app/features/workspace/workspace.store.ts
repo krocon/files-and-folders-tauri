@@ -180,6 +180,21 @@ export class WorkspaceStore {
     return activeTabOf(this.panels()[side]);
   }
 
+  /**
+   * Default target folder: the folder of the selected tab on the other side (the side that
+   * is not `from`, by default not the active one) – for Copy, Move, Pack, Group, tools.
+   * A result tab gives the folder it searched in; `null` inside an archive (virtual path)
+   * or before a home tab has its first listing.
+   */
+  targetDir(from: Side = this.activeSide()): string | null {
+    const side = otherSide(from);
+    const store = this.panel(side)?.store;
+    if (store?.archive()) {
+      return null;
+    }
+    return this.activeTab(side).path ?? store?.path() ?? null;
+  }
+
   // ---- sides ----
 
   setActive(side: Side): void {

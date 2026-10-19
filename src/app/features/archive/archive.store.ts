@@ -10,7 +10,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
 import { selectionForAction, TargetOption, targetOptions } from '../ops/ops-logic';
 import { OPS_TEXTS } from '../ops/ops-texts';
-import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
+import { WorkspaceStore } from '../workspace/workspace.store';
 import { isSameOrBelow } from '../search/search.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
 
@@ -95,7 +95,7 @@ export class ArchiveStore {
   }
 
   private targetsFor(side: Side): { target: string; targets: readonly TargetOption[] } {
-    const other = this.folderOf(otherSide(side));
+    const other = this.ws.targetDir(side);
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
     const targets = targetOptions(

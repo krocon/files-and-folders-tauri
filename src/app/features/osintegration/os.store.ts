@@ -12,7 +12,7 @@ import { OsApi } from '../../core/os/os-api';
 import { ToolContext, ToolInfo } from '../../core/os/os.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionForAction } from '../ops/ops-logic';
-import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
+import { WorkspaceStore } from '../workspace/workspace.store';
 import { OS_TEXTS } from './os-texts';
 
 function err(message: string): FsError {
@@ -93,8 +93,7 @@ export class OsStore {
 
   context(): ToolContext {
     // a folder inside an archive is no target for a tool (virtual path, review 016 #7)
-    const otherStore = this.ws.panel(otherSide(this.ws.activeSide()))?.store;
-    const other = otherStore && otherStore.archive() === null ? otherStore.path() : null;
+    const other = this.ws.targetDir();
     return {
       files: this.selection().map((e) => e.path),
       dir: this.folder(),
