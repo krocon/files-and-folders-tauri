@@ -125,6 +125,7 @@
 
 .danger {
   color: var(--color-danger-text);
+  background: var(--color-danger-bg);
   border-color: var(--color-danger);
 }
 

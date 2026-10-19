@@ -56,6 +56,7 @@ import { ACTION_TEXTS } from '../../core/actions/action-texts';
     }
     .danger {
       color: var(--color-danger-text);
+      background: var(--color-danger-bg);
       border-color: var(--color-danger);
     }
   `,

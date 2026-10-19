@@ -117,7 +117,10 @@ code {
 }
 
 .danger-text {
+  padding: 0 var(--spacing-1);
   color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-sm);
   font-weight: 600;
 }
 
@@ -144,5 +147,6 @@ code {
 
 .btn.danger {
   color: var(--color-danger-text);
+  background: var(--color-danger-bg);
   border-color: var(--color-danger);
 }
