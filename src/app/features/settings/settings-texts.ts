@@ -46,7 +46,7 @@ export const SETTINGS_EN = {
     },
     'view.density': {
       label: 'Row height',
-      help: 'Condensed 22 px, normal 24 px, spacious 34 px (as in the old version).',
+      help: 'Condensed 24 px, normal 30 px, spacious 34 px (as in the old version).',
       keywords: 'density compact condensed row height',
     },
     'view.folderBrackets': {
@@ -226,7 +226,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     },
     'view.density': {
       label: 'Zeilenhöhe',
-      help: 'Kompakt 22 px, normal 24 px, großzügig 34 px (wie in der alten Version).',
+      help: 'Kompakt 24 px, normal 30 px, großzügig 34 px (wie in der alten Version).',
       keywords: 'dichte kompakt zeile höhe',
     },
     'view.folderBrackets': {

@@ -1,3 +1,4 @@
+import { untracked } from '@angular/core';
 import {
   AreaModelObjectArrayWithColumndefs,
   ColumnDefIf,
@@ -146,6 +147,15 @@ export const FILE_LIST_SHORTCUTS: ShortcutActionIdMapping = {
 export function createFileTable(
   labelledBy: string,
   rowFilter: () => (row: DirEntry) => boolean = () => () => true,
+): FileTable {
+  // reads translated texts: untracked, so a language switch never re-creates the table
+  // inside a computed (design 015) – titles and texts change in place
+  return untracked(() => createUntracked(labelledBy, rowFilter));
+}
+
+function createUntracked(
+  labelledBy: string,
+  rowFilter: () => (row: DirEntry) => boolean,
 ): FileTable {
   const columnDefs = createFileColumns();
   const body = new FileBodyModel([], columnDefs, NO_STATE);

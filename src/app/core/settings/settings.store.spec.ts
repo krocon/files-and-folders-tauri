@@ -5,7 +5,8 @@ import { language, setLanguage } from '../i18n/i18n';
 import { DISPLAY } from './display';
 import { SettingsApi } from './settings-api';
 import { SAVE_DELAY_MS, SettingsStore } from './settings.store';
-import { DEFAULTS, SCHEMA, SETTING_KEYS, acceptsValue } from './settings.models';
+import { DEFAULTS, ROW_HEIGHTS, SCHEMA, SETTING_KEYS, acceptsValue } from './settings.models';
+import { ROW_HEIGHT } from '../../features/browser/file-list/file-table-model';
 // @ts-expect-error – node module in a spec (vitest runs in node)
 import { readFileSync } from 'node:fs';
 
@@ -115,5 +116,11 @@ describe('SettingsStore', () => {
     store.set('view.menuBar', false);
     await store.flush();
     expect(store.saveError()).toBe('disk full');
+  });
+});
+
+describe('row heights (design 015)', () => {
+  it('density "normal" is the height the file list is built with', () => {
+    expect(ROW_HEIGHTS.normal).toBe(ROW_HEIGHT);
   });
 });

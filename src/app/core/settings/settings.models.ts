@@ -42,10 +42,10 @@ export const DEFAULTS: SettingsValues = Object.fromEntries(
   SETTING_KEYS.map((k) => [k, SCHEMA[k].default]),
 ) as unknown as SettingsValues;
 
-/** Row height per density (px); `normal` = the list's 24 px, `spacious` = mr's 34 px. */
+/** Row height per density (px); `normal` = the list's `ROW_HEIGHT` (30 px), `spacious` = mr's 34 px. */
 export const ROW_HEIGHTS: Readonly<Record<SettingsValues['view.density'], number>> = {
-  condensed: 22,
-  normal: 24,
+  condensed: 24,
+  normal: 30,
   spacious: 34,
 };
 

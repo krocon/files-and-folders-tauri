@@ -44,10 +44,13 @@ export interface MenuSource {
   extraReady(id: string): boolean;
 }
 
+/** Labels are getters: they follow the language (design 015) instead of being read at load. */
 const T = MENU_TEXTS;
 
 const COPY_AS: MenuDef = {
-  sub: T.copyAs,
+  get sub() {
+    return T.copyAs;
+  },
   items: [
     'COPY_2_CLIPBOARD_NAMES',
     'COPY_2_CLIPBOARD_FULLNAMES',
@@ -57,16 +60,25 @@ const COPY_AS: MenuDef = {
 };
 /** Selection helpers of a duplicate tab (design 016 E6). */
 const DUP_MARK: MenuDef = {
-  sub: T.duplicates,
+  get sub() {
+    return T.duplicates;
+  },
   items: ['DUP_MARK_KEEP_NEWEST', 'DUP_MARK_KEEP_OLDEST', 'DUP_MARK_KEEP_FIRST'],
 };
-const WITH_TOOL: MenuDef = { sub: T.openWithTool, items: ['@tools', '-', 'OPEN_TOOLS_DLG'] };
+const WITH_TOOL: MenuDef = {
+  get sub() {
+    return T.openWithTool;
+  },
+  items: ['@tools', '-', 'OPEN_TOOLS_DLG'],
+};
 
 /** The menu bar (design 014 E8) – native on macOS, in the window elsewhere. */
 export const MENU_BAR: readonly TopMenu[] = [
   {
     id: 'app',
-    label: T.appName,
+    get label() {
+      return T.appName;
+    },
     macosOnly: true,
     items: [
       { native: 'about' },
@@ -85,7 +97,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'file',
-    label: T.file,
+    get label() {
+      return T.file;
+    },
     items: [
       'NAVIGATE_OPEN',
       'OPEN_IN_NEW_TAB',
@@ -117,7 +131,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'edit',
-    label: T.edit,
+    get label() {
+      return T.edit;
+    },
     items: [
       {
         when: 'macos',
@@ -145,7 +161,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'view',
-    label: T.view,
+    get label() {
+      return T.view;
+    },
     items: [
       'RELOAD_DIR',
       'TOGGLE_HIDDEN_FILES',
@@ -163,7 +181,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'go',
-    label: T.go,
+    get label() {
+      return T.go;
+    },
     items: [
       'NAVIGATE_PARENT',
       'NAVIGATE_BACK',
@@ -183,7 +203,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'tools',
-    label: T.tools,
+    get label() {
+      return T.tools;
+    },
     items: [
       'OPEN_FIND_DLG',
       'RERUN_SEARCH',
@@ -200,7 +222,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'window',
-    label: T.window,
+    get label() {
+      return T.window;
+    },
     items: [
       {
         when: 'macos',
@@ -220,7 +244,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
   {
     id: 'help',
-    label: T.help,
+    get label() {
+      return T.help;
+    },
     items: [
       'OPEN_SHORTCUT_DLG',
       'OPEN_COMMAND_PALETTE',

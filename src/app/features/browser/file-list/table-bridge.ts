@@ -48,10 +48,13 @@ export interface TableBridge {
    * Column titles (by property) and row height changed (language, density – design
    * 015): applied to the live model and repainted, no new table.
    */
-  setPresentation(p: {
-    readonly headers: Readonly<Record<string, string>>;
-    readonly rowHeight: number;
-  }): void;
+  setPresentation(p: Presentation): void;
+}
+
+/** Column titles (by property) and body row height (design 015). */
+export interface Presentation {
+  readonly headers: Readonly<Record<string, string>>;
+  readonly rowHeight: number;
 }
 
 /** The parts of the table state that belong to a tab. */
@@ -184,6 +187,9 @@ export function createTableBridge(
       });
       if (body.defaultRowHeight !== rowHeight) {
         body.defaultRowHeight = rowHeight;
+        // content height and wrappers were sized with the old height (E2E 015: last row clipped)
+        api.getTableModel().recalcHeightAndPadding();
+        api.recalcWrappers();
       }
       api.repaintHard();
     },

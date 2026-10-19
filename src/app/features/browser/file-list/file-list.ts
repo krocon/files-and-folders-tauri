@@ -42,7 +42,12 @@ import { ROW_HEIGHTS } from '../../../core/settings/settings.models';
 import { DISPLAY } from '../../../core/settings/display';
 import { locale } from '../../../core/i18n/i18n';
 import { inPlaceUpdate } from './row-update';
-import { createTableBridge, removeConflictingShortcuts, TableBridge } from './table-bridge';
+import {
+  createTableBridge,
+  Presentation,
+  removeConflictingShortcuts,
+  TableBridge,
+} from './table-bridge';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -159,28 +164,8 @@ export class FileList implements OnDestroy {
     });
     // language, formats, name display and density (design 015): live, no new table
     effect(() => {
-      const c = TEXTS.columns;
-      const headers = {
-        name: c.name,
-        ext: c.ext,
-        size: c.size,
-        modifiedMs: c.modified,
-        dir: c.folder,
-        group: c.group,
-      };
-      const rowHeight = ROW_HEIGHTS[this.settings.get('view.density')];
-      DISPLAY.sizeFormat();
-      DISPLAY.dateFormat();
-      DISPLAY.folderBrackets();
-      DISPLAY.hideExtension();
-      locale();
-      untracked(() => {
-        if (this.bridge) {
-          this.bridge.setPresentation({ headers, rowHeight });
-          const l = this.shownListing;
-          this.applyEmptyText(!!l && l.parent === null && l.entries.length === 0);
-        }
-      });
+      const p = this.presentation();
+      untracked(() => this.applyPresentation(p));
     });
     effect(() => {
       this.store.rowFilter();
@@ -191,6 +176,36 @@ export class FileList implements OnDestroy {
         }
       });
     });
+  }
+
+  /** Column titles and row height from language and settings (read reactively). */
+  private presentation(): Presentation {
+    const c = TEXTS.columns;
+    const headers = {
+      name: c.name,
+      ext: c.ext,
+      size: c.size,
+      modifiedMs: c.modified,
+      dir: c.folder,
+      group: c.group,
+    };
+    const rowHeight = ROW_HEIGHTS[this.settings.get('view.density')];
+    // the renderers read these at paint time – a change needs a repaint
+    DISPLAY.sizeFormat();
+    DISPLAY.dateFormat();
+    DISPLAY.folderBrackets();
+    DISPLAY.hideExtension();
+    locale();
+    void TEXTS.emptyFolder;
+    return { headers, rowHeight };
+  }
+
+  private applyPresentation(p: Presentation): void {
+    if (this.bridge) {
+      this.bridge.setPresentation(p);
+      const l = this.shownListing;
+      this.applyEmptyText(!!l && l.parent === null && l.entries.length === 0);
+    }
   }
 
   /**
@@ -223,6 +238,8 @@ export class FileList implements OnDestroy {
     });
     this.bridge = bridge;
     this.controller = controller;
+    // titles and row height of the current language/settings (the table starts with the defaults)
+    this.applyPresentation(untracked(() => this.presentation()));
 
     removeConflictingShortcuts(api);
     table.body.setRowState({
