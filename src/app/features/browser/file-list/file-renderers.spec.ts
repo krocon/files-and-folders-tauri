@@ -52,6 +52,18 @@ describe('file renderers', () => {
     expect(render(new SizeCellRenderer(), dir('d'), null).querySelector('*')).toBeNull();
   });
 
+  it('shows a spinner animation in size cell when directory size is being calculated', () => {
+    const d = dir('d', { path: '/home/d' });
+    const cell = document.createElement('div');
+    const areaModel = {
+      getRowByIndex: () => d,
+      isCalculatingSize: (path: string) => path === '/home/d',
+    } as unknown as AreaModelIf;
+    new SizeCellRenderer().render(cell, 0, 0, 'body', areaModel, null, new SimpleDomService());
+    expect(cell.querySelector('.fnf-size-spinner')).not.toBeNull();
+    expect(cell.textContent).toBe('');
+  });
+
   it('formats dates and leaves missing dates empty', () => {
     expect(render(new DateCellRenderer(), entry('f', { modifiedMs: 0 }), 0).textContent).not.toBe(
       '',

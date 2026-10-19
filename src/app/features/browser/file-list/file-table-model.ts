@@ -24,6 +24,8 @@ export interface FileRowState {
   isMarked(path: string): boolean;
   /** The folder row a drag would drop into (design 012 E5). */
   isDropTarget?(path: string): boolean;
+  /** The folder's size is currently being calculated and > 2s elapsed. */
+  isCalculatingSize?(path: string): boolean;
 }
 
 /**
@@ -42,6 +44,10 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
 
   setRowState(state: FileRowState): void {
     this.state = state;
+  }
+
+  isCalculatingSize(path: string): boolean {
+    return this.state.isCalculatingSize?.(path) ?? false;
   }
 
   /** In-place rename (F2): only this entry's name cell is editable, with this editor. */

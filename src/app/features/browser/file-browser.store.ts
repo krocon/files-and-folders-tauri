@@ -52,6 +52,9 @@ export interface SizeJob {
   readonly progress: { readonly bytes: number } | null;
 }
 
+/** If a folder size calculation takes longer than 2 seconds, show animation. */
+export const DIR_SIZE_ANIMATION_DELAY_MS = 2000;
+
 /**
  * State of one file panel. Provided per component (not root): two panels and
  * their tabs need independent instances.
@@ -91,6 +94,12 @@ export class FileBrowserStore {
   private readonly jobs = inject(JobsStore);
   /** Size jobs started by this panel: job id → folder path. */
   private readonly ownSizeJobs = signal<ReadonlyMap<string, string>>(new Map());
+  /** Folder path → start timestamp for size calculations started by this panel. */
+  private readonly calculatingSizes = new Map<string, number>();
+  /** Set of folder paths where calculation has exceeded 2 seconds and should show animation. */
+  readonly animatedSizePaths = signal<ReadonlySet<string>>(new Set());
+  /** Timers waiting for the 2-second threshold: path → timer ID. */
+  private readonly sizeAnimationTimers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly sizeJobs = computed<readonly SizeJob[]>(() => {
     const own = this.ownSizeJobs();
     return this.jobs
@@ -515,6 +524,20 @@ export class FileBrowserStore {
 
   // ---- folder sizes (design 003 E7) ----
 
+  /** True if this folder is currently calculating its size (or queued). */
+  isCalculatingSize(path: string): boolean {
+    return (
+      this.calculatingSizes.has(path) ||
+      [...this.ownSizeJobs().values()].includes(path) ||
+      this.jobs.findActiveDirSize(path) !== undefined
+    );
+  }
+
+  /** True if the calculation has been running for > 2 seconds and should display an animation. */
+  isSizeAnimated(path: string): boolean {
+    return this.animatedSizePaths().has(path);
+  }
+
   /** Starts the size calculation of a folder as a job (no-op for files or if already running). */
   async calcDirSize(entry: DirEntry): Promise<void> {
     // inside an archive Rust lists folder sizes already
@@ -526,19 +549,30 @@ export class FileBrowserStore {
     ) {
       return;
     }
-    if ([...this.ownSizeJobs().values()].includes(entry.path)) {
+    if (this.isCalculatingSize(entry.path)) {
       return;
     }
     const folder = this.locationKey();
+    this.calculatingSizes.set(entry.path, Date.now());
+    const timer = setTimeout(() => {
+      this.sizeAnimationTimers.delete(entry.path);
+      if (this.calculatingSizes.has(entry.path)) {
+        this.animatedSizePaths.update((s) => new Set(s).add(entry.path));
+      }
+    }, DIR_SIZE_ANIMATION_DELAY_MS);
+    this.sizeAnimationTimers.set(entry.path, timer);
+
     let id: string;
     try {
       id = await this.jobs.start({ kind: 'dirSize', path: entry.path });
     } catch (err) {
+      this.cleanUpCalculating(entry.path);
       this.error.set(toFsError(err));
       return;
     }
     this.ownSizeJobs.update((m) => new Map(m).set(id, entry.path));
     const job = await this.jobs.whenFinished(id);
+    this.cleanUpCalculating(entry.path);
     this.ownSizeJobs.update((m) => {
       const next = new Map(m);
       next.delete(id);
@@ -555,7 +589,31 @@ export class FileBrowserStore {
     }
   }
 
+  private cleanUpCalculating(path: string): void {
+    this.calculatingSizes.delete(path);
+    const timer = this.sizeAnimationTimers.get(path);
+    if (timer) {
+      clearTimeout(timer);
+      this.sizeAnimationTimers.delete(path);
+    }
+    if (this.animatedSizePaths().has(path)) {
+      this.animatedSizePaths.update((s) => {
+        const next = new Set(s);
+        next.delete(path);
+        return next;
+      });
+    }
+  }
+
   cancelSizeJobs(): void {
+    for (const timer of this.sizeAnimationTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.sizeAnimationTimers.clear();
+    this.calculatingSizes.clear();
+    if (this.animatedSizePaths().size > 0) {
+      this.animatedSizePaths.set(new Set());
+    }
     for (const id of this.ownSizeJobs().keys()) {
       void this.jobs.cancel(id);
     }

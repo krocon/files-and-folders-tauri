@@ -93,6 +93,14 @@ impl JobManager {
         let parallel = spec.is_parallel();
         let (id, run_now, info) = {
             let mut inner = self.lock();
+            if let JobSpec::DirSize { ref path } = spec
+                && let Some(existing) = inner.jobs.iter().find(|e| {
+                    matches!(&e.info.spec, JobSpec::DirSize { path: p } if p == path)
+                        && !e.info.state.is_finished()
+                })
+            {
+                return Ok(existing.info.id.clone());
+            }
             inner.next_id += 1;
             let id = format!("j{}", inner.next_id);
             let run_now = parallel || !inner.serial_busy;

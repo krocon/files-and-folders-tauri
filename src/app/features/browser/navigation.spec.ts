@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
@@ -206,6 +207,75 @@ describe('navigation (prompt 003)', () => {
     await running;
     expect(store.sizeJobs()).toHaveLength(0);
     expect(store.entries().every((e) => e.size === null || e.kind === 'file')).toBe(true);
+  });
+
+  it('does not start a second dir-size job for the same directory while running', async () => {
+    TestBed.inject(JobsStore).init();
+    await Promise.resolve();
+    jobsApi.autoFinishDirSize = false;
+    const first = store.calcDirSize(tree['/h'].entries[1]);
+    await Promise.resolve();
+    const second = store.calcDirSize(tree['/h'].entries[1]);
+    expect(jobsApi.started).toHaveLength(1);
+    expect(store.isCalculatingSize('/h/B')).toBe(true);
+    const id = jobsApi.started[0].id;
+    jobsApi.emit({
+      type: 'finished',
+      id,
+      state: 'done',
+      summary: {
+        itemsDone: 10,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 1234,
+        errors: [],
+        error: null,
+        dirSize: { files: 10, dirs: 0, bytes: 1234, unreadable: 0, cancelled: false },
+      },
+    });
+    await first;
+    await second;
+    expect(store.isCalculatingSize('/h/B')).toBe(false);
+  });
+
+  it('activates animated size indicator after 2 seconds if calculation is still running', async () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.inject(JobsStore).init();
+      await vi.advanceTimersByTimeAsync(0);
+      jobsApi.autoFinishDirSize = false;
+      const promise = store.calcDirSize(tree['/h'].entries[1]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.isSizeAnimated('/h/B')).toBe(false);
+      expect(store.isCalculatingSize('/h/B')).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(store.isSizeAnimated('/h/B')).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(store.isSizeAnimated('/h/B')).toBe(true);
+
+      const id = jobsApi.started[0].id;
+      jobsApi.emit({
+        type: 'finished',
+        id,
+        state: 'done',
+        summary: {
+          itemsDone: 1,
+          itemsSkipped: 0,
+          itemsFailed: 0,
+          bytesDone: 500,
+          errors: [],
+          error: null,
+          dirSize: { files: 1, dirs: 0, bytes: 500, unreadable: 0, cancelled: false },
+        },
+      });
+      await promise;
+      expect(store.isSizeAnimated('/h/B')).toBe(false);
+      expect(store.isCalculatingSize('/h/B')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('opens files with the default app and asks before running programs', async () => {

@@ -112,6 +112,15 @@ export function sizeText(entry: DirEntry): string {
   return formatSize(entry.size);
 }
 
+function renderSizeSpinner(cellDiv: HTMLDivElement, domService: DomServiceIf): void {
+  domService.addClass(cellDiv, 'fnf-cell');
+  const spinner = domService.createElement<HTMLSpanElement>('span');
+  domService.addClass(spinner, 'fnf-size-spinner');
+  domService.setAttribute(spinner, 'aria-label', TEXTS.calculating(1));
+  domService.setAttribute(spinner, 'title', TEXTS.calculating(1));
+  domService.appendChild(cellDiv, spinner);
+}
+
 export class SizeCellRenderer implements CellRendererIf {
   render(
     cellDiv: HTMLDivElement,
@@ -124,7 +133,12 @@ export class SizeCellRenderer implements CellRendererIf {
   ): RendererCleanupFnType | undefined {
     const entry = rowOf(areaModel, rowIndex);
     if (entry) {
-      setText(cellDiv, domService, sizeText(entry));
+      const model = areaModel as AreaModelIf & { isCalculatingSize?: (path: string) => boolean };
+      if (isNavigableDir(entry) && entry.size === null && model.isCalculatingSize?.(entry.path)) {
+        renderSizeSpinner(cellDiv, domService);
+      } else {
+        setText(cellDiv, domService, sizeText(entry));
+      }
     }
     return undefined;
   }

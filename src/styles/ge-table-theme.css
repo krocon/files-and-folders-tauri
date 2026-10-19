@@ -113,6 +113,25 @@
   background-color: var(--color-active-marked-bg);
 }
 
+/* Animated spinner for calculating folder size (design 003 E7) */
+.ge-table .fnf-size-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  box-sizing: border-box;
+  border: 2px solid rgba(128, 128, 128, 0.25);
+  border-top-color: var(--color-accent);
+  border-right-color: var(--color-accent);
+  border-radius: 50%;
+  animation: fnf-spin 0.75s linear infinite;
+  vertical-align: middle;
+}
+
+.ge-table .fnf-marked .fnf-size-spinner {
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+}
+
 .ge-table .fnf-cursor {
   color: var(--color-cursor-inactive-text);
   background-color: var(--color-cursor-inactive-bg);

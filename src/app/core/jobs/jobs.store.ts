@@ -42,6 +42,8 @@ export class JobsStore {
   private readonly hitBuffers = new Map<string, HitBuffer>();
   /** Jobs whose listener unsubscribed: their late hits are dropped, not buffered. */
   private readonly hitsClosed = new Set<string>();
+  /** In-flight dirSize starts to prevent concurrent duplicate calls. */
+  private readonly startingDirSizes = new Map<string, Promise<string>>();
   /** Finished jobs Rust removed (helper jobs, review 009 #10), newest last. */
   private readonly retired = signal<readonly JobInfo[]>([]);
   /** Events received while the snapshot is on its way – replayed after it. */
@@ -116,7 +118,20 @@ export class JobsStore {
 
   /** Starts a job; rejects with an `FsError` if Rust refuses it. */
   start(spec: JobSpec): Promise<string> {
+    if (spec.kind === 'dirSize') {
+      const existing = this.findActiveDirSize(spec.path);
+      if (existing) {
+        return Promise.resolve(existing.id);
+      }
+    }
     return this.api.start(spec);
+  }
+
+  /** Returns an active (not finished) job for `dirSize` of `path` if one is already running. */
+  findActiveDirSize(path: string): JobInfo | undefined {
+    return this.jobs().find(
+      (j) => j.spec.kind === 'dirSize' && j.spec.path === path && !isFinished(j.state),
+    );
   }
 
   /** Resolves when the job has finished (immediately if it already has). */

@@ -435,6 +435,22 @@ fn dir_size_runs_as_job() {
 }
 
 #[test]
+fn dir_size_does_not_start_duplicate_job_while_running() {
+    let h = Harness::new();
+    let (_d, src, _dst) = tree();
+    let path = src.to_string_lossy().into_owned();
+    let id1 = h
+        .mgr
+        .start(JobSpec::DirSize { path: path.clone() })
+        .unwrap();
+    // Starting the same path again while running returns the existing id
+    let id2 = h.mgr.start(JobSpec::DirSize { path }).unwrap();
+    assert_eq!(id1, id2);
+    let info = h.finish(&id1);
+    assert_eq!(info.state, JobState::Done);
+}
+
+#[test]
 fn invalid_specs_are_refused_before_queueing() {
     let h = Harness::new();
     assert!(
