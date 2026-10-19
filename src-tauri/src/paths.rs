@@ -98,6 +98,21 @@ pub fn segments_of(path: &Path) -> Vec<PathSegment> {
     segs
 }
 
+/// Names of `dir` itself, its parent and its grandparent – the P/Q/R tokens of
+/// multi-rename for an entry inside `dir`. A root, drive or share (`/`, `C:\`,
+/// `\\server\share`) has no name (`""`) – as the first breadcrumb of `segments_of`.
+pub fn parent_names(dir: &Path) -> [String; 3] {
+    let mut names = dir
+        .ancestors()
+        .filter_map(|p| p.file_name())
+        .map(|n| n.to_string_lossy().into_owned());
+    [
+        names.next().unwrap_or_default(),
+        names.next().unwrap_or_default(),
+        names.next().unwrap_or_default(),
+    ]
+}
+
 /// Checks a single file or folder name typed by the user (design 006 E9).
 /// The Windows rules apply on Windows only; elsewhere the file system decides.
 pub fn validate_name(name: &str) -> Result<(), FsError> {
@@ -352,6 +367,29 @@ mod tests {
             p.push(part);
         }
         p
+    }
+
+    #[test]
+    fn parent_names_from_the_folder_up() {
+        let n = |p: &Path| parent_names(p);
+        assert_eq!(n(&abs(&["home", "marc", "docs"])), ["docs", "marc", "home"]);
+        assert_eq!(
+            n(&abs(&["home", "marc", "a b", "Ünï"])),
+            ["Ünï", "a b", "marc"]
+        );
+        assert_eq!(n(&abs(&["tmp"])), ["tmp", "", ""]);
+        assert_eq!(n(&abs(&[])), ["", "", ""]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn parent_names_skip_drive_and_share() {
+        assert_eq!(
+            parent_names(Path::new(r"C:\Users\marc")),
+            ["marc", "Users", ""]
+        );
+        assert_eq!(parent_names(Path::new(r"C:\")), ["", "", ""]);
+        assert_eq!(parent_names(Path::new(r"\\srv\share\x")), ["x", "", ""]);
     }
 
     #[test]
