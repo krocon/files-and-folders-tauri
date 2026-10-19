@@ -83,6 +83,8 @@ export function registerWorkspaceActions(
     OPEN_CHDIR_DLG: { run: () => ws.requestPathEdit(ws.activeSide()) },
     OPEN_FOLDER_MENU_LEFT: { run: () => ws.requestFolderMenu('left') },
     OPEN_FOLDER_MENU_RIGHT: { run: () => ws.requestFolderMenu('right') },
+    TOGGLE_MARK_AND_RETREAT: { run: () => list()?.toggleMarkAndMove(-1), enabled: hasCursor },
+    TOGGLE_MARK: { run: () => list()?.toggleMarkAndMove(0), enabled: hasCursor },
     MARK_DOWN: { run: () => list()?.markAndMove(1), enabled: hasCursor },
     MARK_UP: { run: () => list()?.markAndMove(-1), enabled: hasCursor },
     MARK_TO_START: { run: () => list()?.markToEdge('start'), enabled: hasCursor },

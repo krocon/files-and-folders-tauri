@@ -18,6 +18,7 @@ const REPEATABLE: ReadonlySet<ActionId> = new Set<ActionId>([
   'MARK_DOWN',
   'MARK_UP',
   'TOGGLE_MARK_AND_ADVANCE',
+  'TOGGLE_MARK_AND_RETREAT',
   'NEXT_TAB',
   'PREV_TAB',
 ]);

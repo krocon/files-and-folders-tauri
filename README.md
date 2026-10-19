@@ -187,7 +187,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
 | Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
-| Go to anything… | `Ctrl+Shift+P`, `Ctrl+F12` | `⌘⇧P`, `⌘⌃G` |
+| Go to anything… | `Ctrl+Shift+P` | `⌘⇧P`, `⌘⌃G` |
+| Actions menu ▴ | `Ctrl+F12` | `⌃K ⌃M` |
+| Toggle mark and move up / in place | `Shift+Space` / `Ctrl+Shift+Space` | `⇧Space` / `⌘⇧Space` |
 | Call action… | `F10` | `F10` |
 | Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
 | Mark and move down | `Shift+ArrowDown` | `⇧ArrowDown` |

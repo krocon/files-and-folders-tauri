@@ -63,6 +63,10 @@ describe('menu model', () => {
       'MARK_TO_END',
       'OPEN_CONTEXT_MENU',
       'FOCUS_MENU_BAR',
+      // keys of the old version (018 J7/J10): Space variants, the Actions menu itself
+      'TOGGLE_MARK_AND_RETREAT',
+      'TOGGLE_MARK',
+      'OPEN_ACTIONS_MENU',
     ];
     const missing = ACTION_IDS.filter((id) => !inBar.has(id) && !keysOnly.includes(id));
     expect(missing).toEqual([]);
