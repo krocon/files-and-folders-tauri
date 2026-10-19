@@ -23,7 +23,7 @@
       [attr.tabindex]="selected ? 0 : -1"
       [attr.title]="tab.search ? tab.search.label : (tab.path ?? texts.homeFolder)"
       [attr.aria-busy]="isSearching(tab) ? 'true' : null"
-      (click)="select(i)"
+      (click)="onTabClick($event, i)"
       (dblclick)="reload(i)"
       (auxclick)="onAuxClick($event, i)"
       (contextmenu)="onContextMenu($event, i)"

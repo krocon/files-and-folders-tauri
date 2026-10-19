@@ -7,6 +7,9 @@ import { ThemeService } from '../../core/theme/theme.service';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { CommandPalette } from './command-palette';
+import { SessionApi } from '../../core/session/session-api';
+import { FakeSessionApi } from '../../../testing/fake-session-api';
+import { newTab, WorkspaceStore } from '../workspace/workspace.store';
 
 describe('CommandPalette', () => {
   async function render() {
@@ -15,6 +18,7 @@ describe('CommandPalette', () => {
       providers: [
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
         { provide: ThemeApi, useValue: new FakeThemeApi() },
+        { provide: SessionApi, useValue: new FakeSessionApi() },
       ],
     });
     const actions = TestBed.inject(ActionService);
@@ -81,6 +85,27 @@ describe('CommandPalette', () => {
     expect(copy.textContent).toContain('prompt 006');
     key('ArrowDown');
     expect(input.getAttribute('aria-activedescendant')).toMatch(/-1$/);
+  });
+
+  it('lists known folders (tabs, histories, favourites, recent) and opens one in the active panel (018 J9)', async () => {
+    const { el, type, key } = await render();
+    const ws = TestBed.inject(WorkspaceStore);
+    ws.restore({
+      ...ws.snapshot(),
+      panels: {
+        left: {
+          activeTab: 0,
+          tabs: [{ ...newTab('/home/m/Music', 'Music'), history: ['/data/photos'] }],
+        },
+        right: { activeTab: 0, tabs: [newTab('/r', 'r')] },
+      },
+    });
+    type('photos');
+    const first = el.querySelector('[role="option"]')!;
+    expect(first.textContent).toContain('/data/photos');
+    key('Enter');
+    await new Promise((r) => setTimeout(r));
+    expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/data/photos' });
   });
 
   it('closes with Escape', async () => {

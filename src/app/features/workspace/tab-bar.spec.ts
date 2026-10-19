@@ -114,7 +114,9 @@ describe('TabBar', () => {
       'Clone tab for right panel',
       'Move tab to the left',
       'Move tab to the right',
+      'History',
     ]);
+    expect(items[6].getAttribute('aria-disabled')).toBe('true');
     expect(items[4].getAttribute('aria-disabled')).toBe('true');
 
     items[5].click(); // move right
@@ -136,6 +138,36 @@ describe('TabBar', () => {
     fixture.detectChanges();
     expect(ws.panels().left.tabs.map((t) => t.path)).toEqual(['/Users/jörg/Mein Ordner', null]);
     expect(ws.panels().right.tabs.map((t) => t.path)).toEqual(['/r', '/a', '/a']);
+  });
+
+  it('Shift+click closes a tab (old version, 018 J13)', async () => {
+    const { fixture, tabs } = await render();
+    tabs()[0].dispatchEvent(new MouseEvent('click', { shiftKey: true, bubbles: true }));
+    fixture.detectChanges();
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['Mein Ordner', 'Home']);
+  });
+
+  it('the context menu lists the history of the tab; an entry opens it there (018 J12)', async () => {
+    const { fixture, el, tabs } = await render();
+    const id = ws.panels().left.tabs[0].id;
+    ws.updateTab(id, { history: ['/old/one', '/old/two'] });
+    fixture.detectChanges();
+    tabs()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 5 }));
+    fixture.detectChanges();
+    const history = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((i) =>
+      i.textContent?.includes('History'),
+    )!;
+    expect(history.getAttribute('aria-disabled')).toBeNull();
+    history.click();
+    fixture.detectChanges();
+    const entries = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')].filter((i) =>
+      i.textContent?.includes('/old/'),
+    );
+    expect(entries.map((e) => e.textContent?.trim())).toEqual(['/old/one', '/old/two']);
+    entries[1].click();
+    fixture.detectChanges();
+    expect(ws.panels().left.activeTab).toBe(0);
+    expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/old/two' });
   });
 
   it('opens the context menu with Shift+F10 and closes it with Escape', async () => {

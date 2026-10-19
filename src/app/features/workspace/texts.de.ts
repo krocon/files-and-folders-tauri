@@ -23,6 +23,7 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
     cloneToOther: (side) =>
       side === 'left' ? 'Tab für die rechte Seite klonen' : 'Tab für die linke Seite klonen',
     moveLeft: 'Tab nach links verschieben',
+    history: 'Verlauf',
     moveRight: 'Tab nach rechts verschieben',
   },
   splitter: 'Trenner der Seiten (Doppelklick: 50 / 50)',

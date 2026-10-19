@@ -7,6 +7,7 @@ export const ACT_EN = {
   actions: 'Actions',
   functions: 'Functions',
   tools: 'Tools',
+  folders: 'Folder',
   /** Short labels of the Actions menu ▴, as in the old version (design 020 E1). */
   menu: {
     OPEN_COMMAND_PALETTE: 'Go to anything…',
@@ -108,6 +109,7 @@ const ACT_DE: Translation<typeof ACT_EN> = {
   actions: 'Aktionen',
   functions: 'Funktionen',
   tools: 'Werkzeuge',
+  folders: 'Ordner',
   menu: {
     OPEN_COMMAND_PALETTE: 'Gehe zu …',
     RELOAD_DIR: 'Neu laden',

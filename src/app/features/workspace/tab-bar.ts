@@ -31,6 +31,8 @@ interface OpenMenu {
  * Shift+F10 or the context-menu key; double click reloads, middle click closes.
  * The menu button ▾ and the filter/hidden toggles follow in prompt 003.
  */
+const HISTORY_IN_MENU = 15;
+
 @Component({
   selector: 'app-tab-bar',
   imports: [ContextMenu],
@@ -83,6 +85,10 @@ export class TabBar {
     const open = this.menu();
     return open ? this.panel().tabs.findIndex((t) => t.id === open.tabId) : -1;
   });
+  /** History of the tab whose menu is open (most recent first, max. 15). */
+  private readonly history = computed(
+    () => this.panel().tabs[this.menuIndex()]?.history.slice(0, HISTORY_IN_MENU) ?? [],
+  );
   protected readonly menuLabel = computed(() => {
     const tab = this.panel().tabs[this.menuIndex()];
     return tab ? this.title(tab) : '';
@@ -98,6 +104,13 @@ export class TabBar {
       { id: 'cloneToOther', label: m.cloneToOther(this.side()) },
       { id: 'moveLeft', label: m.moveLeft, disabled: index <= 0 },
       { id: 'moveRight', label: m.moveRight, disabled: index < 0 || index >= count - 1 },
+      // the folders this tab visited (mr: long press on a tab, 018 J12)
+      {
+        id: 'history',
+        label: m.history,
+        disabled: this.history().length === 0,
+        children: this.history().map((p, i) => ({ id: `hist:${i}`, label: p })),
+      },
     ];
   });
 
@@ -200,6 +213,15 @@ export class TabBar {
     return tab.search ? (this.search.results().get(tab.search.key)?.running ?? false) : false;
   }
 
+  /** Click; Shift+click closes the tab like in the old version (018 J13). */
+  protected onTabClick(evt: MouseEvent, index: number): void {
+    if (evt.shiftKey && this.panel().tabs.length > 1) {
+      this.ws.closeTab(this.side(), index);
+      return;
+    }
+    this.select(index);
+  }
+
   protected select(index: number): void {
     this.ws.setActive(this.side());
     this.ws.selectTab(this.side(), index);
@@ -265,11 +287,21 @@ export class TabBar {
 
   protected onMenuChosen(id: string): void {
     const i = this.menuIndex();
+    const history = this.history();
     this.menu.set(null);
     if (i < 0) {
       return;
     }
     const side = this.side();
+    if (id.startsWith('hist:')) {
+      const path = history[Number(id.slice(5))];
+      this.select(i);
+      if (path !== undefined) {
+        this.ws.requestNavigate(side, path);
+      }
+      this.ws.requestFocus(side);
+      return;
+    }
     switch (id) {
       case 'reload':
         this.reload(i);

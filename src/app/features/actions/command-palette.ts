@@ -7,11 +7,12 @@ import { Modal } from '../../shared/dialog/modal';
 import { ThemeService } from '../../core/theme/theme.service';
 import { THEME_TEXTS } from '../themes/theme-texts';
 import { fuzzyMatch } from './fuzzy';
+import { WorkspaceStore } from '../workspace/workspace.store';
 
 interface Row {
   readonly key: string;
   /** What `id` names: an `ActionId`, an extra action (tool, design 011 E4) or a colour scheme (013 E3). */
-  readonly kind: 'action' | 'extra' | 'theme';
+  readonly kind: 'action' | 'extra' | 'theme' | 'folder';
   readonly id: string;
   readonly label: string;
   readonly category: string;
@@ -24,6 +25,7 @@ interface Row {
 }
 
 const MAX_ROWS = 50;
+const MAX_FOLDERS = 300;
 const TOOLS_CATEGORY = 'Tools';
 
 /**
@@ -102,6 +104,7 @@ export class CommandPalette {
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
   private readonly theme = inject(ThemeService);
+  private readonly ws = inject(WorkspaceStore);
   protected readonly listId = 'fnf-palette-list';
   protected readonly query = signal('');
   protected readonly active = signal(0);
@@ -171,8 +174,42 @@ export class CommandPalette {
         parts: split(label, match.positions),
       });
     }
+    // folders of the tabs, their histories, favourites and recent ones (mr Go to anything, 018 J9)
+    if (q.trim() && this.scope() === 'all' && this.heading() === null) {
+      for (const path of this.folders()) {
+        const match = fuzzyMatch(q, path);
+        if (!match) {
+          continue;
+        }
+        rows.push({
+          key: `folder:${path}`,
+          kind: 'folder',
+          id: path,
+          label: path,
+          category: this.t.folders,
+          shortcut: '',
+          ready: true,
+          hint: '',
+          score: match.score - 2,
+          parts: split(path, match.positions),
+        });
+      }
+    }
     rows.sort((a, b) => b.score - a.score);
     return rows.slice(0, MAX_ROWS);
+  });
+
+  /** Known folders, each once: tabs of both sides, their histories, favourites, recent. */
+  private readonly folders = computed<string[]>(() => {
+    const panels = this.ws.panels();
+    const tabs = [...panels.left.tabs, ...panels.right.tabs].filter((t) => !t.search);
+    const all = [
+      ...tabs.map((t) => t.path),
+      ...[...this.ws.favorites()],
+      ...this.ws.recent(),
+      ...tabs.flatMap((t) => t.history),
+    ];
+    return [...new Set(all.filter((p): p is string => !!p))].slice(0, MAX_FOLDERS);
   });
 
   /** Keep the focus in the input when an option is clicked. */
@@ -233,6 +270,10 @@ export class CommandPalette {
     setTimeout(() => {
       if (kind === 'theme') {
         void this.theme.select(id);
+      } else if (kind === 'folder') {
+        const side = this.ws.source();
+        this.ws.requestNavigate(side, id);
+        this.ws.requestFocus(side);
       } else if (kind === 'extra') {
         void this.actions.runExtra(id);
       } else {
