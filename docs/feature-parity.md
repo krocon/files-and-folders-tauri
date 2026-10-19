@@ -195,7 +195,7 @@ eine Leerzeile).
 | Funktion | Referenz alt (Komponente, Optionen) | Umsetzung neu | Status | Tests | Abweichung/Grund (fehlende Optionen) |
 |---|---|---|---|---|---|
 | Kopieren/Verschieben | `cmd/copyormoveordelete`: Quelle, Live-Zählung (walkdir), Ziel mit Vorschlägen aller Tabs | `features/ops/copy-move-dialog.ts` (+ Favoriten/zuletzt, Kopie unter neuem Namen, Konfliktvorgabe) | ✅ | `features/ops/dialogs.spec.ts` › „copy: counts live, cancels the count on close and starts with the options“; Rust `jobs/tests_ops.rs` › `copy_options_conflict_default_and_new_name` | – |
-| Löschen | dito ohne Ziel, endgültig | `features/ops/delete-dialog.ts` (Papierkorb/endgültig) | ✅ | dialogs.spec › „delete: trash confirms with Enter, permanent defaults to Cancel“ | – |
+| Löschen | dito ohne Ziel, endgültig | `features/ops/delete-dialog.ts` (Papierkorb/endgültig; im Papierkorb-Dialog zusätzlich roter Button „Delete permanently“, nie Default, warnt bei Hover/Fokus) | ✅ | dialogs.spec › „delete: trash confirms with Enter, permanent defaults to Cancel“, „delete: the trash dialog can delete permanently instead“ | – |
 | Ordner anlegen | `cmd/mkdir`: Ziel + Serienvorschlag | `features/ops/name-dialog.ts` | ✅ | `features/ops/ops-logic.spec.ts` › „continues a series of at least two siblings“ | – |
 | Datei anlegen | `cmd/createfile`: Ziel | name-dialog | ✅ | Rust `fileops.rs` › `create_file_never_overwrites` | – |
 | Umbenennen | `cmd/rename`: Quelle, Ziel | name-dialog + F2 inline | ✅ | dialogs.spec › „rename: selects the name without extension, offers "Rename anyway" for dangerous paths“ | – |

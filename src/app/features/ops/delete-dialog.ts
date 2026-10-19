@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
+import { DeleteMode } from '../../core/jobs/jobs.models';
 import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
@@ -11,7 +12,9 @@ const SHOWN = 5;
 /**
  * F8 / Del (trash, Enter = delete – it can be restored) and Shift+F8 /
  * Shift+Del (permanent: red, Enter = cancel). Root, home and system paths need
- * an extra tick (design 006 E6/E7).
+ * an extra tick (design 006 E6/E7). The trash dialog also offers "Delete
+ * permanently" as a second, red button: never the default, and while it is
+ * hovered or focused the message says that it cannot be undone.
  */
 @Component({
   selector: 'app-delete-dialog',
@@ -26,9 +29,9 @@ const SHOWN = 5;
         (closed)="ops.close()"
       >
         <div class="form">
-          <p id="fnf-delete-message" class="message" [class.danger-text]="permanent()">
+          <p id="fnf-delete-message" class="message" [class.danger-text]="showsPermanent()">
             {{
-              permanent()
+              showsPermanent()
                 ? t.deletePermanentMessage(r.entries.length)
                 : t.deleteTrashMessage(r.entries.length)
             }}
@@ -41,7 +44,10 @@ const SHOWN = 5;
               <li class="muted">{{ t.moreEntries(r.entries.length - shown().length) }}</li>
             }
           </ul>
-
+          @if (!permanent()) {
+            <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
+            <p class="help" [style.visibility]="armed() ? 'hidden' : null">{{ t.trashHint }}</p>
+          }
           @if (r.sizeOnly) {
             <div class="danger-box" role="note">
               <strong>{{ dup.sizeOnlyDelete }}</strong>
@@ -74,12 +80,6 @@ const SHOWN = 5;
           }
           <p class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
-
-            @if (!permanent()) {
-              <div class="help">{{ t.trashHint }}</div>
-              <div class="spacer"></div>
-            }
-
             <button
               type="button"
               class="btn"
@@ -88,12 +88,28 @@ const SHOWN = 5;
             >
               {{ t.cancel }}
             </button>
+            @if (!permanent()) {
+              <button
+                type="button"
+                class="btn danger"
+                data-testid="delete-permanent"
+                [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
+                (mouseenter)="armed.set(true)"
+                (mouseleave)="armed.set(false)"
+                (focus)="armed.set(true)"
+                (blur)="armed.set(false)"
+                (click)="confirm('permanent')"
+              >
+                {{ t.deletePermanent }}
+              </button>
+            }
             <button
               type="button"
               class="btn"
               [class.primary]="!permanent()"
               [class.danger]="permanent()"
               [attr.data-autofocus]="cancelFirst() ? null : ''"
+              data-testid="delete-confirm"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
               (click)="confirm()"
             >
@@ -112,6 +128,10 @@ export class DeleteDialog {
   protected readonly ops = inject(OpsStore);
   protected readonly req = this.ops.del;
   protected readonly permanent = computed(() => this.req()?.mode === 'permanent');
+  /** The trash dialog's "Delete permanently" button is hovered or focused. */
+  protected readonly armed = signal(false);
+  /** The message warns "cannot be undone": permanent mode or the armed second button. */
+  protected readonly showsPermanent = computed(() => this.permanent() || this.armed());
   /** Enter must not destroy: permanent delete, or a dangerous path (its button starts disabled). */
   protected readonly cancelFirst = computed(
     () =>
@@ -129,14 +149,16 @@ export class DeleteDialog {
     return e ? dialogError(e) : '';
   });
 
-  protected async confirm(): Promise<void> {
+  /** `mode` overrides the request's mode (the trash dialog's "Delete permanently"). */
+  protected async confirm(mode?: DeleteMode): Promise<void> {
     const req = this.req();
     if (!req || this.busy() || (req.dangers.length > 0 && !this.allowDangerous())) {
       return;
     }
     this.busy.set(true);
     try {
-      this.error.set(await this.ops.runDelete(req, this.allowDangerous()));
+      const run = mode && mode !== req.mode ? { ...req, mode } : req;
+      this.error.set(await this.ops.runDelete(run, this.allowDangerous()));
     } finally {
       this.busy.set(false);
     }
