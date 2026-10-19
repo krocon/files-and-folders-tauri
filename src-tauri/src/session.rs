@@ -50,6 +50,8 @@ pub struct Session {
     /// Recently visited folders, newest first.
     pub recent: Vec<String>,
     pub panels: Panels,
+    /// Shell bar (design 021 E10): visibility and output area.
+    pub shell: ShellSession,
     /// Written by Rust only (the frontend never sends it).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window: Option<WindowGeometry>,
@@ -64,7 +66,32 @@ impl Default for Session {
             favorites: Vec::new(),
             recent: Vec::new(),
             panels: Panels::default(),
+            shell: ShellSession::default(),
             window: None,
+        }
+    }
+}
+
+pub const SHELL_OUTPUT_MIN: f64 = 60.0;
+pub const SHELL_OUTPUT_MAX: f64 = 800.0;
+pub const SHELL_OUTPUT_DEFAULT: f64 = 160.0;
+
+/// Shell bar state kept across restarts (design 021 E10) – never the output itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ShellSession {
+    pub visible: bool,
+    pub output_open: bool,
+    /// Height of the output area in CSS pixels.
+    pub output_height: f64,
+}
+
+impl Default for ShellSession {
+    fn default() -> Self {
+        Self {
+            visible: false,
+            output_open: true,
+            output_height: SHELL_OUTPUT_DEFAULT,
         }
     }
 }
@@ -222,6 +249,14 @@ pub fn save(file: &Path, session: &Session) -> io::Result<()> {
 /// produce an unusable state (no tabs, index out of range, huge lists …).
 pub fn sanitize(session: &mut Session) {
     session.version = SESSION_VERSION;
+    session.shell.output_height = if session.shell.output_height.is_finite() {
+        session
+            .shell
+            .output_height
+            .clamp(SHELL_OUTPUT_MIN, SHELL_OUTPUT_MAX)
+    } else {
+        SHELL_OUTPUT_DEFAULT
+    };
     session.splitter = if session.splitter.is_finite() {
         session.splitter.clamp(SPLITTER_MIN, SPLITTER_MAX)
     } else {
@@ -358,6 +393,28 @@ mod tests {
         let mut s = Session::default();
         sanitize(&mut s);
         s
+    }
+
+    #[test]
+    fn shell_bar_state_is_optional_and_bounded() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("session.json");
+        // a session of an older build has no `shell` – defaults
+        fs::write(&file, r#"{"version":1,"activeSide":"right"}"#).unwrap();
+        let s = load(&file).session;
+        assert_eq!(s.shell, ShellSession::default());
+        fs::write(
+            &file,
+            r#"{"version":1,"shell":{"visible":true,"outputOpen":false,"outputHeight":5000}}"#,
+        )
+        .unwrap();
+        let s = load(&file).session;
+        assert!(s.shell.visible && !s.shell.output_open);
+        assert_eq!(s.shell.output_height, SHELL_OUTPUT_MAX);
+        let mut s = defaults();
+        s.shell.output_height = f64::NAN;
+        sanitize(&mut s);
+        assert_eq!(s.shell.output_height, SHELL_OUTPUT_DEFAULT);
     }
 
     #[test]

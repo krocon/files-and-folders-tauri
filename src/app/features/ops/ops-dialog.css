@@ -108,8 +108,6 @@ code {
   color: var(--color-muted);
 }
 
-
-
 .path {
   overflow-wrap: anywhere;
   font-family: var(--font-mono);

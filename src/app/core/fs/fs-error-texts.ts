@@ -27,6 +27,11 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   archive_too_large: 'The archive exceeds the safety limits (size, number of entries).',
   invalid_menu: 'The menu could not be built.',
   invalid_settings: 'This file is not a settings export of Files and Folders.',
+  shell_disabled: 'The shell bar is switched off in the settings.',
+  shell_busy: 'A command is still running – Esc cancels it.',
+  invalid_command: 'The command must be one non-empty line.',
+  unquotable_name:
+    'A name cannot be inserted safely for this shell (control characters, or % and ! with cmd.exe).',
   invalid_path: 'The path is invalid.',
   no_home_directory: 'Your home folder could not be determined.',
   no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
@@ -60,6 +65,11 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   archive_too_large: 'Das Archiv überschreitet die Sicherheitsgrenzen (Größe, Anzahl Einträge).',
   invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
   invalid_settings: 'Diese Datei ist kein Einstellungs-Export von Files and Folders.',
+  shell_disabled: 'Die Shell-Zeile ist in den Einstellungen ausgeschaltet.',
+  shell_busy: 'Ein Befehl läuft noch – Esc bricht ihn ab.',
+  invalid_command: 'Der Befehl muss eine nicht leere Zeile sein.',
+  unquotable_name:
+    'Ein Name lässt sich für diese Shell nicht sicher einfügen (Steuerzeichen oder % und ! bei cmd.exe).',
   invalid_path: 'Der Pfad ist ungültig.',
   no_home_directory: 'Ihr Home-Ordner konnte nicht ermittelt werden.',
   no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',

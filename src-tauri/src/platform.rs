@@ -2,6 +2,7 @@
 //! Submodules: [`volumes`] (drives, mount points), [`desktop`] (file manager, terminal).
 
 pub mod desktop;
+pub mod process;
 pub mod volumes;
 
 use std::fs::{self, Metadata};

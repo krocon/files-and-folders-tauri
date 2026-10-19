@@ -21,5 +21,8 @@
   "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },
   "behavior.spaceCalcSize": { "type": "bool", "default": true },
   "watch.pollNetwork": { "type": "bool", "default": false },
+  "shell.enabled": { "type": "bool", "default": true },
+  "shell.loginPath": { "type": "bool", "default": true },
+  "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
   "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 }
 }

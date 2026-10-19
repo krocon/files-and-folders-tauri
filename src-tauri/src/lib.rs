@@ -50,6 +50,7 @@ pub mod rename_presets;
 pub mod search;
 pub mod session;
 pub mod settings;
+pub mod shell;
 pub mod themes;
 pub mod tools;
 pub mod watch;
@@ -72,6 +73,7 @@ pub fn run() {
         .manage(commands::MenuState::default())
         .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
         .manage(commands::watch::WatchState::default())
+        .manage(commands::shell::ShellState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -129,6 +131,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_directory,
+            commands::shell::run_shell,
+            commands::shell::shell_quote,
+            commands::shell::load_shell_history,
+            commands::shell::clear_shell_history,
             commands::get_app_info,
             commands::load_session,
             commands::save_session,

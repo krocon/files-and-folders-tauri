@@ -5,7 +5,7 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, duplicates, extract, group, pack, rename, search,
+    Transfer, clean, copy, delete, duplicates, extract, group, pack, rename, search, shell,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -294,6 +294,11 @@ impl JobManager {
                     JobSpec::Simulate { items, item_ms } => {
                         run_simulate(id, *items, *item_ms, &control, &emit)
                     }
+                    JobSpec::Shell {
+                        cwd,
+                        command,
+                        launch,
+                    } => shell::run(id, cwd, command, launch, &control, &emit),
                     JobSpec::Rename { .. } => unreachable!("handled above"),
                 };
                 (state, summary)
@@ -891,6 +896,10 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::DirSize { path } => {
             validate_input_path(path)?;
+        }
+        JobSpec::Shell { cwd, command, .. } => {
+            crate::shell::check_cwd(cwd)?;
+            crate::shell::validate_command(command)?;
         }
         JobSpec::Simulate { .. } => {
             if !cfg!(debug_assertions) {
