@@ -1,18 +1,19 @@
-# TODO – Stand Sonntag, 18.10.2026 (Weiter am Montag)
+# TODO – Stand Montag, 19.10.2026
 
-Fertig, reviewt und in `main`: **001–014, 016, 017, 019** (Details: `prompts/README.md`, Design-Dokumente
+Fertig, reviewt und in `main`: **001–017, 019** (Details: `prompts/README.md`, Design-Dokumente
 `prompts/NNN-*.design.md` mit Abschnitten „Review“ und „Offen“). `pnpm check` auf `main` grün (Linux).
 
-## 0. Achtung: ich habe das SCSS auf CSS umgestellt
+## 0. SCSS → CSS
+
+- [x] Umstellung übernommen (auch in 015: `settings-dialog.css`; CLAUDE.md §4: kein SCSS mehr).
 
 ## 1. Laufende Prompts
 
-- [ ] **015 Einstellungen/i18n** – Branch `feat/einstellungen-i18n` (PR #9, noch nicht mergen).
-      Stand: Rust (`settings.json`, Schema, Export/Import) und Frontend (Store, Dialog, Laufzeit-i18n de/en, Specs)
-      fertig, `pnpm check` grün. Offen: `main` einmergen (Konflikte mit 016/017 erwartet: `DialogKind`, `lib.rs`,
-      Keymaps, About-Dialog aus 017, Doku), E2E unter Xvfb, Review durch separaten Agenten, Doku (Phase 5/6),
-      Punkte aus Design §9 „Offen“.
-- [ ] **018 Feature-Parität** – noch nicht begonnen (braucht 015).
+- [x] **015 Einstellungen/i18n** – in `main` (19.10.): `main` eingemergt (About aus 017 bleibt, Texte von
+      016/017/019 übersetzt), E2E unter Xvfb, Review (16 Befunde, Tabelle in Design §6), Doku. Offen (Design §9):
+      Button-Editor, Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
+      Netzlaufwerk-Polling nur E2E bzw. ohne eigenen Store-Test.
+- [ ] **018 Feature-Parität** – als Nächstes (015 ist fertig).
 
 ## 2. Auf dem Mac prüfen (Marc – im Container nicht möglich)
 
@@ -25,6 +26,7 @@ Fertig, reviewt und in `main`: **001–014, 016, 017, 019** (Details: `prompts/R
 - [ ] OS-Integration (011): Laufwerke (`/Volumes`), „Im Finder zeigen“ (⌘⇧F), Terminal (⌘⇧C), F4.
 - [ ] Vorschau (010): Schnellvorschau ⌃Q, Bilder, ⌘I Eigenschaften.
 - [ ] Themes (013/019): System-Hell/Dunkel live; die acht alten Designs ansehen.
+- [ ] Einstellungen (015): App-Menü „Einstellungen…“ (⌘,), Sprache umschalten (auch natives Menü), Zeilenhöhe.
 
 ## 3. CI und Plattformen
 
@@ -42,8 +44,10 @@ Fertig, reviewt und in `main`: **001–014, 016, 017, 019** (Details: `prompts/R
       eigenes Token (Norton 1,9:1).
 - [ ] 016: 7z/RAR, Dateien im Archiv ansehen, ZIP-Zeiten als UTC, Konfliktdialog sagt „Cancel copying“.
 - [ ] 012: Ziehen aus der App ins System, Verknüpfung per Drag.
+- [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
+- [ ] 015: `loadingText` der Table folgt keinem Sprachwechsel (Overlay-Texte nur beim Erzeugen, `TODO(guiexpert)`).
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).
 
 ## 5. Logo
 
-- [ ] Nutze als App-Logo das Logo in 'docs/logo'
+- [x] Nutze als App-Logo das Logo in 'docs/logo' (erledigt in `0ab9a54`: `ff-green` als `app-icon.svg`, Icons + favicon)
