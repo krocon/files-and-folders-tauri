@@ -11,8 +11,8 @@
 - `CLAUDE.md` vollständig lesen, dazu `docs/architecture.md`, `docs/roadmap.md`, `docs/ui-layout.md` (Fensteraufbau)
   und die im Feature-Prompt genannten Abschnitte aus `docs/legacy-analysis.md` (AngularJS/Node 2016, „legacy §“) bzw.
   `docs/legacy-analysis-mr.md` (Angular/NestJS 2025, „mr §“). Bei Abweichungen zwischen den beiden alten Versionen gilt
-  die neuere (mr), sofern der Prompt nichts anderes sagt; ihr Quellcode liegt lokal unter
-  `~/WebstormProjects/files-and-folders-mr` (nur lesen).
+  die neuere (mr), sofern der Prompt nichts anderes sagt; ihr Quellcode liegt im Repo unter
+  `old_project/` (nicht im Git; in Remote-Sitzungen per `device_bash` als `tar` holen; nur lesen, Lizenz CLAUDE.md §8).
 - **Abhängigkeiten prüfen:** Jeder Prompt nennt oben, welche Prompts vorher umgesetzt sein sollten
   (`prompts/README.md` → Status). Fehlt etwas: anhalten und fragen.
 - Prüfen, ob es schon einen Stand gibt (Branch `feat/<slug>`, Design-Dokument, abgehakte Definition of Done).
