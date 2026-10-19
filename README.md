@@ -171,7 +171,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Reload | `Ctrl+R` | `⌘R` |
 | History back | `Alt+ArrowLeft` | `⌘[` |
 | History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L` | `⌘L`, `⌘⌃D` |
+| Go to path… | `Ctrl+L`, `Ctrl+Alt+D` | `⌘L`, `⌃⌥D` |
 | Find folder (change dir)… | `Alt+F10` | `⌥F10` |
 | Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
