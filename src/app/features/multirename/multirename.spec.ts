@@ -22,7 +22,6 @@ import {
   insertAt,
   matchesFilter,
   parentNames,
-  parentNamesOfDir,
   previewRows,
   selectionInDisplayOrder,
 } from './multirename-logic';
@@ -63,14 +62,6 @@ describe('multi-rename logic', () => {
     ]);
     expect(parentNames([seg('/'), seg('tmp')])).toEqual(['tmp', '', '']);
     expect(parentNames([seg('C:\\')])).toEqual(['', '', '']);
-  });
-
-  it('parentNamesOfDir: parents of a result-tab hit from its folder path', () => {
-    expect(parentNamesOfDir('/home/marc/docs')).toEqual(['docs', 'marc', 'home']);
-    expect(parentNamesOfDir('/tmp')).toEqual(['tmp', '', '']);
-    expect(parentNamesOfDir('/')).toEqual(['', '', '']);
-    expect(parentNamesOfDir('C:\\Users\\marc')).toEqual(['marc', 'Users', '']);
-    expect(parentNamesOfDir('C:\\')).toEqual(['', '', '']);
   });
 
   it('preview rows use the plan only for the names it belongs to', () => {
@@ -200,6 +191,30 @@ describe('multi-rename store (design 007)', () => {
     expect(req.sources[0].parents).toEqual(['src', 'home', '']);
     mr.update({ pattern: '[P]-[C].[E]' });
     expect(mr.items()!.map((i) => i.newName)).toEqual(['src-0001.txt', 'src-0002.txt']);
+  });
+
+  it('result tab: every hit brings its own parent names from Rust (no path splitting)', async () => {
+    const hit = (name: string, dirPath: string, parentNames: [string, string, string]) => ({
+      ...entry(name, { path: `${dirPath}/${name}` }),
+      dir: dirPath,
+      parentNames,
+    });
+    const ws = TestBed.inject(WorkspaceStore);
+    ws.updateTab(ws.activeTab('left').id, { path: '/home', title: 'home' }); // search root
+    left.showSearch('s1', [
+      hit('x.jpg', '/home/marc/Urlaub 2026', ['Urlaub 2026', 'marc', 'home']),
+      hit('y.jpg', 'C:\\Fotos', ['Fotos', '', '']),
+    ]);
+    left.setMarked(['/home/marc/Urlaub 2026/x.jpg', 'C:\\Fotos/y.jpg'], true);
+    await mr.open();
+    const req = mr.request()!;
+    expect(req.searchKey).toBe('s1');
+    expect(req.sources.map((s) => s.parents)).toEqual([
+      ['Urlaub 2026', 'marc', 'home'],
+      ['Fotos', '', ''],
+    ]);
+    mr.update({ pattern: '[P]-[Q]-[N].[E]' });
+    expect(mr.items()!.map((i) => i.newName)).toEqual(['Urlaub 2026-marc-x.jpg', 'Fotos--y.jpg']);
   });
 
   it('folders are not split and keep their name with the default pattern', async () => {

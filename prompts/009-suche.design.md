@@ -91,6 +91,8 @@ Eigene Tiefensuche (Stapel, ~150 Zeilen) mit:
   Pfade); `locationKey()` (`search:<key>`) ersetzt in `OpsStore` den Quellordner als Identität. Nach Löschen/
   Verschieben entfernt der `SearchStore` die erledigten Pfade (keine neue Suche, kein neuer Command).
 - Spalte **Folder** (`dir`, voller Elternpfad aus Rust) nur im Ergebnis-Tab sichtbar.
+- Nachtrag (Okt. 2026): Multi-Rename geht auch im Ergebnis-Tab. Die Namen für `[P]`/`[Q]`/`[R]` liefert Rust je
+  Treffer als `parentNames` (`paths::parent_names`, Wurzel/Laufwerk ohne Namen) – das Frontend zerlegt `dir` nicht.
 - **Zur Datei springen** (`GOTO_FILE`, Strg/⌘+Shift+G, Kontextmenü, Button im Header): öffnet den Ordner des Treffers
   in einem **neuen Tab** neben dem Ergebnis-Tab, Cursor auf dem Treffer (das Ergebnis bleibt erhalten). **Enter** auf
   einem Ordner-Treffer: dieser Ordner in neuem Tab; auf einer Datei: Standard-App wie in der Liste.
@@ -148,7 +150,8 @@ struct SearchCriteria { roots: Vec<String>, name: String, name_mode: NameMode /*
   min_size: Option<u64>, max_size: Option<u64>, modified_from_ms: Option<i64>, modified_to_ms: Option<i64>,
   include_hidden: bool, follow_links: bool, max_depth: Option<u32>, excludes: Vec<String>,
   content: Option<ContentQuery { text, case_sensitive, max_file_size: Option<u64> }>, max_hits: Option<u32> }
-struct SearchHit { #[flatten] entry: DirEntryDto, dir: String }
+struct SearchHit { #[flatten] entry: DirEntryDto, dir: String,
+  parent_names: [String; 3] }   // Namen von dir, Eltern, Großeltern (Multi-Rename P/Q/R im Ergebnis-Tab)
 struct SearchStats { hits, dirs_scanned, files_scanned, unreadable: u64, elapsed_ms: u64, truncated: bool }
 pub fn compile(c: &SearchCriteria) -> Result<Compiled, FsError>;      // invalid_pattern, invalid_path
 pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut dyn FnMut(Event)) -> SearchStats;

@@ -285,6 +285,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     const hit = (name: string): SearchHit => ({
       ...entry(name, { path: `/data/1/${name}`, size: 100 }),
       dir: '/data/1',
+      parentNames: ['1', 'data', ''],
       group: 1,
     });
     jobsApi.emit({
@@ -321,6 +322,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     const h = (name: string, group: number, modifiedMs: number): SearchHit => ({
       ...entry(name, { path: `/data/${group}/${name}`, modifiedMs, size: 100 }),
       dir: `/data/${group}`,
+      parentNames: [`${group}`, 'data', ''],
       group,
     });
     const rows = [h('a.jpg', 1, 10), h('b.jpg', 1, 20), h('c.mp3', 2, 5), h('d.mp3', 2, 1)];

@@ -139,7 +139,11 @@ describe('JobsStore', () => {
       excludes: [],
     };
     const stats = (hits: number) => ({ ...EMPTY_STATS, hits });
-    const h = (name: string) => ({ ...entry(name, { path: `/r/${name}` }), dir: '/r' });
+    const h = (name: string) => ({
+      ...entry(name, { path: `/r/${name}` }),
+      dir: '/r',
+      parentNames: ['r', '', ''] as const,
+    });
     // the hits overtake the id: Rust streams them before `start` resolved
     api.beforeResolve = (id) =>
       api.emit({ type: 'searchHits', id, hits: [h('early')], stats: stats(1) });

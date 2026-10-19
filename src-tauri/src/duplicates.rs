@@ -7,6 +7,7 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::listing::stat_entry;
+use crate::paths::parent_names;
 use crate::platform::{file_id, open_regular_file};
 use crate::search::{self, Kinds, NameMode, SearchCriteria, SearchHit, SearchStats};
 use serde::{Deserialize, Serialize};
@@ -384,12 +385,13 @@ pub fn find(
             .filter_map(|&i| {
                 let p = &candidates[i].path;
                 let entry = stat_entry(p)?;
+                let dir = p.parent();
                 Some(SearchHit {
                     entry,
-                    dir: p
-                        .parent()
+                    dir: dir
                         .map(|d| d.to_string_lossy().into_owned())
                         .unwrap_or_default(),
+                    parent_names: dir.map(parent_names).unwrap_or_default(),
                     group: Some(n),
                 })
             })
@@ -468,6 +470,12 @@ mod tests {
             ]
         );
         assert_eq!(res.groups[0][0].group, Some(1));
+        // big1.bin in `a`: the folder names come from Rust (P/Q/R in multi-rename)
+        let tmp = r.file_name().unwrap().to_string_lossy();
+        assert_eq!(
+            res.groups[0][0].parent_names[..2],
+            ["a".to_string(), tmp.into_owned()]
+        );
         assert_eq!(res.groups[1][2].group, Some(2));
         assert_eq!(res.stats.groups, 2);
         assert_eq!(res.stats.hits, 5);

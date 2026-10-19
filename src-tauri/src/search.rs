@@ -13,7 +13,7 @@
 use crate::error::{FsError, FsErrorCode};
 use crate::listing::{entry_from_metadata, is_hidden};
 use crate::model::DirEntryDto;
-use crate::paths::validate_input_path;
+use crate::paths::{parent_names, validate_input_path};
 use regex::bytes::{Regex as BytesRegex, RegexBuilder as BytesRegexBuilder};
 use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
@@ -143,6 +143,9 @@ pub struct SearchHit {
     pub entry: DirEntryDto,
     /// Full path of the folder that contains the entry.
     pub dir: String,
+    /// Names of `dir`, its parent and grandparent (`paths::parent_names`): a result
+    /// tab has no breadcrumbs, and the frontend never splits paths (multi-rename P/Q/R).
+    pub parent_names: [String; 3],
     /// Duplicate search (design 016 E6): the group the file belongs to (1 = most wasted bytes).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<u32>,
@@ -537,6 +540,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         };
         stats.dirs_scanned += 1;
         let dir_str = dir.to_string_lossy().into_owned();
+        let dir_parents = parent_names(&dir);
         let mut children: Vec<PathBuf> = Vec::new();
         let enter = depth + 1 < c.max_depth;
         // in name order: hits and the folder finder come in a stable, readable order
@@ -637,6 +641,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             let hit = SearchHit {
                 entry: entry_from_metadata(name, &path, &meta, lossy),
                 dir: dir_str.clone(),
+                parent_names: dir_parents.clone(),
                 group: None,
             };
             stats.hits += 1;
@@ -1097,6 +1102,15 @@ mod tests {
         assert_eq!(json["name"], "cover.JPG");
         assert_eq!(json["kind"], "file");
         assert!(json["dir"].is_string());
+        let tmp = r.file_name().unwrap().to_string_lossy().into_owned();
+        assert_eq!(
+            h.parent_names,
+            ["Über alles".to_string(), "Musik".into(), tmp.clone()]
+        );
+        assert_eq!(
+            json["parentNames"],
+            serde_json::json!(["Über alles", "Musik", tmp])
+        );
     }
 
     /// 200 000 files: first hit and cancel latency. Release:

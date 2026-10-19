@@ -47,6 +47,7 @@ const SUMMARY: Summary = {
 const hit = (name: string, folder = '/r/a'): SearchHit => ({
   ...entry(name, { path: `${folder}/${name}` }),
   dir: folder,
+  parentNames: ['', '', ''],
 });
 
 const wait = (ms = 0) => new Promise((r) => setTimeout(r, ms));
@@ -213,7 +214,10 @@ describe('SearchStore and result tabs (design 009)', () => {
   it('a panel in result mode has no folder; Enter on a folder opens it in a new tab', async () => {
     const opened: [string, string | null][] = [];
     left.openInNewTab = (p, c) => opened.push([p, c]);
-    const list = [hit('1.mp3'), { ...dir('sub', { path: '/r/a/sub' }), dir: '/r/a' }];
+    const list = [
+      hit('1.mp3'),
+      { ...dir('sub', { path: '/r/a/sub' }), dir: '/r/a', parentNames: ['a', 'r', ''] as const },
+    ];
     left.showSearch('s9', list);
     expect(left.path()).toBeNull();
     expect(left.locationKey()).toBe('search:s9');
@@ -355,7 +359,11 @@ describe('SearchStore and result tabs (design 009)', () => {
     await search.search(CRITERIA, 'left');
     const key = ws.activeTab('left').search!.key;
     const id = jobsApi.started[0].id;
-    const folder = { ...dir('a', { path: '/r/a' }), dir: '/r' };
+    const folder = {
+      ...dir('a', { path: '/r/a' }),
+      dir: '/r',
+      parentNames: ['r', '', ''] as const,
+    };
     hits(id, [folder, hit('1.mp3'), hit('2.mp3', '/r/a/deep'), hit('3.mp3', '/r/ab')]);
     finish(id);
     await wait();
@@ -374,7 +382,11 @@ describe('SearchStore and result tabs (design 009)', () => {
     expect(ids).toHaveLength(3);
     expect(jobsApi.cancelled).toEqual(expect.arrayContaining([ids[0], ids[1]]));
     expect(jobsApi.cancelled).not.toContain(ids[2]);
-    const folder = (name: string) => ({ ...dir(name, { path: `/r/${name}` }), dir: '/r' });
+    const folder = (name: string) => ({
+      ...dir(name, { path: `/r/${name}` }),
+      dir: '/r',
+      parentNames: ['r', '', ''] as const,
+    });
     hits(ids[0], [folder('old')]);
     hits(ids[2], [folder('new')]);
     await wait(250);

@@ -18,7 +18,6 @@ import { SearchStore } from '../search/search.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   parentNames,
-  parentNamesOfDir,
   PreviewFilter,
   previewRows,
   selectionInDisplayOrder,
@@ -177,14 +176,14 @@ export class MultiRenameStore {
       throw err(MR_TEXTS.nothingSelected);
     }
     const searchKey = panel.store.searchKey();
-    // a result tab mixes folders: every hit has its own parents
+    // a result tab mixes folders: every hit brings its parent names from Rust
     const parents = parentNames(panel.store.listing()?.segments ?? []);
     const sources: MrSource[] = entries.map((e) => ({
       path: e.path,
       name: e.name,
       isDir: isNavigableDir(e),
       modifiedMs: e.modifiedMs,
-      parents: searchKey !== null ? parentNamesOfDir((e as SearchHit).dir ?? '') : parents,
+      parents: searchKey !== null ? (e as SearchHit).parentNames : parents,
     }));
     await this.loadPresets();
     const last = this.presets().last;

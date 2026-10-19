@@ -47,10 +47,17 @@ export interface SearchCriteria {
 }
 
 /**
- * A hit: an entry as in a listing plus the full path of its folder; a duplicate
- * (design 016 E6) also has its group (1 = most wasted bytes).
+ * A hit: an entry as in a listing plus the full path of its folder and the names
+ * of that folder, its parent and grandparent (from Rust `paths::parent_names` – a
+ * root or drive has no name; the frontend never splits paths). A duplicate (design
+ * 016 E6) also has its group (1 = most wasted bytes). Keep in sync with
+ * `src-tauri/src/search.rs`.
  */
-export type SearchHit = DirEntry & { readonly dir: string; readonly group?: number };
+export type SearchHit = DirEntry & {
+  readonly dir: string;
+  readonly parentNames: readonly [string, string, string];
+  readonly group?: number;
+};
 
 /** Duplicate search (design 016 E6). Keep in sync with `src-tauri/src/duplicates.rs`. */
 export interface DuplicateCriteria {
