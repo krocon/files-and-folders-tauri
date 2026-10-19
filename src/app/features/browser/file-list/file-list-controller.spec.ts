@@ -111,6 +111,18 @@ describe('FileListController', () => {
     expect(store.cursorPath()).toBe('/h/c.txt');
   });
 
+  it('Shift+Space toggles and moves up, Mod+Shift+Space toggles in place (018 J10, mr)', () => {
+    focusRow(2);
+    ctrl.toggleMarkAndMove(-1);
+    expect(store.isMarked('/h/b.txt')).toBe(true);
+    expect(store.cursorPath()).toBe('/h/a.txt');
+    ctrl.toggleMarkAndMove(0);
+    expect(store.isMarked('/h/a.txt')).toBe(true);
+    expect(store.cursorPath()).toBe('/h/a.txt');
+    ctrl.toggleMarkAndMove(0);
+    expect(store.isMarked('/h/a.txt')).toBe(false);
+  });
+
   it('marks and moves (Shift+↓/↑)', () => {
     ctrl.markAndMove(1);
     ctrl.markAndMove(1);

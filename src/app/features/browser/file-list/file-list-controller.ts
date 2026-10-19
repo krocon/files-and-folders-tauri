@@ -148,12 +148,21 @@ export class FileListController {
 
   /** Space/Insert: toggle the mark of the cursor entry and move down (Total Commander). */
   toggleMarkAndAdvance(): void {
+    this.toggleMarkAndMove(1);
+  }
+
+  /** Space (`delta` 1), Shift+Space (-1) and Mod+Shift+Space (0) of the old version (018 J10). */
+  toggleMarkAndMove(delta: -1 | 0 | 1): void {
     const row = this.cursorRow();
     if (!row) {
       return;
     }
     this.store.toggleMark(row.path);
-    this.move(1);
+    if (delta !== 0) {
+      this.move(delta);
+    } else {
+      this.bridge.repaint();
+    }
   }
 
   /** Shift+Pos1/Ende: mark from the cursor to the first/last entry and move there. */

@@ -128,6 +128,13 @@ describe('ButtonBar', () => {
     expect(el.querySelector('.actions-toggle')?.getAttribute('aria-expanded')).toBe('true');
   });
 
+  it('opens the Actions menu by keyboard (OPEN_ACTIONS_MENU, mr OPEN_MENU – 018 J7)', async () => {
+    const { fixture, el, actions } = await render();
+    await actions.run('OPEN_ACTIONS_MENU');
+    fixture.detectChanges();
+    expect(el.querySelectorAll('[role="menu"] [role="group"]')).toHaveLength(4);
+  });
+
   it('shows "finished / total" and a progress bar on the Tasks button while jobs run', async () => {
     const { fixture, el } = await render();
     const jobs = TestBed.inject(JobsStore);

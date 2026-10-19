@@ -1,5 +1,12 @@
 import { ACT_TEXTS } from '../../actions/actions-texts';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActionService } from '../../../core/actions/action.service';
 import { ACTIONS, ActionId, shortLabel } from '../../../core/actions/action-catalog';
 import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
@@ -106,6 +113,13 @@ export class ButtonBar {
   private readonly jobs = inject(JobsStore);
   private readonly theme = inject(ThemeService);
   protected readonly menuOpen = signal(false);
+
+  constructor() {
+    // mr OPEN_MENU: the Actions menu by keyboard (018 J7)
+    inject(DestroyRef).onDestroy(
+      this.actions.register({ OPEN_ACTIONS_MENU: { run: () => this.menuOpen.set(true) } }),
+    );
+  }
   /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
   protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
   protected readonly themeTexts = THEME_TEXTS;

@@ -26,6 +26,7 @@ export const TEXTS_EN = {
       side === 'left' ? 'Clone tab for right panel' : 'Clone tab for left panel',
     moveLeft: 'Move tab to the left',
     moveRight: 'Move tab to the right',
+    history: 'History',
   },
   splitter: 'Panel divider (double-click: 50 / 50)',
   dismiss: 'Dismiss',

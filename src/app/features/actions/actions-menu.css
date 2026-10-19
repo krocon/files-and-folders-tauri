@@ -1,15 +1,15 @@
 .menu {
   position: absolute;
   right: var(--spacing-2);
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 6px);
   z-index: 99999;
   display: grid;
-  grid-template-columns: repeat(4, minmax(12rem, max-content));
-  gap: var(--spacing-3);
-  max-width: calc(100vw - 2rem);
-  max-height: 70vh;
-  overflow: auto;
-  padding: var(--spacing-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 var(--spacing-3);
+  width: min(88rem, calc(100vw - 2rem));
+  max-height: 80vh;
+  overflow: hidden auto;
+  padding: var(--spacing-2) var(--spacing-3);
   font-size: var(--font-size-sm);
   color: var(--color-text);
   background: var(--color-surface);
@@ -18,43 +18,52 @@
   box-shadow: var(--shadow-popup);
 }
 
-.heading {
-  padding: 0 var(--spacing-2) var(--spacing-1);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-muted);
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-border);
 }
 
 [role='menuitem'] {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--spacing-3);
-  padding: 2px var(--spacing-2);
+  min-height: 2.25rem;
+  padding: 4px var(--spacing-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
 
   &:hover,
   &:focus {
-    color: var(--color-selection-text);
-    background: var(--color-selection);
+    background: var(--color-row-hover);
     outline: none;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+    outline-offset: -2px;
   }
 
   &[aria-disabled='true'] {
     color: var(--color-muted);
     cursor: default;
 
-    &:hover,
-    &:focus {
-      color: var(--color-muted);
-      background: var(--color-surface-raised);
+    app-shortcut-badges {
+      opacity: 0.6;
     }
   }
 }
 
-kbd {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  opacity: 0.8;
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

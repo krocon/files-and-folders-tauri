@@ -40,6 +40,27 @@ describe('default keymaps', () => {
     expect(b.OPEN_DELETE_DLG).toContain('F8');
     expect(b.TOGGLE_PANEL).toEqual(['Tab']);
   });
+
+  it('keeps the shortcuts of the old version that really fired (018 J1–J6, mr defaults)', () => {
+    const mac = resolveKeymap('macos').bindings;
+    expect(mac.DESELECT_ALL).toContain('Mod+Ctrl+D');
+    expect(mac.OPEN_CHDIR_DLG).toContain('Ctrl+Alt+D');
+    expect(mac.OPEN_COPY_DLG).toContain('Mod+Ctrl+C');
+    expect(mac.OPEN_MOVE_DLG).toContain('Mod+Ctrl+M');
+    expect(mac.RELOAD_DIR).toContain('Mod+Ctrl+R');
+    expect(mac.SELECT_ALL).toContain('Mod+Ctrl+A');
+    expect(mac.OPEN_MKDIR_DLG).toContain('Ctrl+Alt+N');
+    expect(mac.OPEN_GROUPFILES_DLG).toContain('Ctrl+Alt+G');
+    expect(mac.OPEN_DELETE_EMPTY_FOLDERS_DLG).toContain('Ctrl+Alt+Shift+D');
+    expect(mac.OPEN_FIND_DUPLICATES_DLG).toContain('Ctrl+Alt+Shift+F');
+    expect(mac.OPEN_MARK_PATTERN_DLG).toContain('Ctrl+Alt+A');
+    for (const p of ['windows', 'linux'] as const) {
+      const b = resolveKeymap(p).bindings;
+      expect(b.OPEN_CHDIR_DLG).toContain('Mod+Alt+D');
+      expect(b.OPEN_MARK_PATTERN_DLG).toContain('Mod+Alt+A');
+      expect(b.OPEN_FIND_DUPLICATES_DLG).toContain('Mod+Alt+Shift+F');
+    }
+  });
 });
 
 describe('resolveKeymap with an override', () => {

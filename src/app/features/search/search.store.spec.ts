@@ -202,6 +202,14 @@ describe('SearchStore and result tabs (design 009)', () => {
     expect(saved.title).toBe('');
   });
 
+  it('a saved result tab keeps the title of the folder it was started in (E2E 018: tab showed "…")', async () => {
+    ws.updateTab(ws.activeTab('left').id, { path: '/r', title: 'r' });
+    await search.search(CRITERIA, 'left');
+    const saved = ws.snapshot().panels.left.tabs[1];
+    expect(saved.path).toBe('/r');
+    expect(saved.title).toBe('r');
+  });
+
   it('a panel in result mode has no folder; Enter on a folder opens it in a new tab', async () => {
     const opened: [string, string | null][] = [];
     left.openInNewTab = (p, c) => opened.push([p, c]);

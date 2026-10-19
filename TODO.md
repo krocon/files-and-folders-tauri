@@ -1,6 +1,6 @@
 # TODO – Stand Montag, 19.10.2026
 
-Fertig, reviewt und in `main`: **001–017, 019** (Details: `prompts/README.md`, Design-Dokumente
+Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokumente
 `prompts/NNN-*.design.md` mit Abschnitten „Review“ und „Offen“). `pnpm check` auf `main` grün (Linux).
 
 ## 0. SCSS → CSS
@@ -13,7 +13,10 @@ Fertig, reviewt und in `main`: **001–017, 019** (Details: `prompts/README.md`,
       016/017/019 übersetzt), E2E unter Xvfb, Review (16 Befunde, Tabelle in Design §6), Doku. Offen (Design §9):
       Button-Editor, Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
       Netzlaufwerk-Polling nur E2E bzw. ohne eigenen Store-Test.
-- [ ] **018 Feature-Parität** – als Nächstes (015 ist fertig).
+- [x] **018 Feature-Parität + 020 Actions-Menü** (19.10.): Matrix gegen `old_project/` in `docs/feature-parity.md`
+      (192 ✅, 26 🟡, 11 ⬜, 24 ✖), kleine Lücken geschlossen, E2E Linux. Nächstes: Folge-Prompts **021–028** schreiben
+      (Vorschläge in `docs/feature-parity.md` „Folge-Prompts“: Shell-Leiste, Konfig-Editoren, Editor, Attribute,
+      Archive, Import alter Konfiguration, Persistenz je Ordner, Drag & Drop).
 
 ## 2. Auf dem Mac prüfen (Marc – im Container nicht möglich)
 
@@ -27,6 +30,9 @@ Fertig, reviewt und in `main`: **001–017, 019** (Details: `prompts/README.md`,
 - [ ] Vorschau (010): Schnellvorschau ⌃Q, Bilder, ⌘I Eigenschaften.
 - [ ] Themes (013/019): System-Hell/Dunkel live; die acht alten Designs ansehen.
 - [ ] Einstellungen (015): App-Menü „Einstellungen…“ (⌘,), Sprache umschalten (auch natives Menü), Zeilenhöhe.
+- [ ] Arbeitstag (018) auf macOS und Windows: markieren, F5 mit Konflikt, Multi-Rename, Gruppieren, Suchen, Tabs,
+      Neustart; alte Kürzel ⌃⌘D (abwählen), ⌃⌥D (Pfad), ⌃⌘C/M/R/A, ⌃⌥G/N/M, ⇧Leertaste.
+- [ ] Actions-Menü (020): ⌃K ⌃M öffnet es (macOS), Badges `^ ⌘ alt ⇧` lesbar in hellen und dunklen Designs.
 
 ## 3. CI und Plattformen
 

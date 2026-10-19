@@ -148,6 +148,9 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Zeilenhöhe, `[Ordner]`, Namen ohne Endung, Menüleiste), Verhalten (Papierkorb, Bestätigung, Doppelklick,
   Leertaste, Start-Ordner), Tastatur (Konflikte, Kürzel bearbeiten/zurücksetzen), Tools, Farben, Daten (alles als
   eine Datei exportieren/importieren). Gespeichert in `settings.json`; kaputte Datei → Defaults + Warnung (`.bad`).
+- **Actions-Menü ▴** in der Button-Leiste (Prompt 020): vier Spalten wie in der alten Version (Navigation/Ansicht,
+  Auswahl/Seiten/Tabs, Dateioperationen, Konfiguration + Tools) mit Trennlinien, kurzen Namen und Kürzeln als dunkle
+  Badges (`^` `⌘` `alt` `⇧`, Akkorde als zwei Badges); Pfeiltasten, `Pos1`/`Ende`, `Enter`, `Esc`.
 - **Deutsch und Englisch**: Oberfläche, Menüs, Fehlertexte, Datums- und Zahlenformat; Umschalten ohne Neustart
   (Vorgabe: Systemsprache).
 
@@ -168,7 +171,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Reload | `Ctrl+R` | `⌘R` |
 | History back | `Alt+ArrowLeft` | `⌘[` |
 | History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L` | `⌘L`, `⌘⌃D` |
+| Go to path… | `Ctrl+L`, `Ctrl+Alt+D` | `⌘L`, `⌃⌥D` |
 | Find folder (change dir)… | `Alt+F10` | `⌥F10` |
 | Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
@@ -184,7 +187,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
 | Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
-| Go to anything… | `Ctrl+Shift+P`, `Ctrl+F12` | `⌘⇧P`, `⌘⌃G` |
+| Go to anything… | `Ctrl+Shift+P` | `⌘⇧P`, `⌘⌃G` |
+| Actions menu ▴ | `Ctrl+F12` | `⌃K ⌃M` |
+| Toggle mark and move up / in place | `Shift+Space` / `Ctrl+Shift+Space` | `⇧Space` / `⌘⇧Space` |
 | Call action… | `F10` | `F10` |
 | Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
 | Mark and move down | `Shift+ArrowDown` | `⇧ArrowDown` |
