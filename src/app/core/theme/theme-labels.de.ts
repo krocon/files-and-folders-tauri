@@ -113,6 +113,7 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'Muted text in dialogs': 'Gedämpfter Text in Dialogen',
   'Focus ring on the panel header, active panel':
     'Fokusrahmen auf dem Kopf der Seite, aktive Seite',
+  'Marked values in the status line': 'Markierte Werte in der Statuszeile',
   // groups
   General: 'Allgemein',
   'File list': 'Dateiliste',

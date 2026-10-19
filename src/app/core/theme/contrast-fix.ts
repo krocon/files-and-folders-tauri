@@ -44,6 +44,7 @@ export const ADJUST_FOREGROUND: ReadonlySet<string> = new Set([
   '--color-footer-focus',
   '--color-dialog-focus',
   '--color-active-panel-accent',
+  '--color-status-marked',
 ]);
 
 /** Window and list backgrounds never move – everything else is painted on them. */

@@ -6,6 +6,7 @@ import { parseColor } from './color';
 import { formatColor } from './contrast-fix';
 import { convertLegacy, isLegacyFile, legacyColor, toLegacyFile } from './legacy-theme';
 import { LEGACY_FALLBACKS, LEGACY_VAR_NAMES, LEGACY_VARS } from './legacy-theme-map';
+import { tweakedColors, tweakedTokens } from './legacy-tweaks';
 import { checkContrast, CONTRAST_PAIRS, pairRatio } from './theme-logic';
 import { TOKEN_NAMES } from './tokens';
 
@@ -68,7 +69,8 @@ describe('old designs (prompt 019)', () => {
 
   it('keep the original colours except the listed contrast corrections', () => {
     for (const n of NAMES) {
-      const { colors } = docs(n);
+      // the originals plus Marc's tweaks (legacy-tweaks.ts)
+      const colors = tweakedColors(n, docs(n).colors) as Record<string, string>;
       const theme = CLASSIC_THEMES.find((t) => t.id === `classic-${n}`)!;
       const adjusted = new Map(CLASSIC_ADJUSTMENTS.get(theme.id)!.map((a) => [a.token, a]));
       // what each token should be: the last variable that maps to it with a usable value
@@ -83,6 +85,9 @@ describe('old designs (prompt 019)', () => {
         lv.tokens.forEach((t) => expected.set(t, formatColor(c)));
       }
       expect(expected.size, n).toBeGreaterThan(40);
+      for (const t of Object.keys(tweakedTokens(n))) {
+        expected.delete(t);
+      }
       for (const [token, value] of expected) {
         const a = adjusted.get(token);
         if (a) {
@@ -97,8 +102,9 @@ describe('old designs (prompt 019)', () => {
 
   it('fill the gaps of the old files', () => {
     const norton = CLASSIC_THEMES.find((t) => t.id === 'classic-norton')!;
-    // Norton: marked = the yellow of the active panel (Norton Commander), tooltip from the dialog
-    expect(norton.tokens['--color-marked']).toBe('#fcfc54');
+    // Norton: marked yellow only in the active panel (Marc 2026-10-19), tooltip from the dialog
+    expect(norton.tokens['--color-active-marked']).toBe('#fcfc54');
+    expect(norton.tokens['--color-marked']).toBe(norton.tokens['--color-list-text']);
     expect(norton.tokens['--color-tooltip-text']).toBe('#f8fcf8');
     const coffee = convertLegacy(docs('coffee').colors, LIGHT, DARK);
     expect(coffee.filled).toEqual([
@@ -120,6 +126,36 @@ describe('old designs (prompt 019)', () => {
       'classic-combat',
       'classic-norton',
     ]);
+  });
+
+  it("Marc's wishes: marked red/yellow only in the active panel, Coffee status values orange", () => {
+    const t = (n: string) => CLASSIC_THEMES.find((x) => x.id === `classic-${n}`)!.tokens;
+    const reddish = (c: string) => {
+      const rgb = parseColor(c)!;
+      return rgb.r > 150 && rgb.g < 60 && rgb.b < 80;
+    };
+    for (const n of ['paper', 'bitbucket', 'combat']) {
+      expect(
+        reddish(t(n)['--color-active-marked']),
+        `${n} active ${t(n)['--color-active-marked']}`,
+      ).toBe(true);
+      expect(t(n)['--color-marked'], `${n} inactive`).toBe(t(n)['--color-list-text']);
+    }
+    expect(t('norton')['--color-active-marked']).toBe('#fcfc54');
+    expect(t('norton')['--color-marked']).toBe(t('norton')['--color-list-text']);
+    // the status line values (before the `/`) in the colour of the marked files
+    for (const n of ['paper', 'bitbucket', 'combat', 'norton', 'coffee']) {
+      const status = parseColor(t(n)['--color-status-marked'])!;
+      const marked = parseColor(t(n)['--color-active-marked'])!;
+      // same hue family (the contrast correction may darken or lighten one of them)
+      expect(Math.abs(status.r - status.g) > 60 === Math.abs(marked.r - marked.g) > 60, n).toBe(
+        true,
+      );
+    }
+    expect(t('coffee')['--color-status-marked']).toBe('#ffa500');
+    // an imported old file of the same name gets the same tweaks
+    const paper = convertLegacy(docs('paper').colors, LIGHT, DARK, 'paper');
+    expect(paper.tokens['--color-active-marked']).toBe(t('paper')['--color-active-marked']);
   });
 
   it('read colours from border shorthands', () => {
@@ -148,7 +184,7 @@ describe('old designs (prompt 019)', () => {
 
   it('pass the contrast check also for imports of the old files', () => {
     for (const n of NAMES) {
-      const c = convertLegacy(docs(n).colors, LIGHT, DARK);
+      const c = convertLegacy(docs(n).colors, LIGHT, DARK, n);
       expect(
         checkContrast(c.tokens)
           .filter((r) => !r.ok)
@@ -221,7 +257,7 @@ function buildReport(): string {
     '',
   ];
   for (const n of NAMES) {
-    const c = convertLegacy(docs(n).colors, LIGHT, DARK);
+    const c = convertLegacy(docs(n).colors, LIGHT, DARK, n);
     const failedBefore = CONTRAST_PAIRS.filter((p) => {
       const r = pairRatio(p, c.original);
       return r === null || r < p.min;

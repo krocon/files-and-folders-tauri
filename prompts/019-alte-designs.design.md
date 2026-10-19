@@ -196,6 +196,41 @@ Tooltips aus Dialog-, sonst Kopffarben.
 - Light: „markiert unter dem Cursor“ ist weiß wie der Cursortext (die Mischfarbe erreicht auf dem Cursor-Blau keine
   4,5:1) – wie in der alten Version (Screenshot 2016: weißer Text, rotes Häkchen); das Häkchen bleibt sichtbar.
 
+### Wünsche von Marc (2026-10-19)
+
+- **Paper, Bitbucket, Combat**: markierte Dateien nur in der **aktiven** Seite rot (das Rot des Designs: Paper `red`,
+  Bitbucket `#e00034`, Combat `#f00032`), in der anderen Seite in der normalen Listenfarbe (Häkchen bleibt).
+- **Norton**: markierte Dateien nur in der aktiven Seite gelb (`#fcfc54`), in der anderen Seite weiß.
+- **Coffee**: die markierten Werte der Statuszeile (vor dem `/`) in der aktiven Seite orange (`#ffa500`, wie die
+  markierten Dateien).
+- Umsetzung: `core/theme/legacy-tweaks.ts` legt die Wünsche **über** die unveränderten Dateien (`--fnf-*` vor der
+  Umrechnung, `--color-*` danach) – für die mitgelieferten Designs und für Importe einer Datei gleichen Namens; die
+  Kontrastkorrektur gilt weiter (Paper: Rot auf dem grauen Markier-Hintergrund `#ff0000` → `#b20000`, s. Bericht).
+- Neues Token `--color-status-marked` (markierte Werte der Statuszeile, bisher die Akzentlinie der aktiven Seite) mit
+  Kontrastpaar auf `--color-footer-bg`; bei den alten Designs wie in mr aus
+  `--fnf-activepanel-header-selected-tab-fg-color` (`.fnf-active-fg-color`). Modern light/dark: `#2a63c8`/`#6c9af2`
+  (die Akzentfarbe erreichte auf der Statuszeile nur 4,2:1).
+- Test: `legacy-theme.spec.ts` › „Marc's wishes: marked red/yellow only in the active panel, Coffee status values
+  orange“; E2E (Xvfb): alle acht Designs mit Markierungen in beiden Seiten angesehen.
+
+### Wünsche von Marc (2026-10-19)
+
+- **Paper, Bitbucket, Combat**: markierte Dateien nur in der **aktiven** Seite rot (das Rot des Designs: Paper `red`,
+  Bitbucket `#e00034`, Combat `#f00032`), in der anderen Seite in der normalen Listenfarbe (Häkchen bleibt).
+- **Norton**: markierte Dateien nur in der aktiven Seite gelb (`#fcfc54`), in der anderen Seite weiß.
+- **Paper, Bitbucket, Combat, Norton, Coffee**: die markierten Werte der Statuszeile (vor dem `/`) in der aktiven
+  Seite in der Farbe der markierten Dateien (Coffee: Orange).
+- Umsetzung: `core/theme/legacy-tweaks.ts` legt die Wünsche **über** die unveränderten Dateien (`--fnf-*` vor der
+  Umrechnung, `--color-*` danach) – für die mitgelieferten Designs und für Importe einer Datei gleichen Namens. Die
+  Kontrastkorrektur gilt weiter: Paper Rot auf grauem Markier-Hintergrund `#ff0000` → `#b20000`, Statuszeile
+  `#c10000`; Bitbucket Statuszeile auf Blau `#e00034` → `#f4a9ba` (Rosa – Rot erreicht auf dem Blau kein AA).
+- Neues Token `--color-status-marked` (bisher nutzte die Statuszeile die Akzentlinie der aktiven Seite) mit
+  Kontrastpaar auf `--color-footer-bg`; Standard bei den alten Designs wie in mr aus
+  `--fnf-activepanel-header-selected-tab-fg-color` (`.fnf-active-fg-color`); Modern light/dark `#2a63c8`/`#6c9af2`
+  (die Akzentfarbe erreichte auf der Statuszeile nur 4,2:1).
+- Test: `legacy-theme.spec.ts` › „Marc's wishes: …“; E2E (Xvfb): alle acht Designs mit Markierungen in beiden Seiten
+  und die Statuszeilen angesehen.
+
 ## 7. Review
 
 **Selbstprüfung:**

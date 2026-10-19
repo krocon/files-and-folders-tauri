@@ -64,6 +64,7 @@
     "--color-header-focus": "var(--color-focus)",
     "--color-footer-bg": "var(--color-surface-raised)",
     "--color-footer-text": "var(--color-muted)",
+    "--color-status-marked": "#6c9af2",
     "--color-footer-border": "var(--color-border)",
     "--color-footer-button-bg": "var(--color-surface)",
     "--color-footer-button-text": "var(--color-text)",

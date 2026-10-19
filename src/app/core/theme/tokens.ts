@@ -121,6 +121,7 @@ export const TOKENS: readonly TokenDef[] = [
 
   t('--color-footer-bg', 'footer', 'Background'),
   t('--color-footer-text', 'footer', 'Text'),
+  t('--color-status-marked', 'footer', 'Marked values in the status line'),
   t('--color-footer-border', 'footer', 'Border'),
   t('--color-footer-button-bg', 'footer', 'Button background'),
   t('--color-footer-button-text', 'footer', 'Button text'),
