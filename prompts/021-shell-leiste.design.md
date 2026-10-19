@@ -233,8 +233,8 @@ selbst (Ausnahme „Widgets nach APG“, `CLAUDE.md` §4):
 | F-Tasten (F3, F5, F8 …) | wirken wie im Total Commander weiter auf das aktive Panel (Dispatcher lässt Funktionstasten durch) |
 | `Shift+F11` | Leiste ausblenden, Fokus an die Liste |
 
-`TOGGLE_SHELL`: ausgeblendet → einblenden + fokussieren; eingeblendet, Fokus woanders → fokussieren; eingeblendet
-und fokussiert → ausblenden. Aktiv, wenn `shell.enabled` (sonst gedimmt mit Hinweis „in den Einstellungen aus“).
+`TOGGLE_SHELL` schaltet immer die Sichtbarkeit um, unabhängig vom Fokus (Marc, 2026-10-19): ausgeblendet →
+einblenden + fokussieren; eingeblendet → ausblenden, Fokus an die Liste. Aktiv, wenn `shell.enabled` (sonst gedimmt mit Hinweis „in den Einstellungen aus“).
 Im Archiv/ohne Ordner bleibt die Aktion aktiv (Leiste zeigt den Grund). Zusätzlich `SHELL_CLEAR_OUTPUT` (ohne
 Kürzel, Palette/Menü). Autovervollständigung nur aus dem Verlauf (Präfix, neueste zuerst, max. 8); Dateinamen
 für das letzte Wort → „Offen“.

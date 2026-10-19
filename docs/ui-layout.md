@@ -81,8 +81,8 @@ AngularJS-Version lag um Faktor 1000 daneben).
 Über die volle Breite, zwischen den Seiten und der Button-Leiste (`features/shell/shell-bar.*`). Oben die Ausgabe
 (Monospace, stderr farblich, Exit-Code ≠ 0 als Meldung; Höhe am Griff ziehbar bzw. `↑/↓`, einklappbar, Kopieren,
 Leeren), darunter `<Ordner>>` (in der Mitte gekürzt, voller Pfad im Tooltip) + Eingabefeld. Der Befehl läuft im
-Ordner des aktiven Panels (im Ergebnis-Tab im Suchordner); im Archiv ist das Feld gesperrt. `Shift+F11` blendet ein
-und fokussiert, im Feld blendet es aus; Sichtbarkeit, Höhe und Klappzustand stehen in der Sitzung. Sicherheitsmodell:
+Ordner des aktiven Panels (im Ergebnis-Tab im Suchordner); im Archiv ist das Feld gesperrt. `Shift+F11` schaltet die
+Sichtbarkeit immer um (beim Einblenden mit Fokus ins Feld); Sichtbarkeit, Höhe und Klappzustand stehen in der Sitzung. Sicherheitsmodell:
 Design 021 E1 / `CLAUDE.md` §4.
 
 ### Zeile 6 – Button-Leiste

@@ -219,18 +219,19 @@ describe('shell bar (design 021)', () => {
     expect(direct).toEqual([]);
   });
 
-  it('TOGGLE_SHELL shows and focuses, then hides; it follows shell.enabled', async () => {
+  it('TOGGLE_SHELL always toggles the visibility (showing focuses the field); it follows shell.enabled', async () => {
     expect(actions.state('TOGGLE_SHELL')).toBe('ready');
     await actions.run('TOGGLE_SHELL');
     expect(shell.visible()).toBe(true);
     await flush();
     expect(shell.history()).toEqual(['git status', 'ls -la']);
     expect(ws.snapshot().shell?.visible).toBe(true); // kept in the session
-    // visible, focus elsewhere → focus
-    const before = shell.focusRequest();
+    // visible, focus elsewhere (also by key) → hide as well
+    actions.noteKeyRun('TOGGLE_SHELL');
+    await actions.run('TOGGLE_SHELL');
+    expect(shell.visible()).toBe(false);
     await actions.run('TOGGLE_SHELL');
     expect(shell.visible()).toBe(true);
-    expect(shell.focusRequest()).toBe(before + 1);
     // focused → hide, the list gets the focus back
     shell.fieldFocused.set(true);
     await actions.run('TOGGLE_SHELL');
@@ -238,6 +239,17 @@ describe('shell bar (design 021)', () => {
     expect(ws.focusRequest()?.side).toBe('left');
     TestBed.inject(SettingsStore).set('shell.enabled', false);
     expect(actions.state('TOGGLE_SHELL')).toBe('disabled');
+  });
+
+  it('a menu (Actions menu, menu bar) toggles: a visible bar is hidden even without focus', async () => {
+    await actions.run('TOGGLE_SHELL');
+    expect(shell.visible()).toBe(true);
+    // the click into the Actions menu took the focus from the field
+    shell.fieldFocused.set(false);
+    await actions.run('TOGGLE_SHELL');
+    expect(shell.visible()).toBe(false);
+    await actions.run('TOGGLE_SHELL');
+    expect(shell.visible()).toBe(true);
   });
 
   it('Enter runs the typed line in the active folder; output streams in, the exit code ends it', async () => {

@@ -94,14 +94,12 @@ export class ShellStore {
 
   // ---- visibility and focus ----
 
-  /** `TOGGLE_SHELL` (design 021 E13): show + focus → focus → hide. */
+  /** `TOGGLE_SHELL` (design 021 E13): always toggles the visibility, wherever the focus is. */
   toggle(): void {
-    if (!this.visible()) {
-      this.show();
-    } else if (!this.fieldFocused()) {
-      this.focusRequest.update((n) => n + 1);
-    } else {
+    if (this.visible()) {
       this.hide();
+    } else {
+      this.show();
     }
   }
 
