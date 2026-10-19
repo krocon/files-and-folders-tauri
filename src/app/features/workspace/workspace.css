@@ -8,7 +8,7 @@
     minmax(var(--fnf-panel-min), calc((100% - var(--fnf-splitter-width)) * var(--fnf-split)))
     var(--fnf-splitter-width)
     minmax(var(--fnf-panel-min), 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
   height: 100%;
   overflow: clip;
   position: relative;
@@ -40,9 +40,15 @@
   opacity: 1;
 }
 
-.buttons {
+.shell {
   grid-column: 1 / -1;
   grid-row: 5;
+  min-width: 0;
+}
+
+.buttons {
+  grid-column: 1 / -1;
+  grid-row: 6;
 }
 
 .notices:empty {

@@ -1,3 +1,4 @@
+import type { ShellChunk } from '../shell/shell.models';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
@@ -46,6 +47,10 @@ export class JobsStore {
   private readonly startingDirSizes = new Map<string, Promise<string>>();
   /** Finished jobs Rust removed (helper jobs, review 009 #10), newest last. */
   private readonly retired = signal<readonly JobInfo[]>([]);
+  /** Receivers of shell output (design 021) – the shell bar, which knows its job id. */
+  private readonly shellListeners = new Set<
+    (id: string, chunks: readonly ShellChunk[], dropped: number) => void
+  >();
   /** Events received while the snapshot is on its way – replayed after it. */
   private buffer: JobEvent[] | null = null;
 
@@ -143,6 +148,18 @@ export class JobsStore {
     return new Promise((resolve) =>
       this.waiters.set(id, [...(this.waiters.get(id) ?? []), resolve]),
     );
+  }
+
+  /**
+   * Receives the output of every shell job (design 021 E3). Output can overtake
+   * the job id (`run_shell` resolves after the job started) – the listener keeps
+   * what belongs to its job.
+   */
+  onShellOutput(
+    listener: (id: string, chunks: readonly ShellChunk[], dropped: number) => void,
+  ): () => void {
+    this.shellListeners.add(listener);
+    return () => this.shellListeners.delete(listener);
   }
 
   /**
@@ -298,6 +315,9 @@ export class JobsStore {
       case 'searchHits':
         this.deliverHits(event.id, event.hits, event.stats);
         break;
+      case 'shellOutput':
+        this.shellListeners.forEach((l) => l(event.id, event.chunks, event.dropped));
+        break;
       case 'quitRequested':
         this.quitRequest.set({ running: event.running, seq: ++this.seq });
         break;
@@ -344,8 +364,8 @@ export class JobsStore {
   }
 }
 
-/** Folder sizes, the copy dialog's count, searches and duplicate searches are not tasks of the user. */
+/** Folder sizes, the copy dialog's count, searches, duplicate searches and shell commands are not tasks of the user. */
 export function isHelperJob(job: JobInfo): boolean {
   const k = job.spec.kind;
-  return k === 'dirSize' || k === 'count' || k === 'search' || k === 'duplicates';
+  return k === 'dirSize' || k === 'count' || k === 'search' || k === 'duplicates' || k === 'shell';
 }

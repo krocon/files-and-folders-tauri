@@ -203,9 +203,19 @@ pub fn parse_builtin(line: &str, windows: bool) -> Option<Builtin> {
             target: Some(format!("{line}\\")),
         });
     }
-    let (word, rest) = match line.find(char::is_whitespace) {
-        Some(i) => (&line[..i], line[i..].trim()),
-        None => (line, ""),
+    // cmd.exe also takes `cd..` and `cd\` without a space
+    let glued = windows
+        && line.len() > 2
+        && line.is_char_boundary(2)
+        && line[..2].eq_ignore_ascii_case("cd")
+        && line[2..].starts_with(['.', '\\']);
+    let (word, rest) = if glued {
+        (&line[..2], line[2..].trim())
+    } else {
+        match line.find(char::is_whitespace) {
+            Some(i) => (&line[..i], line[i..].trim()),
+            None => (line, ""),
+        }
     };
     if !(eq(word, "cd") || (windows && eq(word, "chdir"))) {
         return None;
@@ -217,6 +227,9 @@ pub fn parse_builtin(line: &str, windows: bool) -> Option<Builtin> {
     {
         rest = r.trim();
     }
+    if !windows && (rest == "--" || rest.starts_with("-- ")) {
+        rest = rest[2..].trim();
+    }
     if rest.is_empty() {
         return Some(Builtin::Cd { target: None });
     }
@@ -227,7 +240,8 @@ pub fn parse_builtin(line: &str, windows: bool) -> Option<Builtin> {
     for &q in quotes {
         if rest.len() >= 2 && rest.starts_with(q) && rest.ends_with(q) {
             let inner = &rest[1..rest.len() - 1];
-            if inner.contains(q) || inner.is_empty() {
+            // a quoted `~…` is a literal name in a shell – let the shell do it
+            if inner.contains(q) || inner.is_empty() || inner.starts_with('~') {
                 return None;
             }
             // inside "…" a POSIX shell still expands `$`, `` ` `` and `\`
@@ -240,6 +254,10 @@ pub fn parse_builtin(line: &str, windows: bool) -> Option<Builtin> {
         }
     }
     if rest.contains(char::is_whitespace) || rest.contains(SPECIAL) {
+        return None;
+    }
+    // `~user` is another user's home: the shell knows it
+    if rest.starts_with('~') && rest != "~" && !rest.starts_with("~/") && !rest.starts_with("~\\") {
         return None;
     }
     // a backslash escapes in POSIX shells: let the shell decide

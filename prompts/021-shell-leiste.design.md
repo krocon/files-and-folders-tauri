@@ -1,6 +1,7 @@
 # Design 021: Shell-Leiste (`TOGGLE_SHELL`)
 
-> **Status:** 🛑 Entwurf – wartet auf Freigabe · **Datum:** 2026-10-19 · **Branch:** `feat/shell-leiste` (von `main`
+> **Status:** ✅ freigegeben (Marc, 2026-10-19: alle Empfehlungen; F-Tasten wie TC; Login-`PATH` macOS **und** Linux) ·
+> umgesetzt · **Datum:** 2026-10-19 · **Branch:** `feat/shell-leiste` (von `main`
 > inkl. `fix: parent names of search hits …`)
 > **Grundlage:** Prompt 021, mr §1.7/§9/§11-12 (Shell-Panel, `POST /api/shell`, offenes ↑/↓/Esc), `docs/ui-layout.md`
 > Zeile 5, Design 011 E7, Matrix `docs/feature-parity.md` H. Quellcode mr: `shellpanel/` (Frontend),
@@ -232,8 +233,8 @@ selbst (Ausnahme „Widgets nach APG“, `CLAUDE.md` §4):
 | F-Tasten (F3, F5, F8 …) | wirken wie im Total Commander weiter auf das aktive Panel (Dispatcher lässt Funktionstasten durch) |
 | `Shift+F11` | Leiste ausblenden, Fokus an die Liste |
 
-`TOGGLE_SHELL`: ausgeblendet → einblenden + fokussieren; eingeblendet, Fokus woanders → fokussieren; eingeblendet
-und fokussiert → ausblenden. Aktiv, wenn `shell.enabled` (sonst gedimmt mit Hinweis „in den Einstellungen aus“).
+`TOGGLE_SHELL` schaltet immer die Sichtbarkeit um, unabhängig vom Fokus (Marc, 2026-10-19): ausgeblendet →
+einblenden + fokussieren; eingeblendet → ausblenden, Fokus an die Liste. Aktiv, wenn `shell.enabled` (sonst gedimmt mit Hinweis „in den Einstellungen aus“).
 Im Archiv/ohne Ordner bleibt die Aktion aktiv (Leiste zeigt den Grund). Zusätzlich `SHELL_CLEAR_OUTPUT` (ohne
 Kürzel, Palette/Menü). Autovervollständigung nur aus dem Verlauf (Präfix, neueste zuerst, max. 8); Dateinamen
 für das letzte Wort → „Offen“.
@@ -374,18 +375,75 @@ gesperrtem Ordner; light/dark; ein altes Design.
 - Dateinamen-Vervollständigung für das letzte Wort (bräuchte Wortgrenzen der Shell → in Rust).
 - Mehrere gleichzeitige Befehle.
 
-## 7. Fragen an Marc 🛑
+## 7. Antworten von Marc (2026-10-19)
 
-1. Default `shell.enabled = true` (E1.6) – einverstanden?
-2. Einfüge-Kürzel `Mod+Shift+Enter` / `Mod+Alt+Enter` statt TC-`Ctrl+Enter` (E12)?
-3. F-Tasten im Shell-Feld wirken weiter auf das Panel (TC-Verhalten, E13) – oder im Feld sperren?
-4. Login-`PATH` auch unter Linux (E6) oder nur macOS?
+1. `shell.enabled` Default an – ja. 2. `Mod+Shift+Enter` / `Mod+Alt+Enter` – ja. 3. F-Tasten im Feld wie im Total
+Commander (wirken auf das Panel). 4. Login-`PATH` unter macOS und Linux.
 
-## 8. Fortschritt
+## 8. Abweichungen bei der Umsetzung
 
-- [x] Phase 1: Bestand, Entscheidungen, Verträge (2026-10-19) – wartet auf Freigabe
-- [ ] Phase 2: Rust
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: Ende-zu-Ende
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschlussprüfung + Review (separater Agent)
+- **Zwei Fassaden statt einer:** `ShellApi` hat nur `run` (einziger Importeur `ShellBar`, Spec scannt `src/`);
+  Quotieren und Verlauf liegen in `ShellSupportApi` (Store, Einstellungsdialog) – so bleibt die Regel „nur die
+  Leiste startet Befehle“ prüfbar, ohne dass der Einstellungsdialog die Lauf-Fassade braucht.
+- **Hinweise als Codes:** `run_shell` liefert `notices` (z. B. `loginEnvUnavailable`), der Text kommt aus dem
+  Katalog. `ShellChunk` hat nur `stdout`/`stderr` (kein `info`-Strom aus Rust).
+- **Ende des Jobs:** Er endet, wenn die Shell beendet ist und die Pipes zu sind – oder 500 ms danach
+  (`LINGER`), wenn Hintergrundprozesse (`sleep 60 &`) die Pipes offen halten. Diese laufen weiter wie im Terminal;
+  nur ein **Abbruch** beendet die ganze Gruppe.
+- **Hinweis zu interaktiven Programmen** steht nur, solange die Ausgabe leer ist.
+- **Tokens:** zusätzlich `--color-shell-info-text` (Meldungen). Alle Shell-Tokens zeigen auf allgemeine Tokens
+  (`var(--color-surface)` …); die alten Designs bekommen sie darüber und über die Kontrastkorrektur – keine neuen
+  `--fnf-*`-Abbildungen nötig.
+- **Einstellungen:** eigener Bereich „Shell“ mit „Shell-Verlauf leeren“; `shell.windowsShell` nur unter Windows,
+  `shell.loginPath` nur unter macOS/Linux sichtbar.
+- **Fund aus dem E2E:** `WorkspaceStore.panel()` las eine normale `Map` – ein `computed` (Arbeitsordner der Leiste),
+  das vor der Registrierung der Panels gelesen wurde, blieb `null`. Jetzt Signal-Version (roter Test zuerst).
+- **Nicht prüfbar hier:** Windows (Ziel-`rust-std` aus dem Container nicht ladbar – die Windows-Teile von
+  `platform/process.rs` sind gegen die `windows-sys`-0.61-Quellen geschrieben, aber nicht kompiliert; Quotier- und
+  Argumentfunktionen für cmd/PowerShell sind plattformunabhängig getestet); macOS „aus dem Finder gestartet findet
+  `brew`“ (Vorgehen: App aus dem Finder starten, `which brew` in der Shell-Zeile).
+
+## 10. Review (separater Agent, 2026-10-19)
+
+Gelesen ohne den Code geschrieben zu haben; Experimente mit echten Shells (bash, dash, zsh, fish). Behoben – jeweils
+mit Test zuerst:
+
+| # | Fund | Behebung |
+|---|---|---|
+| 1 hoch | Endlose Ausgabe (`yes`): unbeschränkter Kanal Leser → Job, RAM wuchs ~700 MB/s, Abbruch arbeitete erst den Rückstau ab | `sync_channel(16)` (Gegendruck), nach Abbruch kein Abarbeiten; Test `endless_output_is_cancelled_quickly`; im Fenster: RSS stabil, Esc < 1 s |
+| 2 hoch (Windows) | `KILL_ON_JOB_CLOSE` beendete beim normalen Ende auch per `start` geöffnete Programme | `GroupChild::release()` löscht das Limit beim normalen Ende; nur Abbruch beendet den Job |
+| 3 mittel | zsh `=cmd`, fish `%self` in eingefügten Namen | führendes `=`/`%` wird quotiert; Round-Trip-Fälle ergänzt |
+| 4 mittel | Einfüge-Anfrage wurde nach Aus-/Einblenden erneut eingefügt | Anfrage wird verbraucht (Spec) |
+| 5 mittel | Hintergrundprozesse bekamen nach dem Jobende SIGPIPE | Leser lesen nach dem Ende bis EOF weiter (verwerfen); Test |
+| 6 mittel | `env -0` fehlt auf älterem macOS | `env` zeilenweise, nur gewünschte Schlüssel |
+| 7 niedrig (Windows) | cmd.exe sucht Programme zuerst im Panel-Ordner | `NoDefaultCurrentDirectoryInExePath=1` (`.\x.bat` geht weiter) |
+| 8 niedrig | Import-Regel per Regex umgehbar | Regel auf `shell-api['"]` + kein `'run_shell'` außerhalb der Fassade |
+| 9 niedrig | unterbrochene OSC-Sequenz verschluckte den Rest | Zeilenende beendet sie (Test) |
+| 11 niedrig | frühe Ausgabe über 200 Ereignissen still verworfen | Hinweis „… KB ausgelassen“ (Spec) |
+| 12 niedrig | `cd --`, `cd~user`, `cd "~"`, `cd..`/`cd\` (cmd) | erkannt bzw. an die Shell (Test) |
+| 13 niedrig | Verlauf übersprang Befehle > 4 KiB | Grenze = Befehlsgrenze (32 KiB) |
+| 15 niedrig | Bidi-Steuerzeichen in Namen | werden nicht eingefügt (`unquotable_name`) |
+| 16 niedrig | Enter während ein Befehl läuft: stumm | Hinweis „läuft noch – Esc bricht ab“ (Spec) |
+
+Bewusst offen: **#10** (Windows: Enkel, die zwischen `spawn` und Zuordnung zum Job Object starten, entkommen;
+sauber nur mit `CREATE_SUSPENDED` über rohes `CreateProcess`), **#12** PowerShell-`cd 'a b'` geht an die Shell
+(wirkt dort nur in der Shell), **#14** Ruckeln bei Flut: im Fenster nicht beobachtet (Flutschutz 1,3 MB/s),
+**#17** F-Tasten im Feld wirken auf das Panel – Marcs Entscheidung (TC-Verhalten). Hinweis Doku: `zsh -l` liest
+`.zprofile`, nicht `.zshrc` – `PATH`-Ergänzungen nur in `.zshrc` (nvm, pyenv) fehlen, dort ggf. in `.zprofile`
+verschieben.
+
+## 9. Fortschritt
+
+- [x] Phase 1: Bestand, Entscheidungen, Verträge (2026-10-19), freigegeben
+- [x] Phase 2: Rust – `shell/`, `platform/process.rs`, `jobs/shell.rs`, `commands/shell.rs`; 30 neue Tests (u. a.
+  Prozessgruppe, Flutschutz, Round-Trip-Quotierung in sh/bash/dash), clippy ohne Warnungen
+- [x] Phase 3: Frontend – `core/shell`, `features/shell`, Dispatcher, Einstellungen, Tokens; 17 neue Specs
+- [x] Phase 4: Ende-zu-Ende (Xvfb :99, Debug-Build, eigenes `HOME`/`XDG_*`, Ordner mit Umlauten, Emoji, Leerzeichen,
+  verstecktem Eintrag, Symlink, gesperrtem Ordner und einem Ordner `x"; touch pwned; "`): Shift+F11 ein/aus und
+  Fokus, Sichtbarkeit nach Neustart, `ls -la` mit Unicode, stderr rot + „Exit code 3“, `cd ..`/`cd gibtsnicht`,
+  Streaming + Esc-Abbruch (Kindprozess `sleep 60` beendet), `touch neu.txt` erscheint ohne Reload, `cat`/`vim`
+  enden sofort, ↑ aus dem Verlauf, Einfügen von Name und Pfad (quotiert), Archiv gesperrt, lange Zeilen umbrechen,
+  hell/dunkel/„Blackboard“ lesbar
+- [x] Phase 5: Doku (feature-parity, ui-layout, architecture, roadmap, README, CLAUDE.md §1/§3/§4, prompts/README)
+- [x] Phase 6: Review (separater Agent, Abschnitt 10), alle Funde außer #10/#14/#17 behoben, `pnpm check` grün,
+  Debug-Build, Flut-Test im Fenster

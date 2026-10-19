@@ -29,6 +29,9 @@ pub const KILL_GRACE: Duration = Duration::from_secs(1);
 /// After the shell ended, how long children that still hold the pipes are waited for.
 pub const LINGER: Duration = Duration::from_millis(500);
 const READ_BLOCK: usize = 8 * 1024;
+/// Blocks in flight between the pipe readers and the job (backpressure: a program that
+/// writes faster than the output is processed waits, memory stays bounded – review 021 #1).
+const CHANNEL_BLOCKS: usize = 16;
 
 /// How the command is started – decided by `run_shell`, never sent by the frontend.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -83,6 +86,11 @@ pub fn build_command(cwd: &Path, command: &str, launch: &ShellLaunch) -> Command
     for k in shell::ENV_REMOVE {
         cmd.env_remove(k);
     }
+    if matches!(launch.kind, ShellKind::Cmd { .. }) {
+        // cmd.exe would run a `git.bat` planted in the panel folder before the one in PATH
+        // (review 021 #7); `.\script.bat` still works
+        cmd.env("NoDefaultCurrentDirectoryInExePath", "1");
+    }
     cmd
 }
 
@@ -91,17 +99,20 @@ enum Msg {
     Eof,
 }
 
-fn reader(stream: ShellStream, mut pipe: impl Read + Send + 'static, tx: mpsc::Sender<Msg>) {
+fn reader(stream: ShellStream, mut pipe: impl Read + Send + 'static, tx: mpsc::SyncSender<Msg>) {
     let _ = std::thread::Builder::new()
         .name("fnf-shell-pipe".into())
         .spawn(move || {
             let mut buf = vec![0u8; READ_BLOCK];
+            let mut done = false;
             loop {
                 match pipe.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
-                        if tx.send(Msg::Data(stream, buf[..n].to_vec())).is_err() {
-                            return; // the job is over
+                        // after the job ended, keep reading (and dropping) until EOF: a closed
+                        // pipe would kill a background process with SIGPIPE (review 021 #5)
+                        if !done && tx.send(Msg::Data(stream, buf[..n].to_vec())).is_err() {
+                            done = true;
                         }
                     }
                 }
@@ -336,7 +347,7 @@ pub fn run(
         id: id.to_string(),
         state: JobState::Running,
     });
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::sync_channel(CHANNEL_BLOCKS);
     if let Some(out) = g.child.stdout.take() {
         reader(ShellStream::Stdout, out, tx.clone());
     }
@@ -390,8 +401,10 @@ pub fn run(
             break;
         }
     }
-    // drain what already arrived
-    while let Ok(Msg::Data(stream, bytes)) = rx.try_recv() {
+    // drain what already arrived (at most CHANNEL_BLOCKS) – not after a cancel
+    while !control.is_cancelled()
+        && let Ok(Msg::Data(stream, bytes)) = rx.try_recv()
+    {
         let text = match stream {
             ShellStream::Stdout => out.push(&bytes),
             ShellStream::Stderr => err.push(&bytes),
@@ -405,6 +418,9 @@ pub fn run(
     if cancelled {
         // children that survived SIGTERM of the group
         g.kill();
+    } else {
+        // Windows: programs started with `start` keep running (review 021 #2)
+        g.release();
     }
     emit(JobEvent::DirsChanged {
         dirs: vec![cwd.to_string()],

@@ -26,16 +26,16 @@ nachgebildet – hier ersetzt Tauri-IPC sie.
 
 | Abschnitt | ✅ | 🟡 | ⬜ | ✖ |
 |---|---|---|---|---|
-| A Aktionen | 65 | 5 | 4 | 13 |
+| A Aktionen | 66 | 5 | 3 | 13 |
 | B Button-Leiste | 9 | 2 | 1 | 1 |
 | C Dialoge und Optionen | 17 | 8 | 0 | 2 |
 | D Dateiliste | 19 | 2 | 0 | 0 |
 | E Panels, Tabs, Persistenz | 18 | 2 | 0 | 0 |
 | F Operationen & Jobs | 17 | 2 | 0 | 1 |
 | G Konfigurationsdateien & Editoren | 7 | 3 | 1 | 0 |
-| H Shell-Leiste, Server-Shell, KI, Electron | 4 | 2 | 4 | 4 |
-| I Bugs der alten Versionen | 36 | 0 | 1 | 3 |
-| **Summe** | **192** | **26** | **11** | **24** |
+| H Shell-Leiste, Server-Shell, KI, Electron | 5 | 2 | 3 | 4 |
+| I Bugs der alten Versionen | 37 | 0 | 1 | 2 |
+| **Summe** | **195** | **26** | **9** | **23** |
 
 - Die ⬜-Zeilen sind die Folge-Prompts 021 ff. (Abschnitt „Folge-Prompts“), die ✖-Zeilen sind bewusst entfallen
   (Web-/Server-Transport, Electron, tote Ids, nie funktionierende Kürzel der alten Version) – Grund je Zeile.
@@ -131,7 +131,7 @@ eine Leerzeile).
 | Panel wechseln | `TOGGLE_PANEL` · Toggle Panels · `tab` | `TOGGLE_PANEL` · ja · `Tab` | ✅ | `features/workspace/workspace.store.spec.ts` › „switches the active side: source and target follow, the new side gets the focus“ | |
 | Markierung umkehren | `TOGGLE_SELECTION` · Toggle Selection · `ctrl+space` | `INVERT_MARKS` · ja · `NumpadMultiply` | ✅ | `features/browser/file-browser.store.spec.ts` › „marks all and inverts“ | ⌃Space nicht übernommen (macOS Eingabequelle, Windows-IME) |
 | Zeile umschalten ohne Bewegen | `TOGGLE_SELECTION_CURRENT_ROW` · Toggle Selection Current Row · `ctrl+shift+space` | `TOGGLE_MARK` · ja · `Mod+Shift+Space` | ✅ | `features/browser/file-list/file-list-controller.spec.ts` › „Shift+Space toggles and moves up, Mod+Shift+Space toggles in place (018 J10, mr)“ | 018: eigene Aktion `TOGGLE_MARK` (`Mod+Shift+Space`); Strg/⌘+Klick schaltet ebenfalls ohne Bewegen |
-| Shell-Leiste | `TOGGLE_SHELL` · Toggle Shell · `shift+f11` | `TOGGLE_SHELL` · **kein Handler** (Hinweis „kommt mit Prompt 021“) · `Shift+F11` | ⬜ | – | Folge-Prompt 021 (Shell-Leiste); Sicherheitsregel CLAUDE.md §4: kein beliebiges Shell-Kommando aus dem Frontend – braucht eigenes Sicherheitsmodell (PTY) |
+| Shell-Leiste | `TOGGLE_SHELL` · Toggle Shell · `shift+f11` | `TOGGLE_SHELL` · Shell-Zeile ein/aus/fokussieren · `Shift+F11`; dazu `SHELL_INSERT_NAMES` (`Mod+Shift+Enter`), `SHELL_INSERT_PATHS` (`Mod+Alt+Enter`), `SHELL_CLEAR_OUTPUT` | ✅ | `features/shell/shell.spec.ts` › „TOGGLE_SHELL shows and focuses, then hides; it follows shell.enabled“, „inserts the marked names (or full paths), quoted by Rust, at the caret“ | Prompt 021: Pipes statt PTY, eigenes Sicherheitsmodell (Design 021 E1, CLAUDE.md §4) |
 | Pseudo | `DO_NOTHING`, `DUMMY_ACTION` (`ctrl+cmd+enter`, osx `ctrl+m`, win `cmd+ctrl+enter`†), `-` | – | ✖ | – | Platzhalter |
 | (tot, nur JSON) | `EDIT_FILE` · – · `cmd+e` | – | ✖ | – | nie behandelt |
 
@@ -256,7 +256,7 @@ eine Leerzeile).
 
 | Funktion | Referenz alt (mr §1, §4) | Umsetzung neu | Status | Tests | Abweichung/Grund |
 |---|---|---|---|---|---|
-| Fenster-Grid (6 Zeilen) | Breadcrumb, Tabs, Tabelle, Summary, Shell, Buttons | `workspace.html` (ohne Shell-Zeile) | ✅ | `features/workspace/file-panel.spec.ts` › „marks its parts as the active panel“ | Shell-Zeile fehlt (H) |
+| Fenster-Grid (6 Zeilen) | Breadcrumb, Tabs, Tabelle, Summary, Shell, Buttons | `workspace.html` (Shell-Zeile = Zeile 5, Prompt 021) | ✅ | `features/workspace/file-panel.spec.ts` › „marks its parts as the active panel“ |  |
 | Klick aktiviert Panel | jede Zelle | Pointer down | ✅ | file-panel.spec › „activates its side on pointer down and registers itself for actions“ | |
 | Splitter | gemeinsam, Doppelklick 50/50, **nicht gespeichert**, `50vW` ohne `calc()` | gemeinsam, Tastatur/Maus/Doppelklick, gespeichert | ✅ | `features/workspace/splitter.spec.ts` › „maps the pointer position to a bounded ratio“, „moves with the arrow keys within the limits“; workspace.store.spec › „bounds the splitter“ | behebt mr-Bug 10/11 |
 | Breadcrumb + Fav-Stern | Segmente klickbar, Fav-Toggle | gleich | ✅ | file-panel.spec › „navigates via a breadcrumb segment, cursor on the folder it came from“, „toggles the favourite star for the current folder“ | |
@@ -328,7 +328,7 @@ eine Leerzeile).
 
 | Funktion | Referenz alt | Umsetzung neu | Status | Tests | Abweichung/Grund |
 |---|---|---|---|---|---|
-| Shell-Leiste (Zeile 5) | Eingabe `{{path}}>`, Autocomplete (Verlauf + `GET shell-autocomplete`), `POST /api/shell` (`exec`), Ausgabe in Monaco-Bottom-Sheet, Verlauf 20, `shellVisible` | – (`TOGGLE_SHELL` ohne Handler) | ⬜ | – | Design 011 E7: nur ausdrückliche Eingabe, später PTY (`portable-pty`) |
+| Shell-Leiste (Zeile 5) | Eingabe `{{path}}>`, Autocomplete (Verlauf + `GET shell-autocomplete`), `POST /api/shell` (`exec`), Ausgabe in Monaco-Bottom-Sheet, Verlauf 20, `shellVisible` | `ShellBar` über der Button-Leiste: Befehl als Hilfsjob `shell` (Pipes, stdin zu, eigene Sitzung), Ausgabe gestreamt mit Flutschutz, Esc/Strg+C bricht die ganze Prozessgruppe ab, `cd`/`cd -`/`clear` in Rust (Panel navigiert), Verlauf 100 in `shell-history.json`, Vorschläge aus dem Verlauf, Login-`PATH`, Sichtbarkeit/Höhe in der Sitzung, gesperrt im Archiv | ✅ | Rust `jobs/tests_shell.rs` › `cancel_ends_the_whole_group`, `a_folder_name_is_never_executed`, `endless_output_is_limited`, `stdin_is_closed_and_there_is_no_terminal`; `shell/tests.rs` › `quoting_round_trip_in_real_shells`, `builtins_posix`; `features/shell/shell.spec.ts` › „Enter runs the typed line in the active folder; output streams in, the exit code ends it“ | Design 021; Dateinamen-Vervollständigung und PTY offen |
 | Server-Shell | Route `/shell`, `spawn`/`cancelspawn` | – | ✖ | – | mr §11 Drop |
 | Terminal öffnen | Tool `CMD_SHELL` | `OPEN_TERMINAL_HERE` | ✅ | Rust `platform/desktop.rs` › `the_next_terminal_is_tried_when_one_fails_to_start` | |
 | KI Namen umwandeln | `POST /api/ai/convertnames` (OpenAI/Ollama), Button im Multi-Rename | – | ⬜ | – | optional, Schlüssel im Schlüsselbund (mr §11) |
@@ -357,7 +357,7 @@ eine Leerzeile).
 | 3b `alt` nicht als ⌥ | | Badge zeigt weiter „alt“ | ✖ | `core/actions/shortcut-badge.spec.ts` › „macOS: Mod is ⌘, Ctrl is ^, alt stays a word, Shift is ⇧, keys in lower case“ | bewusst wie mr (Badge 1:1) |
 | 3c kein F7 für MkDir | | `F7` | ✅ behoben | `core/actions/keymap.spec.ts` › „binds the Total Commander function keys and F7 = MkDir“ | |
 | 4 `document.title` durch ngDoCheck überschrieben | | kein Schreibzugriff auf `document.title` im Code (grep) | ✅ entfällt | – (Code-Beleg: kein `document.title` in `src/`) | |
-| 5 tote Aktionen, Duplikate fehlen, `NAVIGATE_LEVEL_DOWN` = „Parent Dir“ | | alle Katalog-Ids außer 2 mit Handler; Duplikate implementiert; `NAVIGATE_PARENT` | ✅ behoben | `core/actions/keymap.spec.ts` › „${platform}: known ids, valid shortcuts, no double bindings, nothing reserved“; `features/menus/menu-model.spec.ts` › „has every action of the catalog in the menu bar (mouse reaches everything)“; `features/archive/archive.spec.ts` › „duplicates: a result tab with groups, …“ | `TOGGLE_SHELL`, `OPEN_BUTTON_CONFIG_DLG` noch ohne Handler (gedimmt mit Hinweis) |
+| 5 tote Aktionen, Duplikate fehlen, `NAVIGATE_LEVEL_DOWN` = „Parent Dir“ | | alle Katalog-Ids außer 1 mit Handler; Duplikate implementiert; `NAVIGATE_PARENT` | ✅ behoben | `core/actions/keymap.spec.ts` › „${platform}: known ids, valid shortcuts, no double bindings, nothing reserved“; `features/menus/menu-model.spec.ts` › „has every action of the catalog in the menu bar (mouse reaches everything)“; `features/archive/archive.spec.ts` › „duplicates: a result tab with groups, …“ | `OPEN_BUTTON_CONFIG_DLG` noch ohne Handler (gedimmt mit Hinweis); `TOGGLE_SHELL` seit 021 |
 | 6 `setFileItemSelected` setzt Flag nur ohne `meta` | | Markierung als `Set<path>` | ✅ entfällt | `features/browser/file-browser.store.spec.ts` › „toggles, sets and clears marks“ | |
 | 7 Find `directoriesOnly` leer; Find blockiert Event-Loop | | Arten Dateien/Ordner/Links; Rust-Job | ✅ behoben | Rust `search.rs` › `kinds_size_date_depth`; `jobs/tests_tools.rs` › `search_cancel_reacts_fast` | |
 | 8 kein Konflikt, Löschen endgültig, `rsync -z` | | Konflikte, Papierkorb, natives Kopieren | ✅ behoben | Rust `jobs/tests_engine.rs` › `conflict_overwrite_skip_rename_and_apply_to_all`, `a_target_that_appears_while_copying_is_not_replaced`; `jobs/tests_ops.rs` › `delete_to_the_trash` | |
@@ -367,7 +367,7 @@ eine Leerzeile).
 | 10 Sortierung beim Start zurückgesetzt; Splitter nicht gespeichert | | Table-Zustand + Splitter in der Sitzung | ✅ behoben | `features/browser/file-list/file-list-controller.spec.ts` › „applies a tab table state around the cursor: columns + sort first, scroll last“; `features/workspace/workspace.store.spec.ts` › „round-trips through the session format“ | |
 | 11 50/50 ohne `calc()`; Pfeile auf keyup ohne Repeat | | Verhältnis 0..1; Table-Navigation auf keydown; Repeat-Liste | ✅ behoben | `features/workspace/splitter.spec.ts` › „jumps to the limits and back to the middle“; `core/actions/keyboard-dispatcher.spec.ts` › „ignores auto-repeat except for repeatable actions“ | |
 | 12a Tab-Kontext- und Verlaufsmenü beide an Long-Press | | Kontextmenü per Rechtsklick/`Shift+F10`; kein Verlaufsmenü | ✅ | `features/workspace/tab-bar.spec.ts` › „opens the context menu with Shift+F10 and closes it with Escape“ | Bug entfällt; Verlaufsmenü seit 018 im Kontextmenü (`tab-bar.spec.ts` › „the context menu lists the history of the tab …“) |
-| 12b Shell-Leiste ohne ↑/↓-Verlauf, Esc | | keine Shell-Leiste | ✖ entfällt | – | Shell fehlt (H) |
+| 12b Shell-Leiste ohne ↑/↓-Verlauf, Esc | | ↑/↓ mit Entwurf, Esc-Kaskade (Vorschläge → Abbruch → Leeren → Liste) | ✅ behoben | `features/shell/shell.spec.ts` › „↑/↓ walk the history (draft kept); the suggestions take Enter“, „Esc: closes suggestions, stops a running command, clears the text, then returns to the list“ | |
 
 ### I.2 legacy §9 (AngularJS/Node 2016)
 
@@ -414,7 +414,7 @@ eine Leerzeile).
 | J8 | `-term`/`a\|b` im Markier-Dialog | entfällt (funktioniert, `pattern.spec.ts`) |
 | J9 | Ordner in „Go to anything“ | ✅ `command-palette.spec.ts` |
 | J10 | Shift+Leertaste, Umschalten ohne Bewegen | ✅ `file-list-controller.spec.ts` |
-| J11 | `TOGGLE_SHELL`/`OPEN_BUTTON_CONFIG_DLG` zeigten „kommt in 011/018“ | ✅ verweisen auf Folge-Prompts 021/022 |
+| J11 | `TOGGLE_SHELL`/`OPEN_BUTTON_CONFIG_DLG` zeigten „kommt in 011/018“ | ✅ verweisen auf Folge-Prompts 021/022; `TOGGLE_SHELL` mit 021 umgesetzt |
 | J12 | Tab-Verlaufsmenü | ✅ `tab-bar.spec.ts` |
 | J13 | Shift+Klick schließt Tab | ✅ `tab-bar.spec.ts` |
 | J14 | Vollbild unter Windows/Linux | ⬜ braucht die Fähigkeit `core:window:allow-set-fullscreen` bzw. einen schmalen Command – mit Folge-Prompt 022 |
@@ -425,7 +425,7 @@ eine Leerzeile).
 
 | Prompt | Inhalt (eine Zeile) |
 |---|---|
-| 021 Shell-Leiste | `TOGGLE_SHELL`: Eingabezeile mit Verlauf (↑/↓, Esc) und Ausgabe über einen PTY (`portable-pty`) mit eigenem Sicherheitsmodell (Design 011 E7); ersetzt mr „Server Shell“. |
+| 021 Shell-Leiste | ✅ umgesetzt (Design `prompts/021-shell-leiste.design.md`): Pipes statt PTY, Hilfsjob `shell`, Sicherheitsmodell in CLAUDE.md §4. |
 | 022 Konfigurations-Editoren | Buttons (`OPEN_BUTTON_CONFIG_DLG`, Override je Modifier-Satz), Dateitypen (Kategorien für Icons/Markieren/Suche), dauerhafte Suchvorlagen; Vollbild-Aktion (J14). |
 | 023 Eingebauter Editor | F4 intern: Text bearbeiten, Kodierung erhalten, Suchen/Ersetzen, Rückfrage bei ungespeichert. |
 | 024 Attribute ändern | Rechte/Eigentümer (Unix), R/H/S/A (Windows), Zeitstempel – als Job mit Rust-Validierung. |

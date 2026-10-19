@@ -82,7 +82,8 @@ enum State {
     EscInter,
     /// CSI: ESC [ … final byte 0x40–0x7E.
     Csi,
-    /// OSC/DCS/APC/PM/SOS: until BEL or ESC \.
+    /// OSC/DCS/APC/PM/SOS: until BEL or ESC \ – or a line end (an unterminated
+    /// sequence, e.g. `cat` of a binary file, must not hide the rest, review 021 #9).
     Str,
     /// ESC inside a string (maybe the start of ST).
     StrEsc,
@@ -141,6 +142,7 @@ impl AnsiStripper {
                 State::Str => match c {
                     '\u{7}' | '\u{9c}' => self.state = State::Text,
                     '\u{1b}' => self.state = State::StrEsc,
+                    '\n' => self.state = State::Text,
                     _ => {}
                 },
                 State::StrEsc => {

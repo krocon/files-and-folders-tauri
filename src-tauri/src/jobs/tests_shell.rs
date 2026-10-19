@@ -317,3 +317,43 @@ fn login_env_and_no_colours_reach_the_command() {
     h.finish(&id);
     assert_eq!(output(&h, &id).0, "ja dumb 1 cat unset\n");
 }
+
+/// Review 021 #1: `yes` floods the pipe – memory stays bounded (backpressure) and Esc ends it at once.
+#[test]
+fn endless_output_is_cancelled_quickly() {
+    let t = tempdir().unwrap();
+    let h = Harness::new();
+    let id = start(&h, t.path(), "yes");
+    thread::sleep(Duration::from_millis(1500));
+    let started = Instant::now();
+    h.mgr.cancel(&id);
+    assert_eq!(h.finish(&id).state, JobState::Cancelled);
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+/// Review 021 #5: a background process keeps running and is not killed by SIGPIPE
+/// when it writes after the job ended.
+#[test]
+fn background_output_after_the_end_does_not_kill_the_child() {
+    let t = tempdir().unwrap();
+    let marker = t.path().join("lebt");
+    let h = Harness::new();
+    let id = start(
+        &h,
+        t.path(),
+        &format!(
+            "(sleep 1; echo spaet; sleep 0.3; touch '{}') &",
+            marker.display()
+        ),
+    );
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !marker.exists() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(50));
+    }
+    assert!(marker.exists(), "the background process died on its write");
+}

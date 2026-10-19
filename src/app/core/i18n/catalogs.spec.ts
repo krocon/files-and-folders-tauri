@@ -23,6 +23,7 @@ import '../../features/osintegration/os-texts';
 import '../../features/preview/preview-texts';
 import '../../features/search/search-texts';
 import '../../features/settings/settings-texts';
+import '../../features/shell/shell-texts';
 import '../../features/themes/theme-texts';
 import '../../features/workspace/texts';
 

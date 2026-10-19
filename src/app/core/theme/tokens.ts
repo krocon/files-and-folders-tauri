@@ -7,7 +7,15 @@ import { phrasebook } from '../i18n/i18n';
 import { THEME_LABELS_DE } from './theme-labels.de';
 
 export type TokenGroup =
-  'general' | 'list' | 'activePanel' | 'header' | 'footer' | 'dialog' | 'scrollbar' | 'tooltip';
+  | 'general'
+  | 'list'
+  | 'activePanel'
+  | 'header'
+  | 'footer'
+  | 'shell'
+  | 'dialog'
+  | 'scrollbar'
+  | 'tooltip';
 
 /** `color` gets a colour picker; the others only a text field. */
 export type TokenKind = 'color' | 'length' | 'font' | 'shadow';
@@ -28,6 +36,7 @@ const GROUP_LABELS_EN: Readonly<Record<TokenGroup, string>> = {
   activePanel: 'Active panel',
   header: 'Panel header and tabs',
   footer: 'Status line and button bar',
+  shell: 'Shell',
   dialog: 'Dialogs',
   scrollbar: 'Scrollbar',
   tooltip: 'Tooltip',
@@ -130,6 +139,13 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-shortcut-text', 'footer', 'Shortcut badge text'),
   t('--color-footer-error-text', 'footer', 'Warning text'),
   t('--color-footer-focus', 'footer', 'Focus ring'),
+
+  t('--color-shell-bg', 'shell', 'Background'),
+  t('--color-shell-text', 'shell', 'Text'),
+  t('--color-shell-prompt', 'shell', 'Prompt (folder)'),
+  t('--color-shell-error-text', 'shell', 'Error output'),
+  t('--color-shell-info-text', 'shell', 'Messages (exit code …)'),
+  t('--color-shell-border', 'shell', 'Border'),
 
   t('--color-dialog-bg', 'dialog', 'Background'),
   t('--color-dialog-text', 'dialog', 'Text'),

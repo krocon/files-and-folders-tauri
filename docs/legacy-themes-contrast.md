@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-11 von 58 Paaren unter AA im Original, 10 Farben angepasst.
+12 von 62 Paaren unter AA im Original, 11 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -36,6 +36,7 @@
 | `--color-cursor-marked-text` | `#f0809a` | `#ffffff` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#b3e0f4` | `#eaf7fc` | Marked under the inactive cursor |
 | `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
+| `--color-shell-prompt` | `#0098db` | `#007db5` | Shell prompt |
 | `--color-status-marked` | `#0098db` | `#0075a9` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#de0034` | Status line warning |
 | `--color-header-focus` | `#0098db` | `#0094d5` | Focus ring on the panel header |
@@ -43,7 +44,7 @@
 
 ## paper (hell)
 
-39 von 58 Paaren unter AA im Original, 29 Farben angepasst.
+43 von 62 Paaren unter AA im Original, 33 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -84,6 +85,10 @@
 | `--color-active-marked` | `#ff0000` | `#b20000` | Marked, active panel |
 | `--color-active-panel-tab-text` | `#ff0000` | `#cf0000` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#e7e5df` | `#83827f` | Active panel line |
+| `--color-shell-text` | `#6c6b6b` | `#666666` | Shell output |
+| `--color-shell-prompt` | `#0098db` | `#006c9c` | Shell prompt |
+| `--color-shell-error-text` | `#e00034` | `#cd0030` | Shell errors |
+| `--color-shell-info-text` | `#91908e` | `#676664` | Shell messages |
 | `--color-tab-selected-text` | `#657786` | `#596875` | Selected tab |
 | `--color-favorite` | `#a87300` | `#a37000` | Favourite star |
 | `--color-status-marked` | `#ff0000` | `#c10000` | Marked values in the status line |
@@ -97,7 +102,7 @@
 
 ## bitbucket (hell)
 
-28 von 58 Paaren unter AA im Original, 21 Farben angepasst.
+31 von 62 Paaren unter AA im Original, 24 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -133,6 +138,9 @@
 | `--color-cursor-inactive-bg` | `#a5d6f4` | `#c9e6f8` | Cursor, inactive panel |
 | `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#ffffff` | `#939393` | Active panel line |
+| `--color-shell-prompt` | `#0098db` | `#0074a6` | Shell prompt |
+| `--color-shell-error-text` | `#e00034` | `#da0033` | Shell errors |
+| `--color-shell-info-text` | `#828cb7` | `#646b8d` | Shell messages |
 | `--color-tab-selected-text` | `#0098db` | `#0074a6` | Selected tab |
 | `--color-favorite` | `#a87300` | `#bd953d` | Favourite star |
 | `--color-status-marked` | `#e00034` | `#f4a9ba` | Marked values in the status line |
@@ -143,7 +151,7 @@
 
 ## cypress (dunkel)
 
-26 von 58 Paaren unter AA im Original, 18 Farben angepasst.
+29 von 62 Paaren unter AA im Original, 21 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -176,6 +184,9 @@
 | `--color-cursor-marked-text` | `#82e1c7` | `#fafefd` | Marked under the cursor |
 | `--color-cursor-inactive-text` | `#657786` | `#9ba7b0` | Cursor, inactive panel |
 | `--color-active-panel-accent` | `#162332` | `#656e77` | Active panel line |
+| `--color-shell-text` | `#657786` | `#7c8c98` | Shell output |
+| `--color-shell-error-text` | `#e00034` | `#ea5476` | Shell errors |
+| `--color-shell-info-text` | `#4d5e6d` | `#7e8b95` | Shell messages |
 | `--color-favorite` | `#f2c14e` | `#b38e3a` | Favourite star |
 | `--color-status-marked` | `#04c38e` | `#038662` | Marked values in the status line |
 | `--color-dialog-text` | `#657786` | `#7c8c98` | Dialogs |
@@ -186,7 +197,7 @@
 
 ## blackboard (dunkel)
 
-13 von 58 Paaren unter AA im Original, 9 Farben angepasst.
+15 von 62 Paaren unter AA im Original, 11 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -215,12 +226,14 @@
 | `--color-error-text` | `#e00034` | `#e7355f` | Unreadable entries |
 | `--color-cursor-bg` | `#758129` | `#636d23` | Cursor |
 | `--color-cursor-marked-text` | `#e4e4b2` | `#eaeac2` | Marked under the cursor |
+| `--color-shell-error-text` | `#e00034` | `#e7355f` | Shell errors |
+| `--color-shell-info-text` | `#7a7b80` | `#7c7d81` | Shell messages |
 | `--color-footer-error-text` | `#e00034` | `#ee728e` | Status line warning |
 | `--color-tooltip-text` | `#0c1021` | `#747780` | Tooltip |
 
 ## coffee (dunkel)
 
-6 von 58 Paaren unter AA im Original, 5 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+7 von 62 Paaren unter AA im Original, 6 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -246,11 +259,12 @@
 | `--color-error-text` | `#e00034` | `#e8456b` | Unreadable entries |
 | `--color-cursor-inactive-bg` | `#5f5f5f` | `#494949` | Marked under the inactive cursor |
 | `--color-active-panel-accent` | `#000000` | `#676767` | Active panel line |
+| `--color-shell-error-text` | `#e00034` | `#e8456b` | Shell errors |
 | `--color-footer-error-text` | `#e00034` | `#ef7b96` | Status line warning |
 
 ## combat (dunkel)
 
-8 von 58 Paaren unter AA im Original, 7 Farben angepasst.
+9 von 62 Paaren unter AA im Original, 8 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -276,13 +290,14 @@
 | `--color-error-text` | `#e00034` | `#e6355e` | Unreadable entries |
 | `--color-cursor-marked-text` | `#f88099` | `#fddee4` | Marked under the cursor |
 | `--color-active-marked-bg` | `#101010` | `#070707` | Marked, active panel |
+| `--color-shell-error-text` | `#e00034` | `#e6355e` | Shell errors |
 | `--color-footer-error-text` | `#e00034` | `#e41d4b` | Status line warning |
 | `--color-tooltip-text` | `#a6a4a4` | `#3b3a3a` | Tooltip |
 | `--color-tooltip-input-text` | `#a6a4a4` | `#3b3a3a` | Tooltip input |
 
 ## norton (dunkel)
 
-15 von 58 Paaren unter AA im Original, 13 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+16 von 62 Paaren unter AA im Original, 14 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -308,6 +323,7 @@
 | `--color-row-hover` | `#c0c0c0` | `#757575` | List, row under the mouse |
 | `--color-error-text` | `#e00034` | `#ea5376` | Unreadable entries |
 | `--color-active-panel-accent` | `#1e3f4e` | `#57707b` | Active panel line |
+| `--color-shell-error-text` | `#a80000` | `#cd6d6d` | Shell errors |
 | `--color-footer-error-text` | `#e00034` | `#e41d4b` | Status line warning |
 | `--color-footer-button-bg` | `#008080` | `#058383` | Function buttons |
 | `--color-dialog-bg` | `#05a8a8` | `#048080` | Dialogs |

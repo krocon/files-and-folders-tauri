@@ -41,7 +41,23 @@ export interface Session {
   /** Recently visited folders, newest first (max. 20). */
   readonly recent: readonly string[];
   readonly panels: { readonly left: PanelSession; readonly right: PanelSession };
+  /** Shell bar (design 021 E10); missing in sessions of older builds. */
+  readonly shell?: ShellSession;
 }
+
+/** Shell bar state across restarts – never the output. Rust bounds the height (60–800). */
+export interface ShellSession {
+  readonly visible: boolean;
+  readonly outputOpen: boolean;
+  /** CSS pixels. */
+  readonly outputHeight: number;
+}
+
+export const DEFAULT_SHELL_SESSION: ShellSession = {
+  visible: false,
+  outputOpen: true,
+  outputHeight: 160,
+};
 
 export interface AdjustedPath {
   readonly from: string;

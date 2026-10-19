@@ -60,6 +60,9 @@ import { ThemeDialog } from '../themes/theme-dialog';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { registerOsActions } from '../osintegration/os-actions';
+import { ShellBar } from '../shell/shell-bar';
+import { registerShellActions } from '../shell/shell-actions';
+import { ShellStore } from '../shell/shell.store';
 import { OsStore } from '../osintegration/os.store';
 import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
@@ -120,6 +123,7 @@ import { WorkspaceStore } from './workspace.store';
     SettingsDialog,
     AboutDialog,
     ContextMenu,
+    ShellBar,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -146,6 +150,7 @@ export class Workspace implements OnInit {
   private readonly cl = inject(CleanFoldersStore);
   private readonly mm = inject(MultiMkdirStore);
   private readonly os = inject(OsStore);
+  protected readonly shell = inject(ShellStore);
   private readonly viewer = inject(ViewerStore);
   private readonly quick = inject(QuickViewStore);
   private readonly props = inject(PropertiesStore);
@@ -263,6 +268,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
     this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
+    this.destroyRef.onDestroy(registerShellActions(this.actions, this.shell));
     this.destroyRef.onDestroy(
       registerPreviewActions(this.actions, this.ws, this.viewer, this.quick, this.props),
     );

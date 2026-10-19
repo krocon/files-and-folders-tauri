@@ -93,5 +93,6 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
     simulate: (n) => `Test-Task (${n} Schritte)`,
+    shell: (command, cwd) => `Shell: ${command} (in ${cwd})`,
   },
 };

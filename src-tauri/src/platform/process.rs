@@ -88,6 +88,16 @@ impl GroupChild {
         }
     }
 
+    /// The command ended normally: what it started in the background keeps running.
+    /// Unix: nothing to do (the group is not signalled). Windows: the job no longer
+    /// kills its processes when its handle closes.
+    pub fn release(&mut self) {
+        #[cfg(windows)]
+        if let Some(job) = self.job.take() {
+            job.release();
+        }
+    }
+
     /// Whether any process of the group is still alive (Unix; Windows: the child).
     pub fn group_alive(&mut self) -> bool {
         #[cfg(unix)]
@@ -155,6 +165,20 @@ mod win {
         pub fn assign(&self, child: &Child) -> bool {
             // SAFETY: both handles are valid for the duration of the call.
             unsafe { AssignProcessToJobObject(self.0, child.as_raw_handle() as HANDLE) != 0 }
+        }
+
+        /// Clears `KILL_ON_JOB_CLOSE`, so dropping the handle leaves the processes alone.
+        pub fn release(&self) {
+            let info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+            // SAFETY: valid job handle and a correctly sized structure.
+            unsafe {
+                SetInformationJobObject(
+                    self.0,
+                    JobObjectExtendedLimitInformation,
+                    &info as *const _ as *const core::ffi::c_void,
+                    std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                );
+            }
         }
 
         pub fn terminate(&self) {

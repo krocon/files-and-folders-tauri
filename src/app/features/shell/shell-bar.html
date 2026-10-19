@@ -1,0 +1,134 @@
+<section class="shell" [attr.aria-label]="t.region">
+  @if (store.outputOpen()) {
+    <div
+      class="grip"
+      role="separator"
+      tabindex="0"
+      aria-orientation="horizontal"
+      [attr.aria-label]="t.resize"
+      [attr.title]="t.resize"
+      [attr.aria-valuemin]="min"
+      [attr.aria-valuemax]="max"
+      [attr.aria-valuenow]="store.outputHeight()"
+      (pointerdown)="onGripDown($event)"
+      (pointermove)="onGripMove($event)"
+      (pointerup)="onGripUp()"
+      (pointercancel)="onGripUp()"
+      (keydown)="onGripKey($event)"
+    ></div>
+    <div
+      #output
+      class="output"
+      role="log"
+      tabindex="0"
+      aria-live="off"
+      [attr.aria-label]="t.output"
+      [style.height.px]="store.outputHeight()"
+      (scroll)="onScroll()"
+    >
+      @if (store.trimmed()) {
+        <div class="seg info">{{ t.trimmed }}</div>
+      }
+      <div class="text">
+        @for (s of store.segments(); track $index) {
+          <!-- textContent: no whitespace from the template, never HTML -->
+          <span [class]="'seg ' + s.kind" [textContent]="s.text"></span>
+        }
+      </div>
+      @if (!store.hasOutput()) {
+        <div class="seg info hint">{{ t.interactiveHint }}</div>
+      }
+    </div>
+  }
+  <div class="line">
+    <label #cwdLabel class="cwd" [for]="inputId" [attr.title]="store.cwd()"
+      >{{ promptText() }}&gt;</label
+    >
+    <div class="combo">
+      <input
+        #field
+        type="text"
+        role="combobox"
+        data-shell-field
+        aria-autocomplete="list"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        [id]="inputId"
+        [attr.aria-label]="t.input"
+        [attr.aria-expanded]="listOpen()"
+        [attr.aria-controls]="listId"
+        [attr.aria-activedescendant]="activeId()"
+        [placeholder]="placeholder()"
+        [attr.title]="store.locked() !== null ? placeholder() : null"
+        [disabled]="store.locked() !== null"
+        [value]="text()"
+        (input)="onInput($event)"
+        (keydown)="onKey($event)"
+        (focus)="onFocus()"
+        (blur)="onBlur()"
+      />
+      <ul
+        class="suggestions"
+        role="listbox"
+        [id]="listId"
+        [attr.aria-label]="t.suggestions"
+        [hidden]="!listOpen()"
+      >
+        @for (s of suggestions(); track s; let i = $index) {
+          <li
+            role="option"
+            [id]="listId + '-' + i"
+            [attr.aria-selected]="i === active()"
+            [class.active]="i === active()"
+            (mousedown)="pick(s, $event)"
+          >
+            {{ s }}
+          </li>
+        }
+      </ul>
+    </div>
+    @if (store.busy()) {
+      <span class="running">{{ t.running }}</span>
+      <button type="button" class="btn" [attr.title]="t.stopTitle" (click)="store.cancel()">
+        <i class="fa fa-stop" aria-hidden="true"></i> {{ t.stop }}
+      </button>
+    }
+    <button
+      type="button"
+      class="btn icon"
+      [attr.title]="t.copyTitle"
+      [attr.aria-label]="t.copyTitle"
+      [disabled]="!store.hasOutput()"
+      (click)="store.copyOutput()"
+    >
+      <i class="fa fa-clipboard" aria-hidden="true"></i>
+    </button>
+    <button
+      type="button"
+      class="btn icon"
+      [attr.title]="t.clearTitle"
+      [attr.aria-label]="t.clearTitle"
+      [disabled]="!store.hasOutput()"
+      (click)="store.clear()"
+    >
+      <i class="fa fa-eraser" aria-hidden="true"></i>
+    </button>
+    <button
+      type="button"
+      class="btn icon"
+      [attr.title]="store.outputOpen() ? t.collapse : t.expand"
+      [attr.aria-label]="store.outputOpen() ? t.collapse : t.expand"
+      [attr.aria-expanded]="store.outputOpen()"
+      (click)="store.setOutputOpen(!store.outputOpen())"
+    >
+      <i
+        class="fa"
+        [class.fa-chevron-down]="store.outputOpen()"
+        [class.fa-chevron-up]="!store.outputOpen()"
+        aria-hidden="true"
+      ></i>
+    </button>
+  </div>
+  <p class="sr-only" aria-live="polite">{{ store.announcement() }}</p>
+</section>

@@ -27,6 +27,12 @@ const REPEATABLE: ReadonlySet<ActionId> = new Set<ActionId>([
  * Actions about the focused element (design 014 E4): like plain keys they only fire
  * in the file list (or with no focus) – the tab bar keeps its own Shift+F10.
  */
+/** Actions that also run from the shell field (inserting names at the caret, design 021). */
+const SHELL_FIELD_ACTIONS: ReadonlySet<ActionId> = new Set([
+  'SHELL_INSERT_NAMES',
+  'SHELL_INSERT_PATHS',
+]);
+
 const FOCUS_SCOPED: ReadonlySet<ActionId> = new Set<ActionId>(['OPEN_CONTEXT_MENU']);
 
 export const CHORD_TIMEOUT_MS = 1500;
@@ -115,8 +121,13 @@ export class KeyboardDispatcher {
       return null;
     }
     if (isTextInput(target) && !isFunctionKey(stroke.key)) {
+      const id = lookup.get(text);
+      // the shell field (design 021 E12) lets the two insert actions through
+      if (id && SHELL_FIELD_ACTIONS.has(id) && target?.closest('[data-shell-field]')) {
+        return this.fire(id, evt);
+      }
       // the text field keeps the key – and a native accelerator must not run it (review 014 #1)
-      this.noteSuppressed(lookup.get(text));
+      this.noteSuppressed(id);
       return null;
     }
     if ([...lookup.keys()].some((k) => k.startsWith(`${text} `))) {
