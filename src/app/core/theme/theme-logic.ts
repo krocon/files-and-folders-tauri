@@ -495,6 +495,11 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-active-panel-tab-text', '--color-active-panel-tab-bg', 'Selected tab, active panel'),
   p('--color-active-panel-accent', '--color-active-list-bg', 'Active panel line', UI),
 
+  p('--color-shell-text', '--color-shell-bg', 'Shell output'),
+  p('--color-shell-prompt', '--color-shell-bg', 'Shell prompt'),
+  p('--color-shell-error-text', '--color-shell-bg', 'Shell errors'),
+  p('--color-shell-info-text', '--color-shell-bg', 'Shell messages'),
+
   p('--color-header-text', '--color-header-bg', 'Panel header'),
   p('--color-header-text', '--color-active-header-bg', 'Panel header, active panel'),
   p('--color-tab-text', '--color-header-bg', 'Tabs'),

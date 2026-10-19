@@ -3,8 +3,10 @@ import { describeFsError, errorText, toFsError } from '../../core/fs/fs-error';
 import { SessionApi } from '../../core/session/session-api';
 import {
   AdjustedPath,
+  DEFAULT_SHELL_SESSION,
   PanelSession,
   Session,
+  ShellSession,
   Side,
   TabSession,
 } from '../../core/session/session.models';
@@ -99,6 +101,8 @@ export class WorkspaceStore {
   readonly ready = signal(false);
   readonly activeSide = signal<Side>('left');
   readonly splitter = signal(0.5);
+  /** Shell bar visibility and output area (design 021), kept in the session. */
+  readonly shell = signal<ShellSession>(DEFAULT_SHELL_SESSION);
   readonly favorites = signal<ReadonlySet<string>>(new Set());
   /** Recently visited folders, newest first (design 003 E3). */
   readonly recent = signal<readonly string[]>([]);
@@ -453,6 +457,7 @@ export class WorkspaceStore {
       left: toPanelSession(this.panels().left),
       right: toPanelSession(this.panels().right),
     },
+    shell: this.shell(),
   }));
 
   restore(session: Session): void {
@@ -460,6 +465,7 @@ export class WorkspaceStore {
     this.splitter.set(clampSplitter(session.splitter));
     this.favorites.set(new Set(session.favorites));
     this.recent.set((session.recent ?? []).slice(0, MAX_RECENT));
+    this.shell.set({ ...DEFAULT_SHELL_SESSION, ...session.shell });
     const ids = new Set<string>();
     this.panels.set({
       left: fromPanelSession(session.panels.left, ids),

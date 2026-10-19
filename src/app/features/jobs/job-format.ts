@@ -94,6 +94,7 @@ export const JOB_EN = {
     count: (what: string) => `Count ${what}`,
     dirSize: (path: string) => `Folder size of ${path}`,
     simulate: (n: number) => `Test job (${n} steps)`,
+    shell: (command: string, cwd: string) => `Shell: ${command} (in ${cwd})`,
   },
 } as const;
 
@@ -155,6 +156,8 @@ export function jobTitle(job: JobInfo): string {
       return t.dirSize(spec.path);
     case 'simulate':
       return t.simulate(spec.items);
+    case 'shell':
+      return t.shell(spec.command, spec.cwd);
   }
 }
 

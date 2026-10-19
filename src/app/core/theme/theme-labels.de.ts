@@ -114,12 +114,20 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'Focus ring on the panel header, active panel':
     'Fokusrahmen auf dem Kopf der Seite, aktive Seite',
   'Marked values in the status line': 'Markierte Werte in der Statuszeile',
+  'Prompt (folder)': 'Prompt (Ordner)',
+  'Error output': 'Fehlerausgabe',
+  'Messages (exit code …)': 'Meldungen (Exit-Code …)',
+  'Shell output': 'Shell-Ausgabe',
+  'Shell prompt': 'Shell-Prompt',
+  'Shell errors': 'Shell-Fehler',
+  'Shell messages': 'Shell-Meldungen',
   // groups
   General: 'Allgemein',
   'File list': 'Dateiliste',
   'Active panel': 'Aktive Seite',
   'Panel header and tabs': 'Kopf der Seite und Tabs',
   'Status line and button bar': 'Statuszeile und Button-Leiste',
+  Shell: 'Shell',
   Scrollbar: 'Rollbalken',
   // import messages
   'The file is not a colour scheme.': 'Die Datei ist kein Farbschema.',

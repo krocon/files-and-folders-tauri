@@ -92,6 +92,14 @@
   --color-footer-error-text: var(--color-danger);
   --color-footer-focus: var(--color-focus);
 
+  /* shell bar (design 021) */
+  --color-shell-bg: var(--color-surface);
+  --color-shell-text: var(--color-text);
+  --color-shell-prompt: var(--color-accent);
+  --color-shell-error-text: var(--color-danger);
+  --color-shell-info-text: var(--color-muted);
+  --color-shell-border: var(--color-border);
+
   /* dialogs */
   --color-dialog-bg: var(--color-surface);
   --color-dialog-text: var(--color-text);

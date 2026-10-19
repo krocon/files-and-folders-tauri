@@ -24,6 +24,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { OsStore } from '../osintegration/os.store';
+import { ShellStore } from '../shell/shell.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings-logic';
 import { describeSettingsWarning } from './settings-warnings';
@@ -197,6 +198,14 @@ import { SETTINGS_TEXTS } from './settings-texts';
               </button>
             </div>
           }
+          @case ('shell') {
+            <p>{{ t.shellIntro }}</p>
+            <div class="row">
+              <button type="button" class="btn" (click)="clearShellHistory()">
+                {{ t.clearShellHistory }}
+              </button>
+            </div>
+          }
           @case ('tools') {
             <p>{{ t.toolsIntro }}</p>
             <p>{{ t.toolCount(os.tools().length) }}</p>
@@ -312,6 +321,7 @@ export class SettingsDialog {
   private readonly ws = inject(WorkspaceStore);
   private readonly confirm = inject(ConfirmService);
   private readonly mr = inject(MultiRenameStore);
+  private readonly shell = inject(ShellStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly sections = SECTIONS;
@@ -322,9 +332,16 @@ export class SettingsDialog {
   protected readonly busy = signal(false);
 
   /** Settings that do not exist on this platform (the HTML menu bar on macOS). */
-  private readonly hidden = computed<ReadonlySet<SettingKey>>(() =>
-    this.actions.platform() === 'macos' ? new Set(['view.menuBar']) : new Set(),
-  );
+  private readonly hidden = computed<ReadonlySet<SettingKey>>(() => {
+    const platform = this.actions.platform();
+    const hidden = new Set<SettingKey>();
+    if (platform === 'macos') {
+      hidden.add('view.menuBar');
+    }
+    // the shell choice exists on Windows only, the login PATH on macOS/Linux only (design 021)
+    hidden.add(platform === 'windows' ? 'shell.loginPath' : 'shell.windowsShell');
+    return hidden;
+  });
   protected readonly searching = computed(() => this.query().trim() !== '');
   protected readonly hits = computed(() => searchSettings(this.query(), this.hidden()));
   protected readonly liveText = computed(() =>
@@ -340,6 +357,15 @@ export class SettingsDialog {
   protected readonly parts = signal<ReadonlySet<SettingsPart>>(
     new Set(SETTINGS_PARTS.filter((p) => p !== 'tools')),
   );
+
+  protected async clearShellHistory(): Promise<void> {
+    try {
+      await this.shell.clearHistory();
+      this.message.set(this.t.shellHistoryCleared);
+    } catch (err) {
+      this.message.set(errorText(toFsError(err)));
+    }
+  }
 
   /** The section stays selected when the dialog opens again (this session). */
   protected select(id: SectionId): void {

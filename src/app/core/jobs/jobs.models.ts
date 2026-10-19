@@ -1,6 +1,7 @@
 /**
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
+import type { ShellChunk, ShellSummary } from '../shell/shell.models';
 import { ArchiveFormat, DirSize, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
@@ -98,7 +99,9 @@ export type JobSpec =
   | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }
   /** Debug builds only (load tests). */
-  | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number };
+  | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number }
+  /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
+  | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 
 export type JobState =
   | 'queued'
@@ -178,6 +181,8 @@ export interface Summary {
   readonly dirSize: DirSize | null;
   /** Search job: final statistics (`errors` = unreadable folders). */
   readonly search?: SearchStats | null;
+  /** Shell job: exit code / signal (design 021). */
+  readonly shell?: ShellSummary | null;
   /** Final bytes copied/moved into each top-level target destination. */
   readonly destBytes?: Readonly<Record<string, number>>;
 }
@@ -215,6 +220,13 @@ export type JobEvent =
       readonly id: string;
       readonly hits: readonly SearchHit[];
       readonly stats: SearchStats;
+    }
+  | {
+      readonly type: 'shellOutput';
+      readonly id: string;
+      readonly chunks: readonly ShellChunk[];
+      /** Bytes left out by the flood protection since the last event. */
+      readonly dropped: number;
     }
   | { readonly type: 'quitRequested'; readonly running: number };
 
