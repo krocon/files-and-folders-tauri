@@ -19,6 +19,8 @@ export const OUTPUT_MAX = 800;
 const MAX_EARLY_EVENTS = 200;
 
 type Early = { chunks: readonly ShellChunk[]; dropped: number }[];
+/** Characters of early output that did not fit into the early buffer. */
+type EarlyLost = Map<string, number>;
 
 /**
  * State of the shell bar (design 021, root): visibility and output area (in the
@@ -82,6 +84,7 @@ export class ShellStore {
   readonly hasOutput = computed(() => this.segments().length > 0);
 
   private early = new Map<string, Early>();
+  private earlyLost: EarlyLost = new Map();
   private historyLoaded = false;
   private seq = 0;
 
@@ -159,6 +162,7 @@ export class ShellStore {
   beginRun(cwd: string, line: string): void {
     this.starting.set(true);
     this.early.clear();
+    this.earlyLost.clear();
     this.history.update((h) => remember(h, line));
     this.buffer.appendLine('prompt', `${cwd}> ${line}`);
     this.bump();
@@ -181,7 +185,12 @@ export class ShellStore {
         for (const e of this.early.get(result.jobId) ?? []) {
           this.append(e.chunks, e.dropped);
         }
+        const lost = this.earlyLost.get(result.jobId) ?? 0;
+        if (lost > 0) {
+          this.buffer.appendLine('info', SHELL_TEXTS.dropped(Math.max(1, Math.round(lost / 1024))));
+        }
         this.early.clear();
+        this.earlyLost.clear();
         this.bump();
         void this.jobs.whenFinished(result.jobId).then((job) => this.finish(job));
         break;
@@ -203,6 +212,12 @@ export class ShellStore {
     this.starting.set(false);
     this.early.clear();
     this.buffer.appendLine('error', errorText(toFsError(err)));
+    this.bump();
+  }
+
+  /** Enter while a command runs: one command at a time (design 021 E3). */
+  busyHint(): void {
+    this.buffer.appendLine('info', SHELL_TEXTS.stillRunning);
     this.bump();
   }
 
@@ -255,6 +270,9 @@ export class ShellStore {
       const list = this.early.get(id) ?? [];
       if (list.length < MAX_EARLY_EVENTS) {
         list.push({ chunks, dropped });
+      } else {
+        const size = chunks.reduce((n, c) => n + c.text.length, 0) + dropped;
+        this.earlyLost.set(id, (this.earlyLost.get(id) ?? 0) + size);
       }
       this.early.set(id, list);
     }

@@ -209,9 +209,14 @@ describe('shell bar (design 021)', () => {
   it('only ShellBar may import ShellApi (the one way to run a command)', () => {
     const importers = sources('src')
       .filter((f) => !f.endsWith('.spec.ts') && !f.startsWith('src/testing/'))
-      .filter((f) => /from '[./]*\/?(core\/shell\/)?shell-api'/.test(readFileSync(f, 'utf8')))
+      .filter((f) => /shell-api['"]/.test(readFileSync(f, 'utf8')))
       .filter((f) => !f.endsWith('core/shell/shell-api.ts'));
     expect(importers).toEqual(['src/app/features/shell/shell-bar.ts']);
+    // and nobody calls the command around the facade (review 021 #8)
+    const direct = sources('src')
+      .filter((f) => !f.endsWith('.spec.ts') && !f.endsWith('core/shell/shell-api.ts'))
+      .filter((f) => /['"]run_shell['"]/.test(readFileSync(f, 'utf8')));
+    expect(direct).toEqual([]);
   });
 
   it('TOGGLE_SHELL shows and focuses, then hides; it follows shell.enabled', async () => {
@@ -407,6 +412,46 @@ describe('shell bar (design 021)', () => {
     expect(input.value).toBe("ls b.txt 'A Ordner' -l /src/b.txt ");
     // nothing is run by inserting
     expect(shellApi.runs).toHaveLength(0);
+  });
+
+  it('review 021 #4: an inserted name is not inserted again when the bar is shown again', async () => {
+    const first = await bar();
+    left.setCursor('/src/b.txt');
+    await actions.run('SHELL_INSERT_NAMES');
+    await first.render();
+    expect(first.input.value).toBe('b.txt ');
+    first.fixture.destroy();
+    const again = await bar();
+    expect(again.input.value).toBe('');
+  });
+
+  it('review 021 #16: Enter while a command runs says so', async () => {
+    const { el, type, key, render } = await bar();
+    type('sleep 30');
+    key('Enter');
+    await flush();
+    type('pwd');
+    key('Enter');
+    await render();
+    expect(shellApi.runs).toHaveLength(1);
+    expect(output(el)).toContain('still running');
+  });
+
+  it('review 021 #11: output beyond the early buffer is reported, not dropped silently', async () => {
+    const { el, type, key, render } = await bar();
+    shellApi.answer = () =>
+      new Promise<ShellRunResult>((resolve) => {
+        for (let i = 0; i < 205; i++) {
+          emitOutput('s9', `zeile ${i}\n`);
+        }
+        resolve({ type: 'started', jobId: 's9', notices: [] });
+      });
+    type('seq 205');
+    key('Enter');
+    await flush();
+    await render();
+    expect(output(el)).toContain('zeile 199');
+    expect(output(el)).toMatch(/KB of output left out/);
   });
 
   it('the dispatcher lets only the insert shortcuts and F-keys through in the field', async () => {

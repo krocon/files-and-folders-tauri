@@ -102,7 +102,7 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   bricht samt Kindprozessen ab; `cd`, `cd ..`, `cd ~`, `cd -` navigieren das Panel, `clear`/`cls` leert. ↑/↓ blättern im
   Verlauf (100 Befehle, `shell-history.json`), Vorschläge aus dem Verlauf, `Strg/⌘+Shift+Enter` bzw.
   `Strg/⌘+Alt+Enter` fügen markierte Namen/Pfade quotiert ein. Pipes statt Terminal: interaktive Programme (vim, ssh,
-  top) über **Terminal hier**. macOS/Linux lesen einmal den `PATH` der Login-Shell (Homebrew, nvm, cargo), Windows
+  top) über **Terminal hier**. macOS/Linux lesen einmal den `PATH` der Login-Shell (Homebrew, cargo; zsh liest dabei `.zprofile`, nicht `.zshrc`), Windows
   wahlweise `cmd.exe` oder PowerShell; abschaltbar unter Einstellungen › Shell.
 - **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
   (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;

@@ -28,6 +28,7 @@ export const SHELL_DE: Translation<typeof SHELL_EN> = {
   exitCode: (code) => `Exit-Code ${code}`,
   signal: (sig) => `Beendet durch Signal ${sig}`,
   cancelled: 'Abgebrochen',
+  stillRunning: 'Ein Befehl läuft noch – Esc bricht ihn ab.',
   finished: (code) =>
     code === 0 || code === null ? 'Befehl beendet.' : `Befehl beendet mit Exit-Code ${code}.`,
   copied: 'Ausgabe kopiert.',

@@ -27,6 +27,7 @@ export const SHELL_EN = {
   exitCode: (code: number) => `Exit code ${code}`,
   signal: (sig: number) => `Ended by signal ${sig}`,
   cancelled: 'Cancelled',
+  stillRunning: 'A command is still running – Esc cancels it.',
   finished: (code: number | null) =>
     code === 0 || code === null ? 'Command finished.' : `Command finished with exit code ${code}.`,
   copied: 'Output copied.',

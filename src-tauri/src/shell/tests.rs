@@ -293,6 +293,9 @@ fn quoting_round_trip_in_real_shells() {
         "*?[x]",
         "~tilde",
         "#hash",
+        "=ls",
+        "%self",
+        "a=b",
     ];
     let shells: Vec<(&str, bool)> = [
         ("/bin/sh", false),
@@ -396,9 +399,9 @@ fn history_dedupes_bounds_and_survives_broken_files() {
 
 #[test]
 fn login_env_takes_only_wanted_keys() {
-    let raw = b"PATH=/opt/homebrew/bin:/usr/bin\0SECRET=x\0LANG=de_DE.UTF-8\0LC_ALL=C\0broken\0MANPATH=/m\0";
+    let raw = "PATH=/opt/homebrew/bin:/usr/bin\nSECRET=x\nLANG=de_DE.UTF-8\nLC_ALL=C\nbroken\nMANPATH=/m\n";
     assert_eq!(
-        env::parse_env0(raw),
+        env::parse_env(raw),
         vec![
             ("PATH".to_string(), "/opt/homebrew/bin:/usr/bin".to_string()),
             ("LANG".into(), "de_DE.UTF-8".into()),
@@ -430,4 +433,39 @@ fn login_env_is_read_and_times_out() {
     };
     assert!(env::read_login_env(&k, std::time::Duration::from_millis(300)).is_none());
     assert!(start.elapsed() < std::time::Duration::from_secs(3));
+}
+
+/// Review 021 #3/#15: `=cmd` (zsh) and `%self` (fish) are quoted; bidi controls are refused.
+#[test]
+fn quoting_leading_expansions_and_bidi() {
+    assert_eq!(quote_one("=ls", &posix(), true).unwrap(), "'=ls'");
+    assert_eq!(quote_one("%self", &fish(), true).unwrap(), "'%self'");
+    assert_eq!(quote_one("a=b", &posix(), true).unwrap(), "a=b");
+    for bad in ["evil\u{202E}txt.exe", "x\u{2066}y"] {
+        assert_eq!(
+            quote_one(bad, &posix(), true).unwrap_err().code,
+            FsErrorCode::UnquotableName
+        );
+    }
+}
+
+/// Review 021 #9: an unterminated OSC sequence does not swallow the rest of the stream.
+#[test]
+fn unterminated_osc_ends_at_the_line() {
+    let mut a = text::AnsiStripper::default();
+    let mut s = a.push("vorher\n\u{1b}]kaputt\nzeile 2\n");
+    s.push_str(&a.push("zeile 3\n"));
+    assert_eq!(s, "vorher\nzeile 2\nzeile 3\n");
+}
+
+/// Review 021 #12: more forms of `cd`.
+#[test]
+fn builtins_more_forms() {
+    assert_eq!(parse_builtin("cd --", false), cd(None));
+    assert_eq!(parse_builtin("cd -- x", false), cd(Some("x")));
+    assert_eq!(parse_builtin("cd ~marc", false), None); // other users: the shell knows
+    assert_eq!(parse_builtin("cd '~'", false), None); // a folder literally named ~
+    assert_eq!(parse_builtin("cd..", true), cd(Some("..")));
+    assert_eq!(parse_builtin("cd\\", true), cd(Some("\\")));
+    assert_eq!(parse_builtin("cd..", false), None);
 }

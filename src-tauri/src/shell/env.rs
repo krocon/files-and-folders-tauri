@@ -1,6 +1,6 @@
 //! Login environment (design 021 E6): apps started from the Finder (or some
 //! desktop menus) have a minimal `PATH`. The user's login shell is asked once
-//! (`<shell> -l -c 'env -0'`, stdin closed, own session, timeout) and only
+//! (`<shell> -l -c env`, stdin closed, own session, timeout) and only
 //! `PATH`, `MANPATH`, `LANG` and `LC_*` are taken over. Cached for the app's
 //! lifetime; on failure the app's own environment is used.
 
@@ -18,13 +18,12 @@ pub fn wanted(key: &str) -> bool {
     matches!(key, "PATH" | "MANPATH" | "LANG") || key.starts_with("LC_")
 }
 
-/// `env -0` output → the wanted pairs (invalid entries are skipped).
-pub fn parse_env0(bytes: &[u8]) -> Vec<(String, String)> {
-    bytes
-        .split(|b| *b == 0)
-        .filter_map(|entry| {
-            let s = std::str::from_utf8(entry).ok()?;
-            let (k, v) = s.split_once('=')?;
+/// `env` output → the wanted pairs. Lines, not `env -0`: the `env` of older macOS
+/// has no `-0` (review 021 #6); the wanted values have no line breaks.
+pub fn parse_env(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .filter_map(|line| {
+            let (k, v) = line.split_once('=')?;
             wanted(k).then(|| (k.to_string(), v.to_string()))
         })
         .collect()
@@ -36,7 +35,7 @@ pub fn read_login_env(kind: &ShellKind, timeout: Duration) -> Option<Vec<(String
         return None;
     };
     let mut cmd = Command::new(program);
-    cmd.args(["-l", "-c", "env -0"]);
+    cmd.args(["-l", "-c", "env"]);
     let mut g = spawn_group(cmd).ok()?;
     let mut out = g.child.stdout.take()?;
     // stderr is not read: drop it so the shell never blocks on a full pipe
@@ -59,7 +58,7 @@ pub fn read_login_env(kind: &ShellKind, timeout: Duration) -> Option<Vec<(String
                     .max(Duration::from_millis(200));
                 let buf = rx.recv_timeout(rest).ok();
                 g.kill();
-                let pairs = parse_env0(&buf?);
+                let pairs = parse_env(&String::from_utf8_lossy(&buf?));
                 return (status.success() && pairs.iter().any(|(k, _)| k == "PATH"))
                     .then_some(pairs);
             }

@@ -11,7 +11,8 @@ use std::path::Path;
 pub const FILE_NAME: &str = "shell-history.json";
 pub const VERSION: u32 = 1;
 pub const MAX_ENTRIES: usize = 100;
-pub const MAX_ENTRY_BYTES: usize = 4096;
+/// As long as a command may be (`run_shell` accepts 32 KiB).
+pub const MAX_ENTRY_BYTES: usize = super::MAX_COMMAND_BYTES;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct HistoryFile {

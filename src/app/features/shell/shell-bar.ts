@@ -97,7 +97,11 @@ export class ShellBar {
     effect(() => {
       const req = this.store.insertRequest();
       if (req) {
-        untracked(() => this.insertAtCaret(req.text));
+        untracked(() => {
+          this.insertAtCaret(req.text);
+          // consumed: a bar shown again later must not insert it once more (review 021 #4)
+          this.store.insertRequest.set(null);
+        });
       }
     });
     afterRenderEffect(() => {
@@ -252,7 +256,11 @@ export class ShellBar {
   private async runLine(): Promise<void> {
     const line = this.text().trim();
     const cwd = this.store.cwd();
-    if (!line || cwd === null || this.store.locked() !== null || this.store.busy()) {
+    if (this.store.busy()) {
+      this.store.busyHint();
+      return;
+    }
+    if (!line || cwd === null || this.store.locked() !== null) {
       return;
     }
     this.nav = NO_NAV;

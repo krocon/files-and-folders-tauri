@@ -403,6 +403,35 @@ Commander (wirken auf das Panel). 4. Login-`PATH` unter macOS und Linux.
   Argumentfunktionen für cmd/PowerShell sind plattformunabhängig getestet); macOS „aus dem Finder gestartet findet
   `brew`“ (Vorgehen: App aus dem Finder starten, `which brew` in der Shell-Zeile).
 
+## 10. Review (separater Agent, 2026-10-19)
+
+Gelesen ohne den Code geschrieben zu haben; Experimente mit echten Shells (bash, dash, zsh, fish). Behoben – jeweils
+mit Test zuerst:
+
+| # | Fund | Behebung |
+|---|---|---|
+| 1 hoch | Endlose Ausgabe (`yes`): unbeschränkter Kanal Leser → Job, RAM wuchs ~700 MB/s, Abbruch arbeitete erst den Rückstau ab | `sync_channel(16)` (Gegendruck), nach Abbruch kein Abarbeiten; Test `endless_output_is_cancelled_quickly`; im Fenster: RSS stabil, Esc < 1 s |
+| 2 hoch (Windows) | `KILL_ON_JOB_CLOSE` beendete beim normalen Ende auch per `start` geöffnete Programme | `GroupChild::release()` löscht das Limit beim normalen Ende; nur Abbruch beendet den Job |
+| 3 mittel | zsh `=cmd`, fish `%self` in eingefügten Namen | führendes `=`/`%` wird quotiert; Round-Trip-Fälle ergänzt |
+| 4 mittel | Einfüge-Anfrage wurde nach Aus-/Einblenden erneut eingefügt | Anfrage wird verbraucht (Spec) |
+| 5 mittel | Hintergrundprozesse bekamen nach dem Jobende SIGPIPE | Leser lesen nach dem Ende bis EOF weiter (verwerfen); Test |
+| 6 mittel | `env -0` fehlt auf älterem macOS | `env` zeilenweise, nur gewünschte Schlüssel |
+| 7 niedrig (Windows) | cmd.exe sucht Programme zuerst im Panel-Ordner | `NoDefaultCurrentDirectoryInExePath=1` (`.\x.bat` geht weiter) |
+| 8 niedrig | Import-Regel per Regex umgehbar | Regel auf `shell-api['"]` + kein `'run_shell'` außerhalb der Fassade |
+| 9 niedrig | unterbrochene OSC-Sequenz verschluckte den Rest | Zeilenende beendet sie (Test) |
+| 11 niedrig | frühe Ausgabe über 200 Ereignissen still verworfen | Hinweis „… KB ausgelassen“ (Spec) |
+| 12 niedrig | `cd --`, `cd~user`, `cd "~"`, `cd..`/`cd\` (cmd) | erkannt bzw. an die Shell (Test) |
+| 13 niedrig | Verlauf übersprang Befehle > 4 KiB | Grenze = Befehlsgrenze (32 KiB) |
+| 15 niedrig | Bidi-Steuerzeichen in Namen | werden nicht eingefügt (`unquotable_name`) |
+| 16 niedrig | Enter während ein Befehl läuft: stumm | Hinweis „läuft noch – Esc bricht ab“ (Spec) |
+
+Bewusst offen: **#10** (Windows: Enkel, die zwischen `spawn` und Zuordnung zum Job Object starten, entkommen;
+sauber nur mit `CREATE_SUSPENDED` über rohes `CreateProcess`), **#12** PowerShell-`cd 'a b'` geht an die Shell
+(wirkt dort nur in der Shell), **#14** Ruckeln bei Flut: im Fenster nicht beobachtet (Flutschutz 1,3 MB/s),
+**#17** F-Tasten im Feld wirken auf das Panel – Marcs Entscheidung (TC-Verhalten). Hinweis Doku: `zsh -l` liest
+`.zprofile`, nicht `.zshrc` – `PATH`-Ergänzungen nur in `.zshrc` (nvm, pyenv) fehlen, dort ggf. in `.zprofile`
+verschieben.
+
 ## 9. Fortschritt
 
 - [x] Phase 1: Bestand, Entscheidungen, Verträge (2026-10-19), freigegeben
@@ -416,4 +445,5 @@ Commander (wirken auf das Panel). 4. Login-`PATH` unter macOS und Linux.
   enden sofort, ↑ aus dem Verlauf, Einfügen von Name und Pfad (quotiert), Archiv gesperrt, lange Zeilen umbrechen,
   hell/dunkel/„Blackboard“ lesbar
 - [x] Phase 5: Doku (feature-parity, ui-layout, architecture, roadmap, README, CLAUDE.md §1/§3/§4, prompts/README)
-- [ ] Phase 6: Abschlussprüfung + Review (separater Agent)
+- [x] Phase 6: Review (separater Agent, Abschnitt 10), alle Funde außer #10/#14/#17 behoben, `pnpm check` grün,
+  Debug-Build, Flut-Test im Fenster
