@@ -12,7 +12,8 @@ export function registerOpsActions(actions: ActionService, ops: OpsStore): () =>
   const some = () => ops.location() !== null && ops.selection().length > 0;
   // inside an archive (design 016): copying = extracting, nothing else changes it
   const writable = () => some() && !ops.inArchive();
-  const one = () => ops.folder() !== null && ops.selection().length === 1;
+  // rename also works on a hit of a result tab (its own folder) – not inside an archive
+  const one = () => ops.canRenameOne();
   const folder = () => ops.folder() !== null;
   const handlers: Partial<Record<ActionId, ActionHandler>> = {
     OPEN_COPY_DLG: { enabled: some, run: () => ops.openCopyMove('copy') },

@@ -87,8 +87,9 @@ export class OsStore {
     );
   }
 
+  /** The shown folder – in a result tab the folder the search ran in. */
   folder(): string | null {
-    return this.ws.panel()?.store.path() ?? null;
+    return this.ws.actionDir();
   }
 
   context(): ToolContext {

@@ -6,6 +6,7 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionInDisplayOrder } from '../multirename/multirename-logic';
+import { SearchStore } from '../search/search.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { DEFAULT_GROUP_OPTIONS, groupEntries, GroupOptions, GroupStatus } from './group-engine';
 import { GF_TEXTS } from './groupfiles-texts';
@@ -16,6 +17,8 @@ export interface GroupRequest {
   /** The other side's folder (default root), `null` if it shows none. */
   readonly otherDir: string | null;
   readonly entries: readonly DirEntry[];
+  /** Set when the entries come from a result tab (design 009 E4). */
+  readonly searchKey: string | null;
 }
 
 export interface GroupRow {
@@ -52,6 +55,7 @@ export class GroupFilesStore {
   private readonly ws = inject(WorkspaceStore);
   private readonly jobs = inject(JobsStore);
   private readonly dialogs = inject(DialogService);
+  private readonly search = inject(SearchStore);
 
   readonly request = signal<GroupRequest | null>(null);
   readonly options = signal<GroupOptions>(DEFAULT_GROUP_OPTIONS);
@@ -107,14 +111,15 @@ export class GroupFilesStore {
 
   readonly canRun = computed(() => !this.busy() && this.root() !== null && this.items().length > 0);
 
+  /** A folder or a result tab (its hits have full paths; root = the searched folder). */
   hasFolder(): boolean {
-    return (this.ws.panel()?.store.path() ?? null) !== null;
+    return this.ws.actionDir() !== null;
   }
 
   open(): void {
     const side = this.ws.source();
     const panel = this.ws.panel(side);
-    const sourceDir = panel?.store.path() ?? null;
+    const sourceDir = this.ws.actionDir(side);
     if (!panel || sourceDir === null) {
       throw err(GF_TEXTS.noFolder);
     }
@@ -126,7 +131,8 @@ export class GroupFilesStore {
     const otherDir = this.ws.targetDir(side);
     this.runError.set(null);
     this.busy.set(false);
-    this.request.set({ side, sourceDir, otherDir, entries });
+    const searchKey = panel.store.searchKey();
+    this.request.set({ side, sourceDir, otherDir, entries, searchKey });
     this.dialogs.show('group-files');
   }
 
@@ -159,10 +165,15 @@ export class GroupFilesStore {
     }
     this.close();
     this.busy.set(false);
-    void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, items));
+    void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, items, transfer));
   }
 
-  private afterJob(job: JobInfo, req: GroupRequest, items: readonly GroupItem[]): void {
+  private afterJob(
+    job: JobInfo,
+    req: GroupRequest,
+    items: readonly GroupItem[],
+    transfer: 'copy' | 'move',
+  ): void {
     const summary = job.summary;
     if (job.state === 'failed') {
       this.jobs.report(GF_TEXTS.failed(summary?.error?.message ?? ''));
@@ -172,13 +183,18 @@ export class GroupFilesStore {
       // entries already in their group are skipped – count what really happened
       this.jobs.report(GF_TEXTS.done(summary.itemsDone));
     }
+    if (job.state === 'failed') {
+      return;
+    }
+    const failed = new Set(summary?.errors.map((e) => e.path) ?? []);
+    const done = items.map((i) => i.path).filter((p) => !failed.has(p));
+    // moved away from a result tab: they leave the result (as Move does, design 009 E4)
+    if (req.searchKey !== null && transfer === 'move') {
+      this.search.removePaths(req.searchKey, done);
+    }
     const store = this.ws.panel(req.side)?.store;
-    if (store && store.path() === req.sourceDir && job.state !== 'failed') {
-      const failed = new Set(summary?.errors.map((e) => e.path) ?? []);
-      store.setMarked(
-        items.map((i) => i.path).filter((p) => !failed.has(p)),
-        false,
-      );
+    if (store && this.ws.actionDir(req.side) === req.sourceDir) {
+      store.setMarked(done, false);
     }
   }
 }

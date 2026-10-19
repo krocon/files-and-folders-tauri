@@ -195,6 +195,19 @@ export class WorkspaceStore {
     return this.activeTab(side).path ?? store?.path() ?? null;
   }
 
+  /**
+   * The folder an action of `side` works in: the folder the panel shows, or – in a
+   * result tab (design 009 E4) – the folder the search ran in. Result tabs have no
+   * `store.path()`, but actions on their (absolute) hits still need a base folder.
+   */
+  actionDir(side: Side = this.activeSide()): string | null {
+    const store = this.panel(side)?.store;
+    if (!store) {
+      return null;
+    }
+    return store.searchKey() !== null ? (this.activeTab(side).path ?? null) : store.path();
+  }
+
   // ---- sides ----
 
   setActive(side: Side): void {

@@ -42,6 +42,21 @@ export function parentNames(segments: readonly PathSegment[]): [string, string, 
   return [at(0), at(1), at(2)];
 }
 
+/**
+ * Parent names for an entry of a result tab (design 009 E4): its folder `dir`
+ * (a full path from Rust) has no breadcrumbs, so the names come from splitting
+ * it – for the P/Q/R tokens only, never to build a path. A drive (`C:`) or the
+ * root has no name, as in `parentNames`.
+ */
+export function parentNamesOfDir(dir: string): [string, string, string] {
+  const parts = dir.split(/[\\/]+/).filter((p) => p !== '');
+  if (parts.length > 0 && /^[A-Za-z]:$/.test(parts[0])) {
+    parts.shift();
+  }
+  const at = (k: number) => parts[parts.length - 1 - k] ?? '';
+  return [at(0), at(1), at(2)];
+}
+
 export type RowStatus = 'ok' | 'unchanged' | 'error' | 'pending';
 
 export interface PreviewRow {

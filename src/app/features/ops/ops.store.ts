@@ -7,6 +7,7 @@ import { ConflictDefault, DeleteMode, JobInfo, JobSpec } from '../../core/jobs/j
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
 import { isSameOrBelow, SearchStore } from '../search/search.store';
+import { SearchHit } from '../../core/search/search.models';
 import { ArchiveStore } from '../archive/archive.store';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { wholeGroups } from '../duplicates/duplicates-logic';
@@ -67,6 +68,8 @@ export interface NameRequest {
   readonly entry: DirEntry | null;
   /** Shown at once (an in-place rename failed). */
   readonly error?: FsError | null;
+  /** Rename of a hit in a result tab (design 009 E4): the result is searched again. */
+  readonly searchKey?: string | null;
 }
 
 function err(code: FsError['code'], message: string): FsError {
@@ -107,6 +110,24 @@ export class OpsStore {
   /** The active panel shows a folder inside an archive (design 016 E1). */
   inArchive(): boolean {
     return (this.ws.panel()?.store.archive() ?? null) !== null;
+  }
+
+  /**
+   * The folder `entry` lives in, for a rename: the shown folder, in a result tab
+   * the hit's own folder – null inside an archive (read-only).
+   */
+  private renameParent(side: Side, entry: DirEntry): string | null {
+    const store = this.ws.panel(side)?.store;
+    if (!store || store.archive() !== null) {
+      return null;
+    }
+    return store.searchKey() !== null ? ((entry as SearchHit).dir ?? null) : store.path();
+  }
+
+  /** Exactly one entry to rename – in a folder or a result tab, not inside an archive. */
+  canRenameOne(): boolean {
+    const sel = this.selection();
+    return sel.length === 1 && this.renameParent(this.ws.activeSide(), sel[0]) !== null;
   }
 
   /** The folder, or the result tab (`search:<key>`) of the active panel. */
@@ -237,35 +258,41 @@ export class OpsStore {
   openName(kind: NameRequest['kind']): void {
     const side = this.ws.source();
     const store = this.ws.panel(side)?.store;
-    const parent = store && store.archive() === null ? store.path() : null;
-    if (!store || parent === null) {
-      throw err('unknown', store?.archive() ? ARCHIVE_TEXTS.readOnly : OPS_TEXTS.noFolder);
-    }
-    if (kind === 'rename') {
+    if (kind === 'rename' && store && store.archive() === null) {
       const sel = this.selection();
       if (sel.length !== 1) {
         throw err('unknown', sel.length === 0 ? OPS_TEXTS.nothingSelected : OPS_TEXTS.oneEntry);
       }
       const entry = sel[0];
+      const renameIn = this.renameParent(side, entry);
+      if (renameIn === null) {
+        throw err('unknown', OPS_TEXTS.noFolder);
+      }
       this.name.set({
         kind,
         side,
-        parent,
+        parent: renameIn,
         initial: entry.name,
         selectEnd: stemLength(entry.name, entry.kind === 'directory'),
         entry,
+        searchKey: store.searchKey(),
       });
-    } else {
-      const basis = this.selection()[0] ?? null;
-      const initial =
-        kind === 'mkdir'
-          ? suggestFolderName(
-              store.entries().map((e) => e.name),
-              basis,
-            )
-          : '';
-      this.name.set({ kind, side, parent, initial, selectEnd: initial.length, entry: null });
+      this.dialogs.show('name');
+      return;
     }
+    const parent = store && store.archive() === null ? store.path() : null;
+    if (!store || parent === null) {
+      throw err('unknown', store?.archive() ? ARCHIVE_TEXTS.readOnly : OPS_TEXTS.noFolder);
+    }
+    const basis = this.selection()[0] ?? null;
+    const initial =
+      kind === 'mkdir'
+        ? suggestFolderName(
+            store.entries().map((e) => e.name),
+            basis,
+          )
+        : '';
+    this.name.set({ kind, side, parent, initial, selectEnd: initial.length, entry: null });
     this.dialogs.show('name');
   }
 
@@ -277,9 +304,9 @@ export class OpsStore {
   renameInline(): void {
     const side = this.ws.source();
     const panel = this.ws.panel(side);
-    const parent = panel && panel.store.archive() === null ? panel.store.path() : null;
     const sel = this.selection();
     const entry = sel.length === 1 ? sel[0] : null;
+    const parent = entry ? this.renameParent(side, entry) : null;
     const list = panel?.controller();
     if (!panel || parent === null || !entry || !list || panel.store.cursorPath() !== entry.path) {
       this.openName('rename');
@@ -292,6 +319,7 @@ export class OpsStore {
       initial: entry.name,
       selectEnd: stemLength(entry.name, entry.kind === 'directory'),
       entry,
+      searchKey: panel.store.searchKey(),
     };
     const started = list.startRename(entry, (value) => {
       if (value !== null) {
@@ -417,6 +445,10 @@ export class OpsStore {
       return toFsError(e);
     }
     this.close();
+    if (req.searchKey) {
+      // the hit carries the old name: search again (the new name may no longer match)
+      void this.search.rerun(req.searchKey);
+    }
     this.refreshFolder(req.parent, req.side, result);
     if (req.kind === 'rename' && req.entry) {
       // a panel showing the renamed folder itself follows it

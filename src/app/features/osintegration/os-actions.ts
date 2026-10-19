@@ -9,7 +9,8 @@ export function registerOsActions(
   os: OsStore,
   dialogs: DialogService,
 ): () => void {
-  const some = () => os.folder() !== null && os.selection().length > 0;
+  // names, paths and tools work on full paths: also in a result tab (design 009 E4)
+  const some = () => os.selection().length > 0;
   const folder = () => os.folder() !== null;
   const handlers: Partial<Record<ActionId, ActionHandler>> = {
     COPY_2_CLIPBOARD_NAMES: { enabled: some, run: () => os.copy('names', 'lines') },

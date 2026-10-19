@@ -13,9 +13,12 @@ import {
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { recordPerf, since } from '../../shared/perf';
+import { SearchHit } from '../../core/search/search.models';
+import { SearchStore } from '../search/search.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   parentNames,
+  parentNamesOfDir,
   PreviewFilter,
   previewRows,
   selectionInDisplayOrder,
@@ -48,6 +51,8 @@ export interface MrRequest {
   readonly side: Side;
   readonly folder: string;
   readonly sources: readonly MrSource[];
+  /** Set when the entries come from a result tab (design 009 E4). */
+  readonly searchKey?: string | null;
 }
 
 function err(message: string): FsError {
@@ -65,6 +70,7 @@ export class MultiRenameStore {
   private readonly jobs = inject(JobsStore);
   private readonly api = inject(RenameApi);
   private readonly dialogs = inject(DialogService);
+  private readonly search = inject(SearchStore);
 
   readonly request = signal<MrRequest | null>(null);
   /** What the form shows (changes at once). */
@@ -143,10 +149,10 @@ export class MultiRenameStore {
     );
   });
 
-  /** Enabled rule of the action: a folder and at least one entry. */
+  /** Enabled rule of the action: a folder (or a result tab) and at least one entry. */
   hasSelection(): boolean {
     const panel = this.ws.panel();
-    if (!panel || panel.store.path() === null) {
+    if (!panel || this.ws.actionDir() === null) {
       return false;
     }
     return (
@@ -158,7 +164,7 @@ export class MultiRenameStore {
   async open(): Promise<void> {
     const side = this.ws.source();
     const panel = this.ws.panel(side);
-    const folder = panel?.store.path() ?? null;
+    const folder = this.ws.actionDir(side);
     if (!panel || folder === null) {
       throw err(MR_TEXTS.noFolder);
     }
@@ -170,13 +176,15 @@ export class MultiRenameStore {
     if (entries.length === 0) {
       throw err(MR_TEXTS.nothingSelected);
     }
+    const searchKey = panel.store.searchKey();
+    // a result tab mixes folders: every hit has its own parents
     const parents = parentNames(panel.store.listing()?.segments ?? []);
     const sources: MrSource[] = entries.map((e) => ({
       path: e.path,
       name: e.name,
       isDir: isNavigableDir(e),
       modifiedMs: e.modifiedMs,
-      parents,
+      parents: searchKey !== null ? parentNamesOfDir((e as SearchHit).dir ?? '') : parents,
     }));
     await this.loadPresets();
     const last = this.presets().last;
@@ -188,7 +196,7 @@ export class MultiRenameStore {
     this.runError.set(null);
     this.filter.set('all');
     this.busy.set(false);
-    this.request.set({ side, folder, sources });
+    this.request.set({ side, folder, sources, searchKey });
     this.dialogs.show('multi-rename');
     this.schedulePlan(0);
   }
@@ -317,7 +325,18 @@ export class MultiRenameStore {
     } else if (job.state === 'done' && summary) {
       this.jobs.report(MR_TEXTS.done(summary.itemsDone));
     }
-    if (!store || store.path() !== req.folder || job.state === 'failed') {
+    if (!store || job.state === 'failed') {
+      return;
+    }
+    if (req.searchKey) {
+      // the hits carry the old names: search again (renamed entries may no longer match)
+      if (store.searchKey() === req.searchKey) {
+        store.setMarked([...renamed.keys()], false);
+      }
+      void this.search.rerun(req.searchKey);
+      return;
+    }
+    if (store.path() !== req.folder) {
       return;
     }
     const cursor = store.cursorPath();

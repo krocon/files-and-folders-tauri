@@ -38,15 +38,18 @@ export class DuplicatesStore {
   readonly error = signal<{ field: DupField | null; message: string } | null>(null);
   readonly busy = signal(false);
 
-  /** The key of the duplicate result shown on the active side, or null. */
+  /**
+   * The result (duplicates or search hits) shown on the active side, or null –
+   * its roots are where a duplicate search from there looks.
+   */
   private activeResult(): { key: string; roots: readonly string[] } | null {
     const side = this.ws.activeSide();
     const key = this.ws.activeTab(side).search?.key;
     const r = key ? this.search.result(key) : undefined;
-    return r?.kind === 'duplicates' ? { key: r.key, roots: r.criteria.roots } : null;
+    return r && r.criteria.roots.length > 0 ? { key: r.key, roots: r.criteria.roots } : null;
   }
 
-  /** A real folder (not inside an archive) or a duplicate tab is shown on the active side. */
+  /** A real folder (not inside an archive) or a result tab is shown on the active side. */
   canOpen(): boolean {
     const store = this.ws.panel(this.ws.activeSide())?.store;
     return (store?.path() != null && store.archive() === null) || this.activeResult() !== null;

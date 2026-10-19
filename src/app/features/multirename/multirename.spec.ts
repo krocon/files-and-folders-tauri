@@ -22,6 +22,7 @@ import {
   insertAt,
   matchesFilter,
   parentNames,
+  parentNamesOfDir,
   previewRows,
   selectionInDisplayOrder,
 } from './multirename-logic';
@@ -62,6 +63,14 @@ describe('multi-rename logic', () => {
     ]);
     expect(parentNames([seg('/'), seg('tmp')])).toEqual(['tmp', '', '']);
     expect(parentNames([seg('C:\\')])).toEqual(['', '', '']);
+  });
+
+  it('parentNamesOfDir: parents of a result-tab hit from its folder path', () => {
+    expect(parentNamesOfDir('/home/marc/docs')).toEqual(['docs', 'marc', 'home']);
+    expect(parentNamesOfDir('/tmp')).toEqual(['tmp', '', '']);
+    expect(parentNamesOfDir('/')).toEqual(['', '', '']);
+    expect(parentNamesOfDir('C:\\Users\\marc')).toEqual(['marc', 'Users', '']);
+    expect(parentNamesOfDir('C:\\')).toEqual(['', '', '']);
   });
 
   it('preview rows use the plan only for the names it belongs to', () => {

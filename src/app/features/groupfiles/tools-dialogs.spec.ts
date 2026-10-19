@@ -71,6 +71,7 @@ describe('folder tool dialogs (design 008)', () => {
       sourceDir: '/src',
       otherDir: null,
       entries: ['a 1.txt', 'a 2.txt', 'readme'].map((n) => entry(n, { path: `/src/${n}` })),
+      searchKey: null,
     });
     const f = TestBed.createComponent(GroupFilesDialog);
     f.detectChanges();
