@@ -4,7 +4,7 @@
 use super::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::{TempDir, tempdir};
@@ -436,18 +436,45 @@ fn dir_size_runs_as_job() {
 
 #[test]
 fn dir_size_does_not_start_duplicate_job_while_running() {
-    let h = Harness::new();
+    // The job thread is held at its "running" event until both starts are done – a tiny
+    // tree would otherwise be counted before the second start (the test was flaky).
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let sink_gate = gate.clone();
+    let mgr = JobManager::new(Arc::new(move |e: &JobEvent| {
+        if matches!(
+            e,
+            JobEvent::State {
+                state: JobState::Running,
+                ..
+            }
+        ) {
+            let (open, cv) = &*sink_gate;
+            let guard = open.lock().unwrap();
+            drop(cv.wait_while(guard, |open| !*open).unwrap());
+        }
+    }));
     let (_d, src, _dst) = tree();
     let path = src.to_string_lossy().into_owned();
-    let id1 = h
-        .mgr
-        .start(JobSpec::DirSize { path: path.clone() })
-        .unwrap();
+    let id1 = mgr.start(JobSpec::DirSize { path: path.clone() }).unwrap();
     // Starting the same path again while running returns the existing id
-    let id2 = h.mgr.start(JobSpec::DirSize { path }).unwrap();
+    let id2 = mgr.start(JobSpec::DirSize { path: path.clone() }).unwrap();
     assert_eq!(id1, id2);
-    let info = h.finish(&id1);
+    {
+        let (open, cv) = &*gate;
+        *open.lock().unwrap() = true;
+        cv.notify_all();
+    }
+    let info = mgr.wait_finished(&id1, WAIT).expect("job did not finish");
     assert_eq!(info.state, JobState::Done);
+    // once finished, the same path is calculated anew
+    let id3 = mgr.start(JobSpec::DirSize { path }).unwrap();
+    assert_ne!(id3, id1);
+    assert_eq!(
+        mgr.wait_finished(&id3, WAIT)
+            .expect("job did not finish")
+            .state,
+        JobState::Done
+    );
 }
 
 #[test]
