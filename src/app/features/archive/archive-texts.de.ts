@@ -16,7 +16,6 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   levelHint: (n) => (n === 1 ? '1 (am schnellsten)' : n === 9 ? '9 (am kleinsten)' : `${n}`),
   to: 'In den Ordner',
   suggestions: 'Vorschläge',
-  chooseTarget: 'Ordner wählen…',
   intoSubfolder: (name) => `In einen Unterordner „${name}“`,
   intoSubfolderMany: 'Jedes Archiv in einen Unterordner mit seinem Namen',
   ifExists: 'Wenn eine Datei existiert',

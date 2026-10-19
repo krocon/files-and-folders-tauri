@@ -61,6 +61,22 @@ describe('operation dialogs', () => {
     TestBed.inject(DialogService).show('copy-move');
   }
 
+  it('target: the "…" button right of the field opens the suggestions as a menu and fills the field', async () => {
+    copyRequest();
+    const { fixture, el } = await render(CopyMoveDialog);
+    const button = el.querySelector<HTMLButtonElement>('button.pick')!;
+    expect(button.getAttribute('aria-haspopup')).toBe('menu');
+    button.click();
+    fixture.detectChanges();
+    const items = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.length).toBeGreaterThan(0);
+    items[0].click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+    const input = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    expect(input.value).toBe(items[0].textContent?.trim());
+  });
+
   it('copy: counts live, cancels the count on close and starts with the options', async () => {
     copyRequest();
     const { fixture, el } = await render(CopyMoveDialog);
@@ -93,8 +109,9 @@ describe('operation dialogs', () => {
     expect(inputs[0].value).toBe('/dst');
     expect(inputs[1].value).toBe('a.txt');
     const selects = el.querySelectorAll<HTMLSelectElement>('select');
-    selects[1].value = 'overwrite';
-    selects[1].dispatchEvent(new Event('change'));
+    // the suggestions are a "…" menu now, the only select is the conflict default
+    selects[0].value = 'overwrite';
+    selects[0].dispatchEvent(new Event('change'));
     el.querySelector('form')!.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }),
     );
