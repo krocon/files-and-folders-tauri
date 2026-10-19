@@ -57,7 +57,14 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   noHits: 'Keine Treffer (bisher).',
   marked: 'markiert, ',
   lossyName: 'Name enthält ungültige Zeichen – Navigation noch nicht unterstützt',
-  columns: { name: 'Name', ext: 'Endung', size: 'Größe', modified: 'Geändert', folder: 'Ordner' },
+  columns: {
+    name: 'Name',
+    ext: 'Endung',
+    size: 'Größe',
+    modified: 'Geändert',
+    folder: 'Ordner',
+    group: 'Gruppe',
+  },
   bytesTitle: (marked, total) => `${formatCount(marked)} / ${formatCount(total)} Bytes`,
   status: {
     in: 'in',

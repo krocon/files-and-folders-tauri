@@ -86,6 +86,10 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     clean: (where, n, trash) =>
       `${where} aufräumen: ${entries(n)} ${trash ? 'in den Papierkorb' : 'endgültig'}`,
     search: (name, where) => `Suche „${name}“ in ${where}`,
+    extract: (what, target) => `${what} entpacken → ${target}`,
+    entriesOf: (n, archive) => `${n} Einträge aus ${archive}`,
+    pack: (what, target, name) => `${what} packen → ${target} / ${name}`,
+    duplicates: (where) => `Duplikate finden in ${where}`,
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
     simulate: (n) => `Test-Task (${n} Schritte)`,

@@ -61,7 +61,14 @@ export const TEXTS_EN = {
   /** Screen-reader prefix of a marked row. */
   marked: 'marked, ',
   lossyName: 'Name contains invalid characters – navigation not supported yet',
-  columns: { name: 'Name', ext: 'Ext', size: 'Size', modified: 'Modified', folder: 'Folder' },
+  columns: {
+    name: 'Name',
+    ext: 'Ext',
+    size: 'Size',
+    modified: 'Modified',
+    folder: 'Folder',
+    group: 'Group',
+  },
   bytesTitle: (marked: number, total: number) =>
     `${formatCount(marked)} / ${formatCount(total)} bytes`,
   status: {

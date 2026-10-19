@@ -16,12 +16,9 @@ import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
 import { cursorAfterRemoval } from '../ops/ops-logic';
 import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
+import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 
 const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
-
-/** Enter/F3 on a file inside an archive (opening via a temporary copy is open, design 016). */
-export const IN_ARCHIVE_OPEN =
-  'Files inside an archive cannot be opened yet – extract them first (F5).';
 
 /** Changes of a watched folder (design 012 E3). */
 interface FolderDelta {
@@ -325,7 +322,11 @@ export class FileBrowserStore {
       return;
     }
     if (inArchive) {
-      this.error.set({ code: 'archive_error', message: IN_ARCHIVE_OPEN, path: entry.path });
+      this.error.set({
+        code: 'archive_error',
+        message: ARCHIVE_TEXTS.openInside,
+        path: entry.path,
+      });
       return;
     }
     await this.openFile(entry);

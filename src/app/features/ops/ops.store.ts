@@ -182,9 +182,9 @@ export class OpsStore {
     const targets = targetOptions(
       [
         { group: OPS_TEXTS.otherPanel, paths: [other] },
-        { group: 'Tab', paths: tabPaths },
-        { group: 'Favourite', paths: [...this.ws.favorites()] },
-        { group: 'Recent', paths: this.ws.recent() },
+        { group: OPS_TEXTS.tabGroup, paths: tabPaths },
+        { group: OPS_TEXTS.favouriteGroup, paths: [...this.ws.favorites()] },
+        { group: OPS_TEXTS.recentGroup, paths: this.ws.recent() },
       ],
       (p) => this.archive.isArchivePath(p),
     );

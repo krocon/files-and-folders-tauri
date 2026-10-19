@@ -1,7 +1,9 @@
+import { translatable } from '../../core/i18n/i18n';
 import { ArchiveFormat } from '../../core/fs/fs.models';
+import { ARCHIVE_DE } from './archive-texts.de';
 
-/** Texts of pack/unpack (design 016), in one place for prompt 015 (i18n). */
-export const ARCHIVE_TEXTS = {
+/** Texts of pack/unpack (design 016); German in `archive-texts.de.ts` (design 015). */
+export const ARCHIVE_EN = {
   packTitle: 'Pack',
   unpackTitle: 'Unpack',
   extractTitle: 'Extract from the archive',
@@ -28,8 +30,11 @@ export const ARCHIVE_TEXTS = {
   targetIsFile: 'The target is a file – choose a folder.',
   noArchive: 'No archive selected – put the cursor on a .zip, .tar or .tar.gz file.',
   readOnly: 'Archives are read-only here – extract the entries first (F5).',
+  openInside: 'Files inside an archive cannot be opened yet – extract them first (F5).',
   intoArchive: 'Cannot copy into an archive – pack instead (Alt+F5).',
   unsafeHidden: (n: number) => (n === 1 ? '1 unsafe entry hidden' : `${n} unsafe entries hidden`),
   archiveBadge: (format: ArchiveFormat) =>
     `${format === 'zip' ? 'ZIP' : format === 'tar' ? 'TAR' : 'TAR.GZ'} · read-only`,
 };
+
+export const ARCHIVE_TEXTS = translatable('archive', ARCHIVE_EN, { de: ARCHIVE_DE });

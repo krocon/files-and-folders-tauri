@@ -73,6 +73,10 @@ export const OPS_EN = {
     `${title}: ${n === 1 ? '1 error' : `${n} errors`} – details in Tasks.`,
   failed: (title: string, message: string) => `${title} failed: ${message}`,
   otherPanel: 'Other panel',
+  thisPanel: 'This panel',
+  tabGroup: 'Tab',
+  favouriteGroup: 'Favourite',
+  recentGroup: 'Recent',
 } as const;
 
 export const OPS_TEXTS = translatable('ops', OPS_EN, { de: OPS_DE });

@@ -1,5 +1,8 @@
-/** Texts of the About dialog (central, i18n in 015). */
-export const ABOUT_TEXTS = {
+import { translatable } from '../../core/i18n/i18n';
+import { ABOUT_DE } from './about-texts.de';
+
+/** Texts of the About dialog (017); German in `about-texts.de.ts` (015). */
+export const ABOUT_EN = {
   title: 'About Files and Folders',
   version: 'Version',
   build: 'Build',
@@ -21,3 +24,5 @@ export const ABOUT_TEXTS = {
   close: 'Close',
   os: { macos: 'macOS', windows: 'Windows', linux: 'Linux' } as Record<string, string>,
 };
+
+export const ABOUT_TEXTS = translatable('about', ABOUT_EN, { de: ABOUT_DE });

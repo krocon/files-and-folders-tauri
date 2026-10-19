@@ -55,7 +55,8 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   too_many: 'Zu viele Elemente auf einmal.',
   invalid_pattern: 'Das Suchmuster ist ungültig.',
   archive_error: 'Das Archiv ist beschädigt oder nutzt eine nicht unterstützte Funktion.',
-  unsafe_entry: 'Ein Archiveintrag würde den Zielordner verlassen oder ist ein Link – nicht entpackt.',
+  unsafe_entry:
+    'Ein Archiveintrag würde den Zielordner verlassen oder ist ein Link – nicht entpackt.',
   archive_too_large: 'Das Archiv überschreitet die Sicherheitsgrenzen (Größe, Anzahl Einträge).',
   invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
   invalid_settings: 'Diese Datei ist kein Einstellungs-Export von Files and Folders.',

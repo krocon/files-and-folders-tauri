@@ -166,6 +166,7 @@ export class FileList implements OnDestroy {
         size: c.size,
         modifiedMs: c.modified,
         dir: c.folder,
+        group: c.group,
       };
       const rowHeight = ROW_HEIGHTS[this.settings.get('view.density')];
       DISPLAY.sizeFormat();

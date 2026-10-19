@@ -105,6 +105,14 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'Focus ring on the status line': 'Fokusrahmen auf der Statuszeile',
   Tooltip: 'Tooltip',
   'Tooltip input': 'Tooltip-Eingabe',
+  'Every other group (duplicates)': 'Jede zweite Gruppe (Duplikate)',
+  'List lines': 'Linien der Liste',
+  'List, every other duplicate group': 'Liste, jede zweite Duplikat-Gruppe',
+  'Active panel list, every other duplicate group':
+    'Liste der aktiven Seite, jede zweite Duplikat-Gruppe',
+  'Muted text in dialogs': 'Gedämpfter Text in Dialogen',
+  'Focus ring on the panel header, active panel':
+    'Fokusrahmen auf dem Kopf der Seite, aktive Seite',
   // groups
   General: 'Allgemein',
   'File list': 'Dateiliste',

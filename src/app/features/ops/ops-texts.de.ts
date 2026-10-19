@@ -75,4 +75,8 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
     `${title}: ${n === 1 ? '1 Fehler' : `${n} Fehler`} – Details in Tasks.`,
   failed: (title, message) => `${title} fehlgeschlagen: ${message}`,
   otherPanel: 'Andere Seite',
+  thisPanel: 'Diese Seite',
+  tabGroup: 'Tab',
+  favouriteGroup: 'Favorit',
+  recentGroup: 'Zuletzt',
 };

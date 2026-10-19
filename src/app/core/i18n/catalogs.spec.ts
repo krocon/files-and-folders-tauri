@@ -7,9 +7,12 @@ import '../fs/fs-error-texts';
 import { CONTRAST_PAIRS } from '../theme/theme-logic';
 import { GROUP_LABEL_SOURCES, TOKENS } from '../theme/tokens';
 import { THEME_LABELS_DE } from '../theme/theme-labels.de';
+import '../../features/about/about-texts';
 import '../../features/actions/actions-texts';
+import '../../features/archive/archive-texts';
 import '../../features/cleanfolders/clean-texts';
 import '../../features/dnd/dnd-logic';
+import '../../features/duplicates/duplicates-texts';
 import '../../features/groupfiles/groupfiles-texts';
 import '../../features/jobs/job-format';
 import '../../features/menus/menu-texts';
@@ -67,6 +70,17 @@ const SAME = new Set([
   'max.',
   'Version',
   'Tasks…',
+  'Build',
+  'Tauri',
+  'GuiExpert Table',
+  'github.com/krocon/files-and-folders-tauri',
+  'macOS',
+  'Windows',
+  'Linux',
+  'Format',
+  'ZIP',
+  'TAR',
+  'TAR.GZ',
 ]);
 
 const SAMPLE_ARGS: unknown[] = [2, 'x', 3, 4];

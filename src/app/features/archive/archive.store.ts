@@ -100,11 +100,11 @@ export class ArchiveStore {
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
     const targets = targetOptions(
       [
-        { group: 'Other panel', paths: [other] },
-        { group: 'This panel', paths: [this.folderOf(side)] },
-        { group: 'Tab', paths: tabPaths },
-        { group: 'Favourite', paths: [...this.ws.favorites()] },
-        { group: 'Recent', paths: this.ws.recent() },
+        { group: OPS_TEXTS.otherPanel, paths: [other] },
+        { group: OPS_TEXTS.thisPanel, paths: [this.folderOf(side)] },
+        { group: OPS_TEXTS.tabGroup, paths: tabPaths },
+        { group: OPS_TEXTS.favouriteGroup, paths: [...this.ws.favorites()] },
+        { group: OPS_TEXTS.recentGroup, paths: this.ws.recent() },
       ],
       (p) => this.isArchivePath(p),
     );
