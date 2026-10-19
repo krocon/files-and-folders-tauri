@@ -1,10 +1,12 @@
 import { JobsApi } from '../../core/jobs/jobs-api';
-import { FakeJobsApi } from '../../../testing/fake-jobs-api';
+import { JobsStore } from '../../core/jobs/jobs.store';
+import { FakeJobsApi, job } from '../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
 import { FsApi } from '../../core/fs/fs-api';
 import { DirectoryListing } from '../../core/fs/fs.models';
 import { deferred, dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
-import { FileBrowserStore } from './file-browser.store';
+import { FileBrowserStore, TRANSFER_SIZE_INTERVAL_MS } from './file-browser.store';
+import { afterEach, vi } from 'vitest';
 
 describe('FileBrowserStore', () => {
   let api: FakeFsApi;
@@ -182,5 +184,93 @@ describe('FileBrowserStore', () => {
     await store.open(dir('X', { path: '/x' }));
     await store.up();
     expect(api.calls.length).toBe(before);
+  });
+
+  describe('size of a folder a copy is writing into', () => {
+    let jobsApi: FakeJobsApi;
+    let now: number;
+
+    const progress = (bytesDone: number, destBytes: Record<string, number>) => ({
+      bytesDone,
+      bytesTotal: 4_300_000_000,
+      itemsDone: 50,
+      itemsTotal: 100,
+      current: '/src/dalai/file.bin',
+      rateBps: 50_000_000,
+      destBytes,
+    });
+
+    const startCopy = (destBytes: Record<string, number>) =>
+      jobsApi.emit({
+        type: 'added',
+        job: job(
+          'copy1',
+          { kind: 'copy', sources: ['/src/dalai'], targetDir: '/target' },
+          { state: 'running', progress: progress(3_300_000_000, destBytes) },
+        ),
+      });
+
+    beforeEach(async () => {
+      jobsApi = TestBed.inject(JobsApi) as FakeJobsApi;
+      await TestBed.inject(JobsStore).init();
+      now = 1_000_000;
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+      api.handler = () =>
+        Promise.resolve(listing('/target', [dir('dalai', { path: '/target/dalai' })]));
+      await store.load('/target');
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('follows the running copy instead of starting a size job', async () => {
+      startCopy({ '/target/dalai': 3_300_000_000 });
+      await store.calcDirSize(store.entries()[0]);
+      expect(jobsApi.started.filter((s) => s.spec.kind === 'dirSize')).toHaveLength(0);
+      expect(store.entries()[0].size).toBe(3_300_000_000);
+
+      // within the interval the listing is left alone (each write re-sorts the table)
+      jobsApi.emit({
+        type: 'progress',
+        id: 'copy1',
+        progress: progress(3_500_000_000, { '/target/dalai': 3_500_000_000 }),
+      });
+      TestBed.flushEffects();
+      expect(store.entries()[0].size).toBe(3_300_000_000);
+
+      now += TRANSFER_SIZE_INTERVAL_MS;
+      jobsApi.emit({
+        type: 'progress',
+        id: 'copy1',
+        progress: progress(3_800_000_000, { '/target/dalai': 3_800_000_000 }),
+      });
+      TestBed.flushEffects();
+      expect(store.entries()[0].size).toBe(3_800_000_000);
+
+      // the final size comes at once
+      jobsApi.emit({
+        type: 'finished',
+        id: 'copy1',
+        state: 'done',
+        summary: {
+          itemsDone: 100,
+          itemsSkipped: 0,
+          itemsFailed: 0,
+          bytesDone: 4_300_000_000,
+          errors: [],
+          error: null,
+          dirSize: null,
+          destBytes: { '/target/dalai': 4_300_000_000 },
+        },
+      });
+      TestBed.flushEffects();
+      expect(store.entries()[0].size).toBe(4_300_000_000);
+    });
+
+    it('calculates a folder the copy merges into (no live size reported) as usual', async () => {
+      startCopy({});
+      void store.calcDirSize(store.entries()[0]);
+      await Promise.resolve();
+      expect(jobsApi.started.filter((s) => s.spec.kind === 'dirSize')).toHaveLength(1);
+    });
   });
 });

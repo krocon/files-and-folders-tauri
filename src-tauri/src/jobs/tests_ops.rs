@@ -841,3 +841,43 @@ fn the_fs_guard_pauses_moved_and_deleted_paths_while_the_job_runs() {
         vec!["pause 1", "resume", "pause 1", "resume"]
     );
 }
+
+#[test]
+fn copy_reports_dest_bytes_per_destination_folder() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src_dir");
+    let target = tmp.path().join("target");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&target).unwrap();
+    fs::write(src.join("1.bin"), vec![0u8; 1000]).unwrap();
+    fs::write(src.join("2.bin"), vec![0u8; 2000]).unwrap();
+    let h = Harness::new();
+    let id = h.start_copy(&[&src], &target, CopyOptions::default());
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done);
+    let expected_dst = target.join("src_dir").to_string_lossy().into_owned();
+    let summary = info.summary.unwrap();
+    assert_eq!(summary.bytes_done, 3000);
+    assert_eq!(summary.dest_bytes.get(&expected_dst), Some(&3000));
+}
+
+#[test]
+fn dest_bytes_leaves_out_files_and_folders_merged_into_existing_ones() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src_dir");
+    let file = tmp.path().join("single.bin");
+    let target = tmp.path().join("target");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(target.join("src_dir")).unwrap();
+    fs::write(target.join("src_dir").join("old.bin"), vec![0u8; 500]).unwrap();
+    fs::write(src.join("1.bin"), vec![0u8; 1000]).unwrap();
+    fs::write(&file, vec![0u8; 100]).unwrap();
+    let h = Harness::new();
+    let id = h.start_copy(&[&src, &file], &target, CopyOptions::default());
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done);
+    let summary = info.summary.unwrap();
+    assert_eq!(summary.bytes_done, 1100);
+    // the merged folder holds more than this job wrote, a file needs no live size
+    assert!(summary.dest_bytes.is_empty(), "{:?}", summary.dest_bytes);
+}

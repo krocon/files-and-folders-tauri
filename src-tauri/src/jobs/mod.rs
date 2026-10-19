@@ -32,6 +32,7 @@ use crate::duplicates::DuplicateCriteria;
 use crate::error::FsError;
 use crate::search::{SearchCriteria, SearchHit, SearchStats};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub use control::Control;
 pub use group::{GroupItem, Transfer};
@@ -306,6 +307,9 @@ pub struct Progress {
     pub current: Option<String>,
     /// Bytes per second over the job so far.
     pub rate_bps: u64,
+    /// Bytes copied/moved into each top-level target destination so far.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub dest_bytes: HashMap<String, u64>,
 }
 
 /// Size, modification time and kind of one side of a conflict.
@@ -380,6 +384,9 @@ pub struct Summary {
     pub dir_size: Option<DirSize>,
     /// Search job: the final statistics (`errors` = unreadable folders).
     pub search: Option<SearchStats>,
+    /// Final bytes copied/moved into each top-level target destination.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub dest_bytes: HashMap<String, u64>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;

@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
 import { toFsError } from '../../core/fs/fs-error';
@@ -11,7 +11,7 @@ import {
 } from '../../core/fs/fs.models';
 import { isArchiveEntry } from '../../core/archive/archive-names';
 import { JobsStore } from '../../core/jobs/jobs.store';
-import { isFinished } from '../../core/jobs/jobs.models';
+import { isFinished, JobInfo } from '../../core/jobs/jobs.models';
 import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
 import { cursorAfterRemoval } from '../ops/ops-logic';
@@ -54,6 +54,8 @@ export interface SizeJob {
 
 /** If a folder size calculation takes longer than 2 seconds, show animation. */
 export const DIR_SIZE_ANIMATION_DELAY_MS = 2000;
+/** Live folder sizes during a copy/move are written at most this often (each write re-sorts the table). */
+export const TRANSFER_SIZE_INTERVAL_MS = 500;
 
 /**
  * State of one file panel. Provided per component (not root): two panels and
@@ -100,6 +102,10 @@ export class FileBrowserStore {
   readonly animatedSizePaths = signal<ReadonlySet<string>>(new Set());
   /** Timers waiting for the 2-second threshold: path → timer ID. */
   private readonly sizeAnimationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Folders of this panel whose shown size follows a running copy/move into them: path → job id. */
+  private readonly activeTransferPaths = new Map<string, string>();
+  /** When live transfer sizes were last written into the listing. */
+  private lastTransferSizeUpdate = 0;
   readonly sizeJobs = computed<readonly SizeJob[]>(() => {
     const own = this.ownSizeJobs();
     return this.jobs
@@ -116,6 +122,14 @@ export class FileBrowserStore {
   scrollTop: () => number = () => 0;
   /** Asks the user whether to run an executable file (provided by the panel). */
   confirmExecutable: (entry: DirEntry) => Promise<boolean> = () => Promise.resolve(false);
+
+  constructor() {
+    // sizes of folders a copy/move is writing into follow the job's progress (no watcher needed)
+    effect(() => {
+      const jobs = this.jobs.jobs();
+      untracked(() => this.syncTransferSizes(jobs));
+    });
+  }
 
   /** Set while the panel shows a search result (design 009 E4) – then there is no folder. */
   readonly searchKey = signal<string | null>(null);
@@ -552,6 +566,13 @@ export class FileBrowserStore {
     if (this.isCalculatingSize(entry.path)) {
       return;
     }
+    const transfer = this.findActiveTransfer(entry.path);
+    if (transfer) {
+      this.activeTransferPaths.set(entry.path, transfer.job.id);
+      this.lastTransferSizeUpdate = Date.now();
+      this.applyDirSize(entry.path, transfer.bytes);
+      return;
+    }
     const folder = this.locationKey();
     this.calculatingSizes.set(entry.path, Date.now());
     const timer = setTimeout(() => {
@@ -611,6 +632,7 @@ export class FileBrowserStore {
     }
     this.sizeAnimationTimers.clear();
     this.calculatingSizes.clear();
+    this.activeTransferPaths.clear();
     if (this.animatedSizePaths().size > 0) {
       this.animatedSizePaths.set(new Set());
     }
@@ -629,6 +651,26 @@ export class FileBrowserStore {
       ...listing,
       entries: listing.entries.map((e) => (e.path === path ? { ...e, size: bytes } : e)),
     });
+  }
+
+  /** Like `applyDirSize` for several folders; the listing changes only if a size did. */
+  private applyDirSizes(sizes: ReadonlyMap<string, number>): void {
+    const listing = this.listing();
+    if (!listing || sizes.size === 0) {
+      return;
+    }
+    let changed = false;
+    const entries = listing.entries.map((e) => {
+      const bytes = sizes.get(e.path);
+      if (bytes === undefined || bytes === e.size) {
+        return e;
+      }
+      changed = true;
+      return { ...e, size: bytes };
+    });
+    if (changed) {
+      this.listing.set({ ...listing, entries });
+    }
   }
 
   // ---- table state handover ----
@@ -748,6 +790,52 @@ export class FileBrowserStore {
         break;
     }
     this.historyVersion.update((v) => v + 1);
+  }
+
+  /**
+   * A running copy/move that creates the folder `path` and reports how much arrived there
+   * (Rust only reports new folders – a merged one holds more than the job wrote).
+   */
+  private findActiveTransfer(path: string): { job: JobInfo; bytes: number } | null {
+    for (const j of this.jobs.jobs()) {
+      if (isFinished(j.state) || (j.spec.kind !== 'copy' && j.spec.kind !== 'move')) {
+        continue;
+      }
+      const bytes = j.progress.destBytes?.[path];
+      if (bytes !== undefined) {
+        return { job: j, bytes };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Writes the progress of the tracked transfers into the listing: at most every
+   * TRANSFER_SIZE_INTERVAL_MS, the final value as soon as a job has finished.
+   */
+  private syncTransferSizes(jobs: readonly JobInfo[]): void {
+    if (this.activeTransferPaths.size === 0) {
+      return;
+    }
+    const sizes = new Map<string, number>();
+    let finished = false;
+    for (const [path, jobId] of this.activeTransferPaths) {
+      const job = jobs.find((j) => j.id === jobId);
+      const bytes = job?.summary?.destBytes?.[path] ?? job?.progress.destBytes?.[path];
+      if (bytes !== undefined) {
+        sizes.set(path, bytes);
+      }
+      if (!job || isFinished(job.state)) {
+        this.activeTransferPaths.delete(path);
+        finished = true;
+      }
+    }
+    const now = Date.now();
+    if (!finished && now - this.lastTransferSizeUpdate < TRANSFER_SIZE_INTERVAL_MS) {
+      return;
+    }
+    this.lastTransferSizeUpdate = now;
+    this.applyDirSizes(sizes);
   }
 
   private isParentPath(path: string): boolean {

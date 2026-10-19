@@ -40,6 +40,7 @@ pub struct Item {
     /// only if the path still names this entry (a folder swapped for a link
     /// must not lead outside the tree).
     pub id: Option<(u64, u64)>,
+    pub top_idx: usize,
 }
 
 #[derive(Debug, Default)]
@@ -171,7 +172,7 @@ pub fn check_pairs(
 /// Lists everything below the top-level sources (parents before children).
 /// `false` = cancelled.
 pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
-    for top in tops {
+    for (top_idx, top) in tops.into_iter().enumerate() {
         let mut stack = vec![(top.src, top.dst, top.meta)];
         while let Some((s, d, m)) = stack.pop() {
             if control.is_cancelled() {
@@ -184,6 +185,7 @@ pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
                     dst: d,
                     kind: ItemKind::Symlink,
                     id: file_id(&m),
+                    top_idx,
                 });
             } else if ft.is_dir() {
                 plan.items.push(Item {
@@ -191,6 +193,7 @@ pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
                     dst: d.clone(),
                     kind: ItemKind::Dir,
                     id: file_id(&m),
+                    top_idx,
                 });
                 let read = match fs::read_dir(&s) {
                     Ok(r) => r,
@@ -218,6 +221,7 @@ pub fn walk(tops: Vec<Top>, plan: &mut Plan, control: &Control) -> bool {
                     dst: d,
                     kind: ItemKind::File { size: m.len() },
                     id: file_id(&m),
+                    top_idx,
                 });
             } else {
                 // pipes, sockets, devices: reading could block forever or never end
@@ -321,6 +325,10 @@ struct Run<'a> {
     moving: bool,
     /// Moving between volumes: copy + delete instead of rename.
     cross: bool,
+    /// Per top-level source (`Item::top_idx`): its target path if it is a folder that did
+    /// not exist before – only then is its size at the target what this job wrote
+    /// (`Progress::dest_bytes`). Merged into an existing folder: `None`.
+    top_dsts: Vec<Option<String>>,
 }
 
 fn is_cross_device(e: &io::Error) -> bool {
@@ -397,7 +405,7 @@ impl Run<'_> {
                     let tmp = self.temp_name(dst);
                     copy_symlink(&item.src, dst, &tmp, overwrite).map_err(CopyError::Io)
                 }
-                _ => self.copy_file(&item.src, dst, overwrite),
+                _ => self.copy_file(&item.src, dst, overwrite, item.top_idx),
             };
             match result {
                 Ok(()) => {
@@ -474,9 +482,16 @@ impl Run<'_> {
         dst.with_file_name(format!(".fnf-{}-{}.part", self.id, self.temp_seq))
     }
 
-    fn copy_file(&mut self, src: &Path, dst: &Path, overwrite: bool) -> Result<(), CopyError> {
+    fn copy_file(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        overwrite: bool,
+        top_idx: usize,
+    ) -> Result<(), CopyError> {
         let tmp = self.temp_name(dst);
         let mut written = 0u64;
+        let top_dst = self.top_dsts.get(top_idx).cloned().flatten();
         let result = (|| -> Result<(), CopyError> {
             let mut input = File::open(src)?;
             let src_meta = input.metadata()?;
@@ -493,6 +508,11 @@ impl Run<'_> {
                 out.write_all(&buf[..n])?;
                 written += n as u64;
                 self.rep.progress.bytes_done += n as u64;
+                if let Some(td) = &top_dst
+                    && let Some(b) = self.rep.progress.dest_bytes.get_mut(td)
+                {
+                    *b += n as u64;
+                }
                 self.rep.tick(false);
             }
             out.flush()?;
@@ -507,6 +527,11 @@ impl Run<'_> {
         if result.is_err() {
             let _ = fs::remove_file(&tmp);
             self.rep.progress.bytes_done -= written;
+            if let Some(td) = &top_dst
+                && let Some(b) = self.rep.progress.dest_bytes.get_mut(td)
+            {
+                *b = b.saturating_sub(written);
+            }
         }
         result
     }
@@ -640,6 +665,7 @@ pub fn run_pairs(
         temp_seq: 0,
         moving: matches!(mode, Mode::Move { .. }),
         cross: matches!(mode, Mode::Move { force_copy: true }),
+        top_dsts: Vec::new(),
     };
     run.state(JobState::Planning);
     let mut plan = Plan::default();
@@ -679,6 +705,17 @@ pub fn run_pairs(
             }
         }
         rest.push(top);
+    }
+    // live size of new target folders (the panel shows it while the job runs);
+    // files and folders merged into an existing one are left out (small events, no wrong sizes)
+    run.top_dsts = rest
+        .iter()
+        .map(|t| {
+            (t.meta.is_dir() && fs::symlink_metadata(&t.dst).is_err()).then(|| path_string(&t.dst))
+        })
+        .collect();
+    for dst in run.top_dsts.iter().flatten() {
+        run.rep.progress.dest_bytes.insert(dst.clone(), 0);
     }
     if !walk(rest, &mut plan, control) {
         run.rep.flush_dirs();
@@ -846,6 +883,11 @@ pub fn run_pairs(
             }
         }
         let before = run.rep.progress.bytes_done;
+        let top_dst = run.top_dsts.get(item.top_idx).cloned().flatten();
+        let top_before = top_dst
+            .as_ref()
+            .and_then(|td| run.rep.progress.dest_bytes.get(td).copied())
+            .unwrap_or(0);
         let outcome = if run.moving {
             run.move_entry(item, &dst, overwrite)
         } else {
@@ -857,6 +899,11 @@ pub fn run_pairs(
         }
         // done or failed, the file counts as processed (its planned size, even if it changed meanwhile)
         run.rep.progress.bytes_done = before + size;
+        if let Some(td) = top_dst {
+            // only what arrived counts – a failed file was removed again
+            let arrived = if outcome == Outcome::Done { size } else { 0 };
+            run.rep.progress.dest_bytes.insert(td, top_before + arrived);
+        }
         run.rep.progress.items_done += 1;
         run.rep.tick(false);
     }
@@ -871,6 +918,7 @@ pub fn run_pairs(
     }
     run.rep.progress.current = None;
     run.summary.bytes_done = run.rep.progress.bytes_done;
+    run.summary.dest_bytes = run.rep.progress.dest_bytes.clone();
     run.rep.tick(true);
     run.rep.flush_dirs();
     let state = if cancelled || control.is_cancelled() {

@@ -130,6 +130,8 @@ export interface Progress {
   /** Full path of the item being processed. */
   readonly current: string | null;
   readonly rateBps: number;
+  /** Bytes copied/moved into each top-level target destination so far. */
+  readonly destBytes?: Readonly<Record<string, number>>;
 }
 
 export interface FileMeta {
@@ -176,6 +178,8 @@ export interface Summary {
   readonly dirSize: DirSize | null;
   /** Search job: final statistics (`errors` = unreadable folders). */
   readonly search?: SearchStats | null;
+  /** Final bytes copied/moved into each top-level target destination. */
+  readonly destBytes?: Readonly<Record<string, number>>;
 }
 
 export interface JobInfo {
