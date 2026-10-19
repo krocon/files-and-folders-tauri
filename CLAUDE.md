@@ -26,8 +26,8 @@
   (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
   Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit), Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
   CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`), Prompt 018 (Feature-Parität gegen `old_project/`,
-  Matrix in `docs/feature-parity.md`) und Prompt 020 (Actions-Menü wie mr) sind fertig. Als Nächstes: Folge-Prompts
-  021–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
+  Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr) und Prompt 021 (Shell-Leiste mit Pipes) sind
+  fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
@@ -101,6 +101,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
   app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
+  app/core/shell/            ShellApi (nur `run_shell`, einziger Importeur: ShellBar), ShellSupportApi (Quotieren, Verlauf)
+  app/features/shell/        ShellStore (Root: Sichtbarkeit, Verlauf, laufender Job, Ausgabepuffer), ShellBar (Zeile 5,
+                             Combobox), shell-logic.ts (rein: Verlauf, Vorschläge, Puffer, Kürzung), Aktionen
   app/core/i18n/             Laufzeit-i18n: translatable() (Proxy auf das Sprach-Signal), Translation<T>, localeFor();
                              Kataloge je Feature `*-texts.ts` (en) + `*-texts.de.ts`, Vollständigkeit: catalogs.spec.ts
   app/core/settings/         settings-schema.json (gemeinsam mit Rust), SettingsApi, SettingsStore (Root, entprellt),
@@ -147,6 +150,9 @@ src-tauri/                   Rust (Tauri 2)
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
+  src/shell/                 Shell-Zeile (rein): Shell-Wahl, `cd`/`clear`, Quotieren je Shell, ANSI/Kodierung,
+                             Login-Umgebung, `shell-history.json`; Job `jobs/shell.rs`, Prozesse `platform/process.rs`,
+                             Commands `commands/shell.rs`
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   src/themes.rs              Farbschemata (`themes.json`, harmlose CSS-Werte), Import/Export von `.theme.json`
   src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
@@ -191,6 +197,11 @@ prompts/                     Feature-Prompts (s. o.)
   validierter Command. Kein beliebiges Shell-Kommando aus dem Frontend; externe Tools nur aus der Konfiguration mit
   Argument-Arrays (kein String an eine Shell). CSP strikt (Ausnahme `style-src` wegen Angulars Laufzeit-Styles, s.
   `docs/architecture.md`). Keine Dateiinhalte oder vollständigen Nutzerpfade unnötig loggen.
+- **Ausnahme Shell-Zeile (Design 021 E1)**: Ein Befehl entsteht nur aus dem, was der Nutzer ins Shell-Feld tippt, und
+  läuft nur nach Enter dort – nie aus Konfiguration, Dateinamen, Menüs, Palette oder anderem Code. Einziger Einstieg
+  ist der Command `run_shell` (Hauptfenster, `shell.enabled`); `JobSpec::Shell` bleibt `skip_deserializing`, nur
+  `ShellBar` importiert `ShellApi` (Spec prüft das). Arbeitsordner nur per `current_dir`, Befehl als ein Argument an
+  die Shell, eingefügte Namen quotiert Rust (`shell_quote`). Befehle und Ausgaben nie loggen.
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.

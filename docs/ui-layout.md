@@ -76,10 +76,14 @@ Dateiname ohne Endung, Datum als `yyyy-mm-dd` + kleine Uhrzeit) werden in Prompt
 (ohne `..`; markierte Zahlen im aktiven Panel hervorgehoben; Tooltip mit exakten Bytes). Einheiten korrekt (die
 AngularJS-Version lag um Faktor 1000 daneben).
 
-### Zeile 5 – Shell-Zeile (optional, Prompt 011)
+### Zeile 5 – Shell-Zeile (optional, Prompt 021)
 
-`<Pfad>>` + Eingabefeld, Befehl läuft im Ordner des aktiven Panels; Ausgabe in einem Bereich darunter. Ein/aus per
-Aktion (alt `Shift+F11`). Nur mit ausdrücklicher Sicherheitsentscheidung (Prompt 011).
+Über die volle Breite, zwischen den Seiten und der Button-Leiste (`features/shell/shell-bar.*`). Oben die Ausgabe
+(Monospace, stderr farblich, Exit-Code ≠ 0 als Meldung; Höhe am Griff ziehbar bzw. `↑/↓`, einklappbar, Kopieren,
+Leeren), darunter `<Ordner>>` (in der Mitte gekürzt, voller Pfad im Tooltip) + Eingabefeld. Der Befehl läuft im
+Ordner des aktiven Panels (im Ergebnis-Tab im Suchordner); im Archiv ist das Feld gesperrt. `Shift+F11` blendet ein
+und fokussiert, im Feld blendet es aus; Sichtbarkeit, Höhe und Klappzustand stehen in der Sitzung. Sicherheitsmodell:
+Design 021 E1 / `CLAUDE.md` §4.
 
 ### Zeile 6 – Button-Leiste
 
