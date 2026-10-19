@@ -41,7 +41,9 @@
     </div>
   }
   <div class="line">
-    <label class="prompt" [for]="inputId" [attr.title]="store.cwd()">{{ promptText() }}&gt;</label>
+    <label #cwdLabel class="cwd" [for]="inputId" [attr.title]="store.cwd()"
+      >{{ promptText() }}&gt;</label
+    >
     <div class="combo">
       <input
         #field
@@ -58,6 +60,7 @@
         [attr.aria-controls]="listId"
         [attr.aria-activedescendant]="activeId()"
         [placeholder]="placeholder()"
+        [attr.title]="store.locked() !== null ? placeholder() : null"
         [disabled]="store.locked() !== null"
         [value]="text()"
         (input)="onInput($event)"

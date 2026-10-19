@@ -237,7 +237,7 @@ describe('shell bar (design 021)', () => {
 
   it('Enter runs the typed line in the active folder; output streams in, the exit code ends it', async () => {
     const { el, input, type, key, render } = await bar();
-    expect(el.querySelector('.prompt')?.textContent).toContain('/src>');
+    expect(el.querySelector('.cwd')?.textContent).toContain('/src>');
     type('ls -la');
     const e = key('Enter');
     expect(e.defaultPrevented).toBe(true);

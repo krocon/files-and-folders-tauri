@@ -130,6 +130,8 @@ export class WorkspaceStore {
 
   private seq = 0;
   private readonly handles = new Map<Side, PanelHandle>();
+  /** Bumped on (un)registering: computeds that read `panel()` early see panels that come later. */
+  private readonly handlesVersion = signal(0);
 
   constructor() {
     effect(() => {
@@ -169,14 +171,17 @@ export class WorkspaceStore {
 
   registerPanel(side: Side, handle: PanelHandle): () => void {
     this.handles.set(side, handle);
+    this.handlesVersion.update((v) => v + 1);
     return () => {
       if (this.handles.get(side) === handle) {
         this.handles.delete(side);
+        this.handlesVersion.update((v) => v + 1);
       }
     };
   }
 
   panel(side: Side = this.activeSide()): PanelHandle | undefined {
+    this.handlesVersion();
     return this.handles.get(side);
   }
 

@@ -1,4 +1,6 @@
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { FileBrowserStore } from '../browser/file-browser.store';
 import { SessionApi } from '../../core/session/session-api';
 import { Session } from '../../core/session/session.models';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
@@ -56,6 +58,19 @@ describe('WorkspaceStore', () => {
     expect(ws.focusRequest()?.side).toBe('right');
     ws.setActive('left');
     expect(ws.source()).toBe('left');
+  });
+
+  it('review 021: panels registered later reach computeds that read them before (actionDir)', () => {
+    const dir = computed(() => ws.actionDir('left'));
+    expect(dir()).toBeNull(); // no panel yet – the shell bar reads this at start
+    const path = signal<string | null>('/a');
+    const store = { path, searchKey: () => null } as unknown as FileBrowserStore;
+    const off = ws.registerPanel('left', { store, controller: () => undefined });
+    expect(dir()).toBe('/a');
+    path.set('/b');
+    expect(dir()).toBe('/b');
+    off();
+    expect(dir()).toBeNull();
   });
 
   it('targetDir: the folder of the selected tab on the other side', () => {

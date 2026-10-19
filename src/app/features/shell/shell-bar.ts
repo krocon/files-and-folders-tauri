@@ -43,6 +43,9 @@ export class ShellBar {
 
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
   private readonly output = viewChild<ElementRef<HTMLElement>>('output');
+  private readonly cwdLabel = viewChild<ElementRef<HTMLElement>>('cwdLabel');
+  /** Width of one character of the prompt font (measured once). */
+  private charWidth = 0;
 
   private readonly uid = ++nextId;
   protected readonly inputId = `fnf-shell-input-${this.uid}`;
@@ -106,14 +109,32 @@ export class ShellBar {
     });
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width ?? 0;
-      // the prompt gets at most ~40 % of the bar (monospace ≈ 0.6em per character)
-      this.promptChars.set(Math.max(12, Math.floor((w * 0.4) / 8)));
+      // the prompt gets at most 40 % of the bar (`.cwd { max-width: 40% }`), minus "> "
+      this.promptChars.set(Math.max(12, Math.floor((w * 0.4) / this.measureChar()) - 2));
     });
     ro.observe(this.host.nativeElement);
     inject(DestroyRef).onDestroy(() => {
       ro.disconnect();
       this.store.fieldFocused.set(false);
     });
+  }
+
+  /** Monospace: one character's width in the label's font (canvas, no layout needed). */
+  private measureChar(): number {
+    if (this.charWidth > 0) {
+      return this.charWidth;
+    }
+    const label = this.cwdLabel()?.nativeElement;
+    const ctx = label ? document.createElement('canvas').getContext('2d') : null;
+    if (label && ctx) {
+      ctx.font = getComputedStyle(label).font;
+      const w = ctx.measureText('0000000000').width / 10;
+      if (w > 0) {
+        this.charWidth = w;
+        return w;
+      }
+    }
+    return 9;
   }
 
   // ---- input ----
