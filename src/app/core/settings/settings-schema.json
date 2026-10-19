@@ -6,7 +6,7 @@
     "values": ["binary", "decimal", "bytes"],
     "default": "binary"
   },
-  "view.dateFormat": { "type": "enum", "values": ["locale", "iso"], "default": "locale" },
+  "view.dateFormat": { "type": "enum", "values": ["locale", "iso"], "default": "iso" },
   "view.density": {
     "type": "enum",
     "values": ["condensed", "normal", "spacious"],

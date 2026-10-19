@@ -176,6 +176,28 @@ export class CommandPalette {
     }
     // folders of the tabs, their histories, favourites and recent ones (mr Go to anything, 018 J9)
     if (q.trim() && this.scope() === 'all' && this.heading() === null) {
+      const trimmed = q.trim();
+      const isPathLike =
+        trimmed.startsWith('/') ||
+        trimmed.startsWith('~') ||
+        trimmed.startsWith('.') ||
+        /^[A-Za-z]:[\\/]/.test(trimmed) ||
+        trimmed.includes('/') ||
+        trimmed.includes('\\');
+      if (isPathLike && !this.folders().includes(trimmed)) {
+        rows.push({
+          key: `folder:${trimmed}`,
+          kind: 'folder',
+          id: trimmed,
+          label: trimmed,
+          category: this.t.folders,
+          shortcut: '',
+          ready: true,
+          hint: '',
+          score: 1000,
+          parts: [{ text: trimmed, hit: false }],
+        });
+      }
       for (const path of this.folders()) {
         const match = fuzzyMatch(q, path);
         if (!match) {
@@ -190,7 +212,7 @@ export class CommandPalette {
           shortcut: '',
           ready: true,
           hint: '',
-          score: match.score - 2,
+          score: match.score,
           parts: split(path, match.positions),
         });
       }
@@ -262,24 +284,34 @@ export class CommandPalette {
   protected choose(i: number): void {
     const row = this.rows()[i];
     if (!row) {
+      const trimmed = this.query().trim();
+      if (trimmed && this.scope() === 'all' && this.heading() === null) {
+        const side = this.ws.activeSide();
+        this.dialogs.close({ restoreFocus: false });
+        this.ws.setActive(side);
+        this.ws.requestNavigate(side, trimmed);
+        this.ws.requestFocus(side);
+      }
       return;
     }
-    this.dialogs.close();
-    // after the dialog is gone, so a dialog opened by the action is not closed again
+    const targetSide = this.ws.activeSide();
     const { kind, id } = row;
-    setTimeout(() => {
+    if (kind === 'folder') {
+      this.dialogs.close({ restoreFocus: false });
+      this.ws.setActive(targetSide);
+      this.ws.requestNavigate(targetSide, id);
+      this.ws.requestFocus(targetSide);
+    } else {
+      this.dialogs.close();
+      // after the dialog is gone, so a dialog opened by the action is not closed again
       if (kind === 'theme') {
         void this.theme.select(id);
-      } else if (kind === 'folder') {
-        const side = this.ws.source();
-        this.ws.requestNavigate(side, id);
-        this.ws.requestFocus(side);
       } else if (kind === 'extra') {
-        void this.actions.runExtra(id);
+        setTimeout(() => void this.actions.runExtra(id));
       } else {
-        void this.actions.run(id as ActionId);
+        setTimeout(() => void this.actions.run(id as ActionId));
       }
-    });
+    }
   }
 
   private move(i: number): void {

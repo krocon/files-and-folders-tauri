@@ -36,7 +36,7 @@ describe('SettingsStore', () => {
     vi.useRealTimers();
     setLanguage('en');
     DISPLAY.sizeFormat.set('binary');
-    DISPLAY.dateFormat.set('locale');
+    DISPLAY.dateFormat.set('iso');
   });
 
   it('a file that could not be read is never overwritten (review 015 #9)', async () => {
@@ -77,13 +77,13 @@ describe('SettingsStore', () => {
   it('applies at once and saves debounced, only the differences, unknown keys kept', async () => {
     api.loaded = { settings: { 'future.x': 1 }, warnings: [], persist: true };
     await store.init();
-    store.set('view.dateFormat', 'iso');
+    store.set('view.dateFormat', 'locale');
     store.set('view.folderBrackets', true);
     store.set('view.folderBrackets', false);
-    expect(DISPLAY.dateFormat()).toBe('iso');
+    expect(DISPLAY.dateFormat()).toBe('locale');
     expect(api.saved).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS + 10);
-    expect(api.saved).toEqual([{ 'future.x': 1, 'view.dateFormat': 'iso' }]);
+    expect(api.saved).toEqual([{ 'future.x': 1, 'view.dateFormat': 'locale' }]);
   });
 
   it('ignores invalid values', async () => {

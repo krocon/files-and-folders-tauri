@@ -46,9 +46,9 @@ export class DialogService {
     this.open.set(kind);
   }
 
-  close(): void {
+  close(options?: { restoreFocus?: boolean }): void {
     this.open.set(null);
-    const target = this.returnFocus;
+    const target = options?.restoreFocus === false ? null : this.returnFocus;
     this.returnFocus = null;
     if (target?.isConnected) {
       setTimeout(() => target.focus());

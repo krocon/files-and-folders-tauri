@@ -254,6 +254,14 @@ describe('FilePanel', () => {
     expect(ws.panel('left')?.store).toBe(store);
   });
 
+  it('navigates when requestNavigate is emitted for its side', async () => {
+    const { store, settle } = await render();
+    ws.requestNavigate('left', '/other');
+    await settle();
+    expect(store.path()).toBe('/other');
+    expect(ws.panels().left.tabs[0].path).toBe('/other');
+  });
+
   it('shows an error when the tab folder is gone and keeps the panel usable', async () => {
     ws.restore({
       ...ws.snapshot(),

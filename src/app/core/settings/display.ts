@@ -9,7 +9,7 @@ export type DateFormat = 'locale' | 'iso';
 
 export const DISPLAY = {
   sizeFormat: signal<SizeFormat>('binary'),
-  dateFormat: signal<DateFormat>('locale'),
+  dateFormat: signal<DateFormat>('iso'),
   folderBrackets: signal(false),
   hideExtension: signal(false),
   /** Hidden files in new tabs. */

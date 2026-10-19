@@ -143,6 +143,7 @@ export class DateCellRenderer implements CellRendererIf {
     const entry = rowOf(areaModel, rowIndex);
     if (entry) {
       setText(cellDiv, domService, formatModified(entry.modifiedMs));
+      cellDiv.title = entry.modifiedMs !== null ? new Date(entry.modifiedMs).toLocaleString() : '';
     }
     return undefined;
   }

@@ -21,7 +21,7 @@ describe('formatSize', () => {
 describe('formats follow the settings and the locale', () => {
   afterEach(() => {
     DISPLAY.sizeFormat.set('binary');
-    DISPLAY.dateFormat.set('locale');
+    DISPLAY.dateFormat.set('iso');
     setLanguage('en');
   });
 
@@ -44,6 +44,7 @@ describe('formats follow the settings and the locale', () => {
     expect(formatModified(ms)).toBe('2024-01-05 07:03');
     DISPLAY.dateFormat.set('locale');
     expect(formatModified(ms)).not.toBe('2024-01-05 07:03');
+    DISPLAY.dateFormat.set('iso');
     expect(formatModified(null)).toBe('');
   });
 });

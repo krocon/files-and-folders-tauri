@@ -108,6 +108,34 @@ describe('CommandPalette', () => {
     expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/data/photos' });
   });
 
+  it('navigates to a folder in the active panel when right is active', async () => {
+    const { type, key } = await render();
+    const ws = TestBed.inject(WorkspaceStore);
+    ws.restore({
+      ...ws.snapshot(),
+      panels: {
+        left: { activeTab: 0, tabs: [newTab('/l', 'l')] },
+        right: {
+          activeTab: 0,
+          tabs: [{ ...newTab('/home/m/Music', 'Music'), history: ['/data/photos'] }],
+        },
+      },
+    });
+    ws.setActive('right');
+    type('photos');
+    key('Enter');
+    expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/data/photos' });
+  });
+
+  it('navigates to a typed directory path', async () => {
+    const { type, key } = await render();
+    const ws = TestBed.inject(WorkspaceStore);
+    ws.setActive('left');
+    type('/var/log');
+    key('Enter');
+    expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/var/log' });
+  });
+
   it('closes with Escape', async () => {
     const { input, dialogs } = await render();
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
