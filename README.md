@@ -148,6 +148,9 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Zeilenhöhe, `[Ordner]`, Namen ohne Endung, Menüleiste), Verhalten (Papierkorb, Bestätigung, Doppelklick,
   Leertaste, Start-Ordner), Tastatur (Konflikte, Kürzel bearbeiten/zurücksetzen), Tools, Farben, Daten (alles als
   eine Datei exportieren/importieren). Gespeichert in `settings.json`; kaputte Datei → Defaults + Warnung (`.bad`).
+- **Actions-Menü ▴** in der Button-Leiste (Prompt 020): vier Spalten wie in der alten Version (Navigation/Ansicht,
+  Auswahl/Seiten/Tabs, Dateioperationen, Konfiguration + Tools) mit Trennlinien, kurzen Namen und Kürzeln als dunkle
+  Badges (`^` `⌘` `alt` `⇧`, Akkorde als zwei Badges); Pfeiltasten, `Pos1`/`Ende`, `Enter`, `Esc`.
 - **Deutsch und Englisch**: Oberfläche, Menüs, Fehlertexte, Datums- und Zahlenformat; Umschalten ohne Neustart
   (Vorgabe: Systemsprache).
 
