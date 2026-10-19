@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Files and Folders</title>
+  <defs>
+    <!-- 824×824 Körper, 100 px Rand, stark abgerundete Ecken -->
+    <clipPath id="body">
+      <rect x="100" y="100" width="824" height="824" rx="280" ry="280"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#body)">
+    <!-- linke Seite -->
+    <rect x="100" y="100" width="412" height="824" fill="#ff0a67"/>
+    <!-- rechte Seite -->
+    <rect x="512" y="100" width="412" height="824" fill="#007eff"/>
+    <!-- Header-Balken -->
+    <rect x="100" y="100" width="824" height="220" fill="#fe6c2a"/>
+  </g>
+  <!-- schwarzes Quadrat, mittig (512 × 512) -->
+  <rect x="256" y="256" width="512" height="512" fill="#000"/>
+  <!-- „FF“ als Pfade (keine Schrift nötig), Strichstärke 40, Höhe 240 -->
+  <path fill="#fff" d="
+    M316,316 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z
+    M524,316 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z"/>
+</svg>
