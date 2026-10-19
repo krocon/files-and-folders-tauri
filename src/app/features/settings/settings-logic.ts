@@ -2,7 +2,8 @@ import { SCHEMA, SettingKey } from '../../core/settings/settings.models';
 import { SETTINGS_TEXTS } from './settings-texts';
 
 /** Sections of the settings dialog (design 015 E6). */
-export type SectionId = 'general' | 'view' | 'behavior' | 'keyboard' | 'tools' | 'colors' | 'data';
+export type SectionId =
+  'general' | 'view' | 'behavior' | 'shell' | 'keyboard' | 'tools' | 'colors' | 'data';
 
 export interface Section {
   readonly id: SectionId;
@@ -35,6 +36,7 @@ export const SECTIONS: readonly Section[] = [
       'search.recent',
     ],
   },
+  { id: 'shell', keys: ['shell.enabled', 'shell.loginPath', 'shell.windowsShell'] },
   { id: 'keyboard', keys: [] },
   { id: 'tools', keys: [] },
   { id: 'colors', keys: [] },
@@ -73,6 +75,8 @@ export function sectionText(id: SectionId): string {
       return [t.cat.colors, t.colorsIntro, t.editColors].join(' ');
     case 'data':
       return [t.cat.data, t.dataIntro, t.export, t.import, t.resetAll].join(' ');
+    case 'shell':
+      return [t.cat.shell, t.shellIntro, t.clearShellHistory].join(' ');
     default:
       return t.cat[id];
   }

@@ -1,6 +1,7 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod shell;
 pub mod watch;
 
 use crate::error::{FsError, FsErrorCode};
@@ -46,7 +47,7 @@ pub async fn list_directory<R: Runtime>(
         .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
 }
 
-fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+pub(crate) fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
     app.path().home_dir().map_err(|e| {
         FsError::new(
             FsErrorCode::NoHomeDirectory,
@@ -222,7 +223,7 @@ pub fn preview_response(
 
 // ---- quick operations (design 006 E8) ----
 
-async fn blocking<T: Send + 'static>(
+pub(crate) async fn blocking<T: Send + 'static>(
     what: &str,
     f: impl FnOnce() -> Result<T, FsError> + Send + 'static,
 ) -> Result<T, FsError> {
@@ -1012,7 +1013,7 @@ pub struct SettingsState {
     write_blocked: Mutex<bool>,
 }
 
-fn config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+pub(crate) fn config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
     app.path().app_config_dir().map_err(|e| {
         FsError::new(
             FsErrorCode::Io,

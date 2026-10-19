@@ -54,6 +54,14 @@ pub enum FsErrorCode {
     InvalidMenu,
     /// A file to import is no settings export, has another version or is too big (design 015).
     InvalidSettings,
+    /// The shell bar is switched off in the settings (design 021 E1).
+    ShellDisabled,
+    /// A shell command still runs – one at a time (design 021 E3).
+    ShellBusy,
+    /// The shell command is empty, too long or contains a line break / NUL.
+    InvalidCommand,
+    /// A name cannot be quoted safely for the shell (control characters, `%`/`!` for cmd.exe).
+    UnquotableName,
     Io,
 }
 

@@ -47,7 +47,6 @@ import { OpsStore } from './ops.store';
             }
           </p>
           <div class="buttons">
-
             @if (r.kind === 'mkdir') {
               <div id="fnf-name-help" class="help">{{ t.mkdirHelp }}</div>
               <div class="spacer"></div>

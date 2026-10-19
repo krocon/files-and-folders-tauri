@@ -82,6 +82,11 @@ export type FsErrorCode =
   | 'invalid_menu'
   /** A file to import is no settings export (design 015). */
   | 'invalid_settings'
+  /** Shell bar (design 021). */
+  | 'shell_disabled'
+  | 'shell_busy'
+  | 'invalid_command'
+  | 'unquotable_name'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

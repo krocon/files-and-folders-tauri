@@ -79,7 +79,9 @@ const SHOWN = 5;
           <div class="buttons">
             @if (!permanent()) {
               <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
-              <div class="help" [style.visibility]="armed() ? 'hidden' : null">{{ t.trashHint }}</div>
+              <div class="help" [style.visibility]="armed() ? 'hidden' : null">
+                {{ t.trashHint }}
+              </div>
               <div class="spacer"></div>
             }
             <button

@@ -16,12 +16,15 @@ pub mod pack;
 pub mod rename;
 pub mod report;
 pub mod search;
+pub mod shell;
 #[cfg(test)]
 mod tests_archive;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
 mod tests_ops;
+#[cfg(all(test, unix))]
+mod tests_shell;
 #[cfg(test)]
 mod tests_tools;
 
@@ -38,6 +41,7 @@ pub use control::Control;
 pub use group::{GroupItem, Transfer};
 pub use manager::JobManager;
 pub use rename::RenameItem;
+pub use shell::{ShellChunk, ShellLaunch, ShellStream, ShellSummary};
 
 /// Sources that lie below another source (or repeat one) are dropped – the
 /// folder brings them along (review 009 #5: search results can hold a folder
@@ -159,6 +163,15 @@ pub enum JobSpec {
     DirSize { path: String },
     /// Test job for load and throttling tests – rejected in release builds.
     Simulate { items: u32, item_ms: u32 },
+    /// A command of the shell bar (design 021 E1/E3). Built only by the command
+    /// `run_shell` – `start_job` cannot create it (no deserialising).
+    #[serde(skip_deserializing)]
+    Shell {
+        cwd: String,
+        command: String,
+        #[serde(skip)]
+        launch: ShellLaunch,
+    },
 }
 
 impl JobSpec {
@@ -177,6 +190,7 @@ impl JobSpec {
             | JobSpec::DirSize { .. }
             | JobSpec::Count { .. }
             | JobSpec::Search { .. }
+            | JobSpec::Shell { .. }
             | JobSpec::Simulate { .. } => true,
         }
     }
@@ -208,6 +222,7 @@ impl JobSpec {
                 | JobSpec::Count { .. }
                 | JobSpec::Search { .. }
                 | JobSpec::Duplicates { .. }
+                | JobSpec::Shell { .. }
         )
     }
 
@@ -226,6 +241,7 @@ impl JobSpec {
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
+            JobSpec::Shell { .. } => "shell",
         }
     }
 }
@@ -384,6 +400,8 @@ pub struct Summary {
     pub dir_size: Option<DirSize>,
     /// Search job: the final statistics (`errors` = unreadable folders).
     pub search: Option<SearchStats>,
+    /// Shell job (design 021): exit code / signal.
+    pub shell: Option<ShellSummary>,
     /// Final bytes copied/moved into each top-level target destination.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub dest_bytes: HashMap<String, u64>,
@@ -455,6 +473,13 @@ pub enum JobEvent {
         id: String,
         hits: Vec<SearchHit>,
         stats: SearchStats,
+    },
+    /// Output of a shell command (design 021 E3): cleaned text per stream;
+    /// `dropped` = bytes left out by the flood protection since the last event.
+    ShellOutput {
+        id: String,
+        chunks: Vec<ShellChunk>,
+        dropped: u64,
     },
     /// The window wants to close while jobs run – ask the user.
     QuitRequested {

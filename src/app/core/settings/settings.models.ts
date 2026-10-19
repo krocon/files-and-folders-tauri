@@ -19,6 +19,9 @@ export interface SettingsValues {
   'behavior.doubleClick': 'open' | 'view';
   'behavior.spaceCalcSize': boolean;
   'watch.pollNetwork': boolean;
+  'shell.enabled': boolean;
+  'shell.loginPath': boolean;
+  'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
 }
 
