@@ -191,10 +191,17 @@ describe('operation dialogs', () => {
     TestBed.inject(DialogService).show('delete');
     let r = await render(DeleteDialog);
     let buttons = r.el.querySelectorAll<HTMLButtonElement>('.buttons button');
+    const confirmBtn = () =>
+      r.el.querySelector<HTMLButtonElement>('[data-testid="delete-confirm"]')!;
     expect(r.el.textContent).toContain('Move 2 entries to the trash?');
-    expect(buttons[1].hasAttribute('data-autofocus')).toBe(true);
+    expect(confirmBtn().hasAttribute('data-autofocus')).toBe(true);
     expect(r.el.querySelector('[role="dialog"]')).not.toBeNull();
-    buttons[1].click();
+    // the second, red button is there but never the default
+    expect(buttons.length).toBe(3);
+    expect(buttons[1].dataset['testid']).toBe('delete-permanent');
+    expect(buttons[1].classList).toContain('danger');
+    expect(buttons[1].hasAttribute('data-autofocus')).toBe(false);
+    confirmBtn().click();
     await flush();
     expect(jobsApi.started[0].spec).toMatchObject({ kind: 'delete', mode: 'trash' });
     r.fixture.destroy();
@@ -207,6 +214,8 @@ describe('operation dialogs', () => {
     expect(r.el.textContent).toContain('cannot be undone');
     expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
     expect(buttons[1].classList).toContain('danger');
+    // permanent mode: no second "Delete permanently" button
+    expect(buttons.length).toBe(2);
     r.fixture.destroy();
 
     // a dangerous path: the delete button starts disabled, so Cancel gets the focus
@@ -221,6 +230,36 @@ describe('operation dialogs', () => {
     buttons = r.el.querySelectorAll<HTMLButtonElement>('.buttons button');
     expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
     expect(buttons[1].disabled).toBe(true);
+    expect(buttons[2].disabled).toBe(true);
+  });
+
+  it('delete: the trash dialog can delete permanently instead', async () => {
+    ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
+    TestBed.inject(DialogService).show('delete');
+    const r = await render(DeleteDialog);
+    const forever = r.el.querySelector<HTMLButtonElement>('[data-testid="delete-permanent"]')!;
+    const message = () => r.el.querySelector('#fnf-delete-message')!;
+    expect(forever.textContent).toContain(OPS_TEXTS.deletePermanent);
+    expect(message().textContent).toContain('trash');
+    // hover or focus warns before the click
+    forever.dispatchEvent(new Event('mouseenter'));
+    r.fixture.detectChanges();
+    expect(message().textContent).toContain('cannot be undone');
+    expect(message().classList).toContain('danger-text');
+    // the trash hint only hides: removing it would move the buttons away from the pointer
+    const hint = r.el.querySelector<HTMLElement>('p.help')!;
+    expect(hint).not.toBeNull();
+    expect(hint.style.visibility).toBe('hidden');
+    forever.dispatchEvent(new Event('mouseleave'));
+    r.fixture.detectChanges();
+    expect(message().textContent).not.toContain('cannot be undone');
+    forever.dispatchEvent(new Event('focus'));
+    r.fixture.detectChanges();
+    expect(message().textContent).toContain('cannot be undone');
+    forever.click();
+    await flush();
+    expect(jobsApi.started[0].spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
+    expect(ops.del()).toBeNull();
   });
 
   it('rename: selects the name without extension, offers "Rename anyway" for dangerous paths', async () => {

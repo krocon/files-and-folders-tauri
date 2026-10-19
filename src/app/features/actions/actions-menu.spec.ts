@@ -63,7 +63,13 @@ describe('Actions menu ▴ (design 020)', () => {
       'Change Dir…',
     ]);
     expect(labels(groups[1])).toContain('Parent Dir');
-    expect(labels(groups[2]).slice(0, 4)).toEqual(['Copy', 'Move', 'Delete', 'MkDir']);
+    expect(labels(groups[2]).slice(0, 5)).toEqual([
+      'Copy',
+      'Move',
+      'Delete',
+      'Delete permanently',
+      'MkDir',
+    ]);
     expect(labels(groups[3]).slice(0, 1)).toEqual(['Setup…']);
     // the tools after the last divider
     expect(labels(groups[3]).slice(-2)).toEqual(['-', 'Edit']);
