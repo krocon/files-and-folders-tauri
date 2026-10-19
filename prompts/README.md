@@ -40,7 +40,8 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 017 | [017-release-distribution.md](017-release-distribution.md) | CI, Pakete je OS, Version, Icons, Signierung (vorbereiten) | – | M |
 | 018 | [018-feature-paritaet.md](018-feature-paritaet.md) | Abgleich mit dem alten Programm, Matrix mit Testbelegen | 001–015 | S–M |
 | 020 | [020-actions-menue.md](020-actions-menue.md) | Actions-Menü nach Vorbild der alten Version (4 kuratierte Spalten, Trennlinien, Shortcut-Badges nach mr §1.8) | 002, 004, 014 | S–M |
-| 021–028 | (Vorschlag aus 018, noch kein Prompt) | Shell-Leiste · Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner · Drag & Drop erweitert – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
+| 021 | [021-shell-leiste.md](021-shell-leiste.md) | Shell-Leiste (`TOGGLE_SHELL`): Befehlszeile im Ordner des aktiven Panels, gestreamte Ausgabe als Job, `cd` navigiert das Panel, Verlauf, Sicherheitsmodell | 004, 005, 011, 012 | M |
+| 022–028 | (Vorschlag aus 018, noch kein Prompt) | Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner · Drag & Drop erweitert – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
