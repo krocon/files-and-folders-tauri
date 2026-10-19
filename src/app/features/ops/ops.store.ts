@@ -12,7 +12,7 @@ import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { wholeGroups } from '../duplicates/duplicates-logic';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
-import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
+import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   cursorAfterRemoval,
   selectionForAction,
@@ -109,12 +109,6 @@ export class OpsStore {
     return (this.ws.panel()?.store.archive() ?? null) !== null;
   }
 
-  /** A real folder of `side` that can be a target (not a result tab, not an archive). */
-  private targetFolder(side: Side): string | null {
-    const store = this.ws.panel(side)?.store;
-    return store && store.archive() === null ? store.path() : null;
-  }
-
   /** The folder, or the result tab (`search:<key>`) of the active panel. */
   location(): string | null {
     return this.ws.panel()?.store.locationKey() ?? null;
@@ -141,7 +135,7 @@ export class OpsStore {
     if (sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
-    const other = this.targetFolder(otherSide(side));
+    const other = this.ws.targetDir(side);
     await this.openCopyMoveFor({
       kind,
       side,
@@ -176,7 +170,7 @@ export class OpsStore {
         throw err('unknown', ARCHIVE_TEXTS.readOnly);
       }
     }
-    const other = this.targetFolder(otherSide(args.side));
+    const other = this.ws.targetDir(args.side);
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
     const targets = targetOptions(

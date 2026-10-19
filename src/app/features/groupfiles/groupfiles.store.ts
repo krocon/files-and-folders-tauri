@@ -6,7 +6,7 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionInDisplayOrder } from '../multirename/multirename-logic';
-import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
+import { WorkspaceStore } from '../workspace/workspace.store';
 import { DEFAULT_GROUP_OPTIONS, groupEntries, GroupOptions, GroupStatus } from './group-engine';
 import { GF_TEXTS } from './groupfiles-texts';
 
@@ -123,7 +123,7 @@ export class GroupFilesStore {
     if (entries.length === 0) {
       throw err(GF_TEXTS.nothingSelected);
     }
-    const otherDir = this.ws.panel(otherSide(side))?.store.path() ?? null;
+    const otherDir = this.ws.targetDir(side);
     this.runError.set(null);
     this.busy.set(false);
     this.request.set({ side, sourceDir, otherDir, entries });

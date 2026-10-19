@@ -15,4 +15,9 @@ describe('panel styles', () => {
     expect(rule(scss, '.part')).not.toContain('background');
     expect(rule(scss, '.list')).toContain('background: var(--color-list-bg)');
   });
+
+  it('the menus of the button bar take no place in its flex row (Actions/Tasks stay right)', () => {
+    const css = readFileSync('src/app/features/workspace/button-bar/button-bar.css', 'utf8');
+    expect(rule(css, 'app-actions-menu,\napp-context-menu')).toContain('display: contents');
+  });
 });

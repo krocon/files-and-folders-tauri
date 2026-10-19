@@ -139,6 +139,19 @@ describe('file operations (design 006)', () => {
     expect(left.marked().size).toBe(0);
   });
 
+  it('the target is the folder of the selected tab on the other side (helper ws.targetDir)', async () => {
+    const ws = TestBed.inject(WorkspaceStore);
+    // the right side selects another tab (or a result tab): its folder, not the old listing
+    ws.updateTab(ws.activeTab('right').id, {
+      path: '/elsewhere',
+      search: { key: 'k', label: '*.txt' },
+    });
+    left.setCursor('/src/a.txt');
+    await actions.run('OPEN_COPY_DLG');
+    expect(ops.copyMove()!.target).toBe('/elsewhere');
+    expect(ops.copyMove()!.targets[0]).toEqual({ path: '/elsewhere', group: 'Other panel' });
+  });
+
   it('copy into the same folder needs a new name (single source)', async () => {
     left.setCursor('/src/a.txt');
     await ops.openCopyMove('copy');

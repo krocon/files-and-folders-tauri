@@ -58,6 +58,15 @@ describe('WorkspaceStore', () => {
     expect(ws.source()).toBe('left');
   });
 
+  it('targetDir: the folder of the selected tab on the other side', () => {
+    expect(ws.targetDir()).toBe('/r');
+    expect(ws.targetDir('right')).toBe('/a');
+    ws.selectTab('left', 2);
+    expect(ws.targetDir('right')).toBe('/c');
+    ws.setActive('right');
+    expect(ws.targetDir()).toBe('/c');
+  });
+
   it('clones the active tab next to it and selects the clone', () => {
     ws.selectTab('left', 1);
     ws.cloneTab('left');
