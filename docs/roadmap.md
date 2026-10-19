@@ -33,9 +33,10 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 6 Vorschau & Eigenschaften | 010 (Ansicht, Schnellvorschau, Eigenschaften ✅) |
 | 7 OS-Integration | 011 (Laufwerke, Tools, Zwischenablage ✅), 012 (Überwachung, Drag & Drop ✅) |
 | 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs ✅), 015 (Einstellungen, Deutsch/Englisch ✅) |
-| 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 |
+| 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 (✅ alle Fehler aus mr §11/legacy §9 behoben oder entfallen) |
 | 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Lizenz, Signierung, Prüfung macOS/Windows) |
-| 11 Feature-Parität | 018 (Spezialwerkzeuge: 007 ✅, 008 ✅, 016 Archive/Duplikate ✅ – 7z/Passwörter offen) |
+| 11 Feature-Parität | 018 ✅ Matrix gegen `old_project/` (mr) in [feature-parity.md](feature-parity.md): 192 ✅, 26 🟡, 11 ⬜, 24 ✖; 020 ✅ Actions-Menü |
+| 12 Nach der Parität (Vorschlag) | 021 Shell-Leiste (PTY), 022 Konfigurations-Editoren (Buttons, Dateitypen, Suchvorlagen, Vollbild), 023 eingebauter Editor, 024 Attribute ändern, 025 Archive erweitert (7z/RAR, Passwörter), 026 Import alter Konfiguration, 027 Persistenz je Ordner, 028 Drag & Drop erweitert |
 
 Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 

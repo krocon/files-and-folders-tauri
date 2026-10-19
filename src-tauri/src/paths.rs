@@ -416,6 +416,9 @@ mod tests {
         let segs = segments_of(&p);
         assert_eq!(segs.len(), 4);
         assert_eq!(segs[0].path, abs(&[]).to_string_lossy());
+        // the root has a name too (legacy §9: empty folder button label at `/`)
+        assert_eq!(segs[0].name, segs[0].path);
+        assert!(!segs[0].name.is_empty());
         assert_eq!(segs[2].name, "b c");
         assert_eq!(segs[3].name, "ä");
         assert_eq!(segs[3].path, p.to_string_lossy());

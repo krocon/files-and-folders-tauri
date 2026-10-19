@@ -24,9 +24,13 @@
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
   Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
   (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
-  Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit) und Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
-  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 018.
+  Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit), Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
+  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`), Prompt 018 (Feature-Parität gegen `old_project/`,
+  Matrix in `docs/feature-parity.md`) und Prompt 020 (Actions-Menü wie mr) sind fertig. Als Nächstes: Folge-Prompts
+  021–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
   Details: `docs/roadmap.md`, `prompts/README.md`.
+- **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
+  in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
@@ -265,7 +269,7 @@ prompts/                     Feature-Prompts (s. o.)
 - Alte Projekte: `krocon/node-files-and-folders-client`, `krocon/node-files-and-folders-server`, npm
   `files-and-folders` (MIT laut package.json) – fachliche Vorlage, Code wird nicht übernommen (AngularJS/Node passt
   nicht), Ideen und Formate (Shortcuts, Rename-Makros, Farbschemata) dürfen übernommen werden.
-- `krocon/files-and-folders-mr` (lokal `~/WebstormProjects/files-and-folders-mr`): Custom Source-Available License,
+- `krocon/files-and-folders-mr` (lokal im Repo unter `old_project/`, gitignored): Custom Source-Available License,
   Rechteinhaber GUI Expert GmbH (Marc). Als Referenz für Verhalten, Layout und Konfiguration nutzen; Code nur nach
   Marcs ausdrücklicher Freigabe übernehmen. Die acht Default-Designs: `docs/legacy-themes/`.
 
