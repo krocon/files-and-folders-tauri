@@ -207,8 +207,11 @@ body {
 }
 
 .btn {
+  min-height: 36px;
+  min-width: 80px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-1);
   padding: var(--spacing-1) var(--spacing-3);
   font: inherit;
