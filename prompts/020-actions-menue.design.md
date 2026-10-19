@@ -1,6 +1,6 @@
 # Design 020: Actions-Menü nach Vorbild der alten Version (mr §1.8)
 
-> **Status:** 🛑 Entwurf / Bereit zur Freigabe · **Datum:** 2026-10-18 · **Branch:** `feat/actions-menue` (von `main`)
+> **Status:** ✅ umgesetzt (2026-10-19, zusammen mit 018) · **Datum:** 2026-10-18 · **Branch:** `feat/actions-menue` (von `main`)
 > **Grundlage:** Prompt 020, `docs/legacy-analysis-mr.md` §1.8 & §1.10, Screenshot Soll-Zustand, Altreferenz `files-and-folders-mr/apps`.
 > **Phasen:** Phase 1 (Design), Phase 3 (Frontend: Spezifikationen + Implementierung), Phase 4 (E2E), Phase 5 (Doku). Keine Rust-Änderungen erforderlich (reines UI-Feature).
 
@@ -355,4 +355,28 @@ Hier ist für jeden Menüpunkt genau beschrieben, was im alten Code passierte un
       - **Edit** (`^ ⇧ 4`): Öffnet die fokussierte Datei im Standard-Editor.
       - **Local Shell** (`⌘ 0`): Startet ein Terminal im Verzeichnis des aktiven Panels.
       - **Reveal in Finder** (`⌘ ⇧ f`): Zeigt die markierte Datei im nativen Dateimanager (macOS Finder bzw. Windows Explorer) an.
+
+---
+
+## 5. Umsetzung und Abweichungen (2026-10-19)
+
+- Menüdefinition `features/actions/actions-menu-def.ts` (4 Spalten mit `'-'`, `'@tools'`), Kurzlabels in
+  `actions-texts.ts` (`menu`, en/de), Badges: reiner Tokenizer `core/actions/shortcut-badge.ts` + Komponente
+  `features/actions/shortcut-badges.ts` (Tokens `^ ⌘ alt ⇧` + Taste klein, `+` gedimmt, ein Badge je Akkord-Schlag).
+  Für Screenreader trägt jeder Eintrag `aria-keyshortcuts` mit dem normalen Kürzeltext; die Badges sind `aria-hidden`.
+- Ids der alten Version auf die neuen abgebildet: `OPEN_GOTO_ANYTHING_DLG` → `OPEN_COMMAND_PALETTE`,
+  `ENHANCE_/REDUCE_SELECTION` → `OPEN_MARK_/OPEN_UNMARK_PATTERN_DLG`, `TOGGLE_SELECTION` → `INVERT_MARKS` (mr invertiert
+  alle Zeilen), `NAVIGATE_LEVEL_DOWN` → `NAVIGATE_PARENT`, `ADD_NEW_TAB`/`REMOVE_TAB` → `CLONE_TAB`/`CLOSE_TAB`.
+- **Weggelassen** (✖): Download… (HTTP-Transport der Web-App), Server Shell… (Browser-Shell; das Terminal ist ein
+  Tool), Theme Configuration… (derselbe Dialog wie der Theme-Editor), File Type / Prompt Configuration… (gibt es noch
+  nicht – Folge-Prompt, s. `docs/feature-parity.md`). **Ergänzt:** Find Duplicates… (016) und Shortcuts… (002).
+- Spaltenbreite: `repeat(4, minmax(0, 1fr))` bis 88 rem statt fester 350/350/330/380 px – das Fenster der Desktop-App ist
+  oft schmaler als 1 410 px; Labels werden notfalls gekürzt (…), Badges nie.
+- Tool-Kürzel erscheinen wie Aktions-Kürzel als ein Badge je Schlag (mr zeigte dort jede Taste einzeln – eine Folge
+  seines Leerzeichen-Formats, legacy-mr §11 #1).
+
+## 6. Fortschritt
+
+- [x] Phase 1 Design · [x] Phase 3 Frontend (`shortcut-badge.spec.ts`, `actions-menu.spec.ts`) · [x] Phase 4 E2E
+  (Linux/Xvfb: Menü mit 4 Spalten, Trennern, Badges, gedimmten Einträgen) · [x] Phase 5 Doku
 
