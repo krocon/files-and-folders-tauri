@@ -40,7 +40,8 @@ describe('ActionService', () => {
       RELOAD_DIR: { run: () => Promise.reject({ code: 'io', message: 'boom', path: null }) },
     });
     await actions.run('RELOAD_DIR');
-    expect(actions.messages()).toEqual(['Reload: boom']);
+    // the code's description first, Rust's message as detail (design 015)
+    expect(actions.messages()).toEqual(['Reload: The folder could not be read. (boom)']);
   });
 
   it('loads the override, applies it and saves changes per action', async () => {

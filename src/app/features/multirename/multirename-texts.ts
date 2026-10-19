@@ -1,5 +1,7 @@
+import { translatable } from '../../core/i18n/i18n';
+import { MR_DE } from './multirename-texts.de';
 /** Texts of the multi-rename dialog (central for prompt 015). */
-export const MR_TEXTS = {
+export const MR_EN = {
   title: (n: number) => (n === 1 ? 'Multi rename – 1 entry' : `Multi rename – ${n} entries`),
   pattern: 'New name',
   patternHelp:
@@ -68,4 +70,18 @@ export const MR_TEXTS = {
   withErrors: (n: number) => `Multi rename finished with ${n} error(s) – see Tasks.`,
   undoFailed: (msg: string) => `Undo failed: ${msg}`,
   planFailed: (msg: string) => `The names could not be checked: ${msg}`,
+  rangeBackwards: (body: string) => `[${body}]: the end of the range is before its start`,
+  invalidExpression: (re: string) => `Invalid expression: ${re}`,
+  macroNames: {
+    'Replace characters': 'Replace characters',
+    'Extract words': 'Extract words',
+    'Reorder words': 'Reorder words',
+    'Pseudo delimiters ._- → space': 'Pseudo delimiters ._- → space',
+    'Movies with a year': 'Movies with a year',
+    'first last - title → last, first - title': 'first last - title → last, first - title',
+    'title - first last → last, first - title': 'title - first last → last, first - title',
+    'title - last, first → last, first - title': 'title - last, first → last, first - title',
+  } as Readonly<Record<string, string>>,
 } as const;
+
+export const MR_TEXTS = translatable('multirename', MR_EN, { de: MR_DE });

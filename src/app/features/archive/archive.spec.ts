@@ -11,7 +11,7 @@ import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
-import { FileBrowserStore, IN_ARCHIVE_OPEN } from '../browser/file-browser.store';
+import { FileBrowserStore } from '../browser/file-browser.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { ClipboardApi } from '../../core/os/clipboard';
@@ -25,6 +25,7 @@ import { WorkspaceStore } from '../workspace/workspace.store';
 import { contextMenuFor, nativeEnabled, resolveMenu, toNativeSpec } from '../menus/menu-model';
 import { registerArchiveActions } from './archive-actions';
 import { ArchiveStore } from './archive.store';
+import { ARCHIVE_TEXTS } from './archive-texts';
 
 /** `/data` with an archive, and the root of that archive (virtual paths from "Rust"). */
 const DATA: DirectoryListing = {
@@ -107,7 +108,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     expect(left.path()).toBe('/data/Fotos 📷.zip');
     expect(left.archive()?.format).toBe('zip');
     await left.open(left.entries()[1]);
-    expect(left.error()?.message).toBe(IN_ARCHIVE_OPEN);
+    expect(left.error()?.message).toBe(ARCHIVE_TEXTS.openInside);
     expect(fsApi.opened).toEqual([]);
     actions.register({ OPEN_VIEW_DLG: { run: () => undefined } });
     await left.up();

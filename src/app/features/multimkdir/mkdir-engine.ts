@@ -6,6 +6,7 @@
  * `[P]` `[Q]` `[R]` parent, grandparent, great-grandparent folder name.
  */
 import { checkGroupName } from '../groupfiles/group-engine';
+import { MM_TEXTS } from './multimkdir-texts';
 
 export const MAX_FOLDERS = 1000;
 
@@ -48,17 +49,17 @@ export function folderNames(
 ): MkdirOutcome {
   const { start, end, step, digits } = t;
   if (![start, end, step, digits].every(Number.isInteger) || step <= 0 || digits < 0) {
-    return { names: [], error: 'Start, end, step and digits must be whole numbers, step > 0' };
+    return { names: [], error: MM_TEXTS.errWhole };
   }
   if (end < start) {
-    return { names: [], error: 'The end is smaller than the start' };
+    return { names: [], error: MM_TEXTS.errEnd };
   }
   const count = Math.floor((end - start) / step) + 1;
   if (count > MAX_FOLDERS) {
-    return { names: [], error: `At most ${MAX_FOLDERS} folders at once` };
+    return { names: [], error: MM_TEXTS.errMax(MAX_FOLDERS) };
   }
   if (!/\[C\]|\[L\]/.test(t.template) && count > 1) {
-    return { names: [], error: 'The template needs [C] or [L] for more than one folder' };
+    return { names: [], error: MM_TEXTS.errToken };
   }
   const seen = new Set<string>();
   const names: FolderName[] = [];
@@ -83,9 +84,9 @@ export function folderNames(
       name = name.toLowerCase();
     }
     name = name.normalize('NFC').trim();
-    let error = name === '' ? 'empty name' : checkGroupName(name);
+    let error = name === '' ? MM_TEXTS.errEmpty : checkGroupName(name);
     if (error === null && seen.has(name)) {
-      error = 'twice in the list';
+      error = MM_TEXTS.errTwice;
     }
     seen.add(name);
     names.push({ name, error });

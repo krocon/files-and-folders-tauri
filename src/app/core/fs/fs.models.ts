@@ -80,6 +80,8 @@ export type FsErrorCode =
   /** An archive exceeds the limits (entries, size, ratio – zip bomb). */
   | 'archive_too_large'
   | 'invalid_menu'
+  /** A file to import is no settings export (design 015). */
+  | 'invalid_settings'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

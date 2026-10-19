@@ -1,3 +1,4 @@
+import { ACT_TEXTS } from './actions-texts';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -26,7 +27,7 @@ const COLUMNS: readonly ActionCategory[] = ['navigation', 'selection', 'files', 
 @Component({
   selector: 'app-actions-menu',
   template: `
-    <div class="menu" role="menu" aria-label="Actions">
+    <div class="menu" role="menu" [attr.aria-label]="t.actions">
       @for (col of columns(); track col.category; let c = $index) {
         <div class="column" role="group" [attr.aria-label]="col.label">
           <div class="heading" aria-hidden="true">{{ col.label }}</div>
@@ -56,6 +57,7 @@ const COLUMNS: readonly ActionCategory[] = ['navigation', 'selection', 'files', 
   host: { '(document:pointerdown)': 'onOutside($event)', '(keydown)': 'onKeydown($event)' },
 })
 export class ActionsMenu {
+  protected readonly t = ACT_TEXTS;
   readonly closed = output<'key' | 'outside' | 'chosen'>();
   private readonly actions = inject(ActionService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

@@ -1,3 +1,4 @@
+import { ACT_TEXTS } from './actions-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { ACTION_IDS, ACTIONS, ActionId, CATEGORY_LABELS } from '../../core/actions/action-catalog';
@@ -35,7 +36,7 @@ const TOOLS_CATEGORY = 'Tools';
   selector: 'app-command-palette',
   imports: [Modal],
   template: `
-    <app-modal [heading]="heading()" width="40rem" (closed)="dialogs.close()">
+    <app-modal [heading]="heading() ?? t.goToAnything" width="40rem" (closed)="dialogs.close()">
       <input
         data-autofocus
         class="query"
@@ -45,13 +46,13 @@ const TOOLS_CATEGORY = 'Tools';
         aria-expanded="true"
         [attr.aria-controls]="listId"
         [attr.aria-activedescendant]="rows().length ? optionId(active()) : null"
-        [placeholder]="scope() === 'tools' ? 'Type to search tools…' : 'Type to search actions…'"
+        [placeholder]="scope() === 'tools' ? t.searchTools : t.searchActions"
         spellcheck="false"
         [value]="query()"
         (input)="onInput($event)"
         (keydown)="onKeydown($event)"
       />
-      <ul class="list" role="listbox" [id]="listId" aria-label="Actions">
+      <ul class="list" role="listbox" [id]="listId" [attr.aria-label]="t.actions">
         @for (row of rows(); track row.key; let i = $index) {
           <li
             role="option"
@@ -80,7 +81,7 @@ const TOOLS_CATEGORY = 'Tools';
           </li>
         } @empty {
           <li class="empty" role="option" aria-selected="false" aria-disabled="true">
-            {{ scope() === 'tools' ? 'No matching tool' : 'No matching action' }}
+            {{ scope() === 'tools' ? t.noTool : t.noAction }}
           </li>
         }
       </ul>
@@ -94,7 +95,9 @@ const TOOLS_CATEGORY = 'Tools';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CommandPalette {
-  readonly heading = input('Go to anything');
+  protected readonly t = ACT_TEXTS;
+  /** `null`: the palette's own heading (follows the language). */
+  readonly heading = input<string | null>(null);
   readonly scope = input<'all' | 'tools'>('all');
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);

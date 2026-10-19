@@ -440,6 +440,19 @@ fn entry(v: Value) -> Result<Tool, String> {
     validate(tool)
 }
 
+/// Whether `v` is a usable `tools.json` (shape and version; single tools are checked on load).
+pub fn check_file(v: &Value) -> Result<(), String> {
+    match v {
+        Value::Array(_) => Ok(()),
+        Value::Object(_) => match serde_json::from_value::<FileFormat>(v.clone()) {
+            Ok(f) if f.version == VERSION => Ok(()),
+            Ok(f) => Err(format!("unsupported version {}", f.version)),
+            Err(e) => Err(e.to_string()),
+        },
+        _ => Err("no JSON object".into()),
+    }
+}
+
 /// Merges a file text with the defaults. A broken file gives the defaults and a warning
 /// (the file is left alone – it is the user's, edited by hand). A bare array (an mr
 /// tools file) counts as `tools` without `replaceDefaults`.

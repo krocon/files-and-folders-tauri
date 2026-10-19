@@ -1,4 +1,6 @@
-import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { acceptsValue, SCHEMA } from '../../core/settings/settings.models';
 import { toFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -13,7 +15,9 @@ import {
   SearchStats,
 } from '../../core/search/search.models';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import type { FindForm } from './find-form';
+import { FindForm, restoreForm } from './find-form';
+import { DUP_TEXTS } from '../duplicates/duplicates-texts';
+import { SEARCH_TEXTS } from './search-texts';
 
 /** Hits are shown at most this often while a search runs (`setRows` + sort of up to 100 000 rows). */
 export const PUBLISH_MS = 300;
@@ -75,8 +79,6 @@ export function isSameOrBelow(path: string, ancestor: string): boolean {
   return sep === '' ? path.length > ancestor.length : sep === '/' || sep === '\\';
 }
 
-export const DUPLICATES_LABEL = 'Duplicates';
-
 /** What the result header shows of a duplicate search: only its folders. */
 function rootsOnly(roots: readonly string[]): SearchCriteria {
   return {
@@ -126,8 +128,15 @@ export class SearchStore {
   private readonly fresh = new Set<string>();
 
   readonly results = signal<ReadonlyMap<string, SearchResult>>(new Map());
-  /** Last searches (dialog fields), newest first (session only, design 009 E5). */
-  readonly recent = signal<readonly FindForm[]>([]);
+  private readonly settings = inject(SettingsStore);
+  /** Last searches (dialog fields), newest first – kept in the settings (design 009 E5 / 015). */
+  readonly recent = computed<readonly FindForm[]>(() =>
+    this.settings
+      .get('search.recent')
+      .map(restoreForm)
+      .filter((f): f is FindForm => f !== null)
+      .slice(0, MAX_RECENT_SEARCHES),
+  );
   /** Own templates (session only). */
   readonly templates = signal<readonly SearchTemplate[]>([]);
 
@@ -203,12 +212,12 @@ export class SearchStore {
     if (form) {
       this.remember(form);
     }
-    const label = query.kind === 'search' ? searchLabel(query.criteria) : DUPLICATES_LABEL;
+    const label = query.kind === 'search' ? searchLabel(query.criteria) : DUP_TEXTS.header;
     const roots = query.criteria.roots;
     const tabId = this.ws.openSearchTab(side, { key, label }, roots[0] ?? '', reuseTab);
     if (tabId === null) {
       this.release(key);
-      return { code: 'unknown', message: 'Too many tabs', path: null };
+      return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };
     }
     this.ws.setActive(side);
     this.ws.requestFocus(side);
@@ -269,9 +278,16 @@ export class SearchStore {
 
   private remember(c: FindForm): void {
     const same = JSON.stringify(c);
-    this.recent.update((r) =>
-      [c, ...r.filter((x) => JSON.stringify(x) !== same)].slice(0, MAX_RECENT_SEARCHES),
+    const next = [c, ...this.recent().filter((x) => JSON.stringify(x) !== same)].slice(
+      0,
+      MAX_RECENT_SEARCHES,
     );
+    // over the size limit of the setting the store would drop the whole list (review 015 #7):
+    // the oldest forms go first
+    while (next.length > 1 && !acceptsValue(SCHEMA['search.recent'], next)) {
+      next.pop();
+    }
+    this.settings.set('search.recent', next);
   }
 
   /**
@@ -311,7 +327,7 @@ export class SearchStore {
       kind: query.kind,
       criteria: dup ? rootsOnly(query.criteria.roots) : query.criteria,
       duplicates: dup ? query.criteria : null,
-      label: dup ? DUPLICATES_LABEL : searchLabel(query.criteria),
+      label: dup ? DUP_TEXTS.header : searchLabel(query.criteria),
       hits: [],
       running: true,
       stats: EMPTY_STATS,

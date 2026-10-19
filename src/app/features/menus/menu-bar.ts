@@ -9,6 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { SettingsStore } from '../../core/settings/settings.store';
 import {
   ContextMenu,
   isTypeahead,
@@ -30,7 +31,7 @@ import { MenuService } from './menu.service';
   selector: 'app-menu-bar',
   imports: [ContextMenu],
   template: `
-    @if (menus.mode() === 'html') {
+    @if (menus.mode() === 'html' && visible()) {
       <div
         class="bar"
         role="menubar"
@@ -70,6 +71,7 @@ import { MenuService } from './menu.service';
   `,
   styleUrl: './menu-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(focusout)': 'onFocusOut()' },
 })
 export class MenuBar {
   protected readonly menus = inject(MenuService);
@@ -78,6 +80,10 @@ export class MenuBar {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly texts = MENU_TEXTS;
 
+  private readonly settings = inject(SettingsStore);
+  /** Shown for keyboard use although the settings hide it. */
+  private readonly revealed = signal(false);
+  protected readonly visible = computed(() => this.settings.get('view.menuBar') || this.revealed());
   protected readonly roving = signal(0);
   protected readonly openIndex = signal<number | null>(null);
   private readonly openFocus = signal(true);
@@ -112,7 +118,13 @@ export class MenuBar {
       untracked(() => {
         if (n !== seen) {
           seen = n;
-          this.button(this.roving())?.focus();
+          // hidden by the settings (design 015): shown while it is used
+          if (this.visible()) {
+            this.button(this.roving())?.focus();
+          } else {
+            this.revealed.set(true);
+            setTimeout(() => this.button(this.roving())?.focus());
+          }
         }
       });
     });
@@ -203,6 +215,19 @@ export class MenuBar {
       this.closedAt = Date.now();
       this.lastClosed = i ?? -1;
     }
+  }
+
+  /** A revealed bar hides again once the focus left it and no menu is open. */
+  protected onFocusOut(): void {
+    setTimeout(() => {
+      if (
+        this.revealed() &&
+        this.openIndex() === null &&
+        !this.host.nativeElement.contains(document.activeElement)
+      ) {
+        this.revealed.set(false);
+      }
+    });
   }
 
   private openAt(i: number, focus: boolean): void {

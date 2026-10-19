@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { FoldersApi } from '../../core/folders/folders-api';
-import { describeFsError, toFsError } from '../../core/fs/fs-error';
+import { describeFsError, errorText, toFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
@@ -115,7 +115,7 @@ export class MultiMkdirStore {
       this.jobs.report(MM_TEXTS.created(res.created.length));
       this.close();
     } catch (e) {
-      this.runError.set(toFsError(e).message);
+      this.runError.set(errorText(toFsError(e)));
     } finally {
       this.busy.set(false);
     }

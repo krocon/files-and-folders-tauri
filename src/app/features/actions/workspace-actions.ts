@@ -1,6 +1,7 @@
 import { ActionHandler, ActionService } from '../../core/actions/action.service';
 import { ActionId } from '../../core/actions/action-catalog';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 
 /**
@@ -11,6 +12,7 @@ export function registerWorkspaceActions(
   actions: ActionService,
   ws: WorkspaceStore,
   dialogs: DialogService,
+  settings?: SettingsStore,
 ): () => void {
   const panel = () => ws.panel();
   const list = () => panel()?.controller();
@@ -29,7 +31,8 @@ export function registerWorkspaceActions(
       // Space on a folder also calculates its size (design 002 D3 / 003 E7)
       run: () => {
         const entry = list()?.cursorEntry();
-        if (entry && !panel()?.store.isMarked(entry.path)) {
+        const calc = settings?.get('behavior.spaceCalcSize') ?? true;
+        if (calc && entry && !panel()?.store.isMarked(entry.path)) {
           void panel()?.store.calcDirSize(entry);
         }
         list()?.toggleMarkAndAdvance();

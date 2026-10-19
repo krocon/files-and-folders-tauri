@@ -24,8 +24,8 @@
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
   Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
   (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
-  Packen/Entpacken, Duplikate) und Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
-  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 015 (läuft) und 018.
+  Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit) und Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
+  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 018.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -80,7 +80,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/preview/      Ansicht (ViewerStore + Dialog), Schnellvorschau (QuickViewStore, im Ziel-Panel),
                              Eigenschaften, Provider-Liste (views/: Text per textContent, Bild, Hex, Info), reine
                              Helfer (text-search, hex, permissions)
-  app/core/theme/            Farbschemata: Token-Katalog (tokens.ts), eingebaute Schemata (themes/*.json = styles.scss),
+  app/core/theme/            Farbschemata: Token-Katalog (tokens.ts), eingebaute Schemata (themes/*.json = styles.css),
                              Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi; alte Designs:
                              legacy/*.json (= docs/legacy-themes), legacy-theme-map.ts (76 `--fnf-*` → Tokens),
                              legacy-theme.ts (Umrechnung, alter Export), contrast-fix.ts (minimale WCAG-Korrektur)
@@ -97,6 +97,11 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
   app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
+  app/core/i18n/             Laufzeit-i18n: translatable() (Proxy auf das Sprach-Signal), Translation<T>, localeFor();
+                             Kataloge je Feature `*-texts.ts` (en) + `*-texts.de.ts`, Vollständigkeit: catalogs.spec.ts
+  app/core/settings/         settings-schema.json (gemeinsam mit Rust), SettingsApi, SettingsStore (Root, entprellt),
+                             display.ts (Formate für Renderer)
+  app/features/settings/     Einstellungsdialog (vertikale Tabs, Suche, Export/Import), settings-logic.ts (rein)
   app/core/menu/             MenuApi (set_app_menu, subscribe_menu, close_main_window), DTOs des nativen Menüs
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
@@ -104,7 +109,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
   app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
-                             tool-dialog.scss), preview-grid/ (GuiExpert Table für Vorschauen)
+                             tool-dialog.css), preview-grid/ (GuiExpert Table für Vorschauen)
   assets/                    font-awesome-4.5.0/ (Font Awesome 4.5.0 Fonts + CSS)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
   styles.css                 Design-Tokens, Font-Awesome-Import (@import assets/font-awesome-4.5.0/...)
@@ -115,6 +120,7 @@ src-tauri/                   Rust (Tauri 2)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
+  src/settings.rs            settings.json (Schema, sanitize, .bad, neuere Version), Export/Import-Bündel aller Teile
   src/about.rs               Daten für About (Version aus tauri.conf.json → package.json, Plattform)
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
@@ -183,7 +189,10 @@ prompts/                     Feature-Prompts (s. o.)
   `docs/architecture.md`). Keine Dateiinhalte oder vollständigen Nutzerpfade unnötig loggen.
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
-  „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit SCSS + Tokens.
+  „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.
+- **Texte** nur aus Katalogen (`*-texts.ts` + `*.de.ts`, Englisch = Quelle) – nie beim Laden eines Moduls in
+  Konstanten kopieren (Getter/Funktionen nutzen) und keine Tabellen/Modelle in einem `computed` bauen, das Texte
+  liest. Fehler im UI über `errorText()`/`describeFsError()`, nicht Rusts `message`.
 - **Icons**: In der gesamten UI nutzen wir die **Font Awesome 4.5.0**-Icons (Assets unter `src/assets/font-awesome-4.5.0/`,
   eingebunden in `src/styles.css`). Datei-Icons werden im Dateipanel über den `FileIconService`
   (`app/core/file-icon/file-icon.service.ts`) dynamisch anhand der Dateierweiterung bzw. Kategorie aufgelöst.

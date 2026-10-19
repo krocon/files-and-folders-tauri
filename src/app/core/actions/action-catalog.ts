@@ -1,3 +1,6 @@
+import { translatable } from '../i18n/i18n';
+import { ACTION_LABELS_DE, CATEGORY_LABELS_DE } from './action-catalog.de';
+
 /**
  * All actions of the app with stable ids (design 002 §3.2). Features register
  * handlers for the ids they implement (`ActionService.register`); ids without
@@ -105,12 +108,16 @@ export interface ActionMeta {
   readonly hiddenInMenu?: boolean;
 }
 
-export const CATEGORY_LABELS: Readonly<Record<ActionCategory, string>> = {
-  navigation: 'Navigation & view',
-  selection: 'Selection, panels & tabs',
-  files: 'File operations',
-  config: 'Configuration & tools',
-};
+export const CATEGORY_LABELS = translatable(
+  'actionCategories',
+  {
+    navigation: 'Navigation & view',
+    selection: 'Selection, panels & tabs',
+    files: 'File operations',
+    config: 'Configuration & tools',
+  } as Readonly<Record<ActionCategory, string>>,
+  { de: CATEGORY_LABELS_DE },
+);
 
 const m = (
   label: string,
@@ -119,7 +126,8 @@ const m = (
   hiddenInMenu = false,
 ): ActionMeta => ({ label, category, availableIn, hiddenInMenu });
 
-export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
+/** English source of the catalog; `ACTIONS[id].label` follows the language (design 015). */
+const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   NAVIGATE_OPEN: m('Open', 'navigation', '002', true),
   NAVIGATE_PARENT: m('Parent folder', 'navigation', '002'),
   OPEN_IN_NEW_TAB: m('Open folder in new tab', 'navigation', '002'),
@@ -194,13 +202,35 @@ export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_THEMES_DLG: m('Colour schemes…', 'config', '013'),
   NEXT_THEME: m('Next colour scheme', 'config', '013'),
   THEME_FOLLOW_SYSTEM: m('Colour scheme: follow the system', 'config', '013'),
-  OPEN_BUTTON_CONFIG_DLG: m('Button configuration…', 'config', '015'),
+  OPEN_BUTTON_CONFIG_DLG: m('Button configuration…', 'config', '018'),
   OPEN_TOOL_CONFIG_DLG: m('Tool configuration…', 'config', '011'),
   OPEN_TOOLS_DLG: m('Open with tool…', 'config', '011'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
   OPEN_ABOUT_DLG: m('About…', 'config', '017'),
   QUIT_APP: m('Quit', 'config', '014'),
 };
+
+/** Action labels in English (source of the translations). */
+export const ACTION_LABELS_EN = Object.fromEntries(
+  ACTION_IDS.map((id) => [id, ACTIONS_EN[id].label]),
+) as Readonly<Record<ActionId, string>>;
+
+const LABELS = translatable('actions', ACTION_LABELS_EN, { de: ACTION_LABELS_DE });
+
+export const ACTIONS: Readonly<Record<ActionId, ActionMeta>> = Object.fromEntries(
+  ACTION_IDS.map((id) => {
+    const en = ACTIONS_EN[id];
+    const meta: ActionMeta = {
+      get label() {
+        return LABELS[id];
+      },
+      category: en.category,
+      availableIn: en.availableIn,
+      hiddenInMenu: en.hiddenInMenu,
+    };
+    return [id, meta];
+  }),
+) as Record<ActionId, ActionMeta>;
 
 export function isActionId(id: string): id is ActionId {
   return Object.prototype.hasOwnProperty.call(ACTIONS, id);

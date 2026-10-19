@@ -1,5 +1,7 @@
+import { untracked } from '@angular/core';
 import {
   AreaModelObjectArrayWithColumndefs,
+  ColumnDefIf,
   SelectionModel,
   ShortcutActionIdMapping,
   TableFactory,
@@ -10,6 +12,7 @@ import {
 import { DirEntry } from '../../../core/fs/fs.models';
 import { createFileColumns } from './file-columns';
 import { RenameEditor } from './rename-editor';
+import { TEXTS } from '../../workspace/texts';
 
 export const ROW_HEIGHT = 30;
 export const HEADER_HEIGHT = 30;
@@ -126,6 +129,7 @@ const NO_STATE: FileRowState = { cursorRow: () => -1, isMarked: () => false };
 
 export interface FileTable {
   readonly model: TableModelIf;
+  readonly columnDefs: readonly ColumnDefIf[];
   readonly body: FileBodyModel;
   readonly options: TableOptionsIf;
 }
@@ -144,6 +148,15 @@ export function createFileTable(
   labelledBy: string,
   rowFilter: () => (row: DirEntry) => boolean = () => () => true,
 ): FileTable {
+  // reads translated texts: untracked, so a language switch never re-creates the table
+  // inside a computed (design 015) – titles and texts change in place
+  return untracked(() => createUntracked(labelledBy, rowFilter));
+}
+
+function createUntracked(
+  labelledBy: string,
+  rowFilter: () => (row: DirEntry) => boolean,
+): FileTable {
   const columnDefs = createFileColumns();
   const body = new FileBodyModel([], columnDefs, NO_STATE);
   const options: TableOptionsIf = {
@@ -160,8 +173,10 @@ export function createFileTable(
     externalFilterFunction: (row: DirEntry) => rowFilter()(row),
     getEditRenderer: () => body.renaming?.editor,
     overlayOptions: {
-      noRowsText: 'This folder is empty.',
-      loadingText: 'Loading…',
+      noRowsText: TEXTS.emptyFolder,
+      // TODO(guiexpert): overlay texts are copied at creation – the loading text keeps
+      // the start language (the empty text is drawn by us, see FileList.applyEmptyText)
+      loadingText: TEXTS.loading,
       loadingDelayInMs: 150,
     },
   };
@@ -170,5 +185,5 @@ export function createFileTable(
     columnDefs,
     tableOptions: options,
   });
-  return { model, body, options };
+  return { model, columnDefs, body, options };
 }

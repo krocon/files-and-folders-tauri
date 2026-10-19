@@ -5,6 +5,7 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   input,
   OnDestroy,
   output,
@@ -12,7 +13,14 @@ import {
 } from '@angular/core';
 import { TableComponent } from '@guiexpert/angular-table';
 import { TableApi, TableStateIf } from '@guiexpert/table';
-import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
+import {
+  DirEntry,
+  DirectoryListing,
+  isNavigableDir,
+  isParentRow,
+  parentRow,
+} from '../../../core/fs/fs.models';
+import { ActionService } from '../../../core/actions/action.service';
 import { Side } from '../../../core/session/session.models';
 import { modifiersAfter } from '../../../core/actions/shortcut';
 import {
@@ -28,11 +36,19 @@ import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
 import { createFileTable } from './file-table-model';
+import { TEXTS } from '../../workspace/texts';
+import { SettingsStore } from '../../../core/settings/settings.store';
+import { ROW_HEIGHTS } from '../../../core/settings/settings.models';
+import { DISPLAY } from '../../../core/settings/display';
+import { locale } from '../../../core/i18n/i18n';
 import { inPlaceUpdate } from './row-update';
-import { createTableBridge, removeConflictingShortcuts, TableBridge } from './table-bridge';
+import {
+  createTableBridge,
+  Presentation,
+  removeConflictingShortcuts,
+  TableBridge,
+} from './table-bridge';
 
-/** Empty result tab: own text instead of the table's "This folder is empty." (options are copied once). */
-const NO_HITS = 'No hits (yet).';
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
 /**
@@ -66,6 +82,8 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
 export class FileList implements OnDestroy {
   protected readonly store = inject(FileBrowserStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly settings = inject(SettingsStore);
+  private readonly injector = inject(Injector);
 
   /** Id of the element naming the list (the path display) – `aria-labelledby`. */
   readonly labelledBy = input.required<string>();
@@ -144,6 +162,11 @@ export class FileList implements OnDestroy {
       this.dropRow();
       untracked(() => this.bridge?.repaint());
     });
+    // language, formats, name display and density (design 015): live, no new table
+    effect(() => {
+      const p = this.presentation();
+      untracked(() => this.applyPresentation(p));
+    });
     effect(() => {
       this.store.rowFilter();
       untracked(() => {
@@ -155,14 +178,68 @@ export class FileList implements OnDestroy {
     });
   }
 
+  /** Column titles and row height from language and settings (read reactively). */
+  private presentation(): Presentation {
+    const c = TEXTS.columns;
+    const headers = {
+      name: c.name,
+      ext: c.ext,
+      size: c.size,
+      modifiedMs: c.modified,
+      dir: c.folder,
+      group: c.group,
+    };
+    const rowHeight = ROW_HEIGHTS[this.settings.get('view.density')];
+    // the renderers read these at paint time – a change needs a repaint
+    DISPLAY.sizeFormat();
+    DISPLAY.dateFormat();
+    DISPLAY.folderBrackets();
+    DISPLAY.hideExtension();
+    locale();
+    void TEXTS.emptyFolder;
+    return { headers, rowHeight };
+  }
+
+  private applyPresentation(p: Presentation): void {
+    if (this.bridge) {
+      this.bridge.setPresentation(p);
+      const l = this.shownListing;
+      this.applyEmptyText(!!l && l.parent === null && l.entries.length === 0);
+    }
+  }
+
+  /**
+   * Own "no rows" text in the current language (the table copies its options once –
+   * TODO(guiexpert): no API to change the overlay texts after creation).
+   */
+  private applyEmptyText(empty: boolean): void {
+    this.bridge?.setEmptyText(
+      empty ? (this.store.searchKey() !== null ? TEXTS.noHits : TEXTS.emptyFolder) : null,
+    );
+  }
+
   protected onTableReady(api: TableApi): void {
     const table = this.table();
-    const bridge = createTableBridge(api, table.body);
+    const bridge = createTableBridge(api, table.body, table.columnDefs);
     const controller = new FileListController(bridge, this.store, {
       openInNewTab: (entry) => this.openInNewTab.emit(entry),
+      doubleClick: (entry) => {
+        if (
+          this.settings.get('behavior.doubleClick') !== 'view' ||
+          isNavigableDir(entry) ||
+          isParentRow(entry)
+        ) {
+          return false;
+        }
+        // the click put the cursor on the entry: the viewer opens it
+        void this.injector.get(ActionService).run('OPEN_VIEW_DLG');
+        return true;
+      },
     });
     this.bridge = bridge;
     this.controller = controller;
+    // titles and row height of the current language/settings (the table starts with the defaults)
+    this.applyPresentation(untracked(() => this.presentation()));
 
     removeConflictingShortcuts(api);
     table.body.setRowState({
@@ -452,9 +529,7 @@ export class FileList implements OnDestroy {
         'group',
         this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',
       );
-      this.bridge?.setEmptyText(
-        this.store.searchKey() !== null && rows.length === 0 ? NO_HITS : null,
-      );
+      this.applyEmptyText(rows.length === 0);
     } finally {
       // the table reports state changes debounced (300 ms) – ignore the ones caused by applying
       setTimeout(() => {

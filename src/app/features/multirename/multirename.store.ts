@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
 import { FsError, isNavigableDir } from '../../core/fs/fs.models';
 import { JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -341,11 +341,16 @@ export class MultiRenameStore {
     try {
       await this.api.undo(jobId);
     } catch (e) {
-      this.jobs.report(MR_TEXTS.undoFailed(toFsError(e).message));
+      this.jobs.report(MR_TEXTS.undoFailed(errorText(toFsError(e))));
     }
   }
 
   // ---- presets (design 007 E9) ----
+
+  /** The presets file changed (settings import, design 015): read it on next use. */
+  invalidatePresets(): void {
+    this.presetsLoaded = false;
+  }
 
   private async loadPresets(): Promise<void> {
     if (this.presetsLoaded) {
@@ -368,7 +373,7 @@ export class MultiRenameStore {
     try {
       await this.api.savePresets(presets);
     } catch (e) {
-      this.jobs.report(toFsError(e).message);
+      this.jobs.report(errorText(toFsError(e)));
     }
   }
 

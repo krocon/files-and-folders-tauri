@@ -225,12 +225,13 @@
 <!-- no live region: the table announces folder changes -->
 <footer class="part status" [class.fnf-active-panel]="active()">
   @let s = summary();
-  <span [attr.title]="s.markedSize + ' / ' + s.totalSize + ' bytes'">
+  <span [attr.title]="texts.bytesTitle(s.markedSize, s.totalSize)">
     <b class="sel">{{ formatSize(s.markedSize) }}</b> / {{ formatSize(s.totalSize) }}
   </span>
   <span>
-    in <b class="sel">{{ s.markedFiles }}</b> / {{ s.files }} Files,
-    <b class="sel">{{ s.markedDirs }}</b> / {{ s.dirs }} Folders
+    {{ texts.status.in }} <b class="sel">{{ s.markedFiles }}</b> /
+    {{ texts.status.files(s.files) }}, <b class="sel">{{ s.markedDirs }}</b> /
+    {{ texts.status.folders(s.dirs) }}
   </span>
   @if (store.hiddenMarkedCount(); as n) {
     <span class="warn">· {{ texts.hiddenMarked(n) }}</span>

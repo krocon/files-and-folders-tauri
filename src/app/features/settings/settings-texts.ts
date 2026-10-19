@@ -1,0 +1,359 @@
+import { translatable, Translation } from '../../core/i18n/i18n';
+
+/** Texts of the settings dialog (design 015 E6). */
+export const SETTINGS_EN = {
+  title: 'Settings',
+  search: 'Search settings',
+  searchPlaceholder: 'Search settings…',
+  categories: 'Categories',
+  results: (n: number) => (n === 1 ? '1 setting found' : `${n} settings found`),
+  noResults: 'No setting matches.',
+  resetSection: 'Reset section',
+  resetSectionOf: (name: string) => `Reset section ${name}`,
+  close: 'Close',
+  changed: 'changed',
+  restart: 'Applies at the next start.',
+  newTabs: 'Applies to new tabs.',
+  cat: {
+    general: 'General',
+    view: 'View',
+    behavior: 'Behaviour',
+    keyboard: 'Keyboard',
+    tools: 'Tools',
+    colors: 'Colours',
+    data: 'Data',
+  },
+  items: {
+    'general.language': {
+      label: 'Language',
+      help: 'Language of the user interface; dates and numbers follow it.',
+      keywords: 'locale deutsch english',
+    },
+    'general.startFolder': {
+      label: 'At start',
+      help: 'What both panels show when the app starts.',
+      keywords: 'start folder session tabs home',
+    },
+    'view.sizeFormat': {
+      label: 'File sizes',
+      help: 'Binary (1 KB = 1024 bytes), decimal (1 kB = 1000 bytes) or exact bytes.',
+      keywords: 'size bytes kb mb units',
+    },
+    'view.dateFormat': {
+      label: 'Date format',
+      help: 'As in your language, or year-month-day with time (as in the old version).',
+      keywords: 'date time iso format',
+    },
+    'view.density': {
+      label: 'Row height',
+      help: 'Condensed 24 px, normal 30 px, spacious 34 px (as in the old version).',
+      keywords: 'density compact condensed row height',
+    },
+    'view.folderBrackets': {
+      label: 'Folders in brackets',
+      help: 'Shows folders as [Name] (old version).',
+      keywords: 'folder brackets name',
+    },
+    'view.hideExtension': {
+      label: 'Names without extension',
+      help: 'The extension stays visible in the Ext column.',
+      keywords: 'extension suffix name',
+    },
+    'view.showHidden': {
+      label: 'Show hidden files',
+      help: 'Default for new tabs; the toggle (Ctrl+H / ⌘⇧.) changes the current tab.',
+      keywords: 'hidden dot files',
+    },
+    'view.menuBar': {
+      label: 'Menu bar',
+      help: 'Windows and Linux; without it the menu bar shows up while you use it (Alt+M).',
+      keywords: 'menu bar',
+    },
+    'behavior.deleteToTrash': {
+      label: 'Delete moves to the trash',
+      help: 'Off: Delete (F8) deletes permanently – always with a question.',
+      keywords: 'delete trash recycle bin permanently',
+    },
+    'behavior.confirmTrash': {
+      label: 'Ask before moving to the trash',
+      help: 'Deleting permanently always asks.',
+      keywords: 'confirm question delete trash',
+    },
+    'behavior.doubleClick': {
+      label: 'Double-click on a file',
+      help: 'Folders always open.',
+      keywords: 'double click mouse open view',
+    },
+    'behavior.spaceCalcSize': {
+      label: 'Space calculates folder sizes',
+      help: 'Marking a folder with Space also calculates its size.',
+      keywords: 'space mark folder size',
+    },
+    'watch.pollNetwork': {
+      label: 'Watch network drives by polling',
+      help: 'Network drives send no change events; polling refreshes them every few seconds (more load).',
+      keywords: 'watch refresh network nfs smb polling',
+    },
+    'search.recent': {
+      label: 'Recent searches',
+      help: 'The last 10 searches are kept across restarts.',
+      keywords: 'search find history recent',
+    },
+  },
+  values: {
+    system: 'System',
+    en: 'English',
+    de: 'Deutsch',
+    session: 'Restore the tabs',
+    home: 'Home folder',
+    binary: 'Binary (KB)',
+    decimal: 'Decimal (kB)',
+    bytes: 'Bytes',
+    locale: 'Language format',
+    iso: 'yyyy-mm-dd hh:mm',
+    condensed: 'Condensed',
+    normal: 'Normal',
+    spacious: 'Spacious',
+    open: 'Open with the default app',
+    view: 'View (F3)',
+  } as Readonly<Record<string, string>>,
+  on: 'On',
+  clearRecent: 'Clear',
+  recentCount: (n: number) => (n === 1 ? '1 search remembered' : `${n} searches remembered`),
+  // keyboard
+  keyboardIntro: 'Shortcuts per action; your changes are kept in keymap.json.',
+  editShortcuts: 'Edit shortcuts…',
+  resetShortcuts: 'Reset all shortcuts',
+  overridden: (n: number) => (n === 1 ? '1 action changed' : `${n} actions changed`),
+  conflicts: (n: number) =>
+    n === 0 ? 'No conflicts.' : n === 1 ? '1 conflict:' : `${n} conflicts:`,
+  // tools
+  toolsIntro: 'External tools are configured in tools.json (no shell, argument lists).',
+  editTools: 'Tool configuration…',
+  toolCount: (n: number) => (n === 1 ? '1 tool' : `${n} tools`),
+  // colours
+  colorsIntro: 'Colour schemes: built-in, your own, or following the system.',
+  editColors: 'Colour schemes…',
+  currentScheme: (name: string, system: boolean) =>
+    system ? `${name} (follows the system)` : name,
+  // data
+  dataIntro:
+    'All settings in one file: settings, shortcuts, colour schemes, rename presets, tools.',
+  exportTo: 'Export into folder',
+  export: 'Export',
+  exported: (path: string) => `Exported to ${path}`,
+  importFrom: 'Import file',
+  import: 'Import',
+  importParts: 'Import',
+  parts: {
+    settings: 'Settings',
+    keymap: 'Shortcuts',
+    themes: 'Colour schemes',
+    renamePresets: 'Rename presets',
+    tools: 'Tools',
+  },
+  toolsWarning: 'Tools start programs – import them only from a file you trust.',
+  imported: (parts: string) => `Imported: ${parts}.`,
+  importedNothing: 'Nothing was imported.',
+  skipped: (part: string) => `${part}: missing or invalid in the file – skipped.`,
+  failed: (part: string, path: string) => `${part}: could not be written (${path}).`,
+  resetAll: 'Reset all settings',
+  resetAllConfirm: 'Reset all settings to the defaults? Shortcuts, colour schemes and tools stay.',
+  resetAllTitle: 'Reset settings',
+  resetAllButton: 'Reset',
+  fileHint: 'The active panel’s folder and the file under the cursor are suggested.',
+  // warnings (codes from Rust)
+  warnings: {
+    broken: (path: string | null) =>
+      path
+        ? `The settings file was damaged; the defaults are used. The old file was kept as ${path}.`
+        : 'The settings file was damaged; the defaults are used and changes are not saved in this session.',
+    unreadable: (path: string | null) =>
+      `The settings file could not be read (${path ?? 'settings.json'}); changes are not saved in this session.`,
+    newer_version: () =>
+      'The settings file comes from a newer version; it is used but not overwritten.',
+    invalid_value: (key: string | null) =>
+      `Setting ${key ?? ''} had an invalid value – default used.`,
+    unknown_dropped: (key: string | null) =>
+      `Unknown setting ${key ?? ''} was dropped (too large).`,
+    not_saved: () => 'The settings are not saved in this session.',
+    other: (code: string) => `Settings: ${code}`,
+  },
+  saveFailed: (msg: string) => `The settings could not be saved: ${msg}`,
+};
+
+const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
+  title: 'Einstellungen',
+  search: 'Einstellungen durchsuchen',
+  searchPlaceholder: 'Einstellungen durchsuchen…',
+  categories: 'Bereiche',
+  results: (n) => (n === 1 ? '1 Einstellung gefunden' : `${n} Einstellungen gefunden`),
+  noResults: 'Keine Einstellung passt.',
+  resetSection: 'Bereich zurücksetzen',
+  resetSectionOf: (name) => `Bereich ${name} zurücksetzen`,
+  close: 'Schließen',
+  changed: 'geändert',
+  restart: 'Wirkt beim nächsten Start.',
+  newTabs: 'Gilt für neue Tabs.',
+  cat: {
+    general: 'Allgemein',
+    view: 'Ansicht',
+    behavior: 'Verhalten',
+    keyboard: 'Tastatur',
+    tools: 'Tools',
+    colors: 'Farben',
+    data: 'Daten',
+  },
+  items: {
+    'general.language': {
+      label: 'Sprache',
+      help: 'Sprache der Oberfläche; Datum und Zahlen folgen ihr.',
+      keywords: 'locale deutsch english sprache',
+    },
+    'general.startFolder': {
+      label: 'Beim Start',
+      help: 'Was beide Seiten beim Start der App zeigen.',
+      keywords: 'start ordner sitzung tabs home',
+    },
+    'view.sizeFormat': {
+      label: 'Dateigrößen',
+      help: 'Binär (1 KB = 1024 Bytes), dezimal (1 kB = 1000 Bytes) oder genaue Bytes.',
+      keywords: 'größe bytes kb mb einheiten',
+    },
+    'view.dateFormat': {
+      label: 'Datumsformat',
+      help: 'Wie in Ihrer Sprache oder Jahr-Monat-Tag mit Uhrzeit (wie in der alten Version).',
+      keywords: 'datum uhrzeit iso format',
+    },
+    'view.density': {
+      label: 'Zeilenhöhe',
+      help: 'Kompakt 24 px, normal 30 px, großzügig 34 px (wie in der alten Version).',
+      keywords: 'dichte kompakt zeile höhe',
+    },
+    'view.folderBrackets': {
+      label: 'Ordner in Klammern',
+      help: 'Zeigt Ordner als [Name] (alte Version).',
+      keywords: 'ordner klammern name',
+    },
+    'view.hideExtension': {
+      label: 'Namen ohne Endung',
+      help: 'Die Endung bleibt in der Spalte „Endung“ sichtbar.',
+      keywords: 'endung erweiterung suffix name',
+    },
+    'view.showHidden': {
+      label: 'Versteckte Dateien zeigen',
+      help: 'Vorgabe für neue Tabs; der Schalter (Strg+H / ⌘⇧.) ändert den aktuellen Tab.',
+      keywords: 'versteckt punkt dateien',
+    },
+    'view.menuBar': {
+      label: 'Menüleiste',
+      help: 'Windows und Linux; ohne sie erscheint die Menüleiste, während Sie sie benutzen (Alt+M).',
+      keywords: 'menü leiste',
+    },
+    'behavior.deleteToTrash': {
+      label: 'Löschen verschiebt in den Papierkorb',
+      help: 'Aus: Löschen (F8) löscht endgültig – immer mit Rückfrage.',
+      keywords: 'löschen papierkorb endgültig',
+    },
+    'behavior.confirmTrash': {
+      label: 'Vor dem Papierkorb fragen',
+      help: 'Endgültiges Löschen fragt immer.',
+      keywords: 'bestätigen frage löschen papierkorb',
+    },
+    'behavior.doubleClick': {
+      label: 'Doppelklick auf eine Datei',
+      help: 'Ordner werden immer geöffnet.',
+      keywords: 'doppelklick maus öffnen ansehen',
+    },
+    'behavior.spaceCalcSize': {
+      label: 'Leertaste berechnet Ordnergrößen',
+      help: 'Markieren eines Ordners mit der Leertaste berechnet auch seine Größe.',
+      keywords: 'leertaste markieren ordner größe',
+    },
+    'watch.pollNetwork': {
+      label: 'Netzlaufwerke per Polling überwachen',
+      help: 'Netzlaufwerke melden keine Änderungen; Polling aktualisiert sie alle paar Sekunden (mehr Last).',
+      keywords: 'überwachen aktualisieren netzwerk nfs smb polling',
+    },
+    'search.recent': {
+      label: 'Letzte Suchen',
+      help: 'Die letzten 10 Suchen bleiben über Neustarts erhalten.',
+      keywords: 'suche finden verlauf zuletzt',
+    },
+  },
+  values: {
+    system: 'System',
+    en: 'English',
+    de: 'Deutsch',
+    session: 'Tabs wiederherstellen',
+    home: 'Home-Ordner',
+    binary: 'Binär (KB)',
+    decimal: 'Dezimal (kB)',
+    bytes: 'Bytes',
+    locale: 'Format der Sprache',
+    iso: 'jjjj-mm-tt hh:mm',
+    condensed: 'Kompakt',
+    normal: 'Normal',
+    spacious: 'Großzügig',
+    open: 'Mit der Standard-App öffnen',
+    view: 'Ansehen (F3)',
+  },
+  on: 'An',
+  clearRecent: 'Leeren',
+  recentCount: (n) => (n === 1 ? '1 Suche gemerkt' : `${n} Suchen gemerkt`),
+  keyboardIntro: 'Kürzel je Aktion; Ihre Änderungen stehen in keymap.json.',
+  editShortcuts: 'Kürzel bearbeiten…',
+  resetShortcuts: 'Alle Kürzel zurücksetzen',
+  overridden: (n) => (n === 1 ? '1 Aktion geändert' : `${n} Aktionen geändert`),
+  conflicts: (n) => (n === 0 ? 'Keine Konflikte.' : n === 1 ? '1 Konflikt:' : `${n} Konflikte:`),
+  toolsIntro: 'Externe Tools stehen in tools.json (keine Shell, Argumentlisten).',
+  editTools: 'Tool-Konfiguration…',
+  toolCount: (n) => (n === 1 ? '1 Tool' : `${n} Tools`),
+  colorsIntro: 'Farbschemata: eingebaut, eigene oder dem System folgend.',
+  editColors: 'Farbschemata…',
+  currentScheme: (name, system) => (system ? `${name} (folgt dem System)` : name),
+  dataIntro:
+    'Alle Einstellungen in einer Datei: Einstellungen, Kürzel, Farbschemata, Rename-Vorlagen, Tools.',
+  exportTo: 'Export in den Ordner',
+  export: 'Exportieren',
+  exported: (path) => `Exportiert nach ${path}`,
+  importFrom: 'Datei importieren',
+  import: 'Importieren',
+  importParts: 'Importieren',
+  parts: {
+    settings: 'Einstellungen',
+    keymap: 'Kürzel',
+    themes: 'Farbschemata',
+    renamePresets: 'Rename-Vorlagen',
+    tools: 'Tools',
+  },
+  toolsWarning: 'Tools starten Programme – nur aus einer Datei importieren, der Sie vertrauen.',
+  imported: (parts) => `Importiert: ${parts}.`,
+  importedNothing: 'Es wurde nichts importiert.',
+  skipped: (part) => `${part}: fehlt in der Datei oder ist ungültig – übersprungen.`,
+  failed: (part, path) => `${part}: konnte nicht geschrieben werden (${path}).`,
+  resetAll: 'Alle Einstellungen zurücksetzen',
+  resetAllConfirm:
+    'Alle Einstellungen auf die Vorgaben zurücksetzen? Kürzel, Farbschemata und Tools bleiben.',
+  resetAllTitle: 'Einstellungen zurücksetzen',
+  resetAllButton: 'Zurücksetzen',
+  fileHint: 'Vorgeschlagen werden der Ordner der aktiven Seite und die Datei unter dem Cursor.',
+  warnings: {
+    broken: (path) =>
+      path
+        ? `Die Einstellungsdatei war beschädigt; es gelten die Vorgaben. Die alte Datei liegt jetzt unter ${path}.`
+        : 'Die Einstellungsdatei war beschädigt; es gelten die Vorgaben, und Änderungen werden in dieser Sitzung nicht gespeichert.',
+    unreadable: (path) =>
+      `Die Einstellungsdatei konnte nicht gelesen werden (${path ?? 'settings.json'}); Änderungen werden in dieser Sitzung nicht gespeichert.`,
+    newer_version: () =>
+      'Die Einstellungsdatei stammt von einer neueren Version; sie wird benutzt, aber nicht überschrieben.',
+    invalid_value: (key) =>
+      `Einstellung ${key ?? ''} hatte einen ungültigen Wert – Vorgabe benutzt.`,
+    unknown_dropped: (key) => `Unbekannte Einstellung ${key ?? ''} wurde verworfen (zu groß).`,
+    not_saved: () => 'Die Einstellungen werden in dieser Sitzung nicht gespeichert.',
+    other: (code) => `Einstellungen: ${code}`,
+  },
+  saveFailed: (msg) => `Die Einstellungen konnten nicht gespeichert werden: ${msg}`,
+};
+
+export const SETTINGS_TEXTS = translatable('settings', SETTINGS_EN, { de: SETTINGS_DE });

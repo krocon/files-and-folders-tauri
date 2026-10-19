@@ -1,3 +1,4 @@
+import { ACT_TEXTS } from './actions-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { ACTION_IDS, ACTIONS, ActionId, CATEGORY_LABELS } from '../../core/actions/action-catalog';
@@ -15,13 +16,13 @@ import { fuzzyMatch } from './fuzzy';
   selector: 'app-shortcut-dialog',
   imports: [Modal],
   template: `
-    <app-modal heading="Keyboard shortcuts" width="48rem" (closed)="dialogs.close()">
+    <app-modal [heading]="t.shortcutsTitle" width="48rem" (closed)="dialogs.close()">
       <input
         data-autofocus
         class="search"
         type="search"
-        aria-label="Search actions"
-        placeholder="Search…"
+        [attr.aria-label]="t.searchActionsLabel"
+        [placeholder]="t.searchPlaceholder"
         [value]="query()"
         (input)="query.set($any($event.target).value)"
       />
@@ -29,9 +30,11 @@ import { fuzzyMatch } from './fuzzy';
         <table>
           <thead>
             <tr>
-              <th scope="col">Action</th>
-              <th scope="col">Shortcuts</th>
-              <th scope="col"><span class="sr-only">Change</span></th>
+              <th scope="col">{{ t.colAction }}</th>
+              <th scope="col">{{ t.colShortcuts }}</th>
+              <th scope="col">
+                <span class="sr-only">{{ t.colChange }}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -43,7 +46,7 @@ import { fuzzyMatch } from './fuzzy';
                 </th>
                 <td>
                   @if (recording() === row.id) {
-                    <em aria-live="assertive">Press the new shortcut… (Esc cancels)</em>
+                    <em aria-live="assertive">{{ t.pressShortcut }}</em>
                   } @else {
                     @for (s of row.shortcuts; track s) {
                       <kbd>{{ s }}</kbd>
@@ -51,7 +54,7 @@ import { fuzzyMatch } from './fuzzy';
                       <span class="none">–</span>
                     }
                     @if (row.overridden) {
-                      <span class="changed">changed</span>
+                      <span class="changed">{{ t.changed }}</span>
                     }
                   }
                 </td>
@@ -59,28 +62,28 @@ import { fuzzyMatch } from './fuzzy';
                   <button
                     type="button"
                     class="btn"
-                    [attr.aria-label]="'Record shortcut for ' + row.label"
+                    [attr.aria-label]="t.recordFor(row.label)"
                     (click)="record(row.id)"
                   >
-                    Record
+                    {{ t.record }}
                   </button>
                   <button
                     type="button"
                     class="btn"
-                    [attr.aria-label]="'Remove shortcuts of ' + row.label"
+                    [attr.aria-label]="t.removeFor(row.label)"
                     [disabled]="row.shortcuts.length === 0"
                     (click)="clear(row.id)"
                   >
-                    Remove
+                    {{ t.remove }}
                   </button>
                   <button
                     type="button"
                     class="btn"
-                    [attr.aria-label]="'Reset ' + row.label"
+                    [attr.aria-label]="t.resetFor(row.label)"
                     [disabled]="!row.overridden"
                     (click)="reset(row.id)"
                   >
-                    Reset
+                    {{ t.reset }}
                   </button>
                 </td>
               </tr>
@@ -96,7 +99,7 @@ import { fuzzyMatch } from './fuzzy';
         </ul>
       }
       <div class="buttons">
-        <button type="button" class="btn" (click)="dialogs.close()">Close</button>
+        <button type="button" class="btn" (click)="dialogs.close()">{{ t.close }}</button>
       </div>
     </app-modal>
   `,
@@ -105,6 +108,7 @@ import { fuzzyMatch } from './fuzzy';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShortcutDialog {
+  protected readonly t = ACT_TEXTS;
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
   protected readonly query = signal('');
@@ -125,9 +129,7 @@ export class ShortcutDialog {
     }));
   });
 
-  protected readonly conflicts = computed(() =>
-    this.actions.keymap().problems.filter((p) => p.startsWith('Shortcut ')),
-  );
+  protected readonly conflicts = computed(() => this.actions.keymap().conflicts);
 
   protected record(id: ActionId): void {
     this.recording.set(id);

@@ -1,14 +1,18 @@
+import { formatCount } from '../../shared/format';
+import { translatable } from '../../core/i18n/i18n';
+import { SEARCH_DE } from './search-texts.de';
+
 /** Texts of the search (design 009), in one place for prompt 015 (i18n). */
-export const SEARCH_TEXTS = {
+export const SEARCH_EN = {
   header: (label: string) => `Search: "${label}"`,
   headerTitle: 'Double-click: change the search',
   inRoots: (roots: readonly string[]) =>
     roots.length === 1 ? `in ${roots[0]}` : `in ${roots.length} folders`,
-  hits: (n: number) => (n === 1 ? '1 hit' : `${n.toLocaleString()} hits`),
+  hits: (n: number) => (n === 1 ? '1 hit' : `${formatCount(n)} hits`),
   searching: 'Searching…',
   scanned: (dirs: number, ms: number) =>
-    `${dirs.toLocaleString()} folders · ${(ms / 1000).toFixed(1)} s`,
-  truncated: (n: number) => `stopped at ${n.toLocaleString()} hits`,
+    `${formatCount(dirs)} folders · ${(ms / 1000).toFixed(1)} s`,
+  truncated: (n: number) => `stopped at ${formatCount(n)} hits`,
   unreadable: (n: number) => (n === 1 ? '1 folder unreadable' : `${n} folders unreadable`),
   cancelled: 'stopped',
   stop: 'Stop',
@@ -60,8 +64,9 @@ export const SEARCH_TEXTS = {
   find: 'Find',
   cancel: 'Cancel',
   noFolder: 'There is no folder to search in.',
+  tooManyTabs: 'Too many tabs are open – close some first.',
   invalidNumber: 'Please enter a number.',
-  tooLarge: (max: number) => `At most ${max.toLocaleString()}.`,
+  tooLarge: (max: number) => `At most ${formatCount(max)}.`,
   noKind: 'Choose at least one kind.',
   // folder finder
   finderTitle: (root: string) => `Find folder – ${root}`,
@@ -71,7 +76,10 @@ export const SEARCH_TEXTS = {
   open: 'Open',
   finderCount: (shown: number, all: number) =>
     shown === all
-      ? `${all.toLocaleString()} folders`
-      : `${shown.toLocaleString()} of ${all.toLocaleString()} folders`,
+      ? `${formatCount(all)} folders`
+      : `${formatCount(shown)} of ${formatCount(all)} folders`,
   depthAll: '∞',
+  own: 'Own',
 };
+
+export const SEARCH_TEXTS = translatable('search', SEARCH_EN, { de: SEARCH_DE });

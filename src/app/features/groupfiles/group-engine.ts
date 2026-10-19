@@ -1,3 +1,4 @@
+import { GF_TEXTS } from './groupfiles-texts';
 /**
  * Group files (design 008 E1): which sub-folder an entry goes to. Pure, no
  * Angular. The rules follow the old program (legacy §3.2) with Unicode words
@@ -119,16 +120,16 @@ export function groupOf(rawName: string, o: GroupOptions): string | null {
 /** Why `name` cannot be a folder name on every platform, or `null`. */
 export function checkGroupName(name: string): string | null {
   if (name === '.' || name === '..') {
-    return 'not a valid folder name';
+    return GF_TEXTS.nameInvalid;
   }
   if (INVALID_CHARS.test(name)) {
-    return 'contains / \\ : * ? " < > | or control characters';
+    return GF_TEXTS.nameChars;
   }
   if (/[. ]$/.test(name)) {
-    return 'ends with a dot or space';
+    return GF_TEXTS.nameEnd;
   }
   if (new TextEncoder().encode(name).length > 255) {
-    return 'too long';
+    return GF_TEXTS.nameLong;
   }
   return null;
 }

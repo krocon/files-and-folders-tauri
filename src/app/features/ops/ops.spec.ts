@@ -17,6 +17,7 @@ import { FakeTableBridge } from '../../../testing/fake-table-bridge';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { registerOpsActions } from './ops-actions';
 import { CopyMoveInput, OpsStore } from './ops.store';
+import { SettingsStore } from '../../core/settings/settings.store';
 
 const SUMMARY: Summary = {
   itemsDone: 1,
@@ -197,6 +198,26 @@ describe('file operations (design 006)', () => {
     expect(left.cursorPath()).toBe('/src/b.txt');
   });
 
+  it('settings: trash switched off makes F8 permanent (design 015)', async () => {
+    TestBed.inject(SettingsStore).set('behavior.deleteToTrash', false);
+    left.setCursor('/src/a.txt');
+    await actions.run('OPEN_DELETE_DLG');
+    expect(dialogs.open()).toBe('delete');
+    expect(ops.del()!.mode).toBe('permanent');
+  });
+
+  it('settings: without confirmation F8 trashes at once – never for dangerous entries', async () => {
+    TestBed.inject(SettingsStore).set('behavior.confirmTrash', false);
+    left.setCursor('/src/a.txt');
+    await actions.run('OPEN_DELETE_DLG');
+    expect(dialogs.open()).toBeNull();
+    expect(jobsApi.started[0].spec).toMatchObject({ kind: 'delete', mode: 'trash' });
+    fs.dangers = { '/src/b.txt': 'home' };
+    left.setCursor('/src/b.txt');
+    await actions.run('OPEN_DELETE_DLG');
+    expect(dialogs.open()).toBe('delete');
+  });
+
   it('Shift+F8: permanent; failed entries stay marked and are reported', async () => {
     left.setMarked(['/src/a.txt', '/src/b.txt'], true);
     await actions.run('DELETE_PERMANENT');
@@ -324,6 +345,6 @@ describe('file operations (design 006)', () => {
     await ops.runCopyMove(ops.copyMove()!, INPUT);
     finish(0, 'failed', { error: { code: 'disk_full', message: 'voll', path: null } });
     await flush();
-    expect(jobs.messages().at(-1)).toContain('failed: voll');
+    expect(jobs.messages().at(-1)).toContain('failed: The disk is full. (voll)');
   });
 });

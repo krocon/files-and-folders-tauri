@@ -1,5 +1,9 @@
-/** Texts of the duplicate search (design 016 E6), in one place for prompt 015 (i18n). */
-export const DUP_TEXTS = {
+import { translatable } from '../../core/i18n/i18n';
+import { formatCount } from '../../shared/format';
+import { DUP_DE } from './duplicates-texts.de';
+
+/** Texts of the duplicate search (design 016 E6); German in `duplicates-texts.de.ts` (015). */
+export const DUP_EN = {
   title: 'Find duplicates',
   searchIn: 'Search in',
   markedFolders: (n: number) => (n === 1 ? '1 marked folder' : `${n} marked folders`),
@@ -15,13 +19,13 @@ export const DUP_TEXTS = {
   find: 'Find',
   cancel: 'Cancel',
   invalidNumber: 'Please enter a number.',
-  tooLarge: (max: number) => `At most ${max.toLocaleString()}.`,
+  tooLarge: (max: number) => `At most ${formatCount(max)}.`,
   noFolder: 'There is no folder to search in.',
   // result tab
   header: 'Duplicates',
   summary: (groups: number, files: number, redundant: string) =>
-    `${groups.toLocaleString()} ${groups === 1 ? 'group' : 'groups'}, ${files.toLocaleString()} files, ${redundant} redundant`,
-  scanning: (files: number) => `scanning… ${files.toLocaleString()} files`,
+    `${formatCount(groups)} ${groups === 1 ? 'group' : 'groups'}, ${formatCount(files)} files, ${redundant} redundant`,
+  scanning: (files: number) => `scanning… ${formatCount(files)} files`,
   hashing: (done: string, total: string) => `comparing contents… ${done} of ${total}`,
   keep: 'Keep:',
   keepNewest: 'newest',
@@ -37,3 +41,5 @@ export const DUP_TEXTS = {
       ? 'Every file of 1 group of duplicates is marked – no copy of it would remain.'
       : `Every file of ${n} groups of duplicates is marked – no copy of them would remain.`,
 };
+
+export const DUP_TEXTS = translatable('duplicates', DUP_EN, { de: DUP_DE });

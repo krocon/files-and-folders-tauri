@@ -1,8 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { toFsError } from '../fs/fs-error';
+import { errorText, toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
 import { SearchHit, SearchStats } from '../search/search.models';
 import { Decision, EMPTY_PROGRESS, isFinished, JobEvent, JobInfo, JobSpec } from './jobs.models';
+import { ACTION_TEXTS } from '../actions/action-texts';
 
 /** Hits of a job without a listener are kept this long after its end (then dropped). */
 export const HIT_BUFFER_GRACE_MS = 5_000;
@@ -103,7 +104,7 @@ export class JobsStore {
       const jobs = await this.api.subscribe((e) => this.apply(e));
       this.jobs.set(jobs);
     } catch (err) {
-      this.report(`Jobs are not available: ${toFsError(err).message}`);
+      this.report(ACTION_TEXTS.jobsUnavailable(errorText(toFsError(err))));
     }
     // events that arrived while subscribing are newer than the snapshot
     const pending = this.buffer ?? [];

@@ -1,3 +1,6 @@
+import { computed } from '@angular/core';
+import { afterEach } from 'vitest';
+import { setLanguage } from '../../../core/i18n/i18n';
 import { SelectionModel } from '@guiexpert/table';
 import { dir, entry } from '../../../../testing/fs-fixtures';
 import { createFileTable, FILE_LIST_SHORTCUTS, ROW_HEIGHT } from './file-table-model';
@@ -54,5 +57,16 @@ describe('FileBodyModel.replaceRows (review 012 #5)', () => {
     });
     expect(body.getFilteredRows()[0]).toBe(a2);
     expect(body.getRowByIndex(0)).toBe(a2);
+  });
+});
+
+describe('createFileTable and the language (design 015)', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('reads no signal: a language switch must not re-create the table (titles change in place)', () => {
+    const table = computed(() => createFileTable('label'));
+    const first = table();
+    setLanguage('de');
+    expect(table()).toBe(first);
   });
 });

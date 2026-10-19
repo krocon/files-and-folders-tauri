@@ -214,9 +214,11 @@
             >
               <option value="">{{ t.macros }}…</option>
               @for (cat of categories; track cat) {
-                <optgroup [label]="cat">
+                <optgroup [label]="t.macroNames[cat] ?? cat">
                   @for (m of macrosOf(cat); track m.index) {
-                    <option [value]="'' + m.index" [title]="m.example">{{ m.title }}</option>
+                    <option [value]="'' + m.index" [title]="m.example">
+                      {{ t.macroNames[m.title] ?? m.title }}
+                    </option>
                   }
                 </optgroup>
               }

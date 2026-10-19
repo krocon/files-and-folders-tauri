@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { toFsError } from '../fs/fs-error';
+import { errorText, toFsError } from '../fs/fs-error';
 import { ACTIONS, ActionId, isActionId } from './action-catalog';
+import { ACTION_TEXTS } from './action-texts';
 import { KeymapApi } from './keymap-api';
 import { DEFAULT_KEYMAPS, RawBindings, resolveKeymap } from './keymap';
 import { detectPlatform, Platform } from './platform';
@@ -61,11 +62,11 @@ export class ActionService {
       }
       const canon = canonicalShortcut(x.shortcut, platform);
       if (!canon) {
-        problems.push(`${x.label}: the shortcut "${x.shortcut}" is not valid.`);
+        problems.push(ACTION_TEXTS.extraInvalid(x.label, x.shortcut));
       } else if (taken.has(canon) || lookup.has(canon)) {
         const other = taken.get(canon);
         const owner = other ? ACTIONS[other].label : lookup.get(canon)!.label;
-        problems.push(`${x.label}: the shortcut ${x.shortcut} is taken by "${owner}".`);
+        problems.push(ACTION_TEXTS.extraTaken(x.label, x.shortcut, owner));
       } else {
         lookup.set(canon, x);
         labels.set(x.id, formatShortcut(canon, platform));
@@ -130,7 +131,7 @@ export class ActionService {
       await x.run();
       return true;
     } catch (err) {
-      this.report(`${x.label}: ${toFsError(err).message}`);
+      this.report(ACTION_TEXTS.failed(x.label, errorText(toFsError(err))));
       return false;
     }
   }
@@ -144,7 +145,7 @@ export class ActionService {
         this.report(loaded.warning);
       }
     } catch (err) {
-      this.report(`The keyboard shortcuts could not be loaded: ${toFsError(err).message}`);
+      this.report(ACTION_TEXTS.loadFailed(errorText(toFsError(err))));
     }
     for (const p of this.keymap().problems) {
       this.report(p);
@@ -185,7 +186,7 @@ export class ActionService {
     const h = this.handlers.get(id);
     if (!h) {
       this.report(
-        `${ACTIONS[id].label.replace(/…$/, '')} – coming in prompt ${ACTIONS[id].availableIn}.`,
+        ACTION_TEXTS.comingIn(ACTIONS[id].label.replace(/…$/, ''), ACTIONS[id].availableIn),
       );
       return false;
     }
@@ -201,7 +202,7 @@ export class ActionService {
       await h.run();
       return true;
     } catch (err) {
-      this.report(`${ACTIONS[id].label}: ${toFsError(err).message}`);
+      this.report(ACTION_TEXTS.failed(ACTIONS[id].label, errorText(toFsError(err))));
       return false;
     }
   }
@@ -264,7 +265,17 @@ export class ActionService {
     try {
       await this.api.save(next);
     } catch (err) {
-      this.report(`The keyboard shortcuts could not be saved: ${toFsError(err).message}`);
+      this.report(ACTION_TEXTS.saveFailed(errorText(toFsError(err))));
+    }
+  }
+
+  /** All shortcuts back to the defaults of this OS (design 015). */
+  async resetAllOverrides(): Promise<void> {
+    this.override.set({});
+    try {
+      await this.api.save({});
+    } catch (err) {
+      this.report(ACTION_TEXTS.saveFailed(errorText(toFsError(err))));
     }
   }
 

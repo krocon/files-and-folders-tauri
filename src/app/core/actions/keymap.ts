@@ -1,3 +1,4 @@
+import { ACTION_TEXTS } from './action-texts';
 import { ActionId, isActionId } from './action-catalog';
 import macos from './keymaps/macos.json';
 import windows from './keymaps/windows.json';
@@ -42,6 +43,8 @@ export interface ResolvedKeymap {
   readonly lookup: ReadonlyMap<string, ActionId>;
   /** Problems found while merging (shown as notices). */
   readonly problems: readonly string[];
+  /** The conflicts among them (one shortcut for two actions, chord prefixes). */
+  readonly conflicts: readonly string[];
 }
 
 /**
@@ -56,6 +59,7 @@ export function resolveKeymap(
   defaults: RawBindings = DEFAULT_KEYMAPS[platform],
 ): ResolvedKeymap {
   const problems: string[] = [];
+  const conflicts: string[] = [];
   const blocked = new Set(
     [...TABLE_NAVIGATION_KEYS, ...(platform === 'macos' ? RESERVED_MACOS : [])].map(
       (s) => canonicalShortcut(s, platform) ?? s,
@@ -66,9 +70,9 @@ export function resolveKeymap(
     for (const raw of list) {
       const c = canonicalShortcut(raw, platform);
       if (c === null) {
-        problems.push(`${source}: "${raw}" for ${id} is not a valid shortcut.`);
+        problems.push(ACTION_TEXTS.invalidShortcut(source, raw, id));
       } else if (blocked.has(c)) {
-        problems.push(`${source}: "${raw}" for ${id} is reserved and was ignored.`);
+        problems.push(ACTION_TEXTS.reservedShortcut(source, raw, id));
       } else if (!out.includes(c)) {
         out.push(c);
       }
@@ -79,18 +83,18 @@ export function resolveKeymap(
   const merged = new Map<ActionId, string[]>();
   for (const [id, list] of Object.entries(defaults)) {
     if (isActionId(id)) {
-      merged.set(id, normalise('Default keymap', id, list));
+      merged.set(id, normalise(ACTION_TEXTS.defaultKeymap, id, list));
     } else {
-      problems.push(`Default keymap: unknown action ${id}.`);
+      problems.push(ACTION_TEXTS.unknownDefault(id));
     }
   }
   const overridden = new Set<ActionId>();
   for (const [id, list] of Object.entries(override)) {
     if (!isActionId(id)) {
-      problems.push(`Shortcut file: unknown action ${id} was ignored.`);
+      problems.push(ACTION_TEXTS.unknownOverride(id));
       continue;
     }
-    merged.set(id, normalise('Shortcut file', id, Array.isArray(list) ? list : []));
+    merged.set(id, normalise(ACTION_TEXTS.shortcutFile, id, Array.isArray(list) ? list : []));
     overridden.add(id);
   }
 
@@ -104,7 +108,7 @@ export function resolveKeymap(
     for (const s of merged.get(id) ?? []) {
       const owner = lookup.get(s);
       if (owner && owner !== id) {
-        problems.push(`Shortcut ${s} is used by ${owner} and ${id}; ${owner} keeps it.`);
+        conflicts.push(ACTION_TEXTS.conflict(s, owner, id));
       } else {
         lookup.set(s, id);
         kept.push(s);
@@ -116,8 +120,9 @@ export function resolveKeymap(
   for (const s of [...lookup.keys()]) {
     const first = s.split(' ')[0];
     if (s.includes(' ') && lookup.has(first)) {
-      problems.push(`Shortcut ${first} blocks the chord ${s}.`);
+      conflicts.push(ACTION_TEXTS.chordBlocked(first, s));
     }
   }
-  return { bindings: Object.fromEntries(merged) as Bindings, lookup, problems };
+  problems.push(...conflicts);
+  return { bindings: Object.fromEntries(merged) as Bindings, lookup, problems, conflicts };
 }

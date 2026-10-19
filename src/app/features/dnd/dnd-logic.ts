@@ -1,5 +1,7 @@
 import { DirEntry, DirectoryListing, isNavigableDir, isParentRow } from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
+import { translatable } from '../../core/i18n/i18n';
+import { DND_DE } from './dnd-texts.de';
 
 /** Copy or move – a link (design 012 E5) needs a job kind that does not exist yet. */
 export type DragKind = 'copy' | 'move';
@@ -123,15 +125,17 @@ export function resolveDropTarget(hit: ZoneHit | null, origin: DragOrigin): Drop
   return { side: hit.side, dir: hit.panelDir, rowPath: null, name: hit.panelName };
 }
 
-export const DND_TEXTS = {
+export const DND_EN = {
   copy: 'Copy',
   move: 'Move',
   what: (count: number, first: string) => (count === 1 ? first : `${count} entries`),
   label: (kind: DragKind, count: number, first: string, target: DropTarget | null) =>
-    `${kind === 'copy' ? 'Copy' : 'Move'} ${DND_TEXTS.what(count, first)}` +
+    `${kind === 'copy' ? 'Copy' : 'Move'} ${count === 1 ? first : `${count} entries`}` +
     (target ? ` → ${target.name}` : ' – no target here'),
   hint: (isMac: boolean) => (isMac ? '⌘: move · Esc: cancel' : 'Shift: move · Esc: cancel'),
   dropFromSystem: (count: number) => `Copy ${count === 1 ? '1 item' : `${count} items`} here`,
   nothingDropped: 'The dropped items do not exist (any more).',
   missingDropped: (n: number) => `${n} dropped item(s) do not exist and were left out.`,
 };
+
+export const DND_TEXTS = translatable('dnd', DND_EN, { de: DND_DE });

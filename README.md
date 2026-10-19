@@ -1,7 +1,7 @@
 # Files and Folders (Tauri)
 
 Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung Total Commander –
-gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SCSS** und einem
+gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CSS** und einem
 **Rust**-Backend.
 
 > **Status: Prompt 006 (Basisoperationen) auf Basis von 001–005.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
@@ -143,6 +143,13 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **SC
   Designs bestehen WCAG AA; wo die alten Farben das nicht schafften, sind sie minimal angepasst
   ([Kontrastbericht](docs/legacy-themes-contrast.md)).
   Gespeichert in `themes.json` im App-Config-Verzeichnis.
+- **Einstellungen** (`Strg+,` / `⌘,`, Prompt 015): Dialog mit Suche über alle Bereiche; jede Änderung wirkt sofort
+  (oder sagt „wirkt beim nächsten Start“). Ansicht (Größen binär/dezimal/Bytes, Datum in Sprache oder ISO,
+  Zeilenhöhe, `[Ordner]`, Namen ohne Endung, Menüleiste), Verhalten (Papierkorb, Bestätigung, Doppelklick,
+  Leertaste, Start-Ordner), Tastatur (Konflikte, Kürzel bearbeiten/zurücksetzen), Tools, Farben, Daten (alles als
+  eine Datei exportieren/importieren). Gespeichert in `settings.json`; kaputte Datei → Defaults + Warnung (`.bad`).
+- **Deutsch und Englisch**: Oberfläche, Menüs, Fehlertexte, Datums- und Zahlenformat; Umschalten ohne Neustart
+  (Vorgabe: Systemsprache).
 
 ### Tastenkürzel (Stand Prompt 002)
 
@@ -169,7 +176,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
 | Context menu | `Shift+F10`, Kontextmenü-Taste | `⇧F10` |
 | Menu bar | `Alt+M` | – (nativ) |
-| Settings… (ab 015) | `Ctrl+,` | `⌘,` |
+| Einstellungen… | `Ctrl+,` | `⌘,` |
 | Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Toggle shell | `Shift+F11` | `⇧F11` |
@@ -308,7 +315,7 @@ src/                       Angular-Frontend
   app/features/browser/    FileBrowserStore (Signals), FileBrowser
     file-list/             FileList (GuiExpert Table), Controller, Bridge, Spalten, Renderer
   app/shared/              Formatierung (Größe, Datum)
-  styles.scss              Design-Tokens (CSS Custom Properties)
+  styles.css               Design-Tokens (CSS Custom Properties)
 src-tauri/                 Rust-Backend (Tauri 2)
   src/commands.rs          Tauri-Commands (dünne Schicht)
   src/listing.rs           Verzeichnis-Listing (rein std, getestet)

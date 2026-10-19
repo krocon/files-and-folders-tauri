@@ -85,7 +85,7 @@ const ERR = 'fnf-find-error';
                   }
                 </optgroup>
                 @if (search.templates().length > 0) {
-                  <optgroup label="Own">
+                  <optgroup [label]="t.own">
                     @for (p of search.templates(); track p.label; let i = $index) {
                       <option [value]="'t' + i">{{ p.label }}</option>
                     }

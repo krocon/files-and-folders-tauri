@@ -1,3 +1,4 @@
+import { ACT_TEXTS } from './actions-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
@@ -12,13 +13,10 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
   selector: 'app-mark-pattern-dialog',
   imports: [Modal],
   template: `
-    <app-modal
-      [heading]="mark() ? 'Mark by pattern' : 'Unmark by pattern'"
-      (closed)="dialogs.close()"
-    >
+    <app-modal [heading]="mark() ? t.markTitle : t.unmarkTitle" (closed)="dialogs.close()">
       <form class="form" (submit)="apply($event)">
         <label class="field">
-          <span>Pattern</span>
+          <span>{{ t.pattern }}</span>
           <input
             data-autofocus
             type="text"
@@ -30,7 +28,7 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
           />
         </label>
         <fieldset class="modes">
-          <legend>Syntax</legend>
+          <legend>{{ t.syntax }}</legend>
           <label
             ><input
               type="radio"
@@ -39,7 +37,7 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
               [checked]="mode() === 'glob'"
               (change)="mode.set('glob')"
             />
-            Wildcards</label
+            {{ t.wildcards }}</label
           >
           <label
             ><input
@@ -49,34 +47,30 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
               [checked]="mode() === 'regex'"
               (change)="mode.set('regex')"
             />
-            Regular expression</label
+            {{ t.regex }}</label
           >
         </fieldset>
         <p id="fnf-pattern-help" class="help">
-          @if (mode() === 'glob') {
-            Terms separated by spaces, <code>*</code> and <code>?</code> as wildcards,
-            <code>a|b</code> either, <code>-term</code> excludes. Without wildcard a term matches
-            anywhere in the name.
-          } @else {
-            JavaScript regular expression, not case-sensitive, e.g. <code>\\.(jpe?g|png)$</code>.
-          }
+          {{ mode() === 'glob' ? t.helpGlob : t.helpRegex }}
         </p>
-        <div class="presets" role="group" aria-label="Presets">
+        <div class="presets" role="group" [attr.aria-label]="t.presets">
           @for (p of presets; track p.label) {
-            <button type="button" class="btn" (click)="usePreset(p.pattern)">{{ p.label }}</button>
+            <button type="button" class="btn" (click)="usePreset(p.pattern)">
+              {{ t.presetNames[p.label] ?? p.label }}
+            </button>
           }
         </div>
         <p id="fnf-pattern-count" class="count" aria-live="polite">
           @if (compiled().error; as e) {
-            <span class="error">Invalid: {{ e }}</span>
+            <span class="error">{{ t.invalid(e) }}</span>
           } @else {
-            Matches {{ count() }} of {{ total() }} displayed entries.
+            {{ t.matches(count(), total()) }}
           }
         </p>
         <div class="buttons">
-          <button type="button" class="btn" (click)="dialogs.close()">Cancel</button>
+          <button type="button" class="btn" (click)="dialogs.close()">{{ t.cancel }}</button>
           <button type="submit" class="btn primary" [disabled]="!compiled().matches">
-            {{ mark() ? 'Mark' : 'Unmark' }}
+            {{ mark() ? t.mark : t.unmark }}
           </button>
         </div>
       </form>
@@ -87,6 +81,7 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
 })
 export class MarkPatternDialog {
   readonly mark = input(true);
+  protected readonly t = ACT_TEXTS;
   protected readonly dialogs = inject(DialogService);
   private readonly ws = inject(WorkspaceStore);
   protected readonly presets = PATTERN_PRESETS;

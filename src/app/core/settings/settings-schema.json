@@ -1,0 +1,17 @@
+{
+  "general.language": { "type": "enum", "values": ["system", "en", "de"], "default": "system" },
+  "general.startFolder": { "type": "enum", "values": ["session", "home"], "default": "session" },
+  "view.sizeFormat": { "type": "enum", "values": ["binary", "decimal", "bytes"], "default": "binary" },
+  "view.dateFormat": { "type": "enum", "values": ["locale", "iso"], "default": "locale" },
+  "view.density": { "type": "enum", "values": ["condensed", "normal", "spacious"], "default": "normal" },
+  "view.folderBrackets": { "type": "bool", "default": false },
+  "view.hideExtension": { "type": "bool", "default": false },
+  "view.showHidden": { "type": "bool", "default": false },
+  "view.menuBar": { "type": "bool", "default": true },
+  "behavior.deleteToTrash": { "type": "bool", "default": true },
+  "behavior.confirmTrash": { "type": "bool", "default": true },
+  "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },
+  "behavior.spaceCalcSize": { "type": "bool", "default": true },
+  "watch.pollNetwork": { "type": "bool", "default": false },
+  "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 }
+}

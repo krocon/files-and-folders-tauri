@@ -54,6 +54,8 @@ describe('Workspace', () => {
     const fixture = TestBed.createComponent(Workspace);
     fixture.detectChanges();
     await fixture.whenStable();
+    // the session waits for the settings too (design 015)
+    await new Promise((r) => setTimeout(r));
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }

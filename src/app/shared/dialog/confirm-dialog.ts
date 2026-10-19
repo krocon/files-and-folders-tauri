@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ConfirmService } from './confirm.service';
 import { Modal } from './modal';
+import { ACTION_TEXTS } from '../../core/actions/action-texts';
 
 @Component({
   selector: 'app-confirm-dialog',
@@ -15,13 +16,15 @@ import { Modal } from './modal';
         <div class="buttons">
           @if (r.danger !== false) {
             <button type="button" class="btn" data-autofocus (click)="confirm.answer(false)">
-              Cancel
+              {{ t.cancel }}
             </button>
             <button type="button" class="btn danger" (click)="confirm.answer(true)">
               {{ r.confirmLabel }}
             </button>
           } @else {
-            <button type="button" class="btn" (click)="confirm.answer(false)">Cancel</button>
+            <button type="button" class="btn" (click)="confirm.answer(false)">
+              {{ t.cancel }}
+            </button>
             <button type="button" class="btn primary" data-autofocus (click)="confirm.answer(true)">
               {{ r.confirmLabel }}
             </button>
@@ -59,5 +62,6 @@ import { Modal } from './modal';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmDialog {
+  protected readonly t = ACTION_TEXTS;
   protected readonly confirm = inject(ConfirmService);
 }

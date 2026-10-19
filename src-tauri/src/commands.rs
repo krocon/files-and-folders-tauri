@@ -1004,6 +1004,111 @@ pub async fn export_theme<R: Runtime>(
     .await
 }
 
+// ---- settings (design 015) ----
+
+/// Whether `settings.json` may be written (false: newer version, or a broken file stayed in place).
+#[derive(Default)]
+pub struct SettingsState {
+    write_blocked: Mutex<bool>,
+}
+
+fn config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
+    app.path().app_config_dir().map_err(|e| {
+        FsError::new(
+            FsErrorCode::Io,
+            format!("App config directory not available: {e}"),
+            None,
+        )
+    })
+}
+
+/// The user's settings (only values that differ from the defaults) and load warnings.
+#[tauri::command]
+pub async fn load_settings<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<crate::settings::LoadedSettings, FsError> {
+    let file = config_dir(&app)?.join(crate::settings::FILE_NAME);
+    let loaded = blocking("Loading the settings", move || {
+        Ok(crate::settings::load(&file))
+    })
+    .await?;
+    *app.state::<SettingsState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = !loaded.persist;
+    Ok(loaded)
+}
+
+/// Replaces `settings.json` (sanitised against the schema, written atomically).
+#[tauri::command]
+pub async fn save_settings<R: Runtime>(
+    app: AppHandle<R>,
+    settings: serde_json::Map<String, serde_json::Value>,
+) -> Result<Vec<crate::settings::SettingsWarning>, FsError> {
+    let path = config_dir(&app)?.join(crate::settings::FILE_NAME);
+    let blocked = *app
+        .state::<SettingsState>()
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if blocked {
+        return Ok(vec![crate::settings::SettingsWarning {
+            code: "not_saved".into(),
+            key: None,
+            path: Some(path.to_string_lossy().into_owned()),
+        }]);
+    }
+    blocking("Saving the settings", move || {
+        crate::settings::save(&path, settings).map_err(|e| FsError::from_io(&e, &path))
+    })
+    .await
+}
+
+/// Writes all settings files as one bundle into `dir` (never overwrites); returns the path.
+#[tauri::command]
+pub async fn export_settings<R: Runtime>(
+    app: AppHandle<R>,
+    dir: String,
+) -> Result<String, FsError> {
+    let files = crate::settings::ConfigFiles::in_dir(&config_dir(&app)?);
+    let dir = resolve_input(&app, &dir)?;
+    blocking("Exporting the settings", move || {
+        crate::settings::export(&files, &dir).map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+/// Imports the chosen parts of a settings bundle; the frontend reloads its stores afterwards.
+#[tauri::command]
+pub async fn import_settings<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+    parts: Vec<String>,
+) -> Result<crate::settings::ImportReport, FsError> {
+    if parts.len() > crate::settings::PARTS.len() {
+        return Err(FsError::new(FsErrorCode::TooMany, "Too many parts", None));
+    }
+    let files = crate::settings::ConfigFiles::in_dir(&config_dir(&app)?);
+    let path = resolve_input(&app, &path)?;
+    let report = blocking("Importing the settings", move || {
+        let bundle = crate::settings::read_bundle(&path)?;
+        crate::settings::import(&files, &bundle, &parts)
+    })
+    .await?;
+    // the imported files are fine to write again (a broken one was replaced)
+    let unblock = |m: &Mutex<bool>| *m.lock().unwrap_or_else(|e| e.into_inner()) = false;
+    for part in &report.imported {
+        match part.as_str() {
+            "settings" => unblock(&app.state::<SettingsState>().write_blocked),
+            "themes" => unblock(&app.state::<ThemesState>().write_blocked),
+            "keymap" => unblock(&app.state::<KeymapState>().write_blocked),
+            "renamePresets" => unblock(&app.state::<PresetsState>().write_blocked),
+            _ => {}
+        }
+    }
+    Ok(report)
+}
+
 // ---- jobs (design 005) ----
 
 /// The job manager and the channels of the frontends listening to it.

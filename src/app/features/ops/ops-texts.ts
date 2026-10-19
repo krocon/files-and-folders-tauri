@@ -1,7 +1,9 @@
 import { Danger } from '../../core/fs/fs.models';
+import { translatable } from '../../core/i18n/i18n';
+import { OPS_DE } from './ops-texts.de';
 
 /** Texts of the file operations (central for prompt 015). */
-export const OPS_TEXTS = {
+export const OPS_EN = {
   copy: 'Copy',
   move: 'Move',
   entries: (n: number) => (n === 1 ? '1 entry' : `${n} entries`),
@@ -70,4 +72,11 @@ export const OPS_TEXTS = {
   finishedWithErrors: (title: string, n: number) =>
     `${title}: ${n === 1 ? '1 error' : `${n} errors`} – details in Tasks.`,
   failed: (title: string, message: string) => `${title} failed: ${message}`,
+  otherPanel: 'Other panel',
+  thisPanel: 'This panel',
+  tabGroup: 'Tab',
+  favouriteGroup: 'Favourite',
+  recentGroup: 'Recent',
 } as const;
+
+export const OPS_TEXTS = translatable('ops', OPS_EN, { de: OPS_DE });

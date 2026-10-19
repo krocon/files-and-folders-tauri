@@ -1,3 +1,4 @@
+import { MR_TEXTS } from './multirename-texts';
 /**
  * Multi-rename rule engine (design 007 E1–E4, E8): pure functions, no Angular.
  * Computes new names only – Rust checks them against each other and the disk
@@ -155,7 +156,7 @@ export function parsePattern(pattern: string): { tokens: Token[]; unknown: strin
         if (to !== null && to < from) {
           return {
             field: 'pattern',
-            message: `[${body}]: the end of the range is before its start`,
+            message: MR_TEXTS.rangeBackwards(body),
           };
         }
         token = { t: 'field', letter, from, to };
@@ -397,7 +398,7 @@ function compileReplacement(
     if (SLASHED.test(cond)) {
       const re = compileRegex(cond, '');
       if (typeof re === 'string') {
-        return { field: `condition${index}`, message: `Invalid expression: ${re}` };
+        return { field: `condition${index}`, message: MR_TEXTS.invalidExpression(re) };
       }
       // without g/y: test() must not remember a position between names
       const plain = new RegExp(re.source, re.flags.replace(/[gy]/g, ''));
@@ -409,7 +410,7 @@ function compileReplacement(
   if (rep.regex) {
     const re = compileRegex(find, 'g');
     if (typeof re === 'string') {
-      return { field: `find${index}`, message: `Invalid expression: ${re}` };
+      return { field: `find${index}`, message: MR_TEXTS.invalidExpression(re) };
     }
     return { test, apply: (s) => s.replace(re, to) };
   }

@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DragDropApi, OsDragEvent } from '../../core/dnd/drag-drop-api';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DirEntry } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
@@ -126,7 +126,7 @@ export class DragStore {
         target: d.target.dir,
       });
     } catch (err) {
-      this.jobs.report(toFsError(err).message);
+      this.jobs.report(errorText(toFsError(err)));
     }
   }
 
@@ -211,7 +211,7 @@ export class DragStore {
         target: target.dir,
       });
     } catch (err) {
-      this.jobs.report(toFsError(err).message);
+      this.jobs.report(errorText(toFsError(err)));
     }
   }
 }

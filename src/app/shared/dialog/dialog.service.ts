@@ -26,6 +26,7 @@ export type DialogKind =
   | 'unpack'
   | 'duplicates'
   | 'themes'
+  | 'settings'
   | 'about';
 
 /**

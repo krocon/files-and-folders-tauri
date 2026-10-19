@@ -1,8 +1,11 @@
+import { formatCount } from '../../shared/format';
+import { translatable } from '../../core/i18n/i18n';
+import { TEXTS_DE } from './texts.de';
 /**
  * User-facing texts of the window skeleton, kept in one place so that prompt
  * 015 (i18n) can translate them.
  */
-export const TEXTS = {
+export const TEXTS_EN = {
   sideName: (side: 'left' | 'right') => (side === 'left' ? 'Left panel' : 'Right panel'),
   pathLabel: (side: 'left' | 'right') =>
     side === 'left' ? 'Path, left panel' : 'Path, right panel',
@@ -53,4 +56,26 @@ export const TEXTS = {
   menuFavorites: 'Favourites',
   menuRecent: 'Recent',
   menuEmpty: '(none)',
+  emptyFolder: 'This folder is empty.',
+  noHits: 'No hits (yet).',
+  /** Screen-reader prefix of a marked row. */
+  marked: 'marked, ',
+  lossyName: 'Name contains invalid characters – navigation not supported yet',
+  columns: {
+    name: 'Name',
+    ext: 'Ext',
+    size: 'Size',
+    modified: 'Modified',
+    folder: 'Folder',
+    group: 'Group',
+  },
+  bytesTitle: (marked: number, total: number) =>
+    `${formatCount(marked)} / ${formatCount(total)} bytes`,
+  status: {
+    in: 'in',
+    files: (n: number) => (n === 1 ? '1 File' : `${n} Files`),
+    folders: (n: number) => (n === 1 ? '1 Folder' : `${n} Folders`),
+  },
 } as const;
+
+export const TEXTS = translatable('workspace', TEXTS_EN, { de: TEXTS_DE });

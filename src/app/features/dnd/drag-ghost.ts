@@ -77,7 +77,9 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
 })
 export class DragGhost {
   protected readonly store = inject(DragStore);
-  protected readonly hint = DND_TEXTS.hint(IS_MAC);
+  protected get hint(): string {
+    return DND_TEXTS.hint(IS_MAC);
+  }
   /** Changes only with kind and target, not with every pointer move. */
   protected readonly text = computed(() => {
     const d = this.store.drag();

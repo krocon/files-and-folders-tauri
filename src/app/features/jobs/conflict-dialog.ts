@@ -92,8 +92,8 @@ import { JOB_TEXTS } from './job-format';
               <button
                 type="button"
                 class="btn"
-                [class.danger]="b.key === 'c'"
-                [attr.data-autofocus]="b.key === 's' && !renaming() ? '' : null"
+                [class.danger]="b.action === 'cancel'"
+                [attr.data-autofocus]="b.action === 'skip' && !renaming() ? '' : null"
                 [attr.aria-keyshortcuts]="'Alt+' + b.key.toUpperCase()"
                 (click)="press(b.key)"
               >
@@ -105,7 +105,7 @@ import { JOB_TEXTS } from './job-format';
               </button>
             }
           </div>
-          <p class="hint">Alt+letter chooses · Esc: {{ t.later }}</p>
+          <p class="hint">{{ t.conflictHint }} {{ t.later }}</p>
         </app-modal>
       }
     }
@@ -135,22 +135,26 @@ export class ConflictDialog {
   protected readonly applyToAll = signal(false);
   /** Permanent delete of a write-protected entry (design 006 E6). */
   protected readonly readOnly = computed(() => this.job()?.conflict?.kind === 'readOnly');
-  /** Label split around the Alt letter (underlined). */
+  /** Label split around the Alt letter (underlined); letters per language. */
   protected readonly buttons = computed(() => {
     const kind = this.job()?.spec.kind;
-    const cancel = { key: 'c', before: '', letter: 'C', after: `ancel ${cancelVerb(kind)}` };
+    const keys = this.t.conflictKeys;
+    const b = (action: ConflictAction, [before, letter, after]: readonly string[]) => ({
+      action,
+      key: letter.toLowerCase(),
+      before,
+      letter,
+      after,
+    });
+    const cancel = b('cancel', keys.cancel(kind === 'move' || kind === 'delete' ? kind : 'copy'));
     if (this.readOnly()) {
-      return [
-        { key: 'd', before: '', letter: 'D', after: 'elete anyway' },
-        { key: 's', before: '', letter: 'S', after: 'kip' },
-        cancel,
-      ];
+      return [b('overwrite', keys.deleteAnyway), b('skip', keys.skip), cancel];
     }
     return [
-      { key: 'o', before: '', letter: 'O', after: 'verwrite' },
-      { key: 's', before: '', letter: 'S', after: 'kip' },
-      { key: 'r', before: '', letter: 'R', after: 'ename…' },
-      { key: 'n', before: 'Overwrite if ', letter: 'n', after: 'ewer' },
+      b('overwrite', keys.overwrite),
+      b('skip', keys.skip),
+      b('rename', keys.rename),
+      b('newer', keys.newer),
       cancel,
     ];
   });
@@ -200,24 +204,21 @@ export class ConflictDialog {
   }
 
   protected press(key: string): boolean {
-    if (!this.buttons().some((b) => b.key === key)) {
-      return false;
-    }
-    switch (key) {
-      case 'd':
-      case 'o':
+    const button = this.buttons().find((b) => b.key === key);
+    switch (button?.action) {
+      case 'overwrite':
         this.decide({ type: 'overwrite' });
         return true;
-      case 's':
+      case 'skip':
         this.decide({ type: 'skip' });
         return true;
-      case 'r':
+      case 'rename':
         this.startRename();
         return true;
-      case 'n':
+      case 'newer':
         this.decide({ type: 'overwriteIfNewer' });
         return true;
-      case 'c':
+      case 'cancel':
         this.decide({ type: 'cancel' });
         return true;
       default:
@@ -236,13 +237,4 @@ export class ConflictDialog {
   }
 }
 
-function cancelVerb(kind: string | undefined): string {
-  switch (kind) {
-    case 'move':
-      return 'moving';
-    case 'delete':
-      return 'deleting';
-    default:
-      return 'copying';
-  }
-}
+type ConflictAction = 'overwrite' | 'skip' | 'rename' | 'newer' | 'cancel';

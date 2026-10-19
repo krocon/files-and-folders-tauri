@@ -8,6 +8,8 @@ import { TableBridge } from './table-bridge';
 export interface FileListHooks {
   /** Strg/⌘+Enter on a folder. */
   openInNewTab?(entry: DirEntry): void;
+  /** Double-click on an entry; `true` = handled (e.g. "view" instead of "open", design 015). */
+  doubleClick?(entry: DirEntry): boolean;
 }
 
 /** The store API the controller uses (keeps tests independent of Angular DI). */
@@ -113,7 +115,9 @@ export class FileListController {
       return;
     }
     if (click.clickCount >= 2) {
-      void this.store.open(row);
+      if (!this.hooks.doubleClick?.(row)) {
+        void this.store.open(row);
+      }
       return;
     }
     if (click.toggleKey) {

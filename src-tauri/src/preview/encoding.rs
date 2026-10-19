@@ -50,7 +50,7 @@ pub fn bom(bytes: &[u8]) -> Option<(Encoding, usize)> {
 }
 
 /// UTF-16 without BOM: ≥ 90 % of the odd (LE) or even (BE) bytes are zero.
-#[allow(clippy::chunks_exact_to_as_chunks)]
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)] // lint only in newer clippy (macOS toolchain)
 pub fn utf16_without_bom(bytes: &[u8]) -> Option<Encoding> {
     let n = bytes.len() / 2;
     if n < 8 {
@@ -171,7 +171,7 @@ fn cut_utf8(bytes: &[u8]) -> &[u8] {
     }
 }
 
-#[allow(clippy::chunks_exact_to_as_chunks)]
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)] // lint only in newer clippy (macOS toolchain)
 fn decode_utf16(bytes: &[u8], enc: Encoding, truncated: bool) -> (String, bool) {
     let le = enc == Encoding::Utf16Le;
     let bom: &[u8] = if le { &[0xFF, 0xFE] } else { &[0xFE, 0xFF] };

@@ -1,3 +1,6 @@
+import { afterEach } from 'vitest';
+import { setLanguage } from '../../core/i18n/i18n';
+import { MENU_TEXTS } from './menu-texts';
 import { ACTION_IDS, ActionId } from '../../core/actions/action-catalog';
 import { ActionState, ExtraAction } from '../../core/actions/action.service';
 import { NativeMenuNode } from '../../core/menu/menu.models';
@@ -236,5 +239,18 @@ describe('menu model', () => {
     expect(enabledChanges(nativeEnabled(b), nativeEnabled(b))).toEqual([]);
     const c = toNativeSpec(source({}, [tool('tool:new')]), 'macos', false);
     expect(nativeStructureKey(c)).not.toBe(nativeStructureKey(a));
+  });
+});
+
+describe('menu labels and the language (design 015)', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('menu titles and submenus follow a language switch (no labels frozen at load)', () => {
+    setLanguage('de');
+    const bar = resolveMenuBar(source(), 'linux');
+    expect(bar.map((m) => m.label)).toContain('Datei');
+    const subs = bar.flatMap((m) => m.items).filter((i) => i.id.startsWith('sub:'));
+    expect(subs.map((s) => s.label)).toContain(MENU_TEXTS.copyAs);
+    expect(MENU_TEXTS.copyAs).not.toBe('Copy to clipboard');
   });
 });

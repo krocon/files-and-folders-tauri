@@ -103,6 +103,24 @@ export interface FormError {
   readonly message: string;
 }
 
+/**
+ * A remembered form read back from the settings (design 015): known fields of the
+ * right type, the rest from the defaults; `null` if it is no object.
+ */
+export function restoreForm(raw: unknown): FindForm | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
+  const rec = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...DEFAULT_FORM };
+  for (const [k, def] of Object.entries(DEFAULT_FORM)) {
+    if (typeof rec[k] === typeof def) {
+      out[k] = rec[k];
+    }
+  }
+  return out as unknown as FindForm;
+}
+
 /** Rust limits (search.rs): depth, content file size; days and bytes stay exact integers. */
 export const MAX_FORM_DEPTH = 256;
 export const MAX_FORM_FILE_MB = 1024;

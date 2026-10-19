@@ -60,10 +60,7 @@ const SHOWN_ERRORS = 50;
               </div>
             } @else if (row.job.summary; as s) {
               <div class="detail">
-                <span
-                  >{{ s.itemsDone }} done · {{ s.itemsSkipped }} skipped ·
-                  {{ s.itemsFailed }} failed</span
-                >
+                <span>{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</span>
               </div>
               @if (s.error; as e) {
                 <p class="error">{{ describe(e) }} {{ e.message }}</p>
