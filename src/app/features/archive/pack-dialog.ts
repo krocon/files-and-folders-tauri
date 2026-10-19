@@ -70,9 +70,10 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             [targets]="r.targets"
             (valueChange)="target.set($event); error.set(null)"
           />
-          <p class="help">{{ t.linksHint }}</p>
           <p id="fnf-pack-error" class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
+            <div class="help">{{ t.linksHint }}</div>
+            <div class="spacer"></div>
             <button type="button" class="btn" (click)="store.close()">{{ t.cancel }}</button>
             <button type="submit" class="btn primary" [disabled]="busy()">{{ t.pack }}</button>
           </div>

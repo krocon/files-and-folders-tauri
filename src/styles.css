@@ -307,3 +307,19 @@ div.ge-table-header-border,
   border: 0;
   display: none !important;
 }
+
+.form {
+  ul{
+    list-style-type: none;
+    padding-left: 0;
+    padding-inline-start: 0;
+    margin-block-start: 0;
+
+    li {
+      padding-left: 0;
+    }
+  }
+}
+label {
+  margin-top: 24px;
+}

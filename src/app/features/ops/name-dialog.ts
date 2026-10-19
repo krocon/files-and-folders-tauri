@@ -40,18 +40,23 @@ import { OpsStore } from './ops.store';
               aria-describedby="fnf-name-error fnf-name-help"
             />
           </label>
-          @if (r.kind === 'mkdir') {
-            <p id="fnf-name-help" class="help">{{ t.mkdirHelp }}</p>
-          }
-          @if (r.kind === 'rename') {
-            <p class="help path">{{ r.entry?.path }}</p>
-          }
+
           <p id="fnf-name-error" class="error" role="alert">
             @if (error(); as e) {
               {{ errorText(e) }}
             }
           </p>
           <div class="buttons">
+
+            @if (r.kind === 'mkdir') {
+              <div id="fnf-name-help" class="help">{{ t.mkdirHelp }}</div>
+              <div class="spacer"></div>
+            }
+            @if (r.kind === 'rename') {
+              <div class="help path">{{ r.entry?.path }}</div>
+              <div class="spacer"></div>
+            }
+
             <button type="button" class="btn" (click)="ops.close()">{{ t.cancel }}</button>
             <button type="submit" class="btn primary" [disabled]="busy()">
               {{ dangerous() ? t.renameAnyway : texts().confirm }}

@@ -28,6 +28,9 @@
 
 .title {
   margin: 0;
-  font-size: var(--font-size-md);
+  font-size: 24px;
   font-weight: 600;
+}
+h2.title{
+  margin-bottom: 24px;
 }

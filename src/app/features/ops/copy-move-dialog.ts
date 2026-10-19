@@ -121,8 +121,11 @@ const DEFAULTS: readonly ConflictDefault[] = [
               {{ errorText(e) }}
             }
           </p>
-          <p class="help">{{ t.ctrlEnter }}</p>
+
           <div class="buttons">
+            <div class="help">{{ t.ctrlEnter }}</div>
+            <div class="spacer"></div>
+
             <button type="button" class="btn" (click)="ops.close()">{{ t.cancel }}</button>
             <button
               type="submit"

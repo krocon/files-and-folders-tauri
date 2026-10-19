@@ -45,7 +45,11 @@
 
 .help {
   margin: 0;
+  align-content: center;
   color: var(--color-muted);
+}
+.spacer {
+  flex: 1;
 }
 
 code {
@@ -104,15 +108,16 @@ code {
   color: var(--color-muted);
 }
 
+
+
 .path {
-  font-family: var(--font-mono);
   overflow-wrap: anywhere;
+  font-family: var(--font-mono);
 }
 
 .names {
   max-height: 8rem;
   margin: 0;
-  padding-left: var(--spacing-3);
   overflow: auto;
 }
 

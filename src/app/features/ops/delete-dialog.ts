@@ -41,9 +41,7 @@ const SHOWN = 5;
               <li class="muted">{{ t.moreEntries(r.entries.length - shown().length) }}</li>
             }
           </ul>
-          @if (!permanent()) {
-            <p class="help">{{ t.trashHint }}</p>
-          }
+
           @if (r.sizeOnly) {
             <div class="danger-box" role="note">
               <strong>{{ dup.sizeOnlyDelete }}</strong>
@@ -76,6 +74,12 @@ const SHOWN = 5;
           }
           <p class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
+
+            @if (!permanent()) {
+              <div class="help">{{ t.trashHint }}</div>
+              <div class="spacer"></div>
+            }
+
             <button
               type="button"
               class="btn"

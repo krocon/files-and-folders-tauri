@@ -67,9 +67,11 @@ const DEFAULTS: readonly ConflictDefault[] = [
               }
             </select>
           </label>
-          <p class="help">{{ t.unpackHint }}</p>
+
           <p id="fnf-unpack-error" class="error" role="alert">{{ errorText() }}</p>
           <div class="buttons">
+            <div class="help">{{ t.unpackHint }}</div>
+            <div class="spacer"></div>
             <button type="button" class="btn" (click)="store.close()">{{ t.cancel }}</button>
             <button type="submit" class="btn primary" [disabled]="busy()">{{ t.unpack }}</button>
           </div>
