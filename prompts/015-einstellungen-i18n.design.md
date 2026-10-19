@@ -212,10 +212,31 @@ Kürzel: `OPEN_SETUP_DLG` = `Mod+,` (vorhanden, 014). Keine neuen Aktionen auße
 
 | # | Befund | Bewertung | Umsetzung |
 |---|---|---|---|
+| 1 | `ROW_HEIGHTS.normal = 24`, main baut die Liste seit dem Merge mit 30 px | hoch | ✅ 24/30/34 px, Spec `normal === ROW_HEIGHT` |
+| 2 | `createFileTable` las Kataloge im `computed`: Sprachwechsel baute die Tabelle neu (englisch, Breiten weg); Titel/Dichte nicht angewendet, wenn die Einstellungen vor `tableReady` kamen | hoch | ✅ untracked + Anwenden in `onTableReady`, roter Test zuerst (auch im E2E gefunden) |
+| 3 | Beenden (Menü, Jobs-Dialog) und Verbergen schreiben die Einstellungen nicht sofort | mittel | ✅ `settings.flush()` dort |
+| 4 | Import: IO-Fehler eines späteren Teils bricht nach schon geschriebenen Teilen ab | mittel | ✅ Warnung `part_failed` (Teil + Datei), Rest läuft weiter (Rust-Test) |
+| 5 | Viele Meldungen zeigen die englische Rust-`message` | mittel | ✅ `errorText()` (Drag, Multi-Rename, Tools, Multi-MkDir, Jobs, Suche, Duplikate); „zu viele Tabs“ im Katalog. Theme-Dialog: Rust-Meldungen laufen über das Phrasebook |
+| 6 | Tests zur Wirkung fehlen (Papierkorb, Bestätigung …) | mittel | ✅ `ops.spec.ts` (Papierkorb aus, ohne Bestätigung, nie bei Gefahr); Leertaste/Start-Ordner/Netzlaufwerke nur E2E bzw. offen |
+| 7 | `search.recent` über 64 KiB wird still komplett verworfen | niedrig–mittel | ✅ älteste Formulare fallen weg (Test) |
+| 8 | Import-Rennen mit dem entprellten Speichern | niedrig | ✅ `load()` verwirft einen ausstehenden Save (Test) |
+| 9 | Ladefehler erscheint als „konnte nicht gespeichert werden“, Datei würde überschrieben | niedrig | ✅ Warnung `unreadable`, `persist = false` (Test) |
+| 10 | Export benennt eine kaputte Datei als Nebenwirkung in `.bad` um | niedrig | – so wie beim Start; bewusst gelassen |
+| 11 | Bundle-Version `as u32` | niedrig | ✅ `u64::from` (Test) |
+| 12 | Import-Warnungen außer `part_skipped` nicht angezeigt | niedrig | ✅ alle Warnungen (Spec) |
+| 13 | „1 Dateien“ | niedrig | ✅ Singular |
+| 14 | `loadingText` folgt keinem Sprachwechsel | niedrig | `TODO(guiexpert)` (Overlay-Texte nur beim Erzeugen) |
+| 15 | Tab-Panel ohne `tabindex="0"` | niedrig | ✅ |
+| 16 | Kommentar an falscher Stelle (`find-form.ts`) | niedrig | ✅ |
 
 ## 7. Abweichungen bei der Umsetzung
 
 - (013 A2) Theme-Auswahl zieht nicht nach `settings.json` um (E1).
+- Merge mit 016/017/019: der About-Dialog aus 017 bleibt (E7 entfällt), seine Texte sind übersetzt; Kataloge für
+  Archive, Duplikate, About; Zeilenhöhen folgen main (normal 30 px). `settings-dialog.scss` → `.css` (SCSS auf main
+  durch CSS ersetzt).
+- E2E (Linux, Xvfb): Menütitel wurden beim Laden des Moduls gelesen (blieben englisch) → Getter; eine neue
+  Zeilenhöhe schnitt die letzte Zeile ab → `recalcHeightAndPadding` + `recalcWrappers`.
 
 ## 8. Fortschritt
 
@@ -223,9 +244,13 @@ Kürzel: `OPEN_SETUP_DLG` = `Mod+,` (vorhanden, 014). Keine neuen Aktionen auße
 - [x] Phase 2 Rust (`settings.json`, Schema, sanitize, Export/Import-Bündel)
 - [x] Phase 3 Frontend (Settings-Store, Dialog, Laufzeit-i18n de/en, Specs) – Stand 2026-10-18: `pnpm check` grün;
   nicht gemergt, weil Review und E2E fehlen (Arbeit wegen Nutzungslimit unterbrochen)
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
-- [ ] Phase 6 Abschluss
+- [x] Phase 4 E2E (2026-10-19, Linux/Xvfb): `Strg+,` öffnet den Dialog; Sprache Englisch ↔ Deutsch ohne Neustart
+  (Liste, Spaltentitel, Menüleiste, Button-Leiste, Dialog); Neustart startet deutsch mit den Tabs; Größen Bytes /
+  dezimal, Datum ISO, Zeilenhöhe 34 px, `[Ordner]`, Namen ohne Endung sofort; kaputte `settings.json` → Start mit
+  Defaults, Hinweis, `settings.json.bad`; Export in den Ordner der Seite, Import mit Teil-Auswahl und Warnung
+  „ungültiger Wert“. Nicht geprüft: macOS-App-Menü „Einstellungen…“, Windows.
+- [x] Phase 5 Doku (README, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md)
+- [x] Phase 6 Abschluss: Review eingearbeitet, `pnpm check` grün, nach `main` gemergt
 
 ## 9. Offen
 
