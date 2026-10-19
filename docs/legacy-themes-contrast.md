@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-10 von 57 Paaren unter AA im Original, 9 Farben angepasst.
+11 von 58 Paaren unter AA im Original, 10 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -36,22 +36,23 @@
 | `--color-cursor-marked-text` | `#f0809a` | `#ffffff` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#b3e0f4` | `#eaf7fc` | Marked under the inactive cursor |
 | `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
+| `--color-status-marked` | `#0098db` | `#0075a9` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#de0034` | Status line warning |
 | `--color-header-focus` | `#0098db` | `#0094d5` | Focus ring on the panel header |
 | `--color-footer-focus` | `#0098db` | `#0094d5` | Focus ring on the status line |
 
 ## paper (hell)
 
-37 von 57 Paaren unter AA im Original, 27 Farben angepasst.
+39 von 58 Paaren unter AA im Original, 29 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
 | List | 4.21 ⚠ | 4.55 |
 | Active panel list | 16.67 | 16.67 |
 | Cursor | 3.76 ⚠ | 4.58 |
-| Marked | 3.17 ⚠ | 4.56 |
-| Marked, active panel | 13.16 | 13.16 |
-| Marked under the cursor | 1.02 ⚠ | 4.57 |
+| Marked | 4.21 ⚠ | 4.55 |
+| Marked, active panel | 2.50 ⚠ | 4.55 |
+| Marked under the cursor | 1.77 ⚠ | 4.56 |
 | Column header | 3.67 ⚠ | 4.55 |
 | Panel header | 10.93 | 10.93 |
 | Tabs | 10.93 | 10.93 |
@@ -74,16 +75,18 @@
 | `--color-list-text` | `#6c6b6b` | `#666666` | List |
 | `--color-group-alt-bg` | `#e1dfd9` | `#e6e5e0` | List, every other duplicate group |
 | `--color-list-header-text` | `#657786` | `#596875` | Column header |
-| `--color-marked` | `#ff0000` | `#cf0000` | Marked |
+| `--color-marked` | `#6c6b6b` | `#666666` | Marked |
 | `--color-hidden-text` | `#91908e` | `#676664` | Hidden entries |
 | `--color-error-text` | `#e00034` | `#cd0030` | Unreadable entries |
 | `--color-cursor-bg` | `#6c6b6b` | `#5f5e5e` | Cursor |
-| `--color-cursor-marked-text` | `#6f6d67` | `#d9d9d7` | Marked under the cursor |
+| `--color-cursor-marked-text` | `#ee6d67` | `#f9cfcd` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#c2c0bc` | `#eeeeec` | Cursor, inactive panel |
+| `--color-active-marked` | `#ff0000` | `#b20000` | Marked, active panel |
 | `--color-active-panel-tab-text` | `#ff0000` | `#cf0000` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#e7e5df` | `#83827f` | Active panel line |
 | `--color-tab-selected-text` | `#657786` | `#596875` | Selected tab |
 | `--color-favorite` | `#a87300` | `#a37000` | Favourite star |
+| `--color-status-marked` | `#ff0000` | `#c10000` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#bf002c` | Status line warning |
 | `--color-dialog-text` | `#6c6b6b` | `#666666` | Dialogs |
 | `--color-input-text` | `#6c6b6b` | `#666666` | Inputs |
@@ -94,14 +97,14 @@
 
 ## bitbucket (hell)
 
-28 von 57 Paaren unter AA im Original, 21 Farben angepasst.
+28 von 58 Paaren unter AA im Original, 21 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
 | List | 5.19 | 5.19 |
 | Active panel list | 21.00 | 21.00 |
 | Cursor | 2.83 ⚠ | 4.55 |
-| Marked | 4.37 ⚠ | 4.57 |
+| Marked | 5.19 | 5.19 |
 | Marked, active panel | 4.97 | 4.97 |
 | Marked under the cursor | 1.15 ⚠ | 4.57 |
 | Column header | 11.09 | 11.09 |
@@ -123,16 +126,16 @@
 | `--color-search-hit` | `#e0ce00` | `#efe579` | Search hit |
 | `--color-focus` | `#0098db` | `#0092d2` | Focus ring |
 | `--color-row-hover` | `#0747a6` | `#d9e3f1` | List, row under the mouse |
-| `--color-marked` | `#e00034` | `#da0033` | Marked |
 | `--color-hidden-text` | `#828cb7` | `#646b8d` | Hidden entries |
 | `--color-error-text` | `#e00034` | `#da0033` | Unreadable entries |
 | `--color-cursor-bg` | `#0098db` | `#0074a6` | Cursor |
 | `--color-cursor-marked-text` | `#e6789a` | `#fcedf1` | Marked under the cursor |
-| `--color-cursor-inactive-bg` | `#a5d6f4` | `#e3f2fb` | Cursor, inactive panel; Marked under the inactive cursor |
+| `--color-cursor-inactive-bg` | `#a5d6f4` | `#c9e6f8` | Cursor, inactive panel |
 | `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#ffffff` | `#939393` | Active panel line |
 | `--color-tab-selected-text` | `#0098db` | `#0074a6` | Selected tab |
 | `--color-favorite` | `#a87300` | `#bd953d` | Favourite star |
+| `--color-status-marked` | `#e00034` | `#f4a9ba` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#f4a9ba` | Status line warning |
 | `--color-header-focus` | `#0098db` | `#20a5df` | Focus ring on the panel header |
 | `--color-dialog-focus` | `#0098db` | `#0092d2` | Focus ring in dialogs |
@@ -140,7 +143,7 @@
 
 ## cypress (dunkel)
 
-25 von 57 Paaren unter AA im Original, 17 Farben angepasst.
+26 von 58 Paaren unter AA im Original, 18 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -174,6 +177,7 @@
 | `--color-cursor-inactive-text` | `#657786` | `#9ba7b0` | Cursor, inactive panel |
 | `--color-active-panel-accent` | `#162332` | `#656e77` | Active panel line |
 | `--color-favorite` | `#f2c14e` | `#b38e3a` | Favourite star |
+| `--color-status-marked` | `#04c38e` | `#038662` | Marked values in the status line |
 | `--color-dialog-text` | `#657786` | `#7c8c98` | Dialogs |
 | `--color-input-text` | `#657786` | `#7c8c98` | Inputs |
 | `--color-button-text` | `#657786` | `#7c8c98` | Buttons |
@@ -182,7 +186,7 @@
 
 ## blackboard (dunkel)
 
-13 von 57 Paaren unter AA im Original, 9 Farben angepasst.
+13 von 58 Paaren unter AA im Original, 9 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -216,7 +220,7 @@
 
 ## coffee (dunkel)
 
-6 von 57 Paaren unter AA im Original, 5 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+6 von 58 Paaren unter AA im Original, 5 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -246,14 +250,14 @@
 
 ## combat (dunkel)
 
-8 von 57 Paaren unter AA im Original, 7 Farben angepasst.
+8 von 58 Paaren unter AA im Original, 7 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
 | List | 9.22 | 9.22 |
 | Active panel list | 14.00 | 14.00 |
 | Cursor | 5.74 | 5.74 |
-| Marked | 7.67 | 7.67 |
+| Marked | 9.22 | 9.22 |
 | Marked, active panel | 4.30 ⚠ | 4.55 |
 | Marked under the cursor | 2.33 ⚠ | 4.57 |
 | Column header | 9.22 | 9.22 |
@@ -278,14 +282,14 @@
 
 ## norton (dunkel)
 
-15 von 57 Paaren unter AA im Original, 13 Farben angepasst, aus Fallbacks: `--fnf-table-selected-row-fg-color`, `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+15 von 58 Paaren unter AA im Original, 13 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
 | List | 16.00 | 16.00 |
 | Active panel list | 16.00 | 16.00 |
 | Cursor | 4.77 | 4.77 |
-| Marked | 14.63 | 14.63 |
+| Marked | 16.00 | 16.00 |
 | Marked, active panel | 14.63 | 14.63 |
 | Marked under the cursor | 4.53 | 4.53 |
 | Column header | 8.98 | 8.98 |

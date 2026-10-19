@@ -44,7 +44,7 @@ export const CLASSIC_PREFIX = 'classic-';
 export const CLASSIC_ADJUSTMENTS = new Map<string, readonly ContrastAdjustment[]>();
 
 export const CLASSIC_THEMES: readonly Theme[] = CLASSIC_FILES.map((file) => {
-  const converted = convertLegacy(file.colors, LIGHT, DARK);
+  const converted = convertLegacy(file.colors, LIGHT, DARK, file.name);
   const id = `${CLASSIC_PREFIX}${file.name}`;
   CLASSIC_ADJUSTMENTS.set(id, converted.adjustments);
   return {

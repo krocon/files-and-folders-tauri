@@ -172,7 +172,7 @@
   }
 
   &.fnf-active-panel .sel {
-    color: var(--color-active-panel-accent);
+    color: var(--color-status-marked);
     font-weight: 600;
   }
 

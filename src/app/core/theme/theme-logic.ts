@@ -504,6 +504,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-favorite', '--color-header-bg', 'Favourite star', UI),
 
   p('--color-footer-text', '--color-footer-bg', 'Status line'),
+  p('--color-status-marked', '--color-footer-bg', 'Marked values in the status line'),
   p('--color-footer-error-text', '--color-footer-bg', 'Status line warning'),
   p('--color-footer-button-text', '--color-footer-button-bg', 'Function buttons'),
   p('--color-shortcut-text', '--color-shortcut-bg', 'Shortcut badges'),

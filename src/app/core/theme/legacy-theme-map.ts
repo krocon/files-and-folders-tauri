@@ -70,7 +70,11 @@ export const LEGACY_VARS: readonly LegacyVar[] = [
     'The line of the active panel',
   ),
   v('activepanel-header-selected-tab-bg-color', ['--color-active-panel-tab-bg']),
-  v('activepanel-header-selected-tab-fg-color', ['--color-active-panel-tab-text']),
+  v(
+    'activepanel-header-selected-tab-fg-color',
+    ['--color-active-panel-tab-text', '--color-status-marked'],
+    'Also the marked values in the status line of the active panel (mr .fnf-active-fg-color)',
+  ),
 
   // panel header (path, tabs)
   v('header-bg-color', ['--color-header-bg']),

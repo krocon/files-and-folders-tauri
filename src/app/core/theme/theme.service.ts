@@ -212,7 +212,7 @@ export class ThemeService {
     let adjusted = 0;
     if (imported.legacy) {
       // the old `--fnf-*` variables → our tokens, same way as the built-in old designs (019)
-      const c = convertLegacy(imported.tokens, LIGHT, DARK);
+      const c = convertLegacy(imported.tokens, LIGHT, DARK, imported.name);
       imported = { ...imported, dark: c.dark, tokens: c.tokens, unknown: c.unknown };
       adjusted = c.adjustments.length;
     }

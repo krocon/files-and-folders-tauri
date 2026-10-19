@@ -82,6 +82,7 @@
   /* footer: status line, button bar */
   --color-footer-bg: var(--color-surface-raised);
   --color-footer-text: var(--color-muted);
+  --color-status-marked: #2a63c8;
   --color-footer-border: var(--color-border);
   --color-footer-button-bg: var(--color-surface);
   --color-footer-button-text: var(--color-text);
@@ -169,6 +170,7 @@
     --color-symlink-text: #c4a5ff;
 
     --color-active-panel-accent: #5b8ef0;
+    --color-status-marked: #6c9af2;
     --color-active-panel-tab-bg: #2c5bb8;
     --color-active-panel-tab-text: #ffffff;
 

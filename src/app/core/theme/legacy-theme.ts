@@ -4,6 +4,7 @@ import { LEGACY_FALLBACKS, LEGACY_VAR_NAMES, LEGACY_VARS } from './legacy-theme-
 import { resolveValue, tokenValueOk } from './theme-logic';
 import { Theme } from './theme.models';
 import { TOKENS } from './tokens';
+import { tweakedColors, tweakedTokens } from './legacy-tweaks';
 
 /**
  * Old scheme files `{ name, colors: { "--fnf-…": … } }` → our tokens (design
@@ -80,9 +81,11 @@ export function convertLegacy(
   rawColors: Readonly<Record<string, unknown>>,
   light: Theme,
   dark: Theme,
+  /** File name of the design: Marc's tweaks (`legacy-tweaks.ts`) apply by name. */
+  name?: string,
 ): ConvertedLegacy {
   const colors: Record<string, string> = {};
-  for (const [k, val] of Object.entries(rawColors)) {
+  for (const [k, val] of Object.entries(tweakedColors(name, rawColors))) {
     if (k.startsWith('--fnf-') && typeof val === 'string') {
       colors[k] = val.trim();
     }
@@ -163,6 +166,8 @@ export function convertLegacy(
       mapped.add(t);
     }
   }
+
+  Object.assign(tokens, tweakedTokens(name));
 
   // flatten the colour tokens to literals (the correction changes single tokens)
   const flat: Record<string, string> = {};
