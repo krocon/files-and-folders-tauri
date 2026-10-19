@@ -48,6 +48,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_COPY_DLG',
     'OPEN_MOVE_DLG',
     'OPEN_DELETE_DLG',
+    'DELETE_PERMANENT',
     'OPEN_MKDIR_DLG',
     'OPEN_RENAME_DLG',
     'OPEN_ATTRIBUTE_DLG',
