@@ -247,7 +247,7 @@ describe('operation dialogs', () => {
     expect(message().textContent).toContain('cannot be undone');
     expect(message().classList).toContain('danger-text');
     // the trash hint only hides: removing it would move the buttons away from the pointer
-    const hint = r.el.querySelector<HTMLElement>('p.help')!;
+    const hint = r.el.querySelector<HTMLElement>('.help')!;
     expect(hint).not.toBeNull();
     expect(hint.style.visibility).toBe('hidden');
     forever.dispatchEvent(new Event('mouseleave'));
