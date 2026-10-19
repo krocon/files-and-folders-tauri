@@ -28,9 +28,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 1px 5px;
+      padding: 2px 6px;
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       line-height: 16px;
       color: var(--color-shortcut-text);
