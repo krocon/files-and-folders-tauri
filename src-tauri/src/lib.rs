@@ -21,13 +21,19 @@
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
+//! - [`about`]        data for the About dialog (version, platform; design 017)
+//! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ index, name checks, zip-bomb limits (design 016)
+//! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
 
+pub mod about;
 pub mod app_menu;
+pub mod archive;
 pub mod clean;
 pub mod commands;
 pub mod dirsize;
+pub mod duplicates;
 pub mod error;
 pub mod fileops;
 pub mod fs_atomic;
@@ -123,6 +129,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_directory,
+            commands::get_app_info,
             commands::load_session,
             commands::save_session,
             commands::load_settings,

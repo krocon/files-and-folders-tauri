@@ -90,7 +90,7 @@ function rowClass(r: MkdirRow): string | null {
       </app-modal>
     }
   `,
-  styleUrl: '../../shared/dialog/tool-dialog.scss',
+  styleUrl: '../../shared/dialog/tool-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MultiMkdirDialog {

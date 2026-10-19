@@ -77,6 +77,9 @@ export const ACTION_IDS = [
   'OPEN_GROUPFILES_DLG',
   'OPEN_DELETE_EMPTY_FOLDERS_DLG',
   'OPEN_FIND_DUPLICATES_DLG',
+  'DUP_MARK_KEEP_NEWEST',
+  'DUP_MARK_KEEP_OLDEST',
+  'DUP_MARK_KEEP_FIRST',
   // configuration
   'OPEN_SHORTCUT_DLG',
   'OPEN_SETUP_DLG',
@@ -191,6 +194,9 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_GROUPFILES_DLG: m('Group files…', 'files', '008'),
   OPEN_DELETE_EMPTY_FOLDERS_DLG: m('Clean folders (delete empty folders)…', 'files', '008'),
   OPEN_FIND_DUPLICATES_DLG: m('Find duplicates…', 'files', '016'),
+  DUP_MARK_KEEP_NEWEST: m('Duplicates: mark all but the newest', 'selection', '016'),
+  DUP_MARK_KEEP_OLDEST: m('Duplicates: mark all but the oldest', 'selection', '016'),
+  DUP_MARK_KEEP_FIRST: m('Duplicates: mark all but the first (shortest path)', 'selection', '016'),
   OPEN_SHORTCUT_DLG: m('Keyboard shortcuts…', 'config', '002'),
   OPEN_SETUP_DLG: m('Settings…', 'config', '015'),
   OPEN_THEMES_DLG: m('Colour schemes…', 'config', '013'),
@@ -200,7 +206,7 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_TOOL_CONFIG_DLG: m('Tool configuration…', 'config', '011'),
   OPEN_TOOLS_DLG: m('Open with tool…', 'config', '011'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
-  OPEN_ABOUT_DLG: m('About…', 'config', '015'),
+  OPEN_ABOUT_DLG: m('About…', 'config', '017'),
   QUIT_APP: m('Quit', 'config', '014'),
 };
 

@@ -7,7 +7,7 @@
   [attr.title]="texts.folderMenu"
   (click)="openFolderMenu()"
 >
-  <span aria-hidden="true">▾</span>
+  <i class="fa fa-caret-down" aria-hidden="true"></i>
 </button>
 <div class="tablist" role="tablist" [attr.aria-label]="texts.tabsLabel(side())">
   @for (tab of panel().tabs; track tab.id; let i = $index) {
@@ -30,7 +30,7 @@
       (keydown)="onTabKeydown($event, i)"
     >
       @if (tab.search) {
-        <span class="search-icon" aria-hidden="true">🔍</span>
+        <i class="fa fa-search search-icon" aria-hidden="true"></i>
       }
       {{ title(tab) }}
       @if (isSearching(tab)) {
@@ -46,7 +46,7 @@
   [attr.title]="texts.newTab"
   (click)="cloneActive()"
 >
-  <span aria-hidden="true">+</span>
+  <i class="fa fa-plus" aria-hidden="true"></i>
 </button>
 <button
   type="button"
@@ -56,7 +56,7 @@
   [disabled]="panel().tabs.length <= 1"
   (click)="closeActive()"
 >
-  <span aria-hidden="true">−</span>
+  <i class="fa fa-minus" aria-hidden="true"></i>
 </button>
 
 <span class="spacer"></span>
@@ -69,7 +69,12 @@
     [attr.title]="texts.showHidden"
     (click)="toggleHidden()"
   >
-    <span aria-hidden="true">{{ st.hiddenVisible() ? '👁' : '◌' }}</span>
+    <i
+      class="fa"
+      [class.fa-eye]="st.hiddenVisible()"
+      [class.fa-eye-slash]="!st.hiddenVisible()"
+      aria-hidden="true"
+    ></i>
   </button>
   <button
     type="button"
@@ -79,7 +84,7 @@
     [attr.title]="texts.filter"
     (click)="toggleFilter()"
   >
-    <span aria-hidden="true">⏷</span>
+    <i class="fa fa-filter" aria-hidden="true"></i>
   </button>
   @if (st.filterActive()) {
     <input

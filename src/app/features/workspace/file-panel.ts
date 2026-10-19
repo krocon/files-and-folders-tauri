@@ -1,3 +1,7 @@
+import { ARCHIVE_TEXTS } from '../archive/archive-texts';
+import { duplicateSummary, KeepRule } from '../duplicates/duplicates-logic';
+import { DUP_TEXTS } from '../duplicates/duplicates-texts';
+import { DuplicatesStore } from '../duplicates/duplicates.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -48,7 +52,7 @@ let panelSeq = 0;
   imports: [FileList, TabBar, QuickView],
   providers: [FileBrowserStore],
   templateUrl: './file-panel.html',
-  styleUrl: './file-panel.scss',
+  styleUrl: './file-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.side-left]': "side() === 'left'",
@@ -77,6 +81,24 @@ export class FilePanel implements OnInit {
   protected readonly search = inject(SearchStore);
   private readonly find = inject(FindStore);
   protected readonly searchTexts = SEARCH_TEXTS;
+  protected readonly dupTexts = DUP_TEXTS;
+  protected readonly archiveTexts = ARCHIVE_TEXTS;
+  private readonly dup = inject(DuplicatesStore);
+  /** "12 groups, 31 files, 48 MB redundant" of the shown duplicate result. */
+  protected readonly dupSummary = computed(() => {
+    const s = duplicateSummary(this.searchResult()?.hits ?? []);
+    return DUP_TEXTS.summary(s.groups, s.files, formatSize(s.redundant));
+  });
+  /** While a duplicate search runs: scanning, then comparing contents. */
+  protected readonly dupProgress = computed(() => {
+    const st = this.searchResult()?.stats;
+    if (!st) {
+      return '';
+    }
+    return st.bytesToHash
+      ? DUP_TEXTS.hashing(formatSize(st.bytesHashed ?? 0), formatSize(st.bytesToHash))
+      : DUP_TEXTS.scanning(st.filesScanned);
+  });
   /** The result the active tab shows (result tab, design 009 E4). */
   protected readonly searchResult = computed(() => {
     const key = this.tab().search?.key;
@@ -91,8 +113,11 @@ export class FilePanel implements OnInit {
     if (r.running) {
       return SEARCH_TEXTS.searching;
     }
-    return r.error
-      ? SEARCH_TEXTS.failed(r.error.message)
+    if (r.error) {
+      return SEARCH_TEXTS.failed(r.error.message);
+    }
+    return r.kind === 'duplicates'
+      ? this.dupSummary()
       : SEARCH_TEXTS.finished(r.stats.hits, r.stats.unreadable);
   });
 
@@ -152,7 +177,7 @@ export class FilePanel implements OnInit {
       const result = this.searchResult();
       untracked(() => {
         if (key !== null && this.shownTabId === tab.id) {
-          this.store.showSearch(key, result?.hits ?? []);
+          this.store.showSearch(key, result?.hits ?? [], result?.kind ?? 'search');
         }
       });
     });
@@ -160,6 +185,9 @@ export class FilePanel implements OnInit {
       const listing = this.store.listing();
       untracked(() => {
         const id = this.tabId();
+        if (listing?.archive) {
+          this.ws.noteArchive(listing.archive.path);
+        }
         if (listing && this.ownsListing(id) && this.store.searchKey() === null) {
           this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
         }
@@ -215,7 +243,9 @@ export class FilePanel implements OnInit {
     // the shown folder is watched (design 012 E2)
     effect(() => {
       const path = this.store.path();
-      untracked(() => this.watch.setPanelDir(this.side(), path, this.store.listedAt ?? undefined));
+      // a folder inside an archive is virtual: nothing to watch (design 016 E1)
+      const dir = this.store.archive() === null ? path : null;
+      untracked(() => this.watch.setPanelDir(this.side(), dir, this.store.listedAt ?? undefined));
     });
     effect(() => {
       const req = this.ws.navigateRequest();
@@ -367,8 +397,18 @@ export class FilePanel implements OnInit {
   protected editSearch(): void {
     if (this.tab().search) {
       this.ws.setActive(this.side());
-      this.find.open();
+      if (this.searchResult()?.kind === 'duplicates') {
+        this.dup.open();
+      } else {
+        this.find.open();
+      }
     }
+  }
+
+  /** Selection helpers of a duplicate tab (design 016 E6). */
+  protected keep(rule: KeepRule): void {
+    this.ws.setActive(this.side());
+    this.dup.markAllBut(rule);
   }
 
   protected rerunSearch(): void {
@@ -440,7 +480,8 @@ export class FilePanel implements OnInit {
     if (tab.search) {
       this.store.navigationLocked.set(false);
       this.store.setCursor(tab.cursor);
-      this.store.showSearch(tab.search.key, this.search.result(tab.search.key)?.hits ?? []);
+      const result = this.search.result(tab.search.key);
+      this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? 'search');
       return;
     }
     this.store.navigationLocked.set(true);

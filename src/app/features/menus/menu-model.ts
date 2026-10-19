@@ -40,6 +40,8 @@ export interface MenuSource {
   shortcuts(id: ActionId): readonly string[];
   extras(): readonly ExtraAction[];
   extraShortcutLabel(id: string): string;
+  /** Enabled and not vetoed (e.g. no tools inside an archive, design 016). */
+  extraReady(id: string): boolean;
 }
 
 const T = MENU_TEXTS;
@@ -52,6 +54,11 @@ const COPY_AS: MenuDef = {
     'COPY_2_CLIPBOARD_NAMES_AS_JSON',
     'COPY_2_CLIPBOARD_FULLNAMES_AS_JSON',
   ],
+};
+/** Selection helpers of a duplicate tab (design 016 E6). */
+const DUP_MARK: MenuDef = {
+  sub: T.duplicates,
+  items: ['DUP_MARK_KEEP_NEWEST', 'DUP_MARK_KEEP_OLDEST', 'DUP_MARK_KEEP_FIRST'],
 };
 const WITH_TOOL: MenuDef = { sub: T.openWithTool, items: ['@tools', '-', 'OPEN_TOOLS_DLG'] };
 
@@ -131,6 +138,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'TOGGLE_MARK_AND_ADVANCE',
       'OPEN_MARK_PATTERN_DLG',
       'OPEN_UNMARK_PATTERN_DLG',
+      DUP_MARK,
       '-',
       COPY_AS,
     ],
@@ -222,13 +230,30 @@ export const MENU_BAR: readonly TopMenu[] = [
 ];
 
 /** Where a context menu was opened (design 014 E2). */
-export type ContextKind = 'file' | 'folder' | 'marked' | 'empty' | 'result';
+export type ContextKind =
+  'file' | 'archiveFile' | 'folder' | 'marked' | 'empty' | 'result' | 'archive';
 
 const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
   file: [
     'NAVIGATE_OPEN',
     'OPEN_VIEW_DLG',
     'OPEN_EDIT_DLG',
+    WITH_TOOL,
+    '-',
+    'OPEN_COPY_DLG',
+    'OPEN_MOVE_DLG',
+    'OPEN_RENAME_DLG',
+    'OPEN_DELETE_DLG',
+    '-',
+    COPY_AS,
+    'REVEAL_IN_FILE_MANAGER',
+    'OPEN_ATTRIBUTE_DLG',
+  ],
+  // the cursor is on a ZIP/TAR file (design 016): open it like a folder or unpack it
+  archiveFile: [
+    'NAVIGATE_OPEN',
+    'OPEN_IN_NEW_TAB',
+    'OPEN_UNPACK_DLG',
     WITH_TOOL,
     '-',
     'OPEN_COPY_DLG',
@@ -263,6 +288,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'OPEN_MULTIRENAME_DLG',
     'OPEN_GROUPFILES_DLG',
     'OPEN_PACK_DLG',
+    'OPEN_UNPACK_DLG',
     '-',
     WITH_TOOL,
     COPY_AS,
@@ -301,13 +327,30 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     COPY_AS,
     'REVEAL_IN_FILE_MANAGER',
     'RERUN_SEARCH',
+    DUP_MARK,
     'OPEN_ATTRIBUTE_DLG',
+  ],
+  // inside an archive (read-only, design 016): extract, marks, names
+  archive: [
+    'NAVIGATE_OPEN',
+    'OPEN_UNPACK_DLG',
+    'OPEN_COPY_DLG',
+    '-',
+    COPY_AS,
+    '-',
+    'SELECT_ALL',
+    'DESELECT_ALL',
+    'INVERT_MARKS',
+    'OPEN_MARK_PATTERN_DLG',
   ],
 };
 
 /** Definitions of a context menu; `marked` > 0 adds the heading "N marked entries". */
 export function contextMenuFor(kind: ContextKind, marked = 0): readonly MenuDef[] {
-  return kind === 'marked' ? [{ heading: T.marked(marked) }, ...CONTEXT.marked] : CONTEXT[kind];
+  if (kind === 'marked' || (kind === 'archive' && marked > 0)) {
+    return [{ heading: T.marked(marked) }, ...CONTEXT[kind]];
+  }
+  return CONTEXT[kind];
 }
 
 /** Which context a right click / Shift+F10 means (design 014 E2/E3). */
@@ -316,7 +359,14 @@ export function contextKind(input: {
   readonly markedCount: number;
   /** Entry under the cursor (after the right click moved it), null on free space or `..`. */
   readonly entry: { readonly kind: string } | null;
+  /** The panel shows a folder inside an archive (design 016). */
+  readonly inArchive?: boolean;
+  /** The entry is a ZIP/TAR file (`isArchiveEntry`). */
+  readonly archiveFile?: boolean;
 }): ContextKind {
+  if (input.inArchive) {
+    return 'archive';
+  }
   if (input.markedCount > 0) {
     return 'marked';
   }
@@ -326,7 +376,10 @@ export function contextKind(input: {
   if (input.resultTab) {
     return 'result';
   }
-  return input.entry.kind === 'directory' ? 'folder' : 'file';
+  if (input.entry.kind === 'directory') {
+    return 'folder';
+  }
+  return input.archiveFile ? 'archiveFile' : 'file';
 }
 
 function expand(defs: readonly MenuDef[], platform: Platform): MenuDef[] {
@@ -376,7 +429,7 @@ export function resolveMenu(
           id: x.id,
           label: x.label,
           shortcut: src.extraShortcutLabel(x.id),
-          disabled: !x.enabled(),
+          disabled: !src.extraReady(x.id),
         });
       }
     } else if (typeof d === 'string') {
@@ -438,7 +491,7 @@ export function toNativeSpec(
             id: x.id,
             label: nativeLabel(x.label),
             accelerator: shown ? canonicalShortcut(x.shortcut!, platform) : null,
-            enabled: !blocked && x.enabled(),
+            enabled: !blocked && src.extraReady(x.id),
           });
         }
       } else if (typeof d === 'string') {

@@ -5,10 +5,13 @@ import {
   DomServiceIf,
   RendererCleanupFnType,
 } from '@guiexpert/table';
+import { iconFor, iconNameForEntry } from '../../../core/file-icon/file-icon.service';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { formatModified, formatSize } from '../../../shared/format';
 import { DISPLAY } from '../../../core/settings/display';
 import { TEXTS } from '../../workspace/texts';
+
+export { iconFor };
 
 /**
  * Plain-DOM renderers (no Angular) for the file list. File names are user data:
@@ -22,24 +25,6 @@ function isMarked(areaModel: AreaModelIf, rowIndex: number): boolean {
 
 function rowOf(areaModel: AreaModelIf, rowIndex: number): DirEntry | undefined {
   return areaModel.getRowByIndex(rowIndex) as DirEntry | undefined;
-}
-
-/** Visible icon per entry (decorative, `aria-hidden`). */
-export function iconFor(entry: DirEntry): string {
-  if (isParentRow(entry)) {
-    return '↑';
-  }
-  if (isNavigableDir(entry)) {
-    return entry.kind === 'symlink' ? '📁↗' : '📁';
-  }
-  switch (entry.kind) {
-    case 'symlink':
-      return entry.targetKind === null ? '⛓' : '📄↗';
-    case 'unknown':
-      return '⚠';
-    default:
-      return '📄';
-  }
 }
 
 /** Own renderers bypass the table's label div – `fnf-cell` gives the same inner spacing. */
@@ -64,7 +49,17 @@ export class NameCellRenderer implements CellRendererIf {
     domService.addClass(icon, 'fnf-icon');
     domService.setAttribute(icon, 'aria-hidden', 'true');
     const marked = isMarked(areaModel, rowIndex);
-    domService.appendChild(icon, domService.createText(marked ? '✔' : entry ? iconFor(entry) : ''));
+    if (marked) {
+      const i = domService.createElement<HTMLElement>('i');
+      domService.addClass(i, 'fa');
+      domService.addClass(i, 'fa-check');
+      domService.appendChild(icon, i);
+    } else if (entry) {
+      const i = domService.createElement<HTMLElement>('i');
+      domService.addClass(i, 'fa');
+      domService.addClass(i, iconNameForEntry(entry));
+      domService.appendChild(icon, i);
+    }
     domService.appendChild(cellDiv, icon);
     if (marked) {
       const srText = domService.createElement<HTMLSpanElement>('span');

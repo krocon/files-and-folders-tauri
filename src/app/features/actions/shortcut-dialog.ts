@@ -103,7 +103,7 @@ import { fuzzyMatch } from './fuzzy';
       </div>
     </app-modal>
   `,
-  styleUrl: './shortcut-dialog.scss',
+  styleUrl: './shortcut-dialog.css',
   host: { '(keydown)': 'onKeydown($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

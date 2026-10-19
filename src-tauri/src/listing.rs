@@ -57,6 +57,7 @@ pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
         segments: segments_of(dir),
         entries,
         unreadable_entries: unreadable,
+        archive: None,
     })
 }
 
@@ -208,7 +209,7 @@ fn native_hidden_flag(_meta: &Metadata) -> bool {
     false
 }
 
-fn compare_entries(a: &DirEntryDto, b: &DirEntryDto) -> Ordering {
+pub(crate) fn compare_entries(a: &DirEntryDto, b: &DirEntryDto) -> Ordering {
     b.is_navigable_dir()
         .cmp(&a.is_navigable_dir())
         .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))

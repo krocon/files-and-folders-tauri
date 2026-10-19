@@ -43,7 +43,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
               [disabled]="v.position().index <= 1"
               (click)="v.step(-1)"
             >
-              ◀
+              <i class="fa fa-chevron-left" aria-hidden="true"></i>
             </button>
             <span class="pos">{{ t.position(v.position().index, v.position().count) }}</span>
             <button
@@ -54,7 +54,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
               [disabled]="v.position().index >= v.position().count"
               (click)="v.step(1)"
             >
-              ▶
+              <i class="fa fa-chevron-right" aria-hidden="true"></i>
             </button>
             <label class="field">
               <span>{{ t.mode }}</span>
@@ -90,7 +90,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 [attr.aria-label]="t.zoomOut"
                 (click)="v.zoomStep(-1)"
               >
-                −
+                <i class="fa fa-minus" aria-hidden="true"></i>
               </button>
               <button
                 type="button"
@@ -98,7 +98,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 [attr.aria-label]="t.zoomIn"
                 (click)="v.zoomStep(1)"
               >
-                +
+                <i class="fa fa-plus" aria-hidden="true"></i>
               </button>
             }
             <span class="meta">{{ meta() }}</span>
@@ -148,7 +148,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 [attr.aria-label]="t.findPrev"
                 (click)="v.findNext(-1)"
               >
-                ↑
+                <i class="fa fa-arrow-up" aria-hidden="true"></i>
               </button>
               <button
                 type="button"
@@ -156,7 +156,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 [attr.aria-label]="t.findNext"
                 (click)="v.findNext(1)"
               >
-                ↓
+                <i class="fa fa-arrow-down" aria-hidden="true"></i>
               </button>
               <span class="spacer"></span>
               <button type="button" class="btn" (click)="v.close()">{{ t.close }}</button>
@@ -171,7 +171,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
       </app-modal>
     }
   `,
-  styleUrl: './viewer-dialog.scss',
+  styleUrl: './viewer-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ViewerDialog {

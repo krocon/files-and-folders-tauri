@@ -156,9 +156,9 @@ fn to_volume(c: Candidate, p: Option<Probe>) -> Volume {
     }
 }
 
-// ---- Unix: space via statvfs ----
+// ---- Unix: space via statvfs (macOS reads /Volumes without it) ----
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "macos")))]
 #[allow(clippy::unnecessary_cast)] // field types differ between Linux and macOS
 fn statvfs_space(path: &Path) -> Option<(u64, u64)> {
     use std::ffi::CString;
@@ -391,7 +391,7 @@ fn candidates() -> Vec<Candidate> {
                 _ => {}
             }
         }
-        mounts.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+        mounts.sort_by_key(|a| a.label.to_lowercase());
         out.extend(mounts);
     }
     out

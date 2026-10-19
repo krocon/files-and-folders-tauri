@@ -4,6 +4,7 @@ import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
+import { DUP_TEXTS } from '../duplicates/duplicates-texts';
 
 const SHOWN = 5;
 
@@ -42,6 +43,16 @@ const SHOWN = 5;
           </ul>
           @if (!permanent()) {
             <p class="help">{{ t.trashHint }}</p>
+          }
+          @if (r.sizeOnly) {
+            <div class="danger-box" role="note">
+              <strong>{{ dup.sizeOnlyDelete }}</strong>
+            </div>
+          }
+          @if (r.wholeGroups) {
+            <div class="danger-box" role="note">
+              <strong>{{ dup.wholeGroups(r.wholeGroups) }}</strong>
+            </div>
           }
           @if (r.dangers.length > 0) {
             <div class="danger-box" role="group" [attr.aria-label]="t.dangerTitle">
@@ -89,7 +100,7 @@ const SHOWN = 5;
       </app-modal>
     }
   `,
-  styleUrl: './ops-dialog.scss',
+  styleUrl: './ops-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeleteDialog {
@@ -99,8 +110,12 @@ export class DeleteDialog {
   protected readonly permanent = computed(() => this.req()?.mode === 'permanent');
   /** Enter must not destroy: permanent delete, or a dangerous path (its button starts disabled). */
   protected readonly cancelFirst = computed(
-    () => this.permanent() || (this.req()?.dangers.length ?? 0) > 0,
+    () =>
+      this.permanent() ||
+      (this.req()?.dangers.length ?? 0) > 0 ||
+      (this.req()?.wholeGroups ?? 0) > 0,
   );
+  protected readonly dup = DUP_TEXTS;
   protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);

@@ -138,7 +138,7 @@ const SHOWN_ERRORS = 50;
       </div>
     </app-modal>
   `,
-  styleUrl: './job-list-dialog.scss',
+  styleUrl: './job-list-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JobListDialog {

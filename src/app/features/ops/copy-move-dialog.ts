@@ -149,7 +149,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
       </app-modal>
     }
   `,
-  styleUrl: './ops-dialog.scss',
+  styleUrl: './ops-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CopyMoveDialog {

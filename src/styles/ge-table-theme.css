@@ -1,0 +1,178 @@
+/*
+ * Bridge between our design tokens (src/styles.css, design 013 §3) and the GuiExpert Table.
+ * The table defines its --ge-table-* variables on <html> (light, or html[data-theme="dark"],
+ * which the ThemeService sets from the scheme's `dark` flag); redefining them on the table host
+ * (.ge-table) wins by inheritance. Only this file knows --ge-table-*.
+ */
+.ge-table {
+  --ge-table-bg: var(--color-list-bg);
+  --ge-table-border: var(--color-list-border);
+
+  --ge-table-header-west-bg: var(--color-list-header-bg);
+  --ge-table-header-center-bg: var(--color-list-header-bg);
+  --ge-table-header-east-bg: var(--color-list-header-bg);
+  --ge-table-header-west-text: var(--color-list-header-text);
+  --ge-table-header-center-text: var(--color-list-header-text);
+  --ge-table-header-east-text: var(--color-list-header-text);
+  --ge-table-header-west-horizontal-border: var(--color-list-border);
+  --ge-table-header-center-horizontal-border: var(--color-list-border);
+  --ge-table-header-east-horizontal-border: var(--color-list-border);
+  --ge-table-header-west-vertical-border: var(--color-list-border);
+  --ge-table-header-center-vertical-border: var(--color-list-border);
+  --ge-table-header-east-vertical-border: var(--color-list-border);
+
+  --ge-table-body-west-bg: var(--color-list-bg);
+  --ge-table-body-center-bg: var(--color-list-bg);
+  --ge-table-body-east-bg: var(--color-list-bg);
+  --ge-table-body-west-text: var(--color-list-text);
+  --ge-table-body-center-text: var(--color-list-text);
+  --ge-table-body-east-text: var(--color-list-text);
+  --ge-table-row-odd-bg: transparent;
+  --ge-table-row-even-bg: transparent;
+
+  --ge-table-hover-row-bg: var(--color-row-hover);
+  /* the cursor is a whole row (.fnf-cursor) – the table's cell frame stays invisible */
+  --ge-table-focus-border: transparent;
+  --ge-table-focus-outline-color: transparent;
+
+  --ge-table-cell-editor-bg: var(--color-input-bg);
+  --ge-table-cell-editor-text: var(--color-input-text);
+  --ge-table-cell-editor-border: var(--color-focus);
+  --ge-table-cell-error-color: var(--color-error-text);
+  --ge-table-color-error-text: var(--color-error-text);
+
+  --ge-table-overlay-bg: transparent;
+  --ge-table-overlay-color: var(--color-muted);
+  --ge-table-overlay-content-bg: var(--color-dialog-bg);
+  --ge-table-spinner-color: var(--color-accent);
+  --ge-table-spinner-track-color: var(--color-list-border);
+
+  font-family: var(--font-list);
+  font-size: var(--font-size-list);
+}
+
+/* the panel with the focus (mr: --fnf-activepanel-*) */
+.fnf-active-panel .ge-table {
+  --ge-table-bg: var(--color-active-list-bg);
+  --ge-table-border: var(--color-active-list-border);
+  --ge-table-header-west-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-center-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-east-horizontal-border: var(--color-active-list-border);
+  --ge-table-header-west-vertical-border: var(--color-active-list-border);
+  --ge-table-header-center-vertical-border: var(--color-active-list-border);
+  --ge-table-header-east-vertical-border: var(--color-active-list-border);
+  --ge-table-header-west-bg: var(--color-active-list-header-bg);
+  --ge-table-header-center-bg: var(--color-active-list-header-bg);
+  --ge-table-header-east-bg: var(--color-active-list-header-bg);
+  --ge-table-body-west-bg: var(--color-active-list-bg);
+  --ge-table-body-center-bg: var(--color-active-list-bg);
+  --ge-table-body-east-bg: var(--color-active-list-bg);
+  --ge-table-body-west-text: var(--color-active-list-text);
+  --ge-table-body-center-text: var(--color-active-list-text);
+  --ge-table-body-east-text: var(--color-active-list-text);
+}
+
+/* Cell content of our own renderers (same inner spacing as the table's label div). */
+.ge-table .fnf-cell {
+  padding-inline: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ge-table .fnf-icon {
+  display: inline-block;
+  min-width: 2.25em;
+}
+
+/* Row states (classes from FileBodyModel.getCustomClassesAt, set on every cell of the row). */
+.ge-table .fnf-hidden {
+  color: var(--color-hidden-text);
+}
+
+.ge-table .fnf-symlink {
+  color: var(--color-symlink-text);
+}
+
+.ge-table .fnf-unreadable {
+  color: var(--color-error-text);
+}
+
+/* every other duplicate group (design 016 E6) – before marked, so a marked background wins */
+.ge-table .fnf-group-alt {
+  background-color: var(--color-group-alt-bg);
+}
+
+.ge-table .fnf-marked {
+  color: var(--color-marked);
+  background-color: var(--color-marked-bg);
+}
+
+.fnf-active-panel .ge-table .fnf-marked {
+  color: var(--color-active-marked);
+  background-color: var(--color-active-marked-bg);
+}
+
+.ge-table .fnf-cursor {
+  color: var(--color-cursor-inactive-text);
+  background-color: var(--color-cursor-inactive-bg);
+}
+
+.ge-table .fnf-cursor.fnf-marked {
+  color: var(--color-marked);
+}
+
+/* full cursor in the active panel (or wherever the focus is), dimmed in the other one (design 004 E1) */
+.fnf-active-panel .ge-table .fnf-cursor,
+.ge-table:focus-within .fnf-cursor {
+  background-color: var(--color-cursor-bg);
+  color: var(--color-cursor-text);
+}
+
+.fnf-active-panel .ge-table .fnf-cursor.fnf-marked,
+.ge-table:focus-within .fnf-cursor.fnf-marked {
+  color: var(--color-cursor-marked-text);
+}
+
+/* F2: the in-place rename editor in the name cell (design 006 E3) */
+.fnf-rename-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 var(--spacing-1);
+  font: inherit;
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-focus);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+/* multi-rename preview (design 007 §4): status as text in the Info column, colour only as a hint */
+.ge-table .fnf-mr-error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.ge-table .fnf-mr-unchanged {
+  color: var(--color-muted);
+}
+
+.ge-table .fnf-mr-new {
+  font-weight: 600;
+}
+
+/* the folder row a drag would drop into (design 012 E5) */
+.ge-table .fnf-drop-target {
+  box-shadow:
+    inset 0 2px 0 var(--color-accent),
+    inset 0 -2px 0 var(--color-accent);
+  background: var(--color-row-hover);
+}
+
+/* active row of a list driven from an input field (folder finder, design 009 E6) */
+.ge-table .fnf-grid-active {
+  background-color: var(--color-cursor-bg);
+  color: var(--color-cursor-text);
+}

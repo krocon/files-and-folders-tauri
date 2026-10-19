@@ -52,7 +52,7 @@ const COLUMNS: readonly ActionCategory[] = ['navigation', 'selection', 'files', 
       }
     </div>
   `,
-  styleUrl: './actions-menu.scss',
+  styleUrl: './actions-menu.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:pointerdown)': 'onOutside($event)', '(keydown)': 'onKeydown($event)' },
 })

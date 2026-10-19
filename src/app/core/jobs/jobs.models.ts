@@ -1,10 +1,10 @@
 /**
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
-import { DirSize, FsError } from '../fs/fs.models';
+import { ArchiveFormat, DirSize, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
-import { SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
+import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -71,6 +71,29 @@ export type JobSpec =
     }
   /** Recursive search (design 009); hits come as `searchHits` events. */
   | { readonly kind: 'search'; readonly criteria: SearchCriteria }
+  /**
+   * Extract from an archive (design 016 E4): `entries` are virtual paths (`…/a.zip/dir`),
+   * empty = everything; `intoSubfolder` = into `<target>/<archive name without extension>`.
+   */
+  | {
+      readonly kind: 'extract';
+      readonly archive: string;
+      readonly entries: readonly string[];
+      readonly targetDir: string;
+      readonly intoSubfolder?: boolean;
+      readonly options?: CopyOptions;
+    }
+  /** Pack into `<targetDir>/<name>` (design 016 E5); level 1–9 (default 6). */
+  | {
+      readonly kind: 'pack';
+      readonly sources: readonly string[];
+      readonly targetDir: string;
+      readonly name: string;
+      readonly format: ArchiveFormat;
+      readonly level?: number | null;
+    }
+  /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
+  | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }

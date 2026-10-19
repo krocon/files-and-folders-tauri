@@ -29,6 +29,7 @@ export const THEME_DE: Translation<typeof THEME_EN> = {
   reset: 'Zurücksetzen',
   import: 'Importieren',
   export: 'Exportieren',
+  exportLegacy: 'Exportieren (altes Format)',
   close: 'Schließen',
   importHelp:
     'Import liest die Datei unter dem Cursor; Export schreibt in den Ordner der aktiven Seite.',
@@ -42,6 +43,8 @@ export const THEME_DE: Translation<typeof THEME_EN> = {
     `„${name}“ importiert.` +
     (unknown ? ` ${unknown} Variable(n) kennt diese Version nicht – sie bleiben erhalten.` : '') +
     (dropped ? ` ${dropped} Wert(e) wurden abgelehnt.` : ''),
+  adjusted: (n) =>
+    `${n === 1 ? '1 Farbe wurde' : `${n} Farben wurden`} für den Kontrast (WCAG AA) leicht angepasst.`,
   notSelected: (n) =>
     `Es ist nicht ausgewählt: ${n === 1 ? '1 Kontrastproblem' : `${n} Kontrastprobleme`} – Werte korrigieren und speichern (Speichern wählt es auch aus).`,
   noPicker: 'Transparent – zum Ersetzen eine Farbe eintippen',

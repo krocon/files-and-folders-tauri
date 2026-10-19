@@ -10,6 +10,12 @@ export interface ThemeFileContent {
   readonly tokens: Readonly<Record<string, string>>;
 }
 
+/** The old format (design 019): `{ name, colors: { "--fnf-…": … } }`. */
+export interface LegacyThemeFileContent {
+  readonly name: string;
+  readonly colors: Readonly<Record<string, string>>;
+}
+
 /**
  * Facade for the colour scheme commands (Rust `themes.rs`, design 013 §4).
  * Rejects with an `FsError`.
@@ -20,7 +26,11 @@ export abstract class ThemeApi {
   /** Reads a scheme file (≤ 256 KiB JSON object); the caller normalises it. */
   abstract importFile(path: string): Promise<unknown>;
   /** Writes `<name>.theme.json` into `dir` (never overwrites); resolves with the path. */
-  abstract exportFile(dir: string, name: string, theme: ThemeFileContent): Promise<string>;
+  abstract exportFile(
+    dir: string,
+    name: string,
+    theme: ThemeFileContent | LegacyThemeFileContent,
+  ): Promise<string>;
 }
 
 @Injectable()
@@ -37,7 +47,11 @@ export class TauriThemeApi extends ThemeApi {
     return call<unknown>('import_theme', { path });
   }
 
-  exportFile(dir: string, name: string, theme: ThemeFileContent): Promise<string> {
+  exportFile(
+    dir: string,
+    name: string,
+    theme: ThemeFileContent | LegacyThemeFileContent,
+  ): Promise<string> {
     return call<string>('export_theme', { dir, name, theme });
   }
 }

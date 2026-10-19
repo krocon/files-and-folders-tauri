@@ -6,7 +6,10 @@ import { DirEntry, FsError, PathCheck } from '../../core/fs/fs.models';
 import { ConflictDefault, DeleteMode, JobInfo, JobSpec } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
-import { SearchStore } from '../search/search.store';
+import { isSameOrBelow, SearchStore } from '../search/search.store';
+import { ArchiveStore } from '../archive/archive.store';
+import { ARCHIVE_TEXTS } from '../archive/archive-texts';
+import { wholeGroups } from '../duplicates/duplicates-logic';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
@@ -47,6 +50,10 @@ export interface DeleteRequest {
   readonly sourceDir: string;
   readonly entries: readonly DirEntry[];
   readonly dangers: readonly PathCheck[];
+  /** Duplicate tab (design 016 E6): groups of which every file would be deleted. */
+  readonly wholeGroups?: number;
+  /** Duplicate tab compared by size only: the files may well differ (review 016 #6). */
+  readonly sizeOnly?: boolean;
 }
 
 export interface NameRequest {
@@ -80,6 +87,7 @@ export class OpsStore {
   private readonly dialogs = inject(DialogService);
   private readonly search = inject(SearchStore);
   private readonly settings = inject(SettingsStore);
+  private readonly archive = inject(ArchiveStore);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -90,8 +98,21 @@ export class OpsStore {
     return selectionForAction(this.ws.panel()?.store);
   }
 
+  /** The real folder of the active panel – null for result tabs and inside archives (read-only). */
   folder(): string | null {
-    return this.ws.panel()?.store.path() ?? null;
+    const store = this.ws.panel()?.store;
+    return store && store.archive() === null ? store.path() : null;
+  }
+
+  /** The active panel shows a folder inside an archive (design 016 E1). */
+  inArchive(): boolean {
+    return (this.ws.panel()?.store.archive() ?? null) !== null;
+  }
+
+  /** A real folder of `side` that can be a target (not a result tab, not an archive). */
+  private targetFolder(side: Side): string | null {
+    const store = this.ws.panel(side)?.store;
+    return store && store.archive() === null ? store.path() : null;
   }
 
   /** The folder, or the result tab (`search:<key>`) of the active panel. */
@@ -103,6 +124,14 @@ export class OpsStore {
 
   async openCopyMove(kind: 'copy' | 'move'): Promise<void> {
     const side = this.ws.source();
+    if (this.inArchive()) {
+      // copying out of an archive = extracting (design 016 E4); archives are read-only
+      if (kind === 'move') {
+        throw err('unknown', ARCHIVE_TEXTS.readOnly);
+      }
+      this.archive.openUnpack();
+      return;
+    }
     // a result tab (design 009) has no folder: its location key stands in for it
     const sourceDir = this.location();
     const sources = this.selection();
@@ -112,7 +141,7 @@ export class OpsStore {
     if (sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
-    const other = this.ws.panel(otherSide(side))?.store.path() ?? null;
+    const other = this.targetFolder(otherSide(side));
     await this.openCopyMoveFor({
       kind,
       side,
@@ -137,21 +166,37 @@ export class OpsStore {
     if (args.sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
-    const other = this.ws.panel(otherSide(args.side))?.store.path() ?? null;
+    // archives are read-only (design 016): never a target; out of one only by extracting (F5)
+    for (const s of ['left', 'right'] as const) {
+      const info = this.ws.panel(s)?.store.archive();
+      if (info && isSameOrBelow(args.target, info.path)) {
+        throw err('unknown', ARCHIVE_TEXTS.intoArchive);
+      }
+      if (info && s === args.side && args.sources.some((e) => isSameOrBelow(e.path, info.path))) {
+        throw err('unknown', ARCHIVE_TEXTS.readOnly);
+      }
+    }
+    const other = this.targetFolder(otherSide(args.side));
     const panels = this.ws.panels();
     const tabPaths = [...panels.left.tabs, ...panels.right.tabs].map((t) => t.path);
-    const targets = targetOptions([
-      { group: OPS_TEXTS.otherPanel, paths: [other] },
-      { group: 'Tab', paths: tabPaths },
-      { group: 'Favourite', paths: [...this.ws.favorites()] },
-      { group: 'Recent', paths: this.ws.recent() },
-    ]);
+    const targets = targetOptions(
+      [
+        { group: OPS_TEXTS.otherPanel, paths: [other] },
+        { group: 'Tab', paths: tabPaths },
+        { group: 'Favourite', paths: [...this.ws.favorites()] },
+        { group: 'Recent', paths: this.ws.recent() },
+      ],
+      (p) => this.archive.isArchivePath(p),
+    );
     const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
     this.copyMove.set({ ...args, targets, dangers });
     this.dialogs.show('copy-move');
   }
 
   async openDelete(mode: DeleteMode): Promise<void> {
+    if (this.inArchive()) {
+      throw err('unknown', ARCHIVE_TEXTS.readOnly);
+    }
     const sourceDir = this.location();
     const entries = this.selection();
     if (sourceDir === null) {
@@ -164,16 +209,25 @@ export class OpsStore {
     // settings (design 015): F8 deletes permanently when the trash is switched off
     const effective: DeleteMode =
       mode === 'trash' && !this.settings.get('behavior.deleteToTrash') ? 'permanent' : mode;
+    const store = this.ws.panel()?.store;
+    const whole =
+      store?.searchKey() != null && store.searchKind() === 'duplicates'
+        ? wholeGroups(store.entries(), new Set(entries.map((e) => e.path)))
+        : 0;
     const req: DeleteRequest = {
       mode: effective,
       side: this.ws.source(),
       sourceDir,
       entries,
       dangers,
+      wholeGroups: whole,
+      sizeOnly: store?.searchKind() === 'duplicates' && this.search.sizeOnly(store.searchKey()),
     };
+    // without confirmation only a plain trash delete (no dangers, no whole duplicate groups)
     if (
       effective === 'trash' &&
       dangers.length === 0 &&
+      whole === 0 &&
       !this.settings.get('behavior.confirmTrash')
     ) {
       const e = await this.runDelete(req, false);
@@ -189,9 +243,9 @@ export class OpsStore {
   openName(kind: NameRequest['kind']): void {
     const side = this.ws.source();
     const store = this.ws.panel(side)?.store;
-    const parent = store?.path() ?? null;
+    const parent = store && store.archive() === null ? store.path() : null;
     if (!store || parent === null) {
-      throw err('unknown', OPS_TEXTS.noFolder);
+      throw err('unknown', store?.archive() ? ARCHIVE_TEXTS.readOnly : OPS_TEXTS.noFolder);
     }
     if (kind === 'rename') {
       const sel = this.selection();
@@ -229,7 +283,7 @@ export class OpsStore {
   renameInline(): void {
     const side = this.ws.source();
     const panel = this.ws.panel(side);
-    const parent = panel?.store.path() ?? null;
+    const parent = panel && panel.store.archive() === null ? panel.store.path() : null;
     const sel = this.selection();
     const entry = sel.length === 1 ? sel[0] : null;
     const list = panel?.controller();

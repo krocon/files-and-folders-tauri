@@ -296,7 +296,7 @@ import { SETTINGS_TEXTS } from './settings-texts';
       }
     </ng-template>
   `,
-  styleUrl: './settings-dialog.scss',
+  styleUrl: './settings-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsDialog {

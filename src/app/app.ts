@@ -7,7 +7,7 @@ import { Workspace } from './features/workspace/workspace';
   imports: [Workspace, MenuBar],
   // the menu bar shows itself only where the OS has no native one (design 014 E5)
   template: `<app-menu-bar /><app-workspace class="shell" />`,
-  styleUrl: './app.scss',
+  styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {}

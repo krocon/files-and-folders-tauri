@@ -22,6 +22,9 @@ export type DialogKind =
   | 'properties'
   | 'find'
   | 'folder-finder'
+  | 'pack'
+  | 'unpack'
+  | 'duplicates'
   | 'themes'
   | 'settings'
   | 'about';

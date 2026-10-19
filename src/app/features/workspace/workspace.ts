@@ -43,6 +43,12 @@ import { PropertiesStore } from '../preview/properties.store';
 import { QuickViewStore } from '../preview/quick-view.store';
 import { ViewerDialog } from '../preview/viewer-dialog';
 import { ViewerStore } from '../preview/viewer.store';
+import { registerArchiveActions } from '../archive/archive-actions';
+import { ArchiveStore } from '../archive/archive.store';
+import { PackDialog } from '../archive/pack-dialog';
+import { UnpackDialog } from '../archive/unpack-dialog';
+import { DuplicatesDialog } from '../duplicates/duplicates-dialog';
+import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { FindDialog } from '../search/find-dialog';
 import { FindStore } from '../search/find.store';
 import { FolderFinderDialog } from '../search/folder-finder-dialog';
@@ -60,6 +66,8 @@ import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { registerMenuActions } from '../menus/menu-actions';
+import { AboutDialog } from '../about/about-dialog';
+import { registerAboutActions } from '../about/about-actions';
 import { MenuService } from '../menus/menu.service';
 import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
@@ -69,7 +77,6 @@ import { splitterFromPointer, splitterKey } from './splitter';
 import { TEXTS } from './texts';
 import { ACT_TEXTS } from '../actions/actions-texts';
 import { SettingsDialog } from '../settings/settings-dialog';
-import { AboutDialog } from '../settings/about-dialog';
 import { registerSettingsActions } from '../settings/settings-actions';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { SETTINGS_TEXTS } from '../settings/settings-texts';
@@ -106,13 +113,16 @@ import { WorkspaceStore } from './workspace.store';
     PropertiesDialog,
     FindDialog,
     FolderFinderDialog,
+    PackDialog,
+    UnpackDialog,
+    DuplicatesDialog,
     ThemeDialog,
     SettingsDialog,
     AboutDialog,
     ContextMenu,
   ],
   templateUrl: './workspace.html',
-  styleUrl: './workspace.scss',
+  styleUrl: './workspace.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[style.--fnf-split]': 'ws.splitter()',
@@ -142,6 +152,8 @@ export class Workspace implements OnInit {
   private readonly find = inject(FindStore);
   private readonly search = inject(SearchStore);
   private readonly finder = inject(FolderFinderStore);
+  private readonly archive = inject(ArchiveStore);
+  private readonly dup = inject(DuplicatesStore);
   private readonly theme = inject(ThemeService);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -257,8 +269,10 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
+    this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
+    this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();

@@ -109,9 +109,11 @@ fn invalid(message: &str) -> FsError {
 }
 
 /// Device names Windows reserves in every folder (also with an extension).
-pub(crate) const WINDOWS_RESERVED: [&str; 22] = [
+/// Includes the superscript digits and the console names (review 016 #8).
+pub(crate) const WINDOWS_RESERVED: [&str; 30] = [
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    "COM9", "COM¹", "COM²", "COM³", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
+    "LPT9", "LPT¹", "LPT²", "LPT³", "CONIN$", "CONOUT$",
 ];
 
 pub fn validate_name_for(name: &str, windows: bool) -> Result<(), FsError> {
@@ -469,6 +471,10 @@ mod tests {
             "Lpt9.tar.gz",
             "AUX ",
             "nul",
+            "COM¹",
+            "lpt³.txt",
+            "CONIN$",
+            "conout$.log",
         ] {
             assert!(validate_name_for(bad, true).is_err(), "{bad:?}");
         }

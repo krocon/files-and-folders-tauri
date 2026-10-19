@@ -69,7 +69,7 @@ import { MenuService } from './menu.service';
       }
     }
   `,
-  styleUrl: './menu-bar.scss',
+  styleUrl: './menu-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(focusout)': 'onFocusOut()' },
 })

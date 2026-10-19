@@ -1,6 +1,6 @@
 import { translatable, Translation } from '../../core/i18n/i18n';
 
-/** Texts of the settings and about dialogs (design 015 E6/E7). */
+/** Texts of the settings dialog (design 015 E6). */
 export const SETTINGS_EN = {
   title: 'Settings',
   search: 'Search settings',
@@ -179,13 +179,6 @@ export const SETTINGS_EN = {
     other: (code: string) => `Settings: ${code}`,
   },
   saveFailed: (msg: string) => `The settings could not be saved: ${msg}`,
-  // about
-  aboutTitle: 'About Files and Folders',
-  aboutText: 'A dual-pane file manager for macOS, Windows and Linux.',
-  version: (v: string) => `Version ${v}`,
-  aboutStack: 'Tauri 2 · Angular · Rust',
-  aboutTable: 'File list: GuiExpert Table (MIT).',
-  aboutAuthor: 'Marc Kronberg',
 };
 
 const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
@@ -359,12 +352,6 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     other: (code) => `Einstellungen: ${code}`,
   },
   saveFailed: (msg) => `Die Einstellungen konnten nicht gespeichert werden: ${msg}`,
-  aboutTitle: 'Über Files and Folders',
-  aboutText: 'Ein Dateimanager mit zwei Seiten für macOS, Windows und Linux.',
-  version: (v) => `Version ${v}`,
-  aboutStack: 'Tauri 2 · Angular · Rust',
-  aboutTable: 'Dateiliste: GuiExpert Table (MIT).',
-  aboutAuthor: 'Marc Kronberg',
 };
 
 export const SETTINGS_TEXTS = translatable('settings', SETTINGS_EN, { de: SETTINGS_DE });

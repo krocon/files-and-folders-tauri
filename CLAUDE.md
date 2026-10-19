@@ -3,8 +3,9 @@
 > Leitfaden für Claude (und Menschen) zur Arbeit an **Files and Folders**: einem plattformübergreifenden
 > Dateimanager für macOS, Windows und Linux in Richtung Total Commander.
 > Autor: Marc Kronberg · Repo: https://github.com/krocon/files-and-folders-tauri
+> MIT
 >
-> Neuauflage der älteren Projekte `node-files-and-folders-client` (AngularJS) und `node-files-and-folders-server`
+> Neuauflage des älteren Projektes , siehe Folder: '/old_project', (https://github.com/krocon/files-and-folders-mr)
 > (Node, WebSockets) als **Desktop-App**: Tauri 2 + Angular 22 + Rust. Die Dateiliste ist eine
 > **GuiExpert Table** (`@guiexpert/table`, Quellcode im Mono-Repo `guiexperttable/mono`, gleicher Autor).
 
@@ -21,8 +22,10 @@
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
   (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
-  Live-Editor, System folgen) und Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell) sind
-  fertig. Als Nächstes: Prompt 015.
+  Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
+  (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
+  Packen/Entpacken, Duplikate) und Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
+  CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`) sind fertig. Als Nächstes: Prompt 015 (läuft) und 018.
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
@@ -42,7 +45,8 @@
 | Frontend-Build | `pnpm build` |
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
 | Alles prüfen | `pnpm check` |
-| Release-Build | `pnpm tauri build` (Signierung/Notarisierung noch nicht eingerichtet) |
+| Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
+| Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
 Nicht ausführbare Checks im Abschlussbericht mit Grund nennen. `pnpm tauri dev` braucht ein Fenster – in einer
 Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die Binary unter `Xvfb` starten
@@ -66,6 +70,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
   app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
   app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
+  app/core/file-icon/        FileIconService (Icon-Zuordnung nach Dateiendung/Kategorie zu Font Awesome)
   app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
                              im Ordnermenü), Tool-Konfigurationsdialog
   app/core/search/           Such-DTOs (Kriterien, Treffer, Statistik) – Treffer kommen als Job-Ereignis `searchHits`
@@ -76,8 +81,14 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              Eigenschaften, Provider-Liste (views/: Text per textContent, Bild, Hex, Info), reine
                              Helfer (text-search, hex, permissions)
   app/core/theme/            Farbschemata: Token-Katalog (tokens.ts), eingebaute Schemata (themes/*.json = styles.scss),
-                             Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi
+                             Kontrast/Farben (color.ts, theme-logic.ts), ThemeService (Root), ThemeApi; alte Designs:
+                             legacy/*.json (= docs/legacy-themes), legacy-theme-map.ts (76 `--fnf-*` → Tokens),
+                             legacy-theme.ts (Umrechnung, alter Export), contrast-fix.ts (minimale WCAG-Korrektur)
   app/features/themes/       Dialog „Colour schemes…“ (Live-Editor, Import/Export), Aktionen, Texte
+  app/core/archive/          archive-names.ts (Endungen wie Rust, Default-Archivname) – Archive kommen über
+                             `list_directory` (virtuelle Pfade, `DirectoryListing.archive`)
+  app/features/archive/      ArchiveStore (Pack/Unpack/Extract als Jobs), Dialoge, Aktionen + Veto im Archiv
+  app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)
   app/features/dnd/          DragStore (Root: Ziehen, Zonen, Übergabe an den Kopieren/Verschieben-Dialog), dnd-logic.ts
@@ -85,6 +96,7 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
+  app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
   app/core/menu/             MenuApi (set_app_menu, subscribe_menu, close_main_window), DTOs des nativen Menüs
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
@@ -93,15 +105,17 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
   app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
                              tool-dialog.scss), preview-grid/ (GuiExpert Table für Vorschauen)
+  assets/                    font-awesome-4.5.0/ (Font Awesome 4.5.0 Fonts + CSS)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
-  styles.scss                Design-Tokens (CSS Custom Properties, light/dark) – Quelle der eingebauten Schemata
-  styles/ge-table-theme.scss GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
+  styles.css                 Design-Tokens, Font-Awesome-Import (@import assets/font-awesome-4.5.0/...)
+  styles/ge-table-theme.css  GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
+  src/about.rs               Daten für About (Version aus tauri.conf.json → package.json, Plattform)
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
@@ -116,6 +130,10 @@ src-tauri/                   Rust (Tauri 2)
   src/properties.rs          Eigenschaften (Zeiten, Unix-Modus/Eigentümer, Windows-Attribute, Link-Ziel)
   src/watch/                 Ordner-Überwachung: mod.rs (WatchHub, notify + PollWatcher, Thread), batch.rs (Entprellen,
                              rein), netfs.rs (Netzlaufwerk?); Commands in commands/watch.rs
+  src/archive/               Archive: Index (ZIP/TAR/TAR.GZ), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
+                             `list_directory_or_archive` (virtuelle Pfade); Jobs `jobs/extract.rs`, `jobs/pack.rs`,
+                             `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`
+  src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
@@ -125,7 +143,10 @@ src-tauri/                   Rust (Tauri 2)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
   capabilities/default.json  nur core:default
-docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md,
+  icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
+scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test)
+docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md, release.md, licenses.md,
+                             ci/ (Workflow-Vorlagen),
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
 prompts/                     Feature-Prompts (s. o.)
 ```
@@ -163,6 +184,9 @@ prompts/                     Feature-Prompts (s. o.)
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit SCSS + Tokens.
+- **Icons**: In der gesamten UI nutzen wir die **Font Awesome 4.5.0**-Icons (Assets unter `src/assets/font-awesome-4.5.0/`,
+  eingebunden in `src/styles.css`). Datei-Icons werden im Dateipanel über den `FileIconService`
+  (`app/core/file-icon/file-icon.service.ts`) dynamisch anhand der Dateierweiterung bzw. Kategorie aufgelöst.
 
 ## 5. GuiExpert Table als Dateiliste
 
@@ -257,6 +281,13 @@ prompts/                     Feature-Prompts (s. o.)
 4. Zurück: Container `git bundle create /mnt/user-data/outputs/<slug>.bundle origin/main..feat/<slug>` →
    `device_commit_files` nach `.tmp-bundle/<slug>.bundle` → Marc (oder Gerät):
    `git pull --ff-only .tmp-bundle/<slug>.bundle feat/<slug>`. `.tmp-bundle/` ist in `.gitignore`.
+
+- Seit 2026-10-17 darf gepusht werden (§7): im Container `origin` = GitHub (Zugang über `add_repo` mit `push`),
+  dann ist der Bundle-Weg (Schritt 4) unnötig – Marc holt mit `git pull`. Git-Identität im Container:
+  `Claude <noreply@anthropic.com>` (Stop-Hook verlangt das).
+- Parallel arbeiten mit `git worktree add` (je Worktree eigenes `src-tauri/target`, ~5 GB!). Platte ist knapp:
+  `export CARGO_INCREMENTAL=0`, `target/release` nach Messungen löschen, `df -h /` im Blick. Eigene Xvfb-Displays je
+  Worktree, Prozesse nur per PID beenden. Offene Punkte für die nächste Sitzung: `TODO.md`.
 
 **Referenzquellen (lesbar ohne Marcs Mac)**
 - Alte Version (AngularJS): `git clone --depth 1 https://github.com/krocon/node-files-and-folders-client` – z. B.

@@ -1,6 +1,7 @@
 import { computed, effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
-import { isParentRow } from '../../core/fs/fs.models';
+import { isArchiveEntry } from '../../core/archive/archive-names';
+import { DirEntry, isParentRow } from '../../core/fs/fs.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { MenuApi } from '../../core/menu/menu-api';
 import { NativeMenuSpec } from '../../core/menu/menu.models';
@@ -178,13 +179,15 @@ export class MenuService {
     this.openFor(side, x, y, entry && !isParentRow(entry) ? entry : null);
   }
 
-  private openFor(side: Side, x: number, y: number, entry: { kind: string } | null): void {
+  private openFor(side: Side, x: number, y: number, entry: DirEntry | null): void {
     const store = this.ws.panel(side)?.store;
     const marked = store?.markedEntries().filter((e) => !isParentRow(e)).length ?? 0;
     const kind = contextKind({
       resultTab: (store?.searchKey() ?? null) !== null,
       markedCount: marked,
       entry,
+      inArchive: (store?.archive() ?? null) !== null,
+      archiveFile: entry !== null && isArchiveEntry(entry),
     });
     this.open.set({ side, x, y, defs: contextMenuFor(kind, marked) });
   }

@@ -5,7 +5,7 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, group, rename, search,
+    Transfer, clean, copy, delete, duplicates, extract, group, pack, rename, search,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -238,6 +238,44 @@ impl JobManager {
                         )
                     }
                     JobSpec::Search { criteria } => search::run(id, criteria, &control, &emit),
+                    JobSpec::Extract {
+                        archive,
+                        entries,
+                        target_dir,
+                        into_subfolder,
+                        options,
+                    } => extract::run(
+                        id,
+                        &PathBuf::from(archive),
+                        entries,
+                        &PathBuf::from(target_dir),
+                        *into_subfolder,
+                        options,
+                        &control,
+                        &emit,
+                    ),
+                    JobSpec::Pack {
+                        sources,
+                        target_dir,
+                        name,
+                        format,
+                        level,
+                    } => {
+                        let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        pack::run(
+                            id,
+                            &sources,
+                            &PathBuf::from(target_dir),
+                            name,
+                            *format,
+                            *level,
+                            &control,
+                            &emit,
+                        )
+                    }
+                    JobSpec::Duplicates { criteria } => {
+                        duplicates::run(id, criteria, &control, &emit)
+                    }
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         run_count(id, &paths, &control, &emit)
@@ -801,6 +839,47 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             for p in paths {
                 validate_input_path(p)?;
             }
+        }
+        JobSpec::Extract {
+            archive,
+            entries,
+            target_dir,
+            ..
+        } => {
+            validate_input_path(archive)?;
+            validate_input_path(target_dir)?;
+            if entries.len() > crate::archive::MAX_ENTRIES {
+                return Err(FsError::new(FsErrorCode::TooMany, "Too many entries", None));
+            }
+            for e in entries {
+                validate_input_path(e)?;
+            }
+        }
+        JobSpec::Pack {
+            sources,
+            target_dir,
+            name,
+            level,
+            ..
+        } => {
+            if sources.is_empty() {
+                return Err(nothing());
+            }
+            for s in sources {
+                validate_input_path(s)?;
+            }
+            validate_input_path(target_dir)?;
+            crate::paths::validate_name(name)?;
+            if level.is_some_and(|l| !(1..=9).contains(&l)) {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    "The compression level is 1–9",
+                    None,
+                ));
+            }
+        }
+        JobSpec::Duplicates { criteria } => {
+            crate::duplicates::compile(criteria)?;
         }
         JobSpec::DirSize { path } => {
             validate_input_path(path)?;

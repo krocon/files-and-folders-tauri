@@ -100,6 +100,8 @@ export class WorkspaceStore {
   readonly favorites = signal<ReadonlySet<string>>(new Set());
   /** Recently visited folders, newest first (design 003 E3). */
   readonly recent = signal<readonly string[]>([]);
+  /** Archive files shown as folders in this session (their paths are never targets, review 016 #7). */
+  readonly archiveRoots = signal<ReadonlySet<string>>(new Set());
   readonly panels = signal<Panels>(EMPTY_PANELS);
   /** Messages for the user (session warnings, replaced folders, save errors). */
   readonly notices = signal<readonly string[]>([]);
@@ -381,6 +383,12 @@ export class WorkspaceStore {
   }
 
   // ---- favourites ----
+
+  noteArchive(path: string): void {
+    if (!this.archiveRoots().has(path)) {
+      this.archiveRoots.update((s) => new Set([...s, path]));
+    }
+  }
 
   addRecent(path: string): void {
     this.recent.update((r) => [path, ...r.filter((p) => p !== path)].slice(0, MAX_RECENT));

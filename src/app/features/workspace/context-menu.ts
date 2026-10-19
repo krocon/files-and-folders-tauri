@@ -86,7 +86,11 @@ export interface MenuItem {
         >
           <span class="label">
             @if (item.checked !== undefined) {
-              <span class="radio" aria-hidden="true">{{ item.checked ? '✓' : '' }}</span>
+              <span class="radio" aria-hidden="true">
+                @if (item.checked) {
+                  <i class="fa fa-check" aria-hidden="true"></i>
+                }
+              </span>
             }
             {{ item.label }}</span
           >
@@ -94,7 +98,7 @@ export interface MenuItem {
             <span class="sr-only" [id]="hintId(item)">{{ item.hint }}</span>
           }
           @if (item.children) {
-            <span class="arrow" aria-hidden="true">▸</span>
+            <i class="fa fa-caret-right arrow" aria-hidden="true"></i>
           } @else if (item.shortcut) {
             <kbd>{{ item.shortcut }}</kbd>
           }
@@ -117,7 +121,7 @@ export interface MenuItem {
       />
     }
   `,
-  styleUrl: './context-menu.scss',
+  styleUrl: './context-menu.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet],
   host: {

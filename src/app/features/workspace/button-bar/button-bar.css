@@ -1,0 +1,82 @@
+:host {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-2);
+  color: var(--color-footer-text);
+  background: var(--color-footer-bg);
+  border-top: 0; /* no border in the middle of the 'footer'  */
+  --color-focus: var(--color-footer-focus);
+}
+
+.functions,
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.fbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 8px var(--spacing-2);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-footer-button-text);
+  background: var(--color-footer-button-bg);
+  border: var(--border-width) solid var(--color-footer-button-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+    outline-offset: 1px;
+    opacity: 1;
+  }
+}
+
+.badge {
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-shortcut-text);
+  background: var(--color-shortcut-bg);
+  border-radius: 3px;
+}
+
+.fbtn {
+  position: relative;
+}
+
+.fbtn.attention {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.task-bar {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 1px;
+  height: 2px;
+  background: var(--color-surface-raised);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+}
+
+/* the colour scheme menu is position: fixed – its host must not take part in the flex layout */
+app-context-menu {
+  display: contents;
+}

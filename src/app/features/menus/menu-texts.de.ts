@@ -11,6 +11,7 @@ export const MENU_DE: Translation<typeof MENU_EN> = {
   tools: 'Werkzeuge',
   window: 'Fenster',
   help: 'Hilfe',
+  duplicates: 'Duplikate',
   menuBar: 'Menüleiste',
 
   copyAs: 'In die Zwischenablage',

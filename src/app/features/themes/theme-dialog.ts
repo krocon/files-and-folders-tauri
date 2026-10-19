@@ -152,9 +152,14 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
 
             <div class="contrast" role="status">
               @if (problems().length === 0) {
-                <span class="ok">✓ {{ t.contrastOk }}</span>
+                <span class="ok"
+                  ><i class="fa fa-check" aria-hidden="true"></i> {{ t.contrastOk }}</span
+                >
               } @else {
-                <span class="warn">⚠ {{ t.contrastProblems(problems().length) }}</span>
+                <span class="warn"
+                  ><i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                  {{ t.contrastProblems(problems().length) }}</span
+                >
                 <ul>
                   @for (r of problems(); track r.pair.label) {
                     <li>{{ t.ratio(r.pair.label, r.ratio, r.pair.min) }}</li>
@@ -171,7 +176,9 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
                     <span class="tlabel" [id]="labelId(r.def.name)">
                       {{ r.def.label }}
                       @if (r.warn) {
-                        <span class="warn" [attr.title]="t.lowContrast">⚠</span>
+                        <span class="warn" [attr.title]="t.lowContrast"
+                          ><i class="fa fa-exclamation-triangle" aria-hidden="true"></i
+                        ></span>
                       }
                     </span>
                     @if (r.def.kind === 'color') {
@@ -208,6 +215,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
           <span class="help">{{ t.importHelp }}</span>
           <button type="button" class="btn" (click)="importFile()">{{ t.import }}</button>
           <button type="button" class="btn" (click)="exportFile()">{{ t.export }}</button>
+          <button type="button" class="btn" (click)="exportFile(true)">{{ t.exportLegacy }}</button>
           <span class="spacer"></span>
           <button type="button" class="btn" [disabled]="!isOwn()" (click)="remove()">
             {{ t.delete }}
@@ -232,7 +240,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
       </div>
     </app-modal>
   `,
-  styleUrls: ['../../shared/dialog/tool-dialog.scss', './theme-dialog.scss'],
+  styleUrls: ['../../shared/dialog/tool-dialog.css', './theme-dialog.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ThemeDialog {
@@ -404,6 +412,7 @@ export class ThemeDialog {
       this.load(r.id);
       this.message.set(
         this.t.imported(r.name, r.unknown.length, r.dropped.length) +
+          (r.adjusted ? ` ${this.t.adjusted(r.adjusted)}` : '') +
           (r.selected ? '' : ` ${this.t.notSelected(r.problems.length)}`),
       );
     } catch (err) {
@@ -411,7 +420,8 @@ export class ThemeDialog {
     }
   }
 
-  protected async exportFile(): Promise<void> {
+  /** `legacy`: the old `{ name, colors }` format (design 019). */
+  protected async exportFile(legacy = false): Promise<void> {
     const side = this.ws.source();
     const store = this.ws.panel(side)?.store;
     const dir = store?.path() ?? null;
@@ -420,7 +430,9 @@ export class ThemeDialog {
       return;
     }
     try {
-      const path = await this.theme.exportTheme(dir, this.draft());
+      const path = legacy
+        ? await this.theme.exportLegacy(dir, this.draft())
+        : await this.theme.exportTheme(dir, this.draft());
       this.message.set(this.t.exported(path));
       void store.refresh();
     } catch (err) {

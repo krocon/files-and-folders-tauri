@@ -8,7 +8,6 @@ use crate::fileops;
 use crate::jobs::rename::{self, RenameItem, RenamePlan};
 use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
-use crate::listing;
 use crate::model::DirectoryListing;
 use crate::opener;
 use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
@@ -28,6 +27,13 @@ use tauri::{AppHandle, Manager, Runtime};
 /// Label of the only window.
 pub const MAIN_WINDOW: &str = "main";
 
+/// Name, version and platform for the About dialog (design 017).
+#[tauri::command]
+pub fn get_app_info<R: Runtime>(app: AppHandle<R>) -> crate::about::AppInfo {
+    let info = app.package_info();
+    crate::about::app_info(&info.name, &info.version.to_string())
+}
+
 /// Lists a directory. `path = None` lists the current user's home directory.
 #[tauri::command]
 pub async fn list_directory<R: Runtime>(
@@ -35,7 +41,7 @@ pub async fn list_directory<R: Runtime>(
     path: Option<String>,
 ) -> Result<DirectoryListing, FsError> {
     let dir = resolve_dir(&app, path)?;
-    tauri::async_runtime::spawn_blocking(move || listing::list_directory(&dir))
+    tauri::async_runtime::spawn_blocking(move || crate::archive::list_directory_or_archive(&dir))
         .await
         .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
 }
@@ -81,24 +87,40 @@ pub async fn resolve_location<R: Runtime>(
     input: String,
 ) -> Result<Location, FsError> {
     let path = resolve_input(&app, &input)?;
-    tauri::async_runtime::spawn_blocking(move || {
-        let meta = std::fs::metadata(&path).map_err(|e| FsError::from_io(&e, &path))?;
-        if meta.is_dir() {
-            return Ok(Location {
-                dir: path.to_string_lossy().into_owned(),
-                select: None,
-            });
+    tauri::async_runtime::spawn_blocking(move || location_of(&path))
+        .await
+        .map_err(|e| FsError::new(FsErrorCode::Io, format!("Resolving failed: {e}"), None))?
+}
+
+/// A typed path → folder (+ file to select). A folder inside an archive is
+/// refused with a clear message: it is no target (archives are read-only) and
+/// typed virtual paths are not navigated (review 016 #7).
+fn location_of(path: &std::path::Path) -> Result<Location, FsError> {
+    let meta = match std::fs::metadata(path) {
+        Ok(m) => m,
+        Err(e) => {
+            if crate::archive::resolve(path).is_some() {
+                return Err(FsError::new(
+                    FsErrorCode::ArchiveError,
+                    "A folder inside an archive cannot be typed or used as a target (archives are read-only) – open the archive in the panel",
+                    Some(path),
+                ));
+            }
+            return Err(FsError::from_io(&e, path));
         }
-        let parent = crate::paths::parent_of(&path).ok_or_else(|| {
-            FsError::new(FsErrorCode::NotADirectory, "No parent folder", Some(&path))
-        })?;
-        Ok(Location {
-            dir: parent.to_string_lossy().into_owned(),
-            select: Some(path.to_string_lossy().into_owned()),
-        })
+    };
+    if meta.is_dir() {
+        return Ok(Location {
+            dir: path.to_string_lossy().into_owned(),
+            select: None,
+        });
+    }
+    let parent = crate::paths::parent_of(path)
+        .ok_or_else(|| FsError::new(FsErrorCode::NotADirectory, "No parent folder", Some(path)))?;
+    Ok(Location {
+        dir: parent.to_string_lossy().into_owned(),
+        select: Some(path.to_string_lossy().into_owned()),
     })
-    .await
-    .map_err(|e| FsError::new(FsErrorCode::Io, format!("Resolving failed: {e}"), None))?
 }
 
 /// Opens a file with the default application; executables only with `allow_executable`.
@@ -1203,6 +1225,23 @@ pub async fn cancel_all_and_quit<R: Runtime>(app: AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Review 016 #7: a folder inside an archive is never a resolved location (target).
+    #[test]
+    fn locations_inside_an_archive_are_refused() {
+        let d = tempfile::tempdir().unwrap();
+        let zip = d.path().join("a.zip");
+        crate::archive::tests::make_zip(&zip, &[crate::archive::tests::E::File("o/x.txt", b"x")]);
+        let err = location_of(&zip.join("o")).unwrap_err();
+        assert_eq!(err.code, FsErrorCode::ArchiveError);
+        // the archive file itself is a file: its folder with the archive selected
+        let loc = location_of(&zip).unwrap();
+        assert_eq!(loc.select.as_deref(), Some(zip.to_string_lossy().as_ref()));
+        assert_eq!(
+            location_of(&d.path().join("weg")).unwrap_err().code,
+            FsErrorCode::NotFound
+        );
+    }
 
     #[test]
     fn preview_scheme_serves_only_valid_tokens() {

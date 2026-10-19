@@ -1,0 +1,40 @@
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    float: left;
+    margin-inline-end: var(--spacing-2);
+    font-weight: 600;
+  }
+
+  &[aria-invalid='true'] legend {
+    color: var(--color-danger);
+  }
+}
+
+.label {
+  font-weight: 600;
+}
+
+input.num {
+  width: 5rem;
+}
+
+input.num.small {
+  width: 3rem;
+}
+
+.template-name {
+  width: 12rem;
+}
+
+input[type='date'] {
+  padding: 2px var(--spacing-1);
+  font: inherit;
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+}

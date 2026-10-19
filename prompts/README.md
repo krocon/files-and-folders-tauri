@@ -39,6 +39,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 016 | [016-archive-duplikate.md](016-archive-duplikate.md) | Archive (ZIP/TAR), Duplikate – optional | 005, 006, 009 | L |
 | 017 | [017-release-distribution.md](017-release-distribution.md) | CI, Pakete je OS, Version, Icons, Signierung (vorbereiten) | – | M |
 | 018 | [018-feature-paritaet.md](018-feature-paritaet.md) | Abgleich mit dem alten Programm, Matrix mit Testbelegen | 001–015 | S–M |
+| 020 | [020-actions-menue.md](020-actions-menue.md) | Actions-Menü nach Vorbild der alten Version (4 kuratierte Spalten, Trennlinien, Shortcut-Badges nach mr §1.8) | 002, 004, 014 | S–M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
@@ -78,4 +79,4 @@ Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprot
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
 - [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [x] 011 ·
-  [x] 012 (Ziehen ins System offen) · [x] 013 · [x] 014 · [ ] 015 · [ ] 016 · [ ] 017 · [ ] 018 · [ ] 019
+  [x] 012 (Ziehen ins System offen) · [x] 013 · [x] 014 · [ ] 015 (in Arbeit, Branch `feat/einstellungen-i18n`, s. `TODO.md`) · [x] 016 (7z, Passwörter, in Archive schreiben offen) · [x] 017 (Workflows als Vorlage in `docs/ci/`, Signierung nur vorbereitet, Lizenz offen) · [ ] 018 · [x] 019 · [ ] 020

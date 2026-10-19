@@ -1,0 +1,289 @@
+:host {
+  display: contents;
+}
+
+/* no background here: `.part[_ngcontent]` beats the tab bar's `:host` and would paint
+   the tab row with the list colour (review 013 #3) – each part sets its own */
+.part {
+  min-width: 0;
+}
+
+:host(.side-left) .part {
+  grid-column: 1;
+}
+
+:host(.side-right) .part {
+  grid-column: 3;
+}
+
+.header {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  color: var(--color-header-text);
+  background: var(--color-header-bg);
+  border-bottom: 0; /* no border in the middle of the 'header'  */
+  /* own focus ring colour on the header bar (design 019 E5) */
+  --color-focus: var(--color-header-focus);
+
+  &.fnf-active-panel {
+    background: var(--color-active-header-bg);
+  }
+}
+
+/* long paths: aligned right, so the end of the path stays visible */
+.crumbs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.crumb {
+  flex: none;
+  padding: 1px 2px;
+  font: inherit;
+  color: var(--color-header-text);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &.current {
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+  }
+
+  &.placeholder {
+    color: var(--color-muted);
+    cursor: default;
+  }
+}
+
+.sep {
+  flex: none;
+  padding-inline: 2px;
+  color: var(--color-muted);
+}
+
+.star {
+  flex: none;
+  padding: 0 var(--spacing-1);
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    color: var(--color-favorite);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.tabs {
+  grid-row: 2;
+}
+
+.list {
+  grid-row: 3;
+  background: var(--color-list-bg);
+  position: relative;
+  display: flex;
+  min-height: 0;
+  border-top: 0;
+
+  /* quick view (design 010 E4): the list stays (table state), hidden behind the preview */
+  .quick {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  &.quick-on app-file-list {
+    visibility: hidden;
+  }
+}
+
+.error {
+  position: absolute;
+  inset: var(--spacing-2) var(--spacing-2) auto;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.error-path {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.error-detail {
+  opacity: 0.8;
+}
+
+.status {
+  grid-row: 4;
+  display: flex;
+  gap: var(--spacing-2);
+  padding: 2px var(--spacing-2);
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-footer-text);
+  background: var(--color-footer-bg);
+  border-top: var(--border-width) solid var(--color-footer-border);
+  --color-focus: var(--color-footer-focus);
+
+  b {
+    font-weight: normal;
+  }
+
+  &.fnf-active-panel .sel {
+    color: var(--color-active-panel-accent);
+    font-weight: 600;
+  }
+
+  .warn {
+    color: var(--color-footer-error-text);
+  }
+}
+
+.path-form {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.path-input {
+  flex: 1;
+  min-width: 0;
+  padding: 1px var(--spacing-1);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-header-input-text);
+  background: var(--color-header-input-bg);
+  border: var(--border-width) solid var(--color-focus);
+  border-radius: var(--radius-sm);
+
+  &[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+}
+
+.path-error {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+.crumbs {
+  cursor: text;
+}
+
+.status .busy {
+  color: var(--color-accent);
+}
+
+.status .watch {
+  /* status line tokens (013): muted is not checked against the footer background */
+  color: var(--color-footer-text);
+  font-style: italic;
+}
+
+/* result tab header (design 009 E4) */
+.search-head {
+  justify-content: flex-start;
+  gap: var(--spacing-1);
+  font-family: var(--font-sans);
+  cursor: default;
+
+  .search-label {
+    flex: none;
+  }
+
+  .search-roots {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+  }
+
+  .search-count {
+    flex: none;
+  }
+
+  .warn {
+    flex: none;
+    color: var(--color-danger);
+  }
+}
+
+.btn.small {
+  flex: none;
+  padding: 0 var(--spacing-2);
+}
+
+/* inside an archive (design 016 E1): read-only hint next to the breadcrumbs */
+.archive-badge {
+  flex: none;
+  padding: 0 var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+
+  .warn {
+    color: var(--color-danger);
+  }
+}
+
+/* selection helpers of a duplicate tab (design 016 E6) */
+.dup-keep {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+}

@@ -13,6 +13,7 @@ export const MENU_EN = {
   menuBar: 'Menu bar',
   copyAs: 'Copy to clipboard',
   openWithTool: 'Open with tool',
+  duplicates: 'Duplicates',
   contextMenu: 'Context menu',
   marked: (n: number) => `${n} marked ${n === 1 ? 'entry' : 'entries'}`,
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,

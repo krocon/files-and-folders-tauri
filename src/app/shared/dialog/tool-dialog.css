@@ -1,0 +1,149 @@
+/* Shared layout of the tool dialogs with a preview grid (design 008: group */
+/* files, clean folders, multi-mkdir) – the same look as multi-rename (007). */
+.tool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex: 1;
+  min-height: 0;
+  font-size: var(--font-size-sm);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+
+  &.grow {
+    flex: 1;
+    min-width: 14rem;
+  }
+
+  &.num input {
+    width: 6rem;
+  }
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+input[type='text'],
+input[type='number'],
+select {
+  padding: 2px var(--spacing-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+
+  &[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.mono,
+.field input[type='text'] {
+  font-family: var(--font-mono);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.options {
+  gap: var(--spacing-3);
+}
+
+.path {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.help,
+.error {
+  margin: 0;
+}
+
+.help {
+  color: var(--color-muted);
+}
+
+.error {
+  min-height: 1em;
+  color: var(--color-danger);
+}
+
+.preview-label {
+  font-weight: 600;
+}
+
+.preview {
+  flex: 1;
+  min-height: 8rem;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+
+  .summary {
+    margin: 0;
+    flex: 0 0 auto;
+  }
+
+  .error {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.modes {
+  display: flex;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+  margin-left: auto;
+}
+
+.btn.primary {
+  color: var(--color-button-primary-text);
+  background: var(--color-button-primary-bg);
+  border-color: var(--color-button-primary-bg);
+}
+
+.btn.danger {
+  color: var(--color-on-danger);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}

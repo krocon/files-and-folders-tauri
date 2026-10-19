@@ -1,0 +1,138 @@
+.jobs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+
+  &.finished {
+    color: var(--color-muted);
+  }
+
+  &[data-state='doneWithErrors'] .state,
+  &[data-state='failed'] .state {
+    color: var(--color-danger);
+  }
+
+  &[data-state='waitingForDecision'] .state {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+}
+
+.head,
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.title,
+.current {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.state {
+  flex: none;
+}
+
+.current {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+}
+
+.bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: 3px;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+    transition: width 0.2s linear;
+
+    &.indeterminate {
+      width: 30% !important;
+      opacity: 0.5;
+    }
+  }
+}
+
+.actions,
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+.errors {
+  summary {
+    cursor: pointer;
+    color: var(--color-danger);
+  }
+
+  ul {
+    margin: var(--spacing-1) 0 0;
+    padding-left: 1.2rem;
+    max-height: 10rem;
+    overflow-y: auto;
+  }
+}
+
+.path {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.empty {
+  color: var(--color-muted);
+}
+
+.primary {
+  color: var(--color-button-primary-text);
+  background: var(--color-button-primary-bg);
+  border-color: var(--color-button-primary-bg);
+}
+
+.danger {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

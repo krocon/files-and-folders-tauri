@@ -149,7 +149,7 @@ const COLUMNS: readonly GridColumn[] = [
       </app-modal>
     }
   `,
-  styleUrl: '../../shared/dialog/tool-dialog.scss',
+  styleUrl: '../../shared/dialog/tool-dialog.css',
   styles: `
     .grow {
       flex: 1;

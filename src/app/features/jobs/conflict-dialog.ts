@@ -110,7 +110,7 @@ import { JOB_TEXTS } from './job-format';
       }
     }
   `,
-  styleUrl: './conflict-dialog.scss',
+  styleUrl: './conflict-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
 })

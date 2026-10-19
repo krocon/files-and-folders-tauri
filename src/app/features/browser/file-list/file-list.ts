@@ -63,7 +63,7 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
       (tableReady)="onTableReady($event)"
     />
   `,
-  styleUrl: './file-list.scss',
+  styleUrl: './file-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(keydown)': 'onKeydown($event)',
@@ -507,6 +507,10 @@ export class FileList implements OnDestroy {
       this.controller?.showRows(rows, label, state);
       // the folder column belongs to result tabs (after the state: it may carry column widths)
       this.bridge?.setColumnVisible('dir', this.store.searchKey() !== null);
+      this.bridge?.setColumnVisible(
+        'group',
+        this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',
+      );
       this.applyEmptyText(rows.length === 0);
     } finally {
       // the table reports state changes debounced (300 ms) – ignore the ones caused by applying

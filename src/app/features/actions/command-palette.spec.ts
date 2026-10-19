@@ -51,12 +51,12 @@ describe('CommandPalette', () => {
 
   it('lists the colour schemes and switches to one (design 013 E3)', async () => {
     const { el, type, key } = await render();
-    type('colour scheme dark');
+    type('colour scheme norton');
     const first = el.querySelector('[role="option"]')!;
-    expect(first.textContent).toContain('Colour scheme: Dark');
+    expect(first.textContent).toContain('Colour scheme: Norton');
     key('Enter');
     await new Promise((r) => setTimeout(r));
-    expect(TestBed.inject(ThemeService).active().id).toBe('dark');
+    expect(TestBed.inject(ThemeService).active().id).toBe('classic-norton');
   });
 
   it('filters fuzzily, shows the shortcut and runs with Enter', async () => {

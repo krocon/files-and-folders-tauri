@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Files and Folders",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "io.github.krocon.filesandfolders",
   "build": {
     "frontendDist": "../dist/files-and-folders-tauri/browser",
@@ -26,18 +26,84 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: fnfpreview: http://fnfpreview.localhost; font-src 'self' data:; connect-src ipc: http://ipc.localhost",
       "devCsp": null,
-      "dangerousDisableAssetCspModification": ["style-src"]
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "dmg",
+      "app",
+      "msi",
+      "nsis"
+    ],
+    "publisher": "Marc Kronberg",
+    "copyright": "© 2026 Marc Kronberg",
+    "homepage": "https://github.com/krocon/files-and-folders-tauri",
+    "category": "Utility",
+    "shortDescription": "Dual-pane file manager",
+    "longDescription": "Files and Folders is a keyboard-driven dual-pane file manager for macOS, Windows and Linux in the spirit of Total Commander.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "signingIdentity": null,
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        }
+      }
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "wix": {
+        "language": "en-US",
+        "upgradeCode": "f4a92f43-c866-5ff9-a7d2-15cde0d2a787"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "German"
+        ],
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "utils"
+      },
+      "rpm": {
+        "release": "1"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   }
 }

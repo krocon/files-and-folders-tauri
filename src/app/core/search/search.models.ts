@@ -46,8 +46,27 @@ export interface SearchCriteria {
   readonly skipVirtualFs?: boolean;
 }
 
-/** A hit: an entry as in a listing plus the full path of its folder. */
-export type SearchHit = DirEntry & { readonly dir: string };
+/**
+ * A hit: an entry as in a listing plus the full path of its folder; a duplicate
+ * (design 016 E6) also has its group (1 = most wasted bytes).
+ */
+export type SearchHit = DirEntry & { readonly dir: string; readonly group?: number };
+
+/** Duplicate search (design 016 E6). Keep in sync with `src-tauri/src/duplicates.rs`. */
+export interface DuplicateCriteria {
+  readonly roots: readonly string[];
+  /** `content`: same size and SHA-256; `size`: same size only. */
+  readonly compare: 'size' | 'content';
+  /** Also the same name (without case). */
+  readonly sameName: boolean;
+  /** Smaller files are ignored (Rust default 1 – empty files). */
+  readonly minSize?: number | null;
+  readonly includeHidden: boolean;
+  readonly excludes: readonly string[];
+  /** Default 500 000, max. 2 000 000. */
+  readonly maxFiles?: number | null;
+  readonly skipVirtualFs?: boolean;
+}
 
 export interface SearchStats {
   readonly hits: number;
@@ -57,6 +76,10 @@ export interface SearchStats {
   readonly elapsedMs: number;
   /** Stopped at `maxHits`. */
   readonly truncated: boolean;
+  /** Duplicate search: groups, bytes to hash and hashed so far (0 otherwise). */
+  readonly groups?: number;
+  readonly bytesToHash?: number;
+  readonly bytesHashed?: number;
 }
 
 export const EMPTY_STATS: SearchStats = {

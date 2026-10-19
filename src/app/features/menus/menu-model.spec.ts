@@ -26,6 +26,7 @@ function source(
       id === 'OPEN_COPY_DLG' ? ['F5'] : id === 'OPEN_COMMAND_PALETTE' ? ['Mod+Shift+P'] : [],
     extras: () => extras,
     extraShortcutLabel: (id) => (id === 'tool:edit' ? 'Ctrl+E' : ''),
+    extraReady: (id) => extras.find((x) => x.id === id)?.enabled() ?? false,
   };
 }
 
@@ -76,6 +77,26 @@ describe('menu model', () => {
     expect(contextMenuFor('marked', 3)[0]).toEqual({ heading: '3 marked entries' });
     expect(ids(contextMenuFor('folder')).has('OPEN_IN_NEW_TAB')).toBe(true);
     expect(ids(contextMenuFor('file')).has('OPEN_IN_NEW_TAB')).toBe(false);
+  });
+
+  it('archives: unpack on an archive file, inside an archive only extract and marks (design 016)', () => {
+    const file = { kind: 'file' };
+    expect(contextKind({ resultTab: false, markedCount: 0, entry: file, archiveFile: true })).toBe(
+      'archiveFile',
+    );
+    expect(contextKind({ resultTab: false, markedCount: 2, entry: file, inArchive: true })).toBe(
+      'archive',
+    );
+    expect(contextKind({ resultTab: false, markedCount: 0, entry: null, inArchive: true })).toBe(
+      'archive',
+    );
+    expect(ids(contextMenuFor('archiveFile')).has('OPEN_UNPACK_DLG')).toBe(true);
+    expect(ids(contextMenuFor('marked')).has('OPEN_UNPACK_DLG')).toBe(true);
+    const inside = ids(contextMenuFor('archive'));
+    expect(inside.has('OPEN_UNPACK_DLG')).toBe(true);
+    expect(inside.has('OPEN_DELETE_DLG')).toBe(false);
+    expect(inside.has('OPEN_RENAME_DLG')).toBe(false);
+    expect(contextMenuFor('archive', 2)[0]).toEqual({ heading: '2 marked entries' });
   });
 
   it('free space has no entries acting on the (old) cursor row (review 014 #2)', () => {

@@ -222,13 +222,30 @@ fn remove_at(
 /// then checks the opened handle (`fstat`) – anything but a regular file is
 /// refused. Elsewhere: a plain open plus the same check.
 pub fn open_regular_file(path: &Path) -> io::Result<fs::File> {
+    open_regular(path, false)
+}
+
+/// [`open_regular_file`] that also refuses a link as the last component (Unix
+/// `O_NOFOLLOW`): packing must not follow a link swapped in after the planning
+/// (review 016 #5). Windows: a plain open (links were reported at planning).
+pub fn open_regular_file_no_follow(path: &Path) -> io::Result<fs::File> {
+    open_regular(path, true)
+}
+
+fn open_regular(path: &Path, no_follow: bool) -> io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY);
+        let mut flags = libc::O_NONBLOCK | libc::O_NOCTTY;
+        if no_follow {
+            flags |= libc::O_NOFOLLOW;
+        }
+        options.custom_flags(flags);
     }
+    #[cfg(not(unix))]
+    let _ = no_follow;
     let file = options.open(path)?;
     if !file.metadata()?.is_file() {
         return Err(io::Error::new(
@@ -413,6 +430,25 @@ mod tests {
             .unwrap();
         assert_eq!(s, "abc");
         assert!(open_regular_file(t.path()).is_err(), "a folder is no file");
+    }
+
+    /// Review 016 #5: packing never follows a link swapped in after planning.
+    #[cfg(unix)]
+    #[test]
+    fn open_regular_file_no_follow_refuses_links() {
+        let t = tempdir().unwrap();
+        let secret = t.path().join("geheim.txt");
+        fs::write(&secret, b"secret").unwrap();
+        let file = t.path().join("datei.txt");
+        fs::write(&file, b"abc").unwrap();
+        assert!(open_regular_file_no_follow(&file).is_ok());
+        fs::remove_file(&file).unwrap();
+        std::os::unix::fs::symlink(&secret, &file).unwrap();
+        assert!(open_regular_file_no_follow(&file).is_err());
+        assert!(
+            open_regular_file(&file).is_ok(),
+            "the plain open still follows"
+        );
     }
 
     #[test]

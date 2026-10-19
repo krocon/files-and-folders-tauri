@@ -13,8 +13,8 @@ import { createFileColumns } from './file-columns';
 import { RenameEditor } from './rename-editor';
 import { TEXTS } from '../../workspace/texts';
 
-export const ROW_HEIGHT = 24;
-export const HEADER_HEIGHT = 26;
+export const ROW_HEIGHT = 30;
+export const HEADER_HEIGHT = 30;
 
 /** What the body model needs to know to style rows (read at render time). */
 export interface FileRowState {
@@ -115,6 +115,11 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     if (entry.kind === 'unknown') {
       classes.push('fnf-unreadable');
     }
+    // duplicate tab: every other group shaded (design 016 E6)
+    const group = (entry as DirEntry & { group?: number }).group;
+    if (group !== undefined && group % 2 === 0) {
+      classes.push('fnf-group-alt');
+    }
     return classes;
   }
 }
@@ -151,7 +156,7 @@ export function createFileTable(
     hoverRowVisible: true,
     verticalBorderVisible: false,
     horizontalBorderVisible: false,
-    headerSeparatorBorderVisible: true,
+    headerSeparatorBorderVisible: false,
     getSelectionModel: () => new SelectionModel('none', 'single'),
     shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
     ariaLabelledBy: labelledBy,
