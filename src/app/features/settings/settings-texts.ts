@@ -156,6 +156,7 @@ export const SETTINGS_EN = {
   imported: (parts: string) => `Imported: ${parts}.`,
   importedNothing: 'Nothing was imported.',
   skipped: (part: string) => `${part}: missing or invalid in the file – skipped.`,
+  failed: (part: string, path: string) => `${part}: could not be written (${path}).`,
   resetAll: 'Reset all settings',
   resetAllConfirm: 'Reset all settings to the defaults? Shortcuts, colour schemes and tools stay.',
   resetAllTitle: 'Reset settings',
@@ -330,6 +331,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   imported: (parts) => `Importiert: ${parts}.`,
   importedNothing: 'Es wurde nichts importiert.',
   skipped: (part) => `${part}: fehlt in der Datei oder ist ungültig – übersprungen.`,
+  failed: (part, path) => `${part}: konnte nicht geschrieben werden (${path}).`,
   resetAll: 'Alle Einstellungen zurücksetzen',
   resetAllConfirm:
     'Alle Einstellungen auf die Vorgaben zurücksetzen? Kürzel, Farbschemata und Tools bleiben.',

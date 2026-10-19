@@ -80,11 +80,18 @@ export class SettingsStore {
 
   /** (Re)loads the file – also after an import. */
   async load(): Promise<void> {
+    // the file wins over a change still waiting for its save (e.g. right after an import, review 015 #8)
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
     let loaded: LoadedSettings;
     try {
       loaded = await this.api.load();
-    } catch (err) {
-      this.saveError.set(toFsError(err).message);
+    } catch {
+      // not read – never overwrite a file we have not seen (review 015 #9)
+      this.persist = false;
+      this.warnings.set([{ code: 'unreadable', key: null, path: null }]);
       this.loaded.set(true);
       this.apply();
       return;
@@ -164,7 +171,7 @@ export class SettingsStore {
         this.warnings.update((w) => [...w, ...warnings]);
       }
     } catch (err) {
-      this.saveError.set(toFsError(err).message);
+      this.saveError.set(toFsError(err).message); // shown inside "could not be saved: …"
     }
   }
 

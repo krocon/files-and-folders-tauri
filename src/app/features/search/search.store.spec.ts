@@ -104,6 +104,17 @@ describe('SearchStore and result tabs (design 009)', () => {
     expect(search.recent()).toEqual([DEFAULT_FORM]);
   });
 
+  it('remembered forms over the size limit: the oldest go, the new one stays (review 015 #7)', async () => {
+    const big = (i: number) => ({ ...DEFAULT_FORM, name: `${i}${'x'.repeat(9_000)}` });
+    for (let i = 0; i < 9; i++) {
+      await search.search(CRITERIA, 'left', null, big(i));
+    }
+    const recent = search.recent();
+    expect(recent[0]).toEqual(big(8));
+    expect(recent.length).toBeGreaterThan(1);
+    expect(recent.length).toBeLessThan(9);
+  });
+
   it('a refused start opens nothing and returns the error', async () => {
     jobsApi.refuse = { code: 'invalid_pattern', message: 'bad (', path: null };
     const err = await search.search(CRITERIA, 'left');

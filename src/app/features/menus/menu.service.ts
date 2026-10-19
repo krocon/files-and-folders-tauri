@@ -3,6 +3,7 @@ import { ActionService } from '../../core/actions/action.service';
 import { isArchiveEntry } from '../../core/archive/archive-names';
 import { DirEntry, isParentRow } from '../../core/fs/fs.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { MenuApi } from '../../core/menu/menu-api';
 import { NativeMenuSpec } from '../../core/menu/menu.models';
 import { Side } from '../../core/session/session.models';
@@ -43,6 +44,7 @@ interface OpenContext {
 export class MenuService {
   private readonly actions = inject(ActionService);
   private readonly ws = inject(WorkspaceStore);
+  private readonly settings = inject(SettingsStore);
   private readonly dialogs = inject(DialogService);
   private readonly api = inject(MenuApi);
   private readonly injector = inject(Injector);
@@ -226,7 +228,8 @@ export class MenuService {
 
   /** QUIT_APP: closes the window like its close button (jobs ask, session is saved). */
   async quit(): Promise<void> {
-    await this.ws.flush();
+    // a change in the last debounce window must not get lost (review 015 #3)
+    await Promise.all([this.ws.flush(), this.settings.flush()]);
     await this.api.closeMainWindow();
   }
 }

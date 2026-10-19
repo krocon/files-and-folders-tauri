@@ -64,6 +64,7 @@ export const SEARCH_EN = {
   find: 'Find',
   cancel: 'Cancel',
   noFolder: 'There is no folder to search in.',
+  tooManyTabs: 'Too many tabs are open – close some first.',
   invalidNumber: 'Please enter a number.',
   tooLarge: (max: number) => `At most ${formatCount(max)}.`,
   noKind: 'Choose at least one kind.',

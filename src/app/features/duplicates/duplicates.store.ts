@@ -12,6 +12,7 @@ import {
 } from './duplicates-form';
 import { DUP_TEXTS } from './duplicates-texts';
 import { KeepRule, marksKeepingOne } from './duplicates-logic';
+import { errorText } from '../../core/fs/fs-error';
 
 export interface DuplicatesRequest {
   readonly side: Side;
@@ -100,7 +101,7 @@ export class DuplicatesStore {
     try {
       const error = await this.search.findDuplicates(built.criteria, req.side);
       if (error) {
-        this.error.set({ field: null, message: error.message });
+        this.error.set({ field: null, message: errorText(error) });
         return;
       }
       this.close();

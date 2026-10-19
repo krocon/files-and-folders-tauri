@@ -316,7 +316,9 @@ describe('multi-rename store (design 007)', () => {
       path: null,
     };
     await mr.undo(null);
-    expect(jobs.messages().at(-1)).toBe('Undo failed: There is no rename to undo');
+    expect(jobs.messages().at(-1)).toBe(
+      'Undo failed: There is nothing to undo. (There is no rename to undo)',
+    );
   });
 
   it('10 000 entries: names follow 80 ms after typing stops; preview is computed fast', async () => {

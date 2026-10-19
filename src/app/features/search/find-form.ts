@@ -103,7 +103,6 @@ export interface FormError {
   readonly message: string;
 }
 
-/** Rust limits (search.rs): depth, content file size; days and bytes stay exact integers. */
 /**
  * A remembered form read back from the settings (design 015): known fields of the
  * right type, the rest from the defaults; `null` if it is no object.
@@ -122,6 +121,7 @@ export function restoreForm(raw: unknown): FindForm | null {
   return out as unknown as FindForm;
 }
 
+/** Rust limits (search.rs): depth, content file size; days and bytes stay exact integers. */
 export const MAX_FORM_DEPTH = 256;
 export const MAX_FORM_FILE_MB = 1024;
 export const MAX_FORM_DAYS = 100_000;

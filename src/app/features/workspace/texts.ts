@@ -73,8 +73,8 @@ export const TEXTS_EN = {
     `${formatCount(marked)} / ${formatCount(total)} bytes`,
   status: {
     in: 'in',
-    files: (n: number) => `${n} Files`,
-    folders: (n: number) => `${n} Folders`,
+    files: (n: number) => (n === 1 ? '1 File' : `${n} Files`),
+    folders: (n: number) => (n === 1 ? '1 Folder' : `${n} Folders`),
   },
 } as const;
 

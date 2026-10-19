@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { OS_TEXTS } from './os-texts';
@@ -147,7 +147,7 @@ export class ToolConfigDialog {
     try {
       await this.os.openConfigFile();
     } catch (e) {
-      this.error.set(toFsError(e).message);
+      this.error.set(errorText(toFsError(e)));
     }
   }
 

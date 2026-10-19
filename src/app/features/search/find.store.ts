@@ -6,6 +6,7 @@ import { WorkspaceStore } from '../workspace/workspace.store';
 import { DEFAULT_FORM, errorField, FindForm, FormError, formToCriteria } from './find-form';
 import { SEARCH_TEXTS } from './search-texts';
 import { SearchStore } from './search.store';
+import { errorText } from '../../core/fs/fs-error';
 
 /** What the find dialog works on. */
 export interface FindRequest {
@@ -106,7 +107,7 @@ export class FindStore {
       const reuse = this.newTab() ? null : req.reuse;
       const error = await this.search.search(built.criteria, req.side, reuse, this.form());
       if (error) {
-        this.error.set({ field: errorField(error) ?? 'name', message: error.message });
+        this.error.set({ field: errorField(error) ?? 'name', message: errorText(error) });
         return;
       }
       this.close();

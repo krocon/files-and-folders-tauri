@@ -26,6 +26,7 @@ import { MultiRenameStore } from '../multirename/multirename.store';
 import { OsStore } from '../osintegration/os.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings-logic';
+import { describeSettingsWarning } from './settings-warnings';
 import { SETTINGS_TEXTS } from './settings-texts';
 
 /**
@@ -78,6 +79,7 @@ import { SETTINGS_TEXTS } from './settings-texts';
             <div
               class="panel"
               role="tabpanel"
+              tabindex="0"
               id="fnf-set-panel"
               [attr.aria-labelledby]="'fnf-set-tab-' + current()"
             >
@@ -459,11 +461,17 @@ export class SettingsDialog {
       const report = await this.api.importAll(this.importPath().trim(), parts);
       await this.reload(report.imported);
       const names = report.imported.map((p) => this.t.parts[p]).join(', ');
-      const skipped = report.warnings
-        .filter((w) => w.code === 'part_skipped' && w.key)
-        .map((w) => this.t.skipped(this.t.parts[w.key as SettingsPart] ?? w.key ?? ''));
+      // every warning of the report (review 015 #12): parts skipped/failed, values reset
+      const part = (key: string | null) => this.t.parts[key as SettingsPart] ?? key ?? '';
+      const notes = report.warnings.map((w) =>
+        w.code === 'part_skipped'
+          ? this.t.skipped(part(w.key))
+          : w.code === 'part_failed'
+            ? this.t.failed(part(w.key), w.path ?? '')
+            : describeSettingsWarning(w),
+      );
       this.message.set(
-        [names ? this.t.imported(names) : this.t.importedNothing, ...skipped].join(' '),
+        [names ? this.t.imported(names) : this.t.importedNothing, ...notes].join(' '),
       );
     } catch (err) {
       this.message.set(errorText(toFsError(err)));

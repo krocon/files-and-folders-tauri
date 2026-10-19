@@ -246,7 +246,7 @@ export class Workspace implements OnInit {
       danger: true,
     });
     if (ok) {
-      await this.ws.flush();
+      await Promise.all([this.ws.flush(), this.settings.flush()]);
       await this.jobs.cancelAllAndQuit();
     }
   }
@@ -330,12 +330,13 @@ export class Workspace implements OnInit {
   }
 
   protected onPageHide(): void {
-    void this.ws.flush();
+    void this.ws.flush(); // the settings store flushes on pagehide by itself
   }
 
   protected onVisibility(): void {
     if (document.visibilityState === 'hidden') {
       void this.ws.flush();
+      void this.settings.flush();
     }
   }
 }

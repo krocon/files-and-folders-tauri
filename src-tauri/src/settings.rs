@@ -97,7 +97,8 @@ pub static SCHEMA: LazyLock<BTreeMap<String, Spec>> = LazyLock::new(|| {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsWarning {
-    /// `broken` | `unreadable` | `newer_version` | `invalid_value` | `unknown_dropped` | `not_saved`
+    /// `broken` | `unreadable` | `newer_version` | `invalid_value` | `unknown_dropped` | `not_saved`;
+    /// import: `part_skipped` | `part_failed` (key = part, path = its file)
     pub code: String,
     pub key: Option<String>,
     pub path: Option<String>,
@@ -262,6 +263,17 @@ pub struct ConfigFiles {
 }
 
 impl ConfigFiles {
+    /// The file of a bundle part (see [`PARTS`]).
+    pub fn path_of(&self, part: &str) -> &Path {
+        match part {
+            "keymap" => &self.keymap,
+            "themes" => &self.themes,
+            "renamePresets" => &self.rename_presets,
+            "tools" => &self.tools,
+            _ => &self.settings,
+        }
+    }
+
     pub fn in_dir(dir: &Path) -> Self {
         Self {
             settings: dir.join(FILE_NAME),
@@ -389,7 +401,7 @@ pub fn read_bundle(path: &Path) -> Result<Map<String, Value>, FsError> {
         return Err(invalid("Not a settings export", Some(path)));
     }
     match map.get("version").and_then(Value::as_u64) {
-        Some(v) if v as u32 == BUNDLE_VERSION => Ok(map),
+        Some(v) if v == u64::from(BUNDLE_VERSION) => Ok(map),
         _ => Err(invalid("Unsupported settings export version", Some(path))),
     }
 }
@@ -456,7 +468,13 @@ pub fn import(
                     .warnings
                     .push(SettingsWarning::new("part_skipped", Some(part), None))
             }
-            Err(e) => return Err(FsError::from_io(&e, &files.settings)),
+            // a write error must not hide what was already imported (review 015 #4):
+            // the part is reported with its file, the others go on
+            Err(_) => report.warnings.push(SettingsWarning::new(
+                "part_failed",
+                Some(part),
+                Some(files.path_of(part)),
+            )),
         }
     }
     Ok(report)
@@ -691,6 +709,44 @@ mod tests {
         let report = import(&dst, &bundle, &["tools".into()]).unwrap();
         assert_eq!(report.imported, ["tools"]);
         assert!(dst.tools.exists());
+    }
+
+    #[test]
+    fn a_part_that_cannot_be_written_is_reported_and_the_rest_imported() {
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("a"));
+        save(&src.settings, map(json!({"view.density": "spacious"}))).unwrap();
+        let out = export(&src, dir.path()).unwrap();
+        let dst = config(&dir.path().join("b"));
+        // the keymap file cannot be written: a folder is in its place
+        fs::create_dir_all(&dst.keymap).unwrap();
+        let bundle = read_bundle(&out).unwrap();
+        let report = import(
+            &dst,
+            &bundle,
+            &["settings".into(), "keymap".into(), "themes".into()],
+        )
+        .unwrap();
+        assert_eq!(report.imported, ["settings", "themes"]);
+        let w = &report.warnings[0];
+        assert_eq!(
+            (w.code.as_str(), w.key.as_deref()),
+            ("part_failed", Some("keymap"))
+        );
+        assert!(w.path.as_deref().unwrap().ends_with(keymap::FILE_NAME));
+        assert_eq!(load(&dst.settings).settings["view.density"], "spacious");
+    }
+
+    #[test]
+    fn read_bundle_rejects_a_version_that_only_matches_when_truncated() {
+        let dir = tempdir().unwrap();
+        let f = dir.path().join("x.json");
+        fs::write(
+            &f,
+            format!(r#"{{"format":"{BUNDLE_FORMAT}","version":4294967297}}"#),
+        )
+        .unwrap();
+        assert!(read_bundle(&f).is_err());
     }
 
     #[test]

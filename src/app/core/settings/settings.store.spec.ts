@@ -39,6 +39,26 @@ describe('SettingsStore', () => {
     DISPLAY.dateFormat.set('locale');
   });
 
+  it('a file that could not be read is never overwritten (review 015 #9)', async () => {
+    api.load = () => Promise.reject({ code: 'io', message: 'EACCES', path: null });
+    await store.init();
+    expect(store.warnings().map((w) => w.code)).toEqual(['unreadable']);
+    store.set('view.sizeFormat', 'bytes');
+    expect(store.get('view.sizeFormat')).toBe('bytes');
+    await store.flush();
+    expect(api.saved).toEqual([]);
+  });
+
+  it('a reload drops a save that is still waiting (the file wins, review 015 #8)', async () => {
+    await store.init();
+    store.set('view.sizeFormat', 'bytes');
+    api.loaded = { settings: { 'view.sizeFormat': 'decimal' }, warnings: [], persist: true };
+    await store.load();
+    await vi.runAllTimersAsync();
+    expect(api.saved).toEqual([]);
+    expect(store.get('view.sizeFormat')).toBe('decimal');
+  });
+
   it('starts with the defaults and merges the file', async () => {
     expect(store.get('view.sizeFormat')).toBe('binary');
     api.loaded = {

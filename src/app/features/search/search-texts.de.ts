@@ -61,6 +61,7 @@ export const SEARCH_DE: Translation<typeof SEARCH_EN> = {
   recent: 'Letzte Suchen',
   find: 'Suchen',
   cancel: 'Abbrechen',
+  tooManyTabs: 'Zu viele Tabs sind offen – zuerst einige schließen.',
   noFolder: 'Es gibt keinen Ordner, in dem gesucht werden kann.',
   invalidNumber: 'Bitte eine Zahl eingeben.',
   tooLarge: (max) => `Höchstens ${formatCount(max)}.`,

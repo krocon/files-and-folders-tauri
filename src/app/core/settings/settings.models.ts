@@ -83,7 +83,8 @@ export type SettingsWarningCode =
   | 'invalid_value'
   | 'unknown_dropped'
   | 'not_saved'
-  | 'part_skipped';
+  | 'part_skipped'
+  | 'part_failed';
 
 export interface SettingsWarning {
   readonly code: SettingsWarningCode | string;

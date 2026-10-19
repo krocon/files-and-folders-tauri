@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
-import { describeFsError, toFsError } from '../../core/fs/fs-error';
+import { describeFsError, errorText as describeError, toFsError } from '../../core/fs/fs-error';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { WatchService } from '../../core/watch/watch.service';
@@ -114,7 +114,7 @@ export class FilePanel implements OnInit {
       return SEARCH_TEXTS.searching;
     }
     if (r.error) {
-      return SEARCH_TEXTS.failed(r.error.message);
+      return SEARCH_TEXTS.failed(describeError(r.error));
     }
     return r.kind === 'duplicates'
       ? this.dupSummary()

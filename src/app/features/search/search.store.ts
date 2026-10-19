@@ -1,5 +1,6 @@
 import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { SettingsStore } from '../../core/settings/settings.store';
+import { acceptsValue, SCHEMA } from '../../core/settings/settings.models';
 import { toFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -16,6 +17,7 @@ import {
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { FindForm, restoreForm } from './find-form';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
+import { SEARCH_TEXTS } from './search-texts';
 
 /** Hits are shown at most this often while a search runs (`setRows` + sort of up to 100 000 rows). */
 export const PUBLISH_MS = 300;
@@ -215,7 +217,7 @@ export class SearchStore {
     const tabId = this.ws.openSearchTab(side, { key, label }, roots[0] ?? '', reuseTab);
     if (tabId === null) {
       this.release(key);
-      return { code: 'unknown', message: 'Too many tabs', path: null };
+      return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };
     }
     this.ws.setActive(side);
     this.ws.requestFocus(side);
@@ -280,6 +282,11 @@ export class SearchStore {
       0,
       MAX_RECENT_SEARCHES,
     );
+    // over the size limit of the setting the store would drop the whole list (review 015 #7):
+    // the oldest forms go first
+    while (next.length > 1 && !acceptsValue(SCHEMA['search.recent'], next)) {
+      next.pop();
+    }
     this.settings.set('search.recent', next);
   }
 

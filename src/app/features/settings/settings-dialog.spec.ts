@@ -137,4 +137,29 @@ describe('SettingsDialog', () => {
     expect(el.querySelector('.message')?.textContent).toContain('Imported: Settings.');
     expect(TestBed.inject(DialogService).open()).toBeNull();
   });
+
+  it('reports every warning of an import: failed parts and reset values (review 015 #4/#12)', async () => {
+    const { fixture, el } = await render();
+    el.querySelector<HTMLElement>('[data-section="data"]')!.click();
+    fixture.detectChanges();
+    const inputs = el.querySelectorAll<HTMLInputElement>('.panel input[type="text"]');
+    inputs[1].value = '/tmp/in.json';
+    inputs[1].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    api.importReport = {
+      imported: ['settings'],
+      warnings: [
+        { code: 'part_failed', key: 'keymap', path: '/cfg/keymap.json' },
+        { code: 'invalid_value', key: 'view.density', path: null },
+      ],
+    };
+    [...el.querySelectorAll<HTMLButtonElement>('button')]
+      .find((b) => b.textContent?.trim() === 'Import')!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = el.querySelector('.message')?.textContent ?? '';
+    expect(text).toContain('could not be written (/cfg/keymap.json)');
+    expect(text).toContain('view.density');
+  });
 });

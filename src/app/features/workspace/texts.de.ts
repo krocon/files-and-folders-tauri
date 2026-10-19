@@ -68,7 +68,7 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   bytesTitle: (marked, total) => `${formatCount(marked)} / ${formatCount(total)} Bytes`,
   status: {
     in: 'in',
-    files: (n) => `${n} Dateien`,
-    folders: (n) => `${n} Ordnern`,
+    files: (n) => (n === 1 ? '1 Datei' : `${n} Dateien`),
+    folders: (n) => (n === 1 ? '1 Ordner' : `${n} Ordnern`),
   },
 };

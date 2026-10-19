@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { isArchiveEntry, stripArchiveExtension } from '../../core/archive/archive-names';
 import { FsApi } from '../../core/fs/fs-api';
-import { toFsError } from '../../core/fs/fs-error';
+import { errorText, toFsError } from '../../core/fs/fs-error';
 import { ArchiveFormat, DirEntry, FsError } from '../../core/fs/fs.models';
 import { ConflictDefault, JobInfo, JobSpec } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -281,7 +281,7 @@ export class ArchiveStore {
         );
       }
       if (job.state === 'failed' && summary?.error) {
-        this.jobs.report(OPS_TEXTS.failed(jobTitle(job), summary.error.message));
+        this.jobs.report(OPS_TEXTS.failed(jobTitle(job), errorText(summary.error)));
       } else if (job.state === 'doneWithErrors' && summary) {
         this.jobs.report(OPS_TEXTS.finishedWithErrors(jobTitle(job), summary.itemsFailed));
       }

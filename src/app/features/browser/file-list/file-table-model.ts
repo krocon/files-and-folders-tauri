@@ -174,6 +174,8 @@ function createUntracked(
     getEditRenderer: () => body.renaming?.editor,
     overlayOptions: {
       noRowsText: TEXTS.emptyFolder,
+      // TODO(guiexpert): overlay texts are copied at creation – the loading text keeps
+      // the start language (the empty text is drawn by us, see FileList.applyEmptyText)
       loadingText: TEXTS.loading,
       loadingDelayInMs: 150,
     },

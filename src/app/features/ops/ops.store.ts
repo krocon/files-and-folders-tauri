@@ -503,7 +503,7 @@ export class OpsStore {
       }
       const summary = job.summary;
       if (job.state === 'failed' && summary?.error) {
-        this.jobs.report(OPS_TEXTS.failed(jobTitle(job), summary.error.message));
+        this.jobs.report(OPS_TEXTS.failed(jobTitle(job), errorText(summary.error)));
       } else if (job.state === 'doneWithErrors' && summary) {
         this.jobs.report(OPS_TEXTS.finishedWithErrors(jobTitle(job), summary.itemsFailed));
       }
