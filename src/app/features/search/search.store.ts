@@ -214,7 +214,14 @@ export class SearchStore {
     }
     const label = query.kind === 'search' ? searchLabel(query.criteria) : DUP_TEXTS.header;
     const roots = query.criteria.roots;
-    const tabId = this.ws.openSearchTab(side, { key, label }, roots[0] ?? '', reuseTab);
+    // the folder tab the search starts in names the folder the result tab falls back to
+    const from = this.ws.activeTab(side);
+    const rootTitle = from.search
+      ? from.search.rootTitle
+      : from.path === roots[0]
+        ? from.title
+        : undefined;
+    const tabId = this.ws.openSearchTab(side, { key, label, rootTitle }, roots[0] ?? '', reuseTab);
     if (tabId === null) {
       this.release(key);
       return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };

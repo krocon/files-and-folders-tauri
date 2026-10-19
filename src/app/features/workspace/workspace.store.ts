@@ -27,6 +27,8 @@ export interface SearchTabRef {
   readonly key: string;
   /** Shown in the tab and the header (`Search: "<label>"`). */
   readonly label: string;
+  /** Title of the folder the tab falls back to when saved (paths are opaque here). */
+  readonly rootTitle?: string;
 }
 
 /** A tab: a folder, or (with `search`) the result of a search – never saved as such. */
@@ -510,7 +512,7 @@ function toPanelSession(p: PanelTabs): PanelSession {
     activeTab: p.activeTab,
     tabs: p.tabs.map((t) => {
       const { search, ...tab } = t;
-      return search ? { ...tab, title: '', cursor: null, table: null } : tab;
+      return search ? { ...tab, title: search.rootTitle ?? '', cursor: null, table: null } : tab;
     }),
   };
 }
