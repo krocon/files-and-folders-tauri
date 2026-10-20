@@ -336,3 +336,63 @@ fn polling_is_off_for_huge_folders() {
     );
     assert!(poll_limit_reason(&tmp.path().join("missing"), 20).is_some());
 }
+
+#[test]
+fn a_busy_target_holds_its_reload_until_the_job_ends() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("target");
+    let other = tmp.path().join("other");
+    fs::create_dir_all(&dir).unwrap();
+    fs::create_dir_all(&other).unwrap();
+    let (hub, rx) = hub();
+    hub.set_dirs(&[dir.clone(), other.clone()], false).unwrap();
+    let token = hub.busy(std::slice::from_ref(&dir));
+    for i in 0..2000 {
+        fs::write(dir.join(format!("f{i:05}.txt")), b"").unwrap();
+    }
+    fs::write(other.join("x.txt"), b"").unwrap();
+    // the other folder reports, the busy one does not reload
+    let got = wait_for(&rx, Duration::from_secs(2), |_| false);
+    assert!(upserted_names(&got).contains(&"x.txt".to_string()));
+    assert!(
+        !got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. })),
+        "{got:?}"
+    );
+    hub.release(token);
+    let got = wait_for(&rx, Duration::from_secs(3), |g| {
+        g.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }))
+    });
+    let want = dir.to_string_lossy().into_owned();
+    assert!(
+        got.iter()
+            .any(|e| matches!(e, WatchEvent::Rescan { dir } if *dir == want)),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn a_busy_polled_folder_pauses_and_reloads_after() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().to_path_buf();
+    let (hub, rx) = hub();
+    // force polling: the native watcher would also do, the mode is what counts here
+    {
+        let mut w = hub.lock();
+        let status = {
+            let tx = hub.tx.clone();
+            let s = poller(&tx, &mut w).and_then(|p| p.watch(&dir, RecursiveMode::NonRecursive));
+            assert!(s.is_ok());
+            WatchMode::Poll
+        };
+        w.current.push((dir.clone(), status));
+        let _ = hub.tx.send(Msg::Dirs(w.table()));
+    }
+    let token = hub.busy(std::slice::from_ref(&dir));
+    assert!(hub.lock().paused.contains_key(&dir));
+    hub.release(token);
+    assert!(!hub.lock().paused.contains_key(&dir));
+    let got = wait_for(&rx, Duration::from_secs(2), |g| {
+        g.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }))
+    });
+    assert!(got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. })));
+}

@@ -92,6 +92,15 @@ enum Msg {
     Dirs(Vec<Watched>),
     /// Reload this folder (events were missed while it was paused).
     Rescan(PathBuf),
+    /// Targets of running jobs (design 029 E8): reloads below them wait.
+    Busy(Vec<PathBuf>),
+    /// A batch of `dir` was resolved off the thread (design 029 E9); `replaced`:
+    /// the folder is a new one now (new identity).
+    Resolved {
+        dir: PathBuf,
+        event: Option<WatchEvent>,
+        replaced: Option<Watched>,
+    },
     Stop,
 }
 
@@ -103,6 +112,8 @@ struct Watchers {
     current: Vec<(PathBuf, WatchMode)>,
     /// Folders unwatched while a job moves/deletes them or an ancestor (count of jobs).
     paused: HashMap<PathBuf, usize>,
+    /// Targets of running jobs that write into them (count of jobs; design 029 E8).
+    busy: HashMap<PathBuf, usize>,
     poll_network: bool,
 }
 
@@ -205,11 +216,15 @@ impl WatchHub {
     /// renames or deletes them (Windows keeps a watched folder and its parents
     /// from being renamed; review 012 #3). Returns the paused folders for [`Self::resume`].
     pub fn pause_under(&self, paths: &[PathBuf]) -> Vec<PathBuf> {
+        self.pause_where(paths, |m| m != WatchMode::Off)
+    }
+
+    fn pause_where(&self, paths: &[PathBuf], mode: impl Fn(WatchMode) -> bool) -> Vec<PathBuf> {
         let mut w = self.lock();
         let hit: Vec<(PathBuf, WatchMode)> = w
             .current
             .iter()
-            .filter(|(d, m)| *m != WatchMode::Off && paths.iter().any(|p| d.starts_with(p)))
+            .filter(|(d, m)| mode(*m) && paths.iter().any(|p| d.starts_with(p)))
             .cloned()
             .collect();
         let mut paused = Vec::new();
@@ -264,6 +279,56 @@ impl WatchHub {
             (self.sink)(WatchEvent::Gone {
                 dir: dir.to_string_lossy().into_owned(),
             });
+        }
+    }
+}
+
+/// Folders a running job writes into, until [`WatchHub::release`] (design 029 E8).
+#[derive(Debug, Default)]
+pub struct BusyToken {
+    roots: Vec<PathBuf>,
+    paused: Vec<PathBuf>,
+}
+
+impl WatchHub {
+    /// A job writes into `roots`: watched folders at or below them hold their
+    /// reloads back (single changes still arrive), polled ones pause (each poll
+    /// stats the whole folder on the drive the job keeps busy).
+    pub fn busy(&self, roots: &[PathBuf]) -> BusyToken {
+        if roots.is_empty() {
+            return BusyToken::default();
+        }
+        let paused = self.pause_where(roots, |m| m == WatchMode::Poll);
+        let mut w = self.lock();
+        for r in roots {
+            *w.busy.entry(r.clone()).or_insert(0) += 1;
+        }
+        let _ = self.tx.send(Msg::Busy(w.busy.keys().cloned().collect()));
+        BusyToken {
+            roots: roots.to_vec(),
+            paused,
+        }
+    }
+
+    /// The job ended: held reloads come now, paused polls resume (with a reload).
+    pub fn release(&self, token: BusyToken) {
+        if token.roots.is_empty() {
+            return;
+        }
+        {
+            let mut w = self.lock();
+            for r in &token.roots {
+                if let Some(n) = w.busy.get_mut(r) {
+                    *n -= 1;
+                    if *n == 0 {
+                        w.busy.remove(r);
+                    }
+                }
+            }
+            let _ = self.tx.send(Msg::Busy(w.busy.keys().cloned().collect()));
+        }
+        if !token.paused.is_empty() {
+            self.resume(&token.paused);
         }
     }
 }
@@ -401,12 +466,49 @@ fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink:
                 watched = dirs;
             }
             Ok(Msg::Rescan(dir)) => batcher.touch(&dir, Touch::Rescan, Instant::now()),
+            Ok(Msg::Busy(roots)) => batcher.set_busy_roots(roots),
             Ok(Msg::Fs(res)) => feed(&mut batcher, &watched, res, Instant::now()),
+            Ok(Msg::Resolved {
+                dir,
+                event,
+                replaced,
+            }) => {
+                batcher.set_resolving(&dir, false);
+                // a folder no longer shown reports nothing any more
+                if let Some(w) = watched.iter_mut().find(|w| w.dir == dir) {
+                    if let Some(r) = replaced {
+                        *w = r;
+                    }
+                    if let Some(event) = event {
+                        sink(event);
+                    }
+                }
+            }
             Err(RecvTimeoutError::Timeout) => {}
         }
         for flush in batcher.due(Instant::now()) {
-            if let Some(event) = resolve(flush, &mut watched, &tx, &watchers) {
-                sink(event);
+            let dir = flush_dir_of(&flush).to_path_buf();
+            let Some(entry) = watched.iter().find(|w| w.dir == dir).cloned() else {
+                continue;
+            };
+            // stat'ing may hang on a busy or dead drive: off this thread, one batch
+            // per folder at a time, so other folders keep reporting (design 029 E9)
+            batcher.set_resolving(&dir, true);
+            let (tx2, watchers2, dir2) = (tx.clone(), watchers.clone(), dir.clone());
+            let spawned = std::thread::Builder::new()
+                .name("fnf-watch-stat".into())
+                .spawn(move || {
+                    let (event, replaced) = resolve(flush, &entry, &tx2, &watchers2);
+                    let _ = tx2.send(Msg::Resolved {
+                        dir: dir2,
+                        event,
+                        replaced,
+                    });
+                });
+            if spawned.is_err() {
+                // no thread: free the folder again – its next batch is a reload
+                batcher.set_resolving(&dir, false);
+                batcher.touch(&dir, Touch::Rescan, Instant::now());
             }
         }
     }
@@ -437,7 +539,20 @@ fn feed(
         }
     };
     if event.need_rescan() {
-        batcher.touch_all(now);
+        // only the folders the lost events belong to (design 029 E7) – both panels
+        // would reload otherwise, also the one on another, idle drive
+        if event.paths.is_empty() {
+            batcher.touch_all(now);
+        }
+        for p in &event.paths {
+            for w in watched.iter().filter(|w| {
+                w.aliases
+                    .iter()
+                    .any(|a| a.starts_with(p) || p.starts_with(a))
+            }) {
+                batcher.touch(&w.dir, Touch::Rescan, now);
+            }
+        }
         return;
     }
     // reading a file (our own preview, other programs) changes nothing that is shown
@@ -480,14 +595,17 @@ fn rewatch(tx: &Sender<Msg>, watchers: &Mutex<Watchers>, dir: &Path) {
 /// Turns a due batch into the event for the frontend (stat'ing the names now).
 fn resolve(
     flush: Flush,
-    watched: &mut [Watched],
+    entry: &Watched,
     tx: &Sender<Msg>,
     watchers: &Mutex<Watchers>,
-) -> Option<WatchEvent> {
+) -> (Option<WatchEvent>, Option<Watched>) {
     match flush {
-        Flush::Rescan { dir } => Some(WatchEvent::Rescan {
-            dir: dir.to_string_lossy().into_owned(),
-        }),
+        Flush::Rescan { dir } => (
+            Some(WatchEvent::Rescan {
+                dir: dir.to_string_lossy().into_owned(),
+            }),
+            None,
+        ),
         Flush::SelfChanged {
             dir,
             names,
@@ -496,29 +614,30 @@ fn resolve(
         } => {
             let d = dir.to_string_lossy().into_owned();
             if !dir.is_dir() {
-                return Some(WatchEvent::Gone { dir: d });
+                return (Some(WatchEvent::Gone { dir: d }), None);
             }
             let now = identity_of(&dir);
-            let entry = watched.iter_mut().find(|w| w.dir == dir);
-            let same = !removed
-                && match &entry {
-                    Some(w) => now.is_some() && w.identity == now,
-                    None => true,
-                };
+            let same = !removed && now.is_some() && entry.identity == now;
             if !same {
                 rewatch(tx, watchers, &dir);
-                if let Some(w) = entry {
-                    *w = Watched::new(&dir);
-                }
-                return Some(WatchEvent::Rescan { dir: d });
+                return (
+                    Some(WatchEvent::Rescan { dir: d }),
+                    Some(Watched::new(&dir)),
+                );
             }
             // the same folder, only its attributes/mtime changed (polling reports that)
             if rescan {
-                return Some(WatchEvent::Rescan { dir: d });
+                return (Some(WatchEvent::Rescan { dir: d }), None);
             }
-            changes(&dir, names)
+            (changes(&dir, names), None)
         }
-        Flush::Changes { dir, names } => changes(&dir, names),
+        Flush::Changes { dir, names } => (changes(&dir, names), None),
+    }
+}
+
+fn flush_dir_of(flush: &Flush) -> &Path {
+    match flush {
+        Flush::Changes { dir, .. } | Flush::Rescan { dir } | Flush::SelfChanged { dir, .. } => dir,
     }
 }
 

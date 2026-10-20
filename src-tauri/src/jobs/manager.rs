@@ -55,6 +55,8 @@ pub struct JobManager {
     /// What the last rename jobs did (job id → pairs that undo it), newest last.
     undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
     fs_guard: Mutex<Option<FsGuard>>,
+    /// Marks the folders a job writes into (the watcher holds their reloads; design 029 E8).
+    target_guard: Mutex<Option<FsGuard>>,
 }
 
 /// Rename jobs that can be undone (design 007 E7).
@@ -70,6 +72,7 @@ impl JobManager {
             force_copy_on_move: AtomicBool::new(false),
             undo_log: Mutex::new(VecDeque::new()),
             fs_guard: Mutex::new(None),
+            target_guard: Mutex::new(None),
         })
     }
 
@@ -80,6 +83,11 @@ impl JobManager {
     /// Installs the guard called around jobs that move, rename or delete.
     pub fn set_fs_guard(&self, guard: FsGuard) {
         *self.fs_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
+    }
+
+    /// Called with [`JobSpec::target_dirs`] when a job starts; the returned function runs when it ends.
+    pub fn set_target_guard(&self, guard: FsGuard) {
+        *self.target_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -313,10 +321,22 @@ impl JobManager {
         let release = guard
             .filter(|_| !changed.is_empty() && !control.is_cancelled())
             .map(|g| g(&changed));
+        let targets = spec.target_dirs();
+        let target_guard = self
+            .target_guard
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let release_targets = target_guard
+            .filter(|_| !targets.is_empty() && !control.is_cancelled())
+            .map(|g| g(&targets));
         // a panic (a bug, or inside a crate such as `trash`) must not leave the job
         // "running" forever and block the serial queue
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work));
         if let Some(release) = release {
+            release();
+        }
+        if let Some(release) = release_targets {
             release();
         }
         let (state, summary) = result.unwrap_or_else(|_| {

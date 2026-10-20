@@ -881,3 +881,37 @@ fn dest_bytes_leaves_out_files_and_folders_merged_into_existing_ones() {
     // the merged folder holds more than this job wrote, a file needs no live size
     assert!(summary.dest_bytes.is_empty(), "{:?}", summary.dest_bytes);
 }
+
+#[test]
+fn the_target_guard_marks_the_folders_a_job_writes_into() {
+    let tmp = tempdir().unwrap();
+    let a = tmp.path().join("a");
+    let b = tmp.path().join("b");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&a).unwrap();
+    fs::create_dir_all(&b).unwrap();
+    fs::create_dir_all(&target).unwrap();
+    let h = Harness::new();
+    let log: Arc<Mutex<Vec<String>>> = Arc::default();
+    let l = log.clone();
+    h.mgr.set_target_guard(Arc::new(move |paths: &[PathBuf]| {
+        let names: Vec<String> = paths
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        l.lock().unwrap().push(format!("busy {}", names.join(",")));
+        let l = l.clone();
+        Box::new(move || l.lock().unwrap().push("free".into()))
+    }));
+    let id = h.copy(&[&a], &target, false);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    let id = h.start_move(&[&a], &target.join("a"), CopyOptions::default());
+    h.finish(&id);
+    let id = h.delete(&[&b], DeleteMode::Permanent);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert_eq!(
+        *log.lock().unwrap(),
+        vec!["busy t", "free", "busy a", "free"],
+        "delete writes nowhere"
+    );
+}

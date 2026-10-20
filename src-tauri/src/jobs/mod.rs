@@ -213,6 +213,20 @@ impl JobSpec {
         strs.into_iter().map(std::path::PathBuf::from).collect()
     }
 
+    /// Folders the job writes new entries into (design 029 E8): watched folders at or
+    /// below them hold their reloads back while it runs – the job reports its changes.
+    pub fn target_dirs(&self) -> Vec<std::path::PathBuf> {
+        let dir = match self {
+            JobSpec::Copy { target_dir, .. }
+            | JobSpec::Move { target_dir, .. }
+            | JobSpec::Extract { target_dir, .. }
+            | JobSpec::Pack { target_dir, .. } => target_dir,
+            JobSpec::Group { root, .. } => root,
+            _ => return Vec::new(),
+        };
+        vec![crate::paths::normalize_lexically(std::path::Path::new(dir))]
+    }
+
     /// Helper jobs (folder size, count, search) are no tasks of the user: quitting
     /// while they run needs no confirmation – cancelling them loses nothing.
     pub fn is_helper(&self) -> bool {
