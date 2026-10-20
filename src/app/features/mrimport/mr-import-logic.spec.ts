@@ -33,7 +33,8 @@ function state(over: Partial<ImportState> = {}): ImportState {
     templates: [],
     builtInPresets: [{ label: 'Movies', extensions: ['.mkv', '.mp4'] }],
     toolIds: ['edit', 'vscode'],
-    themeNames: ['Light', 'Dark', 'Norton'],
+    themeNames: ['Light', 'Dark', 'Norton', 'Mine'],
+    ownThemeNames: ['Mine'],
     settings: { 'view.density': 'normal', 'behavior.spaceCalcSize': true },
     ...over,
   };
@@ -196,8 +197,11 @@ describe('mr import planning (design 026)', () => {
       ]),
       state(),
     );
+    // "Mine" is an own scheme already: imported before, no second copy
+    expect(c.count).toBe(1);
+    expect(c.unchanged).toBe(1);
     expect(c.conflicts).toEqual([{ kind: 'name', name: 'norton' }]);
-    expect(c.colorPaths).toEqual(['/old/norton.json', '/old/m.json']);
+    expect(c.colorPaths).toEqual(['/old/norton.json']);
     expect(c.apply).toEqual({ backupThemes: true });
 
     const s = planSetup(

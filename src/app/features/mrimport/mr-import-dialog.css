@@ -43,7 +43,7 @@ legend {
   column-gap: var(--spacing-2);
 
   .check {
-    min-width: 13rem;
+    min-width: 15rem;
   }
 
   .summary {

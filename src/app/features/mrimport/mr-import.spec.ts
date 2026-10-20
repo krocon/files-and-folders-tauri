@@ -101,7 +101,7 @@ describe('mr import (design 026)', () => {
     const running = store.run();
     await Promise.resolve();
     expect(confirm.request()?.message).toBe(
-      '1 own entry is replaced. Backups are kept next to the files.',
+      '1 existing entry changes (see “Details”). Backups are kept next to the files.',
     );
     confirm.answer(true);
     await running;
@@ -172,6 +172,11 @@ describe('mr import (design 026)', () => {
     expect(theme.active().id).toBe(active);
     expect(store.message()).toContain('Imported: Colour schemes.');
     expect(store.message()).toContain('/old/color/custom/gone.json');
+    // a second look: "Mine" is an own scheme now and is not offered again
+    const colors = store.plans().find((p) => p.area === 'colors')!;
+    expect(colors.unchanged).toBe(1);
+    expect(colors.colorPaths).toEqual(['/old/color/custom/gone.json']);
+    expect(store.mode()).toBe('merge');
   });
 
   it('dialog: folder field, areas as checkboxes with summary and details, German texts', async () => {

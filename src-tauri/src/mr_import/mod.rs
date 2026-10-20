@@ -333,8 +333,10 @@ fn scan_shortcuts(assets: &Path, os: MrOs) -> Option<MrArea<Vec<MrShortcut>>> {
     }
     let defaults: BTreeMap<String, Value> = defaults.into_iter().collect();
     for (key, id) in defaults {
-        if !custom.contains_key(&key) {
-            area.skip(format!("{key} → {}", id.as_str().unwrap_or("?")), "removed");
+        // only what still exists is worth a word (a removed SAVE_CONFIG is no news)
+        let id = id.as_str().unwrap_or("");
+        if !custom.contains_key(&key) && map_action(id).is_ok() {
+            area.skip(format!("{key} → {id}"), "removed");
         }
     }
     Some(area)
@@ -467,8 +469,20 @@ fn scan_search(assets: &Path) -> Option<MrArea<Vec<MrPattern>>> {
     };
     let mut area: MrArea<Vec<MrPattern>> = MrArea::new(&file);
     let mut ft: MrArea<Vec<FileType>> = MrArea::new(&file);
+    // mr shipped its search patterns as copies of its file types: those count as defaults
+    let mut ignored: MrArea<Vec<FileType>> = MrArea::new(&file);
+    let shipped: Vec<(String, Vec<String>)> =
+        match defaults_file(&assets.join("filetype/defaults/data.json")) {
+            Some(Value::Array(d)) => categories(d, &mut ignored),
+            _ => Vec::new(),
+        }
+        .into_iter()
+        .map(|c| (c.label.to_lowercase(), sorted(c.extensions)))
+        .collect();
     for c in categories(list, &mut ft) {
-        if c.extensions.is_empty() {
+        if shipped.contains(&(c.label.to_lowercase(), sorted(c.extensions.clone()))) {
+            area.unchanged += 1;
+        } else if c.extensions.is_empty() {
             area.skip(c.label, "invalid");
         } else {
             area.items.push(MrPattern {
@@ -479,6 +493,11 @@ fn scan_search(assets: &Path) -> Option<MrArea<Vec<MrPattern>>> {
     }
     area.skipped.extend(ft.skipped);
     Some(area)
+}
+
+fn sorted(mut v: Vec<String>) -> Vec<String> {
+    v.sort();
+    v
 }
 
 /// E8: tools that differ from mr's default of the same id, through the existing mr import.

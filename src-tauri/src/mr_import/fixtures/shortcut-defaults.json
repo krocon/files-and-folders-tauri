@@ -8,5 +8,6 @@
   "ctrl+k f6": "OPEN_TASK_DLG",
   "ctrl+cmd+s": "SAVE_CONFIG",
   "shift+tab": "NEXT_TAB",
-  "cmd+e": "EDIT_FILE"
+  "cmd+e": "EDIT_FILE",
+  "f3": "OPEN_VIEW_DLG"
 }

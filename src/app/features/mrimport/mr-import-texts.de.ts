@@ -66,7 +66,7 @@ export const MR_IMPORT_DE: Translation<typeof MR_IMPORT_EN> = {
   close: 'Schließen',
   confirmTitle: 'Alte Konfiguration importieren?',
   confirmConflicts: (n) =>
-    `${n === 1 ? '1 eigener Eintrag wird' : `${n} eigene Einträge werden`} ersetzt. Neben den Dateien bleiben Sicherungen.`,
+    `${n === 1 ? '1 vorhandener Eintrag ändert sich' : `${n} vorhandene Einträge ändern sich`} (siehe „Einzelheiten“). Neben den Dateien bleiben Sicherungen.`,
   confirmReplace:
     'Ersetzen: Ihre eigenen Einträge in den gewählten Bereichen entfallen. Neben den Dateien bleiben Sicherungen.',
   importing: 'Import läuft…',

@@ -219,7 +219,8 @@ fn shortcuts_only_the_changes_with_reasons() {
         skipped(&s, "unknown_key"),
         vec!["ctrl+hyper → OPEN_VIEW_DLG"]
     );
-    assert_eq!(skipped(&s, "removed"), vec!["cmd+e → EDIT_FILE"]);
+    // removed from the custom file: reported, except EDIT_FILE (no equivalent, no news)
+    assert_eq!(skipped(&s, "removed"), vec!["f3 → OPEN_VIEW_DLG"]);
 
     // Linux: the same file, Ctrl is Mod, cmd is the Windows key
     let s = scan_path(&repo, MrOs::Linux).unwrap().shortcuts.unwrap();
@@ -334,7 +335,9 @@ fn search_reads_mrs_swapped_folders() {
     let s = scan(&assets, MrOs::Osx).search.unwrap();
     assert!(s.file.ends_with("data.json") && s.file.contains("defaults"));
     let labels: Vec<&str> = s.items.iter().map(|p| p.label.as_str()).collect();
-    assert_eq!(labels, vec!["movies", "movies & images", "Comics & covers"]);
+    // "movies" is a copy of mr's file type of that name: shipped, not own
+    assert_eq!(labels, vec!["movies & images", "Comics & covers"]);
+    assert_eq!(s.unchanged, 1);
     assert_eq!(skipped(&s, "invalid"), vec!["nothing"]);
     // only search/custom (no shipped file): that one counts
     fs::remove_file(assets.join("search/defaults/data.json")).unwrap();

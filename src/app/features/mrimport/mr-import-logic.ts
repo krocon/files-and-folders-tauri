@@ -62,7 +62,9 @@ export interface ImportState {
   readonly builtInPresets: readonly Preset[];
   /** Ids of the tools in use (built in and own). */
   readonly toolIds: readonly string[];
+  /** Names of all schemes (built in and own) and of the own ones. */
   readonly themeNames: readonly string[];
+  readonly ownThemeNames: readonly string[];
   readonly settings: Readonly<Record<string, unknown>>;
 }
 
@@ -365,19 +367,23 @@ export function planTools(source: MrScan['tools'], state: ImportState, mode: Imp
   });
 }
 
-/** E9: every own colour file becomes a scheme (a taken name gets a suffix). */
+/** E9: every own colour file becomes a scheme (a built-in name gets a suffix). */
 export function planColors(source: MrScan['colors'], state: ImportState): AreaPlan {
   if (!source || source.error || source.items.length === 0) {
     return plan('colors', source);
   }
+  // an own scheme of that name = imported before (a second import adds no copies)
+  const own = new Set(state.ownThemeNames.map((n) => n.toLowerCase()));
   const names = new Set(state.themeNames.map((n) => n.toLowerCase()));
+  const files = source.items.filter((f) => !own.has(f.name.toLowerCase()));
   return plan('colors', source, {
-    count: source.items.length,
-    conflicts: source.items
+    count: files.length,
+    unchanged: source.unchanged + source.items.length - files.length,
+    conflicts: files
       .filter((f) => names.has(f.name.toLowerCase()))
       .map((f) => ({ kind: 'name', name: f.name })),
-    apply: { backupThemes: true },
-    colorPaths: source.items.map((f) => f.path),
+    apply: files.length > 0 ? { backupThemes: true } : null,
+    colorPaths: files.map((f) => f.path),
   });
 }
 

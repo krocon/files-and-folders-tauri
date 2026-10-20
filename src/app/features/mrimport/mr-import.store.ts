@@ -69,6 +69,7 @@ export class MrImportStore {
     builtInPresets: PRESETS_BUILT_IN,
     toolIds: this.os.tools().map((t) => t.id),
     themeNames: this.theme.themes().map((t) => t.name),
+    ownThemeNames: this.theme.userThemes().map((t) => t.name),
     settings: this.settings.values() as unknown as Readonly<Record<string, unknown>>,
   }));
 
@@ -219,6 +220,8 @@ export class MrImportStore {
           .join(' '),
       );
       this.chosen.set(new Set());
+      // the next plan starts from the new state, without a surprise "replace"
+      this.mode.set('merge');
     } catch (err) {
       this.message.set('');
       this.error.set(MR_IMPORT_TEXTS.failed(errorText(toFsError(err))));

@@ -69,7 +69,7 @@ export const MR_IMPORT_EN = {
   close: 'Close',
   confirmTitle: 'Import the old configuration?',
   confirmConflicts: (n: number) =>
-    `${n === 1 ? '1 own entry is' : `${n} own entries are`} replaced. Backups are kept next to the files.`,
+    `${n === 1 ? '1 existing entry changes' : `${n} existing entries change`} (see “Details”). Backups are kept next to the files.`,
   confirmReplace:
     'Replace: your own entries in the chosen areas are dropped. Backups are kept next to the files.',
   importing: 'Importing…',
