@@ -166,4 +166,17 @@ describe('change attributes – pure logic (design 024)', () => {
     expect(fromLocalInput('20.10.2026')).toBeNull();
     expect(fromLocalInput('2026-13-01T00:00')).toBeNull();
   });
+
+  it('a time in the gap of the switch to summer time is no valid input (review #12)', () => {
+    vi.stubEnv('TZ', 'Europe/Berlin'); // Node switches the time zone on assignment
+    try {
+      expect(fromLocalInput('2026-03-29T02:30')).toBeNull();
+      expect(fromLocalInput('2026-03-29T03:30')).toBe(Date.UTC(2026, 2, 29, 1, 30));
+      expect(fromLocalInput('2026-03-29T01:59:59')).toBe(Date.UTC(2026, 2, 29, 0, 59, 59));
+      // the hour that exists twice in autumn is valid (the first one)
+      expect(fromLocalInput('2026-10-25T02:30')).not.toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
