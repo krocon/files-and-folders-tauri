@@ -298,16 +298,25 @@ fn clean_rechecks_every_entry() {
         kind: CleanKind::File,
         junk: 0,
     });
-    list.push(crate::clean::CleanItem {
+    // `..` refuses the whole job before it starts (external review #1)
+    let mut with_up = list.clone();
+    with_up.push(crate::clean::CleanItem {
         path: s(&root.join("..").join("leer daneben")),
         kind: CleanKind::Dir,
         junk: 0,
     });
+    let refused = h.mgr.start(JobSpec::Clean {
+        roots: vec![s(&root)],
+        items: with_up,
+        mode: DeleteMode::Permanent,
+        options: o.clone(),
+    });
+    assert_eq!(refused.unwrap_err().code, FsErrorCode::InvalidPath);
     let id = h.clean(std::slice::from_ref(&root), list, o);
     let info = h.finish(&id);
     assert_eq!(info.state, JobState::DoneWithErrors);
     let sum = info.summary.unwrap();
-    assert_eq!(sum.items_failed, 6, "{:?}", sum.errors);
+    assert_eq!(sum.items_failed, 5, "{:?}", sum.errors);
     assert!(root.join("a/b/neu.txt").is_file());
     assert!(!root.join("a/b/c").exists());
     assert!(root.join("keep.txt").is_file());

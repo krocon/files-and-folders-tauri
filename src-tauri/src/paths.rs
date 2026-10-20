@@ -37,6 +37,28 @@ pub fn validate_input_path(raw: &str) -> Result<PathBuf, FsError> {
     Ok(normalize_lexically(&path))
 }
 
+/// Validates a path of a job (design 024/031, external review #1): like
+/// [`validate_input_path`], but `..` is refused. Lexically `link/..` is the
+/// folder that holds the link, physically it is the parent of the link's
+/// target – what is checked (danger, "is it a link?") and what is changed could
+/// differ. The panels never send `..` (Rust builds every path), so nothing
+/// legitimate is lost. The result has no `.` and no trailing separator: `link/`
+/// or `link/.` would make the system follow the link, the normalised `link`
+/// names the link itself. Jobs work with exactly this path.
+pub fn validate_job_path(raw: &str) -> Result<PathBuf, FsError> {
+    if Path::new(raw)
+        .components()
+        .any(|c| c == Component::ParentDir)
+    {
+        return Err(FsError::new(
+            FsErrorCode::InvalidPath,
+            "A path must not contain \"..\"",
+            Some(Path::new(raw)),
+        ));
+    }
+    validate_input_path(raw)
+}
+
 /// Expands a leading `~` (`~`, `~/x`, `~\\x`) with `home`. `~user` is not supported.
 pub fn expand_tilde(raw: &str, home: &Path) -> Result<PathBuf, FsError> {
     let trimmed = raw.trim();
@@ -318,6 +340,77 @@ fn inside(path: &Path, tree: &Path) -> bool {
     }
 }
 
+/// `\\?\C:\x` → `C:\x`, `\\?\UNC\srv\x` → `\\srv\x` (what `canonicalize` adds on Windows).
+fn plain(path: &Path) -> PathBuf {
+    if cfg!(not(windows)) {
+        return path.to_path_buf(); // keeps names that are no UTF-8
+    }
+    let s = path.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// [`danger_of`] on the path as given and on where it really is (external
+/// review #2): `~/rootlink/etc` with `rootlink → /` is `/etc`. The real place is
+/// the folder holding the entry with every link resolved (`canonicalize`), plus
+/// the entry's own name – never followed: a selected link is the link. Only for
+/// the check; navigation and jobs keep the path as given. Many entries share a
+/// folder: each folder (and the home folder) is resolved once.
+pub struct DangerCheck<'a> {
+    home: Option<&'a Path>,
+    real_home: Option<Option<PathBuf>>,
+    real_dirs: std::collections::HashMap<PathBuf, Option<PathBuf>>,
+}
+
+impl<'a> DangerCheck<'a> {
+    pub fn new(home: Option<&'a Path>) -> Self {
+        Self {
+            home,
+            real_home: None,
+            real_dirs: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn of(&mut self, path: &Path) -> Option<Danger> {
+        let path = normalize_lexically(path);
+        if let Some(d) = danger_of(&path, self.home) {
+            return Some(d);
+        }
+        let (Some(name), Some(parent)) = (path.file_name(), path.parent()) else {
+            return None;
+        };
+        let real_parent = self
+            .real_dirs
+            .entry(parent.to_path_buf())
+            .or_insert_with(|| std::fs::canonicalize(parent).ok().map(|p| plain(&p)))
+            .clone()?;
+        let physical = real_parent.join(name);
+        if physical == path {
+            return None; // no link on the way: checked above
+        }
+        let home = self.home;
+        let real_home = self
+            .real_home
+            .get_or_insert_with(|| {
+                home.map(|h| {
+                    std::fs::canonicalize(h).map_or_else(|_| h.to_path_buf(), |c| plain(&c))
+                })
+            })
+            .clone();
+        danger_of(&physical, real_home.as_deref())
+    }
+}
+
+/// [`DangerCheck`] for one path.
+pub fn danger_of_entry(path: &Path, home: Option<&Path>) -> Option<Danger> {
+    DangerCheck::new(home).of(path)
+}
+
 /// Classifies a (validated, absolute) path – design 006 E7.
 pub fn danger_of(path: &Path, home: Option<&Path>) -> Option<Danger> {
     let path = without_verbatim(&normalize_lexically(path));
@@ -570,5 +663,52 @@ mod tests {
             None
         );
         assert_eq!(danger_of(Path::new("/Volumes/USB/a"), Some(home)), None);
+    }
+
+    /// External review #1: `..` is refused in job paths; `.` and a trailing
+    /// separator are dropped (they would make the system follow a link).
+    #[test]
+    fn job_paths_have_no_dotdot_dot_or_trailing_separator() {
+        let base = abs(&["a", "Ünï b"]);
+        let raw = format!("{}{}", base.display(), std::path::MAIN_SEPARATOR);
+        assert_eq!(validate_job_path(&raw).unwrap(), base);
+        let dot = base.join(".");
+        assert_eq!(validate_job_path(dot.to_str().unwrap()).unwrap(), base);
+        let up = base.join("x").join("..");
+        assert_eq!(
+            validate_job_path(up.to_str().unwrap()).unwrap_err().code,
+            FsErrorCode::InvalidPath
+        );
+        assert!(validate_job_path("relative").is_err());
+        // navigation keeps resolving `..` lexically
+        assert_eq!(validate_input_path(up.to_str().unwrap()).unwrap(), base);
+    }
+
+    /// External review #2: a linked folder on the way does not hide a dangerous place.
+    #[cfg(unix)]
+    #[test]
+    fn danger_of_an_entry_behind_a_linked_folder() {
+        let d = tempfile::tempdir().unwrap();
+        let home = d.path().join("home");
+        std::fs::create_dir_all(home.join("docs")).unwrap();
+        std::os::unix::fs::symlink("/", d.path().join("root")).unwrap();
+        std::os::unix::fs::symlink(d.path(), d.path().join("up")).unwrap();
+        let h = Some(home.as_path());
+        let via = |p: &str| d.path().join(p);
+        assert_eq!(danger_of(&via("root/etc"), h), None, "lexically harmless");
+        assert_eq!(danger_of_entry(&via("root/etc"), h), Some(Danger::System));
+        assert_eq!(danger_of_entry(&via("root/usr"), h), Some(Danger::System));
+        assert_eq!(danger_of_entry(&via("up/home"), h), Some(Danger::Home));
+        // the link itself is the link: deleting `root` deletes no root
+        assert_eq!(danger_of_entry(&via("root"), h), None);
+        assert_eq!(danger_of_entry(&via("up/home/docs"), h), None);
+        assert_eq!(danger_of_entry(&via("missing/x"), h), None);
+        let mut check = DangerCheck::new(h);
+        assert_eq!(check.of(&via("root/etc")), Some(Danger::System));
+        assert_eq!(
+            check.of(&via("root/tmp/x")),
+            None,
+            "resolved once per folder"
+        );
     }
 }
