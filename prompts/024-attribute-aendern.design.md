@@ -1,6 +1,6 @@
 # Design 024: Attribute ändern
 
-> Status: **in Arbeit** · Branch `feat/attribute-aendern` · Prompt: [024-attribute-aendern.md](024-attribute-aendern.md)
+> Status: **umgesetzt** (macOS/Windows nur CI-kompiliert, ungeprüft) · Branch `feat/attribute-aendern` · Prompt: [024-attribute-aendern.md](024-attribute-aendern.md)
 > · Marc hat am 20.10.2026 Umfang und Ablauf („selbständig umsetzen“) freigegeben – kein Haltepunkt nach Phase 1,
 > die Entscheidungen stehen hier.
 
@@ -137,17 +137,47 @@ Fehlerzeile (role=alert)                      [Cancel] [Change] (Strg/⌘+Enter)
 ## 5. Fortschritt
 
 - [x] Prompt + Design
-- [ ] Rust
-- [ ] Frontend
-- [ ] E2E unter Xvfb
-- [ ] Doku
-- [ ] Abschluss + Review
+- [x] Rust (`attributes.rs`, `platform/attributes.rs`, `jobs/attributes.rs`, Tests `jobs/tests_attributes.rs`; 27 Tests,
+  zusätzlich als Nutzer `nobody` gelaufen – die Fälle „gesperrter Ordner“ greifen nur ohne root)
+- [x] Frontend (`core/attributes/`, `features/attributes/`, Knopf „Ändern…“ in den Eigenschaften, Menüs, Keymaps,
+  Sperren, Task-Titel; 20 Specs + Kataloge)
+- [x] E2E unter Xvfb (Linux, 20.10.2026, Debug-Build, `HOME=/tmp/e2e-024/home`):
+  - `Grüße ä.txt` (644): `Strg+Umschalt+F2`, „Gruppe: Schreiben“, `Strg+Enter` → 664, Meldung „Attributes of 1 entry
+    changed“;
+  - vier markierte Einträge (`b.txt` 664, `c 🎉.txt` 600, `Grüße ä.txt`, Link `link-b`): Gruppe/Andere „gemischt“
+    (Strich), Hinweis „1 link stays unchanged“; Änderungszeit über den Kalender auf den 15.10. → die Liste zeigt das
+    neue Datum ohne Auffrischen, der Link (und sein Ziel nur, weil selbst markiert) – Link unverändert, Task-Liste:
+    „1 failed … This is a link – links are left unchanged“;
+  - `Ordner äö` rekursiv, „Nur Ordner“, `o+rx` → alle drei Ordner 755, Dateien 640, Link `zu-aussen` und der Ordner
+    außerhalb unberührt, Meldung „… 3 entries changed (1 link skipped)“;
+  - im ZIP: „Change attributes: Archives are read-only here …“;
+  - `home` rekursiv → Fehler im Dialog „This is a drive, your home folder or a system folder.“, nichts geändert;
+  - Eigenschaften (`Alt+Enter`) → „Ändern…“ öffnet den Dialog für denselben Eintrag;
+  - Tastatur: Fokus auf „Eigentümer: Lesen“, Tab durch das Raster, Leertaste, Esc schließt; Zusammenfassung
+    „1 entry · 2 changes (u-r g-r)“; dunkles Schema (Kontrast von Warnung und Kästchen in Ordnung).
+  - Befund beim ersten Durchlauf: während des Lesens gesperrte Fieldsets nahmen dem Dialog den Autofokus – Esc und
+    `Strg+Enter` kamen nicht an. Behoben (Felder bleiben bedienbar, Spec „fields stay focusable …“).
+  - Nicht per E2E: ungeprüftes Listing (030) – nur Spec (`OFF_WHILE_UNCHECKED`), da ohne Netzlaufwerk umständlich.
+- [x] Doku (architecture, feature-parity, features, README, prompts/README)
+- [x] Abschluss: `pnpm check` grün, Debug-Build, E2E wiederholt, Review unten
+- [ ] macOS/Windows: im Container nicht kompilierbar (kein Target) – erst die CI bzw. Marc
 
-## 6. Review
+## 6. Review (Selbst-Review des Diffs, 20.10.2026)
 
-(folgt)
+| # | Befund | Schwere | Ergebnis |
+|---|---|---|---|
+| 1 | Autofokus fehlte, solange die Ausgangswerte geladen wurden (gesperrte Fieldsets) | mittel | behoben (E2E-Befund, Spec) |
+| 2 | Gefilterte Einträge (Filter ohne Rekursion) zählten nicht im Fortschritt – Balken blieb unter 100 % | niedrig | behoben |
+| 3 | Windows: `SetFileAttributesW` hat keinen „NoFollow“-Schalter; geprüft wird direkt davor per `symlink_metadata` (Link → `symlink_skipped`) | niedrig | offen, Restrisiko eines in der Lücke ausgetauschten Eintrags (eigene Dateien des Nutzers) |
+| 4 | Linux mit glibc < 2.32: `fchmodat(AT_SYMLINK_NOFOLLOW)` gibt immer `EOPNOTSUPP` → Rückfall auf `chmod` nach erneutem `lstat` | niedrig | so gewollt (Tauri 2 braucht ohnehin neuere Systeme) |
+| 5 | Pfade opak: das Frontend schickt nur `DirEntry.path`, Eltern rechnet Rust (`target_dirs`, `dir_changed`) | – | ok |
+| 6 | Kein neuer Command: alles über `start_job` (`command_rules` unverändert grün), Ausgangswerte über `get_properties` | – | ok |
+| 7 | Texte en/de vollständig (`catalogs.spec.ts`), „Sticky“ übersetzt, Mehrzahl „link(s) skipped“ | niedrig | behoben |
+| 8 | macOS: `std::os::macos::fs::MetadataExt::st_flags`, `lchflags`, `setattrlist` – gegen die `libc`-Quelle 0.2.191 geprüft, nicht kompiliert | mittel | offen bis zur CI |
 
 ## 7. Offen
 
-- Eigentümer/Gruppe ändern (E5).
-- macOS- und Windows-Code nur in der CI kompiliert, bei Marc zu prüfen.
+- Eigentümer/Gruppe ändern (E5): Gruppenliste des Nutzers (`getgroups`) + Auswahl, `fchownat(AT_SYMLINK_NOFOLLOW)`.
+- macOS- und Windows-Code nur in der CI kompiliert, bei Marc zu prüfen (Versteckt-Flag im Finder, Erstellzeit,
+  R/H/S/A im Explorer, Zeiten auf Ordnern).
+- „Jetzt“ wird beim Start des Jobs fixiert – wartet er in der Warteschlange, ist „jetzt“ der Startzeitpunkt.
