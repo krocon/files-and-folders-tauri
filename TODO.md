@@ -9,6 +9,12 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 
 ## 1. Laufende Prompts
 
+- [x] **029 Bedienbar bei langen Jobs** (20.10., Branch `feat/reaktionsfaehig-bei-jobs`, gepusht, **nicht** gemergt):
+      Anlass Marcs Screenshot (Ziel-Panel beim Kopieren aufs langsame Laufwerk gesperrt). Auffrischen ohne Overlay,
+      Drossel, Hinweis „antwortet langsam“ + Esc, Tab-Wechsel sofort aus dem letzten Listing, Watcher hält Rescans von
+      Job-Zielen zurück, ein Listing je hängendem Ordner, 1-MiB-Blöcke + `F_NOCACHE`, Commands async. E2E unter Xvfb
+      mit `FNF_TEST_SLOW`. **Bei Marc prüfen:** Kopie auf das echte langsame Laufwerk (USB/NAS) auf macOS – Panel
+      bedienbar? `F_NOCACHE` messbar (Aktivitätsanzeige → Speicher)? Menüs/Fenster nach der async-Umstellung normal?
 - [x] **015 Einstellungen/i18n** – in `main` (19.10.): `main` eingemergt (About aus 017 bleibt, Texte von
       016/017/019 übersetzt), E2E unter Xvfb, Review (16 Befunde, Tabelle in Design §6), Doku. Offen (Design §9):
       Button-Editor, Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
