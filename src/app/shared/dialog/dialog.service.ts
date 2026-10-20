@@ -28,7 +28,9 @@ export type DialogKind =
   | 'duplicates'
   | 'themes'
   | 'settings'
-  | 'about';
+  | 'about'
+  | 'button-config'
+  | 'file-types';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

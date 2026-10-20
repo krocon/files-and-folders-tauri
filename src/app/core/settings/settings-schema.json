@@ -24,5 +24,6 @@
   "shell.enabled": { "type": "bool", "default": true },
   "shell.loginPath": { "type": "bool", "default": true },
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
-  "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 }
+  "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 },
+  "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 }
 }

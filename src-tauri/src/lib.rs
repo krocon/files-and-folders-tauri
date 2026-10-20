@@ -25,18 +25,23 @@
 //! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ index, name checks, zip-bomb limits (design 016)
 //! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
+//! - [`buttons`], [`filetypes`] user files of the button bar and the file type categories (design 022)
+//! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod about;
 pub mod app_menu;
 pub mod archive;
 pub mod attributes;
+pub mod buttons;
 pub mod clean;
 pub mod commands;
+pub mod config_file;
 pub mod dirsize;
 pub mod duplicates;
 pub mod error;
 pub mod fileops;
+pub mod filetypes;
 pub mod fs_atomic;
 pub mod jobs;
 pub mod keymap;
@@ -78,6 +83,8 @@ pub fn run() {
         .on_menu_event(|app, event| commands::forward_menu_event(app, event.id().as_ref()))
         .manage(commands::watch::WatchState::default())
         .manage(commands::shell::ShellState::default())
+        .manage(commands::config::ButtonsState::default())
+        .manage(commands::config::FileTypesState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -235,7 +242,12 @@ pub fn run() {
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths,
-            commands::os_drag::start_os_drag
+            commands::os_drag::start_os_drag,
+            commands::config::load_buttons,
+            commands::config::save_buttons,
+            commands::config::load_file_types,
+            commands::config::save_file_types,
+            commands::config::toggle_fullscreen
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

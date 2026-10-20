@@ -3,7 +3,15 @@ import { SETTINGS_TEXTS } from './settings-texts';
 
 /** Sections of the settings dialog (design 015 E6). */
 export type SectionId =
-  'general' | 'view' | 'behavior' | 'shell' | 'keyboard' | 'tools' | 'colors' | 'data';
+  | 'general'
+  | 'view'
+  | 'behavior'
+  | 'shell'
+  | 'keyboard'
+  | 'tools'
+  | 'colors'
+  | 'customize'
+  | 'data';
 
 export interface Section {
   readonly id: SectionId;
@@ -34,12 +42,14 @@ export const SECTIONS: readonly Section[] = [
       'behavior.spaceCalcSize',
       'watch.pollNetwork',
       'search.recent',
+      'search.templates',
     ],
   },
   { id: 'shell', keys: ['shell.enabled', 'shell.loginPath', 'shell.windowsShell'] },
   { id: 'keyboard', keys: [] },
   { id: 'tools', keys: [] },
   { id: 'colors', keys: [] },
+  { id: 'customize', keys: [] },
   { id: 'data', keys: [] },
 ];
 
@@ -73,6 +83,8 @@ export function sectionText(id: SectionId): string {
       return [t.cat.tools, t.toolsIntro, t.editTools].join(' ');
     case 'colors':
       return [t.cat.colors, t.colorsIntro, t.editColors].join(' ');
+    case 'customize':
+      return [t.cat.customize, t.customizeIntro, t.editButtons, t.editFileTypes].join(' ');
     case 'data':
       return [t.cat.data, t.dataIntro, t.export, t.import, t.resetAll].join(' ');
     case 'shell':

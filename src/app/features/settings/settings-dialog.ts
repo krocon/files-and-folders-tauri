@@ -26,6 +26,8 @@ import { MultiRenameStore } from '../multirename/multirename.store';
 import { OsStore } from '../osintegration/os.store';
 import { ShellStore } from '../shell/shell.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
+import { ButtonConfigStore } from '../config/button-config.store';
+import { FileTypesStore } from '../config/file-types.store';
 import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings-logic';
 import { describeSettingsWarning } from './settings-warnings';
 import { SETTINGS_TEXTS } from './settings-texts';
@@ -146,11 +148,15 @@ import { SETTINGS_TEXTS } from './settings-texts';
               <div class="field">
                 <span>{{ label(key) }}</span>
                 <span class="row">
-                  <span>{{ t.recentCount(recentCount()) }}</span>
+                  <span>{{
+                    key === 'search.recent'
+                      ? t.recentCount(listCount(key))
+                      : t.templateCount(listCount(key))
+                  }}</span>
                   <button
                     type="button"
                     class="btn"
-                    [disabled]="recentCount() === 0"
+                    [disabled]="listCount(key) === 0"
                     [attr.aria-describedby]="helpId(key)"
                     (click)="settings.reset([key])"
                   >
@@ -225,6 +231,19 @@ import { SETTINGS_TEXTS } from './settings-texts';
             <div class="row">
               <button type="button" class="btn" (click)="dialogs.show('themes')">
                 {{ t.editColors }}
+              </button>
+            </div>
+          }
+          @case ('customize') {
+            <p>{{ t.customizeIntro }}</p>
+            <p>{{ t.buttonSetsChanged(buttonSetsChanged()) }}</p>
+            <p>{{ t.fileTypesInfo(fileTypes.categories().length, fileTypes.user() !== null) }}</p>
+            <div class="row">
+              <button type="button" class="btn" (click)="dialogs.show('button-config')">
+                {{ t.editButtons }}
+              </button>
+              <button type="button" class="btn" (click)="dialogs.show('file-types')">
+                {{ t.editFileTypes }}
               </button>
             </div>
           }
@@ -349,7 +368,9 @@ export class SettingsDialog {
   );
   protected readonly conflicts = computed(() => this.actions.keymap().conflicts);
   protected readonly overrideCount = computed(() => Object.keys(this.actions.override()).length);
-  protected readonly recentCount = computed(() => this.settings.get('search.recent').length);
+  private readonly buttonConfig = inject(ButtonConfigStore);
+  protected readonly fileTypes = inject(FileTypesStore);
+  protected readonly buttonSetsChanged = this.buttonConfig.changedCount;
 
   private readonly panel = this.ws.panel();
   protected readonly exportDir = signal(this.panel?.store.path() ?? '');
@@ -421,6 +442,12 @@ export class SettingsDialog {
       key,
       (evt.target as HTMLSelectElement).value as SettingsValues[typeof key] as never,
     );
+  }
+
+  /** Entries of a remembered list (recent searches, own templates). */
+  protected listCount(key: SettingKey): number {
+    const v = this.settings.get(key);
+    return Array.isArray(v) ? v.length : 0;
   }
 
   protected resettable(id: SectionId): boolean {
@@ -525,6 +552,12 @@ export class SettingsDialog {
           break;
         case 'renamePresets':
           this.mr.invalidatePresets();
+          break;
+        case 'buttons':
+          tasks.push(this.buttonConfig.init());
+          break;
+        case 'fileTypes':
+          tasks.push(this.fileTypes.init());
           break;
       }
     }

@@ -9,7 +9,7 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::fs_atomic::{keep_broken_file, write_atomic};
-use crate::{keymap, rename_presets, themes, tools};
+use crate::{buttons, filetypes, keymap, rename_presets, themes, tools};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -33,7 +33,15 @@ pub const BUNDLE_FORMAT: &str = "files-and-folders-settings";
 pub const BUNDLE_VERSION: u32 = 1;
 pub const BUNDLE_FILE_STEM: &str = "files-and-folders-settings";
 /// Parts of a bundle (`import_settings` takes a subset).
-pub const PARTS: [&str; 5] = ["settings", "keymap", "themes", "renamePresets", "tools"];
+pub const PARTS: [&str; 7] = [
+    "settings",
+    "keymap",
+    "themes",
+    "renamePresets",
+    "tools",
+    "buttons",
+    "fileTypes",
+];
 
 const SCHEMA_JSON: &str = include_str!("../../src/app/core/settings/settings-schema.json");
 
@@ -260,6 +268,8 @@ pub struct ConfigFiles {
     pub themes: PathBuf,
     pub rename_presets: PathBuf,
     pub tools: PathBuf,
+    pub buttons: PathBuf,
+    pub file_types: PathBuf,
 }
 
 impl ConfigFiles {
@@ -270,6 +280,8 @@ impl ConfigFiles {
             "themes" => &self.themes,
             "renamePresets" => &self.rename_presets,
             "tools" => &self.tools,
+            "buttons" => &self.buttons,
+            "fileTypes" => &self.file_types,
             _ => &self.settings,
         }
     }
@@ -281,6 +293,8 @@ impl ConfigFiles {
             themes: dir.join(themes::FILE_NAME),
             rename_presets: dir.join(rename_presets::FILE_NAME),
             tools: dir.join(tools::FILE_NAME),
+            buttons: dir.join(buttons::FILE_NAME),
+            file_types: dir.join(filetypes::FILE_NAME),
         }
     }
 }
@@ -325,6 +339,15 @@ pub fn bundle(files: &ConfigFiles) -> Value {
         .filter(|v| tools::check_file(v).is_ok())
         .unwrap_or(Value::Null);
     out.insert("tools".into(), tools);
+    // design 022 E10: the button sets of the user file; the categories or null without a user file
+    out.insert(
+        "buttons".into(),
+        serde_json::to_value(buttons::load(&files.buttons).value.sets).unwrap_or(Value::Null),
+    );
+    out.insert(
+        "fileTypes".into(),
+        serde_json::to_value(filetypes::load(&files.file_types).value).unwrap_or(Value::Null),
+    );
     Value::Object(out)
 }
 
@@ -459,6 +482,14 @@ pub fn import(
                     Ok(false)
                 }
             }
+            "buttons" => match serde_json::from_value::<buttons::Sets>(value) {
+                Ok(sets) => buttons::save(&files.buttons, sets).map(|_| true),
+                Err(_) => Ok(false),
+            },
+            "fileTypes" => match serde_json::from_value::<Vec<filetypes::FileType>>(value) {
+                Ok(c) => filetypes::save(&files.file_types, Some(c)).map(|_| true),
+                Err(_) => Ok(false),
+            },
             _ => Ok(false),
         };
         match written {
@@ -769,12 +800,57 @@ mod tests {
             .filter(|w| w.code == "part_skipped")
             .map(|w| w.key.clone().unwrap())
             .collect();
-        assert_eq!(skipped, ["keymap", "themes", "renamePresets", "tools"]);
+        assert_eq!(
+            skipped,
+            [
+                "keymap",
+                "themes",
+                "renamePresets",
+                "tools",
+                "buttons",
+                "fileTypes"
+            ]
+        );
         assert!(report.warnings.iter().any(|w| w.code == "invalid_value"));
         assert_eq!(
             Value::Object(load(&dst.settings).settings),
             json!({"view.menuBar": false})
         );
+    }
+
+    /// Design 022 E10: buttons and file types travel with the bundle.
+    #[test]
+    fn buttons_and_file_types_are_exported_and_imported() {
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("a"));
+        let mut sets = buttons::Sets::new();
+        sets.insert("shift".into(), vec!["OPEN_VIEW_DLG".into()]);
+        buttons::save(&src.buttons, sets.clone()).unwrap();
+        let comics = filetypes::FileType {
+            label: "Comics".into(),
+            extensions: vec![".cbz".into()],
+            icon: Some("fa-book".into()),
+            color: None,
+        };
+        filetypes::save(&src.file_types, Some(vec![comics.clone()])).unwrap();
+        let out = export(&src, dir.path()).unwrap();
+        let bundle = read_bundle(&out).unwrap();
+        assert_eq!(bundle["buttons"]["shift"][0], "OPEN_VIEW_DLG");
+        assert_eq!(bundle["fileTypes"][0]["label"], "Comics");
+        let dst = config(&dir.path().join("b ü"));
+        let report = import(&dst, &bundle, &["buttons".into(), "fileTypes".into()]).unwrap();
+        assert_eq!(report.imported, ["buttons", "fileTypes"]);
+        assert_eq!(buttons::load(&dst.buttons).value.sets, sets);
+        assert_eq!(filetypes::load(&dst.file_types).value, Some(vec![comics]));
+        // without a user file the part is null and skipped on import
+        let empty = config(&dir.path().join("c"));
+        let out = export(&empty, &dir.path().join("b ü")).unwrap();
+        let bundle = read_bundle(&out).unwrap();
+        assert_eq!(bundle["fileTypes"], Value::Null);
+        assert_eq!(bundle["buttons"], json!({}));
+        let report = import(&empty, &bundle, &["fileTypes".into()]).unwrap();
+        assert!(report.imported.is_empty());
+        assert_eq!(report.warnings[0].code, "part_skipped");
     }
 
     #[test]
