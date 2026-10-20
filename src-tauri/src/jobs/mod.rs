@@ -4,6 +4,7 @@
 //! Keep in sync with `src/app/core/jobs/jobs.models.ts`.
 
 pub mod ask;
+pub mod attributes;
 pub mod clean;
 pub mod control;
 pub mod copy;
@@ -21,6 +22,8 @@ pub mod shell;
 #[cfg(test)]
 mod tests_archive;
 #[cfg(test)]
+mod tests_attributes;
+#[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
 mod tests_ops;
@@ -30,6 +33,7 @@ mod tests_shell;
 mod tests_tools;
 
 use crate::archive::ArchiveFormat;
+use crate::attributes::{ApplyTo, AttrChange};
 use crate::clean::{CleanItem, CleanOptions};
 use crate::dirsize::DirSize;
 use crate::duplicates::DuplicateCriteria;
@@ -170,6 +174,16 @@ pub enum JobSpec {
     DirSize { path: String },
     /// Test job for load and throttling tests – rejected in release builds.
     Simulate { items: u32, item_ms: u32 },
+    /// Change permissions, attributes and times (design 024): the selected entries
+    /// and – `recursive` – everything in selected folders; `apply_to` filters both.
+    Attributes {
+        paths: Vec<String>,
+        change: AttrChange,
+        #[serde(default)]
+        recursive: bool,
+        #[serde(default)]
+        apply_to: ApplyTo,
+    },
     /// A command of the shell bar (design 021 E1/E3). Built only by the command
     /// `run_shell` – `start_job` cannot create it (no deserialising).
     #[serde(skip_deserializing)]
@@ -192,7 +206,8 @@ impl JobSpec {
             | JobSpec::Group { .. }
             | JobSpec::Clean { .. }
             | JobSpec::Extract { .. }
-            | JobSpec::Pack { .. } => false,
+            | JobSpec::Pack { .. }
+            | JobSpec::Attributes { .. } => false,
             JobSpec::Duplicates { .. }
             | JobSpec::DirSize { .. }
             | JobSpec::Count { .. }
@@ -229,6 +244,17 @@ impl JobSpec {
             | JobSpec::Extract { target_dir, .. }
             | JobSpec::Pack { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
+            // the folders of the changed entries (design 024 E2)
+            JobSpec::Attributes { paths, .. } => {
+                let mut dirs: Vec<std::path::PathBuf> = paths
+                    .iter()
+                    .filter_map(|p| std::path::Path::new(p).parent())
+                    .map(crate::paths::normalize_lexically)
+                    .collect();
+                dirs.sort();
+                dirs.dedup();
+                return dirs;
+            }
             _ => return Vec::new(),
         };
         vec![crate::paths::normalize_lexically(std::path::Path::new(dir))]
@@ -263,6 +289,7 @@ impl JobSpec {
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::Simulate { .. } => "simulate",
             JobSpec::Shell { .. } => "shell",
+            JobSpec::Attributes { .. } => "attributes",
         }
     }
 }
