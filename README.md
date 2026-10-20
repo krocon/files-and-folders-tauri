@@ -43,7 +43,8 @@ without stutter.
 - **Cross-platform** – one app for macOS, Windows and Linux, with native menus on macOS and keymaps per OS
 - **Orthodox two-panel layout** – source and target side by side, path breadcrumbs, favourites, status line,
   button bar that changes with `Shift` / `Alt` / `Ctrl` (`⌘`)
-- **Tabs** on both sides – clone, move to the other side, each tab keeps path, sort order, column widths and cursor
+- **Tabs** on both sides – clone, drag to reorder or onto the other side (`Ctrl`/`⌥` copies), each tab keeps path,
+  sort order, column widths and cursor
 - **Session restore** – tabs, active side, splitter, favourites and window position survive a restart
 - **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
   (*Go to anything*) finds every action
@@ -61,7 +62,7 @@ without stutter.
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
 - **Drag & drop** between panels, from Finder / Explorer / your file manager, and out of the window into other
-  programs (copy)
+  programs (copy); with `Ctrl+Shift` (`⌘⌥`) it creates **symbolic links** (also *Create link…*, `Ctrl+Shift+F5`)
 - **External tools** and *Open terminal here* / *Show in Finder/Explorer* – tools are started **without a
   shell**, configured in a small JSON file
 - **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
@@ -108,6 +109,7 @@ every colour scheme ([docs/screenshots.md](docs/screenshots.md)).
 | Colour schemes, settings, menus, English/German | ✅ done |
 | Slow and network drives (responsive UI, listing cache) | ✅ done |
 | Drag from the app into other programs | ✅ done (copy only) |
+| Drag tabs, symbolic links by drag or dialog | ✅ done |
 | Further features from the previous version | 🚧 planned (see [feature-parity](docs/feature-parity.md)) |
 | Signed packages, first public release, auto update | 🚧 prepared, not set up |
 
@@ -154,6 +156,8 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Mark / unmark | `Space`, `Insert` | `Space` |
 | Switch panel | `Tab` | `Tab` |
 | New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |
+| Move tab left / right | `Ctrl+Shift+PgUp` / `Ctrl+Shift+PgDn` | `⌃⇧PgUp` / `⌃⇧PgDn` |
+| Create link | `Ctrl+Shift+F5` | `⌘⇧F5` |
 | Go to path | `Ctrl+L` | `⌘L` |
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Quick view | `Ctrl+Q` | `⌃Q` |

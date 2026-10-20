@@ -43,8 +43,8 @@ Kopie = neue Id, gleicher Ordner, gleiche Ansichtseinstellungen; ein Ergebnis-Ta
 
 **E4 Regeln.** Der **letzte Tab einer Seite bleibt** (Verschieben weg von einer Seite mit einem Tab = kein Ziel,
 Hinweis „Der letzte Tab einer Seite bleibt – Strg: kopieren“; Kopieren geht). Höchstens `MAX_TABS` (50) je Seite. Nach
-dem Drop ist der Tab auf der Zielseite ausgewählt und die Zielseite aktiv (wie ein Browser); in der eigenen Leiste
-bleibt die Auswahl beim selben Tab (per Id). Alles per Id: `WorkspaceStore.placeTab(tabId, toSide, index, copy)`
+dem Drop ist der gezogene (bzw. kopierte) Tab ausgewählt, seine Seite aktiv und deren Liste hat den Fokus (wie ein
+Browser; der Klick nach dem Loslassen wird geschluckt). Alles per Id: `WorkspaceStore.placeTab(tabId, toSide, index, copy)`
 (Index = Einfügeposition **vor** dem Entfernen; die Korrektur beim Umsortieren rechnet die reine Funktion
 `placeIndex`). Ergebnis-Tabs (009) und Archiv-Tabs (016) sind gewöhnliche Tabs – Pfad/Ergebnis-Schlüssel wandern mit,
 `searchKeys` gibt ein Ergebnis erst frei, wenn kein Tab es mehr zeigt. Die Sitzung speichert über den Snapshot.

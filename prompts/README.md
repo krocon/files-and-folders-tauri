@@ -48,6 +48,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 028 | [028-drag-ins-system.md](done/028-drag-ins-system.md) | Drag & Drop erweitert, Teil 1: Einträge aus der Liste in andere Programme ziehen (nur Kopieren; Tabs ziehen, Verknüpfung offen) | 012, 011 | S–M |
 | 029 | [029-reaktionsfaehig-bei-jobs.md](done/029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
 | 030 | [030-ordner-cache-smb.md](done/030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand; `getattrlistbulk` gemessen und verworfen; kein rekursives Vorladen | 029, 012 | M |
+| 031 | [031-drag-tabs-links.md](031-drag-tabs-links.md) | Drag & Drop erweitert, Teil 2: Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen per Drag/Dialog (Job `link`); Verschieben ins System bewusst nicht | 004, 006, 012, 028 | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 

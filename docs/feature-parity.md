@@ -266,7 +266,7 @@ eine Leerzeile).
 | Tab schließen per Maus | Shift+Klick | Mittelklick | ✅ | tab-bar.spec › „closes a tab on middle click“, „Shift+click closes a tab (old version, 018 J13)“ | 018: Shift+Klick ergänzt |
 | Tab Doppelklick | Reload | Reload | ✅ | tab-bar.spec › „reloads on double click“ | |
 | +/− Buttons | klonen / entfernen | gleich | ✅ | tab-bar.spec › „clones with + and closes with −, the last tab stays“ | |
-| Tab-Reihenfolge | Move left/right | gleich + Tastatur | ✅ | workspace.store.spec › „reorders tabs and keeps the selection on the same tab“ | Tab-Drag & Drop (legacy TODO) fehlt |
+| Tab-Reihenfolge | Move left/right | gleich + Tastatur (`MOVE_TAB_LEFT/RIGHT`, Strg+Umschalt+Bild↑/↓) + Ziehen (auch auf die andere Seite, Strg/⌥ kopiert, 031) | ✅ | workspace.store.spec › „reorders tabs and keeps the selection on the same tab“, „places tabs by id at an insertion position – reorder, other side, copy (design 031)“; `features/workspace/tab-drag.spec.ts` › „reorders a tab within its bar, shows the insertion mark and selects it“; `features/actions/workspace-actions.spec.ts` › „moves and copies the active tab by keyboard (design 031 E5)“ | Tab-Drag & Drop (legacy TODO) mit 031 umgesetzt |
 | Suchtab | `tabfind…`, Doppelklick öffnet Suche | Ergebnis-Tab, Doppelklick ändert Suche, nicht gespeichert | ✅ | `features/search/search.store.spec.ts` › „result tabs are not saved: they become a tab of their first folder“ | |
 | Verlauf je Tab | max. 15, neueste zuerst, unique; Forward mit Wrap | max. 15 + Stapel 50 | ✅ | workspace.store.spec › „records navigation in the tab history (newest first, unique, max. 15)“; navigation.spec › „bounds stacks without direct duplicates and keeps the last folders“ | |
 | Filter/Hidden je Tab | `TabData.filterActive/hiddenFilesVisible/filterText` | je Tab, gespeichert | ✅ | file-panel.spec › „keeps hidden/filter per tab and opens folders from the folder menu“ | |
@@ -302,7 +302,7 @@ eine Leerzeile).
 | Konflikte | keine | Überschreiben/Überspringen/Umbenennen/alle, „wenn neuer“ | ✅ | Rust `jobs/tests_engine.rs` › `apply_to_all_overwrite_if_newer_asks_once`; `features/jobs/dialogs.spec.ts` › „conflict: Alt+letter answers, "apply to all" is passed on“ | |
 | Task-UI | Bottom-Sheet: Status, Restzeit, Tabelle Grp/Cmd/Status/Dauer/Datei, Clean List, Stop All, Pause, Resume, Löschen je Zeile | `features/jobs/job-list-dialog.ts` | ✅ | `features/jobs/dialogs.spec.ts` › „job list: progress, pause/cancel, errors after the end, clear finished“; `features/jobs/job-format.spec.ts` › „shows size, rate and time left“ | |
 | Rückfrage beim Beenden | – | ja | ✅ | `features/workspace/workspace.spec.ts` › „opens the conflict question automatically and asks before quitting“ | neu |
-| Drag & Drop | – (legacy: Drop-Dialog „not implemented“) | Panels/Ordnerzeilen/vom System → Dialog; aus dem Fenster → andere Programme (nur Kopieren, 028); Tab-Köpfe (auch nicht offene) als Ziel | ✅ | `features/dnd/dnd.spec.ts` › „drop on the other panel opens the copy dialog with that folder – nothing runs yet“, „out of the window the drag goes on as a system drag with the same entries (design 028)“; Rust `os_drag.rs` › `existing_entries_pass_in_order_without_duplicates`, `platform/os_drag.rs` › `uris_are_percent_encoded` | Verschieben ins System, Tab-Drag und Verknüpfung per Drag offen |
+| Drag & Drop | – (legacy: Drop-Dialog „not implemented“) | Panels/Ordnerzeilen/vom System → Dialog; aus dem Fenster → andere Programme (nur Kopieren, 028); Tab-Köpfe (auch nicht offene) als Ziel; Verknüpfung mit Strg+Umschalt/⌘⌥ (031) | ✅ | `features/dnd/dnd.spec.ts` › „drop on the other panel opens the copy dialog with that folder – nothing runs yet“, „out of the window the drag goes on as a system drag with the same entries (design 028)“; Rust `os_drag.rs` › `existing_entries_pass_in_order_without_duplicates`, `platform/os_drag.rs` › `uris_are_percent_encoded`; `dnd.spec.ts` › „a link drag opens the dialog in link mode (design 031 E7)“; Rust `jobs/tests_link.rs` › `an_existing_name_is_never_replaced`, `relative_link_through_a_linked_folder_is_refused` | **Verschieben ins System bewusst nicht** (031 E11: Windows erwartet beim nicht optimierten Move, dass die Quelle die Originale löscht – nach einer Kopie, die wir nicht prüfen können; macOS handelt die Operation im Ziel aus). Ersatz: ins System ziehen (Kopie) + F8 |
 
 ---
 
@@ -392,7 +392,7 @@ eine Leerzeile).
 | Event-Cache flusht höchstens alle 16 s | | Entprellung 150/400 ms, Max-Verzögerung | ✅ behoben | Rust `watch/batch.rs` › `a_steady_stream_is_delivered_after_max_delay` | |
 | Unfertig: Duplikate, Drop, Kontextmenü, Copy/Move-Optionen, Linux-Kürzel/-Tools, Linux-open nur PDF | | alle vorhanden | ✅ | Rust `duplicates.rs` › `known_duplicates_are_grouped`; `features/dnd/dnd.spec.ts` › „files from the system: highlight while over, copy dialog on drop“; `features/menus/menus.spec.ts` › „runs the chosen entry as an action and closes the menu“; Rust `jobs/tests_ops.rs` › `copy_options_conflict_default_and_new_name`; `core/actions/keymap.spec.ts` › „${platform}: …“; Rust `opener.rs` › `plain_documents_are_fine` | |
 | TODO.txt: Freier Platz je Laufwerk | | Laufwerke mit frei/gesamt | ✅ | `features/osintegration/os.spec.ts` › „formats a volume line, unreachable ones without sizes“ | |
-| TODO.txt: Dateien teilen/zusammenfügen (`concat.js`), FAV-Pflegedialog, Tab-Drag&Drop, FXP | | – | ⬜ | – | (→ K) |
+| TODO.txt: Dateien teilen/zusammenfügen (`concat.js`), FAV-Pflegedialog, Tab-Drag&Drop, FXP | | Tab-Drag&Drop mit 031 (`tab-drag.spec.ts`); Rest – | 🟡 | `features/workspace/tab-drag.spec.ts` › „moves a tab to the other side (its panel, at the end); Ctrl copies“ | Teilen/Zusammenfügen, FAV-Dialog, FXP offen (→ K) |
 
 ---
 
@@ -432,5 +432,6 @@ eine Leerzeile).
 | 025 Archive erweitert | 7z/RAR lesen, Passwörter, in Archive schreiben, Dateien im Archiv öffnen. |
 | 026 Import alter Konfiguration | mr-`shortcut/custom/*.json` (Ids übersetzen), Buttons, Suchmuster, Dateitypen. |
 | 027 Persistenz je Ordner | Cursor/Markierung je Ordner über einen Neustart, Dialogeingaben von Gruppieren/Aufräumen/Multi-MkDir. |
-| 028 Drag & Drop erweitert | ✅ Ziehen aus der App ins System (Design `prompts/done/028-drag-ins-system.design.md`). Offen: Tabs zwischen den Seiten ziehen, Verknüpfung per Drag. |
+| 028 Drag & Drop erweitert | ✅ Ziehen aus der App ins System (Design `prompts/done/028-drag-ins-system.design.md`). |
+| 031 Drag & Drop, Teil 2 | ✅ Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen (Job `link`, Drag mit Strg+Umschalt/⌘⌥, `OPEN_LINK_DLG`); Verschieben ins System bewusst nicht (Design `prompts/031-drag-tabs-links.design.md` E11). |
 | später | KI-Funktionen (Namen normalisieren, Gruppieren; Schlüssel im OS-Schlüsselbund), Dateien teilen/zusammenfügen. |

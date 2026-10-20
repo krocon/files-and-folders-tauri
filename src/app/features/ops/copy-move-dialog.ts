@@ -99,7 +99,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
               {{ t.background }}
             </label>
           }
-          @if (sameNames().length > 0 && r.kind !== 'link') {
+          @if (sameNames().length > 0) {
             <div class="danger-box same-names" role="note">
               <p>{{ t.sameNames(sameNames()) }}</p>
               @if (conflictDefault() === 'overwrite' || conflictDefault() === 'overwriteIfNewer') {
