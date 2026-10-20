@@ -31,7 +31,8 @@ export type DialogKind =
   | 'settings'
   | 'about'
   | 'button-config'
-  | 'file-types';
+  | 'file-types'
+  | 'mr-import';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
+import { ACTIONS } from '../../core/actions/action-catalog';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { SettingsApi } from '../../core/settings/settings-api';
 import {
@@ -305,6 +306,11 @@ import { SETTINGS_TEXTS } from './settings-texts';
               <p class="warn" role="note">{{ t.toolsWarning }}</p>
             }
             <div class="row">
+              <button type="button" class="btn" (click)="actions.run('OPEN_IMPORT_OLD_CONFIG_DLG')">
+                {{ importOldLabel }}
+              </button>
+            </div>
+            <div class="row">
               <button type="button" class="btn danger" (click)="resetAll()">
                 {{ t.resetAll }}
               </button>
@@ -345,6 +351,10 @@ export class SettingsDialog {
 
   protected readonly sections = SECTIONS;
   protected readonly allParts = SETTINGS_PARTS;
+  /** Design 026: the import assistant of the old version. */
+  protected get importOldLabel(): string {
+    return ACTIONS.OPEN_IMPORT_OLD_CONFIG_DLG.label;
+  }
   protected readonly current = signal<SectionId>(lastSection);
   protected readonly query = signal('');
   protected readonly message = signal<string | null>(null);

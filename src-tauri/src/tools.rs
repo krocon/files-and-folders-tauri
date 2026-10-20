@@ -440,6 +440,65 @@ fn entry(v: Value) -> Result<Tool, String> {
     validate(tool)
 }
 
+/// One entry of an mr tools file (`tool/custom/<os>.json`, design 026 E8); the error is a
+/// reason code: `old_script` (`$clidir`/`$__dirname`) or `invalid`.
+pub fn from_mr_value(v: Value) -> Result<Tool, &'static str> {
+    let m: MrTool = serde_json::from_value(v).map_err(|_| "invalid")?;
+    let line = format!("{} {}", m.cmd, m.para.as_deref().unwrap_or_default());
+    if line.contains("$clidir") || line.contains("$__dirname") {
+        return Err("old_script");
+    }
+    from_mr(m).and_then(validate).map_err(|_| "invalid")
+}
+
+/// The user's `tools.json` (text, `None` = no file) with `imported` merged in: an own tool of
+/// the same id is replaced in place, the others are appended; `replace` = the own tools are
+/// only the imported ones. `terminal` and `replaceDefaults` stay (design 026 E8).
+pub fn merge_file(
+    existing: Option<&str>,
+    imported: Vec<Tool>,
+    replace: bool,
+) -> Result<Value, String> {
+    let file = match existing {
+        None => FileFormat {
+            version: VERSION,
+            replace_defaults: false,
+            terminal: None,
+            tools: Vec::new(),
+        },
+        Some(text) => {
+            let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+            check_file(&value)?;
+            match value {
+                Value::Array(tools) => FileFormat {
+                    version: VERSION,
+                    replace_defaults: false,
+                    terminal: None,
+                    tools,
+                },
+                v => serde_json::from_value(v).map_err(|e| e.to_string())?,
+            }
+        }
+    };
+    let mut own = if replace { Vec::new() } else { file.tools };
+    for t in imported {
+        let t = validate(t)?;
+        let id = Value::String(t.id.clone());
+        let v = serde_json::to_value(&t).map_err(|e| e.to_string())?;
+        match own.iter().position(|o| o.get("id") == Some(&id)) {
+            Some(i) => own[i] = v,
+            None => own.push(v),
+        }
+    }
+    own.truncate(MAX_TOOLS);
+    Ok(serde_json::json!({
+        "version": VERSION,
+        "replaceDefaults": file.replace_defaults,
+        "terminal": file.terminal,
+        "tools": own,
+    }))
+}
+
 /// Whether `v` is a usable `tools.json` (shape and version; single tools are checked on load).
 pub fn check_file(v: &Value) -> Result<(), String> {
     match v {

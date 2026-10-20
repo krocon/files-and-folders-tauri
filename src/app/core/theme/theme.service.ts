@@ -205,9 +205,10 @@ export class ThemeService {
 
   /**
    * Imports a scheme file as an own scheme; selects it only when it passes the
-   * contrast check (review 013 #2). Resolves with what was read.
+   * contrast check (review 013 #2) and `select` is not false (many files at once,
+   * design 026 E9). Resolves with what was read.
    */
-  async importFile(path: string): Promise<ImportedScheme> {
+  async importFile(path: string, options?: { select?: boolean }): Promise<ImportedScheme> {
     const raw = await this.api.importFile(path);
     let imported = normalizeImport(raw);
     if (typeof imported === 'string') {
@@ -221,7 +222,7 @@ export class ThemeService {
       adjusted = c.adjustments.length;
     }
     const problems = checkContrast(completeTokens(imported, LIGHT, DARK)).filter((r) => !r.ok);
-    const selected = problems.length === 0;
+    const selected = problems.length === 0 && options?.select !== false;
     const id = await this.saveTheme(imported, undefined, selected);
     return {
       ...imported,

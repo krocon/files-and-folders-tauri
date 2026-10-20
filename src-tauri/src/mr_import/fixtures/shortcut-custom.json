@@ -1,0 +1,22 @@
+{
+  "f5": "OPEN_COPY_DLG",
+  "ctrl+f": "OPEN_GOTO_ANYTHING_DLG",
+  "cmd+left": "HOME_PRESSED",
+  "ctrl+cmd+g": "OPEN_GOTO_ANYTHING_DLG",
+  "cmd+alt+up": "NAVIGATE_BACK",
+  "ctrl+alt+shift+d": "OPEN_DELETE_EMPTY_FOLDERS_DLG",
+  "ctrl+k f6": "OPEN_TASK_DLG",
+  "ctrl+cmd+s": "SAVE_CONFIG",
+  "shift+tab": "NEXT_TAB",
+  "ctrl+k ctrl+c": "COPY_2_CLIPBOARD_FULLNAMES",
+  "ctrl+k ctrl+z": "COPY_2_CLIPBOARD_FULLNAMES",
+  "ctrl+alt+t": "ADD_NEW_TAB",
+  "cmd+alt+n": "OPEN_MKDIR_DLG",
+  "ctrl+up": "ARROW_UP",
+  "ctrl+cmd+1": "CHANGE_LAF_NORTON",
+  "f9": "OPEN_FOO_DLG",
+  "ctrl+shift+delete": "OPEN_DELETE_DLG",
+  "alt+shift+f12": "OPEN_SETUP_DLG",
+  "shift+cmd+x": "OPEN_TOOL_CONFIG_DLG",
+  "ctrl+hyper": "OPEN_VIEW_DLG"
+}

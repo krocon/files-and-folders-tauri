@@ -76,6 +76,8 @@ without stutter.
   file type categories (icons, colours, *mark by type*); own search templates are kept
 - **Full screen** with `F11` on Windows/Linux (`⌃⌘F` on macOS)
 - **Settings dialog** with search, export/import of the whole configuration
+- **Import from the previous version** – shortcuts, buttons, file types, search patterns, tools, colour schemes
+  and two settings of *files-and-folders-mr*, with a preview per area and a backup of every changed file
 - **English and German** UI, switchable at runtime
 
 ![The Actions menu: every action grouped in four columns, with its keyboard shortcut](docs/screenshots/actions-menu.png)
@@ -198,6 +200,9 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   presets of *Mark by pattern* (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
 - **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language, own search
   templates …); the whole configuration can be exported and imported as one file.
+- **Coming from the previous version** – *Import from Files and Folders (old)…* (menu *Tools*, *Settings ▸
+  Data*) reads the `assets` folder of *files-and-folders-mr* (the repository folder is enough), shows per area what
+  would be imported, what conflicts and what cannot be transferred, and keeps a `.bak` of every file it changes.
 
 ## Development
 

@@ -1,0 +1,11 @@
+{
+  "name": "My light",
+  "colors": {
+    "--fnf-activepanel-header-bg-color": "#123456",
+    "--fnf-activepanel-header-border-color": "var(--fnf-material-primary-color)",
+    "--fnf-activepanel-header-selected-tab-bg-color": "var(--fnf-header-selected-tab-bg-color)",
+    "--fnf-activepanel-header-selected-tab-fg-color": "var(--fnf-material-primary-color)",
+    "--fnf-activepanel-table-header-bg-color": "#fff",
+    "--fnf-activepanel-table-selected-row-bg-color": "var(--fnf-table-bg-color)"
+  }
+}
