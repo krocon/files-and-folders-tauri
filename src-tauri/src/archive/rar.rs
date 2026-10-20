@@ -465,11 +465,7 @@ impl<'p> RarArchive<'p> {
         self.process(header, Some(sink))
     }
 
-    fn process(
-        &mut self,
-        header: &RarHeader,
-        sink: Option<SinkFn<'_>>,
-    ) -> Result<bool, FsError> {
+    fn process(&mut self, header: &RarHeader, sink: Option<SinkFn<'_>>) -> Result<bool, FsError> {
         if header.dict > MAX_DICT {
             return Err(FsError::new(
                 FsErrorCode::ArchiveTooLarge,

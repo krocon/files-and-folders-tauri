@@ -346,13 +346,10 @@ fn many_links_and_cancel() {
     // cancelled while it waits behind another job: nothing is made
     let other = dst.join("zwei");
     fs::create_dir(&other).unwrap();
-    let blocker = h
-        .mgr
-        .start(JobSpec::Simulate {
-            items: 20,
-            item_ms: 20,
-        })
-        .unwrap();
+    // a *serial* job in front (a simulation runs in parallel and blocks nothing)
+    let third = dst.join("drei");
+    fs::create_dir(&third).unwrap();
+    let blocker = h.link(&refs, &third, LinkOptions::default());
     let id = h.link(&refs, &other, LinkOptions::default());
     h.mgr.cancel(&id);
     assert_eq!(h.finish(&id).state, JobState::Cancelled);
