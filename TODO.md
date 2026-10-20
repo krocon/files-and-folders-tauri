@@ -9,8 +9,12 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 
 ## 1. Laufende Prompts
 
-- [ ] **030 Ordner-Cache + schnelleres Listing (SMB)** – Prompt geschrieben (20.10.), baut auf 029 auf. Teil C
-      (`getattrlistbulk`) braucht Test und Messung auf Marcs Mac an der SMB-Freigabe.
+- [x] **030 Ordner-Cache + schnelleres Listing (SMB)** (20.10., Branch `feat/ordner-cache-smb` auf 029, gepusht, nicht
+      gemergt). **Bei Marc auf dem Mac:** (1) `cd src-tauri && cargo test bulk_list` – kompiliert der macOS-Teil, ist
+      `bulk_equals_portable_on_macos` grün? (im Container nicht baubar); (2) Messung an der SMB-Freigabe:
+      `FNF_BENCH_DIR=/Volumes/<share>/<ordner> cargo test --release --lib listing_speed -- --ignored --nocapture`
+      (Ordner mit ~200 und ~2 000 Einträgen); (3) App: in einen SMB-Ordner, Unterordner, zurück → sofort da, Statuszeile
+      „Stand … · wird geprüft …“, F6/F8 kurz gesperrt.
 - [x] **029 Bedienbar bei langen Jobs** (20.10., Branch `feat/reaktionsfaehig-bei-jobs`, gepusht, **nicht** gemergt):
       Anlass Marcs Screenshot (Ziel-Panel beim Kopieren aufs langsame Laufwerk gesperrt). Auffrischen ohne Overlay,
       Drossel, Hinweis „antwortet langsam“ + Esc, Tab-Wechsel sofort aus dem letzten Listing, Watcher hält Rescans von

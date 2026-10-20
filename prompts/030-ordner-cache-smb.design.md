@@ -1,6 +1,6 @@
 # Design 030: Ordner-Cache und schnelleres Listing für langsame Laufwerke
 
-> Status: **in Arbeit** · Branch `feat/ordner-cache-smb` (von `feat/reaktionsfaehig-bei-jobs`, 029 noch nicht in `main`)
+> Status: **umgesetzt** (macOS-Teil ungeprüft) · Branch `feat/ordner-cache-smb` (von `feat/reaktionsfaehig-bei-jobs`, 029 noch nicht in `main`)
 > · Prompt: [030-ordner-cache-smb.md](030-ordner-cache-smb.md) · Marc hat am 20.10.2026 „Go“ gegeben; Entscheidungen
 > werden ihm mitgeteilt, gearbeitet wird ohne Haltepunkt.
 
@@ -65,9 +65,23 @@ unverändert), `network`-Feld. Frontend: Cache (Schwelle, network, LRU nach Eint
 sofort + Hintergrund, `cachedAt`, Fehler, Ctrl+R), Veto, `expected` im Ops-Store, Tab-Wechsel über den Cache, Kataloge.
 E2E: Xvfb mit `FNF_TEST_SLOW`.
 
+## Ende-zu-Ende (Xvfb, Debug-Build, `FNF_TEST_SLOW=/root/e2e/slow:3000:20`, 20.10.2026)
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Langsamer Ordner → Unterordner → Backspace: Elternordner sofort, Cursor auf dem Unterordner, „Stand … · wird geprüft …“, nach ~3 s bestätigt | ✅ nach 0,4 s da (Listing dauert 3 s), Pfad gedimmt, Hinweis in der Statuszeile; nach 4 s normal |
+| 2 | Lokaler schneller Ordner ohne Cache | ✅ Spec (`responsive.spec.ts`) |
+| 3 | F6/F7/F8 gesperrt, Kopieren geht | ✅ Button-Leiste: Move/Create folder/Delete grau, Copy aktiv; Spec mit `OPEN_DELETE_DLG` |
+| 4 | Rust: veraltetes `expected` löscht/verschiebt nichts | ✅ `tests_ops` (gewachsene Datei bleibt, Datei→Ordner wird nicht verschoben) |
+| 5 | Änderung von außen erscheint nach der Prüfung | ✅ Datei während des Besuchs im Unterordner angelegt → nach Backspace erst gemerkter Stand, nach der Prüfung mit neuer Datei |
+| 6 | Speichergrenze | ✅ Spec (`listing-cache.spec.ts`, LRU nach Einträgen) |
+| 7 | macOS `getattrlistbulk` gleich + Messung | ⏳ Parser/Umwandlung auf Linux getestet (handgebaute Puffer, Gleichheit der DTOs); FFI, Gleichheitstest und Messung nur auf Marcs Mac |
+| 8 | `pnpm check`, Debug-Build | ✅ |
+
 ## Fortschritt
 
 - [x] Design
-- [ ] Rust
-- [ ] Frontend
-- [ ] E2E, Doku, Review
+- [x] Rust
+- [x] Frontend
+- [x] E2E, Doku
+- [ ] Review
