@@ -1,6 +1,6 @@
 # Design 028: Ziehen aus der App ins System
 
-> Status: **in Arbeit** · Branch `feat/drag-ins-system` · Prompt: [028-drag-ins-system.md](028-drag-ins-system.md)
+> Status: **umgesetzt** (macOS/Windows ungeprüft) · Branch `feat/drag-ins-system` · Prompt: [028-drag-ins-system.md](028-drag-ins-system.md)
 > · Marc hat am 20.10.2026 Umfang (nur Ziehen ins System) und Ablauf („Prompt + umsetzen“) freigegeben – gearbeitet
 > wird ohne Haltepunkt nach Phase 1, Entscheidungen stehen hier.
 
