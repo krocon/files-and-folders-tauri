@@ -30,6 +30,7 @@
 pub mod about;
 pub mod app_menu;
 pub mod archive;
+pub mod attributes;
 pub mod clean;
 pub mod commands;
 pub mod dirsize;

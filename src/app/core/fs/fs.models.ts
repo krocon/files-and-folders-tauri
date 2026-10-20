@@ -95,6 +95,8 @@ export type FsErrorCode =
   /** Symbolic links refused by the system; a relative link would miss the source (design 031 E9). */
   | 'link_not_permitted'
   | 'relative_link_impossible'
+  /** A selected link was left unchanged (change attributes, design 024 E4). */
+  | 'symlink_skipped'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

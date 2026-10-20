@@ -52,6 +52,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_MKDIR_DLG',
     'OPEN_RENAME_DLG',
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
     'OPEN_UNPACK_DLG',
     'OPEN_PACK_DLG',
     '-',

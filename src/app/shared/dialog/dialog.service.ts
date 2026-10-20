@@ -20,6 +20,7 @@ export type DialogKind =
   | 'tool-config'
   | 'viewer'
   | 'properties'
+  | 'attributes'
   | 'find'
   | 'folder-finder'
   | 'pack'

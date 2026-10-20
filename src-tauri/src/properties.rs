@@ -19,6 +19,8 @@ pub struct UnixPerms {
     pub gid: u32,
     pub owner: Option<String>,
     pub group: Option<String>,
+    /// macOS `UF_HIDDEN` (design 024 E6); `None` elsewhere.
+    pub flags_hidden: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -136,6 +138,7 @@ fn unix_perms(meta: &Metadata) -> Option<UnixPerms> {
         gid: meta.gid(),
         owner: platform::user_name(meta.uid()),
         group: platform::group_name(meta.gid()),
+        flags_hidden: platform::attributes::flags_hidden(meta),
     })
 }
 
@@ -210,6 +213,7 @@ mod tests {
         assert_eq!(u.mode, 0o640);
         assert_eq!(u.uid, unsafe { libc::getuid() });
         assert!(u.owner.is_some());
+        assert_eq!(u.flags_hidden.is_some(), cfg!(target_os = "macos"));
         assert!(pr.windows.is_none());
 
         let link = dir.path().join("link");

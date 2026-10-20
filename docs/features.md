@@ -112,7 +112,12 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   4 KiB Hex) – auch eine 2-GB-Datei öffnet sofort.
 - **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
 - **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
-  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
+  und Eigentümer bzw. Windows-Attribute, Link-Ziel; Knopf **Ändern…**. **Attribute ändern** (024, `Strg+Umschalt+F2`,
+  macOS `⌘⇧F2`): Rechte rwx für Eigentümer/Gruppe/Andere, Set-ID/Sticky (mit Warnung), oktal; Windows
+  Schreibgeschützt/Versteckt/System/Archiv, macOS „versteckt“; Änderungs-/Zugriffszeit (Erstellzeit unter
+  Windows/macOS) auf ein Datum oder „jetzt“ – für viele Einträge mit Dreifach-Zustand (nur Angefasstes ändert sich),
+  auf Wunsch samt Ordnerinhalt (nur Dateien / nur Ordner / beides). Links werden nie verfolgt. Läuft als Job.
+  **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
 - **Automatische Aktualisierung** (012): die sichtbaren Ordner beider Panels werden überwacht (`notify`, nicht
   rekursiv); Dateien, die andere Programme anlegen, ändern, umbenennen oder löschen, erscheinen nach < 1 s – Cursor,
   Markierung und Scrollposition bleiben, ein gelöschter Cursor-Eintrag gibt den Cursor an den nächsten weiter.
@@ -235,6 +240,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
 | Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
 | Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
+| Change attributes… | `Ctrl+Shift+F2` | `⌘⇧F2` |
 | Pack… | `Alt+F5` | `⌥F5` |
 | Unpack… | `Alt+F9` | `⌥F9` |
 | Find duplicates… | `Alt+Shift+F7` | `⌥⇧F7` |

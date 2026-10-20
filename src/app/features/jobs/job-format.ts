@@ -97,6 +97,8 @@ export const JOB_EN = {
     dirSize: (path: string) => `Folder size of ${path}`,
     simulate: (n: number) => `Test job (${n} steps)`,
     shell: (command: string, cwd: string) => `Shell: ${command} (in ${cwd})`,
+    attributes: (what: string, recursive: boolean) =>
+      `Change attributes of ${what}${recursive ? ' and their contents' : ''}`,
   },
 } as const;
 
@@ -165,6 +167,10 @@ export function jobTitle(job: JobInfo): string {
       return t.simulate(spec.items);
     case 'shell':
       return t.shell(spec.command, spec.cwd);
+    case 'attributes': {
+      const n = spec.paths.length;
+      return t.attributes(n === 1 ? spec.paths[0] : t.entries(n), !!spec.recursive);
+    }
   }
 }
 

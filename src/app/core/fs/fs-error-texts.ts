@@ -38,6 +38,7 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
     'The system does not allow symbolic links here (Windows: switch on developer mode; FAT/exFAT drives have no links).',
   relative_link_impossible:
     'A relative link would not point to the source (another drive, or a linked folder on the way) – create an absolute link.',
+  symlink_skipped: 'This is a link – links are left unchanged.',
   invalid_path: 'The path is invalid.',
   no_home_directory: 'Your home folder could not be determined.',
   no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
@@ -82,6 +83,7 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
     'Das System erlaubt hier keine symbolischen Links (Windows: Entwicklermodus einschalten; FAT/exFAT-Laufwerke kennen keine Links).',
   relative_link_impossible:
     'Ein relativer Link würde nicht auf die Quelle zeigen (anderes Laufwerk oder ein verlinkter Ordner auf dem Weg) – einen absoluten Link anlegen.',
+  symlink_skipped: 'Das ist ein Link – Links bleiben unverändert.',
   invalid_path: 'Der Pfad ist ungültig.',
   no_home_directory: 'Ihr Home-Ordner konnte nicht ermittelt werden.',
   no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',

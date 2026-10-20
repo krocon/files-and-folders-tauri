@@ -5,6 +5,7 @@ import type { ShellChunk, ShellSummary } from '../shell/shell.models';
 import { ArchiveFormat, DirSize, EntryKind, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
+import { ApplyTo, AttrChange } from '../attributes/attributes.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 
 /** What happens when a target exists (copy/move dialog). */
@@ -128,6 +129,17 @@ export type JobSpec =
   | { readonly kind: 'dirSize'; readonly path: string }
   /** Debug builds only (load tests). */
   | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number }
+  /**
+   * Change permissions, attributes and times (design 024): the selected entries and –
+   * `recursive` – everything in selected folders; `applyTo` filters both.
+   */
+  | {
+      readonly kind: 'attributes';
+      readonly paths: readonly string[];
+      readonly change: AttrChange;
+      readonly recursive?: boolean;
+      readonly applyTo?: ApplyTo;
+    }
   /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
   | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 

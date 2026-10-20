@@ -60,6 +60,8 @@ without stutter.
 - **Archives** – open ZIP / TAR / TAR.GZ like a folder, pack and unpack (zip-slip and zip-bomb safe)
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
+- **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
+  access / creation time; for many entries at once (only what you touch changes) and optionally for folder contents
 - **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
 - **Drag & drop** between panels, from Finder / Explorer / your file manager, and out of the window into other
   programs (copy); with `Ctrl+Shift` (`⌘⌥`) it creates **symbolic links** (also *Create link…*, `Ctrl+Shift+F5`)
@@ -162,6 +164,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Quick view | `Ctrl+Q` | `⌃Q` |
 | Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
+| Properties / change attributes | `Alt+Enter` / `Ctrl+Shift+F2` | `⌘I` / `⌘⇧F2` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Shell line | `Shift+F11` | `⇧F11` |
 | Settings | `Ctrl+,` | `⌘,` |

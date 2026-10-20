@@ -72,7 +72,8 @@ export const PV_EN = {
     symlink: 'Symbolic link',
     unknown: 'Unknown',
   } as const,
-  changeLater: 'Changing permissions and attributes follows in a later version.',
+  changeAttributes: 'Change…',
+  changeAttributesHint: 'Change permissions, attributes and times (design 024)',
 } as const;
 
 export const PV_TEXTS = translatable('preview', PV_EN, { de: PV_DE });

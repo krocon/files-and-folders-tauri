@@ -94,10 +94,15 @@ export class PropertiesStore {
   }
 
   close(): void {
+    this.release();
+    this.dialogs.close();
+  }
+
+  /** Forgets the entry but leaves the dialog slot to the next dialog (Change…, design 024). */
+  release(): void {
     this.cancelSize();
     this.seq++;
     this.entry.set(null);
     this.props.set(null);
-    this.dialogs.close();
   }
 }
