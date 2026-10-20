@@ -25,7 +25,9 @@
     "release:notes": "node scripts/release-notes.mjs",
     "scripts:test": "node --test \"scripts/*.test.mjs\"",
     "licenses:report": "node scripts/licenses.mjs",
-    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test"
+    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test",
+    "screenshots": "node scripts/screenshots/run.mjs",
+    "screenshots:install": "playwright install chromium"
   },
   "private": true,
   "packageManager": "pnpm@10.28.0",
@@ -50,6 +52,7 @@
     "angular-eslint": "22.6.0",
     "eslint": "^10.12.0",
     "jsdom": "^30.0.0",
+    "playwright": "1.56.1",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.71.0",
