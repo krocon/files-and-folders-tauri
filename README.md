@@ -67,6 +67,9 @@ without stutter.
 - **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
 - **Colour schemes** – the eight classic designs (Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat,
   Norton) plus modern light/dark and Crimson, *follow the system*, a live editor with WCAG contrast check, import/export
+- **Configurable button bar and file types** – structured editors for the buttons per modifier set and for the
+  file type categories (icons, colours, *mark by type*); own search templates are kept
+- **Full screen** with `F11` on Windows/Linux (`⌃⌘F` on macOS)
 - **Settings dialog** with search, export/import of the whole configuration
 - **English and German** UI, switchable at runtime
 
@@ -160,6 +163,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Shell line | `Shift+F11` | `⇧F11` |
+| Full screen | `F11` | `⌃⌘F` (menu *Window*) |
 | Settings | `Ctrl+,` | `⌘,` |
 
 The full table is in [docs/features.md](docs/features.md#tastenkürzel-stand-prompt-002).
@@ -179,8 +183,12 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
-- **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language …); the whole
-  configuration can be exported and imported as one file.
+- **Buttons** – *Button configuration…* (menu *Tools*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
+  actions of the bottom bar; changed sets are kept in `buttons.json`.
+- **File types** – *File types…*: categories with extensions, icon and colour; they drive the file icons and the
+  presets of *Mark by pattern* (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
+- **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language, own search
+  templates …); the whole configuration can be exported and imported as one file.
 
 ## Development
 

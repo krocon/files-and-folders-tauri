@@ -1,6 +1,6 @@
 # Design 022: Konfigurations-Editoren – Buttons, Dateitypen, Suchvorlagen, Vollbild
 
-> Status: **in Arbeit** · Branch `feat/konfig-editoren` · Prompt: [022-konfig-editoren.md](022-konfig-editoren.md)
+> Status: **umgesetzt** (Vollbild unter macOS/Windows nur per CI/Marc prüfbar) · Branch `feat/konfig-editoren` · Prompt: [022-konfig-editoren.md](022-konfig-editoren.md)
 > · Marc hat am 20.10.2026 Umfang und Ablauf festgelegt (ohne Haltepunkt nach Phase 1) – die Entscheidungen stehen hier.
 
 ## 1. Bestand → wofür → passt/fehlt
@@ -70,7 +70,8 @@ Gelesen wird auch das mr-Format (nacktes Array `[{label, extensions}]`, Version 
 Kategorie; Endung normalisiert (trim, klein, führender Punkt), 2–33 Zeichen, ohne Leerraum, `/ \ * ? :`, doppelte
 fallen weg; Icon nur `fa-[a-z0-9-]{1,40}`, Farbe nur eine der acht Gruppen, sonst weg (das Frontend prüft Icon gegen
 die feste Liste). Keine Datei → eingebaute Liste `core/file-icon/file-types.json` (die bisherigen 11 mr-Kategorien,
-jetzt mit `icon`/`color`). „Zurücksetzen“ = `save_file_types(null)` **löscht** die Nutzerdatei (nur diese feste Datei
+jetzt mit `icon`/`color`). Eine Kategorie ohne Icon **und** Farbe (mr-Format) mit dem Namen einer eingebauten
+(`movies`) bekommt deren Aussehen (E2E-Befund: sonst verlor eine mr-Datei alle Symbole). „Zurücksetzen“ = `save_file_types(null)` **löscht** die Nutzerdatei (nur diese feste Datei
 im Konfig-Ordner; fehlend ist kein Fehler). Warum ganz ersetzen statt je Kategorie: Umbenennen, Löschen und
 Reihenfolge (erste Kategorie gewinnt eine Endung) sind sonst nicht ausdrückbar – mr machte es genauso (custom ersetzt
 defaults).
@@ -164,18 +165,59 @@ Settings: `search.templates` im Schema (Rust + TS). Bündel-Teile `buttons`, `fi
 
 ## 5. Fortschritt
 
-- [x] Phase 1: Prompt + Design
-- [ ] Phase 2: Rust
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: E2E
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschluss + Review
+- [x] Phase 1: Prompt + Design (`9831f8e`)
+- [x] Phase 2: Rust – `config_file.rs`, `buttons.rs`, `filetypes.rs`, `commands/config.rs` (inkl. `toggle_fullscreen`),
+  Bündel-Teile in `settings.rs`, `search.templates` im Schema (`b9e1c3c`)
+- [x] Phase 3: Frontend – `core/config/` (DTOs, `ConfigApi`, Fake), `core/file-icon/file-types{.json,-logic.ts}`,
+  `FILE_TYPES`-Signal, `features/config/` (Stores, Dialoge, Logik, Texte en/de, Aktionen), Markier-Vorlagen,
+  Suchvorlagen dauerhaft, Einstellungs-Abschnitt „Buttons & Dateitypen“, Menüeinträge, F11 (`b5ef703`)
+- [x] Phase 4: E2E unter Xvfb (`:92`, eigenes `HOME`, Fenstermanager openbox für Vollbild) – Befunde behoben (`ab554bf`)
+- [x] Phase 5: Doku (README, `docs/architecture.md`, `docs/feature-parity.md`, `prompts/README.md`)
+- [x] Phase 6: `pnpm check` grün, Debug-Build, Selbst-Review (unten)
 
-## 6. Review
+### E2E-Protokoll (Linux, WebKitGTK, 1100×720 und 1590×960)
 
-(folgt)
+Testordner `/tmp/e2e-022/data` mit `Film 😀.mp4`, `Heft 1.cbz`, `Heft 2.CBR`, `notiz ü.txt`, `Ordner ä ö`, `.hidden`,
+Symlink `link-dir`, gesperrtem Ordner `locked`.
+
+| Schritt | Ergebnis |
+|---|---|
+| F11 ohne Fenstermanager | nichts (Xvfb ohne WM kennt `_NET_WM_STATE` nicht) – mit openbox: 1600×1000 ohne Rahmen, F11 zurück auf 1100×720 ✅ |
+| Menü Ansicht ▸ „Full screen F11“ (HTML-Menüleiste) | schaltet Vollbild ✅; Werkzeuge zeigt „Button configuration…“, „File types…“ ✅ |
+| Button-Dialog über die Palette, Tab „With Shift“, Slot 3 wählen, Combobox „view“ ↓ Enter, Ersetzen, Speichern | `buttons.json` enthält nur `shift` mit `QUICK_VIEW` an Stelle 3; Shift gehalten → Leiste zeigt „Quick view in the other panel“ sofort ✅ |
+| Dateityp „Comics“ (`*.CBZ, cbr` → `.cbz .cbr`), Symbol per Tastatur, Farbe „Archive“, Alt+↑ nach oben, Speichern | `filetypes.json` geschrieben, `Heft 1.cbz`/`Heft 2.CBR` zeigen sofort das neue Symbol in Archiv-Farbe ✅ |
+| Markieren per Muster (Num+) | Vorlagen = Kategorien („Comics“ zuerst … „Everything“), „Comics“ → `*.cbz *.cbr`, 2 von 10, Markieren ✅ |
+| Suche: „Save as template…“ → „Comics“ | in `settings.json` (`search.templates`); nach Neustart unter „Own“ wählbar; „Delete template “Comics”“ löscht ✅ |
+| Neustart | Shift-Leiste, Dateitypen und Vorlage bleiben ✅ |
+| `buttons.json` mit `NOT_AN_ACTION_X` | Hinweis „…unknown actions; they were left out: NOT_AN_ACTION_X“, übrige Slots gelten ✅ |
+| `buttons.json` = `{` | Hinweis mit Pfad der `.bad`-Datei, Standardleiste ✅ |
+| mr-`filetypes.json` (nacktes Array) | gelesen; nach Fix behalten eingebaute Namen ihr Symbol ✅ |
+| Einstellungen ▸ Daten ▸ Export | Bündel enthält `buttons` und `fileTypes` ✅; Abschnitt „Buttons & file types“ mit Zählern und beiden Knöpfen ✅ |
+| Deutsch + dunkles Schema (System folgen, `GTK_THEME=Adwaita:dark`) | „Button-Konfiguration“, „Mit Umschalt/Strg/Alt“, „Dateitypen“ mit „Filme“, lesbar in dunkel ✅ |
+
+Befunde und Fixes aus dem E2E: (1) Dialoginhalt wurde bei 720 px Höhe abgeschnitten (Modal `overflow: hidden`,
+Listbox mit `flex-basis` als Höhe) → Körper scrollt, Knopfzeile bleibt sichtbar, Listen max. 12rem, Vorschlagsliste im
+Fluss; (2) mr-Dateitypen ohne Symbole (E4-Nachtrag); (3) vorhandener Fehler im Suchdialog: das Namensfeld für „Als
+Vorlage speichern…“ bekam keinen Fokus → `startNaming()` fokussiert es.
+
+## 6. Review (Selbst-Review des Diffs `main...feat/konfig-editoren`)
+
+| # | Befund | Stand |
+|---|---|---|
+| 1 | Backend prüft beide Dateien selbst (Satznamen, Id-Form, Grenzen, Endungen ohne `/ \ * ? :`, Icon nur `fa-…`, Farbe aus fester Liste); das Frontend kann nichts Schädliches schreiben, Icons gehen nur als Klassenname in `class` (kein `innerHTML`) | ok |
+| 2 | Reset löscht `filetypes.json` – nur den festen Dateinamen im Konfig-Ordner, nie bei `write_blocked` (unlesbare Datei bleibt) | ok |
+| 3 | Alle neuen Commands `async`, neue Datei in `command_rules::SOURCES` (Test grün); Vollbild ohne Capability | ok |
+| 4 | Texte en/de vollständig (`catalogs.spec.ts`), Dateinamen nicht im Katalog (gleich in beiden Sprachen) | ok |
+| 5 | Combobox verwies per `aria-controls` auf eine nicht vorhandene Liste, solange sie zu war | behoben |
+| 6 | Erfolgsmeldung nach Speichern als klebende Notiz wäre störend – entfernt; die Leiste/Liste ändert sich sichtbar, der Fokus kehrt zum Öffner zurück | ok |
+| 7 | Namensvergleich „schon vergeben“ nutzt die gespeicherten Namen – ein deutscher Nutzer kann „Filme“ neben `movies` anlegen (zwei gleich aussehende Einträge) | offen, gering |
+| 8 | `aria-invalid` an `role="option"` (Kategorie mit Fehler) ist in ARIA 1.2 nicht mehr global; der Fehlertext steht zusätzlich im Detailbereich (`aria-live`) | offen, gering |
+| 9 | Ein Bündel ohne eigene Dateitypen exportiert `fileTypes: null` → Import meldet „übersprungen“ statt „zurücksetzen“ (wie `tools`) | bewusst |
 
 ## 7. Offen
 
-- Import der mr-Dateien (`button/custom`, `filetype/custom`, `search/custom`) → 026 (Formate siehe E1, E4, E8).
+- Import der mr-Dateien (`button/custom`, `filetype/custom`, `search/custom`) → 026 (Formate: E1 = Inhalt von `sets`,
+  E4 = nacktes Array wird schon gelesen, E8 = `{label, form: {…DEFAULT_FORM, name: presetGlob(…)}}`).
 - Buttons für Tools (`tool:<id>` aus `tools.json`) – heute nur Katalog-Aktionen.
+- Vollbild unter macOS (Aktion über die Palette) und Windows nur in der CI/bei Marc prüfbar.
+- Review #7, #8.

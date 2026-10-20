@@ -152,7 +152,7 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
                     autocomplete="off"
                     aria-autocomplete="list"
                     [attr.aria-expanded]="popup()"
-                    [attr.aria-controls]="listId"
+                    [attr.aria-controls]="popup() ? listId : null"
                     [attr.aria-activedescendant]="
                       popup() && matches().length ? optionId(active()) : null
                     "
