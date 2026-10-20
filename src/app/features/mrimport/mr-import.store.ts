@@ -281,7 +281,7 @@ function partsOf(p: AreaPlan): SettingsPart[] {
     [a.buttons, 'buttons'],
     [a.fileTypes, 'fileTypes'],
     [a.settings, 'settings'],
-    [a.tools, 'tools'],
+    [a.toolsFrom, 'tools'],
   ];
   for (const [value, part] of parts) {
     if (value !== undefined) {

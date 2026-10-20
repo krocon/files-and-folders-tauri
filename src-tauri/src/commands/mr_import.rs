@@ -34,9 +34,12 @@ pub async fn apply_old_config<R: Runtime>(
             None,
         ));
     }
+    if let Some(root) = &plan.tools_from {
+        resolve_input(&app, root)?;
+    }
     let files = ConfigFiles::in_dir(&config_dir(&app)?);
     let report = blocking("Importing the old configuration", move || {
-        Ok(mr_import::apply(&files, plan))
+        Ok(mr_import::apply(&files, plan, MrOs::current()))
     })
     .await?;
     unblock_imported(&app, &report.imported);

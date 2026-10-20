@@ -352,8 +352,16 @@ export function planSearch(
   });
 }
 
-/** E8: tools of the same id are replaced (Rust merges into `tools.json`). */
-export function planTools(source: MrScan['tools'], state: ImportState, mode: ImportMode): AreaPlan {
+/**
+ * E8: tools of the same id are replaced; Rust reads them again from `root` (the scanned
+ * `assets` folder) and merges them into `tools.json`.
+ */
+export function planTools(
+  source: MrScan['tools'],
+  state: ImportState,
+  mode: ImportMode,
+  root: string,
+): AreaPlan {
   if (!source || source.error || source.items.length === 0) {
     return plan('tools', source);
   }
@@ -363,7 +371,7 @@ export function planTools(source: MrScan['tools'], state: ImportState, mode: Imp
   return plan('tools', source, {
     count: source.items.length,
     conflicts,
-    apply: { tools: source.items, toolsReplace: mode === 'replace' },
+    apply: { toolsFrom: root, toolsReplace: mode === 'replace' },
   });
 }
 
@@ -425,7 +433,7 @@ export function planAll(scan: MrScan, state: ImportState, mode: ImportMode): rea
     planButtons(scan.buttons, state, mode),
     planFileTypes(scan.fileTypes, state, mode),
     planSearch(scan.search, state, mode),
-    planTools(scan.tools, state, mode),
+    planTools(scan.tools, state, mode, scan.root),
     planColors(scan.colors, state),
     planSetup(scan.setup, state),
   ];

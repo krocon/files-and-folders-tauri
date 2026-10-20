@@ -457,11 +457,11 @@ fn apply_backs_up_and_writes_the_parts() {
                 .unwrap()
                 .clone(),
         ),
-        tools: None,
+        tools_from: None,
         tools_replace: false,
         backup_themes: true,
     };
-    let report = apply(&files, plan.clone());
+    let report = apply(&files, plan.clone(), MrOs::Linux);
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
     let parts: BTreeSet<&str> = report.imported.iter().map(String::as_str).collect();
     assert_eq!(
@@ -504,7 +504,7 @@ fn apply_backs_up_and_writes_the_parts() {
         "Comics"
     );
     // a second import keeps the first backup
-    let report = apply(&files, plan);
+    let report = apply(&files, plan, MrOs::Linux);
     assert!(
         report
             .backups
@@ -521,7 +521,7 @@ fn apply_backs_up_and_writes_the_parts() {
 #[test]
 fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
     let (_d, _, assets) = mr_tree();
-    let imported = scan(&assets, MrOs::Linux).tools.unwrap().items;
+    let from = Some(assets.to_string_lossy().into_owned());
     let dir = tempdir().unwrap();
     let files = config(dir.path());
     fs::create_dir_all(files.tools.parent().unwrap()).unwrap();
@@ -533,10 +533,10 @@ fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
     )
     .unwrap();
     let plan = MrApply {
-        tools: Some(imported.clone()),
+        tools_from: from.clone(),
         ..MrApply::default()
     };
-    let report = apply(&files, plan);
+    let report = apply(&files, plan, MrOs::Linux);
     assert_eq!(report.imported, vec!["tools"]);
     assert!(report.backups[0].ends_with("tools.json.bak"));
     let cfg = tools::load(&files.tools);
@@ -546,22 +546,31 @@ fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
     assert_eq!(cfg.terminal.unwrap().program, "xterm");
     // replace: own tools = the imported ones
     let plan = MrApply {
-        tools: Some(imported.clone()),
+        tools_from: from.clone(),
         tools_replace: true,
         ..MrApply::default()
     };
-    apply(&files, plan);
+    apply(&files, plan, MrOs::Linux);
     assert!(tools::load(&files.tools).find("mine").is_none());
     // a broken file by hand is not replaced
     fs::write(&files.tools, "{ broken").unwrap();
     let plan = MrApply {
-        tools: Some(imported),
+        tools_from: from.clone(),
         ..MrApply::default()
     };
-    let report = apply(&files, plan);
+    let report = apply(&files, plan, MrOs::Linux);
     assert!(report.imported.is_empty());
     assert_eq!(report.warnings[0].code, "part_skipped");
     assert_eq!(fs::read_to_string(&files.tools).unwrap(), "{ broken");
+    // the tools come from the mr files only: a folder without them writes nothing
+    fs::remove_file(&files.tools).unwrap();
+    let plan = MrApply {
+        tools_from: Some(dir.path().to_string_lossy().into_owned()),
+        ..MrApply::default()
+    };
+    let report = apply(&files, plan, MrOs::Linux);
+    assert!(report.imported.is_empty() && !files.tools.exists());
+    assert_eq!(report.warnings[0].code, "part_skipped");
 }
 
 #[test]
@@ -575,7 +584,7 @@ fn a_failed_backup_skips_the_part() {
         buttons: Some(BTreeMap::new()),
         ..MrApply::default()
     };
-    let report = apply(&files, plan);
+    let report = apply(&files, plan, MrOs::Linux);
     assert_eq!(report.imported, vec!["buttons"]);
     assert_eq!(report.warnings[0].code, "part_failed");
     assert_eq!(report.warnings[0].key.as_deref(), Some("keymap"));

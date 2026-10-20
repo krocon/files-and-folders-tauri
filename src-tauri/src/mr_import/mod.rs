@@ -650,8 +650,10 @@ pub struct MrApply {
     /// Only the keys to set; merged into `settings.json`.
     #[serde(default)]
     pub settings: Option<Map<String, Value>>,
+    /// The `assets` folder of the scan: Rust reads the tools there again – programs and
+    /// arguments never come from the frontend (CLAUDE.md §4, external tools).
     #[serde(default)]
-    pub tools: Option<Vec<Tool>>,
+    pub tools_from: Option<String>,
     #[serde(default)]
     pub tools_replace: bool,
     /// Colours follow through the theme import: only back up `themes.json`.
@@ -671,7 +673,7 @@ pub struct MrApplyReport {
 
 /// Backs up every file to be replaced, then writes the parts through the bundle import
 /// (checked per module, atomic). A part whose backup failed is not written.
-pub fn apply(files: &ConfigFiles, plan: MrApply) -> MrApplyReport {
+pub fn apply(files: &ConfigFiles, plan: MrApply, os: MrOs) -> MrApplyReport {
     let mut report = MrApplyReport {
         imported: Vec::new(),
         warnings: Vec::new(),
@@ -717,7 +719,13 @@ pub fn apply(files: &ConfigFiles, plan: MrApply) -> MrApplyReport {
         current.extend(keys);
         bundle.insert("settings".into(), Value::Object(current));
     }
-    if let Some(list) = plan.tools {
+    if let Some(root) = plan.tools_from {
+        let list = Some(PathBuf::from(root))
+            .filter(|a| is_assets(a))
+            .and_then(|a| scan_tools(&a, os))
+            .filter(|area| area.error.is_none())
+            .map(|area| area.items)
+            .ok_or_else(|| "no tools".to_string());
         let existing = match fs::read_to_string(&files.tools) {
             Ok(t) => Ok(Some(t)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
@@ -725,7 +733,7 @@ pub fn apply(files: &ConfigFiles, plan: MrApply) -> MrApplyReport {
         };
         match existing
             .map_err(|e| e.to_string())
-            .and_then(|text| tools::merge_file(text.as_deref(), list, plan.tools_replace))
+            .and_then(|text| tools::merge_file(text.as_deref(), list?, plan.tools_replace))
         {
             Ok(v) => {
                 if backed_up("tools", &mut report) {
@@ -772,8 +780,5 @@ pub fn plan_ok(plan: &MrApply) -> bool {
             .settings
             .as_ref()
             .is_none_or(|m| m.len() <= settings::MAX_UNKNOWN_KEYS)
-        && plan
-            .tools
-            .as_ref()
-            .is_none_or(|t| t.len() <= tools::MAX_TOOLS)
+        && plan.tools_from.as_ref().is_none_or(|p| p.len() <= 4096)
 }

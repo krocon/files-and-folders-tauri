@@ -182,13 +182,15 @@ describe('mr import planning (design 026)', () => {
       perFile: true,
       fileLimit: 4,
     };
-    const t = planTools(area([tool, { ...tool, id: 'meld', label: 'Meld' }]), state(), 'replace');
+    const t = planTools(
+      area([tool, { ...tool, id: 'meld', label: 'Meld' }]),
+      state(),
+      'replace',
+      '/old/assets',
+    );
     expect(t.count).toBe(2);
     expect(t.conflicts).toEqual([{ kind: 'name', name: 'VS Code' }]);
-    expect(t.apply).toEqual({
-      tools: [tool, { ...tool, id: 'meld', label: 'Meld' }],
-      toolsReplace: true,
-    });
+    expect(t.apply).toEqual({ toolsFrom: '/old/assets', toolsReplace: true });
 
     const c = planColors(
       area([
@@ -241,7 +243,7 @@ describe('mr import planning (design 026)', () => {
     expect([...chosen]).toEqual(['search', 'setup']);
     const apply = combine(plans, chosen);
     expect(Object.keys(apply.settings ?? {}).sort()).toEqual(['search.templates', 'view.density']);
-    expect(apply.tools).toBeUndefined();
-    expect(combine(plans, new Set(['tools'])).tools?.length).toBe(1);
+    expect(apply.toolsFrom).toBeUndefined();
+    expect(combine(plans, new Set(['tools'])).toolsFrom).toBe('/old/apps/fnf-api/src/assets');
   });
 });

@@ -93,7 +93,8 @@ export interface MrApply {
   readonly fileTypes?: readonly FileType[];
   /** Only the keys to set (merged into `settings.json`). */
   readonly settings?: Readonly<Record<string, unknown>>;
-  readonly tools?: readonly MrTool[];
+  /** The `assets` folder of the scan: Rust reads the tools there again (programs never come from here). */
+  readonly toolsFrom?: string;
   readonly toolsReplace?: boolean;
   /** Colours follow through the theme import – only `themes.json` is backed up. */
   readonly backupThemes?: boolean;

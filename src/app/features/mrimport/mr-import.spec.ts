@@ -110,7 +110,7 @@ describe('mr import (design 026)', () => {
       OPEN_FIND_DLG: ['Alt+F7'],
       OPEN_COMMAND_PALETTE: ['Mod+Shift+P', 'Mod+F'],
     });
-    expect(written!.tools).toBeUndefined();
+    expect(written!.toolsFrom).toBeUndefined();
     const actions = TestBed.inject(ActionService);
     expect(actions.keymap().lookup.get('Mod+F')).toBe('OPEN_COMMAND_PALETTE');
     expect(store.message()).toBe('Imported: Keyboard shortcuts. 1 backup made.');
