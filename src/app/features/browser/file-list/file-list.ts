@@ -102,12 +102,12 @@ export class FileList implements OnDestroy {
   /** The folder row of this list a drag would drop into. */
   private readonly dropRow = computed(() => {
     const t = this.dnd.drag()?.target;
-    return t && t.side === this.side() ? t.rowPath : null;
+    return t && t.side === this.side() && !t.tabId ? t.rowPath : null;
   });
   /** A drag would drop into this panel's folder. */
   protected readonly dropOnPanel = computed(() => {
     const t = this.dnd.drag()?.target;
-    return !!t && t.side === this.side() && t.rowPath === null;
+    return !!t && t.side === this.side() && t.rowPath === null && !t.tabId;
   });
   private press: { x: number; y: number; pointerId: number; row: DirEntry } | null = null;
   private dragging = false;
@@ -264,7 +264,7 @@ export class FileList implements OnDestroy {
     });
     const side = this.side();
     if (side) {
-      this.unregisterZone = this.dnd.registerZone(side, {
+      this.unregisterZone = this.dnd.registerZone({
         element: this.host.nativeElement,
         hit: (el) => {
           const index = bridge.rowIndexAt(el);

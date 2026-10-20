@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   untracked,
   ElementRef,
@@ -11,6 +12,9 @@ import {
 } from '@angular/core';
 import { Side } from '../../core/session/session.models';
 import { FileBrowserStore } from '../browser/file-browser.store';
+import { ArchiveStore } from '../archive/archive.store';
+import { tabZoneHit } from '../dnd/dnd-logic';
+import { DragStore } from '../dnd/drag.store';
 import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
 import { VolumesStore } from '../osintegration/volumes.store';
 import { SearchStore } from '../search/search.store';
@@ -79,6 +83,13 @@ export class TabBar {
   });
 
   protected readonly panel = computed(() => this.ws.panels()[this.side()]);
+  private readonly dnd = inject(DragStore);
+  private readonly archives = inject(ArchiveStore);
+  /** The tab a drag would drop into (its folder) – also a tab that is not open. */
+  protected readonly dropTabId = computed(() => {
+    const t = this.dnd.drag()?.target;
+    return t && t.side === this.side() ? (t.tabId ?? null) : null;
+  });
   protected readonly menu = signal<OpenMenu | null>(null);
   /** Index of the menu's tab, -1 when it is gone (closed by a shortcut while the menu was open). */
   private readonly menuIndex = computed(() => {
@@ -115,6 +126,18 @@ export class TabBar {
   });
 
   constructor() {
+    // the tab headers as drop zones: drop into a tab's folder without opening it
+    const unregister = this.dnd.registerZone({
+      element: this.host.nativeElement,
+      hit: (el) => {
+        const id = el.closest<HTMLElement>('[role="tab"]')?.dataset['tabId'];
+        const tab = this.panel().tabs.find((t) => t.id === id);
+        return tabZoneHit(this.side(), tab, tab ? this.title(tab) : '', (p) =>
+          this.archives.isArchivePath(p),
+        );
+      },
+    });
+    inject(DestroyRef).onDestroy(unregister);
     effect(() => {
       if (this.menu() && this.menuIndex() < 0) {
         this.menu.set(null);

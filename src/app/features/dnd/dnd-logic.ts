@@ -18,6 +18,8 @@ export interface DropTarget {
   readonly rowPath: string | null;
   /** Display name of the target folder. */
   readonly name: string;
+  /** A tab header is the target (its folder, highlighted as a tab) – not the list. */
+  readonly tabId?: string;
 }
 
 /** What lies under the pointer in a panel. */
@@ -29,6 +31,8 @@ export interface ZoneHit {
   readonly panelName: string;
   /** The row under the pointer, if any. */
   readonly row: DirEntry | null;
+  /** The pointer is over this tab header (its folder is `panelDir`). */
+  readonly tabId?: string;
 }
 
 /** Where the dragged entries come from (null side: from the system). */
@@ -147,7 +151,33 @@ export function resolveDropTarget(hit: ZoneHit | null, origin: DragOrigin): Drop
   if (hit.panelDir === null || hit.panelDir === origin.dir) {
     return null;
   }
-  return { side: hit.side, dir: hit.panelDir, rowPath: null, name: hit.panelName };
+  const target = { side: hit.side, dir: hit.panelDir, rowPath: null, name: hit.panelName };
+  return hit.tabId ? { ...target, tabId: hit.tabId } : target;
+}
+
+/** What a tab header offers as a drop zone. */
+export interface TabView {
+  readonly id: string;
+  /** `null` = home before the first listing. */
+  readonly path: string | null;
+  readonly search?: unknown;
+}
+
+/**
+ * A tab header as a drop target: its folder – also of a tab that is not open.
+ * Not a result tab (no folder), a home tab before its first listing (path not
+ * known yet) or a folder inside an archive (read-only, design 016).
+ */
+export function tabZoneHit(
+  side: Side,
+  tab: TabView | undefined,
+  name: string,
+  isArchivePath: (path: string) => boolean,
+): ZoneHit | null {
+  if (!tab || tab.search || tab.path === null || isArchivePath(tab.path)) {
+    return null;
+  }
+  return { side, panelDir: tab.path, panelName: name, row: null, tabId: tab.id };
 }
 
 export const DND_EN = {

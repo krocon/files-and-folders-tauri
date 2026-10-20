@@ -28,6 +28,7 @@ import {
   leftWindow,
   panelZoneHit,
   resolveDropTarget,
+  tabZoneHit,
   ZoneHit,
 } from './dnd-logic';
 import { DragStore } from './drag.store';
@@ -139,6 +140,33 @@ describe('dnd-logic – result tabs and keys (review 012)', () => {
   });
 });
 
+describe('dnd-logic: tabs as drop targets', () => {
+  const never = () => false;
+  it('a folder tab is a target, also when it is not open', () => {
+    expect(tabZoneHit('right', { id: 't1', path: '/x' }, 'x', never)).toEqual({
+      side: 'right',
+      panelDir: '/x',
+      panelName: 'x',
+      row: null,
+      tabId: 't1',
+    });
+  });
+
+  it('no result tab, no home tab before its listing, nothing inside an archive, no gap', () => {
+    expect(
+      tabZoneHit('left', { id: 's', path: '/x', search: { key: 'k' } }, 's', never),
+    ).toBeNull();
+    expect(tabZoneHit('left', { id: 'h', path: null }, 'home', never)).toBeNull();
+    expect(tabZoneHit('left', { id: 'z', path: '/a.zip/d' }, 'd', () => true)).toBeNull();
+    expect(tabZoneHit('left', undefined, '', never)).toBeNull();
+  });
+
+  it("the dragged entries' own folder is no target, as for the panel", () => {
+    const hit = tabZoneHit('left', { id: 't', path: '/src' }, 'src', never);
+    expect(resolveDropTarget(hit, { side: 'left', dir: '/src', paths: new Set() })).toBeNull();
+  });
+});
+
 describe('dnd-logic: out of the window (design 028 E1)', () => {
   it('outside the viewport means the window was left', () => {
     expect(leftWindow(0, 0, 800, 600)).toBe(false);
@@ -176,6 +204,7 @@ describe('DragStore', () => {
     left: document.createElement('div'),
     right: document.createElement('div'),
   };
+  const tabBar = document.createElement('div');
 
   beforeEach(async () => {
     fs = new FakeFsApi();
@@ -213,7 +242,7 @@ describe('DragStore', () => {
     for (const side of ['left', 'right'] as const) {
       const panel = side === 'left' ? left : right;
       const el = zones[side];
-      store.registerZone(side, {
+      store.registerZone({
         element: el,
         hit: (target) => {
           const row = Number((target as HTMLElement).dataset['row'] ?? -1);
@@ -226,12 +255,57 @@ describe('DragStore', () => {
         },
       });
     }
+    // the right tab bar: y = 1000 is over the tab "Other" (not open), y = 1001 over an archive tab
+    const tabs = [
+      { id: 't-other', path: '/other', title: 'Other' },
+      { id: 't-zip', path: '/dst/a.zip/in', title: 'in' },
+    ];
+    store.registerZone({
+      element: tabBar,
+      hit: (target) => {
+        const tab = tabs.find((t) => t.id === (target as HTMLElement).dataset['tabId']);
+        return tabZoneHit('right', tab, tab?.title ?? '', (p) => p.startsWith('/dst/a.zip'));
+      },
+    });
     store.elementAt = (x, y) => {
       const el = document.createElement('span');
+      if (y >= 1000) {
+        el.dataset['tabId'] = tabs[y - 1000]?.id ?? '';
+        tabBar.append(el);
+        return el;
+      }
       el.dataset['row'] = String(y);
       (x < 100 ? zones.left : zones.right).append(el);
       return x < 0 ? null : el;
     };
+  });
+
+  it('a tab that is not open is a target of its own: its folder, highlighted as a tab', async () => {
+    store.begin({ side: 'left', sourceDir: '/src', sources: [a], kind: 'copy', x: 10, y: 1 });
+    store.move(150, 1000);
+    expect(store.drag()?.target).toEqual({
+      side: 'right',
+      dir: '/other',
+      rowPath: null,
+      name: 'Other',
+      tabId: 't-other',
+    });
+    expect(store.label(store.drag()!)).toBe('Copy a.txt → Other');
+    store.move(150, 1001); // a folder inside an archive: read-only
+    expect(store.drag()?.target).toBeNull();
+    await store.drop(150, 1000);
+    expect(dialogs.open()).toBe('copy-move');
+    expect(ops.copyMove()).toMatchObject({ kind: 'copy', side: 'left', target: '/other' });
+  });
+
+  it('files from the system can be dropped onto a tab too', async () => {
+    const outside = entry('x.txt', { path: '/ext/x.txt' });
+    watch.described.set(outside.path, outside);
+    osDrag.emit({ type: 'enter', paths: [outside.path], x: 150, y: 1000 });
+    expect(store.drag()?.target).toMatchObject({ tabId: 't-other', dir: '/other' });
+    osDrag.emit({ type: 'drop', paths: [outside.path], x: 150, y: 1000 });
+    await new Promise((r) => setTimeout(r));
+    expect(ops.copyMove()).toMatchObject({ kind: 'copy', side: 'right', target: '/other' });
   });
 
   it('drop on the other panel opens the copy dialog with that folder – nothing runs yet', async () => {

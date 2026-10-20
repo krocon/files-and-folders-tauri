@@ -62,6 +62,8 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
       Datei/Ordner/mehrere markierte aus der Liste in den Finder, auf den Schreibtisch und in Mail ziehen (macOS);
       Explorer/Desktop unter Windows (erst die CI kompiliert den Code – `drag`-Crate). Offen: Verknüpfung per Drag,
       Tabs zwischen den Seiten ziehen, Verschieben ins System.
+- [x] Drop aus dem Finder landete auf dem Mac immer links (Position doppelt skaliert) + Tabs als Drop-Ziele – Branch
+      `feat/drop-ziele-tabs` (auf 028). **Bei Marc prüfen:** Finder → rechte Seite, Finder → nicht offener Tab.
 - [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
 - [ ] 015: `loadingText` der Table folgt keinem Sprachwechsel (Overlay-Texte nur beim Erzeugen, `TODO(guiexpert)`).
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).

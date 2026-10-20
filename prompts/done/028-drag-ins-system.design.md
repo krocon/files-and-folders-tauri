@@ -121,3 +121,25 @@ Neuer Fehlercode: `drag_not_held` (Rust `error.rs`, TS `fs.models.ts`, `fs-error
   dabei auch: erster Klick nach dem Drop (Review #3), Loslassen direkt am Fensterrand (#1).
 - Windows: Pfade auf hängenden Netzlaufwerken frieren beim Start kurz das Fenster ein (Review #2).
 - Verschieben ins System (E3), Tabs zwischen den Seiten ziehen, Verknüpfung per Drag (012 E5).
+
+## 8. Nachtrag (20.10.2026, Branch `feat/drop-ziele-tabs`): Drop-Ziele
+
+Marc: „Auf dem Mac geht nur eine Seite“ (Drop aus dem Finder) und „nicht offene Tabs als Ziel?“.
+
+**E8 Position eines Drags von außen – Ursache des Fehlers.** Tauri meldet die Position als `PhysicalPosition`, wry
+liefert aber auf macOS NSView-Punkte (`draggingLocation`, Höhe − y) und unter GTK Widget-Koordinaten – beide schon
+logisch. Nur WebView2 (Windows, `ScreenToClient`) liefert Gerätepixel. Das Frontend teilte überall durch
+`devicePixelRatio`: auf einem Retina-Mac landete jeder Drop im linken oberen Viertel, also immer links. Jetzt teilt
+`dropPosition()` (`core/dnd/drag-drop-api.ts`) nur unter Windows; Test `drag-drop-api.spec.ts` (war rot).
+
+**E9 Tabs als Drop-Ziele.** Die Tab-Leiste jeder Seite ist eine eigene Drop-Zone (`DragStore.registerZone` nimmt
+jetzt beliebig viele Zonen). Ein Tab-Kopf – auch ein nicht geöffneter – steht für seinen Ordner (`tabZoneHit`), wird
+gestrichelt hervorgehoben, die Liste nicht; Ablegen öffnet wie bisher den Kopieren/Verschieben-Dialog, auch für
+Dateien aus dem Finder. Kein Ziel: Ergebnis-Tabs, ein Home-Tab vor seinem ersten Listing (Pfad noch unbekannt),
+Ordner in Archiven (`ArchiveStore.isArchivePath`; zusätzlich prüft `OpsStore.openCopyMoveFor` das jetzt für jedes
+Ziel), der Ordner der gezogenen Einträge. Kein Umschalten des Tabs beim Verweilen (Marc: nicht gewünscht).
+
+Tests: `dnd.spec.ts` (tabZoneHit, Drop auf nicht offenen Tab aus der App und aus dem System, Archiv-Tab), `tab-bar.spec.ts`
+(Hervorhebung). E2E Xvfb: `plain.txt` von links auf den nicht aktiven Tab „home“ rechts → Tab gestrichelt,
+„Copy plain.txt → home“, Dialog mit `/tmp/e2e/home`. Der Retina-Fall ist im Container nicht nachstellbar (Faktor 1) –
+bei Marc auf dem Mac: Datei aus dem Finder auf die **rechte** Seite und auf einen Tab ziehen.

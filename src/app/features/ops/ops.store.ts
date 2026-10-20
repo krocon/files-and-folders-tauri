@@ -193,6 +193,9 @@ export class OpsStore {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
     // archives are read-only (design 016): never a target; out of one only by extracting (F5)
+    if (this.archive.isArchivePath(args.target)) {
+      throw err('unknown', ARCHIVE_TEXTS.intoArchive); // also a tab that is not open
+    }
     for (const s of ['left', 'right'] as const) {
       const info = this.ws.panel(s)?.store.archive();
       if (info && isSameOrBelow(args.target, info.path)) {

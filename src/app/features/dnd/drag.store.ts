@@ -17,11 +17,11 @@ import {
   ZoneHit,
 } from './dnd-logic';
 
-/** A panel's file list as a drop zone. */
+/** A drop zone: a panel's file list or tab bar. */
 export interface DropZone {
   readonly element: HTMLElement;
-  /** What lies under the pointer (`target` is inside `element`). */
-  hit(target: Element): ZoneHit;
+  /** What lies under the pointer (`target` is inside `element`); null = nothing to drop on. */
+  hit(target: Element): ZoneHit | null;
 }
 
 /** A running drag – from a panel or from the system. */
@@ -52,7 +52,7 @@ export class DragStore {
   private readonly jobs = inject(JobsStore);
   private readonly watchApi = inject(WatchApi, { optional: true });
   private readonly osDragApi = inject(OsDragApi, { optional: true });
-  private readonly zones = new Map<Side, DropZone>();
+  private readonly zones = new Set<DropZone>();
 
   readonly drag = signal<DragState | null>(null);
 
@@ -65,13 +65,10 @@ export class DragStore {
     void api?.listen((e) => void this.onSystemDrag(e)).catch(() => undefined);
   }
 
-  registerZone(side: Side, zone: DropZone): () => void {
-    this.zones.set(side, zone);
-    return () => {
-      if (this.zones.get(side) === zone) {
-        this.zones.delete(side);
-      }
-    };
+  /** Several zones per side: the list and the tab bar (their elements do not overlap). */
+  registerZone(zone: DropZone): () => void {
+    this.zones.add(zone);
+    return () => this.zones.delete(zone);
   }
 
   /** A press in a panel became a drag. */
@@ -175,7 +172,7 @@ export class DragStore {
     if (!el) {
       return null;
     }
-    for (const zone of this.zones.values()) {
+    for (const zone of this.zones) {
       if (zone.element.contains(el)) {
         return resolveDropTarget(zone.hit(el), origin);
       }

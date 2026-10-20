@@ -56,6 +56,14 @@
     border-bottom-color: var(--color-tab-selected-bg);
   }
 
+  /* a drag would drop into this tab's folder (design 028 Teil 2) */
+  &.drop-target {
+    color: var(--color-header-text);
+    background: var(--color-row-hover);
+    outline: var(--focus-ring-width) dashed var(--color-accent);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+  }
+
   &:focus-visible {
     outline: var(--focus-ring-width) solid var(--color-focus);
     outline-offset: -2px;

@@ -3,6 +3,12 @@ import { SessionApi } from '../../core/session/session-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { JobsApi } from '../../core/jobs/jobs-api';
+import { FsApi } from '../../core/fs/fs-api';
+import { KeymapApi } from '../../core/actions/keymap-api';
+import { FakeFsApi } from '../../../testing/fs-fixtures';
+import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
+import { entry } from '../../../testing/fs-fixtures';
+import { DragStore } from '../dnd/drag.store';
 import { TabBar } from './tab-bar';
 import { newTab, WorkspaceStore } from './workspace.store';
 
@@ -15,6 +21,9 @@ describe('TabBar', () => {
       providers: [
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: JobsApi, useValue: new FakeJobsApi() },
+        // the tab headers are drop zones (DragStore → OpsStore)
+        { provide: FsApi, useValue: new FakeFsApi() },
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
       ],
     });
     ws = TestBed.inject(WorkspaceStore);
@@ -207,5 +216,34 @@ describe('TabBar', () => {
     const { tabs } = await render();
     expect(tabs()[0].getAttribute('aria-controls')).toBe('fnf-pane-left');
     expect(tabs()[0].id).toMatch(/^fnf-tab-/);
+  });
+
+  it('a tab header is a drop zone: hovering a tab highlights it (also when not open)', async () => {
+    const { fixture, tabs } = await render();
+    const dnd = TestBed.inject(DragStore);
+    const other = tabs()[0]; // "/a", not the open tab
+    dnd.elementAt = () => other;
+    dnd.begin({
+      side: 'right',
+      sourceDir: '/elsewhere',
+      sources: [entry('a.txt', { path: '/elsewhere/a.txt' })],
+      kind: 'copy',
+      x: 0,
+      y: 0,
+    });
+    fixture.detectChanges();
+    const target = dnd.drag()?.target;
+    expect(target?.side).toBe('left');
+    expect(target?.tabId).toBe(other.dataset['tabId']);
+    expect(other.classList.contains('drop-target')).toBe(true);
+    expect(tabs()[1].classList.contains('drop-target')).toBe(false);
+    dnd.move(0, 0);
+    expect(dnd.drag()?.target?.dir).toBe('/a');
+    dnd.elementAt = () => tabs()[2]; // home before its first listing: no folder known yet
+    dnd.move(1, 1);
+    expect(dnd.drag()?.target).toBeNull();
+    dnd.cancel();
+    fixture.detectChanges();
+    expect(other.classList.contains('drop-target')).toBe(false);
   });
 });
