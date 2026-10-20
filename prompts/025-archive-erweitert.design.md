@@ -298,6 +298,21 @@ im Dialog; `sevenzip-enc-names.7z` mit `geheim` öffnet weiter (Badge „encrypt
 
 Damit erledigt sich auch Selbst-Review #7 (PPMd-Header ohne Speichergrenze): solche Header werden nicht mehr gelesen.
 
+### Zweite Nachprüfung (21.10.2026)
+
+Koordinator @ e0a072c: B1–B4 bestätigt, Mutations-Fuzzing (50 000 Läufe) ohne Befund. Neu, mit der Probe-Crate des
+Reviewers (`folders`, `aes`, `fuzz7z`) nachgemessen:
+
+| Nr | Schwere | Befund | Status | Test |
+|---|---|---|---|---|
+| N1 | hoch | Ordneranzahl nur durch die Restbytes begrenzt: `01 00` (2 Byte) wurde ein `Folder` mit ~112 B + Vec → 28 MiB Header = 3,9 GB | ✅ im Haupt-Header werden Ordner nur noch gezählt und übersprungen (Coder als Zahlen, keine Vecs; je Ordner nur `u16` Ausgänge + CRC-Flag), höchstens **200 000** (= `MAX_ENTRIES`: 7-Zip schreibt keinen Ordner ohne Datei, mehr Ordner als erlaubte Dateien kann kein gültiges Archiv innerhalb der Grenzen haben); Pack-Größen werden nur im Encoded-Header gespeichert (dort genau 1 Ordner, 1 Pack-Stream). Probe `folders 14000000`: abgelehnt nach 8 µs, 0 MiB Spitze (vorher 3,9 GB/8 s) | `sevenz_header::tests::many_folders_are_refused` (1 Mio. `01 00`), `seven_zip_folder_bombs_broken_lzma_and_empty_archives` (`bomb-folders.7z`, 4 KB → 30 MiB Header) |
+| N2 | niedrig–mittel | AES-Runden bis 2²⁴ aus dem Archiv (1024 Zeichen: ~3 min), doppelt (Crate leitet erneut ab), bei jedem Öffnen | ✅ Grenze **2²²** (7-Zip schreibt 19) für Header **und** Datenblöcke (`sevenz::check_memory`, vor Entpacken und Passwortprüfung); abgeleitete Schlüssel je (Salt, Runden, Passwort) im Speicher (höchstens 4, `Zeroizing`, verworfen mit `secrets::forget`). Rest: die Crate leitet für Header-entschlüsselte Archive selbst noch einmal ab (ohne Cache-Zugang); Kosten wachsen mit der Passwortlänge (2¹⁹ × 1024 Zeichen = 5,7 s Release) – wie in 7-Zip selbst | `aes_work_factor_is_bounded` (2²³ abgelehnt), `derived_keys_are_cached_per_salt_rounds_and_password` |
+| N3 | niedrig | kaputte LZMA-Daten im Header → `Refusal::Io` | ✅ Dekodierfehler → `archive_error` (verschlüsselt: falsches Passwort); `Io` nur noch für Lesefehler der Datei | wie N1 (`bomb-files.7z` mit zerstörtem LZMA-Strom) |
+| N4 | niedrig | leeres 7z (32 Byte, Next-Header-Größe 0) bestand die Prüfung, die Crate scheiterte mit `UnexpectedEof` | ✅ `Checked.empty`: `sevenz::open` liefert ein leeres `Archive`, `verify_7z` hat nichts zu prüfen | wie N1 (leeres Archiv öffnet mit 0 Einträgen) |
+
+Erneuter Lauf `fuzz7z 20000` über echte Archive und alle Bomben: 0 Panics, 0 langsam, 0 groß; echte Archive weiter 7 Dateien.
+E2E (Xvfb :95): `bomb-folders.7z` öffnen → sofort Banner „The 7z header cannot be checked (malformed header) – not opened“, App bei 185 MB RSS.
+
 ## 8. Fortschritt
 
 - [x] Phase 1: Prompt + dieses Dokument
