@@ -29,7 +29,7 @@ use tauri::{AppHandle, Manager, Runtime};
 pub const MAIN_WINDOW: &str = "main";
 
 /// Name, version and platform for the About dialog (design 017).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_app_info<R: Runtime>(app: AppHandle<R>) -> crate::about::AppInfo {
     let info = app.package_info();
     crate::about::app_info(&info.name, &info.version.to_string())
@@ -323,7 +323,7 @@ pub async fn find_empty_dirs<R: Runtime>(
 }
 
 /// Stops the search `scan_id` (a newer one started, the dialog closed).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cancel_clean_scan<R: Runtime>(app: AppHandle<R>, scan_id: String) {
     app.state::<CleanScanState>().cancel(&scan_id);
 }
@@ -367,7 +367,7 @@ pub struct PathCheck {
 }
 
 /// Which of the paths are a root, the home folder or a system folder (second confirmation).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn check_paths<R: Runtime>(
     app: AppHandle<R>,
     paths: Vec<String>,
@@ -639,7 +639,7 @@ pub async fn plan_rename<R: Runtime>(
 }
 
 /// Undoes a rename job (`None` = the last one); returns the id of the undo job.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn undo_rename<R: Runtime>(
     app: AppHandle<R>,
     job_id: Option<String>,
@@ -1153,7 +1153,7 @@ impl JobsState {
 }
 
 /// Subscribes to job events; returns the current jobs (state after a reload).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn subscribe_jobs<R: Runtime>(
     app: AppHandle<R>,
     webview: tauri::Webview<R>,
@@ -1168,27 +1168,27 @@ pub fn subscribe_jobs<R: Runtime>(
     state.manager.list()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn start_job<R: Runtime>(app: AppHandle<R>, spec: JobSpec) -> Result<String, FsError> {
     app.state::<JobsState>().manager.start(spec)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cancel_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.cancel(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn pause_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.pause(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resume_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.resume(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resolve_conflict<R: Runtime>(
     app: AppHandle<R>,
     id: String,
@@ -1201,12 +1201,12 @@ pub fn resolve_conflict<R: Runtime>(
         .resolve_conflict(&id, conflict_id, decision, apply_to_all);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn list_jobs<R: Runtime>(app: AppHandle<R>) -> Vec<JobInfo> {
     app.state::<JobsState>().manager.list()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn clear_finished_jobs<R: Runtime>(app: AppHandle<R>) {
     app.state::<JobsState>().manager.clear_finished();
 }
@@ -1301,6 +1301,10 @@ pub struct MenuState {
 
 /// Installs the native menu bar (macOS, or `FNF_NATIVE_MENU=1`). Returns false when
 /// this platform uses the in-app menu bar – the frontend then shows its own.
+///
+/// The four menu/window commands stay synchronous on purpose (design 029 E11): they
+/// change the native menu or the window, the main thread is the safe place for that
+/// on macOS, and they do no file I/O. Every other command is `async`.
 #[tauri::command]
 pub fn set_app_menu<R: Runtime>(
     app: AppHandle<R>,
@@ -1392,5 +1396,49 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
             .close()
             .map_err(|e| FsError::new(FsErrorCode::Io, e.to_string(), None)),
         None => Ok(()),
+    }
+}
+
+/// Design 029 E11: synchronous commands run on the main thread in Tauri 2 – one
+/// slow call there freezes the whole window. Only the menu/window commands may.
+#[cfg(test)]
+mod command_rules {
+    const SOURCES: [(&str, &str); 3] = [
+        ("commands.rs", include_str!("commands.rs")),
+        ("commands/watch.rs", include_str!("commands/watch.rs")),
+        ("commands/shell.rs", include_str!("commands/shell.rs")),
+    ];
+    const MAIN_THREAD: [&str; 4] = [
+        "set_app_menu",
+        "set_menu_enabled",
+        "subscribe_menu",
+        "close_main_window",
+    ];
+
+    #[test]
+    fn no_command_runs_on_the_main_thread_unless_allowed() {
+        let mut sync = Vec::new();
+        for (file, src) in SOURCES {
+            let lines: Vec<&str> = src.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                if line.trim() != "#[tauri::command]" {
+                    continue;
+                }
+                let next = lines.get(i + 1).map(|l| l.trim()).unwrap_or("");
+                if let Some(rest) = next.strip_prefix("pub fn ") {
+                    let name: String = rest
+                        .chars()
+                        .take_while(|c| c.is_alphanumeric() || *c == '_')
+                        .collect();
+                    if !MAIN_THREAD.contains(&name.as_str()) {
+                        sync.push(format!("{file}: {name}"));
+                    }
+                }
+            }
+        }
+        assert!(
+            sync.is_empty(),
+            "make these `async fn` or `#[tauri::command(async)]`: {sync:?}"
+        );
     }
 }

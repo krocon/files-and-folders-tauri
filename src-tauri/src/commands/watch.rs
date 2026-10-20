@@ -41,7 +41,7 @@ impl WatchState {
 }
 
 /// Receives the watch events of this webview.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn subscribe_watch<R: Runtime>(
     app: AppHandle<R>,
     webview: tauri::Webview<R>,
