@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "scripts": {
+    "i": "pnpm i",
     "ng": "ng",
     "start": "ng serve",
     "dev": "tauri dev",
