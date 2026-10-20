@@ -66,6 +66,10 @@ pub enum FsErrorCode {
     UnquotableName,
     /// A drag out of the window was asked for while no mouse button is held (design 028 E2).
     DragNotHeld,
+    /// The system refuses symbolic links here (Windows without developer mode, FAT …) (design 031 E9).
+    LinkNotPermitted,
+    /// A relative link cannot point to the source (other drive, or a linked folder on the way) (031 E9).
+    RelativeLinkImpossible,
     Io,
 }
 

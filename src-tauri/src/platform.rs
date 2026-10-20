@@ -114,6 +114,41 @@ fn native_noreplace(_from: &Path, _to: &Path) -> Option<io::Result<()>> {
     None
 }
 
+/// Creates a symbolic link `link` → `target` (design 031 E9). Never replaces an
+/// existing `link`: `symlink(2)` and `CreateSymbolicLinkW` fail atomically with
+/// `AlreadyExists`. Windows needs to know whether the link stands for a folder
+/// (`dir`); std asks for unprivileged creation (developer mode) and falls back.
+pub fn make_symlink(target: &Path, link: &Path, dir: bool) -> io::Result<()> {
+    #[cfg(unix)]
+    {
+        let _ = dir;
+        std::os::unix::fs::symlink(target, link)
+    }
+    #[cfg(windows)]
+    {
+        if dir {
+            std::os::windows::fs::symlink_dir(target, link)
+        } else {
+            std::os::windows::fs::symlink_file(target, link)
+        }
+    }
+}
+
+/// The system refuses links here (design 031 E9): Windows without the privilege
+/// or developer mode (`ERROR_PRIVILEGE_NOT_HELD`), a Unix file system without
+/// symbolic links (`EPERM` from `symlink`, e.g. FAT/exFAT).
+pub fn links_not_permitted(e: &io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        e.raw_os_error() == Some(libc::EPERM)
+    }
+    #[cfg(windows)]
+    {
+        const ERROR_PRIVILEGE_NOT_HELD: i32 = 1314;
+        e.raw_os_error() == Some(ERROR_PRIVILEGE_NOT_HELD)
+    }
+}
+
 /// Deletes `rel` below `root` – a file, or (`dir`) an empty folder after the
 /// `junk` files directly inside it – without following a link in any path part
 /// below `root` (review 008 #3). `rel` = "" means `root` itself, which then

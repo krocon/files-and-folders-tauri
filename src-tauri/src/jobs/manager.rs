@@ -5,7 +5,7 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem,
-    Summary, Transfer, clean, copy, delete, duplicates, expect, extract, group, pack, rename,
+    Summary, Transfer, clean, copy, delete, duplicates, expect, extract, group, link, pack, rename,
     search, shell,
 };
 use crate::dirsize::{self, DirSize};
@@ -312,6 +312,15 @@ impl JobManager {
                     }
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
+                    }
+                    JobSpec::Link {
+                        sources,
+                        target_dir,
+                        options,
+                    } => {
+                        let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        let target = PathBuf::from(target_dir);
+                        link::run(id, &sources, &target, options, &control, &emit)
                     }
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
@@ -930,6 +939,36 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                     "The compression level is 1–9",
                     None,
                 ));
+            }
+        }
+        JobSpec::Link {
+            sources,
+            target_dir,
+            options,
+        } => {
+            if sources.is_empty() {
+                return Err(nothing());
+            }
+            if sources.len() > link::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::TooMany,
+                    format!("Too many entries (max. {})", link::MAX_ITEMS),
+                    None,
+                ));
+            }
+            for s in sources {
+                validate_input_path(s)?;
+            }
+            validate_input_path(target_dir)?;
+            if let Some(name) = &options.rename_to {
+                if sources.len() != 1 {
+                    return Err(FsError::new(
+                        FsErrorCode::InvalidName,
+                        "A new name needs exactly one entry",
+                        None,
+                    ));
+                }
+                crate::paths::validate_name(name)?;
             }
         }
         JobSpec::Duplicates { criteria } => {

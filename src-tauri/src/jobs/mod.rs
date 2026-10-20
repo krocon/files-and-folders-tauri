@@ -12,6 +12,7 @@ pub mod duplicates;
 pub mod expect;
 pub mod extract;
 pub mod group;
+pub mod link;
 pub mod manager;
 pub mod pack;
 pub mod rename;
@@ -22,6 +23,8 @@ pub mod shell;
 mod tests_archive;
 #[cfg(test)]
 mod tests_engine;
+#[cfg(test)]
+mod tests_link;
 #[cfg(test)]
 mod tests_ops;
 #[cfg(all(test, unix))]
@@ -40,6 +43,7 @@ use std::collections::HashMap;
 
 pub use control::Control;
 pub use group::{GroupItem, Transfer};
+pub use link::LinkOptions;
 pub use manager::JobManager;
 pub use rename::RenameItem;
 pub use shell::{ShellChunk, ShellLaunch, ShellStream, ShellSummary};
@@ -162,6 +166,13 @@ pub enum JobSpec {
         #[serde(default)]
         level: Option<u32>,
     },
+    /// Symbolic links to the sources in `target_dir` (design 031 E9) – never replaces a name.
+    Link {
+        sources: Vec<String>,
+        target_dir: String,
+        #[serde(default)]
+        options: LinkOptions,
+    },
     /// Duplicate files (design 016 E6): groups are streamed as `searchHits`.
     Duplicates { criteria: DuplicateCriteria },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
@@ -192,7 +203,8 @@ impl JobSpec {
             | JobSpec::Group { .. }
             | JobSpec::Clean { .. }
             | JobSpec::Extract { .. }
-            | JobSpec::Pack { .. } => false,
+            | JobSpec::Pack { .. }
+            | JobSpec::Link { .. } => false,
             JobSpec::Duplicates { .. }
             | JobSpec::DirSize { .. }
             | JobSpec::Count { .. }
@@ -227,7 +239,8 @@ impl JobSpec {
             JobSpec::Copy { target_dir, .. }
             | JobSpec::Move { target_dir, .. }
             | JobSpec::Extract { target_dir, .. }
-            | JobSpec::Pack { target_dir, .. } => target_dir,
+            | JobSpec::Pack { target_dir, .. }
+            | JobSpec::Link { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
             _ => return Vec::new(),
         };
@@ -258,6 +271,7 @@ impl JobSpec {
             JobSpec::Search { .. } => "search",
             JobSpec::Extract { .. } => "extract",
             JobSpec::Pack { .. } => "pack",
+            JobSpec::Link { .. } => "link",
             JobSpec::Duplicates { .. } => "duplicates",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
