@@ -44,10 +44,12 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 018 | [018-feature-paritaet.md](done/018-feature-paritaet.md) | Abgleich mit dem alten Programm, Matrix mit Testbelegen | 001–015 | S–M |
 | 020 | [020-actions-menue.md](done/020-actions-menue.md) | Actions-Menü nach Vorbild der alten Version (4 kuratierte Spalten, Trennlinien, Shortcut-Badges nach mr §1.8) | 002, 004, 014 | S–M |
 | 021 | [021-shell-leiste.md](done/021-shell-leiste.md) | Shell-Leiste (`TOGGLE_SHELL`): Befehlszeile im Ordner des aktiven Panels, gestreamte Ausgabe als Job, `cd` navigiert das Panel, Verlauf, Sicherheitsmodell | 004, 005, 011, 012 | M |
+| 024 | [024-attribute-aendern.md](024-attribute-aendern.md) | Attribute ändern: Rechte (Unix, oktal, Set-ID/Sticky), R/H/S/A (Windows), „versteckt“ (macOS), Zeitstempel – als Job `attributes`, Dreifach-Zustand, rekursiv mit Filter, Links nie folgen | 005, 006, 010, 016, 030 | M |
 | 022–027 | (Vorschlag aus 018, noch kein Prompt) | Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
 | 028 | [028-drag-ins-system.md](done/028-drag-ins-system.md) | Drag & Drop erweitert, Teil 1: Einträge aus der Liste in andere Programme ziehen (nur Kopieren; Tabs ziehen, Verknüpfung offen) | 012, 011 | S–M |
 | 029 | [029-reaktionsfaehig-bei-jobs.md](done/029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
 | 030 | [030-ordner-cache-smb.md](done/030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand; `getattrlistbulk` gemessen und verworfen; kein rekursives Vorladen | 029, 012 | M |
+| 031 | [031-drag-tabs-links.md](031-drag-tabs-links.md) | Drag & Drop erweitert, Teil 2: Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen per Drag/Dialog (Job `link`); Verschieben ins System bewusst nicht | 004, 006, 012, 028 | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 

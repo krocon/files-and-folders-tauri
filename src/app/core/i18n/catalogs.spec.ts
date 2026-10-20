@@ -10,6 +10,7 @@ import { THEME_LABELS_DE } from '../theme/theme-labels.de';
 import '../../features/about/about-texts';
 import '../../features/actions/actions-texts';
 import '../../features/archive/archive-texts';
+import '../../features/attributes/attributes-texts';
 import '../../features/cleanfolders/clean-texts';
 import '../../features/dnd/dnd-logic';
 import '../../features/duplicates/duplicates-texts';

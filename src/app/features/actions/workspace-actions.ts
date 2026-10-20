@@ -2,7 +2,7 @@ import { ActionHandler, ActionService } from '../../core/actions/action.service'
 import { ActionId } from '../../core/actions/action-catalog';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { SettingsStore } from '../../core/settings/settings.store';
-import { WorkspaceStore } from '../workspace/workspace.store';
+import { MAX_TABS, otherSide, WorkspaceStore } from '../workspace/workspace.store';
 import { TEXTS } from '../workspace/texts';
 
 /**
@@ -19,6 +19,28 @@ export function registerWorkspaceActions(
   const list = () => panel()?.controller();
   const hasCursor = () => list()?.cursorEntry() !== undefined;
   const focusActive = () => ws.requestFocus(ws.activeSide());
+  const activeIndex = () => ws.panels()[ws.activeSide()].activeTab;
+  const otherHasRoom = () => ws.panels()[otherSide(ws.activeSide())].tabs.length < MAX_TABS;
+  /** Moves the active tab within its side; a focused tab keeps the focus (design 031 E6). */
+  const moveActiveTab = (delta: -1 | 1) => {
+    const side = ws.activeSide();
+    const id = ws.activeTab(side).id;
+    const tabFocused =
+      typeof document !== 'undefined' && document.activeElement?.id === `fnf-tab-${id}`;
+    ws.moveTab(side, activeIndex(), delta);
+    if (tabFocused) {
+      setTimeout(() => document.getElementById(`fnf-tab-${id}`)?.focus());
+    }
+  };
+  /** The active tab (or a copy) goes to the end of the other side, which becomes active. */
+  const toOtherSide = (copy: boolean) => {
+    const to = otherSide(ws.activeSide());
+    const id = ws.activeTab(ws.activeSide()).id;
+    if (ws.placeTab(id, to, ws.panels()[to].tabs.length, copy) !== null) {
+      ws.setActive(to);
+      ws.requestFocus(to);
+    }
+  };
 
   const handlers: Partial<Record<ActionId, ActionHandler>> = {
     NAVIGATE_OPEN: { run: () => void list()?.openCursor(), enabled: hasCursor },
@@ -143,6 +165,17 @@ export function registerWorkspaceActions(
       },
       enabled: () => ws.panels()[ws.activeSide()].tabs.length > 1,
     },
+    // design 031 E5: the keyboard side of dragging tabs
+    MOVE_TAB_LEFT: { run: () => moveActiveTab(-1), enabled: () => activeIndex() > 0 },
+    MOVE_TAB_RIGHT: {
+      run: () => moveActiveTab(1),
+      enabled: () => activeIndex() < ws.panels()[ws.activeSide()].tabs.length - 1,
+    },
+    MOVE_TAB_TO_OTHER_SIDE: {
+      run: () => toOtherSide(false),
+      enabled: () => ws.panels()[ws.activeSide()].tabs.length > 1 && otherHasRoom(),
+    },
+    COPY_TAB_TO_OTHER_SIDE: { run: () => toOtherSide(true), enabled: otherHasRoom },
     TOGGLE_FAVORITE: {
       run: () => {
         const path = panel()?.store.path();
@@ -184,4 +217,5 @@ export const OFF_WHILE_UNCHECKED: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_MULTIMKDIR_DLG',
   'OPEN_GROUPFILES_DLG',
   'OPEN_DELETE_EMPTY_FOLDERS_DLG',
+  'OPEN_CHANGE_ATTRIBUTES_DLG',
 ]);

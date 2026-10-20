@@ -71,5 +71,6 @@ export const PV_DE: Translation<typeof PV_EN> = {
     symlink: 'Symbolischer Link',
     unknown: 'Unbekannt',
   },
-  changeLater: 'Rechte und Attribute ändern folgt in einer späteren Version.',
+  changeAttributes: 'Ändern…',
+  changeAttributesHint: 'Rechte, Attribute und Zeiten ändern',
 };

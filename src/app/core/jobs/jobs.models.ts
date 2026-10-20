@@ -5,6 +5,7 @@ import type { ShellChunk, ShellSummary } from '../shell/shell.models';
 import { ArchiveFormat, DirSize, EntryKind, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
+import { ApplyTo, AttrChange } from '../attributes/attributes.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 
 /** What happens when a target exists (copy/move dialog). */
@@ -14,6 +15,16 @@ export interface CopyOptions {
   readonly conflictDefault?: ConflictDefault;
   /** New name of the single source in the target folder. */
   readonly renameTo?: string | null;
+}
+
+/** Options of a link job (design 031 E9). Rust `jobs::link::LinkOptions`. */
+export interface LinkOptions {
+  /** Relative link target (default: absolute). */
+  readonly relative?: boolean;
+  /** Name of the link of a single source. */
+  readonly renameTo?: string | null;
+  /** The name exists: a free name `name (1).ext` instead of an error. */
+  readonly keepBoth?: boolean;
 }
 
 export type DeleteMode = 'trash' | 'permanent';
@@ -108,6 +119,13 @@ export type JobSpec =
     }
   /** Enter on a file inside an archive (design 025 E5): copy in the view cache → `Summary.viewPath`. */
   | { readonly kind: 'viewEntry'; readonly path: string }
+  /** Symbolic links to the sources in `targetDir` (design 031 E9) – never replaces a name. */
+  | {
+      readonly kind: 'link';
+      readonly sources: readonly string[];
+      readonly targetDir: string;
+      readonly options?: LinkOptions;
+    }
   /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
   /** Counts files, folders and bytes of a selection (copy dialog). */
@@ -115,6 +133,17 @@ export type JobSpec =
   | { readonly kind: 'dirSize'; readonly path: string }
   /** Debug builds only (load tests). */
   | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number }
+  /**
+   * Change permissions, attributes and times (design 024): the selected entries and –
+   * `recursive` – everything in selected folders; `applyTo` filters both.
+   */
+  | {
+      readonly kind: 'attributes';
+      readonly paths: readonly string[];
+      readonly change: AttrChange;
+      readonly recursive?: boolean;
+      readonly applyTo?: ApplyTo;
+    }
   /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
   | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 

@@ -7,10 +7,10 @@ export const DND_DE: Translation<typeof DND_EN> = {
   move: 'Verschieben',
   what: (count, first) => (count === 1 ? first : `${count} Einträge`),
   label: (kind, count, first, target) =>
-    `${count === 1 ? first : `${count} Einträge`} ${kind === 'copy' ? 'kopieren' : 'verschieben'}` +
+    `${kind === 'link' ? 'Verknüpfung zu ' : ''}${count === 1 ? first : `${count} Einträge${kind === 'link' ? 'n' : ''}`}${kind === 'copy' ? ' kopieren' : kind === 'move' ? ' verschieben' : ' anlegen'}` +
     (target ? ` → ${target.name}` : ' – hier kein Ziel'),
   hint: (isMac) =>
-    `${isMac ? '⌘: verschieben' : 'Umschalt: verschieben'} · Esc: abbrechen · aus dem Fenster: andere Programme`,
+    `${isMac ? '⌘: verschieben · ⌘⌥: verknüpfen' : 'Umschalt: verschieben · Strg+Umschalt: verknüpfen'} · Esc: abbrechen · aus dem Fenster: andere Programme`,
   notFromArchive:
     'Einträge in einem Archiv lassen sich nicht in andere Programme ziehen – zuerst entpacken.',
   dropFromSystem: (count) => `${count === 1 ? '1 Element' : `${count} Elemente`} hierher kopieren`,

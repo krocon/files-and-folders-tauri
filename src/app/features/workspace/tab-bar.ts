@@ -18,9 +18,16 @@ import { DragStore } from '../dnd/drag.store';
 import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
 import { VolumesStore } from '../osintegration/volumes.store';
 import { SearchStore } from '../search/search.store';
+import { modifiersAfter } from '../../core/actions/shortcut';
 import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
+import { insertionIndex, tabDragCopies } from './tab-drag-logic';
+import { TabDragStore } from './tab-drag.store';
 import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
+
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+/** Pixels the pointer must travel before a press on a tab becomes a drag. */
+const TAB_DRAG_THRESHOLD = 6;
 
 interface OpenMenu {
   /** The menu belongs to a tab, not to a position – tabs can move or close meanwhile. */
@@ -90,6 +97,40 @@ export class TabBar {
     const t = this.dnd.drag()?.target;
     return t && t.side === this.side() ? (t.tabId ?? null) : null;
   });
+  /** Dragging tabs (design 031 E1–E4). */
+  protected readonly tabDrag = inject(TabDragStore);
+  /** Insertion position a tab drag would drop at in this bar (the marker), or null. */
+  protected readonly insertAt = computed(() => {
+    const t = this.tabDrag.drag()?.target;
+    return t && t.side === this.side() ? t.index : null;
+  });
+  /** The hint next to the pointer – only in the bar the drag started in. */
+  protected readonly tabDragText = computed(() => {
+    const d = this.tabDrag.drag();
+    if (!d || d.from !== this.side()) {
+      return '';
+    }
+    const t = TEXTS.tabDrag;
+    if (d.target) {
+      return t.label(d.copy, d.title, d.target.side, d.target.index + 1);
+    }
+    if (d.blocked === 'lastTab') {
+      return t.lastTab(IS_MAC);
+    }
+    return d.blocked === 'full' ? t.full : t.noTarget(d.title);
+  });
+  protected get tabDragHint(): string {
+    return TEXTS.tabDrag.hint(IS_MAC);
+  }
+  private tabPress: {
+    x: number;
+    y: number;
+    pointerId: number;
+    tabId: string;
+    el: HTMLElement;
+  } | null = null;
+  private tabDragging = false;
+  private lastTabPointer = { x: 0, y: 0 };
   protected readonly menu = signal<OpenMenu | null>(null);
   /** Index of the menu's tab, -1 when it is gone (closed by a shortcut while the menu was open). */
   private readonly menuIndex = computed(() => {
@@ -137,7 +178,34 @@ export class TabBar {
         );
       },
     });
-    inject(DestroyRef).onDestroy(unregister);
+    const side = this.side;
+    const host = this.host.nativeElement;
+    const unregisterTabs = this.tabDrag.registerZone({
+      // read on use: the input is not set yet in the constructor
+      get side() {
+        return side();
+      },
+      bar: host,
+      get panel() {
+        return host.closest<HTMLElement>('app-file-panel');
+      },
+      index: (x) =>
+        insertionIndex(
+          [...this.host.nativeElement.querySelectorAll<HTMLElement>('[role="tab"]')].map((el) => {
+            const r = el.getBoundingClientRect();
+            return r.left + r.width / 2;
+          }),
+          x,
+        ),
+    });
+    inject(DestroyRef).onDestroy(() => {
+      unregister();
+      unregisterTabs();
+      if (this.tabDragging) {
+        this.tabDrag.cancel();
+      }
+      this.endTabPress();
+    });
     effect(() => {
       if (this.menu() && this.menuIndex() < 0) {
         this.menu.set(null);
@@ -369,6 +437,127 @@ export class TabBar {
     this.focusTab(this.panel().activeTab);
   }
 
+  // ---- dragging tabs (design 031 E1) ----
+
+  protected onTabPointerDown(evt: PointerEvent, tab: TabState): void {
+    // Shift+click closes the tab (018 J13); only the primary button drags
+    if (evt.button !== 0 || evt.shiftKey || this.tabPress) {
+      return;
+    }
+    this.tabPress = {
+      x: evt.clientX,
+      y: evt.clientY,
+      pointerId: evt.pointerId,
+      tabId: tab.id,
+      el: evt.currentTarget as HTMLElement,
+    };
+    window.addEventListener('pointermove', this.onTabPointerMove, true);
+    window.addEventListener('pointerup', this.onTabPointerUp, true);
+    window.addEventListener('pointercancel', this.onTabPointerCancel, true);
+    window.addEventListener('keydown', this.onTabDragKey, true);
+    window.addEventListener('keyup', this.onTabDragKey, true);
+  }
+
+  private readonly onTabPointerMove = (evt: PointerEvent): void => {
+    const press = this.tabPress;
+    if (!press) {
+      return;
+    }
+    this.lastTabPointer = { x: evt.clientX, y: evt.clientY };
+    const copy = tabDragCopies(evt, IS_MAC);
+    if (!this.tabDragging) {
+      if (Math.hypot(evt.clientX - press.x, evt.clientY - press.y) < TAB_DRAG_THRESHOLD) {
+        return;
+      }
+      const tab = this.panel().tabs.find((t) => t.id === press.tabId);
+      if (!tab) {
+        this.endTabPress();
+        return;
+      }
+      this.tabDragging = true;
+      try {
+        press.el.setPointerCapture(press.pointerId);
+      } catch {
+        // the pointer may be gone already – the window listeners still see it
+      }
+      this.tabDrag.begin({
+        tabId: tab.id,
+        from: this.side(),
+        title: this.title(tab),
+        copy,
+        x: evt.clientX,
+        y: evt.clientY,
+      });
+    } else {
+      this.tabDrag.move(evt.clientX, evt.clientY, copy);
+    }
+    evt.preventDefault();
+  };
+
+  private readonly onTabPointerUp = (evt: PointerEvent): void => {
+    if (this.tabDragging) {
+      swallowNextClick();
+      this.tabDrag.drop(evt.clientX, evt.clientY, tabDragCopies(evt, IS_MAC));
+    }
+    this.endTabPress();
+  };
+
+  private readonly onTabPointerCancel = (): void => {
+    if (this.tabDragging) {
+      this.tabDrag.cancel();
+    }
+    this.endTabPress();
+  };
+
+  /** Esc cancels, the copy modifier switches live, every other key is swallowed while dragging. */
+  private readonly onTabDragKey = (evt: KeyboardEvent): void => {
+    if (!this.tabDragging) {
+      return;
+    }
+    const modifier = ['Control', 'Alt', 'Shift', 'Meta', 'OS'].includes(evt.key);
+    if (!modifier) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+    if (evt.key === 'Escape' && evt.type === 'keydown') {
+      this.tabDrag.cancel();
+      swallowNextClick();
+      this.endTabPress();
+      return;
+    }
+    if (modifier) {
+      const { x, y } = this.lastTabPointer;
+      this.tabDrag.move(x, y, tabDragCopies(modifiersAfter(evt, evt.type), IS_MAC));
+    }
+  };
+
+  private endTabPress(): void {
+    const press = this.tabPress;
+    if (press && this.tabDragging) {
+      try {
+        press.el.releasePointerCapture(press.pointerId);
+      } catch {
+        // not captured
+      }
+    }
+    this.tabPress = null;
+    this.tabDragging = false;
+    window.removeEventListener('pointermove', this.onTabPointerMove, true);
+    window.removeEventListener('pointerup', this.onTabPointerUp, true);
+    window.removeEventListener('pointercancel', this.onTabPointerCancel, true);
+    window.removeEventListener('keydown', this.onTabDragKey, true);
+    window.removeEventListener('keyup', this.onTabDragKey, true);
+  }
+
+  /** Near the right edge the hint goes left of the pointer. */
+  protected flipHint(x: number): boolean {
+    return typeof window !== 'undefined' && x > window.innerWidth - 380;
+  }
+
+  protected viewportWidth(): number {
+    return typeof window === 'undefined' ? 0 : window.innerWidth;
+  }
+
   private openMenuAt(index: number): void {
     const el = this.tabElement(index);
     const rect = el?.getBoundingClientRect();
@@ -387,4 +576,14 @@ export class TabBar {
   private tabElement(index: number): HTMLElement | null {
     return this.host.nativeElement.querySelectorAll<HTMLElement>('[role="tab"]')[index] ?? null;
   }
+}
+
+/** The click that follows releasing a tab drag must not select the tab under the pointer. */
+function swallowNextClick(): void {
+  const stop = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  window.addEventListener('click', stop, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 0);
 }

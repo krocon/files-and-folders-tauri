@@ -78,4 +78,11 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
   tabGroup: 'Tab',
   favouriteGroup: 'Favorit',
   recentGroup: 'Zuletzt',
+  link: 'Verknüpfung anlegen',
+  linkConfirm: 'Verknüpfung anlegen',
+  linkName: 'Name der Verknüpfung',
+  relative: 'Relativer Link (bleibt gültig, wenn Quelle und Link zusammen verschoben werden)',
+  ifLinkExists: 'Wenn der Name existiert',
+  linkExists: { fail: 'Fehler melden (nie ersetzen)', keepBoth: 'Beide behalten (neuer Name)' },
+  linkFromArchive: 'Einträge in einem Archiv lassen sich nicht verknüpfen – zuerst entpacken.',
 };

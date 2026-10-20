@@ -56,6 +56,22 @@ describe('dnd-logic (design 012 E5)', () => {
     expect(dragKind({ shiftKey: true, metaKey: false }, true)).toBe('copy');
   });
 
+  it('links with Ctrl+Shift (Windows/Linux) or ⌘⌥ (macOS) – design 031 E7', () => {
+    const mods = (m: Partial<Record<'shiftKey' | 'metaKey' | 'ctrlKey' | 'altKey', boolean>>) => ({
+      shiftKey: false,
+      metaKey: false,
+      ctrlKey: false,
+      altKey: false,
+      ...m,
+    });
+    expect(dragKind(mods({ ctrlKey: true, shiftKey: true }), false)).toBe('link');
+    expect(dragKind(mods({ ctrlKey: true }), false)).toBe('copy');
+    expect(dragKind(mods({ altKey: true, shiftKey: true }), false)).toBe('move');
+    expect(dragKind(mods({ metaKey: true, altKey: true }), true)).toBe('link');
+    expect(dragKind(mods({ altKey: true }), true)).toBe('copy');
+    expect(dragKind(mods({ ctrlKey: true, shiftKey: true }), true)).toBe('copy');
+  });
+
   const origin: DragOrigin = { side: 'left', dir: '/src', paths: new Set([a.path]) };
   const hit = (side: Side, panelDir: string | null, row: DirEntry | null): ZoneHit => ({
     side,
@@ -324,6 +340,16 @@ describe('DragStore', () => {
       target: '/dst/Archiv',
     });
     expect(ops.copyMove()?.sources).toEqual([a, b]);
+  });
+
+  it('a link drag opens the dialog in link mode (design 031 E7)', async () => {
+    store.begin({ side: 'left', sourceDir: '/src', sources: [a], kind: 'link', x: 10, y: 1 });
+    store.move(150, -1);
+    expect(store.label(store.drag()!)).toBe('Link to a.txt → /dst');
+    await store.drop(150, -1, 'link');
+    expect(dialogs.open()).toBe('copy-move');
+    expect(ops.copyMove()).toMatchObject({ kind: 'link', side: 'left', target: '/dst' });
+    expect(ops.copyMove()?.dangers).toEqual([]);
   });
 
   it('release without a target or Esc does nothing', async () => {

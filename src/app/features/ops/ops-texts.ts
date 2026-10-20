@@ -76,6 +76,14 @@ export const OPS_EN = {
   tabGroup: 'Tab',
   favouriteGroup: 'Favourite',
   recentGroup: 'Recent',
+  /** Links (design 031 E8). */
+  link: 'Create link',
+  linkConfirm: 'Create link',
+  linkName: 'Name of the link',
+  relative: 'Relative link (stays valid when source and link move together)',
+  ifLinkExists: 'If the name exists',
+  linkExists: { fail: 'Report an error (never replace)', keepBoth: 'Keep both (new name)' },
+  linkFromArchive: 'Entries inside an archive cannot be linked – unpack them first.',
 } as const;
 
 export const OPS_TEXTS = translatable('ops', OPS_EN, { de: OPS_DE });

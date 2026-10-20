@@ -112,6 +112,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       '-',
       'OPEN_COPY_DLG',
       'OPEN_MOVE_DLG',
+      'OPEN_LINK_DLG',
       'OPEN_RENAME_DLG',
       'RENAME_INLINE',
       'OPEN_DELETE_DLG',
@@ -126,6 +127,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_FIND_DUPLICATES_DLG',
       '-',
       'OPEN_ATTRIBUTE_DLG',
+      'OPEN_CHANGE_ATTRIBUTES_DLG',
       { when: 'notMacos', items: ['-', 'QUIT_APP'] },
     ],
   },
@@ -242,6 +244,10 @@ export const MENU_BAR: readonly TopMenu[] = [
       'PREV_TAB',
       'CLONE_TAB',
       'CLOSE_TAB',
+      'MOVE_TAB_LEFT',
+      'MOVE_TAB_RIGHT',
+      'MOVE_TAB_TO_OTHER_SIDE',
+      'COPY_TAB_TO_OTHER_SIDE',
       '-',
       'OPEN_TASK_DLG',
     ],
@@ -278,6 +284,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     COPY_AS,
     'REVEAL_IN_FILE_MANAGER',
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
   ],
   // the cursor is on a ZIP/TAR file (design 016): open it like a folder or unpack it
   archiveFile: [
@@ -294,6 +301,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     COPY_AS,
     'REVEAL_IN_FILE_MANAGER',
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
   ],
   folder: [
     'NAVIGATE_OPEN',
@@ -310,6 +318,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'REVEAL_IN_FILE_MANAGER',
     'OPEN_TERMINAL_HERE',
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
   ],
   marked: [
     'OPEN_COPY_DLG',
@@ -323,6 +332,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     WITH_TOOL,
     COPY_AS,
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
     '-',
     'DESELECT_ALL',
     'INVERT_MARKS',
@@ -359,6 +369,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'RERUN_SEARCH',
     DUP_MARK,
     'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
   ],
   // inside an archive (read-only, design 016): extract, marks, names
   archive: [

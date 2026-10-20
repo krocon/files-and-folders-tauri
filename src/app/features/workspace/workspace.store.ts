@@ -16,6 +16,9 @@ import type { FileListController } from '../browser/file-list/file-list-controll
 import { TEXTS } from './texts';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DISPLAY } from '../../core/settings/display';
+import { MAX_TABS, placeIndex, tabDropCheck } from './tab-drag-logic';
+
+export { MAX_TABS };
 
 /** What a panel offers to window-wide actions (registered by `FilePanel`). */
 export interface PanelHandle {
@@ -51,7 +54,6 @@ export interface Panels {
 export const SPLITTER_MIN = 0.15;
 export const SPLITTER_MAX = 0.85;
 export const MAX_HISTORY = 15;
-export const MAX_TABS = 50;
 export const MAX_RECENT = 20;
 /** Delay before a changed state is written (Rust writes atomically). */
 export const SAVE_DEBOUNCE_MS = 400;
@@ -376,6 +378,55 @@ export class WorkspaceStore {
       const activeId = p.tabs[p.activeTab].id;
       return { tabs, activeTab: tabs.findIndex((t) => t.id === activeId) };
     });
+  }
+
+  /**
+   * Drag and drop of tabs (design 031 E4): puts tab `tabId` at insertion position
+   * `index` of side `to` (counted before it is taken out), or a copy of it (new
+   * id, same folder and view). The placed tab is selected. The last tab of a
+   * side never moves away; a side holds at most `MAX_TABS`. Returns the id of the
+   * placed tab, null when nothing happened.
+   */
+  placeTab(tabId: string, to: Side, index: number, copy: boolean): string | null {
+    const panels = this.panels();
+    const from = panels.left.tabs.some((t) => t.id === tabId) ? 'left' : 'right';
+    const fromIndex = panels[from].tabs.findIndex((t) => t.id === tabId);
+    if (fromIndex < 0) {
+      return null;
+    }
+    const check = tabDropCheck({
+      from,
+      fromIndex,
+      fromCount: panels[from].tabs.length,
+      to,
+      toCount: panels[to].tabs.length,
+      index,
+      copy,
+    });
+    if (check === 'noop') {
+      this.selectTab(from, fromIndex);
+      return tabId;
+    }
+    if (check !== null) {
+      return null;
+    }
+    const tab = panels[from].tabs[fromIndex];
+    const at = Math.max(0, Math.min(index, panels[to].tabs.length));
+    if (copy) {
+      const clone = { ...tab, id: newId() };
+      this.updatePanel(to, (p) => insertTab(p, at, clone));
+      return clone.id;
+    }
+    if (from === to) {
+      this.updatePanel(from, (p) => {
+        const tabs = p.tabs.filter((t) => t.id !== tabId);
+        return insertTab({ ...p, tabs }, placeIndex(fromIndex, at), tab);
+      });
+      return tabId;
+    }
+    this.closeTab(from, fromIndex);
+    this.updatePanel(to, (p) => insertTab(p, at, tab));
+    return tabId;
   }
 
   /** Writes fields of a tab (by id, wherever it is now). Unknown ids are ignored. */

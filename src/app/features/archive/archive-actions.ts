@@ -13,6 +13,7 @@ import { ARCHIVE_TEXTS } from './archive-texts';
 export const OFF_IN_ARCHIVE: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_EDIT_DLG',
   'OPEN_ATTRIBUTE_DLG',
+  'OPEN_CHANGE_ATTRIBUTES_DLG',
   'OPEN_TOOLS_DLG',
   'REVEAL_IN_FILE_MANAGER',
   'OPEN_TERMINAL_HERE',
