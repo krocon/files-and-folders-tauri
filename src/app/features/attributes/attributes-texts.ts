@@ -49,7 +49,7 @@ export const AT_EN = {
   mixedHint: 'A dash means: the selected entries differ – this stays as it is.',
   loading: 'Reading the current values…',
   summary: (n: number, changes: number, recursive: boolean) =>
-    `${entries(n)}${recursive ? ' and their contents' : ''} · ${
+    `${entries(n)}${recursive ? ' with folder contents' : ''} · ${
       changes === 1 ? '1 change' : `${changes} changes`
     }`,
   links: (n: number) => (n === 1 ? '1 link stays unchanged' : `${n} links stay unchanged`),
@@ -59,7 +59,9 @@ export const AT_EN = {
   failed: (msg: string) => `Changing attributes failed: ${msg}`,
   withErrors: (n: number) => `Attributes changed – ${entries(n)} could not be changed (see Tasks)`,
   done: (n: number, skipped: number) =>
-    `Attributes of ${entries(n)} changed${skipped ? ` (${skipped} links skipped)` : ''}`,
+    `Attributes of ${entries(n)} changed${
+      skipped === 0 ? '' : skipped === 1 ? ' (1 link skipped)' : ` (${skipped} links skipped)`
+    }`,
 };
 
 export const AT_TEXTS = translatable('attributes', AT_EN, { de: AT_DE });

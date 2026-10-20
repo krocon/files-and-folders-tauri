@@ -32,7 +32,7 @@ export const AT_DE: Translation<typeof AT_EN> = {
   mixedHint: 'Ein Strich heißt: die Einträge unterscheiden sich – das bleibt, wie es ist.',
   loading: 'Aktuelle Werte werden gelesen …',
   summary: (n, changes, recursive) =>
-    `${entries(n)}${recursive ? ' samt Inhalt' : ''} · ${
+    `${entries(n)}${recursive ? ' samt Ordnerinhalt' : ''} · ${
       changes === 1 ? '1 Änderung' : `${changes} Änderungen`
     }`,
   links: (n) => (n === 1 ? '1 Link bleibt unverändert' : `${n} Links bleiben unverändert`),
@@ -42,5 +42,11 @@ export const AT_DE: Translation<typeof AT_EN> = {
   failed: (msg) => `Attribute ändern fehlgeschlagen: ${msg}`,
   withErrors: (n) => `Attribute geändert – bei ${entriesDat(n)} ging es nicht (siehe Tasks)`,
   done: (n, skipped) =>
-    `Attribute von ${entriesDat(n)} geändert${skipped ? ` (${skipped} Links übersprungen)` : ''}`,
+    `Attribute von ${entriesDat(n)} geändert${
+      skipped === 0
+        ? ''
+        : skipped === 1
+          ? ' (1 Link übersprungen)'
+          : ` (${skipped} Links übersprungen)`
+    }`,
 };

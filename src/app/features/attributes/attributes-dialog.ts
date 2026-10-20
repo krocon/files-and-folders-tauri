@@ -39,7 +39,7 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
               <p class="help" aria-live="polite">{{ t.loading }}</p>
             }
             @if (fields().mode) {
-              <fieldset [disabled]="s.loading()">
+              <fieldset>
                 <legend>{{ t.permissions }}</legend>
                 <table class="perm">
                   <thead>
@@ -111,7 +111,7 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
               </fieldset>
             }
             @if (fields().flags.length > 0) {
-              <fieldset [disabled]="s.loading()">
+              <fieldset>
                 <legend>{{ t.attributes }}</legend>
                 <div class="row">
                   @for (name of fields().flags; track name; let first = $first) {
@@ -129,7 +129,7 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
                 </div>
               </fieldset>
             }
-            <fieldset [disabled]="s.loading()">
+            <fieldset>
               <legend>{{ t.times }}</legend>
               @for (name of fields().times; track name) {
                 <div class="time" role="group" [attr.aria-label]="t.time[name]">

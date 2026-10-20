@@ -245,6 +245,19 @@ describe('change attributes (design 024)', () => {
       expect(jobsApi.started[0].spec).toMatchObject({ kind: 'attributes' });
     });
 
+    it('fields stay focusable while the values are read (the first checkbox gets the focus)', async () => {
+      preview.getProperties = () => new Promise(() => undefined); // never answers
+      left.setCursor('/src/a.txt');
+      await actions.run('OPEN_CHANGE_ATTRIBUTES_DLG');
+      const { el } = await render();
+      expect(store.loading()).toBe(true);
+      expect(el.textContent).toContain(AT_TEXTS.loading);
+      const first = el.querySelector<HTMLInputElement>('input[data-autofocus]')!;
+      expect(first.getAttribute('aria-label')).toBe('Owner: Read');
+      expect(first.disabled).toBe(false);
+      expect(el.querySelector('fieldset[disabled]')).toBeNull();
+    });
+
     it('Windows: R/H/S/A and created time, no permissions', async () => {
       actions.platform.set('windows');
       left.setCursor('/src/a.txt');
