@@ -224,6 +224,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_SHORTCUT_DLG',
       'OPEN_BUTTON_CONFIG_DLG',
       'OPEN_FILETYPE_CONFIG_DLG',
+      'OPEN_IMPORT_OLD_CONFIG_DLG',
       'OPEN_CALL_ACTION_DLG',
       { when: 'notMacos', items: ['OPEN_SETUP_DLG'] },
     ],

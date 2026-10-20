@@ -93,6 +93,9 @@ import { ButtonConfigStore } from '../config/button-config.store';
 import { registerConfigActions } from '../config/config-actions';
 import { FileTypesDialog } from '../config/file-types-dialog';
 import { FileTypesStore } from '../config/file-types.store';
+import { MrImportDialog } from '../mrimport/mr-import-dialog';
+import { registerMrImportActions } from '../mrimport/mr-import-actions';
+import { MrImportStore } from '../mrimport/mr-import.store';
 import { MenuApi } from '../../core/menu/menu-api';
 
 /**
@@ -136,6 +139,7 @@ import { MenuApi } from '../../core/menu/menu-api';
     ShellBar,
     ButtonConfigDialog,
     FileTypesDialog,
+    MrImportDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -175,6 +179,7 @@ export class Workspace implements OnInit {
   private readonly theme = inject(ThemeService);
   private readonly buttonConfig = inject(ButtonConfigStore);
   private readonly fileTypes = inject(FileTypesStore);
+  private readonly mrImport = inject(MrImportStore);
   private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -297,6 +302,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
+    this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();

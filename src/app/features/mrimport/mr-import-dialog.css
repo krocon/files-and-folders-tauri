@@ -1,0 +1,101 @@
+/* Import of the old configuration (design 026 E13); fields/buttons: tool-dialog.css + controls.css */
+/* the modal is at most 80vh high and clips: the body scrolls, the buttons stay visible */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  overflow-y: auto;
+  padding: 2px;
+
+  > * {
+    flex: none;
+  }
+}
+
+.intro {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+fieldset {
+  margin: 0;
+  padding: var(--spacing-2);
+  border: var(--border-width) solid var(--color-dialog-border);
+  border-radius: var(--radius-sm);
+}
+
+legend {
+  padding: 0 var(--spacing-1);
+}
+
+.areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.area {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--spacing-2);
+
+  .check {
+    min-width: 13rem;
+  }
+
+  .summary {
+    color: var(--color-muted);
+  }
+
+  > .warn,
+  > details {
+    flex-basis: 100%;
+  }
+}
+
+details {
+  margin-left: 1.6rem;
+
+  summary {
+    cursor: pointer;
+    width: fit-content;
+
+    &:focus-visible {
+      outline: var(--focus-ring-width) solid var(--color-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  ul {
+    margin: 0 0 var(--spacing-1);
+    padding-left: 1.2rem;
+  }
+
+  .sub {
+    margin: var(--spacing-1) 0 0;
+    font-weight: 600;
+  }
+}
+
+.mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.warn {
+  margin: 0;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.status {
+  margin: 0;
+  min-height: 1em;
+  overflow-wrap: anywhere;
+}

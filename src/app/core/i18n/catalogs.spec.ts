@@ -20,6 +20,7 @@ import '../../features/jobs/job-format';
 import '../../features/menus/menu-texts';
 import '../../features/multimkdir/multimkdir-texts';
 import '../../features/multirename/multirename-texts';
+import '../../features/mrimport/mr-import-texts';
 import '../../features/ops/ops-texts';
 import '../../features/osintegration/os-texts';
 import '../../features/preview/preview-texts';
