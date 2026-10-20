@@ -10,6 +10,7 @@ import {
   setsSpecialBit,
   setTime,
   SPECIAL,
+  symbolicMode,
   SPECIAL_BIT,
   TimeName,
   toggleBit,
@@ -348,7 +349,12 @@ export class AttributesDialog {
   protected readonly summary = computed(() => {
     const n = this.s.request()?.entries.length ?? 0;
     const c = this.s.changeCount();
-    return c === 0 ? this.t.nothing : this.t.summary(n, c, this.s.form()?.recursive ?? false);
+    if (c === 0) {
+      return this.t.nothing;
+    }
+    const symbolic = symbolicMode(this.s.change()); // `u+w g-x` – notation, no text
+    const text = this.t.summary(n, c, this.s.form()?.recursive ?? false);
+    return symbolic ? `${text} (${symbolic})` : text;
   });
   protected readonly errorText = computed(() => {
     const e = this.s.runError();

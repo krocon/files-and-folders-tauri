@@ -82,7 +82,7 @@ impl Run<'_, '_> {
             return self.fail(path, symlink_skipped(path));
         }
         if !self.apply_to.matches(meta.is_dir()) {
-            return;
+            return self.step_done(); // filtered out: neither done nor failed
         }
         match self.resolved.apply(path, &meta) {
             Ok(()) => {
