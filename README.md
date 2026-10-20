@@ -36,7 +36,7 @@ without stutter.
 
 ![Files and Folders with the classic Norton colour scheme: two panels with tabs, marked files and the button bar](docs/screenshots/fnf-norton.png)
 
-<p align="center"><i>The classic <b>Norton</b> colour scheme – one of ten built-in designs.</i></p>
+<p align="center"><i>The classic <b>Norton</b> colour scheme – one of eleven built-in designs.</i></p>
 
 ## Main features
 
@@ -65,7 +65,7 @@ without stutter.
   shell**, configured in a small JSON file
 - **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
 - **Colour schemes** – the eight classic designs (Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat,
-  Norton) plus modern light/dark, *follow the system*, a live editor with WCAG contrast check, import/export
+  Norton) plus modern light/dark and Crimson, *follow the system*, a live editor with WCAG contrast check, import/export
 - **Settings dialog** with search, export/import of the whole configuration
 - **English and German** UI, switchable at runtime
 
@@ -182,6 +182,7 @@ pnpm tauri dev        # Angular dev server (port 1420) + desktop window
 | Frontend tests (Vitest) | `pnpm test` |
 | Rust tests / clippy | `pnpm rust:test` / `pnpm rust:lint` |
 | Release build (packages per OS) | `pnpm tauri build` |
+| Screenshots of every colour scheme × every dialog | `pnpm screenshots` ([docs/screenshots.md](docs/screenshots.md)) |
 
 Architecture and rules: [docs/architecture.md](docs/architecture.md) and [CLAUDE.md](CLAUDE.md);
 release process: [docs/release.md](docs/release.md).
