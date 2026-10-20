@@ -10,6 +10,7 @@ describe('createFileTable', () => {
     const { options, body, model } = createFileTable('path-1');
     expect(options.defaultRowHeights.body).toBe(ROW_HEIGHT);
     expect(options.hoverColumnVisible).toBe(false);
+    expect(options.tableTopBorderVisible).toBe(false);
     expect((options.getSelectionModel?.() as SelectionModel).selectionType).toBe('none');
     expect(options.shortcutActionIdMapping).toEqual(FILE_LIST_SHORTCUTS);
     expect(options.ariaLabelledBy).toBe('path-1');

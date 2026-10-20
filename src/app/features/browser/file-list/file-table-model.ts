@@ -173,6 +173,8 @@ function createUntracked(
     verticalBorderVisible: false,
     horizontalBorderVisible: false,
     headerSeparatorBorderVisible: false,
+    // the tab bar above draws the separator (active panel: its accent) – no second, dark line
+    tableTopBorderVisible: false,
     getSelectionModel: () => new SelectionModel('none', 'single'),
     shortcutActionIdMapping: { ...FILE_LIST_SHORTCUTS },
     ariaLabelledBy: labelledBy,
