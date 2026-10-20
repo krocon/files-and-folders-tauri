@@ -265,6 +265,9 @@ export class MrImportStore {
         ACTIONS[c.to].label,
       );
     }
+    if (c.kind === 'action') {
+      return t.replaced(ACTIONS[c.id].label);
+    }
     if (area === 'colors') {
       return t.copied(c.name);
     }

@@ -76,7 +76,9 @@ export type Conflict =
       readonly from: ActionId;
       readonly to: ActionId;
     }
-  | { readonly kind: 'name'; readonly name: string };
+  | { readonly kind: 'name'; readonly name: string }
+  /** Replace mode: the own shortcuts of this action are dropped. */
+  | { readonly kind: 'action'; readonly id: ActionId };
 
 export interface AreaPlan {
   readonly area: MrAreaId;
@@ -136,6 +138,11 @@ export function planShortcuts(
   const listOf = (id: ActionId): readonly string[] => next[id] ?? resolved.bindings[id] ?? [];
   const skipped: MrSkipped[] = [...source.skipped];
   const conflicts: Conflict[] = [];
+  if (mode === 'replace') {
+    for (const id of Object.keys(state.override).filter(isActionId)) {
+      conflicts.push({ kind: 'action', id });
+    }
+  }
   let count = 0;
   let unchanged = source.unchanged;
   for (const item of source.items) {
@@ -196,6 +203,11 @@ export function planButtons(
   const sets: Record<string, readonly string[]> = mode === 'replace' ? {} : { ...state.buttons };
   const skipped: MrSkipped[] = [...source.skipped];
   const conflicts: Conflict[] = [];
+  if (mode === 'replace') {
+    for (const set of Object.keys(state.buttons).filter((x) => !(x in source.items))) {
+      conflicts.push({ kind: 'name', name: set });
+    }
+  }
   let count = 0;
   let unchanged = source.unchanged;
   for (const [set, ids] of Object.entries(source.items)) {
@@ -314,6 +326,11 @@ export function planSearch(
   const templates: SearchTemplate[] = mode === 'replace' ? [] : [...state.templates];
   const skipped: MrSkipped[] = [...source.skipped];
   const conflicts: Conflict[] = [];
+  if (mode === 'replace') {
+    for (const t of state.templates.filter((x) => !source.items.some((p) => p.label === x.label))) {
+      conflicts.push({ kind: 'name', name: t.label });
+    }
+  }
   let count = 0;
   let unchanged = source.unchanged;
   for (const p of source.items) {

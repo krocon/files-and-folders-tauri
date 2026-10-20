@@ -81,6 +81,11 @@ describe('mr import planning (design 026)', () => {
     expect(planShortcuts(source, own, 'merge').apply).toBeNull();
     const p = planShortcuts(source, own, 'replace');
     expect(p.apply?.keymap).toEqual({ OPEN_SETUP_DLG: ['Mod+,', 'F12'] });
+    // the own entries that replace drops are listed
+    expect(p.conflicts).toEqual([
+      { kind: 'action', id: 'OPEN_SETUP_DLG' },
+      { kind: 'action', id: 'CLONE_TAB' },
+    ]);
     // macOS: Mod+Q is reserved by the app menu
     const mac = planShortcuts(
       area([sc('OPEN_SETUP_DLG', 'Mod+Q')]),
@@ -114,6 +119,7 @@ describe('mr import planning (design 026)', () => {
     });
     const r = planButtons(source, state({ buttons: { ctrl: [] } }), 'replace');
     expect(Object.keys(r.apply?.buttons ?? {})).toEqual(['shift', 'alt']);
+    expect(r.conflicts).toEqual([{ kind: 'name', name: 'ctrl' }]);
     const same = planButtons(
       area({ alt: ['OPEN_VIEW_DLG'] }),
       state({ buttons: { alt: ['OPEN_VIEW_DLG'] } }),
@@ -170,7 +176,9 @@ describe('mr import planning (design 026)', () => {
     expect(
       planSearch(area([{ label: 'x', extensions: ['.x'] }]), full, 'merge').skipped[0].reason,
     ).toBe('too_many');
-    expect(planSearch(area([{ label: 'x', extensions: ['.x'] }]), full, 'replace').count).toBe(1);
+    const replaced = planSearch(area([{ label: 'x', extensions: ['.x'] }]), full, 'replace');
+    expect(replaced.count).toBe(1);
+    expect(replaced.conflicts.length).toBe(50);
   });
 
   it('tools, colours and settings', () => {
