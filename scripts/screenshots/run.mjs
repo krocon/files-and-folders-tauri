@@ -10,13 +10,16 @@
 //   pnpm screenshots                                all schemes × all scenes → screenshots/
 //   pnpm screenshots --theme classic-norton --scene main,actions-menu
 //   pnpm screenshots --out docs/screenshots --flat  one scheme, files named <scene>.png
+//   pnpm screenshots:docs                           the README pictures (scenes.json "docs") +
+//                                                   an overview of all schemes, compressed with pngquant
 //
 // Options: --theme a,b  --scene a,b  --out <dir>  --flat  --platform linux|windows|macos
 //          --lang en|de  --width 1280 --height 760  --scale 1|2  --jobs 4
 //          --no-build (use the existing dist/)  --headed  --chrome (installed Google Chrome)
-//          --list (print schemes and scenes)  --verbose (browser console)
+//          --list (print schemes and scenes)  --verbose (browser console)  --docs
 import { spawnSync } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +73,9 @@ const scale = Number(args.scale ?? 1);
 const jobs = Math.max(1, Number(args.jobs ?? 4));
 const flat = Boolean(args.flat);
 if (flat && themes.length > 1) fail('--flat needs exactly one --theme');
-const outDir = resolve(ROOT, typeof args.out === 'string' ? args.out : 'screenshots');
+const docs = Boolean(args.docs);
+if (docs && (args.theme || args.scene || args.out || flat)) fail('--docs takes its pictures from scenes.json ("docs")');
+const outDir = resolve(ROOT, docs ? config.docs.out : typeof args.out === 'string' ? args.out : 'screenshots');
 
 // ---- frontend build ------------------------------------------------------------------
 if (!args['no-build']) {
@@ -200,7 +205,7 @@ async function runStep(page, step) {
   await page.waitForTimeout(KEY_DELAY_MS);
 }
 
-async function capture(browser, theme, scene) {
+async function capture(browser, theme, scene, target) {
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: scale,
@@ -231,14 +236,63 @@ async function capture(browser, theme, scene) {
     const prelude = scene.prelude === false ? [] : (config.prelude ?? []);
     for (const step of [...prelude, ...scene.steps]) await runStep(page, step);
     await page.waitForTimeout(SETTLE_MS);
-    const dir = flat ? outDir : join(outDir, theme);
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${scene.name}.png`);
+    const file = target ?? join(flat ? outDir : join(outDir, theme), `${scene.name}.png`);
+    mkdirSync(dirname(file), { recursive: true });
     await page.screenshot({ path: file });
     return { file, errors };
   } finally {
     await context.close();
   }
+}
+
+// ---- docs: overview of all schemes, compression ------------------------------------------
+/** One picture with a tile per colour scheme (the `main` scene), labelled with its name. */
+async function renderOverview(browser, dir, file) {
+  const { columns, tileWidth } = config.docs.overview;
+  const tileHeight = Math.round((tileWidth * height) / width);
+  const tiles = allThemes
+    .map((theme) => {
+      const data = readFileSync(join(dir, `${theme}.png`)).toString('base64');
+      const name = config.themeNames?.[theme] ?? theme;
+      return `<figure><img src="data:image/png;base64,${data}" alt=""><figcaption>${name}</figcaption></figure>`;
+    })
+    .join('');
+  const html = `<!doctype html><meta charset="utf-8"><style>
+    body { margin: 0; padding: 16px; background: #f4f5f7; font: 600 15px/1.3 system-ui, sans-serif; color: #24292f; }
+    main { display: grid; grid-template-columns: repeat(${columns}, ${tileWidth}px); gap: 16px; }
+    figure { margin: 0; }
+    img { display: block; width: ${tileWidth}px; height: ${tileHeight}px; border-radius: 6px;
+          box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); }
+    figcaption { padding: 6px 2px 0; text-align: center; }
+  </style><main>${tiles}</main>`;
+  const page = await browser.newPage({
+    viewport: { width: columns * tileWidth + (columns - 1) * 16 + 32, height: 400 },
+    deviceScaleFactor: 1,
+  });
+  try {
+    await page.setContent(html, { waitUntil: 'load' });
+    await page.screenshot({ path: file, fullPage: true });
+  } finally {
+    await page.close();
+  }
+}
+
+/** pngquant if installed (60–70 % smaller, no visible loss); otherwise leave the files. */
+function compress(files) {
+  const probe = spawnSync('pngquant', ['--version'], { encoding: 'utf8' });
+  if (probe.status !== 0) {
+    console.log('  ! pngquant not found – pictures stay uncompressed (brew install pngquant / apt install pngquant)');
+    return;
+  }
+  let before = 0;
+  let after = 0;
+  for (const f of files) {
+    before += statSync(f).size;
+    spawnSync('pngquant', ['--force', '--skip-if-larger', '--strip', '--quality', '70-95', '--output', f, f]);
+    after += statSync(f).size;
+  }
+  const kb = (n) => `${Math.round(n / 1024)} KB`;
+  console.log(`  ✓ pngquant: ${kb(before)} → ${kb(after)}`);
 }
 
 // ---- run ---------------------------------------------------------------------------------
@@ -256,21 +310,40 @@ try {
   );
 }
 
+const sceneByName = new Map(config.scenes.map((s) => [s.name, s]));
 const scenes = config.scenes.filter((s) => sceneNames.includes(s.name));
-const queue = themes.flatMap((theme) => scenes.map((scene) => ({ theme, scene })));
+let queue = themes.flatMap((theme) => scenes.map((scene) => ({ theme, scene })));
+const overviewDir = docs ? mkdtempSync(join(tmpdir(), 'fnf-overview-')) : null;
+if (docs) {
+  const { images, overview } = config.docs;
+  queue = [
+    ...images.map((img) => ({ theme: img.theme, scene: sceneByName.get(img.scene), file: join(outDir, img.file) })),
+    ...allThemes.map((theme) => ({
+      theme,
+      scene: sceneByName.get(overview.scene),
+      file: join(overviewDir, `${theme}.png`),
+    })),
+  ];
+  for (const item of queue) if (!item.scene) fail(`scenes.json "docs": unknown scene for ${item.file}`);
+}
 const total = queue.length;
 let done = 0;
 let failed = 0;
 const started = Date.now();
-console.log(`▸ ${total} screenshots (${themes.length} schemes × ${scenes.length} scenes, ${platform}, ${lang}) → ${relative(ROOT, outDir) || '.'}`);
+console.log(
+  docs
+    ? `▸ ${total} screenshots for the docs (${platform}, ${lang}) → ${relative(ROOT, outDir)}`
+    : `▸ ${total} screenshots (${themes.length} schemes × ${scenes.length} scenes, ${platform}, ${lang}) → ${relative(ROOT, outDir) || '.'}`,
+);
 
 async function worker() {
   for (let item = queue.shift(); item; item = queue.shift()) {
     const { theme, scene } = item;
     try {
-      const { file, errors } = await capture(browser, theme, scene);
+      const { file, errors } = await capture(browser, theme, scene, item.file);
       done += 1;
-      console.log(`  ✓ [${done}/${total}] ${relative(ROOT, file)}`);
+      const shown = overviewDir && file.startsWith(overviewDir) ? `(overview) ${theme}` : relative(ROOT, file);
+      console.log(`  ✓ [${done}/${total}] ${shown}`);
       for (const line of errors) console.log(`      ${line}`);
     } catch (err) {
       done += 1;
@@ -280,6 +353,13 @@ async function worker() {
   }
 }
 await Promise.all(Array.from({ length: Math.min(jobs, total) }, worker));
+if (docs && failed === 0) {
+  const file = join(outDir, config.docs.overview.file);
+  await renderOverview(browser, overviewDir, file);
+  console.log(`  ✓ ${relative(ROOT, file)}`);
+  compress([...config.docs.images.map((img) => join(outDir, img.file)), file]);
+}
+if (overviewDir) rmSync(overviewDir, { recursive: true, force: true });
 await browser.close();
 server.close();
 const secs = ((Date.now() - started) / 1000).toFixed(1);

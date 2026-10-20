@@ -34,7 +34,7 @@ no local web server, no browser tab, just one small app.
 The file list is a [GuiExpert Table](https://github.com/guiexperttable/mono): virtual scrolling, 100 000 entries
 without stutter.
 
-![Files and Folders with the classic Norton colour scheme: two panels with tabs, marked files and the button bar](docs/screenshots/fnf-norton.png)
+![Files and Folders with the classic Norton colour scheme: two panels with tabs, marked files and the button bar](docs/screenshots/main.png)
 
 <p align="center"><i>The classic <b>Norton</b> colour scheme – one of eleven built-in designs.</i></p>
 
@@ -69,12 +69,30 @@ without stutter.
 - **Settings dialog** with search, export/import of the whole configuration
 - **English and German** UI, switchable at runtime
 
-![The Actions menu: every action grouped in four columns, with its keyboard shortcut](docs/screenshots/fnf-norton-actions-menu.png)
+![The Actions menu: every action grouped in four columns, with its keyboard shortcut](docs/screenshots/actions-menu.png)
 
 <p align="center"><i>The <b>Actions</b> menu (<code>Ctrl+F12</code>) lists every action with its shortcut.</i></p>
 
 The complete feature list with all details (in German) is in **[docs/features.md](docs/features.md)**; the
 comparison with the previous version is in [docs/feature-parity.md](docs/feature-parity.md).
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Copy dialog with live count of files, folders and size](docs/screenshots/copy.png) | ![Task list with a running copy job, a waiting move and a finished delete](docs/screenshots/tasks.png) |
+| **Copy** – target, conflict default, background (*Light*) | **Tasks** – progress, rate, pause and cancel (*Crimson*) |
+| ![Multi rename with live preview of the new names](docs/screenshots/multi-rename.png) | ![Search results in their own tab](docs/screenshots/search-results.png) |
+| **Multi rename** – pattern, counter, preview (*Modern light*) | **Search** – results stream into a tab (*Modern dark*) |
+| ![Image viewer](docs/screenshots/viewer.png) | ![Colour scheme editor with contrast check](docs/screenshots/colour-schemes.png) |
+| **Viewer** (`F3`) – text, hex and images (*Blackboard*) | **Colour schemes** – live editor, WCAG check (*Coffee*) |
+
+All eleven built-in colour schemes:
+
+![The main window in all eleven colour schemes](docs/screenshots/colour-schemes-overview.png)
+
+The pictures are generated: `pnpm screenshots:docs` refreshes them, `pnpm screenshots` captures every dialog in
+every colour scheme ([docs/screenshots.md](docs/screenshots.md)).
 
 ## Status and roadmap
 

@@ -345,5 +345,69 @@
         }
       ]
     }
-  ]
+  ],
+  "docs": {
+    "out": "docs/screenshots",
+    "images": [
+      {
+        "file": "main.png",
+        "theme": "classic-norton",
+        "scene": "main"
+      },
+      {
+        "file": "actions-menu.png",
+        "theme": "classic-norton",
+        "scene": "actions-menu"
+      },
+      {
+        "file": "copy.png",
+        "theme": "classic-light",
+        "scene": "copy-dialog"
+      },
+      {
+        "file": "tasks.png",
+        "theme": "crimson",
+        "scene": "task-list"
+      },
+      {
+        "file": "multi-rename.png",
+        "theme": "light",
+        "scene": "multi-rename-dialog"
+      },
+      {
+        "file": "search-results.png",
+        "theme": "dark",
+        "scene": "search-results"
+      },
+      {
+        "file": "viewer.png",
+        "theme": "classic-blackboard",
+        "scene": "view-image"
+      },
+      {
+        "file": "colour-schemes.png",
+        "theme": "classic-coffee",
+        "scene": "colour-schemes-dialog"
+      }
+    ],
+    "overview": {
+      "file": "colour-schemes-overview.png",
+      "scene": "main",
+      "columns": 4,
+      "tileWidth": 480
+    }
+  },
+  "themeNames": {
+    "classic-light": "Light",
+    "classic-paper": "Paper",
+    "classic-bitbucket": "Bitbucket",
+    "classic-cypress": "Cypress",
+    "classic-blackboard": "Blackboard",
+    "classic-coffee": "Coffee",
+    "classic-combat": "Combat",
+    "classic-norton": "Norton",
+    "light": "Modern light",
+    "dark": "Modern dark",
+    "crimson": "Crimson"
+  }
 }

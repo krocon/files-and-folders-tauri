@@ -31,12 +31,25 @@ einige Minuten.
 | `--chrome` | installiertes Google Chrome statt Playwrights Chromium (dann ist `screenshots:install` unnötig) |
 | `--headed` | Browser sichtbar (zum Nachsehen beim Schreiben neuer Szenen) |
 | `--verbose` | Konsole des Browsers ausgeben |
+| `--docs` | die Bilder für README/Doku (s. u., = `pnpm screenshots:docs`) |
+
+## Bilder für README und Doku
+
+`pnpm screenshots:docs` erzeugt die eingecheckten Bilder in `docs/screenshots/` neu: die Auswahl aus
+`scenes.json` → `"docs"."images"` (Szene + Farbschema + Dateiname) und `colour-schemes-overview.png`, eine
+Kachelübersicht der Szene `main` in allen Farbschemata (Namen aus `"themeNames"`). Ist `pngquant` installiert
+(`brew install pngquant`), werden die Bilder danach verlustarm komprimiert (~65 % kleiner; zusammen unter
+1 MB). Feste Dateinamen: ein neuer Lauf überschreibt nur, `git diff` zeigt, welches Bild sich geändert hat.
+
+Neu erzeugen nur, wenn sich die Oberfläche sichtbar geändert hat – jede Version eines Bildes bleibt in der
+Git-Historie. Der volle Satz aus `pnpm screenshots` (~350 Bilder, ~60 MB) wird nicht eingecheckt
+(`screenshots/` steht in `.gitignore`); für eine Galerie eignen sich ein Release-Anhang oder GitHub Pages.
 
 Beispiele:
 
 ```bash
-# die beiden Bilder der README
-pnpm screenshots --theme classic-norton --scene main,actions-menu --out docs/screenshots --flat
+# nur zwei Szenen in einem Schema, ohne Unterordner
+pnpm screenshots --theme classic-norton --scene main,actions-menu --out /tmp/fnf --flat
 # alle Dialoge auf Deutsch mit macOS-Kürzeln in doppelter Auflösung
 pnpm screenshots --lang de --platform macos --scale 2 --theme light
 ```

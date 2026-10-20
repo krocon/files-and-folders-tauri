@@ -43,6 +43,20 @@ test('every action of scenes.json exists (shortcut or catalog label)', () => {
   assert.equal(new Set(scenes.scenes.map((s) => s.name)).size, scenes.scenes.length);
 });
 
+test('docs pictures refer to known scenes and schemes, with unique file names', () => {
+  const cfg = JSON.parse(readFileSync(new URL('./screenshots/scenes.json', import.meta.url), 'utf8'));
+  const names = new Set(cfg.scenes.map((s) => s.name));
+  for (const img of cfg.docs.images) {
+    assert.ok(names.has(img.scene), img.scene);
+    assert.ok(cfg.themes.includes(img.theme), img.theme);
+    assert.match(img.file, /^[a-z0-9-]+\.png$/);
+  }
+  assert.ok(names.has(cfg.docs.overview.scene));
+  const files = [...cfg.docs.images.map((i) => i.file), cfg.docs.overview.file];
+  assert.equal(new Set(files).size, files.length);
+  assert.deepEqual(Object.keys(cfg.themeNames).sort(), [...cfg.themes].sort());
+});
+
 test('action labels come from the catalog without the ellipsis', () => {
   const src = "  OPEN_THEMES_DLG: m('Colour schemes…', 'config', '013'),\n  X: m('It\\'s', 'a'),";
   assert.equal(actionLabel(src, 'OPEN_THEMES_DLG'), 'Colour schemes');

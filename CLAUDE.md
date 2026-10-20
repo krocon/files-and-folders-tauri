@@ -50,7 +50,7 @@
 | Frontend-Build | `pnpm build` |
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
 | Alles prüfen | `pnpm check` |
-| Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), einmalig `pnpm screenshots:install` |
+| Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), `pnpm screenshots:docs` (eingecheckte Bilder der README in `docs/screenshots/`), einmalig `pnpm screenshots:install` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
