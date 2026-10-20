@@ -59,7 +59,7 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
           </fieldset>
           @if (canEncrypt(format())) {
             <label class="field">
-              <span>{{ t.passwordOptional }}</span>
+              <span>{{ t.packPassword }}</span>
               <input
                 type="password"
                 autocomplete="new-password"

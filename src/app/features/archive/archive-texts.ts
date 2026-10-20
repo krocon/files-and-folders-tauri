@@ -41,6 +41,7 @@ export const ARCHIVE_EN = {
   encryptedBadge: 'encrypted',
   password: 'Password',
   passwordOptional: 'Password (if encrypted)',
+  packPassword: 'Password (optional)',
   passwordRepeat: 'Repeat password',
   passwordTitle: 'Encrypted archive',
   passwordIntro: (path: string) => `“${path}” is encrypted. Enter its password:`,

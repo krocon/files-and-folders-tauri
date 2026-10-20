@@ -38,6 +38,7 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   encryptedBadge: 'verschlüsselt',
   password: 'Passwort',
   passwordOptional: 'Passwort (falls verschlüsselt)',
+  packPassword: 'Passwort (optional)',
   passwordRepeat: 'Passwort wiederholen',
   passwordTitle: 'Verschlüsseltes Archiv',
   passwordIntro: (path) => `„${path}“ ist verschlüsselt. Bitte das Passwort eingeben:`,

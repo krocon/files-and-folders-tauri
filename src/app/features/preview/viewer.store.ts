@@ -196,8 +196,10 @@ export class ViewerStore {
         this.error.set(error);
         // an encrypted archive entry (design 025 E4): ask, then show it again
         if (isPasswordError(error)) {
+          const side = this.side();
+          const archive = side ? (this.ws.panel(side)?.store.archive()?.path ?? null) : null;
           this.close();
-          this.passwordPrompt.askFor(error, null, () => this.open());
+          this.passwordPrompt.askFor(error, archive, () => this.open());
         }
       }
     } finally {
