@@ -1,7 +1,7 @@
 # Design 018: Feature-Parität (zusammen mit 020)
 
 > **Status:** ✅ umgesetzt (2026-10-19) · **Branch:** `feat/feature-paritaet` · **Vorlage:** `old_project/`
-> (files-and-folders-mr) · Ergebnis: [`docs/feature-parity.md`](../docs/feature-parity.md)
+> (files-and-folders-mr) · Ergebnis: [`docs/feature-parity.md`](../../docs/feature-parity.md)
 
 ## 1. Vorgehen
 

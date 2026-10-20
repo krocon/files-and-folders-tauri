@@ -425,7 +425,7 @@ eine Leerzeile).
 
 | Prompt | Inhalt (eine Zeile) |
 |---|---|
-| 021 Shell-Leiste | ✅ umgesetzt (Design `prompts/021-shell-leiste.design.md`): Pipes statt PTY, Hilfsjob `shell`, Sicherheitsmodell in CLAUDE.md §4. |
+| 021 Shell-Leiste | ✅ umgesetzt (Design `prompts/done/021-shell-leiste.design.md`): Pipes statt PTY, Hilfsjob `shell`, Sicherheitsmodell in CLAUDE.md §4. |
 | 022 Konfigurations-Editoren | Buttons (`OPEN_BUTTON_CONFIG_DLG`, Override je Modifier-Satz), Dateitypen (Kategorien für Icons/Markieren/Suche), dauerhafte Suchvorlagen; Vollbild-Aktion (J14). |
 | 023 Eingebauter Editor | F4 intern: Text bearbeiten, Kodierung erhalten, Suchen/Ersetzen, Rückfrage bei ungespeichert. |
 | 024 Attribute ändern | Rechte/Eigentümer (Unix), R/H/S/A (Windows), Zeitstempel – als Job mit Rust-Validierung. |

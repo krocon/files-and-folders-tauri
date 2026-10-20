@@ -39,7 +39,7 @@ Test belegt ist.
 4. **Fehler der alten Version** (legacy-mr §11, legacy §9) einzeln prüfen: in der Neuauflage nicht vorhanden → Verweis
    auf Test oder Begründung („entfällt“).
 5. **Prompt 020 (Actions-Menü)** gehört dazu: das Menü ▴ der Button-Leiste wie im Soll-Screenshot
-   (`prompts/020-soll.png`) – ist zugleich die sichtbarste Paritäts-Zeile.
+   (`prompts/done/020-soll.png`) – ist zugleich die sichtbarste Paritäts-Zeile.
 6. **Ende-zu-Ende-Durchlauf eines Arbeitstags** (Navigieren, Markieren, Kopieren mit Konflikt, Multi-Rename,
    Gruppieren, Suchen, Tabs, Actions-Menü, Neustart) unter Linux (Xvfb) im Container; macOS/Windows als Checkliste in
    `TODO.md` für Marc.

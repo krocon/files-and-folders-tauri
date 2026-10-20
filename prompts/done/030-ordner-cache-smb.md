@@ -2,7 +2,7 @@
 
 > **Slug:** `ordner-cache-smb` · **Braucht:** 029 (Tab-Cache E5, Drossel E2, Listing-Gate E6, `FNF_TEST_SLOW`), 012
 > · **Umfang:** M
-> Lies zuerst `prompts/000-arbeitsweise.md`, dann `prompts/029-reaktionsfaehig-bei-jobs.design.md` (E1–E6, Review #5–#9).
+> Lies zuerst `prompts/000-arbeitsweise.md`, dann `prompts/done/029-reaktionsfaehig-bei-jobs.design.md` (E1–E6, Review #5–#9).
 > Anlass: Marcs Frage vom 20.10.2026 – auf SMB-Freigaben unter macOS dauert jeder Ordnerwechsel, auch zurück in einen
 > gerade besuchten Ordner (z. B. nach dem Kopieren dorthin). Kurzanalyse und Empfehlung im selben Gespräch: Cache
 > je Pfad nach „sofort zeigen, im Hintergrund prüfen“, **kein** rekursives Vorladen, dazu das Listing auf macOS selbst

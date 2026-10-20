@@ -1,6 +1,6 @@
 # Release und Distribution
 
-> Stand: Prompt 017 (Design: `prompts/017-release-distribution.design.md`). **Releases, Tags, Signierung und
+> Stand: Prompt 017 (Design: `prompts/done/017-release-distribution.design.md`). **Releases, Tags, Signierung und
 > Veröffentlichung nur mit Marcs ausdrücklicher Freigabe.** Lizenz: **MIT** (`LICENSE`, `license` in
 > `Cargo.toml`/`package.json`, `bundle.license` in `tauri.conf.json`).
 

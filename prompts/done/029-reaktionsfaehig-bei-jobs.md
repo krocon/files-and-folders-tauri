@@ -4,9 +4,9 @@
 > Lies zuerst `prompts/000-arbeitsweise.md`.
 > Anlass: Marcs Beobachtung vom 20.10.2026 – beim Kopieren einer 15-GB-Datei auf ein langsames Laufwerk
 > (~14 MB/s) ist die UI „manchmal nicht nutzbar“; das Ziel-Panel zeigt minutenlang immer wieder „Loading…“.
-> Grundlage: Code-Analyse vom selben Tag (unten „Befund“). Verwandte Entscheidungen: `prompts/012-ueberwachung-drag-drop.design.md`
-> (E2–E4: Watcher, Entprellen, „höchstens ein Reload“), `prompts/005-job-queue.design.md` (Fortschritt, Drosselung),
-> `prompts/001-guiexpert-dateiliste.design.md` (Overlay, `TableBridge`).
+> Grundlage: Code-Analyse vom selben Tag (unten „Befund“). Verwandte Entscheidungen: `prompts/done/012-ueberwachung-drag-drop.design.md`
+> (E2–E4: Watcher, Entprellen, „höchstens ein Reload“), `prompts/done/005-job-queue.design.md` (Fortschritt, Drosselung),
+> `prompts/done/001-guiexpert-dateiliste.design.md` (Overlay, `TableBridge`).
 
 ## Ziel
 

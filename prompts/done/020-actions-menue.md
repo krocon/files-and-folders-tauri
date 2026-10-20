@@ -10,7 +10,7 @@ Das **Actions-Menü ▴** in der unteren Button-Leiste soll visuell, strukturell
 
 Aktuell zeigt das Menü vier nach Kategorien gefilterte Listen mit Spaltenüberschriften, unstrukturiert ohne Trennlinien und mit schlichtem Text für Kürzel. Der Soll-Zustand zeichnet sich durch vier präzise gegliederte Spalten mit dezenten horizontalen Trennlinien, den Verzicht auf Spaltenüberschriften sowie hochwertige, dunkle **Shortcut-Badges** mit Akkord-Unterstützung und originalgetreuen Tokens (`^`, `⌘`, `alt`, `⇧`, `+`) aus.
 
-Vorgängerversion: siehe prompts/020-soll.png, der alte Code: im Folder 'old_project'
+Vorgängerversion: siehe prompts/done/020-soll.png, der alte Code: im Folder 'old_project'
 ---
 
 ## Analyse Ist-Zustand vs. Soll-Zustand

@@ -32,7 +32,7 @@
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–030 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -252,7 +252,7 @@ prompts/                     Feature-Prompts (s. o.)
     `NAVIGATE_FIRST_CELL`/`NAVIGATE_LAST_CELL` umbiegen.
   - Cursor (Total Commander) ↔ `FocusModel` (über den Pfad abgeglichen); markierte Dateien = eigenes `Set<path>` im
     Store, **nicht** `SelectionModel` (index-basiert, überlebt kein Sortieren). Umsetzung: `features/browser/file-list/`,
-    Begründung und alle Workarounds (G1–G14): `prompts/001-guiexpert-dateiliste.design.md`.
+    Begründung und alle Workarounds (G1–G14): `prompts/done/001-guiexpert-dateiliste.design.md`.
   - Sortieren per Spaltenkopf geht nur per **Doppelklick**; der Handler ruft `stopPropagation()` und es gibt kein
     Sortier-Ereignis. `setRows` sortiert nicht neu (`reSort()` danach).
   - Table-API nur über `TableBridge` (`file-list/table-bridge.ts`) ansprechen – dort sind die Workarounds gebündelt.

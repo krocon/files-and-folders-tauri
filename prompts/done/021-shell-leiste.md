@@ -3,7 +3,7 @@
 > **Slug:** `shell-leiste` · **Braucht:** 004, 005, 011, 012 · **Umfang:** M
 > Lies zuerst `prompts/000-arbeitsweise.md`.
 > Altes Verhalten: `docs/legacy-analysis-mr.md` §1.7 (Shell-Panel, Zeile 5), §9 (`POST /api/shell`), §11 Punkt 12
-> (offenes TODO ↑/↓/Esc); `docs/ui-layout.md` „Zeile 5 – Shell-Zeile“; Entscheidung `prompts/011-os-integration-tools.design.md`
+> (offenes TODO ↑/↓/Esc); `docs/ui-layout.md` „Zeile 5 – Shell-Zeile“; Entscheidung `prompts/done/011-os-integration-tools.design.md`
 > E7; Matrix `docs/feature-parity.md` Abschnitt H. Quellcode: `old_project/apps/fnf/src/app/feature/main/footer/shellpanel/`
 > (Frontend) und `old_project/apps/fnf-api/src/app/shell/` (Backend, `shell-spawn-manager.ts`).
 
@@ -57,7 +57,7 @@ Die Ausnahme kommt mit Begründung in `CLAUDE.md` §4 und `docs/architecture.md`
 
 ## Aufgaben
 
-1. **Design** (`prompts/021-shell-leiste.design.md`). Zu entscheiden und zu begründen:
+1. **Design** (`prompts/done/021-shell-leiste.design.md`). Zu entscheiden und zu begründen:
    - **Pipes vs. PTY:** `std::process::Command` mit Pipes (stdout/stderr getrennt, stdin geschlossen bzw.
      `/dev/null`, damit nichts auf Eingabe wartet) gegen `portable-pty` + Terminal-Darstellung (xterm.js). Vorschlag:
      Pipes für die Zeile (wie TC/mr), interaktive Programme (`vim`, `top`, `ssh`, Passwortabfragen) laufen über
