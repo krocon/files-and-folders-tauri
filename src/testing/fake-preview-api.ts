@@ -49,7 +49,7 @@ export class FakePreviewApi extends PreviewApi {
     accessedMs: null,
     readonly: false,
     format: TEXT_FORMAT,
-    unix: { mode: 0o644, uid: 1, gid: 1, owner: 'u', group: 'g' },
+    unix: { mode: 0o644, uid: 1, gid: 1, owner: 'u', group: 'g', flagsHidden: null },
     windows: null,
   });
   hold = false;

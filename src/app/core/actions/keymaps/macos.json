@@ -61,6 +61,7 @@
   "OPEN_UNPACK_DLG": ["Alt+F9"],
   "OPEN_FIND_DUPLICATES_DLG": ["Alt+Shift+F7", "Ctrl+Alt+Shift+F"],
   "OPEN_ATTRIBUTE_DLG": ["Alt+Enter", "Mod+I"],
+  "OPEN_CHANGE_ATTRIBUTES_DLG": ["Mod+Shift+F2"],
   "OPEN_MULTIRENAME_DLG": ["Mod+F6", "Ctrl+Alt+M", "Ctrl+F6"],
   "OPEN_GROUPFILES_DLG": ["Alt+G", "Mod+Alt+G", "Ctrl+Alt+G"],
   "OPEN_DELETE_EMPTY_FOLDERS_DLG": ["Mod+Alt+R", "Mod+Alt+Shift+D", "Ctrl+Alt+Shift+D"],

@@ -34,6 +34,7 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   unquotable_name:
     'A name cannot be inserted safely for this shell (control characters, or % and ! with cmd.exe).',
   drag_not_held: 'The mouse button was released before the drag could leave the window.',
+  symlink_skipped: 'This is a link – links are left unchanged.',
   invalid_path: 'The path is invalid.',
   no_home_directory: 'Your home folder could not be determined.',
   no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
@@ -74,6 +75,7 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   unquotable_name:
     'Ein Name lässt sich für diese Shell nicht sicher einfügen (Steuerzeichen oder % und ! bei cmd.exe).',
   drag_not_held: 'Die Maustaste wurde losgelassen, bevor das Ziehen das Fenster verlassen konnte.',
+  symlink_skipped: 'Das ist ein Link – Links bleiben unverändert.',
   invalid_path: 'Der Pfad ist ungültig.',
   no_home_directory: 'Ihr Home-Ordner konnte nicht ermittelt werden.',
   no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',

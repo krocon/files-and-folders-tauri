@@ -67,6 +67,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   DELETE_PERMANENT: 'Endgültig löschen…',
   RENAME_INLINE: 'In der Liste umbenennen',
   OPEN_ATTRIBUTE_DLG: 'Eigenschaften…',
+  OPEN_CHANGE_ATTRIBUTES_DLG: 'Attribute ändern…',
   OPEN_PACK_DLG: 'Packen…',
   OPEN_UNPACK_DLG: 'Entpacken…',
   OPEN_MULTIRENAME_DLG: 'Multi-Rename…',

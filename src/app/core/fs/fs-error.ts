@@ -32,6 +32,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'invalid_command',
   'unquotable_name',
   'drag_not_held',
+  'symlink_skipped',
   'invalid_path',
   'no_home_directory',
   'io',

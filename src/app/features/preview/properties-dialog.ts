@@ -6,6 +6,8 @@ import { formatSize } from '../../shared/format';
 import { modeOctal, modeString } from './permissions';
 import { PV_TEXTS } from './preview-texts';
 import { PropertiesStore } from './properties.store';
+import { ActionService } from '../../core/actions/action.service';
+import { AttributesStore } from '../attributes/attributes.store';
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
 
@@ -114,13 +116,17 @@ export function propertyRows(p: Properties): PropertyRow[] {
               </dd>
             }
           </dl>
-          <p class="hint">{{ t.changeLater }}</p>
         } @else if (s.error(); as e) {
           <p class="error" role="alert">{{ describe(e) }} – {{ e.message }}</p>
         } @else {
           <p class="hint">{{ t.loading }}</p>
         }
         <div class="buttons">
+          @if (canChange()) {
+            <button type="button" class="btn" [title]="t.changeAttributesHint" (click)="change()">
+              {{ t.changeAttributes }}
+            </button>
+          }
           <button type="button" class="btn primary" data-autofocus (click)="s.close()">
             {{ t.close }}
           </button>
@@ -161,12 +167,31 @@ export function propertyRows(p: Properties): PropertyRow[] {
     .buttons {
       display: flex;
       justify-content: flex-end;
+      gap: var(--spacing-2);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PropertiesDialog {
   protected readonly s = inject(PropertiesStore);
+  private readonly attrs = inject(AttributesStore);
+  private readonly actions = inject(ActionService);
+  /** "Change…" (design 024 E1): not for links, not where the action is off (archive, unchecked). */
+  protected readonly canChange = computed(() => {
+    const e = this.s.entry();
+    return (
+      !!e && e.kind !== 'symlink' && this.actions.state('OPEN_CHANGE_ATTRIBUTES_DLG') === 'ready'
+    );
+  });
+
+  /** Hands the entry over to the change-attributes dialog (the focus returns to the list). */
+  protected change(): void {
+    const entry = this.s.entry();
+    if (entry) {
+      this.s.release();
+      void this.attrs.openFor([entry]);
+    }
+  }
   protected readonly t = PV_TEXTS;
   protected readonly describe = describeFsError;
   protected readonly rows = computed(() => {
