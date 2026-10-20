@@ -39,7 +39,11 @@ export interface MrArea<T> {
   readonly items: T;
   /** Entries equal to mr's defaults (not imported). */
   readonly unchanged: number;
+  /** At most 200 entries; more are only counted. */
   readonly skipped: readonly MrSkipped[];
+  readonly skippedMore: number;
+  /** SHA-256 of the translated tools – sent back so Rust writes only what was shown. */
+  readonly digest: string | null;
 }
 
 export interface MrShortcut {
@@ -86,6 +90,15 @@ export interface MrScan {
   readonly setup: MrArea<Readonly<Record<string, unknown>>> | null;
 }
 
+/** Tools chosen in the preview (review 026 #1/#2/#9). */
+export interface MrToolsChoice {
+  /** The `assets` folder of the scan. */
+  readonly from: string;
+  readonly digest: string;
+  readonly ids: readonly string[];
+  readonly replace: boolean;
+}
+
 /** What to write; planned in the frontend against the current state. */
 export interface MrApply {
   readonly keymap?: RawBindings;
@@ -93,9 +106,8 @@ export interface MrApply {
   readonly fileTypes?: readonly FileType[];
   /** Only the keys to set (merged into `settings.json`). */
   readonly settings?: Readonly<Record<string, unknown>>;
-  /** The `assets` folder of the scan: Rust reads the tools there again (programs never come from here). */
-  readonly toolsFrom?: string;
-  readonly toolsReplace?: boolean;
+  /** Chosen tools: Rust reads them again from `from` and writes nothing if `digest` differs. */
+  readonly tools?: MrToolsChoice;
   /** Colours follow through the theme import – only `themes.json` is backed up. */
   readonly backupThemes?: boolean;
 }

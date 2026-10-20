@@ -457,11 +457,10 @@ fn apply_backs_up_and_writes_the_parts() {
                 .unwrap()
                 .clone(),
         ),
-        tools_from: None,
-        tools_replace: false,
+        tools: None,
         backup_themes: true,
     };
-    let report = apply(&files, plan.clone(), MrOs::Linux);
+    let report = apply(&files, plan.clone(), MrOs::Linux, None);
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
     let parts: BTreeSet<&str> = report.imported.iter().map(String::as_str).collect();
     assert_eq!(
@@ -504,7 +503,7 @@ fn apply_backs_up_and_writes_the_parts() {
         "Comics"
     );
     // a second import keeps the first backup
-    let report = apply(&files, plan, MrOs::Linux);
+    let report = apply(&files, plan, MrOs::Linux, None);
     assert!(
         report
             .backups
@@ -518,10 +517,24 @@ fn apply_backs_up_and_writes_the_parts() {
     );
 }
 
+/// The tools part as the frontend sends it after a scan: chosen ids + the digest it saw.
+fn choose(assets: &Path, ids: &[&str], replace: bool) -> (MrApply, Option<PathBuf>) {
+    let area = scan(assets, MrOs::Linux).tools.unwrap();
+    let plan = MrApply {
+        tools: Some(MrToolsChoice {
+            from: assets.to_string_lossy().into_owned(),
+            digest: area.digest.clone().unwrap(),
+            ids: ids.iter().map(|s| s.to_string()).collect(),
+            replace,
+        }),
+        ..MrApply::default()
+    };
+    (plan, Some(assets.to_path_buf()))
+}
+
 #[test]
 fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
     let (_d, _, assets) = mr_tree();
-    let from = Some(assets.to_string_lossy().into_owned());
     let dir = tempdir().unwrap();
     let files = config(dir.path());
     fs::create_dir_all(files.tools.parent().unwrap()).unwrap();
@@ -532,11 +545,8 @@ fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
             {"id":"mine","label":"Mine","program":"mine"}]}"#,
     )
     .unwrap();
-    let plan = MrApply {
-        tools_from: from.clone(),
-        ..MrApply::default()
-    };
-    let report = apply(&files, plan, MrOs::Linux);
+    let (plan, from) = choose(&assets, &["MELD", "CMD_EDIT_FILE"], false);
+    let report = apply(&files, plan, MrOs::Linux, from.clone());
     assert_eq!(report.imported, vec!["tools"]);
     assert!(report.backups[0].ends_with("tools.json.bak"));
     let cfg = tools::load(&files.tools);
@@ -545,49 +555,225 @@ fn apply_merges_or_replaces_tools_and_keeps_a_broken_file() {
     assert!(cfg.find("mine").is_some() && cfg.find("CMD_EDIT_FILE").is_some());
     assert_eq!(cfg.terminal.unwrap().program, "xterm");
     // replace: own tools = the imported ones
-    let plan = MrApply {
-        tools_from: from.clone(),
-        tools_replace: true,
-        ..MrApply::default()
-    };
-    apply(&files, plan, MrOs::Linux);
+    let (plan, _) = choose(&assets, &["MELD", "CMD_EDIT_FILE"], true);
+    apply(&files, plan, MrOs::Linux, from.clone());
     assert!(tools::load(&files.tools).find("mine").is_none());
     // a broken file by hand is not replaced
     fs::write(&files.tools, "{ broken").unwrap();
-    let plan = MrApply {
-        tools_from: from.clone(),
-        ..MrApply::default()
-    };
-    let report = apply(&files, plan, MrOs::Linux);
+    let (plan, _) = choose(&assets, &["MELD"], false);
+    let report = apply(&files, plan, MrOs::Linux, from.clone());
     assert!(report.imported.is_empty());
     assert_eq!(report.warnings[0].code, "part_skipped");
     assert_eq!(fs::read_to_string(&files.tools).unwrap(), "{ broken");
     // the tools come from the mr files only: a folder without them writes nothing
     fs::remove_file(&files.tools).unwrap();
-    let plan = MrApply {
-        tools_from: Some(dir.path().to_string_lossy().into_owned()),
-        ..MrApply::default()
-    };
-    let report = apply(&files, plan, MrOs::Linux);
+    let (plan, _) = choose(&assets, &["MELD"], false);
+    let report = apply(&files, plan, MrOs::Linux, Some(dir.path().to_path_buf()));
     assert!(report.imported.is_empty() && !files.tools.exists());
     assert_eq!(report.warnings[0].code, "part_skipped");
+}
+
+#[test]
+fn only_the_chosen_tools_and_only_what_was_shown() {
+    // review 026 #1: one tool chosen, the other stays out
+    let (_d, _, assets) = mr_tree();
+    let dir = tempdir().unwrap();
+    let files = config(dir.path());
+    let (plan, from) = choose(&assets, &["MELD"], false);
+    let report = apply(&files, plan, MrOs::Linux, from.clone());
+    assert_eq!(report.imported, vec!["tools"]);
+    let cfg = tools::load(&files.tools);
+    assert!(cfg.find("MELD").is_some());
+    assert_eq!(cfg.find("CMD_EDIT_FILE").map(|t| t.program.as_str()), None);
+    // review 026 #2: the file changed after the preview → nothing is written
+    let (plan, from) = choose(&assets, &["CMD_EDIT_FILE"], false);
+    let file = assets.join("tool/custom/linux.json");
+    let text = fs::read_to_string(&file)
+        .unwrap()
+        .replace("gedit", "/tmp/evil.sh");
+    fs::write(&file, text).unwrap();
+    let before = fs::read_to_string(&files.tools).unwrap();
+    let report = apply(&files, plan, MrOs::Linux, from);
+    assert!(report.imported.is_empty());
+    assert_eq!(report.warnings[0].code, "source_changed");
+    assert_eq!(fs::read_to_string(&files.tools).unwrap(), before);
+    // the digest is the same for the same content and changes with it
+    let a = scan(&assets, MrOs::Linux).tools.unwrap().digest.unwrap();
+    assert_eq!(a, scan(&assets, MrOs::Linux).tools.unwrap().digest.unwrap());
+    assert_eq!(a.len(), 64);
+}
+
+#[test]
+fn tools_beyond_the_limit_are_refused() {
+    // review 026 #6: 200 own tools + 1 imported – nothing is dropped silently
+    let (_d, _, assets) = mr_tree();
+    let dir = tempdir().unwrap();
+    let files = config(dir.path());
+    fs::create_dir_all(files.tools.parent().unwrap()).unwrap();
+    let own: Vec<Value> = (0..tools::MAX_TOOLS)
+        .map(|i| serde_json::json!({"id": format!("t{i}"), "label": "T", "program": "true"}))
+        .collect();
+    let text = serde_json::json!({"version": 1, "tools": own}).to_string();
+    fs::write(&files.tools, &text).unwrap();
+    let (plan, from) = choose(&assets, &["MELD"], false);
+    let report = apply(&files, plan, MrOs::Linux, from);
+    assert!(report.imported.is_empty());
+    assert_eq!(report.warnings[0].code, "too_many");
+    assert_eq!(fs::read_to_string(&files.tools).unwrap(), text);
+}
+
+#[test]
+fn settings_keep_their_values_when_the_import_is_invalid() {
+    // review 026 #3: an import value the schema refuses keeps the old one
+    let dir = tempdir().unwrap();
+    let files = config(dir.path());
+    let mine = serde_json::json!([{"label": "mine", "form": {"name": "*.x"}}]);
+    settings::save(
+        &files.settings,
+        serde_json::json!({"search.templates": mine, "behavior.spaceCalcSize": false})
+            .as_object()
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+    let huge: Vec<Value> = (0..45)
+        .map(|i| serde_json::json!({"label": format!("p{i}"), "form": {"name": "x".repeat(3000)}}))
+        .collect();
+    let plan = MrApply {
+        settings: Some(
+            serde_json::json!({"search.templates": huge, "behavior.spaceCalcSize": true})
+                .as_object()
+                .unwrap()
+                .clone(),
+        ),
+        ..MrApply::default()
+    };
+    let report = apply(&files, plan, MrOs::Linux, None);
+    assert_eq!(report.imported, vec!["settings"]);
+    let w = &report.warnings[0];
+    assert_eq!(
+        (w.code.as_str(), w.key.as_deref()),
+        ("invalid_value", Some("search.templates"))
+    );
+    let s = settings::load(&files.settings).settings;
+    assert_eq!(s["search.templates"], mine);
+    // a value equal to the default is set too (the own `false` goes)
+    assert!(!s.contains_key("behavior.spaceCalcSize"));
+}
+
+#[test]
+fn files_of_a_newer_version_are_not_replaced() {
+    // review 026 #5: settings.json of a newer app version stays as it is
+    let dir = tempdir().unwrap();
+    let files = config(dir.path());
+    fs::create_dir_all(files.settings.parent().unwrap()).unwrap();
+    let newer = r#"{"version":7,"settings":{"future.key":1}}"#;
+    fs::write(&files.settings, newer).unwrap();
+    let plan = MrApply {
+        settings: Some(
+            serde_json::json!({"view.density": "condensed"})
+                .as_object()
+                .unwrap()
+                .clone(),
+        ),
+        ..MrApply::default()
+    };
+    let report = apply(&files, plan, MrOs::Linux, None);
+    assert!(report.imported.is_empty());
+    assert_eq!(report.warnings[0].code, "part_skipped");
+    assert_eq!(fs::read_to_string(&files.settings).unwrap(), newer);
+}
+
+#[test]
+fn a_huge_file_type_list_is_read_quickly_and_bounded() {
+    // review 026 #4: 1 MB of categories, quadratic before
+    let (_d, _, assets) = mr_tree();
+    let list: Vec<Value> = (0..20_000)
+        .map(|i| serde_json::json!({"label": format!("c{i}"), "extensions": [format!(".e{i}")]}))
+        .collect();
+    put(
+        &assets,
+        "filetype/custom/data.json",
+        &serde_json::to_string(&list).unwrap(),
+    );
+    let t = std::time::Instant::now();
+    let f = scan(&assets, MrOs::Linux).file_types.unwrap();
+    assert!(t.elapsed().as_secs() < 5, "{:?}", t.elapsed());
+    assert_eq!(f.items.len(), filetypes::MAX_CATEGORIES);
+    assert!(f.skipped.len() <= MAX_SKIPPED);
+    assert_eq!(
+        f.skipped_more as usize + f.skipped.len(),
+        20_000 - filetypes::MAX_CATEGORIES
+    );
+}
+
+#[test]
+fn a_folder_with_one_bare_area_folder_is_no_assets_folder() {
+    // review 026 #7
+    let dir = tempdir().unwrap();
+    let root = dir.path().join("proj");
+    fs::create_dir_all(root.join("search")).unwrap();
+    put(&root, "deep/x/assets/button/custom/data.json", "{}");
+    assert_eq!(locate(&root).unwrap(), root.join("deep/x/assets"));
+    fs::create_dir_all(root.join("search/custom")).unwrap();
+    assert_eq!(locate(&root).unwrap(), root);
+    let two = dir.path().join("two");
+    fs::create_dir_all(two.join("search")).unwrap();
+    fs::create_dir_all(two.join("button")).unwrap();
+    assert_eq!(locate(&two).unwrap(), two);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_fifo_in_place_of_a_file_does_not_block() {
+    // review 026 #8: File::open on a FIFO waits for a writer
+    let (_d, _, assets) = mr_tree();
+    let file = assets.join("setup/data.json");
+    fs::remove_file(&file).unwrap();
+    let ok = std::process::Command::new("mkfifo")
+        .arg(&file)
+        .status()
+        .is_ok_and(|s| s.success());
+    if !ok {
+        return;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    let a = assets.clone();
+    std::thread::spawn(move || tx.send(scan(&a, MrOs::Linux).setup).unwrap());
+    let setup = rx
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("the scan must not hang");
+    assert_eq!(setup.unwrap().error.as_deref(), Some("unreadable"));
 }
 
 #[test]
 fn a_failed_backup_skips_the_part() {
     let dir = tempdir().unwrap();
     let files = config(dir.path());
-    // a folder where the file would be: no backup possible, nothing written
+    // a folder where the file would be: unreadable → left alone (review 026 #5)
     fs::create_dir_all(&files.keymap).unwrap();
+    // themes.json as a folder: no backup possible → reported
+    fs::create_dir_all(&files.themes).unwrap();
     let plan = MrApply {
         keymap: Some(BTreeMap::new()),
         buttons: Some(BTreeMap::new()),
+        backup_themes: true,
         ..MrApply::default()
     };
-    let report = apply(&files, plan, MrOs::Linux);
+    let report = apply(&files, plan, MrOs::Linux, None);
     assert_eq!(report.imported, vec!["buttons"]);
-    assert_eq!(report.warnings[0].code, "part_failed");
-    assert_eq!(report.warnings[0].key.as_deref(), Some("keymap"));
+    let codes: Vec<(&str, Option<&str>)> = report
+        .warnings
+        .iter()
+        .map(|w| (w.code.as_str(), w.key.as_deref()))
+        .collect();
+    assert_eq!(
+        codes,
+        vec![
+            ("part_skipped", Some("keymap")),
+            ("part_failed", Some("themes"))
+        ]
+    );
     assert!(files.keymap.is_dir());
 }
 

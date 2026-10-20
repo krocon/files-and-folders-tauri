@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { MrTool } from '../../core/mrimport/mr-import.models';
 import { AreaPlan, MrAreaId } from './mr-import-logic';
 import { MR_IMPORT_TEXTS } from './mr-import-texts';
 import { MrImportStore } from './mr-import.store';
@@ -56,6 +57,28 @@ import { MrImportStore } from './mr-import.store';
                     <span>{{ areaName(p.area) }}</span>
                   </label>
                   <span class="summary" [id]="summaryId(p.area)">{{ summary(p) }}</span>
+                  @if (p.area === 'tools' && toolItems().length > 0) {
+                    <!-- review 026 #1: every tool with program and arguments, chosen one by one -->
+                    <ul class="tools" [attr.aria-label]="t.areaNames.tools">
+                      @for (tool of toolItems(); track tool.id) {
+                        <li>
+                          <label class="check">
+                            <input
+                              type="checkbox"
+                              [checked]="store.chosenTools().has(tool.id)"
+                              [disabled]="store.busy()"
+                              (change)="store.toggleTool(tool.id, checked($event))"
+                            />
+                            <span>{{ tool.label }}</span>
+                          </label>
+                          <span class="mono">{{ commandLine(tool) }}</span>
+                          @if (tool.shortcut) {
+                            <span class="muted">{{ tool.shortcut }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
                   @if (p.area === 'tools' && p.count > 0) {
                     <p class="warn" role="note">{{ t.toolsWarning }}</p>
                   }
@@ -147,7 +170,20 @@ export class MrImportDialog {
   }
 
   protected selectable(p: AreaPlan): boolean {
+    if (p.area === 'tools') {
+      return this.toolItems().length > 0 && !this.store.busy();
+    }
     return p.count > 0 && p.apply !== null && !this.store.busy();
+  }
+
+  protected toolItems(): readonly MrTool[] {
+    const tools = this.store.scan()?.tools;
+    return tools && !tools.error ? tools.items : [];
+  }
+
+  /** Program and arguments as they will be started (no shell – shown for checking). */
+  protected commandLine(tool: MrTool): string {
+    return [tool.program, ...tool.args].join(' ');
   }
 
   /** "3 to import · 1 conflict · 2 not transferred · 5 unchanged". */
@@ -158,12 +194,17 @@ export class MrImportDialog {
     if (p.error) {
       return this.t.reasons[p.error];
     }
-    const parts = [p.count > 0 ? this.t.toImport(p.count) : this.t.nothingNew];
+    const parts = [
+      p.count > 0 || (p.area === 'tools' && this.toolItems().length > 0)
+        ? this.t.toImport(p.count)
+        : this.t.nothingNew,
+    ];
     if (p.conflicts.length > 0) {
       parts.push(this.t.conflicts(p.conflicts.length));
     }
-    if (p.skipped.length > 0) {
-      parts.push(this.t.skipped(p.skipped.length));
+    const skipped = p.skipped.length + p.skippedMore;
+    if (skipped > 0) {
+      parts.push(this.t.skipped(skipped));
     }
     if (p.unchanged > 0) {
       parts.push(this.t.unchanged(p.unchanged));

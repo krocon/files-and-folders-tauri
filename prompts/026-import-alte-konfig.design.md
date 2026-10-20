@@ -166,7 +166,8 @@ MrPattern { label: String, extensions: Vec<String> }
 MrColorFile { name: String, path: String }
 MrApply { keymap: Option<Bindings>, buttons: Option<Sets>, file_types: Option<Vec<FileType>>,
           settings: Option<Map<String, Value>> /* nur zu setzende Schlüssel */,
-          tools_from: Option<String> /* assets-Ordner, Rust liest neu */, tools_replace: bool, backup_themes: bool }
+          tools: Option<MrToolsChoice { from, digest, ids, replace }> /* Rust liest neu, prüft den Digest */,
+          backup_themes: bool }
 MrApplyReport { imported: Vec<String> /* Bündel-Teile */, warnings: Vec<SettingsWarning>, backups: Vec<String> }
 ```
 Gründe (`reason`): `table_navigation`, `no_equivalent`, `unknown_action`, `never_fired`, `meta_key`, `unknown_key`,
@@ -244,9 +245,34 @@ Menüleiste steht, prüft `menu-model.spec.ts` › „has every action of the ca
 | 9 | Ab der 99. Sicherung einer Datei scheitert der Teil (`part_failed`) – bewusst, statt alte Sicherungen zu überschreiben | bewusst |
 | 10 | `settings.json` wird in Rust zusammengeführt; der `SettingsStore` speichert vorher (`flush`) und lädt danach neu | ok |
 
+## 6a. Externes Review (21.10.2026)
+
+Unabhängiges Review von 022 und 026 in `main` (11 Befunde, Probe-Daten unter `/tmp/review-026/`). Behoben auf
+`fix/review-022-026`, je Befund zuerst ein roter Test.
+
+| Nr | Schwere | Befund | Status / Test |
+|---|---|---|---|
+| 1 | hoch | Tools nur als Anzahl, keine Programme/Argumente sichtbar, keine Auswahl je Tool | behoben: jedes Tool mit Programm + Argumenten (`mono`) und eigener Checkbox; keines vorausgewählt; die Bereichs-Checkbox wählt alle/keine; Rust schreibt nur die gewählten Ids – `mr-import.spec.ts` › „tools are shown one by one with program and arguments and chosen one by one (review #1, #2)“, Rust `only_the_chosen_tools_and_only_what_was_shown` |
+| 2 | hoch | TOCTOU: `apply` las `tool/custom/<os>.json` neu ohne Abgleich mit der Vorschau | behoben: Scan liefert `digest` (SHA-256 der übersetzten Tools, Crate `sha2` vorhanden), `MrToolsChoice` schickt ihn zurück; weicht er ab → `source_changed`, nichts geschrieben – Rust `only_the_chosen_tools_and_only_what_was_shown` |
+| 3 | mittel | `search.templates` über `maxBytes` → `sanitize` verwarf den ganzen Schlüssel samt eigener Vorlagen | behoben: `planSearch` prüft `acceptsValue` je Muster (Rest `too_big`); Rust führt Import-Schlüssel einzeln ein – abgelehnte behalten den alten Wert und werden als `invalid_value` gemeldet, Default-Werte entfernen den eigenen – `mr-import-logic.spec.ts` › „search: …“, Rust `settings_keep_their_values_when_the_import_is_invalid` |
+| 4 | mittel | `categories` quadratisch, kein Abbruch | behoben: jeder Kandidat einzeln + `HashSet` der Namen, ab `MAX_CATEGORIES` nur noch `too_many`; Meldungen je Bereich höchstens 200 (`skippedMore` zählt den Rest) – Rust `a_huge_file_type_list_is_read_quickly_and_bounded` (20 000 Kategorien < 5 s) |
+| 5 | mittel | `settings.json` einer neueren Version wurde überschrieben | behoben: `writable()` (ohne Nebenwirkung) lässt Dateien neuerer Version und unlesbare (Ordner, Rechte) aus → `part_skipped`; gilt für Einstellungen, Kürzel, Buttons, Dateitypen, Tools – Rust `files_of_a_newer_version_are_not_replaced`, `a_failed_backup_skips_the_part` |
+| 6 | niedrig | `merge_file` kürzte still auf 200 Tools | behoben: mehr als `MAX_TOOLS` → Fehler `too_many`, Datei bleibt – Rust `tools_beyond_the_limit_are_refused` |
+| 7 | niedrig | Ein beliebiger Bereichsordner machte einen Ordner zu `assets` | behoben: `<bereich>/custom` oder `<bereich>/defaults` nötig, sonst mindestens zwei Bereichsordner – Rust `a_folder_with_one_bare_area_folder_is_no_assets_folder` |
+| 8 | niedrig | FIFO blockiert `open`; Enter umging `busy` | behoben: nur reguläre Dateien werden geöffnet (sonst `unreadable`); `find()` tut nichts, solange ein Scan läuft – Rust `a_fifo_in_place_of_a_file_does_not_block`, `mr-import.spec.ts` › „a second search while one runs is ignored (review #8)“. Ein hängendes NAS hält weiter einen Thread (kein Timeout wie 029) – offen, gering |
+| 9 | niedrig | geprüfter Pfad verworfen, roher String gelesen | behoben: der Command reicht den Pfad aus `resolve_input` an `apply` weiter; zusammen mit dem Digest (#2) schreibt Rust nur, was die Vorschau zeigte |
+| 10 | niedrig | belegte/ungültige Tool-Kürzel still verworfen | behoben: Vorschau zeigt belegte Kürzel als Konflikt, ungültige als nicht übertragbar; nach dem Import werden die Hinweise des Tool-Ladens (`extraProblems`) zu den importierten Tools gemeldet – `mr-import-logic.spec.ts` › „tools, colours and settings“ |
+| 11 | niedrig | Bündel: `buttons` ohne Nutzerdatei als `{}` (setzt das Ziel zurück), `fileTypes` als `null` | behoben in 022: beide `null` ohne Nutzerdatei (Import überspringt) – Rust `settings.rs` › `a_bundle_without_own_buttons_does_not_reset_them`; Design 022 E10 |
+
+E2E (Xvfb `:98`, eigenes `HOME`): Tools-Bereich zeigt „Meld – `meld {file}` Mod+Shift+M“ und „Edit – `/tmp/x.sh {file}`“,
+keines angehakt; Meld gewählt, danach in der mr-Datei `meld` → `/tmp/evil.sh` geändert, Importieren → übrige Bereiche
+importiert, „Tools were not imported: the file of the old version changed after the preview – search again.“, keine
+`tools.json`. Erneut gesucht: Meld zeigt `/tmp/evil.sh`; nur Edit gewählt → `tools.json` enthält nur `edit`
+(`/tmp/x.sh`), Rückfrage wegen gleicher Id wie das eingebaute `edit`.
+
 ## 7. Offen
 
 - macOS/Windows: Kürzel-Übersetzung (`osx`: `cmd` → `Mod`, `ctrl` → `Ctrl`; Windows: `cmd` → `meta_key`) ist
   unit-getestet, aber nur unter Linux in der echten App geprüft.
 - KI-Prompts (`prompt/custom/*.yaml`) – es gibt noch keine KI-Funktionen (Parität H).
-- Review #7, #8.
+- Review #7, #8; externes Review #8 (Timeout für hängende Laufwerke).

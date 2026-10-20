@@ -99,3 +99,26 @@ details {
   min-height: 1em;
   overflow-wrap: anywhere;
 }
+
+.tools {
+  flex-basis: 100%;
+  margin: var(--spacing-1) 0 0 1.6rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--spacing-2);
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  .muted {
+    color: var(--color-muted);
+  }
+}

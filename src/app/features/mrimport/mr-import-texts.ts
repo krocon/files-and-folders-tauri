@@ -77,7 +77,15 @@ export const MR_IMPORT_EN = {
   doneNothing: 'Nothing was imported.',
   backups: (n: number) => (n === 1 ? '1 backup made.' : `${n} backups made.`),
   partFailed: (part: string, path: string) => `${part} could not be written (${path}).`,
-  partSkipped: (part: string) => `${part} were skipped: the existing file could not be read.`,
+  partSkipped: (part: string) =>
+    `${part} were skipped: the existing file could not be read or belongs to a newer version.`,
+  sourceChanged:
+    'Tools were not imported: the file of the old version changed after the preview – search again.',
+  tooManyTools: 'Tools were not imported: there would be too many tools (at most 200).',
+  valueRefused: (key: string) =>
+    `${key} was not changed: the imported value is too big or invalid.`,
+  toolShortcut: (tool: string, shortcut: string, owner: string) =>
+    `${tool}: ${shortcut} belongs to ${owner} – the tool gets no shortcut`,
   colorFailed: (name: string, reason: string) => `${name}: ${reason}`,
   failed: (reason: string) => `The import failed: ${reason}`,
 };

@@ -176,6 +176,17 @@ describe('mr import planning (design 026)', () => {
     expect(
       planSearch(area([{ label: 'x', extensions: ['.x'] }]), full, 'merge').skipped[0].reason,
     ).toBe('too_many');
+    // review 026 #3: what does not fit into the setting (128 KiB) is skipped, own templates stay
+    const big = Array.from({ length: 45 }, (_, i) => ({
+      label: `p${i}`,
+      extensions: Array.from({ length: 200 }, (_, j) => `.long-extension-${i}-${j}`),
+    }));
+    const tooBig = planSearch(area(big), state({ templates: [old] }), 'merge');
+    const kept = tooBig.apply?.settings?.['search.templates'] as { label: string }[];
+    expect(kept[0].label).toBe('Bücher');
+    expect(new TextEncoder().encode(JSON.stringify(kept)).length).toBeLessThanOrEqual(131072);
+    expect(tooBig.skipped.some((x) => x.reason === 'too_big')).toBe(true);
+    expect(tooBig.count + tooBig.skipped.length).toBe(45);
     const replaced = planSearch(area([{ label: 'x', extensions: ['.x'] }]), full, 'replace');
     expect(replaced.count).toBe(1);
     expect(replaced.conflicts.length).toBe(50);
@@ -190,15 +201,33 @@ describe('mr import planning (design 026)', () => {
       perFile: true,
       fileLimit: 4,
     };
-    const t = planTools(
-      area([tool, { ...tool, id: 'meld', label: 'Meld' }]),
-      state(),
-      'replace',
-      '/old/assets',
-    );
+    const tools = area([tool, { ...tool, id: 'meld', label: 'Meld' }], { digest: 'd1' });
+    // review 026 #1: only the chosen tools, with the digest of the preview (#2)
+    const none = planTools(tools, state(), 'merge', '/old/assets', new Set());
+    expect(none.count).toBe(0);
+    expect(none.apply).toBeNull();
+    const t = planTools(tools, state(), 'replace', '/old/assets', new Set(['vscode', 'meld']));
     expect(t.count).toBe(2);
     expect(t.conflicts).toEqual([{ kind: 'name', name: 'VS Code' }]);
-    expect(t.apply).toEqual({ toolsFrom: '/old/assets', toolsReplace: true });
+    expect(t.apply).toEqual({
+      tools: { from: '/old/assets', digest: 'd1', ids: ['vscode', 'meld'], replace: true },
+    });
+    const one = planTools(tools, state(), 'merge', '/old/assets', new Set(['meld']));
+    expect(one.apply?.tools?.ids).toEqual(['meld']);
+    expect(one.conflicts).toEqual([]);
+    // review 026 #10: a tool shortcut that is taken or invalid is shown
+    const keyed = area(
+      [
+        { ...tool, id: 'a', label: 'A', shortcut: 'Mod+F' },
+        { ...tool, id: 'b', label: 'B', shortcut: 'Mod+Hyper' },
+      ],
+      { digest: 'd2' },
+    );
+    const k = planTools(keyed, state(), 'merge', '/old/assets', new Set(['a', 'b']));
+    expect(k.conflicts).toEqual([
+      { kind: 'toolShortcut', tool: 'A', shortcut: 'Mod+F', owner: 'OPEN_FIND_DLG' },
+    ]);
+    expect(k.skipped).toEqual([{ item: 'B: Mod+Hyper', reason: 'invalid_shortcut' }]);
 
     const c = planColors(
       area([
@@ -251,7 +280,8 @@ describe('mr import planning (design 026)', () => {
     expect([...chosen]).toEqual(['search', 'setup']);
     const apply = combine(plans, chosen);
     expect(Object.keys(apply.settings ?? {}).sort()).toEqual(['search.templates', 'view.density']);
-    expect(apply.toolsFrom).toBeUndefined();
-    expect(combine(plans, new Set(['tools'])).toolsFrom).toBe('/old/apps/fnf-api/src/assets');
+    expect(apply.tools).toBeUndefined();
+    const withTools = planAll(scan, state(), 'merge', new Set(['meld']));
+    expect(combine(withTools, new Set(['tools'])).tools?.from).toBe('/old/apps/fnf-api/src/assets');
   });
 });
