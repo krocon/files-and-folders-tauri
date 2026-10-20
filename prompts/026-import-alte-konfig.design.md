@@ -264,6 +264,12 @@ Unabhängiges Review von 022 und 026 in `main` (11 Befunde, Probe-Daten unter `/
 | 10 | niedrig | belegte/ungültige Tool-Kürzel still verworfen | behoben: Vorschau zeigt belegte Kürzel als Konflikt, ungültige als nicht übertragbar; nach dem Import werden die Hinweise des Tool-Ladens (`extraProblems`) zu den importierten Tools gemeldet – `mr-import-logic.spec.ts` › „tools, colours and settings“ |
 | 11 | niedrig | Bündel: `buttons` ohne Nutzerdatei als `{}` (setzt das Ziel zurück), `fileTypes` als `null` | behoben in 022: beide `null` ohne Nutzerdatei (Import überspringt) – Rust `settings.rs` › `a_bundle_without_own_buttons_does_not_reset_them`; Design 022 E10 |
 
+E2E (Xvfb `:98`, eigenes `HOME`): Tools-Bereich zeigt „Meld – `meld {file}` Mod+Shift+M“ und „Edit – `/tmp/x.sh {file}`“,
+keines angehakt; Meld gewählt, danach in der mr-Datei `meld` → `/tmp/evil.sh` geändert, Importieren → übrige Bereiche
+importiert, „Tools were not imported: the file of the old version changed after the preview – search again.“, keine
+`tools.json`. Erneut gesucht: Meld zeigt `/tmp/evil.sh`; nur Edit gewählt → `tools.json` enthält nur `edit`
+(`/tmp/x.sh`), Rückfrage wegen gleicher Id wie das eingebaute `edit`.
+
 ## 7. Offen
 
 - macOS/Windows: Kürzel-Übersetzung (`osx`: `cmd` → `Mod`, `ctrl` → `Ctrl`; Windows: `cmd` → `meta_key`) ist
