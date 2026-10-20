@@ -24,6 +24,7 @@ export type DialogKind =
   | 'folder-finder'
   | 'pack'
   | 'unpack'
+  | 'archive-password'
   | 'duplicates'
   | 'themes'
   | 'settings'

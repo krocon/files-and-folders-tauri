@@ -997,7 +997,17 @@ const VERIFY_BYTES: u64 = 16 << 20;
 /// Checks `secret` against `archive` and remembers it if it fits (design 025 E4):
 /// 7z/RAR with encrypted names – the names must decode; encrypted data – the
 /// smallest encrypted entry (≤ 16 MiB) must decode with a valid checksum.
-pub fn set_password(archive: &Path, secret: secrets::Secret) -> Result<(), FsError> {
+pub fn set_password(path: &Path, secret: secrets::Secret) -> Result<(), FsError> {
+    // a virtual path (F3 on an entry) stands for its archive
+    let resolved;
+    let archive = if fs::symlink_metadata(path).is_ok() {
+        path
+    } else {
+        resolved = resolve(path)
+            .map(|(a, _)| a)
+            .ok_or_else(|| FsError::new(FsErrorCode::NotFound, "Not found", Some(path)))?;
+        resolved.as_path()
+    };
     let format = archive
         .file_name()
         .and_then(|n| n.to_str())

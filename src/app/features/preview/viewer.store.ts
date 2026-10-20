@@ -1,3 +1,4 @@
+import { ArchivePasswordPrompt, isPasswordError } from '../../core/archive/archive-password-prompt';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, FsError, isParentRow } from '../../core/fs/fs.models';
@@ -29,6 +30,7 @@ export class ViewerStore {
   private readonly api = inject(PreviewApi);
   private readonly ws = inject(WorkspaceStore);
   private readonly dialogs = inject(DialogService);
+  private readonly passwordPrompt = inject(ArchivePasswordPrompt);
 
   readonly side = signal<Side | null>(null);
   readonly entry = signal<DirEntry | null>(null);
@@ -189,8 +191,14 @@ export class ViewerStore {
       }
     } catch (err) {
       if (seq === this.seq) {
+        const error = toFsError(err);
         this.preview.set(null);
-        this.error.set(toFsError(err));
+        this.error.set(error);
+        // an encrypted archive entry (design 025 E4): ask, then show it again
+        if (isPasswordError(error)) {
+          this.close();
+          this.passwordPrompt.askFor(error, null, () => this.open());
+        }
       }
     } finally {
       if (seq === this.seq) {

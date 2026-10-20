@@ -3,6 +3,24 @@ import { formatSize } from '../../shared/format';
 import { translatable } from '../../core/i18n/i18n';
 import { JOB_DE } from './job-format.de';
 
+/** Job kinds with their own "Cancel …" label in the conflict dialog. */
+export type CancelKind = 'copy' | 'move' | 'delete' | 'extract' | 'pack';
+
+const CANCEL_VERBS: Readonly<Record<CancelKind, string>> = {
+  copy: 'copying',
+  move: 'moving',
+  delete: 'deleting',
+  extract: 'extracting',
+  pack: 'packing',
+};
+
+/** The "Cancel …" kind for a job kind (anything else counts as copying). */
+export function cancelKind(kind: string | undefined): CancelKind {
+  return kind === 'move' || kind === 'delete' || kind === 'extract' || kind === 'pack'
+    ? kind
+    : 'copy';
+}
+
 /** Texts of the job UI (central for prompt 015). */
 export const JOB_EN = {
   tasks: 'Tasks',
@@ -54,11 +72,8 @@ export const JOB_EN = {
     rename: ['', 'R', 'ename…'],
     newer: ['Overwrite if ', 'n', 'ewer'],
     deleteAnyway: ['', 'D', 'elete anyway'],
-    cancel: (kind: 'copy' | 'move' | 'delete') => [
-      '',
-      'C',
-      `ancel ${kind === 'move' ? 'moving' : kind === 'delete' ? 'deleting' : 'copying'}`,
-    ],
+    /** Design 025 E8: the verb of the job (no "Cancel copying" when extracting). */
+    cancel: (kind: CancelKind) => ['', 'C', `ancel ${CANCEL_VERBS[kind]}`],
   },
   summary: (done: number, skipped: number, failed: number) =>
     `${done} done · ${skipped} skipped · ${failed} failed`,
@@ -95,6 +110,7 @@ export const JOB_EN = {
     dirSize: (path: string) => `Folder size of ${path}`,
     simulate: (n: number) => `Test job (${n} steps)`,
     shell: (command: string, cwd: string) => `Shell: ${command} (in ${cwd})`,
+    viewEntry: (path: string) => `Open from the archive: ${path}`,
   },
 } as const;
 
@@ -158,6 +174,8 @@ export function jobTitle(job: JobInfo): string {
       return t.simulate(spec.items);
     case 'shell':
       return t.shell(spec.command, spec.cwd);
+    case 'viewEntry':
+      return t.viewEntry(spec.path);
   }
 }
 

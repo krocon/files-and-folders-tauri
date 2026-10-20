@@ -57,6 +57,18 @@ const DEFAULTS: readonly ConflictDefault[] = [
               {{ r.archiveName !== null ? t.intoSubfolder(r.archiveName) : t.intoSubfolderMany }}
             </label>
           }
+          @if (r.askPassword) {
+            <label class="field">
+              <span>{{ r.fromArchive ? t.password : t.passwordOptional }}</span>
+              <input
+                type="password"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="password()"
+                (input)="password.set($any($event.target).value); error.set(null)"
+              />
+            </label>
+          }
           <label class="field">
             <span>{{ t.ifExists }}</span>
             <select (change)="conflictDefault.set($any($event.target).value)">
@@ -93,6 +105,7 @@ export class UnpackDialog {
   protected readonly conflictDefault = signal<ConflictDefault>('ask');
   protected readonly error = signal<FsError | null>(null);
   protected readonly busy = signal(false);
+  protected readonly password = signal('');
 
   protected errorText(): string {
     const e = this.error();
@@ -123,6 +136,7 @@ export class UnpackDialog {
           target: this.target(),
           intoSubfolder: !req.fromArchive && this.intoSubfolder(),
           conflictDefault: this.conflictDefault(),
+          password: this.password(),
         }),
       );
     } finally {

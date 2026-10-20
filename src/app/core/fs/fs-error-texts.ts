@@ -25,6 +25,8 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   archive_error: 'The archive is broken or uses an unsupported feature.',
   unsafe_entry: 'An archive entry would leave the target folder or is a link – not extracted.',
   archive_too_large: 'The archive exceeds the safety limits (size, number of entries).',
+  archive_password_required: 'The archive is encrypted – a password is needed.',
+  archive_password_wrong: 'Wrong password.',
   invalid_menu: 'The menu could not be built.',
   invalid_settings: 'This file is not a settings export of Files and Folders.',
   shell_disabled: 'The shell bar is switched off in the settings.',
@@ -65,6 +67,8 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   unsafe_entry:
     'Ein Archiveintrag würde den Zielordner verlassen oder ist ein Link – nicht entpackt.',
   archive_too_large: 'Das Archiv überschreitet die Sicherheitsgrenzen (Größe, Anzahl Einträge).',
+  archive_password_required: 'Das Archiv ist verschlüsselt – ein Passwort wird benötigt.',
+  archive_password_wrong: 'Falsches Passwort.',
   invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
   invalid_settings: 'Diese Datei ist kein Einstellungs-Export von Files and Folders.',
   shell_disabled: 'Die Shell-Zeile ist in den Einstellungen ausgeschaltet.',

@@ -86,6 +86,7 @@ const SAME = new Set([
   'ZIP',
   'TAR',
   'TAR.GZ',
+  'RAR',
 ]);
 
 const SAMPLE_ARGS: unknown[] = [2, 'x', 3, 4];

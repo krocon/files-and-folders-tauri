@@ -102,7 +102,9 @@ fn encrypted_7z_data_lists_without_the_password() {
         code(set_password(&a, secrets::Secret::new("falsch"))),
         FsErrorCode::ArchivePasswordWrong
     );
-    set_password(&a, secrets::Secret::new("geheim")).unwrap();
+    // a virtual path (F3 on an entry) stands for its archive
+    set_password(&a.join("🎉.txt"), secrets::Secret::new("geheim")).unwrap();
+    assert!(secrets::known(&a));
 }
 
 #[test]

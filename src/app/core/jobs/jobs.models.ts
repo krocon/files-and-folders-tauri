@@ -103,7 +103,11 @@ export type JobSpec =
       readonly name: string;
       readonly format: ArchiveFormat;
       readonly level?: number | null;
+      /** ZIP (AES-256) / 7z (AES-256 + names) – Rust never sends it back (design 025 E4). */
+      readonly password?: string;
     }
+  /** Enter on a file inside an archive (design 025 E5): copy in the view cache → `Summary.viewPath`. */
+  | { readonly kind: 'viewEntry'; readonly path: string }
   /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
   /** Counts files, folders and bytes of a selection (copy dialog). */
@@ -196,6 +200,8 @@ export interface Summary {
   readonly shell?: ShellSummary | null;
   /** Final bytes copied/moved into each top-level target destination. */
   readonly destBytes?: Readonly<Record<string, number>>;
+  /** Job `viewEntry`: the read-only copy of the entry (design 025 E5). */
+  readonly viewPath?: string | null;
 }
 
 export interface JobInfo {

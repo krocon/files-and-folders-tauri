@@ -12,7 +12,7 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { formatModified, formatSize } from '../../shared/format';
-import { JOB_TEXTS } from './job-format';
+import { cancelKind, JOB_TEXTS } from './job-format';
 
 /**
  * Asks how to handle an existing target (design 005 E6): `role="alertdialog"`,
@@ -146,7 +146,7 @@ export class ConflictDialog {
       letter,
       after,
     });
-    const cancel = b('cancel', keys.cancel(kind === 'move' || kind === 'delete' ? kind : 'copy'));
+    const cancel = b('cancel', keys.cancel(cancelKind(kind)));
     if (this.readOnly()) {
       return [b('overwrite', keys.deleteAnyway), b('skip', keys.skip), cancel];
     }

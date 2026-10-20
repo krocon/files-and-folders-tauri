@@ -11,6 +11,8 @@ const EXTENSIONS: readonly [string, ArchiveFormat][] = [
   ['.tgz', 'tarGz'],
   ['.zip', 'zip'],
   ['.tar', 'tar'],
+  ['.7z', 'sevenZ'],
+  ['.rar', 'rar'],
 ];
 
 export function archiveFormatOf(name: string): ArchiveFormat | null {
@@ -23,7 +25,7 @@ export function archiveFormatOf(name: string): ArchiveFormat | null {
   return null;
 }
 
-/** A file (or link to a file) whose name says ZIP, TAR or TAR.GZ. */
+/** A file (or link to a file) whose name says ZIP, TAR, TAR.GZ, 7z or RAR (design 025). */
 export function isArchiveEntry(entry: DirEntry): boolean {
   const file = entry.kind === 'file' || (entry.kind === 'symlink' && entry.targetKind === 'file');
   return file && !entry.lossyName && archiveFormatOf(entry.name) !== null;
@@ -33,7 +35,17 @@ export const FORMAT_EXTENSION: Readonly<Record<ArchiveFormat, string>> = {
   zip: '.zip',
   tar: '.tar',
   tarGz: '.tar.gz',
+  sevenZ: '.7z',
+  rar: '.rar',
 };
+
+/** Formats the pack dialog offers – RAR can only be read (licence, design 025 E2). */
+export const PACK_FORMATS: readonly ArchiveFormat[] = ['zip', 'sevenZ', 'tar', 'tarGz'];
+
+/** Formats that can be encrypted when packing (design 025 E4). */
+export function canEncrypt(format: ArchiveFormat): boolean {
+  return format === 'zip' || format === 'sevenZ';
+}
 
 /** The name without a known archive extension (`a.tar.gz` → `a`). */
 export function stripArchiveExtension(name: string): string {

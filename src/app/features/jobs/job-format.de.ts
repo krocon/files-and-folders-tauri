@@ -54,7 +54,7 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     newer: ['Überschreiben, wenn ', 'n', 'euer'],
     deleteAnyway: ['Trotzdem ', 'l', 'öschen'],
     cancel: (kind) => [
-      `${kind === 'move' ? 'Verschieben' : kind === 'delete' ? 'Löschen' : 'Kopieren'} `,
+      `${{ copy: 'Kopieren', move: 'Verschieben', delete: 'Löschen', extract: 'Entpacken', pack: 'Packen' }[kind]} `,
       'a',
       'bbrechen',
     ],
@@ -94,5 +94,6 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     dirSize: (path) => `Ordnergröße von ${path}`,
     simulate: (n) => `Test-Task (${n} Schritte)`,
     shell: (command, cwd) => `Shell: ${command} (in ${cwd})`,
+    viewEntry: (path) => `Aus dem Archiv öffnen: ${path}`,
   },
 };

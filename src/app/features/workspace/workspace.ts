@@ -47,6 +47,7 @@ import { registerArchiveActions } from '../archive/archive-actions';
 import { ArchiveStore } from '../archive/archive.store';
 import { PackDialog } from '../archive/pack-dialog';
 import { UnpackDialog } from '../archive/unpack-dialog';
+import { ArchivePasswordDialog } from '../archive/password-dialog';
 import { DuplicatesDialog } from '../duplicates/duplicates-dialog';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { FindDialog } from '../search/find-dialog';
@@ -118,6 +119,7 @@ import { WorkspaceStore } from './workspace.store';
     FolderFinderDialog,
     PackDialog,
     UnpackDialog,
+    ArchivePasswordDialog,
     DuplicatesDialog,
     ThemeDialog,
     SettingsDialog,

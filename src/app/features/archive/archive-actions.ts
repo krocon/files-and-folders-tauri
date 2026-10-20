@@ -7,11 +7,10 @@ import { ARCHIVE_TEXTS } from './archive-texts';
 /**
  * Actions that need a real folder or real files: off while the active panel
  * shows a folder inside an archive (read-only, virtual paths – design 016 E1).
- * Copy (= extract), marking, navigation, clipboard names stay.
+ * Copy (= extract), marking, navigation, clipboard names stay; F3 and the quick
+ * view work on a copy in the view cache (design 025 E5/E10).
  */
 export const OFF_IN_ARCHIVE: ReadonlySet<ActionId> = new Set<ActionId>([
-  'OPEN_VIEW_DLG',
-  'QUICK_VIEW',
   'OPEN_EDIT_DLG',
   'OPEN_ATTRIBUTE_DLG',
   'OPEN_TOOLS_DLG',
