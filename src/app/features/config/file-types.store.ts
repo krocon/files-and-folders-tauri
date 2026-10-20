@@ -46,8 +46,20 @@ export class FileTypesStore {
   }
 
   private apply(value: readonly FileType[] | null): void {
-    const user = value === null ? null : cleanFileTypes(value);
+    const user = value === null ? null : cleanFileTypes(value).map((t) => this.withBuiltInLook(t));
     this.user.set(user);
     FILE_TYPES.set(indexFileTypes(user ?? this.builtIn));
+  }
+
+  /**
+   * A category without icon and colour (mr format, `filetype/custom/data.json`) named like a
+   * built-in one gets its look – `movies` keeps the film icon after an import (design 022 E4).
+   */
+  private withBuiltInLook(t: FileType): FileType {
+    if (t.icon !== null || t.color !== null) {
+      return t;
+    }
+    const same = this.builtIn.find((b) => b.label.toLowerCase() === t.label.trim().toLowerCase());
+    return same ? { ...t, icon: same.icon, color: same.color } : t;
   }
 }

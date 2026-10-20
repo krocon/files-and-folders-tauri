@@ -90,6 +90,26 @@ describe('configuration stores (design 022)', () => {
     expect(iconNameForEntry(entry('film.mp4'))).toBe('fa-file-video-o');
   });
 
+  it('file types: an mr file without icons keeps the look of built-in names', async () => {
+    api.fileTypes = {
+      value: [
+        { label: 'Movies', extensions: ['.avi'], icon: null, color: null },
+        { label: 'Hefte', extensions: ['.cbz'], icon: null, color: null },
+      ],
+      warning: null,
+    };
+    const store = TestBed.inject(FileTypesStore);
+    await store.init();
+    expect(store.categories()[0]).toEqual({
+      label: 'Movies',
+      extensions: ['.avi'],
+      icon: 'fa-file-video-o',
+      color: 'video',
+    });
+    expect(store.categories()[1].icon).toBeNull();
+    expect(iconNameForEntry(entry('a.avi'))).toBe('fa-file-video-o');
+  });
+
   it('file types: saving the built-in list removes the user file; a load problem is reported', async () => {
     api.fileTypes = { value: null, warning: { code: 'unreadable', path: '/cfg/filetypes.json' } };
     const store = TestBed.inject(FileTypesStore);

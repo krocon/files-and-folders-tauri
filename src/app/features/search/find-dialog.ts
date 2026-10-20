@@ -354,7 +354,7 @@ const ERR = 'fnf-find-error';
                   (keydown.escape)="$event.stopPropagation(); naming.set(false)"
                 />
               } @else {
-                <button type="button" class="btn" (click)="naming.set(true)">
+                <button type="button" class="btn" (click)="startNaming()">
                   {{ t.saveTemplate }}
                 </button>
               }
@@ -432,6 +432,14 @@ export class FindDialog {
       this.chosenTemplate.set(label.trim());
     }
     this.naming.set(false);
+  }
+
+  /** The name field replaces the button: it gets the focus (E2E 022). */
+  protected startNaming(): void {
+    this.naming.set(true);
+    setTimeout(() =>
+      document.querySelector<HTMLInputElement>('app-find-dialog input.template-name')?.focus(),
+    );
   }
 
   protected deleteTemplate(label: string): void {

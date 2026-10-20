@@ -42,156 +42,163 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
   template: `
     <app-modal [heading]="t.buttonsTitle" width="46rem" (closed)="dialogs.close()">
       <div class="tool">
-        <p class="intro">{{ t.buttonsIntro }}</p>
-        @if (store.unknown().length > 0) {
-          <p class="notice" role="note">{{ t.unknownNotice(store.unknown().join(', ')) }}</p>
-        }
-        <div class="tabs" role="tablist" [attr.aria-label]="t.setsLabel">
-          @for (s of shownSets; track s) {
-            <button
-              type="button"
-              role="tab"
-              [id]="tabId(s)"
-              [attr.aria-selected]="s === current()"
-              [attr.aria-controls]="panelId"
-              [attr.tabindex]="s === current() ? 0 : -1"
-              [attr.data-set]="s"
-              (click)="selectSet(s)"
-              (keydown)="onTabKey($event)"
-            >
-              {{ t.setName(s, platform) }}
-              @if (changed(s)) {
-                <span class="mark">({{ t.changed }})</span>
-              }
-            </button>
+        <div class="body">
+          <p class="intro">{{ t.buttonsIntro }}</p>
+          @if (store.unknown().length > 0) {
+            <p class="notice" role="note">{{ t.unknownNotice(store.unknown().join(', ')) }}</p>
           }
-        </div>
-        <div class="panel" role="tabpanel" [id]="panelId" [attr.aria-labelledby]="tabId(current())">
-          <div class="field">
-            <span class="preview-label">{{ t.preview }}</span>
-            <div class="preview-bar" aria-hidden="true">
-              @for (b of preview(); track $index) {
-                <span class="pbtn">
-                  @if (b.badge) {
-                    <kbd>{{ b.badge }}</kbd>
-                  }
-                  {{ b.label }}
-                </span>
-              }
-            </div>
-          </div>
-          <div class="editor">
-            <div class="field side">
-              <span [id]="slotsLabelId">{{ t.slots }}</span>
-              <ul
-                class="listbox slots"
-                role="listbox"
-                tabindex="0"
-                [attr.aria-labelledby]="slotsLabelId"
-                [attr.aria-describedby]="slotsHelpId"
-                [attr.aria-activedescendant]="slots().length ? slotId(cursor()) : null"
-                (keydown)="onSlotKey($event)"
-                (click)="onSlotClick($event)"
+          <div class="tabs" role="tablist" [attr.aria-label]="t.setsLabel">
+            @for (s of shownSets; track s) {
+              <button
+                type="button"
+                role="tab"
+                [id]="tabId(s)"
+                [attr.aria-selected]="s === current()"
+                [attr.aria-controls]="panelId"
+                [attr.tabindex]="s === current() ? 0 : -1"
+                [attr.data-set]="s"
+                (click)="selectSet(s)"
+                (keydown)="onTabKey($event)"
               >
-                @for (id of slots(); track $index; let i = $index) {
-                  <li
-                    role="option"
-                    [id]="slotId(i)"
-                    [attr.aria-selected]="i === cursor()"
-                    [attr.data-index]="i"
-                  >
-                    <span class="num" aria-hidden="true">{{ i + 1 }}</span>
-                    <span class="grow">{{ label(id) }}</span>
-                    @if (actions.shortcutLabel(id); as k) {
-                      <kbd>{{ k }}</kbd>
-                    }
-                  </li>
-                } @empty {
-                  <li class="empty" role="option" aria-selected="false" aria-disabled="true">
-                    {{ t.noSlots }}
-                  </li>
+                {{ t.setName(s, platform) }}
+                @if (changed(s)) {
+                  <span class="mark">({{ t.changed }})</span>
                 }
-              </ul>
-              <p class="help" [id]="slotsHelpId">{{ t.slotsHelp }}</p>
-              <div class="stack">
-                <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
-                  {{ t.moveUp }}
-                </button>
-                <button
-                  type="button"
-                  class="btn"
-                  [disabled]="cursor() >= slots().length - 1"
-                  (click)="move(1)"
-                >
-                  {{ t.moveDown }}
-                </button>
-                <button
-                  type="button"
-                  class="btn"
-                  [disabled]="slots().length === 0"
-                  (click)="remove()"
-                >
-                  {{ t.remove }}
-                </button>
+              </button>
+            }
+          </div>
+          <div
+            class="panel"
+            role="tabpanel"
+            [id]="panelId"
+            [attr.aria-labelledby]="tabId(current())"
+          >
+            <div class="field">
+              <span class="preview-label">{{ t.preview }}</span>
+              <div class="preview-bar" aria-hidden="true">
+                @for (b of preview(); track $index) {
+                  <span class="pbtn">
+                    @if (b.badge) {
+                      <kbd>{{ b.badge }}</kbd>
+                    }
+                    {{ b.label }}
+                  </span>
+                }
               </div>
             </div>
-            <div class="side">
-              <label class="field combo">
-                <span>{{ t.action }}</span>
-                <input
-                  data-autofocus
-                  type="text"
-                  role="combobox"
-                  spellcheck="false"
-                  autocomplete="off"
-                  aria-autocomplete="list"
-                  [attr.aria-expanded]="popup()"
-                  [attr.aria-controls]="listId"
-                  [attr.aria-activedescendant]="
-                    popup() && matches().length ? optionId(active()) : null
-                  "
-                  [attr.aria-describedby]="problemId"
-                  [placeholder]="t.actionPlaceholder"
-                  [value]="query()"
-                  (input)="onInput($event)"
-                  (keydown)="onComboKey($event)"
-                  (blur)="popup.set(false)"
-                />
-                @if (popup()) {
-                  <ul class="popup" role="listbox" [id]="listId" [attr.aria-label]="t.action">
-                    @for (m of matches(); track m.id; let i = $index) {
-                      <li
-                        role="option"
-                        [id]="optionId(i)"
-                        [class.active]="i === active()"
-                        [attr.aria-selected]="i === active()"
-                        [attr.data-pick]="i"
-                      >
-                        <span>{{ m.label }}</span>
-                        <span class="muted">{{ m.id }}</span>
-                      </li>
-                    } @empty {
-                      <li class="empty" role="option" aria-selected="false" aria-disabled="true">
-                        {{ t.noMatch }}
-                      </li>
-                    }
-                  </ul>
-                }
-              </label>
-              <div class="stack">
-                <button
-                  type="button"
-                  class="btn"
-                  [disabled]="addBlocked() !== null"
-                  (click)="add()"
+            <div class="editor">
+              <div class="field side">
+                <span [id]="slotsLabelId">{{ t.slots }}</span>
+                <ul
+                  class="listbox slots"
+                  role="listbox"
+                  tabindex="0"
+                  [attr.aria-labelledby]="slotsLabelId"
+                  [attr.aria-describedby]="slotsHelpId"
+                  [attr.aria-activedescendant]="slots().length ? slotId(cursor()) : null"
+                  (keydown)="onSlotKey($event)"
+                  (click)="onSlotClick($event)"
                 >
-                  {{ t.add }}
-                </button>
-                <button type="button" class="btn" [disabled]="!canReplace()" (click)="replace()">
-                  {{ t.replace }}
-                </button>
+                  @for (id of slots(); track $index; let i = $index) {
+                    <li
+                      role="option"
+                      [id]="slotId(i)"
+                      [attr.aria-selected]="i === cursor()"
+                      [attr.data-index]="i"
+                    >
+                      <span class="num" aria-hidden="true">{{ i + 1 }}</span>
+                      <span class="grow">{{ label(id) }}</span>
+                      @if (actions.shortcutLabel(id); as k) {
+                        <kbd>{{ k }}</kbd>
+                      }
+                    </li>
+                  } @empty {
+                    <li class="empty" role="option" aria-selected="false" aria-disabled="true">
+                      {{ t.noSlots }}
+                    </li>
+                  }
+                </ul>
+                <p class="help" [id]="slotsHelpId">{{ t.slotsHelp }}</p>
+                <div class="stack">
+                  <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
+                    {{ t.moveUp }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn"
+                    [disabled]="cursor() >= slots().length - 1"
+                    (click)="move(1)"
+                  >
+                    {{ t.moveDown }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn"
+                    [disabled]="slots().length === 0"
+                    (click)="remove()"
+                  >
+                    {{ t.remove }}
+                  </button>
+                </div>
               </div>
-              <p class="help" [id]="problemId">{{ problemText() }}</p>
+              <div class="side">
+                <label class="field combo">
+                  <span>{{ t.action }}</span>
+                  <input
+                    data-autofocus
+                    type="text"
+                    role="combobox"
+                    spellcheck="false"
+                    autocomplete="off"
+                    aria-autocomplete="list"
+                    [attr.aria-expanded]="popup()"
+                    [attr.aria-controls]="listId"
+                    [attr.aria-activedescendant]="
+                      popup() && matches().length ? optionId(active()) : null
+                    "
+                    [attr.aria-describedby]="problemId"
+                    [placeholder]="t.actionPlaceholder"
+                    [value]="query()"
+                    (input)="onInput($event)"
+                    (keydown)="onComboKey($event)"
+                    (blur)="popup.set(false)"
+                  />
+                  @if (popup()) {
+                    <ul class="popup" role="listbox" [id]="listId" [attr.aria-label]="t.action">
+                      @for (m of matches(); track m.id; let i = $index) {
+                        <li
+                          role="option"
+                          [id]="optionId(i)"
+                          [class.active]="i === active()"
+                          [attr.aria-selected]="i === active()"
+                          [attr.data-pick]="i"
+                        >
+                          <span>{{ m.label }}</span>
+                          <span class="muted">{{ m.id }}</span>
+                        </li>
+                      } @empty {
+                        <li class="empty" role="option" aria-selected="false" aria-disabled="true">
+                          {{ t.noMatch }}
+                        </li>
+                      }
+                    </ul>
+                  }
+                </label>
+                <div class="stack">
+                  <button
+                    type="button"
+                    class="btn"
+                    [disabled]="addBlocked() !== null"
+                    (click)="add()"
+                  >
+                    {{ t.add }}
+                  </button>
+                  <button type="button" class="btn" [disabled]="!canReplace()" (click)="replace()">
+                    {{ t.replace }}
+                  </button>
+                </div>
+                <p class="help" [id]="problemId">{{ problemText() }}</p>
+              </div>
             </div>
           </div>
         </div>

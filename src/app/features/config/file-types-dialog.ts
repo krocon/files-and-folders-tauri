@@ -46,116 +46,120 @@ function toDraft(t: FileType): Draft {
   template: `
     <app-modal [heading]="t.typesTitle" width="48rem" (closed)="dialogs.close()">
       <div class="tool">
-        <p class="intro">{{ t.typesIntro }}</p>
-        <div class="editor">
-          <div class="field side">
-            <span [id]="listLabelId">{{ t.categories }}</span>
-            <ul
-              class="listbox"
-              role="listbox"
-              tabindex="0"
-              data-autofocus
-              [attr.aria-labelledby]="listLabelId"
-              [attr.aria-describedby]="listHelpId"
-              [attr.aria-activedescendant]="rows().length ? rowId(cursor()) : null"
-              (keydown)="onListKey($event)"
-              (click)="onRowClick($event)"
-            >
-              @for (r of rows(); track $index; let i = $index) {
-                <li
-                  role="option"
-                  [id]="rowId(i)"
-                  [attr.aria-selected]="i === cursor()"
-                  [attr.aria-invalid]="problems()[i].length ? 'true' : null"
-                  [class.invalid]="problems()[i].length > 0"
-                  [attr.data-index]="i"
-                >
-                  <i class="fa icon-preview" [class]="r.icon" aria-hidden="true"></i>
-                  <span class="grow">{{ display(r.label) || '…' }}</span>
-                  <span class="muted">{{ t.extensionCount(count(r)) }}</span>
-                </li>
-              } @empty {
-                <li class="empty" role="option" aria-selected="false" aria-disabled="true">–</li>
-              }
-            </ul>
-            <p class="help" [id]="listHelpId">{{ t.categoriesHelp }}</p>
-            <div class="stack">
-              <button
-                type="button"
-                class="btn"
-                [disabled]="rows().length >= maxTypes"
-                (click)="add()"
+        <div class="body">
+          <p class="intro">{{ t.typesIntro }}</p>
+          <div class="editor">
+            <div class="field side">
+              <span [id]="listLabelId">{{ t.categories }}</span>
+              <ul
+                class="listbox"
+                role="listbox"
+                tabindex="0"
+                data-autofocus
+                [attr.aria-labelledby]="listLabelId"
+                [attr.aria-describedby]="listHelpId"
+                [attr.aria-activedescendant]="rows().length ? rowId(cursor()) : null"
+                (keydown)="onListKey($event)"
+                (click)="onRowClick($event)"
               >
-                {{ t.add }}
-              </button>
-              <button type="button" class="btn" [disabled]="!current()" (click)="remove()">
-                {{ t.remove }}
-              </button>
-              <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
-                {{ t.moveUp }}
-              </button>
-              <button
-                type="button"
-                class="btn"
-                [disabled]="cursor() >= rows().length - 1"
-                (click)="move(1)"
-              >
-                {{ t.moveDown }}
-              </button>
-            </div>
-          </div>
-          @if (current(); as r) {
-            <div class="side" role="group" [attr.aria-label]="display(r.label)">
-              <label class="field">
-                <span>{{ t.name }}</span>
-                <input
-                  type="text"
-                  class="name"
-                  spellcheck="false"
-                  [value]="display(r.label)"
-                  [attr.aria-invalid]="labelProblem() ? 'true' : null"
-                  [attr.aria-describedby]="problemId"
-                  (input)="patch({ label: value($event) })"
-                />
-              </label>
-              <label class="field">
-                <span>{{ t.extensions }}</span>
-                <textarea
-                  spellcheck="false"
-                  [value]="r.text"
-                  [attr.aria-invalid]="extProblem() ? 'true' : null"
-                  [attr.aria-describedby]="extHelpId + ' ' + problemId"
-                  (input)="patch({ text: value($event) })"
-                ></textarea>
-              </label>
-              <p class="help" [id]="extHelpId">{{ t.extensionsHelp }}</p>
-              <div class="row">
-                <label class="field grow">
-                  <span>{{ t.icon }}</span>
-                  <span class="inline">
+                @for (r of rows(); track $index; let i = $index) {
+                  <li
+                    role="option"
+                    [id]="rowId(i)"
+                    [attr.aria-selected]="i === cursor()"
+                    [attr.aria-invalid]="problems()[i].length ? 'true' : null"
+                    [class.invalid]="problems()[i].length > 0"
+                    [attr.data-index]="i"
+                  >
                     <i class="fa icon-preview" [class]="r.icon" aria-hidden="true"></i>
-                    <select (change)="patch({ icon: value($event) })">
-                      @for (i of icons; track i) {
-                        <option [value]="i" [selected]="i === r.icon">
-                          {{ t.iconNames[i] ?? i }}
+                    <span class="grow">{{ display(r.label) || '…' }}</span>
+                    <span class="muted">{{ t.extensionCount(count(r)) }}</span>
+                  </li>
+                } @empty {
+                  <li class="empty" role="option" aria-selected="false" aria-disabled="true">–</li>
+                }
+              </ul>
+              <p class="help" [id]="listHelpId">{{ t.categoriesHelp }}</p>
+              <div class="stack">
+                <button
+                  type="button"
+                  class="btn"
+                  [disabled]="rows().length >= maxTypes"
+                  (click)="add()"
+                >
+                  {{ t.add }}
+                </button>
+                <button type="button" class="btn" [disabled]="!current()" (click)="remove()">
+                  {{ t.remove }}
+                </button>
+                <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
+                  {{ t.moveUp }}
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  [disabled]="cursor() >= rows().length - 1"
+                  (click)="move(1)"
+                >
+                  {{ t.moveDown }}
+                </button>
+              </div>
+            </div>
+            @if (current(); as r) {
+              <div class="side" role="group" [attr.aria-label]="display(r.label)">
+                <label class="field">
+                  <span>{{ t.name }}</span>
+                  <input
+                    type="text"
+                    class="name"
+                    spellcheck="false"
+                    [value]="display(r.label)"
+                    [attr.aria-invalid]="labelProblem() ? 'true' : null"
+                    [attr.aria-describedby]="problemId"
+                    (input)="patch({ label: value($event) })"
+                  />
+                </label>
+                <label class="field">
+                  <span>{{ t.extensions }}</span>
+                  <textarea
+                    spellcheck="false"
+                    [value]="r.text"
+                    [attr.aria-invalid]="extProblem() ? 'true' : null"
+                    [attr.aria-describedby]="extHelpId + ' ' + problemId"
+                    (input)="patch({ text: value($event) })"
+                  ></textarea>
+                </label>
+                <p class="help" [id]="extHelpId">{{ t.extensionsHelp }}</p>
+                <div class="row">
+                  <label class="field grow">
+                    <span>{{ t.icon }}</span>
+                    <span class="inline">
+                      <i class="fa icon-preview" [class]="r.icon" aria-hidden="true"></i>
+                      <select (change)="patch({ icon: value($event) })">
+                        @for (i of icons; track i) {
+                          <option [value]="i" [selected]="i === r.icon">
+                            {{ t.iconNames[i] ?? i }}
+                          </option>
+                        }
+                      </select>
+                    </span>
+                  </label>
+                  <label class="field grow">
+                    <span>{{ t.color }}</span>
+                    <select (change)="setColor(value($event))">
+                      <option value="" [selected]="r.color === null">{{ t.noColor }}</option>
+                      @for (c of colors; track c) {
+                        <option [value]="c" [selected]="c === r.color">
+                          {{ t.colorNames[c] }}
                         </option>
                       }
                     </select>
-                  </span>
-                </label>
-                <label class="field grow">
-                  <span>{{ t.color }}</span>
-                  <select (change)="setColor(value($event))">
-                    <option value="" [selected]="r.color === null">{{ t.noColor }}</option>
-                    @for (c of colors; track c) {
-                      <option [value]="c" [selected]="c === r.color">{{ t.colorNames[c] }}</option>
-                    }
-                  </select>
-                </label>
+                  </label>
+                </div>
+                <p class="error" [id]="problemId" aria-live="polite">{{ problemText() }}</p>
               </div>
-              <p class="error" [id]="problemId" aria-live="polite">{{ problemText() }}</p>
-            </div>
-          }
+            }
+          </div>
         </div>
         <p class="error" role="alert">{{ error() }}</p>
         <div class="foot">
