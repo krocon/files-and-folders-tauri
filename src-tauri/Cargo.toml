@@ -22,7 +22,11 @@ open = "5"
 regex = "1.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-# design 025 review #1/#2: unpack the 7z header ourselves (bounded) before sevenz-rust2 reads it
+# design 025 review #1/#2 + re-check B1/B3: check the 7z header ourselves (CRCs, AES, bounded
+# LZMA) before sevenz-rust2 reads it – aes/cbc/crc32fast are already in the tree (sevenz-rust2, zip)
+aes = "0.9"
+cbc = "0.2"
+crc32fast = "1.5"
 lzma-rust2 = { version = "0.23", default-features = false, features = ["std"] }
 sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["aes256", "bzip2", "compress", "ppmd"] }
 sha2 = "0.10"

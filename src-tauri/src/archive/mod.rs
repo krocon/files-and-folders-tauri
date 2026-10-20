@@ -25,7 +25,7 @@ use crate::paths::{segments_of, validate_name};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
-use std::io::{self, BufReader, Read};
+use std::io::{self, BufReader, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, UNIX_EPOCH};
@@ -1059,8 +1059,10 @@ fn verify_zip(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
 }
 
 fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
-    sevenz_header::check(path)?;
-    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let mut file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    sevenz_header::check(&mut file, path, Some(secret))?;
+    file.seek(io::SeekFrom::Start(0))
+        .map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
     let password = sevenz::password_of(Some(secret));
     let archive = match sevenz_rust2::Archive::read(&mut reader, &password) {

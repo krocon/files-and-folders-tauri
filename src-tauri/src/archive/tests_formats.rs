@@ -335,20 +335,51 @@ fn seven_zip_header_bombs_are_refused_before_reading() {
         FsErrorCode::ArchiveTooLarge
     );
     // real archives pass, with their file count (plain and encoded headers)
-    for (name, n) in [("sevenzip-solid.7z", 7), ("sevenzip-enc-data.7z", 7)] {
+    let geheim = secrets::Secret::new("geheim");
+    for (name, pw) in [
+        ("sevenzip-solid.7z", None),
+        ("sevenzip-enc-data.7z", None),
+        ("sevenzip-enc-names.7z", Some(&geheim)),
+    ] {
         let a = fixture(d.path(), name);
-        assert_eq!(
-            sevenz_header::check(&a).unwrap(),
-            sevenz_header::HeaderCheck::Files(Some(n)),
-            "{name}"
-        );
+        let mut f = File::open(&a).unwrap();
+        let c = sevenz_header::check(&mut f, &a, pw).unwrap();
+        assert_eq!(c.files, 7, "{name}");
+        assert_eq!(c.encrypted_header, pw.is_some(), "{name}");
     }
-    // encrypted names: only the size can be checked
+    // encrypted names: without the password nothing can be judged, a wrong one is wrong
     let h = fixture(d.path(), "sevenzip-enc-names.7z");
-    assert_eq!(
-        sevenz_header::check(&h).unwrap(),
-        sevenz_header::HeaderCheck::Files(None)
-    );
+    let mut f = File::open(&h).unwrap();
+    let e = sevenz_header::check(&mut f, &h, None).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchivePasswordRequired);
+    let e = sevenz_header::check(&mut f, &h, Some(&secrets::Secret::new("falsch"))).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchivePasswordWrong);
+}
+
+/// Re-check 025 B1–B3: what the first pre-check let through is refused.
+#[test]
+fn seven_zip_headers_the_check_cannot_judge_are_refused() {
+    let d = tempdir().unwrap();
+    // B1: zeroed start header – the crate would search the end without any CRC
+    let e = read_index(&fixture(d.path(), "bomb-zero-start.7z")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveError, "{e:?}");
+    // refused by the pre-check, before the crate reads anything
+    assert!(e.message.contains("cannot be checked"), "{}", e.message);
+    // B2: 2^36 declared streams with CRCs – refused without allocating them
+    let e = read_index(&fixture(d.path(), "bomb-digests.7z")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveError, "{e:?}");
+    assert!(e.message.contains("cannot be checked"), "{}", e.message);
+    // B3: an encoded header with another method than LZMA/LZMA2
+    let e = read_index(&fixture(d.path(), "bomb-bzip2-header.7z")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveError, "{e:?}");
+    assert!(e.message.contains("cannot be checked"), "{}", e.message);
+    // B3: an AES header – first the password, then the file count
+    let aes = fixture(d.path(), "bomb-aes-header.7z");
+    let e = read_index(&aes).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchivePasswordRequired, "{e:?}");
+    let e = set_password(&aes, secrets::Secret::new("geheim")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveTooLarge, "{e:?}");
+    assert!(e.message.contains("2000000"), "{}", e.message);
 }
 
 /// Review 025 #8: a block up to 16 MiB is decoded completely for the check.

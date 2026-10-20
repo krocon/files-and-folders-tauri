@@ -9,7 +9,7 @@ use super::{EntryType, MAX_DICT, RawEntry};
 use crate::error::{FsError, FsErrorCode};
 use sevenz_rust2::{Archive, Block, EncoderMethod, Password};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Seek, SeekFrom};
 use std::path::Path;
 
 /// `FILE_ATTRIBUTE_UNIX_EXTENSION`: the high 16 bits hold the Unix mode.
@@ -72,14 +72,18 @@ pub(crate) fn map_error(e: sevenz_rust2::Error, path: &Path, encrypted: bool) ->
 /// Reads the header. Without a password first: header-encrypted archives
 /// (`7z -mhe`) need the one in the store (`header_encrypted` = true then).
 pub(crate) fn open(path: &Path) -> Result<(BufReader<File>, Archive, bool), FsError> {
-    // the crate unpacks the header without limits: check its size and file count first
-    super::sevenz_header::check(path)?;
-    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    // the crate unpacks the header without limits: check its size and file count
+    // first – on the same open file it reads next (re-check B4)
+    let mut file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let secret = super::secrets::get(path);
+    super::sevenz_header::check(&mut file, path, secret.as_ref())?;
+    file.seek(SeekFrom::Start(0))
+        .map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
     match Archive::read(&mut reader, &Password::empty()) {
         Ok(a) => Ok((reader, a, false)),
         Err(sevenz_rust2::Error::PasswordRequired) => {
-            let Some(secret) = super::secrets::get(path) else {
+            let Some(secret) = secret else {
                 return Err(map_error(
                     sevenz_rust2::Error::PasswordRequired,
                     path,

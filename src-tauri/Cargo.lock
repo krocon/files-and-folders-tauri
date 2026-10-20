@@ -935,6 +935,9 @@ dependencies = [
 name = "files-and-folders-tauri"
 version = "0.1.0"
 dependencies = [
+ "aes",
+ "cbc",
+ "crc32fast",
  "drag",
  "flate2",
  "gtk",
