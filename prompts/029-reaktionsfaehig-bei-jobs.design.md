@@ -103,10 +103,35 @@ enthalten.
   vorigen Tab), Aktion `CANCEL_LOADING`, Kataloge.
 - E2E (Xvfb, `FNF_TEST_SLOW`): Kopie auf langsames Ziel, beide Panels bedienen, Tab-Wechsel + Esc.
 
-## 5. Fortschritt
+## 5. Ende-zu-Ende (Xvfb, Debug-Build, 20.10.2026)
+
+Szene: `FNF_TEST_SLOW=/root/e2e/slow:3000:60` (Listing 3 s bzw. 6 s, 60 ms je 1-MiB-Block ≈ 16 MB/s wie Marcs Laufwerk),
+links `src` mit 500-MB-Datei, Umlaut-Ordner, Emoji-Datei, versteckter Datei, Symlink; rechts `slow` (+ Tab `Serien`).
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Während der Kopie in den rechten Ordner beide Panels mit Maus bedienbar | ✅ Klicks in beiden Listen sofort, kein „Loading…“ beim Auffrischen |
+| 2 | Zielliste aktuell, nach Jobende vollständig | ✅ nach der Kopie 31 Dateien / 500 MB ohne Sperre |
+| 3 | Navigation > 2 s: Hinweis + Abbrechen/Esc; alte Liste bleibt; Pfadzeile/Tab passen | ✅ Enter auf `sub` (6 s) → Leiste nach 2 s, Esc → `slow` bleibt, späte Antwort verworfen; Tab `Serien` zeigt leere Liste + eigenen Pfad + Spinner |
+| 4 | Kein Thread-Stapel bei hängendem Ordner | ✅ Rust-Test `listing_gate` (E2E nicht messbar) |
+| 5 | Kopie nicht langsamer, Pause/Abbruch ≤ 1 s | ✅ Pause: Datei wächst nach 0,5 s nicht mehr; Abbruch: `.part` nach 1 s weg; Messung +35 % |
+| 6 | Keine synchronen Commands | ✅ Test `command_rules` (rot geprüft) |
+| 7 | Task-Zeile ohne Umbruch | ✅ „60 MB of 500 MB · 16 MB/s · 0:27 left“ in einer Zeile, Pfad mit Ellipse |
+| 8 | `pnpm check`, Debug-Build | ✅ |
+
+Gefunden und behoben im E2E: (a) die Table behielt beim Öffnen eines unbekannten Tabs die Zeilen des alten Tabs
+(`FileList` leert jetzt bei `listing = null`); (b) Esc auf einem Tab desselben Ordners ließ `navigationLocked` bis zur
+(evtl. nie kommenden) Antwort stehen (roter Spec zuerst).
+
+Nicht geprüft: macOS/Windows (FSEvents-`need_rescan`, `F_NOCACHE`, natives Menü nach der async-Umstellung – Menü-
+Commands bleiben bewusst synchron), dunkles Schema der neuen Leiste nur über Tokens (die App folgt ihrer eigenen
+Schema-Einstellung, nicht `GTK_THEME`).
+
+## 6. Fortschritt
 
 - [x] Prompt + Design
-- [ ] Rust
-- [ ] Frontend
-- [ ] E2E
-- [ ] Doku, Review
+- [x] Rust (Watcher E7–E9, Listing-Gate E6, Kopie E10, Commands E11, Testschalter E13)
+- [x] Frontend (E1–E5, E12)
+- [x] E2E
+- [x] Doku
+- [ ] Review (separater Agent) – Abschnitt 7
