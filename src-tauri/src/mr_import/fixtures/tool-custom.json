@@ -1,0 +1,40 @@
+[
+  {
+    "id": "CMD_EDIT_FILE",
+    "label": "Edit",
+    "shortcut": "control 4",
+    "cmd": "gedit ",
+    "fileLimit": 4,
+    "para": " $file ",
+    "local": true
+  },
+  {
+    "id": "CMD_SHELL",
+    "label": "Local Shell",
+    "shortcut": "cmd 0",
+    "cmd": "$clidir/linux-open-terminal.sh",
+    "para": " $dir ",
+    "local": true
+  },
+  {
+    "id": "CMD_REVEAL_IN_FINDER",
+    "label": "Reveal in Finder",
+    "shortcut": "cmd shift f",
+    "cmd": "open ",
+    "para": " $dir ",
+    "local": true
+  },
+  {
+    "id": "MELD",
+    "label": "Meld \u00fc",
+    "shortcut": "cmd shift m",
+    "cmd": "meld",
+    "para": " $file "
+  },
+  {
+    "id": "OPEN_SCRIPT",
+    "label": "Script",
+    "cmd": "$clidir/x.sh",
+    "para": " $dir "
+  }
+]

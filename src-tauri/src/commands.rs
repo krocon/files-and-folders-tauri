@@ -2,6 +2,7 @@
 //! blocking file-system work off the async runtime threads.
 
 pub mod config;
+pub mod mr_import;
 pub mod os_drag;
 pub mod shell;
 pub mod watch;
@@ -68,7 +69,7 @@ pub(crate) fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsErro
 }
 
 /// Validates a path from the frontend; a leading `~` means the home folder.
-fn resolve_input<R: Runtime>(app: &AppHandle<R>, raw: &str) -> Result<PathBuf, FsError> {
+pub(crate) fn resolve_input<R: Runtime>(app: &AppHandle<R>, raw: &str) -> Result<PathBuf, FsError> {
     if raw.trim_start().starts_with('~') {
         let expanded = expand_tilde(raw, &home_dir(app)?)?;
         return validate_input_path(&expanded.to_string_lossy());
@@ -789,7 +790,7 @@ async fn tools_config<R: Runtime>(app: &AppHandle<R>) -> crate::tools::ToolsConf
     reload_tools(app).await
 }
 
-async fn reload_tools<R: Runtime>(app: &AppHandle<R>) -> crate::tools::ToolsConfig {
+pub(crate) async fn reload_tools<R: Runtime>(app: &AppHandle<R>) -> crate::tools::ToolsConfig {
     let file = tools_file(app).ok();
     let config = tauri::async_runtime::spawn_blocking(move || match file {
         Some(f) => crate::tools::load(&f),
@@ -1132,9 +1133,14 @@ pub async fn import_settings<R: Runtime>(
         crate::settings::import(&files, &bundle, &parts)
     })
     .await?;
-    // the imported files are fine to write again (a broken one was replaced)
+    unblock_imported(&app, &report.imported);
+    Ok(report)
+}
+
+/// The imported files are fine to write again (a broken one was replaced).
+pub(crate) fn unblock_imported<R: Runtime>(app: &AppHandle<R>, imported: &[String]) {
     let unblock = |m: &Mutex<bool>| *m.lock().unwrap_or_else(|e| e.into_inner()) = false;
-    for part in &report.imported {
+    for part in imported {
         match part.as_str() {
             "settings" => unblock(&app.state::<SettingsState>().write_blocked),
             "themes" => unblock(&app.state::<ThemesState>().write_blocked),
@@ -1145,7 +1151,6 @@ pub async fn import_settings<R: Runtime>(
             _ => {}
         }
     }
-    Ok(report)
 }
 
 // ---- jobs (design 005) ----
@@ -1437,12 +1442,16 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 5] = [
+    const SOURCES: [(&str, &str); 6] = [
         ("commands.rs", include_str!("commands.rs")),
         ("commands/config.rs", include_str!("commands/config.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
+        (
+            "commands/mr_import.rs",
+            include_str!("commands/mr_import.rs"),
+        ),
     ];
     const MAIN_THREAD: [&str; 4] = [
         "set_app_menu",

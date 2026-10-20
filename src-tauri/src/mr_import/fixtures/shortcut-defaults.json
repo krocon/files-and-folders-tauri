@@ -1,0 +1,12 @@
+{
+  "f5": "OPEN_COPY_DLG",
+  "ctrl+f": "OPEN_FIND_DLG",
+  "cmd+left": "HOME_PRESSED",
+  "ctrl+cmd+g": "OPEN_GOTO_ANYTHING_DLG",
+  "cmd+alt+up": "NAVIGATE_BACK",
+  "ctrl+alt+shift+d": "OPEN_DELETE_EMPTY_FOLDERS_DLG",
+  "ctrl+k f6": "OPEN_TASK_DLG",
+  "ctrl+cmd+s": "SAVE_CONFIG",
+  "shift+tab": "NEXT_TAB",
+  "cmd+e": "EDIT_FILE"
+}

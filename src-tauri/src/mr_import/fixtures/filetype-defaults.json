@@ -1,0 +1,40 @@
+[
+  {
+    "label": "movies",
+    "extensions": [
+      ".avi",
+      ".mkv",
+      ".mp4",
+      ".mov",
+      ".wmv",
+      ".flv",
+      ".webm"
+    ]
+  },
+  {
+    "label": "audio",
+    "extensions": [
+      ".mp3",
+      ".wav",
+      ".aac",
+      ".flac",
+      ".ogg",
+      ".wma",
+      ".m4a"
+    ]
+  },
+  {
+    "label": "images",
+    "extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".bmp",
+      ".tiff",
+      ".webp",
+      ".svg",
+      ".heic"
+    ]
+  }
+]

@@ -113,7 +113,7 @@ pub struct SettingsWarning {
 }
 
 impl SettingsWarning {
-    fn new(code: &str, key: Option<&str>, path: Option<&Path>) -> Self {
+    pub(crate) fn new(code: &str, key: Option<&str>, path: Option<&Path>) -> Self {
         Self {
             code: code.into(),
             key: key.map(Into::into),

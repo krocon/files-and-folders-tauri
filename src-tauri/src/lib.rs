@@ -48,6 +48,7 @@ pub mod keymap;
 pub mod listing;
 pub mod listing_gate;
 pub mod model;
+pub mod mr_import;
 pub mod opener;
 pub mod os_drag;
 pub mod paths;
@@ -247,7 +248,9 @@ pub fn run() {
             commands::config::save_buttons,
             commands::config::load_file_types,
             commands::config::save_file_types,
-            commands::config::toggle_fullscreen
+            commands::config::toggle_fullscreen,
+            commands::mr_import::scan_old_config,
+            commands::mr_import::apply_old_config
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
