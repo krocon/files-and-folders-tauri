@@ -343,20 +343,20 @@ fn many_links_and_cancel() {
     assert_eq!(info.state, JobState::Done);
     assert_eq!(info.summary.unwrap().items_done, 2000);
     assert_eq!(info.progress.items_total, 2000);
-    // cancelled while it waits behind another job: nothing is made
+    // cancelled while it waits behind another job: nothing is made. The blocker must be a
+    // serial job (link jobs queue; `Simulate` runs in parallel and blocked nothing, so the
+    // second job raced the cancel and sometimes made a link) – paused, so it keeps the queue.
     let other = dst.join("zwei");
+    let third = dst.join("drei");
     fs::create_dir(&other).unwrap();
-    let blocker = h
-        .mgr
-        .start(JobSpec::Simulate {
-            items: 20,
-            item_ms: 20,
-        })
-        .unwrap();
+    fs::create_dir(&third).unwrap();
+    let blocker = h.link(&refs, &third, LinkOptions::default());
+    h.mgr.pause(&blocker);
     let id = h.link(&refs, &other, LinkOptions::default());
     h.mgr.cancel(&id);
+    h.mgr.resume(&blocker);
     assert_eq!(h.finish(&id).state, JobState::Cancelled);
-    h.finish(&blocker);
+    assert_eq!(h.finish(&blocker).state, JobState::Done);
     assert_eq!(fs::read_dir(&other).unwrap().count(), 0);
 }
 
