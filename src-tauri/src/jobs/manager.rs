@@ -878,7 +878,7 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             one(target_dir)
         }
         JobSpec::Count { paths } | JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
-        JobSpec::DirSize { path } => one(path),
+        JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => one(path),
         JobSpec::Search { .. }
         | JobSpec::Duplicates { .. }
         | JobSpec::Shell { .. }

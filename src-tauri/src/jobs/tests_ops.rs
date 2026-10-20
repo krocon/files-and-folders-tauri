@@ -1101,6 +1101,11 @@ fn every_job_refuses_dotdot_in_its_paths() {
         ),
         format!(r#"{{"kind":"extract","archive":"{up}","targetDir":"{a}"}}"#),
         format!(
+            r#"{{"kind":"extract","archive":"{a}/x.zip","entries":["{up}/x.zip/e"],"targetDir":"{a}"}}"#
+        ),
+        format!(r#"{{"kind":"extract","archive":"{a}/x.zip","targetDir":"{up}"}}"#),
+        format!(r#"{{"kind":"viewEntry","path":"{up}/x.zip/e"}}"#),
+        format!(
             r#"{{"kind":"pack","sources":["{up}"],"targetDir":"{a}","name":"p.zip","format":"zip"}}"#
         ),
         format!(r#"{{"kind":"link","sources":["{up}"],"targetDir":"{a}"}}"#),
