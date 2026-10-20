@@ -140,6 +140,11 @@ export class FileList implements OnDestroy {
     effect(() => {
       const listing = this.store.listing();
       untracked(() => {
+        if (!listing && this.controller && this.shownListing) {
+          // a tab's folder opens (design 029 E5): nothing of the old tab stays in the table
+          this.clearRows();
+          return;
+        }
         if (listing && this.controller) {
           if (this.updateInPlace(listing)) {
             return;
@@ -513,6 +518,22 @@ export class FileList implements OnDestroy {
   }
 
   /** Rows of a listing: the ".." row first (if there is a parent), then the entries. */
+  private clearRows(): void {
+    this.shownListing = null;
+    this.shownPath = null;
+    const seq = ++this.applySeq;
+    this.applying = true;
+    try {
+      this.bridge?.setRows([]);
+    } finally {
+      setTimeout(() => {
+        if (seq === this.applySeq) {
+          this.applying = false;
+        }
+      }, 400);
+    }
+  }
+
   private show(listing: DirectoryListing): void {
     this.shownListing = listing;
     const rows: DirEntry[] =

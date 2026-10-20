@@ -465,5 +465,26 @@ describe('FilePanel', () => {
       expect(store.path()).toBe('/data');
       expect(el.querySelector('.slow')).toBeNull();
     });
+
+    it('Esc on a tab of the same folder unlocks the panel at once (no wait for the old request)', async () => {
+      const { store, settle } = await render();
+      const hanging = deferred<DirectoryListing>();
+      const original = fs.handler;
+      ws.restore({
+        ...ws.snapshot(),
+        panels: {
+          ...ws.snapshot().panels,
+          left: { activeTab: 0, tabs: [...ws.snapshot().panels.left.tabs, newTab('/data')] },
+        },
+      });
+      await settle();
+      fs.handler = (p) => (p === '/data' ? hanging.promise : original(p));
+      ws.selectTab('left', 2);
+      await settle();
+      expect(store.navigationLocked()).toBe(true);
+      expect(ws.panel('left')?.cancelLoading?.()).toBe(true);
+      expect(store.navigationLocked()).toBe(false);
+      expect(store.path()).toBe('/data');
+    });
   });
 });

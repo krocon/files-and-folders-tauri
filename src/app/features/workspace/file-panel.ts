@@ -555,10 +555,11 @@ export class FilePanel implements OnInit {
     if (!this.store.cancelLoad()) {
       return false;
     }
+    // the given-up request may never come back (hanging drive): unlock now
+    this.store.navigationLocked.set(false);
     if (!opening) {
       return true;
     }
-    this.store.navigationLocked.set(false);
     const tabs = this.ws.panels()[this.side()].tabs;
     const back = tabs.findIndex((t) => t.id === this.previousTabId);
     if (back >= 0 && this.previousTabId !== this.shownTabId) {
