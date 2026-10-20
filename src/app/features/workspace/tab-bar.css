@@ -68,6 +68,19 @@
     outline: var(--focus-ring-width) solid var(--color-focus);
     outline-offset: -2px;
   }
+
+  /* a dragged tab would land here (design 031 E2): a bar at the tab's edge */
+  &.insert-before {
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+
+  &.insert-after {
+    box-shadow: inset -3px 0 0 var(--color-accent);
+  }
+
+  &.dragged {
+    opacity: 0.55;
+  }
 }
 
 :host(.fnf-active-panel) .tab {
@@ -143,4 +156,46 @@
 
 .tab .spinner {
   margin-inline-start: var(--spacing-1);
+}
+
+/* hint next to the pointer while a tab is dragged (design 031 E2), like the file drag ghost */
+.tab-ghost {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 360px;
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-text);
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popup);
+  white-space: nowrap;
+  pointer-events: none;
+
+  &.no-target {
+    color: var(--color-tooltip-text);
+    background: var(--color-tooltip-bg);
+    border: var(--border-width) solid var(--color-border);
+  }
+
+  .what {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hint {
+    font-size: var(--font-size-xs);
+    opacity: 0.85;
+  }
+}
+
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }

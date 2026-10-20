@@ -5,8 +5,8 @@
 use super::report::Reporter;
 use super::{
     Control, Decision, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem,
-    Summary, Transfer, clean, copy, delete, duplicates, expect, extract, group, pack, rename,
-    search, shell,
+    Summary, Transfer, attributes, clean, copy, delete, duplicates, expect, extract, group, link,
+    pack, rename, search, shell,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -313,6 +313,15 @@ impl JobManager {
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
                     }
+                    JobSpec::Link {
+                        sources,
+                        target_dir,
+                        options,
+                    } => {
+                        let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        let target = PathBuf::from(target_dir);
+                        link::run(id, &sources, &target, options, &control, &emit)
+                    }
                     JobSpec::Count { paths } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         run_count(id, &paths, &control, &emit)
@@ -328,6 +337,15 @@ impl JobManager {
                         command,
                         launch,
                     } => shell::run(id, cwd, command, launch, &control, &emit),
+                    JobSpec::Attributes {
+                        paths,
+                        change,
+                        recursive,
+                        apply_to,
+                    } => {
+                        let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                        attributes::run(id, &paths, change, *recursive, *apply_to, &control, &emit)
+                    }
                     JobSpec::Rename { .. } => unreachable!("handled above"),
                 };
                 (state, summary)
@@ -932,11 +950,66 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                 ));
             }
         }
+        JobSpec::Link {
+            sources,
+            target_dir,
+            options,
+        } => {
+            if sources.is_empty() {
+                return Err(nothing());
+            }
+            if sources.len() > link::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::TooMany,
+                    format!("Too many entries (max. {})", link::MAX_ITEMS),
+                    None,
+                ));
+            }
+            for s in sources {
+                validate_input_path(s)?;
+            }
+            validate_input_path(target_dir)?;
+            if let Some(name) = &options.rename_to {
+                if sources.len() != 1 {
+                    return Err(FsError::new(
+                        FsErrorCode::InvalidName,
+                        "A new name needs exactly one entry",
+                        None,
+                    ));
+                }
+                crate::paths::validate_name(name)?;
+            }
+        }
         JobSpec::Duplicates { criteria } => {
             crate::duplicates::compile(criteria)?;
         }
         JobSpec::DirSize { path } => {
             validate_input_path(path)?;
+        }
+        JobSpec::Attributes {
+            paths,
+            change,
+            recursive,
+            ..
+        } => {
+            if paths.is_empty() {
+                return Err(nothing());
+            }
+            if paths.len() > crate::attributes::MAX_ITEMS {
+                return Err(FsError::new(
+                    FsErrorCode::TooMany,
+                    format!("Too many entries (max. {})", crate::attributes::MAX_ITEMS),
+                    None,
+                ));
+            }
+            change.validate()?;
+            for p in paths {
+                let p = validate_input_path(p)?;
+                // `chmod -R` on root, home or a system folder can break the system (E8)
+                if *recursive {
+                    check_danger(&p, home, false)?;
+                }
+            }
         }
         JobSpec::Shell { cwd, command, .. } => {
             crate::shell::check_cwd(cwd)?;

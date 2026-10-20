@@ -393,7 +393,7 @@ describe('viewer, quick view and properties (design 010)', () => {
       accessedMs: null,
       readonly: false,
       format: PNG,
-      unix: { mode: 0o644, uid: 1, gid: 1, owner: 'u', group: 'g' },
+      unix: { mode: 0o644, uid: 1, gid: 1, owner: 'u', group: 'g', flagsHidden: null },
       windows: null,
     };
   }

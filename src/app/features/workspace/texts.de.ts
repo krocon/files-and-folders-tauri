@@ -26,6 +26,14 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
     history: 'Verlauf',
     moveRight: 'Tab nach rechts verschieben',
   },
+  tabDrag: {
+    label: (copy, title, side, position) =>
+      `Tab ${title} ${copy ? 'kopieren' : 'verschieben'} → ${side === 'left' ? 'links' : 'rechts'}, Position ${position}`,
+    noTarget: (title) => `Tab ${title} – hier kein Ziel`,
+    lastTab: (isMac) => `Der letzte Tab einer Seite bleibt – ${isMac ? '⌥' : 'Strg'}: kopieren`,
+    full: 'Diese Seite hat schon die meisten Tabs',
+    hint: (isMac) => `${isMac ? '⌥' : 'Strg'}: kopieren · Esc: abbrechen`,
+  },
   splitter: 'Trenner der Seiten (Doppelklick: 50 / 50)',
   dismiss: 'Schließen',
   sessionLoadFailed: 'Die gespeicherte Sitzung konnte nicht geladen werden.',

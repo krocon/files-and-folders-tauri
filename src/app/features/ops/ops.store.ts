@@ -31,8 +31,11 @@ import {
 } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 
+/** The operations of the copy/move dialog – `link` creates symbolic links (design 031 E8). */
+export type TransferKind = 'copy' | 'move' | 'link';
+
 export interface CopyMoveRequest {
-  readonly kind: 'copy' | 'move';
+  readonly kind: TransferKind;
   readonly side: Side;
   readonly sourceDir: string;
   readonly sources: readonly DirEntry[];
@@ -52,6 +55,9 @@ export interface CopyMoveInput {
   readonly conflictDefault: ConflictDefault;
   readonly background: boolean;
   readonly allowDangerous: boolean;
+  /** Link only (design 031 E8): relative target, free name when the name exists. */
+  readonly relative?: boolean;
+  readonly keepBoth?: boolean;
 }
 
 export interface DeleteRequest {
@@ -178,12 +184,38 @@ export class OpsStore {
   }
 
   /**
+   * "Create link…" (design 031 E8): the dialog in link mode for the selection,
+   * target = the other panel. Not inside an archive (virtual paths).
+   */
+  async openLink(): Promise<void> {
+    if (this.inArchive()) {
+      throw err('unknown', OPS_TEXTS.linkFromArchive);
+    }
+    const side = this.ws.source();
+    const sourceDir = this.location();
+    const sources = this.selection();
+    if (sourceDir === null) {
+      throw err('unknown', OPS_TEXTS.noFolder);
+    }
+    if (sources.length === 0) {
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    await this.openCopyMoveFor({
+      kind: 'link',
+      side,
+      sourceDir,
+      sources,
+      target: this.ws.targetDir(side) ?? this.folder() ?? '',
+    });
+  }
+
+  /**
    * The copy/move dialog for given entries and target – drag and drop (design
    * 012 E5/E6). `side` is the panel the entries come from (or were dropped on);
    * `sourceDir` their folder ('' if they come from several folders).
    */
   async openCopyMoveFor(args: {
-    kind: 'copy' | 'move';
+    kind: TransferKind;
     side: Side;
     sourceDir: string;
     sources: readonly DirEntry[];
@@ -202,7 +234,10 @@ export class OpsStore {
         throw err('unknown', ARCHIVE_TEXTS.intoArchive);
       }
       if (info && s === args.side && args.sources.some((e) => isSameOrBelow(e.path, info.path))) {
-        throw err('unknown', ARCHIVE_TEXTS.readOnly);
+        throw err(
+          'unknown',
+          args.kind === 'link' ? OPS_TEXTS.linkFromArchive : ARCHIVE_TEXTS.readOnly,
+        );
       }
     }
     const other = this.ws.targetDir(args.side);
@@ -385,10 +420,13 @@ export class OpsStore {
     const single = req.sources.length === 1 ? req.sources[0] : null;
     const name = input.name?.trim() ?? '';
     const renameTo = single && name !== '' && name !== single.name ? name : null;
-    if (dir === req.sourceDir && renameTo === null) {
+    if (dir === req.sourceDir && renameTo === null && !(req.kind === 'link' && input.keepBoth)) {
       return err('same_source_target', single ? OPS_TEXTS.sameFolder : OPS_TEXTS.sameFolderMulti);
     }
     const sources = req.sources.map((e) => e.path);
+    if (req.kind === 'link') {
+      return this.runLink(req, dir, sources, renameTo, input);
+    }
     const options = { conflictDefault: input.conflictDefault, renameTo };
     const expected = req.expected;
     const spec: JobSpec =
@@ -417,6 +455,35 @@ export class OpsStore {
     this.ws.addRecent(dir);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, req.kind === 'move');
+    return null;
+  }
+
+  /** Starts the link job (design 031 E9); nothing moves, so the cursor stays. */
+  private async runLink(
+    req: CopyMoveRequest,
+    dir: string,
+    sources: readonly string[],
+    renameTo: string | null,
+    input: CopyMoveInput,
+  ): Promise<FsError | null> {
+    let id: string;
+    try {
+      id = await this.jobs.start({
+        kind: 'link',
+        sources,
+        targetDir: dir,
+        options: {
+          relative: input.relative ?? false,
+          renameTo,
+          keepBoth: input.keepBoth ?? false,
+        },
+      });
+    } catch (e) {
+      return toFsError(e);
+    }
+    this.ws.addRecent(dir);
+    this.close();
+    this.afterJob(id, req.side, req.sourceDir, sources, false);
     return null;
   }
 

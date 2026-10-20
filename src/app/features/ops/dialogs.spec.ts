@@ -127,6 +127,39 @@ describe('operation dialogs', () => {
     expect(jobsApi.cancelled).toEqual([]); // the count had finished
   });
 
+  it('link (design 031 E8): no count, relative and "keep both" options, link job', async () => {
+    ops.copyMove.set({
+      kind: 'link',
+      side: 'left',
+      sourceDir: '/src',
+      sources: [a],
+      target: '/dst',
+      targets: [],
+      dangers: [],
+    });
+    TestBed.inject(DialogService).show('copy-move');
+    const { fixture, el } = await render(CopyMoveDialog);
+    expect(jobsApi.started).toEqual([]); // nothing to count
+    expect(el.querySelector('h2, [role="dialog"]')?.textContent).toContain('Create link');
+    expect(el.textContent).toContain('Name of the link');
+    expect(el.textContent).not.toContain(OPS_TEXTS.background);
+    const select = el.querySelector<HTMLSelectElement>('select')!;
+    expect([...select.options].map((o) => o.value)).toEqual(['fail', 'keepBoth']);
+    select.value = 'keepBoth';
+    select.dispatchEvent(new Event('change'));
+    const relative = el.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    relative.click();
+    fixture.detectChanges();
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await flush();
+    expect(jobsApi.started[0].spec).toEqual({
+      kind: 'link',
+      sources: ['/src/a.txt'],
+      targetDir: '/dst',
+      options: { relative: true, renameTo: null, keepBoth: true },
+    });
+  });
+
   it('copy: an error stays in the dialog; the count is cancelled when it closes early', async () => {
     copyRequest();
     const { fixture, el } = await render(CopyMoveDialog);

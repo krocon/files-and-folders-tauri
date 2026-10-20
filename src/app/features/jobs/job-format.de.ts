@@ -89,10 +89,13 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     extract: (what, target) => `${what} entpacken → ${target}`,
     entriesOf: (n, archive) => `${n} Einträge aus ${archive}`,
     pack: (what, target, name) => `${what} packen → ${target} / ${name}`,
+    link: (what, target, renameTo) =>
+      `Verknüpfung zu ${what} → ${target}${renameTo ? ` als ${renameTo}` : ''}`,
     duplicates: (where) => `Duplikate finden in ${where}`,
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
     simulate: (n) => `Test-Task (${n} Schritte)`,
     shell: (command, cwd) => `Shell: ${command} (in ${cwd})`,
+    attributes: (what, recursive) => `Attribute ändern: ${what}${recursive ? ' samt Inhalt' : ''}`,
   },
 };

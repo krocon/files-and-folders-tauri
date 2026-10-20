@@ -177,6 +177,60 @@ describe('file operations (design 006)', () => {
     });
   });
 
+  it('create link (design 031 E8): dialog in link mode, link job with its options', async () => {
+    expect(actions.state('OPEN_LINK_DLG')).toBe('disabled');
+    left.setMarked(['/src/Ordner', '/src/a.txt'], true);
+    expect(actions.state('OPEN_LINK_DLG')).toBe('ready');
+    await actions.run('OPEN_LINK_DLG');
+    expect(dialogs.open()).toBe('copy-move');
+    const req = ops.copyMove()!;
+    expect(req).toMatchObject({ kind: 'link', target: '/dst', dangers: [] });
+    expect(jobsApi.started).toEqual([]);
+    expect(await ops.runCopyMove(req, { ...INPUT, relative: true })).toBeNull();
+    expect(jobsApi.started[0].spec).toEqual({
+      kind: 'link',
+      sources: ['/src/Ordner', '/src/a.txt'],
+      targetDir: '/dst',
+      options: { relative: true, renameTo: null, keepBoth: false },
+    });
+    finish(0);
+    await flush();
+    expect(left.marked().size).toBe(0);
+  });
+
+  it('a link next to the source needs a new name or "keep both"', async () => {
+    left.setCursor('/src/a.txt');
+    await ops.openLink();
+    const req = ops.copyMove()!;
+    expect((await ops.runCopyMove(req, { ...INPUT, target: '/src', name: 'a.txt' }))?.code).toBe(
+      'same_source_target',
+    );
+    expect(await ops.runCopyMove(req, { ...INPUT, target: '/src', keepBoth: true })).toBeNull();
+    expect(jobsApi.started[0].spec).toMatchObject({
+      kind: 'link',
+      targetDir: '/src',
+      options: { keepBoth: true, relative: false },
+    });
+  });
+
+  it('no links from inside an archive', async () => {
+    left.setCursor('/src/a.txt');
+    const ws = TestBed.inject(WorkspaceStore);
+    const archived = TestBed.runInInjectionContext(() => new FileBrowserStore());
+    fs.handler = () =>
+      Promise.resolve({
+        ...listing('/x.zip', [entry('in.txt', { path: '/x.zip/in.txt' })]),
+        archive: { path: '/x.zip', format: 'zip' },
+      } as never);
+    await archived.load('/x.zip');
+    archived.setCursor('/x.zip/in.txt');
+    ws.registerPanel('left', { store: archived, controller: () => undefined });
+    expect(actions.state('OPEN_LINK_DLG')).toBe('disabled');
+    await expect(ops.openLink()).rejects.toMatchObject({
+      message: expect.stringContaining('archive'),
+    });
+  });
+
   it('F6: dangerous sources are listed and need the extra confirmation', async () => {
     left.setCursor('/src/Ordner');
     fs.dangers['/src/Ordner'] = 'home';

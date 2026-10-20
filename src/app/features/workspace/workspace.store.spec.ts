@@ -136,6 +136,54 @@ describe('WorkspaceStore', () => {
     expect(paths('left')).toEqual(['/b', '/a', '/c']);
   });
 
+  it('places tabs by id at an insertion position – reorder, other side, copy (design 031)', () => {
+    const [a, b, c] = ws.panels().left.tabs;
+    ws.selectTab('left', 1);
+    expect(ws.placeTab(a.id, 'left', 3, false)).toBe(a.id);
+    expect(paths('left')).toEqual(['/b', '/c', '/a']);
+    expect(ws.activeTab('left').id).toBe(a.id); // the dragged tab is selected
+    // its spot: nothing changes, but it is selected
+    ws.selectTab('left', 0);
+    expect(ws.placeTab(c.id, 'left', 2, false)).toBe(c.id);
+    expect(paths('left')).toEqual(['/b', '/c', '/a']);
+    expect(ws.activeTab('left').id).toBe(c.id);
+    // to the other side, before "r"; the left side keeps a valid selection
+    expect(ws.placeTab(b.id, 'right', 0, false)).toBe(b.id);
+    expect(paths('left')).toEqual(['/c', '/a']);
+    expect(paths('right')).toEqual(['/b', '/r']);
+    expect(ws.activeTab('right').id).toBe(b.id);
+    expect(ws.panels().left.activeTab).toBeLessThan(2);
+    // a copy: new id, same folder; the original stays
+    const copy = ws.placeTab(c.id, 'right', 99, true)!;
+    expect(copy).not.toBe(c.id);
+    expect(paths('right')).toEqual(['/b', '/r', '/c']);
+    expect(paths('left')).toEqual(['/c', '/a']);
+    // unknown ids: nothing
+    expect(ws.placeTab('nope', 'left', 0, false)).toBeNull();
+  });
+
+  it('never moves the last tab of a side away and respects MAX_TABS', () => {
+    const r = ws.panels().right.tabs[0];
+    expect(ws.placeTab(r.id, 'left', 0, false)).toBeNull();
+    expect(paths('right')).toEqual(['/r']);
+    expect(ws.placeTab(r.id, 'left', 0, true)).not.toBeNull();
+    expect(paths('left')).toEqual(['/r', '/a', '/b', '/c']);
+    while (ws.panels().left.tabs.length < 50) {
+      ws.cloneTab('left');
+    }
+    expect(ws.placeTab(r.id, 'left', 0, true)).toBeNull();
+    expect(ws.panels().left.tabs).toHaveLength(50);
+  });
+
+  it('a result tab keeps its search when it changes sides; the result stays in use', () => {
+    const id = ws.openSearchTab('left', { key: 's1', label: 'x' }, '/a')!;
+    expect(ws.placeTab(id, 'right', 1, false)).toBe(id);
+    expect(ws.activeTab('right').search?.key).toBe('s1');
+    expect(ws.searchKeys().has('s1')).toBe(true);
+    // saved: the result tab falls back to its folder on whichever side it is
+    expect(ws.snapshot().panels.right.tabs.map((t) => t.path)).toEqual(['/r', '/a']);
+  });
+
   it('cycles through tabs with wrap-around', () => {
     ws.cycleTab('left', -1);
     expect(ws.activeTab('left').path).toBe('/c');

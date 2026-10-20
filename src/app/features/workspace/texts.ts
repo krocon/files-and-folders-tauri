@@ -28,6 +28,15 @@ export const TEXTS_EN = {
     moveRight: 'Move tab to the right',
     history: 'History',
   },
+  /** Dragging tabs (design 031 E2–E4). */
+  tabDrag: {
+    label: (copy: boolean, title: string, side: 'left' | 'right', position: number) =>
+      `${copy ? 'Copy' : 'Move'} tab ${title} → ${side === 'left' ? 'left' : 'right'}, position ${position}`,
+    noTarget: (title: string) => `Tab ${title} – no target here`,
+    lastTab: (isMac: boolean) => `The last tab of a side stays – ${isMac ? '⌥' : 'Ctrl'}: copy it`,
+    full: 'That side has the most tabs already',
+    hint: (isMac: boolean) => `${isMac ? '⌥' : 'Ctrl'}: copy · Esc: cancel`,
+  },
   splitter: 'Panel divider (double-click: 50 / 50)',
   dismiss: 'Dismiss',
   sessionLoadFailed: 'The saved session could not be loaded.',

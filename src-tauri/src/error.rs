@@ -66,6 +66,12 @@ pub enum FsErrorCode {
     UnquotableName,
     /// A drag out of the window was asked for while no mouse button is held (design 028 E2).
     DragNotHeld,
+    /// The system refuses symbolic links here (Windows without developer mode, FAT …) (design 031 E9).
+    LinkNotPermitted,
+    /// A relative link cannot point to the source (other drive, or a linked folder on the way) (031 E9).
+    RelativeLinkImpossible,
+    /// A selected link was left unchanged – attributes are never changed through links (design 024 E4).
+    SymlinkSkipped,
     Io,
 }
 
@@ -130,6 +136,8 @@ mod tests {
         let json = serde_json::to_value(&e).unwrap();
         assert_eq!(json["code"], "permission_denied");
         assert_eq!(json["path"], serde_json::Value::Null);
+        let e = FsError::new(FsErrorCode::SymlinkSkipped, "link", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "symlink_skipped");
         let e = FsError::new(FsErrorCode::DragNotHeld, "up", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "drag_not_held");
         let e = FsError::new(FsErrorCode::DuplicateTarget, "dup", None);

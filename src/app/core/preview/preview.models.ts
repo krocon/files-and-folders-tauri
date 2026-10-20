@@ -79,6 +79,8 @@ export interface UnixPerms {
   readonly gid: number;
   readonly owner: string | null;
   readonly group: string | null;
+  /** macOS `UF_HIDDEN` (design 024); `null` elsewhere. */
+  readonly flagsHidden: boolean | null;
 }
 
 export interface WinAttrs {

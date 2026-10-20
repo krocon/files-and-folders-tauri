@@ -20,6 +20,9 @@
       [attr.aria-controls]="'fnf-pane-' + side()"
       [class.selected]="selected"
       [class.drop-target]="dropTabId() === tab.id"
+      [class.insert-before]="insertAt() === i"
+      [class.insert-after]="insertAt() === panel().tabs.length && $last"
+      [class.dragged]="tabDrag.drag()?.tabId === tab.id && !tabDrag.drag()?.copy"
       [attr.data-tab-id]="tab.id"
       [attr.aria-selected]="selected"
       [attr.tabindex]="selected ? 0 : -1"
@@ -30,6 +33,7 @@
       (auxclick)="onAuxClick($event, i)"
       (contextmenu)="onContextMenu($event, i)"
       (keydown)="onTabKeydown($event, i)"
+      (pointerdown)="onTabPointerDown($event, tab)"
     >
       @if (tab.search) {
         <i class="fa fa-search search-icon" aria-hidden="true"></i>
@@ -126,3 +130,20 @@
     (closed)="onMenuClosed($event)"
   />
 }
+
+@if (tabDrag.drag(); as d) {
+  @if (d.from === side()) {
+    <div
+      class="tab-ghost"
+      aria-hidden="true"
+      [class.no-target]="!d.target"
+      [style.left.px]="flipHint(d.x) ? null : d.x + 16"
+      [style.right.px]="flipHint(d.x) ? viewportWidth() - d.x + 16 : null"
+      [style.top.px]="d.y + 18"
+    >
+      <span class="what">{{ tabDragText() }}</span>
+      <span class="hint">{{ tabDragHint }}</span>
+    </div>
+  }
+}
+<div class="live" role="status" aria-live="polite">{{ tabDragText() }}</div>

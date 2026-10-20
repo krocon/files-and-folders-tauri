@@ -39,6 +39,9 @@ import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { registerPreviewActions } from '../preview/preview-actions';
 import { PropertiesDialog } from '../preview/properties-dialog';
+import { AttributesDialog } from '../attributes/attributes-dialog';
+import { registerAttributesActions } from '../attributes/attributes-actions';
+import { AttributesStore } from '../attributes/attributes.store';
 import { PropertiesStore } from '../preview/properties.store';
 import { QuickViewStore } from '../preview/quick-view.store';
 import { ViewerDialog } from '../preview/viewer-dialog';
@@ -120,6 +123,7 @@ import { MenuApi } from '../../core/menu/menu-api';
     ToolConfigDialog,
     ViewerDialog,
     PropertiesDialog,
+    AttributesDialog,
     FindDialog,
     FolderFinderDialog,
     PackDialog,
@@ -162,6 +166,7 @@ export class Workspace implements OnInit {
   private readonly viewer = inject(ViewerStore);
   private readonly quick = inject(QuickViewStore);
   private readonly props = inject(PropertiesStore);
+  private readonly attrs = inject(AttributesStore);
   private readonly find = inject(FindStore);
   private readonly search = inject(SearchStore);
   private readonly finder = inject(FolderFinderStore);
@@ -287,6 +292,7 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
+    this.destroyRef.onDestroy(registerAttributesActions(this.actions, this.attrs));
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
