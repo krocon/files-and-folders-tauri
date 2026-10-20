@@ -73,6 +73,30 @@ describe('workspace actions', () => {
     expect(await actions.run('RELOAD_DIR')).toBe(true);
   });
 
+  it('moves and copies the active tab by keyboard (design 031 E5)', async () => {
+    const paths = (side: 'left' | 'right') => ws.panels()[side].tabs.map((t) => t.path);
+    expect(actions.state('MOVE_TAB_LEFT')).toBe('disabled');
+    await actions.run('MOVE_TAB_RIGHT');
+    expect(paths('left')).toEqual(['/x', '/h']);
+    expect(ws.activeTab('left').path).toBe('/h');
+    expect(actions.state('MOVE_TAB_RIGHT')).toBe('disabled');
+    await actions.run('MOVE_TAB_LEFT');
+    expect(paths('left')).toEqual(['/h', '/x']);
+    await actions.run('COPY_TAB_TO_OTHER_SIDE');
+    expect(paths('left')).toEqual(['/h', '/x']);
+    expect(paths('right')).toEqual([null, '/h']);
+    expect(ws.activeSide()).toBe('right');
+    expect(ws.focusRequest()?.side).toBe('right');
+    // the right side moves its tab back; then its last tab stays
+    await actions.run('MOVE_TAB_TO_OTHER_SIDE');
+    expect(paths('right')).toEqual([null]);
+    expect(paths('left')).toEqual(['/h', '/x', '/h']);
+    expect(ws.activeSide()).toBe('left');
+    ws.setActive('right');
+    expect(actions.state('MOVE_TAB_TO_OTHER_SIDE')).toBe('disabled');
+    expect(actions.state('COPY_TAB_TO_OTHER_SIDE')).toBe('ready');
+  });
+
   it('marks via actions', async () => {
     await actions.run('TOGGLE_MARK_AND_ADVANCE');
     expect(store.isMarked('/h/Sub')).toBe(true);

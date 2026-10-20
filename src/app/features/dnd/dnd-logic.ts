@@ -3,8 +3,8 @@ import { Side } from '../../core/session/session.models';
 import { translatable } from '../../core/i18n/i18n';
 import { DND_DE } from './dnd-texts.de';
 
-/** Copy or move – a link (design 012 E5) needs a job kind that does not exist yet. */
-export type DragKind = 'copy' | 'move';
+/** Copy, move or link (design 012 E5, link: job kind `link`, design 031 E7). */
+export type DragKind = 'copy' | 'move' | 'link';
 
 /** Pixels the pointer must travel before a press becomes a drag. */
 export const DRAG_THRESHOLD = 6;
@@ -124,12 +124,24 @@ export function dragKeyAction(evt: {
   return ['Shift', 'Meta', 'Control', 'Alt', 'OS'].includes(evt.key) ? 'modifier' : 'swallow';
 }
 
-/** Copy without modifier; move with Shift (Windows/Linux) or ⌘ (macOS, as in the Finder). */
+/**
+ * Copy without modifier; move with Shift (Windows/Linux) or ⌘ (macOS, as in the
+ * Finder); link with Ctrl+Shift (Explorer, Nautilus, Dolphin) or ⌘⌥ (Finder alias,
+ * design 031 E7).
+ */
 export function dragKind(
-  mods: { readonly shiftKey: boolean; readonly metaKey: boolean },
+  mods: {
+    readonly shiftKey: boolean;
+    readonly metaKey: boolean;
+    readonly ctrlKey?: boolean;
+    readonly altKey?: boolean;
+  },
   isMac: boolean,
 ): DragKind {
-  return (isMac ? mods.metaKey : mods.shiftKey) ? 'move' : 'copy';
+  if (isMac) {
+    return mods.metaKey ? (mods.altKey ? 'link' : 'move') : 'copy';
+  }
+  return mods.shiftKey ? (mods.ctrlKey ? 'link' : 'move') : 'copy';
 }
 
 /**
@@ -185,10 +197,10 @@ export const DND_EN = {
   move: 'Move',
   what: (count: number, first: string) => (count === 1 ? first : `${count} entries`),
   label: (kind: DragKind, count: number, first: string, target: DropTarget | null) =>
-    `${kind === 'copy' ? 'Copy' : 'Move'} ${count === 1 ? first : `${count} entries`}` +
+    `${kind === 'copy' ? 'Copy' : kind === 'move' ? 'Move' : 'Link to'} ${count === 1 ? first : `${count} entries`}` +
     (target ? ` → ${target.name}` : ' – no target here'),
   hint: (isMac: boolean) =>
-    `${isMac ? '⌘: move' : 'Shift: move'} · Esc: cancel · out of the window: other apps`,
+    `${isMac ? '⌘: move · ⌘⌥: link' : 'Shift: move · Ctrl+Shift: link'} · Esc: cancel · out of the window: other apps`,
   notFromArchive: 'Entries inside an archive cannot be dragged to other apps – unpack them first.',
   dropFromSystem: (count: number) => `Copy ${count === 1 ? '1 item' : `${count} items`} here`,
   nothingDropped: 'The dropped items do not exist (any more).',

@@ -13,7 +13,7 @@ import { Modal } from '../../shared/dialog/modal';
 import { formatSize } from '../../shared/format';
 import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
-import { OpsStore } from './ops.store';
+import { OpsStore, TransferKind } from './ops.store';
 import { TargetField } from './target-field';
 
 const DEFAULTS: readonly ConflictDefault[] = [
@@ -34,11 +34,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
   imports: [Modal, TargetField],
   template: `
     @if (req(); as r) {
-      <app-modal
-        [heading]="r.kind === 'copy' ? t.copy : t.move"
-        width="min(60rem, 94vw)"
-        (closed)="ops.close()"
-      >
+      <app-modal [heading]="heading(r.kind)" width="min(60rem, 94vw)" (closed)="ops.close()">
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
           <p class="source">
             <strong>{{
@@ -58,7 +54,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
           />
           @if (r.sources.length === 1) {
             <label class="field">
-              <span>{{ t.newName }}</span>
+              <span>{{ r.kind === 'link' ? t.linkName : t.newName }}</span>
               <input
                 type="text"
                 spellcheck="false"
@@ -68,25 +64,42 @@ const DEFAULTS: readonly ConflictDefault[] = [
               />
             </label>
           }
-          <label class="field">
-            <span>{{ t.ifExists }}</span>
-            <select (change)="conflictDefault.set($any($event.target).value)">
-              @for (d of defaults; track d) {
-                <option [value]="d" [selected]="d === conflictDefault()">
-                  {{ t.conflictDefaults[d] }}
+          @if (r.kind === 'link') {
+            <!-- links (design 031 E8): never replace a name, absolute unless asked -->
+            <label class="field">
+              <span>{{ t.ifLinkExists }}</span>
+              <select (change)="keepBoth.set($any($event.target).value === 'keepBoth')">
+                <option value="fail" [selected]="!keepBoth()">{{ t.linkExists.fail }}</option>
+                <option value="keepBoth" [selected]="keepBoth()">
+                  {{ t.linkExists.keepBoth }}
                 </option>
-              }
-            </select>
-          </label>
-          <label class="check">
-            <input
-              type="checkbox"
-              [checked]="background()"
-              (change)="background.set(!background())"
-            />
-            {{ t.background }}
-          </label>
-          @if (sameNames().length > 0) {
+              </select>
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="relative()" (change)="relative.set(!relative())" />
+              {{ t.relative }}
+            </label>
+          } @else {
+            <label class="field">
+              <span>{{ t.ifExists }}</span>
+              <select (change)="conflictDefault.set($any($event.target).value)">
+                @for (d of defaults; track d) {
+                  <option [value]="d" [selected]="d === conflictDefault()">
+                    {{ t.conflictDefaults[d] }}
+                  </option>
+                }
+              </select>
+            </label>
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="background()"
+                (change)="background.set(!background())"
+              />
+              {{ t.background }}
+            </label>
+          }
+          @if (sameNames().length > 0 && r.kind !== 'link') {
             <div class="danger-box same-names" role="note">
               <p>{{ t.sameNames(sameNames()) }}</p>
               @if (conflictDefault() === 'overwrite' || conflictDefault() === 'overwriteIfNewer') {
@@ -132,7 +145,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
               class="btn primary"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
             >
-              {{ r.kind === 'copy' ? t.copy : t.move }}
+              {{ r.kind === 'link' ? t.linkConfirm : heading(r.kind) }}
             </button>
           </div>
         </form>
@@ -156,6 +169,9 @@ export class CopyMoveDialog {
   protected readonly conflictDefault = signal<ConflictDefault>('ask');
   protected readonly background = signal(false);
   protected readonly allowDangerous = signal(false);
+  /** Link mode (design 031 E8). */
+  protected readonly relative = signal(false);
+  protected readonly keepBoth = signal(false);
   protected readonly error = signal<FsError | null>(null);
   protected readonly busy = signal(false);
   /** Equal names from different folders (search results) collide in the target. */
@@ -193,7 +209,8 @@ export class CopyMoveDialog {
   constructor() {
     const req = this.req();
     let destroyed = false;
-    if (req) {
+    // links are quick and copy nothing: no count
+    if (req && req.kind !== 'link') {
       this.jobs
         .start({ kind: 'count', paths: req.sources.map((e) => e.path) })
         .then((id) => {
@@ -212,6 +229,10 @@ export class CopyMoveDialog {
         void this.jobs.cancel(job.id);
       }
     });
+  }
+
+  protected heading(kind: TransferKind): string {
+    return kind === 'copy' ? this.t.copy : kind === 'move' ? this.t.move : this.t.link;
   }
 
   protected errorText(e: FsError): string {
@@ -243,6 +264,8 @@ export class CopyMoveDialog {
         conflictDefault: this.conflictDefault(),
         background: this.background(),
         allowDangerous: this.allowDangerous(),
+        relative: this.relative(),
+        keepBoth: this.keepBoth(),
       });
       this.error.set(error);
     } finally {

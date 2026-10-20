@@ -29,6 +29,27 @@ describe('job format', () => {
     expect(stateLabel('waitingForDecision')).toBe('Waiting for your answer');
   });
 
+  it('titles link jobs (design 031)', () => {
+    expect(jobTitle(job('j', { kind: 'link', sources: ['/a/b'], targetDir: '/z' }))).toBe(
+      'Link /a/b → /z',
+    );
+    expect(
+      jobTitle(
+        job('j', {
+          kind: 'link',
+          sources: ['/a', '/b'],
+          targetDir: '/z',
+          options: { relative: true },
+        }),
+      ),
+    ).toBe('Link 2 entries → /z');
+    expect(
+      jobTitle(
+        job('j', { kind: 'link', sources: ['/a/b'], targetDir: '/a', options: { renameTo: 'c' } }),
+      ),
+    ).toBe('Link /a/b → /a as c');
+  });
+
   it('computes progress from bytes, else items', () => {
     expect(fraction(EMPTY_PROGRESS)).toBeNull();
     expect(fraction({ ...EMPTY_PROGRESS, bytesDone: 1, bytesTotal: 4 })).toBe(0.25);

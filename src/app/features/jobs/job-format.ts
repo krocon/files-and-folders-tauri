@@ -90,6 +90,8 @@ export const JOB_EN = {
     extract: (what: string, target: string) => `Extract ${what} → ${target}`,
     entriesOf: (n: number, archive: string) => `${n} entries of ${archive}`,
     pack: (what: string, target: string, name: string) => `Pack ${what} → ${target} / ${name}`,
+    link: (what: string, target: string, renameTo: string | null) =>
+      `Link ${what} → ${target}${renameTo ? ` as ${renameTo}` : ''}`,
     duplicates: (where: string) => `Find duplicates in ${where}`,
     count: (what: string) => `Count ${what}`,
     dirSize: (path: string) => `Folder size of ${path}`,
@@ -145,6 +147,11 @@ export function jobTitle(job: JobInfo): string {
     case 'pack': {
       const n = spec.sources.length;
       return t.pack(n === 1 ? spec.sources[0] : t.entries(n), spec.targetDir, spec.name);
+    }
+    case 'link': {
+      const n = spec.sources.length;
+      const what = n === 1 ? spec.sources[0] : t.entries(n);
+      return t.link(what, spec.targetDir, spec.options?.renameTo ?? null);
     }
     case 'duplicates': {
       const c = spec.criteria;

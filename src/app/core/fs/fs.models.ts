@@ -92,6 +92,9 @@ export type FsErrorCode =
   | 'unquotable_name'
   /** A drag out of the window without a held mouse button (design 028 E2). */
   | 'drag_not_held'
+  /** Symbolic links refused by the system; a relative link would miss the source (design 031 E9). */
+  | 'link_not_permitted'
+  | 'relative_link_impossible'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

@@ -16,6 +16,16 @@ export interface CopyOptions {
   readonly renameTo?: string | null;
 }
 
+/** Options of a link job (design 031 E9). Rust `jobs::link::LinkOptions`. */
+export interface LinkOptions {
+  /** Relative link target (default: absolute). */
+  readonly relative?: boolean;
+  /** Name of the link of a single source. */
+  readonly renameTo?: string | null;
+  /** The name exists: a free name `name (1).ext` instead of an error. */
+  readonly keepBoth?: boolean;
+}
+
 export type DeleteMode = 'trash' | 'permanent';
 
 /** One entry of a group job: the source and the name of its group folder. */
@@ -103,6 +113,13 @@ export type JobSpec =
       readonly name: string;
       readonly format: ArchiveFormat;
       readonly level?: number | null;
+    }
+  /** Symbolic links to the sources in `targetDir` (design 031 E9) – never replaces a name. */
+  | {
+      readonly kind: 'link';
+      readonly sources: readonly string[];
+      readonly targetDir: string;
+      readonly options?: LinkOptions;
     }
   /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
