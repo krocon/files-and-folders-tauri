@@ -333,6 +333,13 @@ describe('DragStore', () => {
     expect(jobs.messages().length).toBeGreaterThan(0);
   });
 
+  it('released before the start: no message (review 028 #1)', async () => {
+    toSystem.fail = { code: 'drag_not_held', message: 'up', path: null };
+    store.begin({ side: 'left', sourceDir: '/src', sources: [a], kind: 'copy', x: 10, y: 1 });
+    await store.handOff();
+    expect(jobs.messages()).toEqual([]);
+  });
+
   it('a drag from the system is never handed back to the system', async () => {
     osDrag.emit({ type: 'enter', paths: ['/ext/x'], x: 150, y: -1 });
     await store.handOff();

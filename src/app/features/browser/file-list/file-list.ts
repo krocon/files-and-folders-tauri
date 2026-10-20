@@ -426,7 +426,7 @@ export class FileList implements OnDestroy {
         inArchive: !!this.store.listing()?.archive,
       });
     } else if (leftWindow(evt.clientX, evt.clientY, window.innerWidth, window.innerHeight)) {
-      this.handOffToSystem();
+      this.handOffToSystem(evt.buttons);
     } else {
       this.dnd.move(evt.clientX, evt.clientY, dragKind(evt, IS_MAC));
     }
@@ -436,7 +436,7 @@ export class FileList implements OnDestroy {
   /** Fallback when moves outside the window are not reported (design 028 E1). */
   private readonly onWindowOut = (evt: MouseEvent): void => {
     if (this.dragging && leavingAtEdge(evt, window.innerWidth, window.innerHeight)) {
-      this.handOffToSystem();
+      this.handOffToSystem(evt.buttons);
     }
   };
 
@@ -444,9 +444,14 @@ export class FileList implements OnDestroy {
    * Out of the window: the system takes over (design 028 E1). Capture and
    * listeners go first – the native drag needs the mouse.
    */
-  private handOffToSystem(): void {
+  private handOffToSystem(buttons: number): void {
     this.endPress();
-    void this.dnd.handOff();
+    if (buttons & 1) {
+      void this.dnd.handOff();
+    } else {
+      // released on the way out: no system drag without a held button (review 028 #1)
+      this.dnd.cancel();
+    }
   }
 
   private readonly onPointerUp = (evt: PointerEvent): void => {

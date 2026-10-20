@@ -64,6 +64,8 @@ pub enum FsErrorCode {
     InvalidCommand,
     /// A name cannot be quoted safely for the shell (control characters, `%`/`!` for cmd.exe).
     UnquotableName,
+    /// A drag out of the window was asked for while no mouse button is held (design 028 E2).
+    DragNotHeld,
     Io,
 }
 
@@ -128,6 +130,8 @@ mod tests {
         let json = serde_json::to_value(&e).unwrap();
         assert_eq!(json["code"], "permission_denied");
         assert_eq!(json["path"], serde_json::Value::Null);
+        let e = FsError::new(FsErrorCode::DragNotHeld, "up", None);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "drag_not_held");
         let e = FsError::new(FsErrorCode::DuplicateTarget, "dup", None);
         assert_eq!(
             serde_json::to_value(&e).unwrap()["code"],

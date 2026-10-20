@@ -154,7 +154,11 @@ export class DragStore {
     try {
       await this.osDragApi.startOsDrag(d.sources.map((e) => e.path));
     } catch (err) {
-      this.jobs.report(errorText(toFsError(err)));
+      const e = toFsError(err);
+      // released just before the start: nothing to say, the user let go (review 028 #1)
+      if (e.code !== 'drag_not_held') {
+        this.jobs.report(errorText(e));
+      }
     }
   }
 

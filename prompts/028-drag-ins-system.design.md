@@ -29,7 +29,11 @@ Plattform außerhalb nichts liefert). Reine Funktion `leftWindow(x, y, w, h)` in
 **E2 Command `start_os_drag(paths: string[])`** in `commands/os_drag.rs`, `async`: startet am aufrufenden Fenster (es gibt nur
 das Hauptfenster; eine eigene Prüfung bräuchte einen neuen Fehlercode ohne Nutzen), höchstens 10 000 Pfade (`too_many`), jeder Pfad über
 `validate_input_path` (absolut, ohne `..`) und `symlink_metadata` (existiert; virtuelle Archivpfade scheitern hier).
-Leere Liste → `invalid_path`. Der Start läuft per `run_on_main_thread`; das Ergebnis des Starts kommt über einen
+Leere Liste → `invalid_path`. **Nur bei gedrückter Maustaste** (Review #1): auf dem Main-Thread prüft Rust die
+primäre Taste (Windows `GetAsyncKeyState` mit `SM_SWAPBUTTON`, macOS `CGEventSourceButtonState`, GTK
+`device_position` → `BUTTON1_MASK`), sonst neuer Code `drag_not_held` – kein Drag ohne Geste des Nutzers, kein
+sofortiger Drop unter Windows nach schnellem Loslassen. Das Frontend übergibt nur bei `buttons & 1` und meldet
+`drag_not_held` nicht. Der Start läuft per `run_on_main_thread`; das Ergebnis des Starts kommt über einen
 Kanal zurück (Windows: `DoDragDrop` ist modal, die Antwort kommt erst nach dem Drop – unkritisch, der Command ist
 async). Nicht `tauri-plugin-drag` (nimmt beliebige Pfade und Bilder vom Frontend).
 Abweichung von 012 E7 („nur Pfade der aktuellen Listings“): Rust kennt die Listings der Panels nicht, und
@@ -44,8 +48,9 @@ demselben Laufwerk; der Papierkorb im Dock nimmt den Drag nicht an. Verschieben 
 **E4 Plattformcode `platform/os_drag.rs`** mit `start(window, paths, image) -> Result<(), FsError>` je OS:
 macOS/Windows über die Crate `drag` (`[target.'cfg(any(target_os = "macos", windows))'.dependencies]`), Linux eigene
 GTK-Umsetzung (≈ 60 Zeilen nach dem Muster der Crate), weil deren Linux-Code URIs als `file://{path.display()}` baut:
-Leerzeichen, `%`, `#` und nicht-UTF-8-Namen kämen kaputt an. Linux baut URIs mit `glib::filename_to_uri`
-(prozentkodiert, Bytes statt Text) – reine Funktion `file_uris`, unit-getestet.
+Leerzeichen, `%`, `#` und nicht-UTF-8-Namen kämen kaputt an. Linux baut URIs mit dem vorhandenen `desktop::file_uri`
+(prozentkodiert, Bytes statt Text) – reine Funktion `file_uris`, unit-getestet. Unter GTK läuft höchstens ein
+Drag zugleich (Review #4).
 
 **E5 Vorschaubild:** das App-Icon 32×32 (`icons/32x32.png`, `include_bytes!`) – keine Bilder vom Frontend.
 
@@ -72,7 +77,7 @@ TS:
 ```ts
 export abstract class OsDragApi { abstract startOsDrag(paths: readonly string[]): Promise<void>; }
 ```
-Neue Fehlercodes: keine. `DragState` bekommt `inArchive` (Quelle ist ein Archiv-Listing, E6).
+Neuer Fehlercode: `drag_not_held` (Rust `error.rs`, TS `fs.models.ts`, `fs-error.ts`, Texte en/de). `DragState` bekommt `inArchive` (Quelle ist ein Archiv-Listing, E6).
 
 ## 4. Tests
 
@@ -99,7 +104,20 @@ Neue Fehlercodes: keine. `DragState` bekommt `inArchive` (Quelle ist ein Archiv-
 - [x] Doku (architecture, feature-parity, roadmap, README, CLAUDE.md, TODO.md, prompts/README.md)
 - [ ] macOS/Windows: im Container nicht kompilierbar (kein Target, kein SDK) – erst die CI bzw. Marc
 
-## 6. Offen
+## 6. Review (separater Agent, 20.10.2026)
 
-- macOS (`NSDraggingSession` über `drag`) und Windows (`DoDragDrop`) ungeprüft – Finder, Schreibtisch, Mail, Explorer.
+| # | Befund | Schwere | Ergebnis |
+|---|---|---|---|
+| 1 | Nativer Drag kann nach dem Loslassen starten (Windows: sofortiger Drop; ohne Geste aufrufbar) | hoch | behoben: Tastenprüfung in Rust + `buttons & 1` im Frontend, Code `drag_not_held` |
+| 2 | Crate `drag` kanonisiert unter Windows jeden Pfad auf dem UI-Thread (hängendes SMB friert ein; dangling Link bricht ab) | mittel | offen, dokumentiert – eigener OLE-Code wäre nötig |
+| 3 | WebView sieht nach dem nativen Drag kein `pointerup` | mittel | unter Linux bestätigt (erster Klick nach dem Drop ging verloren, in Xvfb reproduzierbar) und behoben: GTK schickt am `drag-end` ein synthetisches Loslassen an den WebView; danach E2E zweimal grün. macOS/Windows bei Marc prüfen |
+| 4 | Zwei GTK-Drags zugleich → zweiter `drag-data-get` | niedrig | behoben: ein Drag zugleich |
+| 5 | Archivprüfung nur im Frontend | niedrig | ok – Rust lehnt virtuelle Pfade ohnehin ab |
+| 6 | Design nannte `glib::filename_to_uri` / Hauptfenster-Prüfung | niedrig | Design korrigiert |
+
+## 7. Offen
+
+- macOS (`NSDraggingSession` über `drag`) und Windows (`DoDragDrop`) ungeprüft – Finder, Schreibtisch, Mail, Explorer;
+  dabei auch: erster Klick nach dem Drop (Review #3), Loslassen direkt am Fensterrand (#1).
+- Windows: Pfade auf hängenden Netzlaufwerken frieren beim Start kurz das Fenster ein (Review #2).
 - Verschieben ins System (E3), Tabs zwischen den Seiten ziehen, Verknüpfung per Drag (012 E5).

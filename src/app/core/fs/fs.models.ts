@@ -90,6 +90,8 @@ export type FsErrorCode =
   | 'changed_since_listing'
   | 'invalid_command'
   | 'unquotable_name'
+  /** A drag out of the window without a held mouse button (design 028 E2). */
+  | 'drag_not_held'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'
