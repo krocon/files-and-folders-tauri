@@ -17,6 +17,7 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'Error panel text': 'Text Fehlerfeld',
   'Favourite star': 'Favoriten-Stern',
   'Search hit background': 'Hintergrund Suchtreffer',
+  Splitter: 'Trenner',
   'Splitter (dragging)': 'Trenner (beim Ziehen)',
   'Dialog backdrop': 'Dialog-Hintergrund',
   'Popup shadow': 'Schatten von Popups',
@@ -132,4 +133,5 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   // import messages
   'The file is not a colour scheme.': 'Die Datei ist kein Farbschema.',
   'The colour scheme has no usable values.': 'Das Farbschema hat keine verwendbaren Werte.',
+  'Accent (busy, attention)': 'Akzent (beschäftigt, Hinweis)',
 };

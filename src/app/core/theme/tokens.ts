@@ -82,6 +82,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-danger-text', 'general', 'Error panel text'),
   t('--color-favorite', 'general', 'Favourite star'),
   t('--color-search-hit', 'general', 'Search hit background'),
+  t('--color-splitter', 'general', 'Splitter'),
   t('--color-splitter-active', 'general', 'Splitter (dragging)'),
   t('--color-backdrop', 'general', 'Dialog backdrop'),
   t('--shadow-popup', 'general', 'Popup shadow', 'shadow'),
@@ -139,6 +140,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-shortcut-text', 'footer', 'Shortcut badge text'),
   t('--color-footer-error-text', 'footer', 'Warning text'),
   t('--color-footer-focus', 'footer', 'Focus ring'),
+  t('--color-footer-accent', 'footer', 'Accent (busy, attention)'),
 
   t('--color-shell-bg', 'shell', 'Background'),
   t('--color-shell-text', 'shell', 'Text'),

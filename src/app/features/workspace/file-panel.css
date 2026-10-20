@@ -16,6 +16,13 @@
   grid-column: 3;
 }
 
+/* header, tabs and status line of the left side run under the splitter: its column has no
+   background of its own (the window shows through) – so a translucent splitter sits on the
+   header colour, not on a dark gap. The list stays in column 1 (its scrollbar stays free). */
+:host(.side-left) .part:not(.list) {
+  grid-column: 1 / 3;
+}
+
 .header {
   grid-row: 1;
   display: flex;
@@ -27,6 +34,8 @@
   border-bottom: 0; /* no border in the middle of the 'header'  */
   /* own focus ring colour on the header bar (design 019 E5) */
   --color-focus: var(--color-header-focus);
+  /* separators, placeholder and star on the header bar (light header in a dark scheme) */
+  --color-muted: var(--color-tab-text);
 
   &.fnf-active-panel {
     background: var(--color-active-header-bg);
@@ -166,6 +175,7 @@
   background: var(--color-footer-bg);
   border-top: var(--border-width) solid var(--color-footer-border);
   --color-focus: var(--color-footer-focus);
+  --color-accent: var(--color-footer-accent);
 
   b {
     font-weight: normal;

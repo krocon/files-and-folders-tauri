@@ -263,11 +263,33 @@ describe('ThemeService', () => {
     expect(api.chrome.at(-1)).toEqual({ color: '#eef0f3', dark: false });
     await s.select('crimson');
     TestBed.tick();
-    expect(api.chrome.at(-1)).toEqual({ color: '#212127', dark: true });
+    // light header in a dark scheme: the frame's appearance follows the colour (title readable)
+    expect(api.chrome.at(-1)).toEqual({ color: '#faf8f9', dark: false });
     const calls = api.chrome.length;
     await s.select('crimson');
     TestBed.tick();
     expect(api.chrome.length).toBe(calls);
+    await s.select('dark');
+    TestBed.tick();
+    expect(api.chrome.at(-1)?.dark).toBe(true);
+  });
+
+  it('keeps the scheme appearance on the title bar while following the system', async () => {
+    // a light appearance would flip the WebView's prefers-color-scheme and switch the scheme
+    api.loaded = {
+      file: {
+        version: 1,
+        selection: { mode: 'system', theme: 'light', light: 'light', dark: 'crimson' },
+        themes: [],
+      },
+      warning: null,
+    };
+    media = fakeMedia(true);
+    const s = create();
+    await s.init();
+    TestBed.tick();
+    expect(s.active().id).toBe('crimson');
+    expect(api.chrome.at(-1)).toEqual({ color: '#111114', dark: true });
   });
 
   it('cycles with next()', async () => {
