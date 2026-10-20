@@ -224,6 +224,10 @@ Unabhängiges Review von 024 + 031, behoben auf Branch `fix/review-024-031` (Bef
 | 10 | `same_entry` unter Windows ohne Datei-Id (Art+Größe+Zeit) (niedrig) | behoben | `platform::entry_id(path)`: Unix Gerät+Inode, Windows `GetFileInformationByHandle` (Volume-Seriennummer + File-Index; Handle mit `FILE_FLAG_OPEN_REPARSE_POINT \| BACKUP_SEMANTICS`); die Näherung bleibt nur, wenn keine Id lesbar ist. Test `entry_id_tells_identical_copies_apart` (alle OS). Befund 4 der Selbst-Review damit erledigt |
 | 11 | Linkname per `to_string_lossy` (nicht-UTF-8 → U+FFFD) (niedrig) | behoben | Name als `OsStr` (Quelle) bzw. getippter `renameTo`; `validate_name` für UTF-8-Namen, sonst nur „ein Segment“. Test `a_name_that_is_no_utf8_is_kept` (Linux; macOS-Dateisysteme kennen solche Namen nicht) |
 
+E2E (Debug-Build unter Xvfb, 21.10.2026): `Grüße 🎉.txt` markiert, Strg+Umschalt+F5, Ziel getippt als
+`…/home/data1/../` (die Zielzeile löst wie die Navigation lexikalisch auf, der Job bekommt `…/home`), „Relativer Link“
+→ `home/Grüße 🎉.txt -> data1/Grüße 🎉.txt`, Panel frischt auf.
+
 ## 7. Offen
 
 - macOS/Windows: `make_symlink` (Windows `symlink_dir/file`, 1314) und die Kürzel ⌃⇧Bild↑/↓, ⌘⌥- und ⌥-Drag nur in

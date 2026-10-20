@@ -192,6 +192,10 @@ umbenannt und verteilt; gegen `main` geprüft: 9 rot, s. Bericht).
 | 8 | `u+x u-r`: Ordner zuerst geändert, danach unlesbar, Inhalt blieb (niedrig) | behoben | `AttrChange::folder_order`: `First` nur, wenn der neue Modus dem Eigentümer r **und** x gibt; sonst `Staged(current \| gewonnene Bits)` vor dem Inhalt (nicht gezählt) und die volle Änderung danach; `After` wie bisher. Tests `folder_order_opens_up_before_and_closes_after_the_contents`, `a_change_that_opens_and_closes_a_folder_reaches_its_contents`, `a_staged_folder_ends_with_the_asked_mode` (Rechte wirken als root nicht – die Reihenfolge prüft die reine Funktion) |
 | 12 | Uhrzeit in der Sommerzeitlücke wurde still um 1 h verschoben (niedrig) | behoben | `fromLocalInput` vergleicht auch Stunde und Minute → `null` (Feld ungültig, Ändern gesperrt). Spec mit `vi.stubEnv('TZ', 'Europe/Berlin')`: 2026-03-29T02:30 → `null` |
 
+E2E (Debug-Build unter Xvfb, 21.10.2026): Ordner `Baum ä` (750) mit Unterordnern, Dateien (640) und einem Link nach
+außen, Kontextmenü „Change attributes…“, `o+r` + „Also change the contents“ → alle drei Ordner 754, alle drei Dateien
+644, Meldung „Attributes of 6 entries changed (1 link or other drive skipped)“, Linkziel `outside/` unverändert (750/640).
+
 Befunde 9–11 betreffen den Link-Job: Design 031 §6.
 
 ## 7. Offen
