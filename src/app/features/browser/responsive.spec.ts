@@ -124,13 +124,7 @@ describe('FileBrowserStore – slow folders (design 029)', () => {
     await reload;
   });
 
-  it('E5: showListing shows a known listing at once with the given cursor; clearListing empties', async () => {
-    const known = listing('/k', [entry('x', { path: '/k/x' }), entry('y', { path: '/k/y' })]);
-    store.showListing(known, 42, { cursor: '/k/y', history: 'none', remember: false });
-    expect(store.listedAt).toBe(42);
-    expect(store.path()).toBe('/k');
-    expect(store.cursorPath()).toBe('/k/y');
-    expect(store.loading()).toBe(false);
+  it('E5: clearListing empties the panel', async () => {
     store.clearListing();
     expect(store.listing()).toBeNull();
     expect(store.path()).toBeNull();
@@ -215,6 +209,32 @@ describe('FileBrowserStore – slow folders (design 029)', () => {
       void store.load('/smb/weg');
       expect(store.path()).toBe('/w'); // no cache hit any more
       expect(api.calls.length).toBe(before + 1);
+    });
+
+    it('review #2: a failed or cancelled navigation away does not leave the cached folder unchecked', async () => {
+      api.handler = (p) => Promise.resolve(smb(p ?? '/', ['a']));
+      await store.load('/smb/a');
+      await store.load('/smb/b');
+      const check = deferred<DirectoryListing>();
+      api.handler = (p) =>
+        p === '/smb/a'
+          ? check.promise
+          : Promise.reject({ code: 'permission_denied', message: 'no', path: p });
+      await store.load('/smb/a'); // from the cache, check running
+      await store.load('/locked'); // supersedes the check, fails
+      expect(store.path()).toBe('/smb/a');
+      check.resolve(smb('/smb/a', ['a']));
+      await vi.waitFor(() => expect(store.cachedAt()).toBeNull());
+      // the same after Esc
+      api.handler = (p) => Promise.resolve(smb(p ?? '/', ['a']));
+      await store.load('/smb/b');
+      const check2 = deferred<DirectoryListing>();
+      api.handler = (p) => (p === '/smb/a' ? check2.promise : new Promise(() => undefined));
+      await store.load('/smb/a');
+      void store.load('/haengt');
+      store.cancelLoad();
+      check2.resolve(smb('/smb/a', ['a']));
+      await vi.waitFor(() => expect(store.cachedAt()).toBeNull());
     });
   });
 });

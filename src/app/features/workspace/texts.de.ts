@@ -41,8 +41,9 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   refreshing: 'wird aktualisiert …',
   cachedAt: (at) =>
     `Stand ${at.toLocaleTimeString(localeFor('de'), { hour: '2-digit', minute: '2-digit' })} · wird geprüft …`,
-  cachedTitle:
-    'Aus dem Speicher angezeigt – der Ordner wird neu gelesen. Löschen, Verschieben und Umbenennen warten so lange.',
+  cachedTitle: (at) =>
+    `Aus dem Speicher angezeigt (${at.toLocaleString(localeFor('de'))}) – der Ordner wird neu gelesen. Löschen, Verschieben und Umbenennen warten so lange.`,
+  cachedAnnounce: 'Aus dem Speicher angezeigt, der Ordner wird geprüft.',
   unchecked: 'der Ordner wird noch geprüft – gleich noch einmal versuchen',
   unreadable: (n) => `${n} nicht lesbar`,
   notWatched: (reason) =>

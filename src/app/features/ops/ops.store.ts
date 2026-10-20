@@ -3,7 +3,13 @@ import { FsApi } from '../../core/fs/fs-api';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DirEntry, FsError, PathCheck } from '../../core/fs/fs.models';
-import { ConflictDefault, DeleteMode, JobInfo, JobSpec } from '../../core/jobs/jobs.models';
+import {
+  ConflictDefault,
+  DeleteMode,
+  ExpectedEntry,
+  JobInfo,
+  JobSpec,
+} from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
 import { isSameOrBelow, SearchStore } from '../search/search.store';
@@ -35,6 +41,8 @@ export interface CopyMoveRequest {
   readonly targets: readonly TargetOption[];
   /** Root/home/system paths among the sources (moving them needs a second confirmation). */
   readonly dangers: readonly PathCheck[];
+  /** What the panel showed when the request was made (design 030 E5, review #1). */
+  readonly expected?: readonly ExpectedEntry[];
 }
 
 export interface CopyMoveInput {
@@ -56,6 +64,8 @@ export interface DeleteRequest {
   readonly wholeGroups?: number;
   /** Duplicate tab compared by size only: the files may well differ (review 016 #6). */
   readonly sizeOnly?: boolean;
+  /** What the panel showed when the request was made (design 030 E5, review #1). */
+  readonly expected?: readonly ExpectedEntry[];
 }
 
 export interface NameRequest {
@@ -205,7 +215,10 @@ export class OpsStore {
       (p) => this.archive.isArchivePath(p),
     );
     const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
-    this.copyMove.set({ ...args, targets, dangers });
+    // fixed now: the listing may be checked (and look fresh) before the dialog is confirmed
+    const expected =
+      args.kind === 'move' ? expectedFor(args.sources, this.listingState(args.side)) : undefined;
+    this.copyMove.set({ ...args, targets, dangers, ...(expected ? { expected } : {}) });
     this.dialogs.show('copy-move');
   }
 
@@ -238,6 +251,7 @@ export class OpsStore {
       dangers,
       wholeGroups: whole,
       sizeOnly: store?.searchKind() === 'duplicates' && this.search.sizeOnly(store.searchKey()),
+      ...this.expectedOf(entries),
     };
     // without confirmation only a plain trash delete (no dangers, no whole duplicate groups)
     if (
@@ -373,7 +387,7 @@ export class OpsStore {
     }
     const sources = req.sources.map((e) => e.path);
     const options = { conflictDefault: input.conflictDefault, renameTo };
-    const expected = expectedFor(req.sources, this.listingState(req.side));
+    const expected = req.expected;
     const spec: JobSpec =
       req.kind === 'copy'
         ? { kind: 'copy', sources, targetDir: dir, background: input.background, options }
@@ -403,6 +417,11 @@ export class OpsStore {
     return null;
   }
 
+  private expectedOf(entries: readonly DirEntry[]): { expected?: readonly ExpectedEntry[] } {
+    const expected = expectedFor(entries, this.listingState(this.ws.source()));
+    return expected ? { expected } : {};
+  }
+
   /** Whether the listing of `side` may be outdated (design 030 E5). */
   private listingState(side: Side): { network: boolean; fromCache: boolean } {
     const store = this.ws.panel(side)?.store;
@@ -420,7 +439,7 @@ export class OpsStore {
     this.moveCursorOff(req.side, req.sourceDir, paths);
     let id: string;
     try {
-      const expected = expectedFor(req.entries, this.listingState(req.side));
+      const expected = req.expected;
       id = await this.jobs.start({
         kind: 'delete',
         paths,

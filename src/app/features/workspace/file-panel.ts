@@ -164,16 +164,21 @@ export class FilePanel implements OnInit {
    * cursor and table state may be written back only once it changed.
    */
   private listingAtSwitch: DirectoryListing | null | undefined = undefined;
+  /** "as of 10:05" of a listing shown from the cache and not checked yet (design 030 E3). */
+  protected readonly cachedLabel = computed(() => {
+    const at = this.store.cachedAt();
+    return at === null ? null : TEXTS.cachedAt(new Date(at));
+  });
+  /** Tooltip with the full date and what waits for the check. */
+  protected readonly cachedTitle = computed(() => {
+    const at = this.store.cachedAt();
+    return at === null ? null : TEXTS.cachedTitle(new Date(at));
+  });
   /** The tab shown before the one being opened: Esc goes back there (design 029 E5). */
   private previousTabId: string | null = null;
   /** Opening this tab's folder was cancelled and nothing else could be shown. */
   protected readonly cancelledTab = signal<string | null>(null);
   /** The tab's own path while its folder opens (the list is empty then). */
-  /** "Stand 10:05" of a listing shown from the cache and not checked yet (design 030 E3). */
-  protected readonly cachedLabel = computed(() => {
-    const at = this.store.cachedAt();
-    return at === null ? null : TEXTS.cachedAt(new Date(at));
-  });
   protected readonly openingPath = computed(() =>
     this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null,
   );
@@ -509,6 +514,7 @@ export class FilePanel implements OnInit {
       this.listingAtSwitch = null;
     }
     this.store.navigationLocked.set(true);
+    const applied = this.store.appliedCount;
     try {
       await this.store.load(tab.path ?? undefined, {
         cursor: tab.cursor,
@@ -524,7 +530,8 @@ export class FilePanel implements OnInit {
       return;
     }
     const listing = this.store.listing();
-    if (listing === this.listingAtSwitch) {
+    // not "the same object as before": a cached listing can be exactly that (review 030 #3)
+    if (this.store.appliedCount === applied) {
       // folder not readable: keep showing what is there; navigation from here belongs to this tab
       this.store.setPendingTableState(null);
       return;

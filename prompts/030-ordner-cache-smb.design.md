@@ -26,8 +26,8 @@ Zustand. Tokens vorhanden (muted).
 
 **E4 Nichts Destruktives auf unbestätigtem Stand – Frontend.** Neue Veto-Quelle wie beim Archiv (`ActionService`):
 solange das aktive Panel `cachedAt !== null` hat, sind Löschen, Verschieben, Umbenennen (F2), Multi-Rename,
-Gruppieren, Aufräumen, Packen/Entpacken *in* den Ordner und Ordner/Datei anlegen gesperrt (Hinweis „wird noch
-geprüft“). Kopieren aus dem Ordner, Ansicht, Eigenschaften bleiben. Drag & Drop öffnet nur den Dialog; Verschieben dort
+Multi-MkDir, Gruppieren, Aufräumen und Ordner/Datei anlegen gesperrt (Hinweis „wird noch geprüft“). Packen/Entpacken
+nicht: sie schreiben nur neue Einträge, Rust fragt bei vorhandenen Namen ohnehin live (Review #7). Kopieren aus dem Ordner, Ansicht, Eigenschaften bleiben. Drag & Drop öffnet nur den Dialog; Verschieben dort
 schützt E5.
 
 **E5 Nichts Destruktives auf altem Stand – Rust.** `JobSpec::Delete` und `JobSpec::Move` bekommen optional
@@ -84,4 +84,21 @@ E2E: Xvfb mit `FNF_TEST_SLOW`.
 - [x] Rust
 - [x] Frontend
 - [x] E2E, Doku
-- [ ] Review
+- [x] Review – Abschnitt unten
+
+## Review (separater Agent, 20.10.2026)
+
+| # | Befund | Schwere | Ergebnis |
+|---|---|---|---|
+| 1 | `expected` erst beim Bestätigen des Dialogs bestimmt – Drag & Drop aus einem ungeprüften lokalen Listing ging ohne Prüfung raus, wenn die Prüfung inzwischen fertig war | Bug | ✅ roter Spec; `expected` wird beim Anlegen der Anfrage festgehalten (Kopieren/Verschieben/Löschen) |
+| 2 | `cachedAt` blieb stehen, wenn eine Navigation weg scheiterte oder per Esc abgebrochen wurde (die Prüfung war verdrängt) | Bug | ✅ roter Spec; Prüfung wird neu angestoßen |
+| 3 | Zwei Tabs auf demselben gecachten Ordner: Identitätsvergleich hielt den Treffer für „nicht lesbar“, Tabellenzustand des Tabs ging verloren | Bug | ✅ roter Spec; Zähler `appliedCount` statt Objektvergleich |
+| 4 | Bulk-Einträge mit Fehlerbit wurden `Unknown`, der portable Weg liefert oft einen echten Eintrag | Risiko | ✅ solche Einträge gehen wie Links über `lstat` – gleich per Konstruktion |
+| 5 | Prüfung vergleicht Bulk-Werte mit `lstat` – auf SMB evtl. abweichend, dann wäre jedes Löschen gesperrt | Risiko | ✅ Gleichheitstest prüft auch `changed()`; `listing_speed` prüft das an Marcs Freigabe (⏳ Mac) |
+| 6 | Prüfung O(n·m), ohne Abbruch; Zeitlücke zwischen Prüfung und Löschen | Risiko | ✅ HashMap, Abbruch wird beachtet; ⏸ Prüfung je Eintrag in `delete::run`/Move-Schleife offen (Zeitlücke bleibt) |
+| 7 | Gruppieren/Ergebnis-Tabs ohne `expected`; Pack/Unpack in E4 genannt, aber nicht gesperrt | Risiko | ✅ E4 korrigiert; ⏸ Gruppieren auf geprüftem Netz-Panel und Löschen aus Ergebnis-Tabs ohne `expected` – offen |
+| 8 | Cache: ältere Antwort überschreibt neuere | Nit | ✅ `remember`/`update` vergleichen `listedAt` |
+| 9 | Cache: leere Ordner zählen 0, `update` räumt nicht | Nit | ✅ Gewicht ≥ 1, `update` räumt und zählt als Nutzung |
+| 10 | E3: keine Ansage, Tooltip ohne Datum, Kommentar verrutscht | Nit | ✅ |
+| 11 | `showListing` ungenutzt | Nit | ✅ entfernt |
+| 12 | `off_t` negativ, EINTR | Nit | ✅ `u64::try_from`; ⏸ EINTR fällt auf den portablen Weg zurück (bewusst) |

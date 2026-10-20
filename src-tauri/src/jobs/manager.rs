@@ -216,7 +216,13 @@ impl JobManager {
                     } => {
                         let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
                         // what changed since the panel listed it stays where it is (design 030 E5)
-                        let (sources, skipped) = expect::filter(id, sources, expected, &emit);
+                        let (sources, skipped) = expect::filter(
+                            id,
+                            sources,
+                            expected,
+                            &|| control.is_cancelled(),
+                            &emit,
+                        );
                         let target = PathBuf::from(target_dir);
                         let mode = copy::Mode::Move {
                             force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
@@ -232,7 +238,8 @@ impl JobManager {
                         ..
                     } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-                        let (paths, skipped) = expect::filter(id, paths, expected, &emit);
+                        let (paths, skipped) =
+                            expect::filter(id, paths, expected, &|| control.is_cancelled(), &emit);
                         with_skipped(skipped, paths.len(), || {
                             delete::run(id, &paths, *mode, &control, &emit)
                         })

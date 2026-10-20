@@ -46,8 +46,9 @@ export const TEXTS_EN = {
   /** Design 030 E3/E4: a listing from the cache, not checked yet. */
   cachedAt: (at: Date) =>
     `as of ${at.toLocaleTimeString(localeFor('en'), { hour: '2-digit', minute: '2-digit' })} · checking…`,
-  cachedTitle:
-    'Shown from memory – the folder is being read again. Deleting, moving and renaming wait until then.',
+  cachedTitle: (at: Date) =>
+    `Shown from memory (${at.toLocaleString(localeFor('en'))}) – the folder is being read again. Deleting, moving and renaming wait until then.`,
+  cachedAnnounce: 'Shown from memory, checking the folder.',
   unchecked: 'the folder is still being checked – try again in a moment',
   unreadable: (n: number) => `${n} unreadable`,
   /** Folder watching (design 012 E2). */

@@ -28,10 +28,10 @@ describe('ListingCache (design 030 E1)', () => {
     const c = new ListingCache();
     c.remember(big('/smb/ä', 3, true), 1, 10);
     expect(c.get('/smb/ä')?.listedAt).toBe(1);
-    c.update(big('/smb/ä', 5, true));
+    c.update(big('/smb/ä', 5, true), 1);
     expect(c.size()).toEqual({ folders: 1, entries: 5 });
     expect(c.get('/smb/ä')?.listedAt).toBe(1);
-    c.update(big('/local', 2));
+    c.update(big('/local', 2), 1);
     expect(c.get('/local')).toBeNull();
     c.remember(big('/smb/ä', 3), 2, 5);
     expect(c.get('/smb/ä')).toBeNull();
@@ -52,5 +52,20 @@ describe('ListingCache (design 030 E1)', () => {
     // one folder bigger than the whole cache is not kept
     c.remember(big('/huge', 11, true), 1, 0);
     expect(c.get('/huge')).toBeNull();
+  });
+
+  it('review #8/#9: older answers do not replace newer ones; empty folders count; update evicts', () => {
+    const c = new ListingCache();
+    c.maxEntries = 6;
+    c.remember(big('/n', 2, true), 200, 0);
+    c.remember(big('/n', 3, true), 100, 0); // older: ignored
+    expect(c.get('/n')?.listing.entries.length).toBe(2);
+    c.update(big('/n', 4, true), 50); // a panel's listing from before the cached one
+    expect(c.get('/n')?.listing.entries.length).toBe(2);
+    c.remember(big('/leer', 0, true), 1, 0);
+    expect(c.size().entries).toBe(3);
+    c.update(big('/n', 6, true), 300); // grows beyond the bound: the oldest goes
+    expect(c.size().entries).toBeLessThanOrEqual(6);
+    expect(c.get('/leer')).toBeNull();
   });
 });

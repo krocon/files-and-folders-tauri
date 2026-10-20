@@ -44,35 +44,52 @@ export class ListingCache {
 
   /** Stores a fresh listing – or forgets the folder if it is fast now. */
   remember(listing: DirectoryListing, listedAt: number, durationMs: number): void {
+    const kept = this.items.get(listing.path);
+    // an older answer (the other panel's slower request) never replaces a newer one (review #8)
+    if (kept && kept.listedAt > listedAt) {
+      return;
+    }
     this.forget(listing.path);
-    if (!worthCaching(listing, durationMs) || listing.entries.length > this.maxEntries) {
+    if (!worthCaching(listing, durationMs) || weight(listing) > this.maxEntries) {
       return;
     }
     this.items.set(listing.path, { listing, listedAt });
-    this.entries += listing.entries.length;
-    for (const [path, item] of this.items) {
-      if (this.entries <= this.maxEntries) {
-        break;
-      }
-      this.items.delete(path);
-      this.entries -= item.listing.entries.length;
-    }
+    this.entries += weight(listing);
+    this.evict();
   }
 
-  /** Keeps a newer version of a kept folder (watcher deltas, folder sizes) – never adds one. */
-  update(listing: DirectoryListing): void {
+  /**
+   * Keeps the newest state of a kept folder a panel shows (watcher deltas, folder
+   * sizes) – never adds one. `basedOn`: when the panel's listing was read; an older
+   * one does not replace the cache's (review #8).
+   */
+  update(listing: DirectoryListing, basedOn: number | null): void {
     const kept = this.items.get(listing.path);
-    if (kept && kept.listing !== listing) {
-      this.entries += listing.entries.length - kept.listing.entries.length;
-      this.items.set(listing.path, { listing, listedAt: kept.listedAt });
+    if (!kept || kept.listing === listing || (basedOn !== null && basedOn < kept.listedAt)) {
+      return;
     }
+    this.entries += weight(listing) - weight(kept.listing);
+    // shown = used: to the end of the queue, so it is not the one evicted
+    this.items.delete(listing.path);
+    this.items.set(listing.path, { listing, listedAt: kept.listedAt });
+    this.evict();
   }
 
   forget(path: string): void {
     const kept = this.items.get(path);
     if (kept) {
       this.items.delete(path);
-      this.entries -= kept.listing.entries.length;
+      this.entries -= weight(kept.listing);
+    }
+  }
+
+  private evict(): void {
+    for (const [path, item] of this.items) {
+      if (this.entries <= this.maxEntries) {
+        break;
+      }
+      this.items.delete(path);
+      this.entries -= weight(item.listing);
     }
   }
 
@@ -80,4 +97,9 @@ export class ListingCache {
   size(): { folders: number; entries: number } {
     return { folders: this.items.size, entries: this.entries };
   }
+}
+
+/** An empty folder still counts – no unbounded number of empty listings (review #9). */
+function weight(listing: DirectoryListing): number {
+  return Math.max(1, listing.entries.length);
 }

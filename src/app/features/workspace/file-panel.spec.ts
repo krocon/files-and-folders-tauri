@@ -495,5 +495,30 @@ describe('FilePanel', () => {
       expect(store.navigationLocked()).toBe(false);
       expect(store.path()).toBe('/data');
     });
+
+    it('review #3: two tabs on the same cached folder keep their own table state', async () => {
+      const original = fs.handler;
+      fs.handler = (p) =>
+        p === '/data' ? original(p).then((l) => ({ ...l, network: true })) : original(p);
+      const table = {
+        version: 1 as const,
+        sort: [{ property: 'size', sortState: 'desc' as const }],
+      };
+      ws.restore({
+        ...ws.snapshot(),
+        panels: {
+          ...ws.snapshot().panels,
+          left: {
+            activeTab: 0,
+            tabs: [newTab('/data'), { ...newTab('/data'), table }],
+          },
+        },
+      });
+      const { store, settle } = await render();
+      fs.handler = (p) => (p === '/data' ? new Promise(() => undefined) : original(p));
+      ws.selectTab('left', 1);
+      await settle();
+      expect(store.takePendingTableState()).toEqual(table);
+    });
   });
 });

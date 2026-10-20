@@ -174,7 +174,7 @@ export class FileBrowserStore implements OnDestroy {
       const listing = this.listing();
       untracked(() => {
         if (listing && this.searchKey() === null) {
-          this.cache.update(listing);
+          this.cache.update(listing, this.listedAt);
         }
       });
     });
@@ -288,6 +288,7 @@ export class FileBrowserStore implements OnDestroy {
         }
       }, SLOW_LOAD_MS);
     }
+    let recheck = false;
     try {
       const start = performance.now();
       const listing = await this.api.listDirectory(path);
@@ -310,6 +311,8 @@ export class FileBrowserStore implements OnDestroy {
       if (seq !== this.requestSeq) {
         return;
       }
+      // a failed navigation away superseded the check of a cached folder (review 030 #2)
+      recheck = !background && this.cachedAt() !== null;
       const error = toFsError(err);
       this.error.set(error);
       if (error.code === 'not_found' && path !== undefined) {
@@ -333,20 +336,25 @@ export class FileBrowserStore implements OnDestroy {
         if (again !== null && again === this.path()) {
           this.requestRefresh();
         }
+        if (recheck) {
+          this.recheckCached();
+        }
       }
     }
   }
 
-  /**
-   * Shows a listing the panel already has (the last one of a tab, design 029 E5)
-   * like the answer of a load – cursor, marks and scroll as in {@link load}.
-   */
-  showListing(listing: DirectoryListing, listedAt: number, options: LoadOptions = {}): void {
-    const leaving = this.searchKey() === null ? this.listing() : null;
-    const leavingState = leaving ? this.captureFolderState() : null;
-    this.supersede();
-    this.endLoad();
-    this.apply(listing, options, leaving, leavingState, listedAt);
+  /** Reads a folder shown from the cache (still unchecked) again in the background. */
+  private recheckCached(): void {
+    const path = this.path();
+    if (this.cachedAt() === null || path === null) {
+      return;
+    }
+    void this.load(path, {
+      cursor: this.cursorPath(),
+      keepCursor: true,
+      history: 'none',
+      background: true,
+    });
   }
 
   /** The panel goes away: no timer may reload into a dead store (review 029 #7). */
@@ -371,6 +379,8 @@ export class FileBrowserStore implements OnDestroy {
     }
     this.supersede();
     this.endLoad();
+    // the given-up navigation had superseded the check of a cached folder (review 030 #2)
+    this.recheckCached();
     return true;
   }
 
@@ -383,6 +393,9 @@ export class FileBrowserStore implements OnDestroy {
       this.slowTimer = null;
     }
   }
+
+  /** Bumped whenever a listing is shown – a tab switch sees whether its load showed one (review 030 #3). */
+  appliedCount = 0;
 
   private apply(
     listing: DirectoryListing,
@@ -400,6 +413,7 @@ export class FileBrowserStore implements OnDestroy {
         this.leave(leaving.path, leavingState, options.history ?? 'push');
       }
     }
+    this.appliedCount++;
     const paths = new Set(listing.entries.map((e) => e.path));
     const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
     this.searchKey.set(null);

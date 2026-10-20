@@ -269,7 +269,9 @@
   }
   @if (cachedLabel(); as c) {
     <!-- a listing from the cache, being checked (design 030 E3) -->
-    <span class="busy cached" [attr.title]="texts.cachedTitle">· {{ c }}</span>
+    <span class="busy cached" [attr.title]="cachedTitle()">· {{ c }}</span>
+    <!-- announced once when the panel enters the state, not on every tick -->
+    <span class="sr-only" role="status">{{ texts.cachedAnnounce }}</span>
   } @else if (store.refreshing()) {
     <!-- only visible if a refresh lasts (design 029 E1): no flicker for fast folders -->
     <span class="busy refreshing">· {{ texts.refreshing }}</span>

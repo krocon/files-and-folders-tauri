@@ -149,7 +149,7 @@ pub fn parse_entries(buf: &[u8], count: usize) -> Result<Vec<RawEntry>, String> 
             e.flags = Some(r.u32()?);
         }
         if file & ATTR_FILE_DATALENGTH != 0 {
-            e.data_length = Some(r.i64()? as u64);
+            e.data_length = u64::try_from(r.i64()?).ok();
         }
         out.push(e);
         start = end;
@@ -175,11 +175,10 @@ pub fn raw_to_dto(dir: &Path, raw: &RawEntry) -> (DirEntryDto, bool) {
     let lossy_name = std::str::from_utf8(&raw.name).is_err();
     let name = os_name.to_string_lossy().into_owned();
     let path = dir.join(os_name);
-    let Some(objtype) = raw.objtype.filter(|_| raw.error == 0) else {
-        return (crate::listing::unknown_entry(name, &path, lossy_name), true);
-    };
+    // links need their target; entries the kernel reported with an error get the
+    // portable way's own stat – identical to it by construction (review 030 #4)
+    let objtype = raw.objtype.filter(|_| raw.error == 0).unwrap_or(VLNK);
     if objtype == VLNK {
-        // links need their target: the one stat per link the portable way does too
         return match std::fs::symlink_metadata(&path) {
             Ok(meta) => (
                 crate::listing::entry_from_metadata(name, &path, &meta, lossy_name),
@@ -474,6 +473,25 @@ mod tests {
         assert_eq!(dto.name, "a\u{fffd}b");
     }
 
+    /// Every bulk entry must pass Rust's check of E5 against `lstat` (review 030 #5).
+    #[cfg(target_os = "macos")]
+    fn assert_passes_the_check(entries: &[DirEntryDto]) {
+        for e in entries {
+            let exp = crate::jobs::expect::ExpectedEntry {
+                path: e.path.clone(),
+                kind: e.kind,
+                size: e.size,
+                modified_ms: e.modified_ms,
+            };
+            assert_eq!(
+                crate::jobs::expect::changed(Path::new(&e.path), &exp),
+                None,
+                "{} would be refused as changed",
+                e.name
+            );
+        }
+    }
+
     /// macOS: the bulk listing equals the portable one (run on the Mac: `cargo test bulk_list`).
     #[cfg(target_os = "macos")]
     #[test]
@@ -491,6 +509,7 @@ mod tests {
         let bulk = list(d).expect("getattrlistbulk works on APFS");
         let portable = crate::listing::list_directory_std(d).unwrap();
         assert_eq!(bulk, portable);
+        assert_passes_the_check(&bulk.entries);
     }
 
     /// Speed on a real folder (e.g. an SMB share):
@@ -509,11 +528,18 @@ mod tests {
             #[cfg(target_os = "macos")]
             {
                 let t = std::time::Instant::now();
-                let bulk = list(&dir).map(|l| l.entries.len());
+                let bulk = list(&dir);
                 println!(
-                    "round {round}: {n} entries · portable {portable:?} · bulk {:?} ({bulk:?})",
-                    t.elapsed()
+                    "round {round}: {n} entries · portable {portable:?} · bulk {:?} ({:?} entries)",
+                    t.elapsed(),
+                    bulk.as_ref().map(|l| l.entries.len())
                 );
+                // on this share too: the same entries, and they pass the check of E5
+                if let Some(bulk) = bulk {
+                    let portable = crate::listing::list_directory_std(&dir).unwrap();
+                    assert_eq!(bulk.entries, portable.entries, "bulk differs from portable");
+                    assert_passes_the_check(&bulk.entries);
+                }
             }
             #[cfg(not(target_os = "macos"))]
             println!("round {round}: {n} entries · portable {portable:?} (bulk only on macOS)");

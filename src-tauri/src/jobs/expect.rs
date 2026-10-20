@@ -48,19 +48,31 @@ pub fn changed(path: &Path, expected: &ExpectedEntry) -> Option<String> {
 }
 
 /// Splits `paths` into the ones to work on and the changed ones (reported as item errors).
+/// Stops checking (keeps the rest) once `cancelled` says so – the job then ends as
+/// cancelled anyway.
 pub fn filter(
     id: &str,
     paths: Vec<PathBuf>,
     expected: &[ExpectedEntry],
+    cancelled: &dyn Fn() -> bool,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (Vec<PathBuf>, Vec<ItemError>) {
     if expected.is_empty() {
         return (paths, Vec::new());
     }
+    // one lookup per path, not a scan per path (review 030 #6)
+    let by_path: std::collections::HashMap<PathBuf, &ExpectedEntry> = expected
+        .iter()
+        .map(|e| (crate::paths::normalize_lexically(Path::new(&e.path)), e))
+        .collect();
     let mut keep = Vec::with_capacity(paths.len());
     let mut skipped = Vec::new();
     for p in paths {
-        let exp = expected.iter().find(|e| Path::new(&e.path) == p);
+        if cancelled() {
+            keep.push(p);
+            continue;
+        }
+        let exp = by_path.get(&crate::paths::normalize_lexically(&p)).copied();
         match exp.and_then(|e| changed(&p, e)) {
             Some(why) => {
                 let error = ItemError {
@@ -150,6 +162,7 @@ mod tests {
             "j1",
             vec![a.clone(), b.clone(), c.clone()],
             &expected,
+            &|| false,
             &emit,
         );
         assert_eq!(keep, vec![a, c], "c had no expectation: kept");

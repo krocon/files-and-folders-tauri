@@ -213,6 +213,23 @@ describe('file operations (design 006)', () => {
     ]);
   });
 
+  it('030 review #1: a drag & drop move from an unchecked listing keeps its expectations', async () => {
+    left.cachedAt.set(Date.now());
+    const a = left.entries().find((e) => e.name === 'a.txt')!;
+    await ops.openCopyMoveFor({
+      kind: 'move',
+      side: 'left',
+      sourceDir: '/src',
+      sources: [a],
+      target: '/dst',
+    });
+    // the background check ends while the dialog is open
+    left.cachedAt.set(null);
+    expect(await ops.runCopyMove(ops.copyMove()!, INPUT)).toBeNull();
+    const spec = jobsApi.started[0].spec;
+    expect(spec.kind === 'move' && spec.expected?.map((e) => e.path)).toEqual(['/src/a.txt']);
+  });
+
   it('030 E4: nothing that changes entries while the panel shows an unchecked cache listing', async () => {
     const ws = TestBed.inject(WorkspaceStore);
     const unregister = registerWorkspaceActions(actions, ws, dialogs);
