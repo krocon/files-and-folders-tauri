@@ -126,12 +126,27 @@ describe('FileBrowserStore – slow folders (design 029)', () => {
 
   it('E5: showListing shows a known listing at once with the given cursor; clearListing empties', async () => {
     const known = listing('/k', [entry('x', { path: '/k/x' }), entry('y', { path: '/k/y' })]);
-    store.showListing(known, { cursor: '/k/y', history: 'none', remember: false });
+    store.showListing(known, 42, { cursor: '/k/y', history: 'none', remember: false });
+    expect(store.listedAt).toBe(42);
     expect(store.path()).toBe('/k');
     expect(store.cursorPath()).toBe('/k/y');
     expect(store.loading()).toBe(false);
     store.clearListing();
     expect(store.listing()).toBeNull();
     expect(store.path()).toBeNull();
+  });
+
+  it('review #5: the cursor moved while a slow navigation ran is the one Back restores', async () => {
+    store.setCursor(a.path);
+    const pending = deferred<DirectoryListing>();
+    api.handler = (p) =>
+      p === '/x' ? pending.promise : Promise.resolve(listing('/w', [sub, a, b]));
+    const nav = store.load('/x');
+    store.setCursor(b.path); // the old list stays usable (E3)
+    pending.resolve(listing('/x', []));
+    await nav;
+    await store.back();
+    expect(store.path()).toBe('/w');
+    expect(store.cursorPath()).toBe(b.path);
   });
 });

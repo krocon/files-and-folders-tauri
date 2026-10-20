@@ -108,11 +108,36 @@ pub fn run() {
                             .hub()
                             .busy(dirs);
                         let handle = handle.clone();
+                        // resuming a polled folder scans it (slow drive!): not on the job
+                        // thread, whose end the user waits for (review 029 #1)
                         Box::new(move || {
-                            handle
-                                .state::<commands::watch::WatchState>()
-                                .hub()
-                                .release(token)
+                            let slot = std::sync::Arc::new(std::sync::Mutex::new(Some(token)));
+                            let release = {
+                                let (slot, handle) = (slot.clone(), handle.clone());
+                                move || {
+                                    let token =
+                                        slot.lock().unwrap_or_else(|e| e.into_inner()).take();
+                                    if let Some(token) = token {
+                                        handle
+                                            .state::<commands::watch::WatchState>()
+                                            .hub()
+                                            .release(token);
+                                    }
+                                }
+                            };
+                            let spawned = std::thread::Builder::new()
+                                .name("fnf-watch-release".into())
+                                .spawn(release);
+                            if spawned.is_err() {
+                                // no thread: release here rather than hold the reloads for ever
+                                let token = slot.lock().unwrap_or_else(|e| e.into_inner()).take();
+                                if let Some(token) = token {
+                                    handle
+                                        .state::<commands::watch::WatchState>()
+                                        .hub()
+                                        .release(token);
+                                }
+                            }
                         })
                     }));
             }

@@ -170,7 +170,10 @@ export class FilePanel implements OnInit {
    * The last listing each tab showed (design 029 E5, newest last): switching back
    * shows it at once and refreshes in the background – no wait on a slow drive.
    */
-  private readonly tabListings = new Map<string, DirectoryListing>();
+  private readonly tabListings = new Map<
+    string,
+    { readonly listing: DirectoryListing; readonly listedAt: number }
+  >();
   /** The tab shown before the one being opened: Esc goes back there (design 029 E5). */
   private previousTabId: string | null = null;
   /** Opening this tab's folder was cancelled and nothing else could be shown. */
@@ -507,10 +510,20 @@ export class FilePanel implements OnInit {
     }
     // shown before: at once, then read again in the background (design 029 E5)
     const known = this.tabListings.get(id);
-    if (known && tab.path !== null && known.path === tab.path && known !== this.listingAtSwitch) {
+    if (
+      known &&
+      tab.path !== null &&
+      known.listing.path === tab.path &&
+      known.listing !== this.listingAtSwitch
+    ) {
       this.store.navigationLocked.set(false);
-      this.store.showListing(known, { cursor: tab.cursor, history: 'none', remember: false });
-      void this.store.refresh();
+      this.store.showListing(known.listing, known.listedAt, {
+        cursor: tab.cursor,
+        history: 'none',
+        remember: false,
+      });
+      // read again – after a slow listing with the usual gap, not on every switch (review 029 #9)
+      this.store.requestRefresh();
       return;
     }
     // nothing of another tab under this one: an empty list and this tab's path until it is read
@@ -578,7 +591,14 @@ export class FilePanel implements OnInit {
 
   private rememberTabListing(id: string, listing: DirectoryListing): void {
     this.tabListings.delete(id);
-    this.tabListings.set(id, listing);
+    this.tabListings.set(id, { listing, listedAt: this.store.listedAt ?? Date.now() });
+    // closed tabs give their listing back at once (review 029 #8)
+    const open = new Set(this.ws.panels()[this.side()].tabs.map((t) => t.id));
+    for (const kept of [...this.tabListings.keys()]) {
+      if (!open.has(kept)) {
+        this.tabListings.delete(kept);
+      }
+    }
     while (this.tabListings.size > TAB_LISTINGS_KEPT) {
       const oldest = this.tabListings.keys().next().value;
       if (oldest === undefined) {

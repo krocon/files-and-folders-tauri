@@ -33,8 +33,10 @@ bleibt die alte Liste bedienbar; Aktionen darauf sind gültig (Pfade sind absolu
 
 **E4 „Ordner antwortet langsam …“.** Läuft eine Navigation (nicht Auffrischen) länger als 2 s, setzt der Store
 `slow`; das Panel zeigt über der Liste eine Leiste (`role="status"`) mit **Abbrechen**. Neue Aktion
-`CANCEL_LOADING` (Gruppe navigation, Kürzel `Escape` auf allen OS, nur aktiv solange geladen wird; feuert wie alle
-plain keys nur mit Fokus in der Liste oder nirgends). Abbrechen = `supersede()`, `loading`/`slow` aus.
+`CANCEL_LOADING` (Gruppe navigation, nur aktiv solange geladen wird). **Esc** löst sie aus, wenn der Fokus in der
+Liste ist – im Key-Handler der Liste, der Esc schon für die Schnellsuche behandelt (Widget-Ausnahme nach §4), nicht
+über die Keymap: der globale Dispatcher würde Esc auch bei deaktivierter Aktion schlucken (Schnellsuche, Drag-Abbruch).
+Abweichung bewusst, Review #4. Abbrechen = `supersede()`, `loading`/`slow` aus.
 
 **E5 Tab-Wechsel ohne Sperre der alten Liste.**
 - Das Panel merkt sich je Tab das zuletzt gezeigte Listing (LRU, 16 Tabs). Ist es für den Pfad des Tabs vorhanden,
@@ -134,4 +136,21 @@ Schema-Einstellung, nicht `GTK_THEME`).
 - [x] Frontend (E1–E5, E12)
 - [x] E2E
 - [x] Doku
-- [ ] Review (separater Agent) – Abschnitt 7
+- [x] Review (separater Agent) – Abschnitt 7
+
+## 7. Review (separater Agent, 20.10.2026)
+
+| # | Befund | Schwere | Ergebnis |
+|---|---|---|---|
+| 1 | `release` eines Poll-Ziels scannt den Ordner auf dem Job-Thread (notify hält seinen Lock über den ganzen Poll-Scan) – Jobende wartet | Risiko | ✅ Freigabe in eigenem Thread (`fnf-watch-release`), Rückfall inline; `busy()` am Jobstart bleibt auf dem Job-Thread (verzögert nur den Start dieses Jobs) |
+| 2 | Panik im Stat-Thread lässt den Ordner für immer „resolving“ | Risiko | ✅ `catch_unwind` → Rescan |
+| 3 | Spätes Stat-Ergebnis nach Verlassen + Rückkehr wäre ein veraltetes Delta | Nit | ✅ Generation des Watched-Satzes; altes Ergebnis → Rescan statt Delta |
+| 4 | Esc nicht in den Keymaps | Abweichung | ⏸ bewusst (s. E4): globale Bindung würde Esc auch bei deaktivierter Aktion schlucken |
+| 5 | Cursor/Marken des verlassenen Ordners zum Start der Navigation erfasst, Änderungen während des Wartens gingen bei „Zurück“ verloren | Bug | ✅ roter Spec, Erfassung bei Antwort |
+| 6 | `listedAt` beim Tab-Cache falsch | Nit | ✅ je Eintrag gespeichert |
+| 7 | Timer überleben das Panel | Nit | ✅ `ngOnDestroy`, alter Slow-Timer wird geräumt |
+| 8 | Cache behält geschlossene Tabs | Nit | ✅ beim Merken bereinigt |
+| 9 | Zurück auf einen Tab liest immer sofort neu | Nit | ✅ `requestRefresh` (Drossel) |
+| 10 | Gate: Flight bleibt bei gescheitertem `spawn_blocking` | Nit | ✅ entfernt; Wartende ohne Obergrenze bleiben (je ein IPC-Future, harmlos) |
+| 11 | Regeltest umgehbar | Nit | ✅ alle Schreibweisen, Attribute dazwischen, jede Datei in `commands/` |
+| 12 | Kleinere Lücken | Nit | ✅ Test Abbruch + Guard, letzter Quellteil `DONTNEED`, Puffer beim Entpacken nach Größe; `test_slow` nur für Kopie (reicht für E2E) |

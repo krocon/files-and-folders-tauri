@@ -86,6 +86,7 @@ impl ListingGate {
                 .await
                 .map_err(|e| failed(e.to_string()))?,
             Plan::Own(id) => {
+                let dir_key = dir.clone();
                 // the waiters are served from the blocking thread itself: they get the
                 // result even if this future were dropped
                 tauri::async_runtime::spawn_blocking(move || {
@@ -104,7 +105,15 @@ impl ListingGate {
                     result
                 })
                 .await
-                .map_err(|e| failed(e.to_string()))?
+                .map_err(|e| {
+                    // the task never ran (runtime shutting down): no one may wait for it
+                    let mut flights = self.flights.lock().unwrap_or_else(|e| e.into_inner());
+                    let gone = matches!(flights.get(&dir_key), Some(f) if f.id == id);
+                    if gone {
+                        flights.remove(&dir_key);
+                    }
+                    failed(e.to_string())
+                })?
             }
         }
     }

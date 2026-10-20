@@ -100,6 +100,8 @@ enum Msg {
         dir: PathBuf,
         event: Option<WatchEvent>,
         replaced: Option<Watched>,
+        /// Generation of the watched table the batch was taken from (review 029 #3).
+        generation: u64,
     },
     Stop,
 }
@@ -454,6 +456,9 @@ fn identity_of(_dir: &Path) -> Option<(u64, u64)> {
 fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink: Sink) {
     let mut batcher = Batcher::default();
     let mut watched: Vec<Watched> = Vec::new();
+    // bumped when a folder leaves the table: a late result of an earlier visit is not
+    // applied on top of the fresh listing of a new one (review 029 #3)
+    let mut generation = 0u64;
     loop {
         let timeout = batcher
             .next_deadline()
@@ -462,6 +467,9 @@ fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink:
         match rx.recv_timeout(timeout) {
             Ok(Msg::Stop) | Err(RecvTimeoutError::Disconnected) => return,
             Ok(Msg::Dirs(dirs)) => {
+                if watched.iter().any(|w| !dirs.iter().any(|d| d.dir == w.dir)) {
+                    generation += 1;
+                }
                 batcher.set_dirs(&dirs.iter().map(|w| w.dir.clone()).collect::<Vec<_>>());
                 watched = dirs;
             }
@@ -472,8 +480,14 @@ fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink:
                 dir,
                 event,
                 replaced,
+                generation: g,
             }) => {
                 batcher.set_resolving(&dir, false);
+                if g != generation {
+                    // stat'ed for an earlier visit: reload instead of applying a stale delta
+                    batcher.touch(&dir, Touch::Rescan, Instant::now());
+                    continue;
+                }
                 // a folder no longer shown reports nothing any more
                 if let Some(w) = watched.iter_mut().find(|w| w.dir == dir) {
                     if let Some(r) = replaced {
@@ -494,15 +508,29 @@ fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink:
             // stat'ing may hang on a busy or dead drive: off this thread, one batch
             // per folder at a time, so other folders keep reporting (design 029 E9)
             batcher.set_resolving(&dir, true);
-            let (tx2, watchers2, dir2) = (tx.clone(), watchers.clone(), dir.clone());
+            let (tx2, watchers2, dir2, gen2) =
+                (tx.clone(), watchers.clone(), dir.clone(), generation);
             let spawned = std::thread::Builder::new()
                 .name("fnf-watch-stat".into())
                 .spawn(move || {
-                    let (event, replaced) = resolve(flush, &entry, &tx2, &watchers2);
+                    // a panic must not leave the folder "resolving" for ever (review 029 #2):
+                    // it reports a reload instead
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        resolve(flush, &entry, &tx2, &watchers2)
+                    }));
+                    let (event, replaced) = result.unwrap_or_else(|_| {
+                        (
+                            Some(WatchEvent::Rescan {
+                                dir: dir2.to_string_lossy().into_owned(),
+                            }),
+                            None,
+                        )
+                    });
                     let _ = tx2.send(Msg::Resolved {
                         dir: dir2,
                         event,
                         replaced,
+                        generation: gen2,
                     });
                 });
             if spawned.is_err() {

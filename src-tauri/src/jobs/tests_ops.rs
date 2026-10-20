@@ -956,3 +956,29 @@ fn copy_throughput() {
         mb as f64 / secs
     );
 }
+
+#[test]
+fn the_target_guard_is_released_when_a_copy_is_cancelled_midway() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("big.bin");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&target).unwrap();
+    fs::write(&src, vec![7u8; 64 * 1024 * 1024]).unwrap();
+    let h = Harness::new();
+    let held: Arc<Mutex<i32>> = Arc::default();
+    let c = held.clone();
+    h.mgr.set_target_guard(Arc::new(move |_paths: &[PathBuf]| {
+        *c.lock().unwrap() += 1;
+        let c = c.clone();
+        Box::new(move || *c.lock().unwrap() -= 1)
+    }));
+    let id = h.start_copy(&[&src], &target, CopyOptions::default());
+    h.mgr.cancel(&id);
+    // usually cancelled mid-file; a very fast disk may finish first – balanced either way
+    let state = h.finish(&id).state;
+    assert!(
+        matches!(state, JobState::Cancelled | JobState::Done),
+        "{state:?}"
+    );
+    assert_eq!(*held.lock().unwrap(), 0, "busy and free stay balanced");
+}

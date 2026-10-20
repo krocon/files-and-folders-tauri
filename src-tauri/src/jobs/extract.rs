@@ -134,7 +134,9 @@ impl Run<'_> {
                 .open(&tmp)
                 .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
             crate::platform::io_hints::prepare_write(&out);
-            let mut buf = vec![0u8; BLOCK];
+            // small entries need no 1 MiB buffer each (review 029 #12)
+            let len = usize::try_from(entry.size).unwrap_or(BLOCK);
+            let mut buf = vec![0u8; len.clamp(8 * 1024, BLOCK)];
             loop {
                 if self.control.is_cancelled() || !self.control.wait_while_paused() {
                     return Err(WriteError::Cancelled);

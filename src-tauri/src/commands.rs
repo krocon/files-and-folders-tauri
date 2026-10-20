@@ -1415,24 +1415,42 @@ mod command_rules {
         "close_main_window",
     ];
 
+    /// The name of a synchronous command declared at `lines[i]`, if it is one.
+    fn sync_command(lines: &[&str], i: usize) -> Option<String> {
+        let attr = lines[i].trim();
+        if !attr.starts_with("#[tauri::command") || attr.contains("(async") {
+            return None;
+        }
+        // skip further attributes and doc comments between the attribute and the fn
+        let decl = lines[i + 1..]
+            .iter()
+            .map(|l| l.trim())
+            .find(|l| !l.starts_with("#[") && !l.starts_with("//") && !l.is_empty())?;
+        let rest = decl
+            .strip_prefix("pub(crate) ")
+            .or_else(|| decl.strip_prefix("pub "))
+            .unwrap_or(decl);
+        if rest.starts_with("async fn ") {
+            return None;
+        }
+        let rest = rest.strip_prefix("fn ")?;
+        Some(
+            rest.chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect(),
+        )
+    }
+
     #[test]
     fn no_command_runs_on_the_main_thread_unless_allowed() {
         let mut sync = Vec::new();
         for (file, src) in SOURCES {
             let lines: Vec<&str> = src.lines().collect();
-            for (i, line) in lines.iter().enumerate() {
-                if line.trim() != "#[tauri::command]" {
-                    continue;
-                }
-                let next = lines.get(i + 1).map(|l| l.trim()).unwrap_or("");
-                if let Some(rest) = next.strip_prefix("pub fn ") {
-                    let name: String = rest
-                        .chars()
-                        .take_while(|c| c.is_alphanumeric() || *c == '_')
-                        .collect();
-                    if !MAIN_THREAD.contains(&name.as_str()) {
-                        sync.push(format!("{file}: {name}"));
-                    }
+            for i in 0..lines.len() {
+                if let Some(name) = sync_command(&lines, i)
+                    && !MAIN_THREAD.contains(&name.as_str())
+                {
+                    sync.push(format!("{file}: {name}"));
                 }
             }
         }
@@ -1440,5 +1458,30 @@ mod command_rules {
             sync.is_empty(),
             "make these `async fn` or `#[tauri::command(async)]`: {sync:?}"
         );
+    }
+
+    #[test]
+    fn the_rule_sees_every_command_file_and_every_spelling() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands");
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let name = format!("commands/{}", entry.unwrap().file_name().to_string_lossy());
+            assert!(
+                SOURCES.iter().any(|(f, _)| *f == name),
+                "{name} is missing in SOURCES"
+            );
+        }
+        let lines = [
+            "#[tauri::command(rename_all = \"snake_case\")]",
+            "/// doc",
+            "#[allow(clippy::x)]",
+            "fn hidden<R: Runtime>() {}",
+            "#[tauri::command(async)]",
+            "pub fn fine() {}",
+            "#[tauri::command]",
+            "pub async fn also_fine() {}",
+        ];
+        assert_eq!(sync_command(&lines, 0).as_deref(), Some("hidden"));
+        assert_eq!(sync_command(&lines, 4), None);
+        assert_eq!(sync_command(&lines, 6), None);
     }
 }

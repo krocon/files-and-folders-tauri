@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
 import { toFsError } from '../../core/fs/fs-error';
@@ -94,7 +94,7 @@ export function refreshGapMs(lastMs: number): number {
  * - folder sizes are written into the listing (`size` of directories).
  */
 @Injectable()
-export class FileBrowserStore {
+export class FileBrowserStore implements OnDestroy {
   private readonly api = inject(FsApi);
   /** Monotonic id to drop responses of superseded requests. */
   private requestSeq = 0;
@@ -240,11 +240,13 @@ export class FileBrowserStore {
   async load(path?: string, options: LoadOptions = {}): Promise<void> {
     const seq = this.supersede();
     const startedAt = Date.now();
-    const leaving = this.searchKey() === null ? this.listing() : null;
-    const leavingState = leaving ? this.captureFolderState() : null;
     const background = options.background === true;
     this.loading.set(!background);
     this.refreshing.set(background);
+    if (this.slowTimer !== null) {
+      clearTimeout(this.slowTimer);
+      this.slowTimer = null;
+    }
     if (!background) {
       this.slowTimer = setTimeout(() => {
         this.slowTimer = null;
@@ -265,6 +267,9 @@ export class FileBrowserStore {
         this.lastListMs,
         `${listing.entries.length} entries`,
       );
+      // the folder being left as it is now: it stayed usable while this one loaded (review 029 #5)
+      const leaving = this.searchKey() === null ? this.listing() : null;
+      const leavingState = leaving ? this.captureFolderState() : null;
       this.apply(listing, options, leaving, leavingState, startedAt);
     } catch (err) {
       if (seq !== this.requestSeq) {
@@ -298,12 +303,18 @@ export class FileBrowserStore {
    * Shows a listing the panel already has (the last one of a tab, design 029 E5)
    * like the answer of a load – cursor, marks and scroll as in {@link load}.
    */
-  showListing(listing: DirectoryListing, options: LoadOptions = {}): void {
+  showListing(listing: DirectoryListing, listedAt: number, options: LoadOptions = {}): void {
     const leaving = this.searchKey() === null ? this.listing() : null;
     const leavingState = leaving ? this.captureFolderState() : null;
     this.supersede();
     this.endLoad();
-    this.apply(listing, options, leaving, leavingState, this.listedAt ?? Date.now());
+    this.apply(listing, options, leaving, leavingState, listedAt);
+  }
+
+  /** The panel goes away: no timer may reload into a dead store (review 029 #7). */
+  ngOnDestroy(): void {
+    this.supersede();
+    this.endLoad();
   }
 
   /** Clears the list while a tab's folder opens (design 029 E5): nothing old is shown under the new tab. */

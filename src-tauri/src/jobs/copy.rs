@@ -528,6 +528,7 @@ impl Run<'_> {
                 self.rep.tick(false);
             }
             out.flush()?;
+            io_hints::done_reading(&input, dropped, written - dropped);
             if let Ok(t) = src_meta.modified() {
                 let _ = out.set_modified(t);
             }
