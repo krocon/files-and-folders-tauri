@@ -277,6 +277,22 @@ E2E nach den Fixes (Xvfb :95, Debug-Build): `bomb-header.7z` und `bomb-files.7z`
 
 Nebenbefund beim Gesamtlauf: `jobs::tests_link::many_links_and_cancel` (aus 031, `main`) scheiterte oft – der „Blocker“ war eine Simulation, die parallel läuft, der abgebrochene Link-Job startete also sofort. Behoben (gleichzeitig auch in `main`, dessen Fassung beim Merge übernommen wurde): ein serieller, pausierter Link-Job davor.
 
+### Nachprüfung (21.10.2026)
+
+Zweiter Blick des Koordinators auf `archive/sevenz_header.rs`. Grundsatz jetzt **fail-closed**: was der Vorab-Parser
+nicht sicher beurteilen kann, wird als `archive_error` („The 7z header cannot be checked (…) – not opened“) abgelehnt –
+`sevenz-rust2` liest nur noch Header, deren Größe und Dateizahl vorher feststehen.
+
+| Nr | Schwere | Befund | Status | Test |
+|---|---|---|---|---|
+| B1 | hoch | `size == 0` bzw. jeder Parse-Fehler ließ durch; Start-Header-CRC 0 + 20 Nullbytes → die Crate sucht im letzten MiB ohne CRC nach einem Header (`try_to_locale_end_header`) | ✅ Start-Header muss zur CRC passen, genullter Start-Header wird abgelehnt, Next-Header-CRC wird geprüft; `size == 0` nur mit gültiger CRC (leeres Archiv); Parse-Fehler → `archive_error` | `seven_zip_headers_the_check_cannot_judge_are_refused` (`bomb-zero-start.7z`, 424 Byte) |
+| B2 | hoch | `digests()` legte `vec![true; n]` an, bevor die CRC-Bytes gegen den Rest geprüft waren (n bis ~6·10¹¹) | ✅ `Cursor` prüft jede Anzahl gegen die restlichen Bytes (`count`: höchstens 1 Element je Byte; Bitvektor `⌈n/8⌉`, CRCs `4·definiert`), zählt definierte Bits statt einen Vektor zu bauen; nur je Ordner (≤ Restbytes) wird ein Vektor angelegt | wie B1 (`bomb-digests.7z`, 48 Byte: 2³⁶ Streams) + Unit-Test `sevenz_header::tests::counts_need_bytes_behind_them` |
+| B3 | hoch | Encoded-Header mit AES/PPMd/BZip2/Copy/Deflate → nur 64-MiB-Grenze (bis 64 Mio. Einträge) | ✅ nur **LZMA/LZMA2**, optional hinter **AES-256** (genau ein Ordner, ein Pack-Stream); alles andere abgelehnt (7-Zip schreibt Header immer mit LZMA). AES-Header werden hier mit dem bekannten Passwort entschlüsselt (Schlüsselableitung wie 7-Zip, ≤ 2²⁴ Runden wie die Crate; `aes`/`cbc`/`crc32fast` waren im Baum) und dann gezählt – ohne Passwort zuerst `archive_password_required`, Müll nach dem Entschlüsseln = falsches Passwort. `MAX_HEADER` 64 → **32 MiB** (gepackt und ausgepackt) | wie B1 (`bomb-bzip2-header.7z`, `bomb-aes-header.7z` mit `geheim`: ohne Passwort „password required“, mit → „declares 2000000 entries“); echte Archive (PPMd/BZip2/Deflate/Copy/BCJ-Daten, `-mhc=off`, `-mhe` mit LZMA2) öffnen weiter |
+| B4 | niedrig | Prüfung und `Archive::read` öffneten die Datei getrennt (TOCTOU) | ✅ `check(&mut File, …)`: `sevenz::open` und `verify_7z` öffnen einmal, prüfen, spulen zurück und geben **dieselbe** Datei an die Crate | Code |
+| A1 | niedrig | UnRAR schreibt die globalen `ErrHandler`-Zähler und die statischen SSE-Konstanten von BLAKE2s (`blake2s_init_sse`, bei jedem `blake2s_init_param`) ungeschützt parallel | dokumentiert, nicht geändert: die SSE-Konstanten werden bei jedem Aufruf mit **denselben** Werten überschrieben (formal ein Data Race, praktisch harmlos); ein einmaliges Vorab-Init ginge nur über einen RAR-5-Hash-Lauf unter der Sperre – kein Zugang über die DLL-API. `ErrHandler`-Zähler lesen wir nicht: Ergebnisse kommen aus den Rückgabewerten je Handle (`RARReadHeaderEx`/`RARProcessFileW`). Sauber nur upstream (UnRAR) | – |
+
+Damit erledigt sich auch Selbst-Review #7 (PPMd-Header ohne Speichergrenze): solche Header werden nicht mehr gelesen.
+
 ## 8. Fortschritt
 
 - [x] Phase 1: Prompt + dieses Dokument
@@ -295,6 +311,6 @@ Nebenbefund beim Gesamtlauf: `jobs::tests_link::many_links_and_cancel` (aus 031,
 ## 9. Offen
 
 - In Archive schreiben (E9) – Folge-Prompt „Archive bearbeiten“ (ZIP/TAR zuerst, `raw_copy_file`).
-- 7z-Header mit PPMd ohne Speichergrenze (Review #7) – ggf. Vorschlag an `sevenz-rust2`.
+- Vorschlag an `sevenz-rust2`: `Archive::read` mit Grenzen (Header-Bytes, Dateien) und ohne CRC-lose Header-Suche.
 - Doppelte Fehlermeldung im Panel-Banner bei Passwortfehlern (kosmetisch).
 - Mehrteilige Archive, `.tar.bz2`/`.tar.xz`, Suche in Archiven, Passwort im Schlüsselbund merken.
