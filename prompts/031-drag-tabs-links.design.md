@@ -92,7 +92,7 @@ Gleicher Ordner ohne neuen Namen und ohne „Beide behalten“ → „Quelle und
   anderes Laufwerk unter Windows, Fehler `relative_link_impossible`). Weil `..` im Dateisystem physisch aufgelöst
   wird, kann ein lexikalisch relativer Pfad über einen verlinkten Ordner woanders hinzeigen. Deshalb prüft Rust
   **vor** dem Anlegen, dass `linkordner/relativ` (ohne den letzten Link zu folgen) derselbe Eintrag ist wie die Quelle
-  (Unix: Gerät + Inode; Windows: Art, Größe, Änderungszeit als Näherung) – sonst `relative_link_impossible`,
+  (Unix: Gerät + Inode; Windows: Volume-Seriennummer + File-Index, ext. Review #10) – sonst `relative_link_impossible`,
   nichts entsteht.
 - Ordner unter Windows: `symlink_dir`, wenn die Quelle (Links gefolgt) ein Ordner ist, sonst `symlink_file`; ohne
   Recht/Entwicklermodus (`ERROR_PRIVILEGE_NOT_HELD`, 1314) → neuer Code **`link_not_permitted`** mit Hinweis auf den
@@ -206,12 +206,23 @@ UI-Skizze (Tab-Leiste rechts, Tab „Bilder“ wird zwischen „home“ und „s
 | 1 | Relativer Link über einen verlinkten Ordner zeigt woanders hin (`..` physisch) | hoch | behoben vor dem Schreiben: Prüfung `same_entry(linkordner/relativ, quelle)` vor dem Anlegen, Test `relative_link_through_a_linked_folder_is_refused` |
 | 2 | Überschreiben eines vorhandenen Namens | hoch | ausgeschlossen: `symlink()`/`CreateSymbolicLinkW` atomar, kein Löschen im Job; Test `an_existing_name_is_never_replaced` |
 | 3 | Virtuelle Archivpfade als Quelle/Ziel | mittel | Rust: `symlink_metadata`/`metadata` scheitern (Eintrag- bzw. Job-Fehler, Test `the_target_must_be_a_real_folder`, `dangling_sources_are_linked_missing_ones_fail_per_entry`); Frontend sperrt Aktion und Drag im Archiv |
-| 4 | Windows: `same_entry` ohne Datei-Id (nur Art/Größe/Zeit) | niedrig | offen, dokumentiert (E9); Win32 löst `..` ohnehin lexikalisch auf |
+| 4 | Windows: `same_entry` ohne Datei-Id (nur Art/Größe/Zeit) | niedrig | erledigt durch das externe Review (#10): `GetFileInformationByHandle` |
 | 5 | Commands | – | kein neuer Command (Job-Art über `start_job`), `command_rules` unverändert grün |
 | 6 | Texte | – | en/de vollständig (`catalogs.spec.ts`), Fehler über `describeFsError` |
 | 7 | Barrierefreiheit | – | alle Tab-Funktionen per Aktion/Kontextmenü; Live-Region in der Tab-Leiste; Fokus folgt dem Tab bzw. der Zielseite |
 | 8 | `swallowNextClick` doppelt (file-list, tab-bar) | niedrig | bewusst lokal gelassen (zwei Zeilen, keine gemeinsame Datei, die andere Branches anfassen) |
 | 9 | Zeiger-Hinweis des Datei-Drags abgeschnitten | niedrig | behoben (Umbruch) |
+
+### Externes Review (20.10.2026)
+
+Unabhängiges Review von 024 + 031, behoben auf Branch `fix/review-024-031` (Befunde 1–8 und 12: Design 024 §6).
+
+| # | Befund (Schwere) | Status | Umsetzung / Test |
+|---|---|---|---|
+| 1 | Roh-Pfad im Job, normalisierter Pfad in der Prüfung (hoch; gefunden bei 024, betrifft alle Job-Arten) | behoben | zentral in `JobManager::start` (Design 024 §6 #1): der Link-Job bekommt Quellen und Ziel ohne `.`/abschließenden Separator, `..` wird abgelehnt. Test `a_trailing_separator_on_the_target_folder` |
+| 9 | `relative_target` verglich `Component::Prefix` byteweise: `c:` ≠ `C:`, `\\?\C:` ≠ `C:` (niedrig) | behoben | `prefix_key`: Laufwerksbuchstabe und Server/Freigabe ohne Groß-/Kleinschreibung, Verbatim-Präfix (`\\?\`, `\\?\UNC\`) gleich dem normalen; die Dateisystem-Prüfung `same_entry` bleibt das letzte Wort. Test `drive_letters_ignore_case_and_the_verbatim_prefix` (`#[cfg(windows)]`, läuft in der CI) |
+| 10 | `same_entry` unter Windows ohne Datei-Id (Art+Größe+Zeit) (niedrig) | behoben | `platform::entry_id(path)`: Unix Gerät+Inode, Windows `GetFileInformationByHandle` (Volume-Seriennummer + File-Index; Handle mit `FILE_FLAG_OPEN_REPARSE_POINT \| BACKUP_SEMANTICS`); die Näherung bleibt nur, wenn keine Id lesbar ist. Test `entry_id_tells_identical_copies_apart` (alle OS). Befund 4 der Selbst-Review damit erledigt |
+| 11 | Linkname per `to_string_lossy` (nicht-UTF-8 → U+FFFD) (niedrig) | behoben | Name als `OsStr` (Quelle) bzw. getippter `renameTo`; `validate_name` für UTF-8-Namen, sonst nur „ein Segment“. Test `a_name_that_is_no_utf8_is_kept` (Linux; macOS-Dateisysteme kennen solche Namen nicht) |
 
 ## 7. Offen
 
