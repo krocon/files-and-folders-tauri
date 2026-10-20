@@ -158,7 +158,17 @@
           {{ seg.name }}
         </button>
       } @empty {
-        <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
+        @if (openingPath(); as p) {
+          <!-- the tab's own folder while it opens (design 029 E5) -->
+          <span class="crumb placeholder opening" [attr.aria-busy]="store.loading() ? 'true' : null"
+            >{{ p }}
+            @if (store.loading()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+          </span>
+        } @else {
+          <span class="crumb placeholder">{{ store.loading() ? texts.loading : '…' }}</span>
+        }
       }
     </span>
     @if (store.archive(); as a) {
@@ -213,6 +223,20 @@
       <button type="button" class="btn" (click)="store.dismissError()">{{ texts.dismiss }}</button>
     </div>
   }
+  @if (store.slow()) {
+    <div class="slow" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="slow-text">{{ texts.slowFolder }}</span>
+      <button type="button" class="btn small" (click)="cancelLoading()">
+        {{ texts.cancelLoading }} <kbd>{{ texts.cancelHint }}</kbd>
+      </button>
+    </div>
+  } @else if (cancelledTab() === tab().id) {
+    <div class="slow" role="status">
+      <span class="slow-text">{{ texts.openCancelled }}</span>
+      <button type="button" class="btn small" (click)="retryTab()">{{ texts.retry }}</button>
+    </div>
+  }
   <app-file-list
     [labelledBy]="pathId"
     [side]="side()"
@@ -241,6 +265,10 @@
   }
   @if (store.listing()?.unreadableEntries; as n) {
     <span class="warn">· {{ texts.unreadable(n) }}</span>
+  }
+  @if (store.refreshing()) {
+    <!-- only visible if a refresh lasts (design 029 E1): no flicker for fast folders -->
+    <span class="busy refreshing">· {{ texts.refreshing }}</span>
   }
   @if (watchHint(); as hint) {
     <span class="watch" [attr.title]="texts.watchHint">· {{ hint }}</span>

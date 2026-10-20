@@ -364,4 +364,106 @@ describe('FilePanel', () => {
     await settle();
     expect(fs.calls.slice(before)).toEqual(['/data']);
   });
+
+  describe('slow folders (design 029 E5)', () => {
+    it('a tab shown before comes back at once and is refreshed in the background', async () => {
+      const { store, settle } = await render();
+      ws.selectTab('left', 1);
+      await settle();
+      const hanging = deferred<DirectoryListing>();
+      const original = fs.handler;
+      fs.handler = (p) => (p === '/data' ? hanging.promise : original(p));
+      ws.selectTab('left', 0);
+      await settle();
+      // the old list of this tab, usable, while it is read again
+      expect(store.path()).toBe('/data');
+      expect(store.loading()).toBe(false);
+      expect(store.navigationLocked()).toBe(false);
+      expect(store.refreshing()).toBe(true);
+      expect(fs.calls.at(-1)).toBe('/data');
+      hanging.resolve(
+        withSegments(listing('/data', [entry('neu.txt', { path: '/data/neu.txt' })]), [
+          '/',
+          'data',
+        ]),
+      );
+      await settle();
+      expect(store.entries().map((e) => e.name)).toEqual(['neu.txt']);
+    });
+
+    it('a tab never shown: empty list and its own path while it opens, not the old tab', async () => {
+      const { store, el, settle } = await render();
+      const hanging = deferred<DirectoryListing>();
+      const original = fs.handler;
+      fs.handler = (p) => (p === '/other' ? hanging.promise : original(p));
+      ws.selectTab('left', 1);
+      await settle();
+      expect(store.listing()).toBeNull();
+      expect(store.loading()).toBe(true);
+      expect(el.querySelector('.crumb.opening')?.textContent).toContain('/other');
+      expect(ws.panels().left.tabs[0].path).toBe('/data');
+      hanging.resolve(
+        withSegments(listing('/other', [entry('x', { path: '/other/x' })]), ['/', 'other']),
+      );
+      await settle();
+      expect(store.path()).toBe('/other');
+      expect(el.querySelector('.crumb.opening')).toBeNull();
+    });
+
+    it('Esc while a tab opens goes back to the tab before (at once, from its last list)', async () => {
+      const { store, settle } = await render();
+      const hanging = deferred<DirectoryListing>();
+      const original = fs.handler;
+      fs.handler = (p) => (p === '/other' ? hanging.promise : original(p));
+      ws.selectTab('left', 1);
+      await settle();
+      const calls = fs.calls.length;
+      expect(ws.panel('left')?.cancelLoading?.()).toBe(true);
+      await settle();
+      expect(ws.panels().left.activeTab).toBe(0);
+      expect(store.path()).toBe('/data');
+      expect(store.loading()).toBe(false);
+      // shown from the kept list; only a background refresh reads it
+      expect(fs.calls.slice(calls)).toEqual(['/data']);
+      hanging.resolve(withSegments(listing('/other', []), ['/', 'other']));
+      await settle();
+      expect(store.path()).toBe('/data');
+      expect(ws.panels().left.tabs[1].path).toBe('/other');
+    });
+
+    it('a cancelled first tab offers "Try again"', async () => {
+      ws.restore({
+        ...ws.snapshot(),
+        panels: { ...ws.snapshot().panels, left: { activeTab: 0, tabs: [newTab('/data')] } },
+      });
+      const hanging = deferred<DirectoryListing>();
+      const original = fs.handler;
+      fs.handler = (p) => (p === '/data' ? hanging.promise : original(p));
+      const { store, el, settle } = await render();
+      expect(store.loading()).toBe(true);
+      expect(ws.panel('left')?.cancelLoading?.()).toBe(true);
+      await settle();
+      expect(el.querySelector('.slow')?.textContent).toContain('cancelled');
+      fs.handler = original;
+      (el.querySelector('.slow button') as HTMLButtonElement).click();
+      await settle();
+      expect(store.path()).toBe('/data');
+      expect(el.querySelector('.slow')).toBeNull();
+    });
+
+    it('shows "slow to respond" with Cancel after 2 s of opening a folder', async () => {
+      const { store, el, settle } = await render();
+      const hanging = deferred<DirectoryListing>();
+      fs.handler = () => hanging.promise;
+      void store.load('/somewhere');
+      store.slow.set(true); // the 2-s timer itself is covered by the store spec
+      await settle();
+      expect(el.querySelector('.slow')?.textContent).toContain('slow to respond');
+      (el.querySelector('.slow button') as HTMLButtonElement).click();
+      await settle();
+      expect(store.loading()).toBe(false);
+      expect(store.path()).toBe('/data');
+      expect(el.querySelector('.slow')).toBeNull();
+    });
+  });
 });

@@ -33,6 +33,12 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   folderReplaced: (from, to) => `Ordner existiert nicht mehr: ${from} – stattdessen ${to}.`,
   comingIn: (prompt) => `Kommt mit Prompt ${prompt}`,
   loading: 'Lade…',
+  slowFolder: 'Der Ordner antwortet langsam …',
+  cancelLoading: 'Abbrechen',
+  cancelHint: 'Esc',
+  openCancelled: 'Öffnen des Ordners abgebrochen.',
+  retry: 'Erneut versuchen',
+  refreshing: 'wird aktualisiert …',
   unreadable: (n) => `${n} nicht lesbar`,
   notWatched: (reason) =>
     reason === 'network'

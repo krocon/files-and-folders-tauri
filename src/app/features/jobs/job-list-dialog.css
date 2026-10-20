@@ -58,6 +58,24 @@
   flex: none;
 }
 
+/* "1.0 GB of 15 GB · 14 MB/s · 17:08 left" never breaks inside; the path gets
+   the rest, or its own line when less than 12rem is left (design 029 E12) */
+.detail.running {
+  flex-wrap: wrap;
+  row-gap: 0;
+
+  .numbers {
+    flex: none;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .current {
+    flex: 1 1 12rem;
+    text-align: end;
+  }
+}
+
 .current {
   font-family: var(--font-mono);
   color: var(--color-muted);

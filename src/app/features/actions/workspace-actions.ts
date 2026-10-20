@@ -27,6 +27,16 @@ export function registerWorkspaceActions(
     },
     OPEN_IN_NEW_TAB: { run: () => void list()?.openCursorInNewTab(), enabled: hasCursor },
     RELOAD_DIR: { run: () => panel()?.store.refresh() },
+    // Esc in the list while a folder opens (design 029 E4)
+    CANCEL_LOADING: {
+      run: () => {
+        const p = panel();
+        if (p && !p.cancelLoading?.()) {
+          p.store.cancelLoad();
+        }
+      },
+      enabled: () => panel()?.store.loading() ?? false,
+    },
     TOGGLE_MARK_AND_ADVANCE: {
       // Space on a folder also calculates its size (design 002 D3 / 003 E7)
       run: () => {

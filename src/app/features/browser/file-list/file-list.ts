@@ -317,6 +317,13 @@ export class FileList implements OnDestroy {
       return;
     }
     if (evt.key === 'Escape') {
+      // a folder still opening: Esc gives it up (design 029 E4), else it ends type-ahead
+      if (this.store.loading()) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        void this.injector.get(ActionService).run('CANCEL_LOADING');
+        return;
+      }
       this.controller.resetTypeAhead();
       return;
     }

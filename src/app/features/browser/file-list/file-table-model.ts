@@ -184,6 +184,8 @@ function createUntracked(
       // the start language (the empty text is drawn by us, see FileList.applyEmptyText)
       loadingText: TEXTS.loading,
       loadingDelayInMs: 150,
+      // the old list stays usable while the next folder loads (design 029 E3)
+      blockInteractionWhileLoading: false,
     },
   };
   const model = TableFactory.createTableModel({

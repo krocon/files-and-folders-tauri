@@ -36,6 +36,13 @@ export const TEXTS_EN = {
     `Folder no longer exists: ${from} – showing ${to} instead.`,
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,
   loading: 'Loading…',
+  /** Design 029 E4/E5: a folder that is slow to open. */
+  slowFolder: 'The folder is slow to respond…',
+  cancelLoading: 'Cancel',
+  cancelHint: 'Esc',
+  openCancelled: 'Opening the folder was cancelled.',
+  retry: 'Try again',
+  refreshing: 'refreshing…',
   unreadable: (n: number) => `${n} unreadable`,
   /** Folder watching (design 012 E2). */
   notWatched: (reason: string | null) =>

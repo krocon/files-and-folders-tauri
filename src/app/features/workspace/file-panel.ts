@@ -40,6 +40,8 @@ import { WorkspaceStore } from './workspace.store';
 import { MenuService } from '../menus/menu.service';
 
 let panelSeq = 0;
+/** Tabs whose last listing a panel keeps for an instant switch back (design 029 E5). */
+const TAB_LISTINGS_KEPT = 16;
 
 /**
  * One side of the window: path header, tab bar, file list and status line.
@@ -164,6 +166,19 @@ export class FilePanel implements OnInit {
    * cursor and table state may be written back only once it changed.
    */
   private listingAtSwitch: DirectoryListing | null | undefined = undefined;
+  /**
+   * The last listing each tab showed (design 029 E5, newest last): switching back
+   * shows it at once and refreshes in the background – no wait on a slow drive.
+   */
+  private readonly tabListings = new Map<string, DirectoryListing>();
+  /** The tab shown before the one being opened: Esc goes back there (design 029 E5). */
+  private previousTabId: string | null = null;
+  /** Opening this tab's folder was cancelled and nothing else could be shown. */
+  protected readonly cancelledTab = signal<string | null>(null);
+  /** The tab's own path while its folder opens (the list is empty then). */
+  protected readonly openingPath = computed(() =>
+    this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null,
+  );
 
   constructor() {
     effect(() => {
@@ -190,6 +205,7 @@ export class FilePanel implements OnInit {
         }
         if (listing && this.ownsListing(id) && this.store.searchKey() === null) {
           this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
+          this.rememberTabListing(id, listing);
         }
       });
     });
@@ -288,6 +304,7 @@ export class FilePanel implements OnInit {
     const unregister = this.ws.registerPanel(this.side(), {
       store: this.store,
       controller: () => this.list()?.listController,
+      cancelLoading: () => this.cancelLoading(),
     });
     this.destroyRef.onDestroy(unregister);
     const unwatch = this.watch.on((event) => this.onWatchEvent(event));
@@ -471,6 +488,10 @@ export class FilePanel implements OnInit {
     }
     this.store.rememberCurrent();
     this.store.cancelSizeJobs();
+    if (previous !== id) {
+      this.previousTabId = previous;
+    }
+    this.cancelledTab.set(null);
     this.shownTabId = id;
     this.listingAtSwitch = this.store.listing();
     const tab = this.ws.activeTab(this.side());
@@ -483,6 +504,19 @@ export class FilePanel implements OnInit {
       const result = this.search.result(tab.search.key);
       this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? 'search');
       return;
+    }
+    // shown before: at once, then read again in the background (design 029 E5)
+    const known = this.tabListings.get(id);
+    if (known && tab.path !== null && known.path === tab.path && known !== this.listingAtSwitch) {
+      this.store.navigationLocked.set(false);
+      this.store.showListing(known, { cursor: tab.cursor, history: 'none', remember: false });
+      void this.store.refresh();
+      return;
+    }
+    // nothing of another tab under this one: an empty list and this tab's path until it is read
+    if (this.listingAtSwitch !== null && this.listingAtSwitch?.path !== tab.path) {
+      this.store.clearListing();
+      this.listingAtSwitch = null;
     }
     this.store.navigationLocked.set(true);
     try {
@@ -508,6 +542,48 @@ export class FilePanel implements OnInit {
     // the listing effect may have run before this point – report the folder now
     if (listing) {
       this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
+    }
+  }
+
+  /**
+   * Esc / "Cancel" while a folder opens (design 029 E4/E5): a navigation is given
+   * up and the list stays; a tab whose folder never showed goes back to the tab
+   * before it (shown at once from its last listing), else it offers "Try again".
+   */
+  cancelLoading(): boolean {
+    const opening = this.store.navigationLocked() && this.store.listing() === null;
+    if (!this.store.cancelLoad()) {
+      return false;
+    }
+    if (!opening) {
+      return true;
+    }
+    this.store.navigationLocked.set(false);
+    const tabs = this.ws.panels()[this.side()].tabs;
+    const back = tabs.findIndex((t) => t.id === this.previousTabId);
+    if (back >= 0 && this.previousTabId !== this.shownTabId) {
+      this.ws.selectTab(this.side(), back);
+    } else {
+      this.cancelledTab.set(this.shownTabId);
+    }
+    return true;
+  }
+
+  /** "Try again" after a cancelled tab. */
+  protected retryTab(): void {
+    this.cancelledTab.set(null);
+    void this.showTab(this.tabId());
+  }
+
+  private rememberTabListing(id: string, listing: DirectoryListing): void {
+    this.tabListings.delete(id);
+    this.tabListings.set(id, listing);
+    while (this.tabListings.size > TAB_LISTINGS_KEPT) {
+      const oldest = this.tabListings.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.tabListings.delete(oldest);
     }
   }
 }

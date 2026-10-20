@@ -52,8 +52,8 @@ const SHOWN_ERRORS = 50;
               @if (row.job.pauseReason; as reason) {
                 <p class="error" role="alert">{{ describe(reason) }} {{ t.diskFullHint }}</p>
               }
-              <div class="detail">
-                <span>{{ row.progress }}</span>
+              <div class="detail running">
+                <span class="numbers">{{ row.progress }}</span>
                 @if (row.job.progress.current; as cur) {
                   <span class="current" [attr.title]="cur">{{ cur }}</span>
                 }

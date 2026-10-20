@@ -30,6 +30,7 @@ import '../../features/workspace/texts';
 /** Same in both languages on purpose (names, symbols, technical terms). */
 const SAME = new Set([
   'OK',
+  'Esc',
   'Name',
   'Tabs',
   'Tab',

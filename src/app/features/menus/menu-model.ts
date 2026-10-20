@@ -166,6 +166,7 @@ export const MENU_BAR: readonly TopMenu[] = [
     },
     items: [
       'RELOAD_DIR',
+      'CANCEL_LOADING',
       'TOGGLE_HIDDEN_FILES',
       'TOGGLE_FILTER',
       'CALC_DIR_SIZES',
