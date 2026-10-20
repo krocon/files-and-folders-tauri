@@ -1,6 +1,6 @@
 # Design 031: Tabs ziehen, Verknüpfungen, Verschieben ins System
 
-> Status: **in Arbeit** · Branch `feat/drag-tabs-links` · Prompt: [031-drag-tabs-links.md](031-drag-tabs-links.md)
+> Status: **umgesetzt** (macOS/Windows ungeprüft) · Branch `feat/drag-tabs-links` · Prompt: [031-drag-tabs-links.md](031-drag-tabs-links.md)
 > · Marc hat am 20.10.2026 Rahmen und Ablauf („selbständig, ohne Freigabe-Halt“) festgelegt – die Entscheidungen stehen
 > hier, Rückfragen waren nicht möglich.
 
@@ -168,17 +168,55 @@ UI-Skizze (Tab-Leiste rechts, Tab „Bilder“ wird zwischen „home“ und „s
 ## 5. Fortschritt
 
 - [x] Prompt + Design
-- [ ] Rust (Job `link`, Plattform, Fehlercodes)
-- [ ] Frontend (Tab-Drag, Aktionen, Link-Drag + Dialog)
-- [ ] E2E unter Xvfb
-- [ ] Doku (architecture, feature-parity, README, prompts/README)
-- [ ] Abschluss: `pnpm check`, Debug-Build, Selbst-Review
+- [x] Rust: `jobs/link.rs` (Job, `relative_target`, Prüfung vor dem Anlegen), `platform::make_symlink`,
+  `platform::links_not_permitted`, Codes `link_not_permitted`/`relative_link_impossible`; Tests `jobs/tests_link.rs`
+- [x] Frontend: `tab-drag-logic.ts`, `TabDragStore`, `TabBar` (Pointer-Drag, Einfügemarke, Hinweis, Live-Region),
+  `WorkspaceStore.placeTab`, Aktionen `MOVE_TAB_*`/`COPY_TAB_TO_OTHER_SIDE`/`OPEN_LINK_DLG` (Katalog, Keymaps,
+  Menüleiste), `DragKind` `link`, Dialog im Link-Modus, Texte en/de
+- [x] E2E unter Xvfb (Linux, 20.10.2026, Debug-Build, Display :91, Testordner mit Umlauten, Leerzeichen, Emoji,
+  versteckter Datei, Symlink, gesperrtem Ordner):
+  - Tab „Quelle“ in der linken Leiste hinter „Ordner äö“ gezogen → Reihenfolge `home, Ordner äö, Quelle`, gezogener
+    Tab ausgewählt;
+  - „Quelle“ auf die rechte Tab-Leiste vor „Ziel“ → Hinweis „Move tab Quelle → right, position 1 · Ctrl: copy ·
+    Esc: cancel“, danach rechts an Position 1, rechte Seite aktiv;
+  - „Ordner äö“ mit Strg ans Ende der rechten Leiste → Einfügemarke (Akzentbalken hinter „Ziel“), Hinweis „Copy tab
+    …, position 3“, Original bleibt links;
+  - „home“ auf die rechte **Liste** gezogen → ans Ende der rechten Tabs; danach den einzigen linken Tab gezogen →
+    Hinweis „The last tab of a side stays – Ctrl: copy it“, Esc bricht ab, nichts geändert;
+  - Strg+Umschalt+Bild↑ zweimal auf der rechten Seite → „home“ wandert von Position 4 auf 2 (die Table schluckt die
+    Kombination nicht);
+  - Beenden → `session.json` enthält die neue Ordnung (Ids `tA, tB, tR, <Kopie>` rechts, aktiver Tab 1);
+  - `plain.txt` mit Strg+Umschalt auf die rechte Liste → Hinweis „Link to plain.txt → Ziel“, Dialog „Create link“
+    (Name, „If the name exists“, „Relative link“); relativ angelegt: `plain.txt -> ../Quelle/plain.txt`, Panel
+    frischt auf;
+  - drei markierte Einträge (`emoji 🎉.txt`, `Grüße mit Leerzeichen.txt`, `plain.txt`) per Strg+Umschalt+F5 →
+    zwei absolute Links, `plain.txt` (existiert) nie ersetzt: Meldung „Link 3 entries → …/Ziel: 1 error“, der
+    fehlgeschlagene Eintrag bleibt markiert.
+  - Gefunden und behoben: der Hinweis am Zeiger des Datei-Drags wurde mit dem Link-Kürzel zu lang und abgeschnitten →
+    die Hinweiszeile bricht jetzt um.
+  - Hinweis: WebKitGTK unter Xvfb malt bei Last 1–3 s verzögert; Screenshots erst nach einer Pause.
+- [x] Doku (architecture, feature-parity, README, prompts/README)
+- [x] Abschluss: `pnpm check`, Debug-Build, Selbst-Review
+- [ ] macOS/Windows: `make_symlink` unter Windows, ⌘⌥-/⌥-Drag, ⌃⇧Bild↑/↓ – erst CI bzw. Marc
 
-## 6. Review
+## 6. Review (Selbst-Review, frischer Blick auf `git diff main...HEAD`)
 
-(folgt)
+| # | Befund | Schwere | Ergebnis |
+|---|---|---|---|
+| 1 | Relativer Link über einen verlinkten Ordner zeigt woanders hin (`..` physisch) | hoch | behoben vor dem Schreiben: Prüfung `same_entry(linkordner/relativ, quelle)` vor dem Anlegen, Test `relative_link_through_a_linked_folder_is_refused` |
+| 2 | Überschreiben eines vorhandenen Namens | hoch | ausgeschlossen: `symlink()`/`CreateSymbolicLinkW` atomar, kein Löschen im Job; Test `an_existing_name_is_never_replaced` |
+| 3 | Virtuelle Archivpfade als Quelle/Ziel | mittel | Rust: `symlink_metadata`/`metadata` scheitern (Eintrag- bzw. Job-Fehler, Test `the_target_must_be_a_real_folder`, `dangling_sources_are_linked_missing_ones_fail_per_entry`); Frontend sperrt Aktion und Drag im Archiv |
+| 4 | Windows: `same_entry` ohne Datei-Id (nur Art/Größe/Zeit) | niedrig | offen, dokumentiert (E9); Win32 löst `..` ohnehin lexikalisch auf |
+| 5 | Commands | – | kein neuer Command (Job-Art über `start_job`), `command_rules` unverändert grün |
+| 6 | Texte | – | en/de vollständig (`catalogs.spec.ts`), Fehler über `describeFsError` |
+| 7 | Barrierefreiheit | – | alle Tab-Funktionen per Aktion/Kontextmenü; Live-Region in der Tab-Leiste; Fokus folgt dem Tab bzw. der Zielseite |
+| 8 | `swallowNextClick` doppelt (file-list, tab-bar) | niedrig | bewusst lokal gelassen (zwei Zeilen, keine gemeinsame Datei, die andere Branches anfassen) |
+| 9 | Zeiger-Hinweis des Datei-Drags abgeschnitten | niedrig | behoben (Umbruch) |
 
 ## 7. Offen
 
-- macOS/Windows: `make_symlink` (Windows `symlink_dir/file`, 1314) und die Kürzel ⌃⇧Bild↑/↓, ⌘⌥-Drag nur in der CI
-  bzw. bei Marc prüfbar.
+- macOS/Windows: `make_symlink` (Windows `symlink_dir/file`, 1314) und die Kürzel ⌃⇧Bild↑/↓, ⌘⌥- und ⌥-Drag nur in
+  der CI bzw. bei Marc prüfbar.
+- „Verknüpfung anlegen“ steht in der Menüleiste und der Palette, noch nicht im Kontextmenü der Liste (Menümodell
+  014 bewusst nicht angefasst – Konfliktstelle mit anderen Branches).
+- Verschieben ins System (E11) bleibt aus.

@@ -65,6 +65,8 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
     .hint {
       font-size: var(--font-size-xs);
       opacity: 0.85;
+      /* the hint grew with the link modifier (design 031): wrap instead of cutting it off */
+      white-space: normal;
     }
     .live {
       position: absolute;
