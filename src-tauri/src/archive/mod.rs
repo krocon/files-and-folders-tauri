@@ -11,6 +11,7 @@
 pub(crate) mod rar;
 pub mod secrets;
 pub(crate) mod sevenz;
+pub(crate) mod sevenz_header;
 #[cfg(test)]
 pub(crate) mod tests;
 #[cfg(test)]
@@ -1058,6 +1059,7 @@ fn verify_zip(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
 }
 
 fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
+    sevenz_header::check(path)?;
     let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
     let password = sevenz::password_of(Some(secret));
@@ -1089,11 +1091,21 @@ fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
         return Ok(());
     };
     sevenz::check_memory(&archive.blocks[b], path)?;
+    // a block up to 16 MiB is read completely – every entry's CRC decides (review 025 #8:
+    // AES over "copy" has no other check); a bigger one only for its first 16 MiB, a
+    // wrong password that slips through fails the CRC when extracting (and is asked again)
+    let whole = archive.blocks[b].get_unpack_size() <= VERIFY_BYTES;
     let mut result = Ok(());
     let decoded = sevenz_rust2::BlockDecoder::new(1, b, &archive, &password, &mut reader)
         .for_each_entries(&mut |_e, rd| {
-            result = drain_bounded(rd, path);
-            Ok(false) // the first entry is enough
+            result = if whole {
+                io::copy(rd, &mut io::sink())
+                    .map(|_| ())
+                    .map_err(|_| password_wrong(path))
+            } else {
+                drain_bounded(rd, path)
+            };
+            Ok(whole && result.is_ok())
         });
     if decoded.is_err() {
         return Err(password_wrong(path));
@@ -1104,32 +1116,50 @@ fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
 #[cfg(feature = "rar")]
 fn verify_rar(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
     let (headers, _) = rar::headers(path, Some(secret), MAX_ENTRIES)?;
-    let target = headers
+    let mut a = rar::RarArchive::open(path, Some(secret), true, None)?;
+    // solid: every entry before the target is decoded too – take the first encrypted
+    // one and stop after [`VERIFY_BYTES`] in all (external review 025 #7)
+    let candidates = headers
         .iter()
         .enumerate()
-        .filter(|(_, h)| h.encrypted && h.kind == EntryType::File && !h.split)
-        .min_by_key(|(_, h)| h.size)
-        .map(|(i, h)| (i, h.size));
-    let Some((pos, size)) = target else {
+        .filter(|(_, h)| h.encrypted && h.kind == EntryType::File && !h.split);
+    let target = if a.solid {
+        candidates.map(|(i, _)| i).next()
+    } else {
+        candidates
+            .filter(|(_, h)| h.size <= VERIFY_BYTES)
+            .min_by_key(|(_, h)| h.size)
+            .map(|(i, _)| i)
+    };
+    let Some(pos) = target else {
         return Ok(());
     };
-    if size > VERIFY_BYTES {
-        return Ok(());
-    }
-    let mut a = rar::RarArchive::open(path, Some(secret), true)?;
+    let mut budget = VERIFY_BYTES;
+    let mut count = |chunk: &[u8]| {
+        budget = budget.saturating_sub(chunk.len() as u64);
+        budget > 0
+    };
+    let wrong = |e: FsError| {
+        if e.code == FsErrorCode::ArchiveError {
+            password_wrong(path)
+        } else {
+            e
+        }
+    };
     let mut i = 0usize;
     while let Some(h) = a.next_header()? {
         if i == pos {
-            a.test_into(&h, &mut |_| true).map_err(|e| {
-                if e.code == FsErrorCode::ArchiveError {
-                    password_wrong(path)
-                } else {
-                    e
-                }
-            })?;
+            // `Ok(false)` = the budget ran out: as far as decoded, the password fits
+            a.test_into(&h, &mut count).map_err(wrong)?;
             return Ok(());
         }
-        a.skip()?;
+        if a.solid {
+            if !a.test_into(&h, &mut count).map_err(wrong)? {
+                return Ok(());
+            }
+        } else {
+            a.skip(&h)?;
+        }
         i += 1;
     }
     Ok(())

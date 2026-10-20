@@ -939,6 +939,7 @@ dependencies = [
  "flate2",
  "gtk",
  "libc",
+ "lzma-rust2",
  "notify",
  "open",
  "regex",

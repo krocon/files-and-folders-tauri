@@ -47,6 +47,7 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   open: 'Öffnen',
   emptyPassword: 'Bitte das Passwort eingeben.',
   passwordsDiffer: 'Die beiden Passwörter sind verschieden.',
+  passwordTooLongRar: (n) => `RAR-Passwörter haben höchstens ${n} Zeichen.`,
   passwordNeeded: (path) =>
     `„${path}“ ist verschlüsselt – noch einmal versuchen, um das Passwort einzugeben.`,
   zipAesHint:

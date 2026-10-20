@@ -9,9 +9,12 @@
 //!   no ANSI code page) and is never logged;
 //! - other volumes are never opened (`UCM_CHANGEVOLUME*` → abort), dictionaries
 //!   above [`super::MAX_DICT`] are refused before any data is decoded;
-//! - the callback never unwinds into C++ (`catch_unwind`), every handle is
-//!   closed (`Drop`), and all calls into the library are serialised
-//!   ([`LOCK`]): its error handler is a global object.
+//! - the callback never unwinds into C++ (`catch_unwind`) and checks the
+//!   cancel flag on every chunk (also for data that is only skipped);
+//! - every handle is closed (`Drop`); only opening is serialised ([`LOCK`]:
+//!   it resets and reads UnRAR's global error handler) – reading and decoding
+//!   run per handle in parallel, so a long or paused extraction never blocks
+//!   listing another RAR (external review 025 #3).
 
 use super::secrets::Secret;
 use super::{EntryType, MAX_DICT};
@@ -19,10 +22,14 @@ use crate::error::{FsError, FsErrorCode};
 use std::os::raw::{c_int, c_uint};
 use std::path::Path;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use unrar_ng_sys as ffi;
+use zeroize::Zeroizing;
 
-/// One call into the library at a time.
+/// Opening touches UnRAR's global error handler: one at a time.
 static LOCK: Mutex<()> = Mutex::new(());
+/// UnRAR's password buffer holds 512 wide characters including the NUL.
+pub const MAX_PASSWORD_CHARS: usize = 511;
 
 const HOST_UNIX: c_uint = 3;
 const S_IFMT: u32 = 0o170000;
@@ -48,16 +55,27 @@ pub(crate) struct RarHeader {
     pub dict: u64,
 }
 
+/// A password in UnRAR's wide characters (NUL-terminated), wiped on drop.
+type WidePassword = Zeroizing<Vec<ffi::WCHAR>>;
+
+/// The password as UnRAR wants it; `None` if it is too long for UnRAR.
+pub(crate) fn wide_password(secret: &Secret) -> Option<WidePassword> {
+    let w = Zeroizing::new(to_wide(secret.expose()));
+    (w.len() <= MAX_PASSWORD_CHARS + 1).then_some(w)
+}
+
 /// State the callback sees (behind the `UserData` pointer).
 struct State {
-    /// NUL-terminated wide password, if known.
-    password: Option<Vec<ffi::WCHAR>>,
+    /// NUL-terminated wide password, if known (wiped on drop).
+    password: Option<WidePassword>,
     /// The library asked for a password and none was known.
     password_missing: bool,
-    /// Data sink of the entry being tested (a `*mut &mut dyn FnMut`), or null.
+    /// Data sink of the entry being tested (a `*mut &mut dyn FnMut`), or null = drop the data.
     sink: *mut std::ffi::c_void,
-    /// The sink refused data (cancel, limit, write error).
+    /// The sink refused data (cancel, limit, write error) or the job was cancelled.
     sink_stopped: bool,
+    /// Cancel flag of the job, checked on every chunk (null = none).
+    cancel: *const AtomicBool,
 }
 
 type SinkFn<'a> = &'a mut dyn FnMut(&[u8]) -> bool;
@@ -69,8 +87,9 @@ extern "C" fn callback(
     p2: ffi::LPARAM,
 ) -> c_int {
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        // SAFETY: `user` is the `State` boxed in `RarArchive`, alive while its handle is
-        // open; `p1`/`p2` are what UnRAR documents for each message.
+        // SAFETY: `user` is the `State` of a `RarArchive` (from `Box::into_raw`), alive
+        // while its handle is open and only touched through this raw pointer while the
+        // library runs; `p1`/`p2` are what UnRAR documents for each message.
         unsafe { on_message(msg, user, p1, p2) }
     }));
     r.unwrap_or(-1)
@@ -80,11 +99,22 @@ unsafe fn on_message(msg: ffi::UINT, user: ffi::LPARAM, p1: ffi::LPARAM, p2: ffi
     if user == 0 {
         return -1;
     }
-    // SAFETY: see `callback`.
-    let state = unsafe { &mut *(user as *mut State) };
+    let state = user as *mut State;
     match msg {
         ffi::UCM_PROCESSDATA => {
-            if state.sink.is_null() {
+            // SAFETY: see `callback`; the flag outlives the operation (borrowed by the archive).
+            let cancelled = unsafe {
+                let c = (*state).cancel;
+                !c.is_null() && (*c).load(Ordering::SeqCst)
+            };
+            if cancelled {
+                // SAFETY: see `callback`.
+                unsafe { (*state).sink_stopped = true };
+                return -1;
+            }
+            // SAFETY: see `callback`.
+            let sink = unsafe { (*state).sink };
+            if sink.is_null() {
                 return 1;
             }
             let len = usize::try_from(p2).unwrap_or(0);
@@ -95,31 +125,37 @@ unsafe fn on_message(msg: ffi::UINT, user: ffi::LPARAM, p1: ffi::LPARAM, p2: ffi
                 unsafe { std::slice::from_raw_parts(p1 as *const u8, len) }
             };
             // SAFETY: `sink` points to a live `&mut dyn FnMut` during `RARProcessFileW`.
-            let sink = unsafe { &mut *(state.sink as *mut SinkFn<'_>) };
+            let sink = unsafe { &mut *(sink as *mut SinkFn<'_>) };
             if sink(chunk) {
                 1
             } else {
-                state.sink_stopped = true;
+                // SAFETY: see `callback`.
+                unsafe { (*state).sink_stopped = true };
                 -1
             }
         }
-        ffi::UCM_NEEDPASSWORDW => match &state.password {
-            Some(pw) => {
-                let cap = usize::try_from(p2).unwrap_or(0);
-                if p1 == 0 || pw.len() > cap {
-                    return -1;
+        ffi::UCM_NEEDPASSWORDW => {
+            // SAFETY: see `callback`.
+            let pw = unsafe { (*state).password.as_ref() };
+            match pw {
+                Some(pw) => {
+                    let cap = usize::try_from(p2).unwrap_or(0);
+                    if p1 == 0 || pw.len() > cap {
+                        return -1;
+                    }
+                    // SAFETY: the buffer holds `cap` wide characters; `pw` ends with NUL.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(pw.as_ptr(), p1 as *mut ffi::WCHAR, pw.len());
+                    }
+                    1
                 }
-                // SAFETY: the buffer holds `cap` wide characters; `pw` ends with NUL.
-                unsafe {
-                    std::ptr::copy_nonoverlapping(pw.as_ptr(), p1 as *mut ffi::WCHAR, pw.len());
+                None => {
+                    // SAFETY: see `callback`.
+                    unsafe { (*state).password_missing = true };
+                    -1
                 }
-                1
             }
-            None => {
-                state.password_missing = true;
-                -1
-            }
-        },
+        }
         // the ANSI variant follows a refused wide request: never answer it
         ffi::UCM_NEEDPASSWORD => -1,
         // never open another volume, never accept a dictionary above the library limit
@@ -234,40 +270,45 @@ fn header_of(h: &ffi::HeaderDataEx) -> RarHeader {
 /// An open RAR archive (list or extract mode).
 pub(crate) struct RarArchive<'p> {
     handle: *const ffi::Handle,
-    state: Box<State>,
+    /// From `Box::into_raw`: the library and we only go through this pointer
+    /// (no `Box` that could invalidate it – external review 025 #10).
+    state: *mut State,
     path: &'p Path,
     /// Extract mode: skipping a solid entry decodes it as well.
     extract: bool,
     /// Headers encrypted (names need the password).
     pub header_encrypted: bool,
+    /// Solid archive: an entry can only be reached by decoding the ones before it.
+    pub solid: bool,
 }
 
-// SAFETY: the handle is used by one thread at a time (`&mut self`), calls are serialised.
+// SAFETY: one thread at a time (`&mut self`); UnRAR handles are independent.
 unsafe impl Send for RarArchive<'_> {}
 
 impl Drop for RarArchive<'_> {
     fn drop(&mut self) {
         if !self.handle.is_null() {
-            let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
             // SAFETY: a handle returned by `RAROpenArchiveEx`, closed once.
             unsafe { ffi::RARCloseArchive(self.handle) };
         }
+        // SAFETY: from `Box::into_raw` in `open`, freed once, after the handle is gone.
+        drop(unsafe { Box::from_raw(self.state) });
     }
 }
 
 impl<'p> RarArchive<'p> {
-    /// Opens `path`; `extract` = mode for testing data, else listing.
+    /// Opens `path`; `extract` = mode for testing data, else listing. `cancel`
+    /// is checked on every chunk the library decodes.
     pub(crate) fn open(
         path: &'p Path,
         password: Option<&Secret>,
         extract: bool,
+        cancel: Option<&'p AtomicBool>,
     ) -> Result<Self, FsError> {
-        let mut state = Box::new(State {
-            password: password.map(|p| to_wide(p.expose())),
-            password_missing: false,
-            sink: std::ptr::null_mut(),
-            sink_stopped: false,
-        });
+        let password = match password {
+            Some(p) => Some(wide_password(p).ok_or_else(|| password_too_long(path))?),
+            None => None,
+        };
         #[cfg(unix)]
         let narrow = {
             use std::os::unix::ffi::OsStrExt;
@@ -281,6 +322,22 @@ impl<'p> RarArchive<'p> {
                 .encode_wide()
                 .chain(std::iter::once(0))
                 .collect()
+        };
+        let state = Box::into_raw(Box::new(State {
+            password,
+            password_missing: false,
+            sink: std::ptr::null_mut(),
+            sink_stopped: false,
+            cancel: cancel.map_or(std::ptr::null(), |c| c as *const AtomicBool),
+        }));
+        // owns the state from here (and the handle once there is one)
+        let mut archive = RarArchive {
+            handle: std::ptr::null(),
+            state,
+            path,
+            extract,
+            header_encrypted: false,
+            solid: false,
         };
         let mode = if extract {
             ffi::RAR_OM_EXTRACT
@@ -304,34 +361,30 @@ impl<'p> RarArchive<'p> {
             comment_state: 0,
             flags: 0,
             callback: Some(callback),
-            user_data: &mut *state as *mut State as ffi::LPARAM,
+            user_data: state as ffi::LPARAM,
             op_flags: 0,
             comment_buffer_w: std::ptr::null_mut(),
             mark_of_the_web: std::ptr::null_mut(),
             reserved: [0; 23],
         };
-        let handle = {
+        archive.handle = {
             let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            // SAFETY: `data` and the name buffers live across the call; the state box
-            // outlives the handle (both owned by the returned value).
+            // SAFETY: `data` and the name buffers live across the call; the state
+            // outlives the handle (both freed in `Drop`).
             unsafe { ffi::RAROpenArchiveEx((&raw mut data).cast_const()) }
         };
         let flags = data.flags;
         let result = data.open_result as c_int;
-        let archive = RarArchive {
-            handle,
-            state,
-            path,
-            extract,
-            header_encrypted: flags & ffi::ROADF_ENCHEADERS != 0,
-        };
+        archive.header_encrypted = flags & ffi::ROADF_ENCHEADERS != 0;
+        archive.solid = flags & ffi::ROADF_SOLID != 0;
         if archive.handle.is_null() || result != ffi::ERAR_SUCCESS {
             let code = if result == ffi::ERAR_SUCCESS {
                 ffi::ERAR_EOPEN
             } else {
                 result
             };
-            let missing = archive.state.password_missing;
+            // SAFETY: no library call runs.
+            let missing = unsafe { (*archive.state).password_missing };
             return Err(if missing || code == ffi::ERAR_MISSING_PASSWORD {
                 rar_error(ffi::ERAR_MISSING_PASSWORD, path, true)
             } else {
@@ -348,14 +401,16 @@ impl<'p> RarArchive<'p> {
         Ok(archive)
     }
 
+    fn missing_password(&self) -> bool {
+        // SAFETY: no library call runs while `&self` is borrowed.
+        unsafe { (*self.state).password_missing }
+    }
+
     /// The next header, `None` at the end.
     pub(crate) fn next_header(&mut self) -> Result<Option<RarHeader>, FsError> {
         let mut h = Box::<ffi::HeaderDataEx>::default();
-        let code = {
-            let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            // SAFETY: open handle, `h` is a properly laid out header (asserted in the sys crate).
-            unsafe { ffi::RARReadHeaderEx(self.handle, (&raw mut *h).cast_const()) }
-        };
+        // SAFETY: open handle, `h` is a properly laid out header (asserted in the sys crate).
+        let code = unsafe { ffi::RARReadHeaderEx(self.handle, (&raw mut *h).cast_const()) };
         match code {
             ffi::ERAR_SUCCESS => {
                 let header = header_of(&h);
@@ -370,40 +425,50 @@ impl<'p> RarArchive<'p> {
                 Ok(Some(header))
             }
             ffi::ERAR_END_ARCHIVE => Ok(None),
-            _ if self.state.password_missing => {
+            _ if self.missing_password() => {
                 Err(rar_error(ffi::ERAR_MISSING_PASSWORD, self.path, true))
             }
             c => Err(rar_error(c, self.path, self.header_encrypted)),
         }
     }
 
-    /// Skips the data of the current entry.
-    pub(crate) fn skip(&mut self) -> Result<(), FsError> {
-        let code = {
-            let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            // SAFETY: open handle; no names are passed.
-            unsafe {
-                ffi::RARProcessFileW(
-                    self.handle,
-                    ffi::RAR_SKIP,
-                    std::ptr::null(),
-                    std::ptr::null(),
-                )
-            }
+    /// Skips the data of the current entry. In a solid archive (extract mode)
+    /// the library has to decode it anyway: then it is tested into nothing, so
+    /// that cancelling reaches it (external review 025 #5). `Ok(false)` = cancelled.
+    pub(crate) fn skip(&mut self, header: &RarHeader) -> Result<bool, FsError> {
+        if self.extract && self.solid {
+            return self.process(header, None);
+        }
+        // SAFETY: open handle; no names are passed.
+        let code = unsafe {
+            ffi::RARProcessFileW(
+                self.handle,
+                ffi::RAR_SKIP,
+                std::ptr::null(),
+                std::ptr::null(),
+            )
         };
         if code == ffi::ERAR_SUCCESS {
-            Ok(())
+            Ok(true)
         } else {
             Err(rar_error(code, self.path, self.header_encrypted))
         }
     }
 
     /// Decodes (tests) the current entry and hands its data to `sink`
-    /// (`false` from the sink aborts: `Ok(false)`). Checks the dictionary first.
+    /// (`false` from the sink or a cancel aborts: `Ok(false)`). Checks the dictionary first.
     pub(crate) fn test_into(
         &mut self,
         header: &RarHeader,
         sink: &mut dyn FnMut(&[u8]) -> bool,
+    ) -> Result<bool, FsError> {
+        self.process(header, Some(sink))
+    }
+
+    fn process(
+        &mut self,
+        header: &RarHeader,
+        sink: Option<SinkFn<'_>>,
     ) -> Result<bool, FsError> {
         if header.dict > MAX_DICT {
             return Err(FsError::new(
@@ -412,27 +477,35 @@ impl<'p> RarArchive<'p> {
                 Some(self.path),
             ));
         }
-        let mut sink_ref: SinkFn<'_> = sink;
-        self.state.sink = &mut sink_ref as *mut SinkFn<'_> as *mut std::ffi::c_void;
-        self.state.sink_stopped = false;
-        self.state.password_missing = false;
-        let code = {
-            let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            // SAFETY: open handle in extract mode; the sink pointer stays valid during the call.
-            unsafe {
-                ffi::RARProcessFileW(
-                    self.handle,
-                    ffi::RAR_TEST,
-                    std::ptr::null(),
-                    std::ptr::null(),
-                )
-            }
+        let mut sink_ref: Option<SinkFn<'_>> = sink;
+        let sink_ptr = match sink_ref.as_mut() {
+            Some(s) => s as *mut SinkFn<'_> as *mut std::ffi::c_void,
+            None => std::ptr::null_mut(),
         };
-        self.state.sink = std::ptr::null_mut();
-        if self.state.sink_stopped {
+        // SAFETY: no library call runs; the pointers stay valid during the call below.
+        unsafe {
+            (*self.state).sink = sink_ptr;
+            (*self.state).sink_stopped = false;
+            (*self.state).password_missing = false;
+        }
+        // SAFETY: open handle in extract mode; the sink pointer stays valid during the call.
+        let code = unsafe {
+            ffi::RARProcessFileW(
+                self.handle,
+                ffi::RAR_TEST,
+                std::ptr::null(),
+                std::ptr::null(),
+            )
+        };
+        // SAFETY: the call is over.
+        let (stopped, missing) = unsafe {
+            (*self.state).sink = std::ptr::null_mut();
+            ((*self.state).sink_stopped, (*self.state).password_missing)
+        };
+        if stopped {
             return Ok(false);
         }
-        if self.state.password_missing {
+        if missing {
             return Err(rar_error(ffi::ERAR_MISSING_PASSWORD, self.path, true));
         }
         match code {
@@ -442,20 +515,29 @@ impl<'p> RarArchive<'p> {
     }
 }
 
+/// UnRAR takes at most [`MAX_PASSWORD_CHARS`] characters (external review 025 #11).
+pub(crate) fn password_too_long(path: &Path) -> FsError {
+    FsError::new(
+        FsErrorCode::ArchivePasswordWrong,
+        format!("RAR passwords have at most {MAX_PASSWORD_CHARS} characters"),
+        Some(path),
+    )
+}
+
 /// Every header of a RAR archive (list mode) plus "headers encrypted".
 pub(crate) fn headers(
     path: &Path,
     password: Option<&Secret>,
     limit: usize,
 ) -> Result<(Vec<RarHeader>, bool), FsError> {
-    let mut a = RarArchive::open(path, password, false)?;
+    let mut a = RarArchive::open(path, password, false, None)?;
     let mut out = Vec::new();
     while let Some(h) = a.next_header()? {
+        a.skip(&h)?;
         out.push(h);
         if out.len() > limit {
             return Err(super::too_many(path));
         }
-        a.skip()?;
     }
     Ok((out, a.header_encrypted))
 }

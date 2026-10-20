@@ -100,6 +100,8 @@ struct Run<'a> {
     password: Option<Secret>,
     /// A password error ends the job (the frontend asks again).
     password_error: Option<FsError>,
+    /// The archive's "from the internet" mark, copied onto every file (review 025 #6).
+    mark: Option<crate::platform::origin_mark::OriginMark>,
 }
 
 pub fn unsafe_entry(message: &str, path: &Path) -> FsError {
@@ -170,6 +172,7 @@ impl Run<'_> {
         overwrite: bool,
     ) -> Result<(), WriteError> {
         let tmp = self.temp_name(parent);
+        let mark = self.mark.clone();
         let mut written = 0u64;
         let result = (|| -> Result<(), WriteError> {
             // `create_new`: never opens an existing file or a link planted under the temporary name
@@ -215,6 +218,9 @@ impl Run<'_> {
             let out = out
                 .into_inner()
                 .map_err(|e| WriteError::Fs(FsError::from_io(e.error(), dst)))?;
+            if let Some(m) = &mark {
+                crate::platform::origin_mark::apply_open(&out, &tmp, m);
+            }
             if written != entry.size {
                 return Err(WriteError::Fs(archive::archive_error(
                     "The entry is shorter than declared (broken archive)",
@@ -562,6 +568,7 @@ pub fn run(
         failed_dirs: Vec::new(),
         password: None,
         password_error: None,
+        mark: crate::platform::origin_mark::read(archive_path),
     };
     run.state(JobState::Planning);
     run.password = archive::secrets::get(archive_path);
@@ -759,6 +766,25 @@ fn extract_zip(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
     false
 }
 
+/// Reads the rest of an entry and drops it, checking for cancel between chunks
+/// (`Ok(false)` = cancelled) – data of a solid block that is only skipped.
+fn drain(reader: &mut dyn Read, control: &Control) -> io::Result<bool> {
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        if control.is_cancelled() {
+            return Ok(false);
+        }
+        if reader.read(&mut buf)? == 0 {
+            return Ok(true);
+        }
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn drain_for_test(reader: &mut dyn Read, control: &Control) -> io::Result<bool> {
+    drain(reader, control)
+}
+
 /// Remembers whether a reader failed (a solid 7z block is out of sync then).
 struct Watched<'r> {
     inner: &'r mut dyn Read,
@@ -816,13 +842,17 @@ fn extract_7z(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
                     continue;
                 };
                 let mut k = start;
+                let control = run.control;
                 let decoded = BlockDecoder::new(1, b, &archive, &password, &mut source)
                     .for_each_entries(&mut |_entry, rd| {
                         let pos = k;
                         k += 1;
                         let Some(item) = by_pos.get(&pos).copied() else {
-                            // keep the stream in step: read and drop
-                            io::copy(rd, &mut io::sink())?;
+                            // keep the stream in step: read and drop (cancel reaches it)
+                            if !drain(rd, control)? {
+                                cancelled = true;
+                                return Ok(false);
+                            }
                             return Ok(true);
                         };
                         handled.insert(pos);
@@ -834,16 +864,19 @@ fn extract_7z(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
                             inner: rd,
                             failed: false,
                         };
-                        let wrote = if matches!(step, Step::Done) {
-                            io::copy(&mut watched, &mut io::sink())
-                                .map(|_| ())
-                                .map_err(|_| ())
-                        } else {
-                            run.write(item, step, Ok(&mut watched))
-                        };
-                        if wrote.is_err() && !watched.failed {
+                        if run.write(item, step, Ok(&mut watched)).is_err() {
                             cancelled = true;
                             return Ok(false);
+                        }
+                        // whatever the write left unread (skipped entry, write error) is read
+                        // and dropped: the solid stream stays in step (review 025 #4)
+                        match drain(&mut watched, control) {
+                            Ok(true) => {}
+                            Ok(false) => {
+                                cancelled = true;
+                                return Ok(false);
+                            }
+                            Err(_) => watched.failed = true,
                         }
                         // a failed read leaves the block out of step: stop it
                         Ok(!watched.failed && run.password_error.is_none())
@@ -899,13 +932,15 @@ fn extract_7z(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
 fn extract_rar(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
     let archive_path = run.archive;
     let password = run.password.clone();
-    let mut a = match archive::rar::RarArchive::open(archive_path, password.as_ref(), true) {
-        Ok(a) => a,
-        Err(e) => {
-            run.fail(archive_path, e);
-            return false;
-        }
-    };
+    let cancel = run.control.cancel_flag();
+    let mut a =
+        match archive::rar::RarArchive::open(archive_path, password.as_ref(), true, Some(cancel)) {
+            Ok(a) => a,
+            Err(e) => {
+                run.fail(archive_path, e);
+                return false;
+            }
+        };
     let not_reached = |run: &mut Run<'_>, rest: &[&Item], e: Option<FsError>| {
         for item in rest {
             let label = run.label(item);
@@ -946,9 +981,13 @@ fn extract_rar(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
         pos += 1;
         let item = planned[next];
         if item.entry.pos != this {
-            if let Err(e) = a.skip() {
-                not_reached(run, &planned[next..], Some(e));
-                return false;
+            match a.skip(&header) {
+                Ok(true) => {}
+                Ok(false) => return true,
+                Err(e) => {
+                    not_reached(run, &planned[next..], Some(e));
+                    return false;
+                }
             }
             continue;
         }
@@ -962,11 +1001,22 @@ fn extract_rar(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
             processed = true;
             let mut failure: Option<WriteError> = None;
             let done = a
-                .test_into(&header, &mut |chunk: &[u8]| match push(chunk) {
-                    Ok(()) => true,
-                    Err(e) => {
-                        failure = Some(e);
-                        false
+                .test_into(&header, &mut |chunk: &[u8]| {
+                    if failure.is_some() {
+                        // after a write error the rest is read and dropped: the (solid)
+                        // stream stays in step for the next entries (review 025 #4)
+                        return true;
+                    }
+                    match push(chunk) {
+                        Ok(()) => true,
+                        Err(WriteError::Cancelled) => {
+                            failure = Some(WriteError::Cancelled);
+                            false
+                        }
+                        Err(e) => {
+                            failure = Some(e);
+                            true
+                        }
                     }
                 })
                 .map_err(|e| {
@@ -984,9 +1034,15 @@ fn extract_rar(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
         if result.is_err() {
             return true;
         }
-        if !processed && let Err(e) = a.skip() {
-            not_reached(run, &planned[next..], Some(e));
-            return false;
+        if !processed {
+            match a.skip(&header) {
+                Ok(true) => {}
+                Ok(false) => return true,
+                Err(e) => {
+                    not_reached(run, &planned[next..], Some(e));
+                    return false;
+                }
+            }
         }
     }
     false

@@ -9,15 +9,18 @@
 use super::{EntryType, archive_error, index_of, resolve, too_large};
 use crate::error::{FsError, FsErrorCode};
 use crate::jobs::{ConflictDefault, Control, CopyOptions, JobEvent, JobState, Summary, extract};
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Entries larger than this are not extracted for F3 / the quick view.
 pub const PREVIEW_LIMIT: u64 = 256 << 20;
+/// Entries larger than this are not copied for Enter (the cache is no place for them – F5).
+pub const OPEN_LIMIT: u64 = 4 << 30;
 /// Copies kept per run at most (oldest go first).
 const MAX_BYTES: u64 = 2 << 30;
 const MAX_FILES: usize = 256;
@@ -300,12 +303,35 @@ pub fn materialize(
     }
 }
 
-/// The copy for F3 / the quick view (≤ [`PREVIEW_LIMIT`]), without a job.
-pub fn for_preview(path: &Path) -> Result<PathBuf, FsError> {
-    let control = Control::default();
+/// The running preview extraction per slot (`viewer`, `quick`): a new request
+/// cancels the previous one of its slot (external review 025 #5).
+fn preview_control(slot: &str) -> Arc<Control> {
+    static RUNNING: OnceLock<Mutex<HashMap<String, Arc<Control>>>> = OnceLock::new();
+    let mut m = RUNNING
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let control = Arc::new(Control::default());
+    if let Some(old) = m.insert(slot.to_string(), control.clone()) {
+        old.cancel();
+    }
+    control
+}
+
+/// The copy for F3 / the quick view (≤ [`PREVIEW_LIMIT`]), without a job. A
+/// newer request of the same `slot` cancels this one.
+pub fn for_preview(path: &Path, slot: Option<&str>) -> Result<PathBuf, FsError> {
+    let control = match slot {
+        Some(s) => preview_control(s),
+        None => Arc::new(Control::default()),
+    };
     match materialize(path, PREVIEW_LIMIT, "view", &control, &|_| {})? {
         Outcome::Done(p, _) => Ok(p),
-        Outcome::Cancelled(_) => Err(FsError::new(FsErrorCode::Io, "Cancelled", Some(path))),
+        Outcome::Cancelled(_) => Err(FsError::new(
+            FsErrorCode::Io,
+            "Replaced by a newer preview",
+            Some(path),
+        )),
     }
 }
 
@@ -316,7 +342,7 @@ pub fn run_job(
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
-    match materialize(path, u64::MAX, id, control, emit) {
+    match materialize(path, OPEN_LIMIT, id, control, emit) {
         Ok(Outcome::Done(file, mut summary)) => {
             summary.view_path = Some(file.to_string_lossy().into_owned());
             (JobState::Done, summary)
@@ -329,5 +355,20 @@ pub fn run_job(
                 ..Summary::default()
             },
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// External review 025 #5: a newer preview of a slot cancels the running one.
+    #[test]
+    fn a_newer_preview_cancels_the_older_one_of_its_slot() {
+        let first = preview_control("test-slot");
+        let other = preview_control("test-other");
+        let second = preview_control("test-slot");
+        assert!(first.is_cancelled());
+        assert!(!second.is_cancelled() && !other.is_cancelled());
     }
 }

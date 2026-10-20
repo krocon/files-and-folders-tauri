@@ -176,7 +176,7 @@ pub async fn read_preview<R: Runtime>(
         let file = if std::fs::symlink_metadata(&file).is_err()
             && crate::archive::resolve(&file).is_some()
         {
-            crate::archive::view::for_preview(&file)?
+            crate::archive::view::for_preview(&file, options.image_slot.as_deref())?
         } else {
             file
         };

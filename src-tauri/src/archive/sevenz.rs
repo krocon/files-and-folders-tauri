@@ -72,6 +72,8 @@ pub(crate) fn map_error(e: sevenz_rust2::Error, path: &Path, encrypted: bool) ->
 /// Reads the header. Without a password first: header-encrypted archives
 /// (`7z -mhe`) need the one in the store (`header_encrypted` = true then).
 pub(crate) fn open(path: &Path) -> Result<(BufReader<File>, Archive, bool), FsError> {
+    // the crate unpacks the header without limits: check its size and file count first
+    super::sevenz_header::check(path)?;
     let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
     match Archive::read(&mut reader, &Password::empty()) {

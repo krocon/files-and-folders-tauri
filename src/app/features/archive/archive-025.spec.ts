@@ -279,6 +279,13 @@ describe('archives, design 025: 7z/RAR, passwords, opening entries', () => {
     expect(jobsApi.started.at(-1)!.spec).not.toHaveProperty('password');
   });
 
+  it('review 025 #11: a RAR password longer than UnRAR takes is refused with a clear text', async () => {
+    const req = { archive: '/data/alt.rar', wrong: false, retry: () => undefined };
+    const e = await archive.submitPassword(req, 'x'.repeat(512));
+    expect(e?.message).toBe(ARCHIVE_TEXTS.passwordTooLongRar(511));
+    expect(archiveApi.calls).toEqual([]);
+  });
+
   it('the conflict dialog names the job: no "Cancel copying" when extracting', () => {
     expect(cancelKind('extract')).toBe('extract');
     expect(cancelKind('pack')).toBe('pack');

@@ -50,6 +50,7 @@ export const ARCHIVE_EN = {
   open: 'Open',
   emptyPassword: 'Enter the password.',
   passwordsDiffer: 'The two passwords differ.',
+  passwordTooLongRar: (n: number) => `RAR passwords have at most ${n} characters.`,
   passwordNeeded: (path: string) => `“${path}” is encrypted – try again to enter its password.`,
   zipAesHint:
     'ZIP with a password uses AES-256: Windows Explorer and the macOS Archive Utility cannot open it (7-Zip, WinZip, Keka can).',

@@ -361,7 +361,7 @@ fn view_entry_extracts_a_read_only_copy_once() {
     assert_eq!(fs::read(&copy).unwrap(), b"hallo welt\n");
     assert!(fs::metadata(&copy).unwrap().permissions().readonly());
     // the preview finds the same copy
-    assert_eq!(view::for_preview(&entry).unwrap(), copy);
+    assert_eq!(view::for_preview(&entry, None).unwrap(), copy);
     // folders and missing entries are no files to open
     let id = h
         .mgr
@@ -425,7 +425,7 @@ fn previews_refuse_entries_above_the_limit() {
     crate::archive::tests::make_zip(&a, &[crate::archive::tests::E::File("klein.txt", b"k")]);
     // a declared size above the preview limit (the data is not needed for the check)
     let entry = a.join("klein.txt");
-    let ok = view::for_preview(&entry).unwrap();
+    let ok = view::for_preview(&entry, None).unwrap();
     assert_eq!(fs::read(ok).unwrap(), b"k");
     let control = Control::default();
     let r = view::materialize(&entry, 0, "t", &control, &|_| {});
@@ -492,7 +492,115 @@ mod rar_jobs {
         assert_eq!(fs::read(t2.join("te…―st✌")).unwrap().len(), 17);
         // a single entry for the view cache
         let v = fixture(d.path(), "rar-version.rar");
-        let copy = view::for_preview(&v.join("VERSION")).unwrap();
+        let copy = view::for_preview(&v.join("VERSION"), None).unwrap();
         assert_eq!(fs::read(copy).unwrap().len(), 11);
+    }
+}
+
+/// External review 025 #4: a file that cannot be written must not leave the
+/// rest of its solid block unread (later entries would get wrong data or a
+/// "wrong password"). Needs `chattr` (root, ext4/overlay) – skipped elsewhere.
+#[test]
+fn an_unwritable_entry_does_not_desync_a_solid_block() {
+    for (name, pw) in [
+        ("sevenzip-solid3.7z", None),
+        ("sevenzip-solid3-enc.7z", Some("geheim")),
+    ] {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let a = fixture(d.path(), name);
+        if let Some(p) = pw {
+            archive::set_password(&a, Secret::new(p)).unwrap();
+        }
+        let t = d.path().join("t");
+        fs::create_dir_all(t.join("sub")).unwrap();
+        let locked = std::process::Command::new("chattr")
+            .arg("+i")
+            .arg(t.join("sub"))
+            .status()
+            .is_ok_and(|s| s.success());
+        if !locked {
+            eprintln!("chattr not available – skipped");
+            return;
+        }
+        let info = h.unpack(&a, &[], &t);
+        let _ = std::process::Command::new("chattr")
+            .arg("-i")
+            .arg(t.join("sub"))
+            .status();
+        assert_eq!(
+            info.state,
+            JobState::DoneWithErrors,
+            "{name}: {:?}",
+            info.summary
+        );
+        let sum = info.summary.unwrap();
+        assert!(sum.error.is_none(), "{name}: {:?}", sum.error);
+        assert!(
+            sum.errors
+                .iter()
+                .all(|e| e.error.code != FsErrorCode::ArchivePasswordWrong
+                    && e.error.code != FsErrorCode::ArchiveError),
+            "{name}: {:?}",
+            sum.errors
+        );
+        assert_eq!(fs::read(t.join("z.txt")).unwrap().len(), 5000, "{name}");
+    }
+}
+
+/// Review 025 #5: data that is only skipped stops when the job is cancelled.
+#[test]
+fn draining_skipped_data_stops_on_cancel() {
+    let control = Control::default();
+    let mut endless = std::io::repeat(0);
+    control.cancel();
+    assert!(!extract::drain_for_test(&mut endless, &control).unwrap());
+    let fresh = Control::default();
+    assert!(extract::drain_for_test(&mut &b"abc"[..], &fresh).unwrap());
+}
+
+#[cfg(feature = "rar")]
+mod rar_parallel {
+    use super::*;
+
+    /// Review 025 #3: a slow (or paused) RAR entry no longer blocks listing another RAR.
+    #[test]
+    fn a_slow_rar_entry_does_not_block_other_rar_archives() {
+        let d = tempdir().unwrap();
+        let a = fixture(d.path(), "rar-version.rar");
+        let b = d.path().join("other.rar");
+        fs::copy(&a, &b).unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let t = std::thread::spawn(move || {
+            let mut ar = crate::archive::rar::RarArchive::open(&a, None, true, None).unwrap();
+            let h = ar.next_header().unwrap().unwrap();
+            ar.test_into(&h, &mut |_c| {
+                let _ = tx.send(());
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                true
+            })
+            .unwrap();
+        });
+        rx.recv().unwrap(); // the first entry is being decoded
+        let start = std::time::Instant::now();
+        let (headers, _) = crate::archive::rar::headers(&b, None, 10).unwrap();
+        assert_eq!(headers.len(), 1);
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(1),
+            "listing waited {:?}",
+            start.elapsed()
+        );
+        t.join().unwrap();
+    }
+
+    /// Review 025 #5: cancelling reaches data the library only skips.
+    #[test]
+    fn a_cancelled_rar_test_stops() {
+        let d = tempdir().unwrap();
+        let a = fixture(d.path(), "rar-version.rar");
+        let cancel = std::sync::atomic::AtomicBool::new(true);
+        let mut ar = crate::archive::rar::RarArchive::open(&a, None, true, Some(&cancel)).unwrap();
+        let h = ar.next_header().unwrap().unwrap();
+        assert!(!ar.test_into(&h, &mut |_| true).unwrap());
     }
 }

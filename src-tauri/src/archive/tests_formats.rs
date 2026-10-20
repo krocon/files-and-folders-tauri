@@ -312,3 +312,66 @@ mod rar_tests {
         assert_eq!(code(read_index(&a)), FsErrorCode::ArchiveError);
     }
 }
+
+/// External review 025 #1/#2: a 7z header that unpacks to gigabytes or declares
+/// millions of files is refused before `sevenz-rust2` reads it (`bomb-*.7z`,
+/// made by `testdata/make_7z_bombs.py`).
+#[test]
+fn seven_zip_header_bombs_are_refused_before_reading() {
+    let d = tempdir().unwrap();
+    let big = fixture(d.path(), "bomb-header.7z");
+    let e = read_index(&big).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveTooLarge, "{e:?}");
+    assert!(e.message.contains("header"), "{}", e.message);
+    let many = fixture(d.path(), "bomb-files.7z");
+    let e = read_index(&many).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveTooLarge, "{e:?}");
+    assert!(e.message.contains("2000000"), "{}", e.message);
+    // the password check reads the header too
+    assert_eq!(
+        set_password(&many, secrets::Secret::new("x"))
+            .unwrap_err()
+            .code,
+        FsErrorCode::ArchiveTooLarge
+    );
+    // real archives pass, with their file count (plain and encoded headers)
+    for (name, n) in [("sevenzip-solid.7z", 7), ("sevenzip-enc-data.7z", 7)] {
+        let a = fixture(d.path(), name);
+        assert_eq!(
+            sevenz_header::check(&a).unwrap(),
+            sevenz_header::HeaderCheck::Files(Some(n)),
+            "{name}"
+        );
+    }
+    // encrypted names: only the size can be checked
+    let h = fixture(d.path(), "sevenzip-enc-names.7z");
+    assert_eq!(
+        sevenz_header::check(&h).unwrap(),
+        sevenz_header::HeaderCheck::Files(None)
+    );
+}
+
+/// Review 025 #8: a block up to 16 MiB is decoded completely for the check.
+#[test]
+fn a_wrong_7z_password_fails_on_a_whole_small_solid_block() {
+    let d = tempdir().unwrap();
+    let a = fixture(d.path(), "sevenzip-solid3-enc.7z");
+    assert_eq!(
+        set_password(&a, secrets::Secret::new("falsch"))
+            .unwrap_err()
+            .code,
+        FsErrorCode::ArchivePasswordWrong
+    );
+    set_password(&a, secrets::Secret::new("geheim")).unwrap();
+}
+
+#[cfg(feature = "rar")]
+#[test]
+fn rar_passwords_longer_than_unrar_takes_are_refused_clearly() {
+    let d = tempdir().unwrap();
+    let a = fixture(d.path(), "rar-crypted.rar");
+    let e = set_password(&a, secrets::Secret::new("x".repeat(600))).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchivePasswordWrong);
+    assert!(e.message.contains("511"), "{}", e.message);
+    assert!(!secrets::known(&a));
+}

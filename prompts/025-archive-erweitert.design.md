@@ -79,7 +79,7 @@ abgelehnt (`UCM_LARGEDICT`), mehrteilige Archive nicht unterstützt. Wer RAR nic
 
 | Frage | Entscheidung | Grund |
 |---|---|---|
-| Wo liegt das Passwort? | **Rust, im Speicher**, je Archivpfad (`archive::secrets`), Typ `Secret` (Debug = `***`, beim Verwerfen genullt über `zeroize`) | Listing, Vorschau, Öffnen und Entpacken brauchen es wiederholt; das Frontend hält es nur bis zum Absenden des Dialogs |
+| Wo liegt das Passwort? | **Rust, im Speicher**, je Archivpfad (`archive::secrets`), Typ `Secret` (Debug = `***`, beim Verwerfen genullt über `zeroize`; auch die Breitzeichen-Kopie für UnRAR. **Grenzen:** Kopien in `sevenz-rust2` (`Password`), im ZIP-AES-Schlüsselableiter und im WebView bis zur Garbage Collection werden nicht genullt) | Listing, Vorschau, Öffnen und Entpacken brauchen es wiederholt; das Frontend hält es nur bis zum Absenden des Dialogs |
 | Wie lange? | bis zum Beenden der App; `forget_archive_passwords` beim Schließen nicht nötig (Prozessende) | Marcs Rahmen; nie in `session.json`/`settings.json`, kein Schlüsselbund (Aufwand, Plattformcode, Risiko) |
 | Wie kommt es nach Rust? | Command **`set_archive_password(archive, password)`** – prüft es (7z/RAR: Index lesen; ZIP: kleinsten verschlüsselten Eintrag ganz lesen bzw. ab 16 MiB nur den Prüfwert) und speichert es nur, wenn es passt | falsches Passwort sofort im Dialog, nicht erst als Fehler je Eintrag |
 | Packen | `JobSpec::Pack.password: Option<Secret>` – **nur deserialisiert** (`skip_serializing`), also nie in `JobInfo`/Ereignissen zurück ans Frontend | ein Pack-Job braucht es genau einmal |
@@ -96,13 +96,13 @@ abgelehnt (`UCM_LARGEDICT`), mehrteilige Archive nicht unterstützt. Wer RAR nic
   Extract-Code** wie F5 entpackt (Zip-Slip, Grenzen, Links, Passwort), danach **schreibgeschützt** gesetzt („kein
   Zurückschreiben“). Schlüssel: Archivpfad + Größe + Änderungszeit + innerer Pfad → eine zweite Ansicht entpackt nicht
   neu. Höchstens 2 GiB/256 Dateien je Lauf, älteste fliegen zuerst. Aufräumen: beim Beenden (`RunEvent::Exit`) der
-  eigene Lauf, beim Start fremde Läufe, die älter als 24 h sind (Absturz-Reste; parallele Instanzen bleiben unberührt).
+  eigene Lauf, beim Start fremde Läufe, die älter als **3 Tage** sind (Absturz-Reste; parallele Instanzen bleiben unberührt – jede Kopie frischt ihren Lauf-Ordner auf).
 - **F3 / Schnellvorschau:** `read_preview(path)` erkennt einen virtuellen Pfad (`archive::resolve`) und liest die Kopie
   im Cache – Einträge über **256 MiB** → `archive_too_large` („erst entpacken (F5)“). Die Vorschau zeigt den Namen aus
   dem Archiv.
 - **Enter:** Job **`viewEntry { path }`** (parallel, kein Hilfsjob – große Einträge zeigen Fortschritt in Tasks und
   lassen sich abbrechen), Ergebnis `Summary.viewPath` = Kopie im Cache → `open_file` (wie 011: ausführbare Dateien nur
-  nach Rückfrage). Grenze: die Bomben-Grenzen des Archivs.
+  nach Rückfrage). Grenze: **4 GiB** je Eintrag (größere → „erst entpacken (F5)“), dazu die Bomben-Grenzen des Archivs.
 - **Passwort fehlt/falsch** → Passwortdialog, danach dieselbe Aktion noch einmal.
 
 ### E6 – 7z packen ✅
@@ -246,13 +246,34 @@ Selbst-Review des Diffs `main...feat/archive-erweitert` (frischer Durchgang, Sch
 | 2 | 7z mit falschem Passwort: nach dem Fehler im Block wurden leere Dateien (ohne Block) trotzdem angelegt → beim Neustart des Jobs Konfliktfrage | mittel | behoben (Test `encrypted_entries_need_the_password_before_anything_is_written` war rot): nach einem Passwortfehler wird nichts mehr geschrieben |
 | 3 | `HeaderDataEx`/`OpenArchiveDataEx` werden von C beschrieben, aber als `*const` übergeben | gering | Zeiger aus `&raw mut` (veränderliche Herkunft), Layout im Sys-Crate per `const`-Assertions geprüft |
 | 4 | Callback in C++: Panik würde abbrechen | gering | `catch_unwind`, Rückgabe −1; kein `unwrap`/Index im Callback |
-| 5 | UnRAR-Fehlerzustand ist global (`ErrHandler`) | gering | alle Aufrufe hinter einem `Mutex`; Pause nie im Callback |
+| 5 | UnRAR-Fehlerzustand ist global (`ErrHandler`) | gering | nur `RAROpenArchiveEx` (setzt/liest ihn) hinter einem `Mutex`; Lesen/Dekodieren je Handle parallel (die DLL meidet den globalen Code dort ausdrücklich) – s. externes Review #3 |
 | 6 | Passwort im Job-Spec | – | `skip_serializing` + eigener `Debug`; Test `a_password_is_never_sent_back`; Frontend hält es nur bis zum Absenden, Felder `type=password` |
 | 7 | 7z-Header mit PPMd-Kodierung könnte viel Speicher anfordern (Header wird von der Crate ohne unsere Prüfung dekodiert) | gering | offen (Crate-Grenze `MAX_MEM_LIMIT_KB`); LZMA/LZMA2 allozieren das Fenster schrittweise (`lzma-rust2`), Datenblöcke prüft `check_memory` |
 | 8 | Cache-Lauf eines zweiten App-Fensters könnte nach 3 Tagen Leerlauf gelöscht werden | gering | bewusst: Lauf-Ordner werden bei jeder Kopie frisch (mtime); offene Dateien darin bleiben unter Unix lesbar |
 | 9 | Pfade opak im Frontend | – | keine Zerlegung; der Passwortdialog zeigt den ganzen Archivpfad |
 | 10 | Commands async | – | `set_archive_password` ist `async` (`commands::command_rules` grün) |
 | 11 | Texte en+de | – | `catalogs.spec.ts` grün (`RAR` als gleichlautend erlaubt) |
+
+### Externes Review (20.10.2026)
+
+Unabhängiger Reviewer, Probe-Archive und rote Tests unter `/tmp/review-025/`. Jeder Befund zuerst als roter Test.
+
+| Nr | Schwere | Befund | Status | Test |
+|---|---|---|---|---|
+| 1 | hoch | 7z-Header wird von `sevenz-rust2` ungebremst ausgepackt (`hdrbomb.7z`: 2 GiB Spitze) | ✅ `archive/sevenz_header.rs`: Start-Header + Encoded-Header selbst parsen, ausgepackte Größe ≤ **64 MiB**, sonst `archive_too_large` – vor `Archive::read` (Listing, Entpacken, Passwortprüfung). **Upstream-Hinweis für `sevenz-rust2`:** `Archive::read` mit Grenzen (Header-Bytes, Dateien) anbieten; heute `take(declared).read_to_end` und `vec![…; num_files]` | `archive/tests_formats.rs` › `seven_zip_header_bombs_are_refused_before_reading` (`testdata/bomb-header.7z`, 19 KB → 128 MiB) |
+| 2 | hoch | `num_files` nur durch die Header-Länge begrenzt (`files-bomb.7z`: 20 Mio. Einträge, 1,9 GB) | ✅ LZMA/LZMA2-Header (ohne Verschlüsselung) werden hier begrenzt ausgepackt (`lzma-rust2`, schon im Baum) und `kFilesInfo` gelesen: > 200 000 → `archive_too_large`; verschlüsselte Header (`-mhe`) nur über die Größengrenze (Restrisiko, braucht das Passwort) | wie 1 (`testdata/bomb-files.7z`, 424 Byte, 2 Mio. Einträge) |
+| 3 | hoch | RAR: Pause im Callback hielt die globale Sperre; Sperre für die ganze Dekodierzeit | ✅ Sperre nur noch um `RAROpenArchiveEx`; Lesen/Testen je Handle ohne Sperre (DLL ist dafür ausgelegt); Pause im Callback hält damit nur diesen Job an | `jobs/tests_formats.rs` › `rar_parallel::a_slow_rar_entry_does_not_block_other_rar_archives` (war rot: 3 s gewartet) |
+| 4 | mittel | 7z: Schreibfehler ließ den Rest des Eintrags ungelesen → solider Block versetzt (CRC-Fehler, verschlüsselt „falsches Passwort“) | ✅ nach jedem Eintrag wird der ungelesene Rest gelesen und verworfen; RAR verwirft nach einem Schreibfehler den Rest statt abzubrechen | `an_unwritable_entry_does_not_desync_a_solid_block` (`sevenzip-solid3*.7z` vom Reviewer, `chattr +i`) |
+| 5 | mittel | übersprungene Daten ohne Abbruch; Vorschau ohne Abbruch-Token | ✅ `drain` prüft je 64 KiB den Abbruch; RAR-Callback bricht bei gesetztem Abbruch-Flag ab (auch ohne Sink), solide RAR werden im Entpack-Modus per Test statt `RAR_SKIP` übersprungen (Callback sieht die Daten); Vorschau: Abbruch-Token je Slot (`viewer`/`quick`), eine neue Anfrage bricht die alte ab | `draining_skipped_data_stops_on_cancel`, `rar_parallel::a_cancelled_rar_test_stops`, `view::tests::a_newer_preview_cancels_the_older_one_of_its_slot` |
+| 6 | mittel | kein Mark-of-the-Web/keine Quarantäne auf entpackten Dateien | ✅ `platform/origin_mark.rs`: Windows `Zone.Identifier`-Stream, macOS `com.apple.quarantine` (über den Deskriptor, vor dem Umbenennen) vom Archiv auf jede entpackte Datei – F5/Alt+F9 und `viewEntry`/Vorschau (gleicher Extract-Code); Linux no-op. **Nur in der CI kompiliert** | `platform::origin_mark::tests::marks_are_copied_where_the_os_has_them` (prüft unter Windows/macOS das Kopieren) |
+| 7 | niedrig | Passwortprüfung in solidem RAR dekodierte alles bis zum kleinsten Eintrag, ohne Grenze | ✅ solide: erster verschlüsselter Eintrag, insgesamt höchstens 16 MiB dekodiert (danach gilt das Passwort als passend, RAR 5 prüft ohnehin per Prüfwert) | Code; `rar_tests::rar_passwords` |
+| 8 | niedrig | 7z-Prüfung las nur 16 MiB des ersten Eintrags ohne CRC | ✅ ein Block ≤ 16 MiB wird ganz gelesen (CRC jedes Eintrags); größere Blöcke wie bisher teilweise – ein durchgerutschtes falsches Passwort scheitert beim Entpacken am CRC und wird erneut erfragt (bewusst: sonst ließe sich ein solches Archiv nie öffnen) | `a_wrong_7z_password_fails_on_a_whole_small_solid_block` |
+| 9 | niedrig | nur `Secret` genullt | ✅ Breitzeichen-Passwort für UnRAR als `Zeroizing`; Grenzen (Crate-Puffer, WebView) in E4 dokumentiert | Code |
+| 10 | niedrig | Rohzeiger auf Box-Inhalt (Stacked Borrows) | ✅ `Box::into_raw` beim Öffnen, nur noch der Rohzeiger, `Box::from_raw` im `Drop` nach dem Schließen | Code (Miri nicht im Container) |
+| 11 | niedrig | UnRAR nimmt höchstens 511 Zeichen; längere Passwörter endlos „falsch“ | ✅ Rust lehnt mit klarer Meldung ab (`rar::MAX_PASSWORD_CHARS`), das Frontend schon vorher (übersetzt) | `rar_passwords_longer_than_unrar_takes_are_refused_clearly`, `archive-025.spec.ts` › „review 025 #11 …“ |
+| – | – | Kleinigkeiten: 24 h vs. 3 Tage; keine Größengrenze für Enter | ✅ Design auf 3 Tage korrigiert; Enter höchstens 4 GiB je Eintrag (`view::OPEN_LIMIT`) | Code |
+
+Nebenbefund beim Gesamtlauf: `jobs::tests_link::many_links_and_cancel` (aus 031, `main`) scheitert gelegentlich (Abbruch kommt nach dem Start) – nicht Teil von 025, an den Koordinator gemeldet.
 
 ## 8. Fortschritt
 

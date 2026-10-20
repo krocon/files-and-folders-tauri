@@ -6,6 +6,7 @@ import {
   PasswordNeeded,
 } from '../../core/archive/archive-password-prompt';
 import {
+  archiveFormatOf,
   canEncrypt,
   isArchiveEntry,
   stripArchiveExtension,
@@ -82,6 +83,16 @@ function err(code: FsError['code'], message: string): FsError {
   return { code, message, path: null };
 }
 
+/** UnRAR takes at most 511 characters (external review 025 #11, Rust `rar::MAX_PASSWORD_CHARS`). */
+export const MAX_RAR_PASSWORD = 511;
+
+/** A password UnRAR cannot take – a clear message instead of "wrong" for ever. */
+function rarPasswordTooLong(archive: string, password: string): FsError | null {
+  return archiveFormatOf(archive) === 'rar' && [...password].length > MAX_RAR_PASSWORD
+    ? err('unknown', ARCHIVE_TEXTS.passwordTooLongRar(MAX_RAR_PASSWORD))
+    : null;
+}
+
 /**
  * Pack (Alt+F5) and unpack / extract (Alt+F9, F5 inside an archive) – design
  * 016 E4/E5. Builds the dialog requests from the active panel and starts the
@@ -120,6 +131,10 @@ export class ArchiveStore {
   async submitPassword(req: PasswordRequest, password: string): Promise<FsError | null> {
     if (password === '') {
       return err('archive_password_required', ARCHIVE_TEXTS.emptyPassword);
+    }
+    const tooLong = rarPasswordTooLong(req.archive, password);
+    if (tooLong) {
+      return tooLong;
     }
     try {
       await this.api.setPassword(req.archive, password);
@@ -321,6 +336,10 @@ export class ArchiveStore {
     if (password !== '') {
       // checked per archive before any job starts – a wrong one stays in the dialog
       for (const job of req.jobs) {
+        const tooLong = rarPasswordTooLong(job.archive, password);
+        if (tooLong) {
+          return tooLong;
+        }
         try {
           await this.api.setPassword(job.archive, password);
         } catch (e) {
