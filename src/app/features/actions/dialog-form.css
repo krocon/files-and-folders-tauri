@@ -10,22 +10,9 @@
   flex-direction: column;
   gap: var(--spacing-1);
 
+  /* look and height: src/styles/controls.css */
   input {
-    padding: var(--spacing-1) var(--spacing-2);
     font-family: var(--font-mono);
-    font-size: var(--font-size-md);
-    color: var(--color-input-text);
-    background: var(--color-input-bg);
-    border: var(--border-width) solid var(--color-input-border);
-    border-radius: var(--radius-sm);
-
-    &[aria-invalid='true'] {
-      border-color: var(--color-danger);
-    }
-
-    &:focus-visible {
-      outline: var(--focus-ring-width) solid var(--color-focus);
-    }
   }
 }
 
@@ -70,10 +57,4 @@ code {
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-2);
-}
-
-.btn.primary {
-  color: var(--color-button-primary-text);
-  background: var(--color-button-primary-bg);
-  border-color: var(--color-button-primary-bg);
 }

@@ -1,12 +1,3 @@
-.search {
-  padding: var(--spacing-1) var(--spacing-2);
-  font: inherit;
-  color: var(--color-input-text);
-  background: var(--color-input-bg);
-  border: var(--border-width) solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-}
-
 .scroll {
   overflow-y: auto;
   min-height: 0;

@@ -1,0 +1,217 @@
+/*
+ * Form controls: buttons, text fields, selects, checkboxes and radios – one look and,
+ * inside dialogs, one height for everything in a row. Colours come only from the theme
+ * tokens (group "dialogs"), so every scheme (built-in, legacy, own) works without changes.
+ *
+ * Field rules sit in `:where(...)` (specificity 0): a dialog keeps setting widths, fonts
+ * (`--font-mono` for names) or flex in its own CSS without fighting this file. Dialogs
+ * must not repeat padding/border/colours of controls – that is what this file is for.
+ */
+:root {
+  --control-height: 2rem;
+  --control-padding-x: var(--spacing-2);
+  --control-transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn {
+  min-height: 36px;
+  min-width: 80px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  color: var(--color-button-text);
+  background: var(--color-button-bg);
+  border: var(--border-width) solid var(--color-button-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--control-transition);
+
+  /* a neutral tint works on every background (light, dark, primary, danger) */
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    box-shadow: inset 0 0 0 100vmax rgb(128 128 128 / 10%);
+  }
+
+  &:active:not(:disabled) {
+    box-shadow: inset 0 0 0 100vmax rgb(128 128 128 / 20%);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+    outline-offset: 1px;
+  }
+
+  &.primary {
+    color: var(--color-button-primary-text);
+    background: var(--color-button-primary-bg);
+    border-color: var(--color-button-primary-bg);
+  }
+
+  &.danger {
+    color: var(--color-danger-text);
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger);
+  }
+
+  &.primary:hover:not(:disabled) {
+    border-color: var(--color-button-primary-bg);
+  }
+
+  &.danger:hover:not(:disabled) {
+    border-color: var(--color-danger);
+  }
+}
+
+/* in dialogs buttons are exactly as high as the fields next to them */
+.dialog .btn {
+  min-height: var(--control-height);
+  padding-block: 0;
+}
+
+/* ------------------------------------------------------ fields in dialogs */
+
+:where(.dialog)
+  :where(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='color'],
+      [type='range'],
+      [type='file'],
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='image'],
+      [type='hidden']
+    ),
+    select,
+    textarea
+  ) {
+  box-sizing: border-box;
+  height: var(--control-height);
+  min-width: 0;
+  margin: 0;
+  padding: 0 var(--control-padding-x);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: normal;
+  color: var(--color-input-text);
+  background-color: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  /* transparent outline: stays visible in forced-colours mode, where box-shadow is dropped */
+  outline: var(--focus-ring-width) solid transparent;
+  outline-offset: 0;
+  transition: var(--control-transition);
+
+  &::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  &:hover:not(:disabled, :focus) {
+    border-color: var(--color-muted);
+  }
+
+  /* focus: border and a second pixel in the dialog's focus colour (no outline jump) */
+  &:focus {
+    border-color: var(--color-focus);
+    box-shadow: 0 0 0 1px var(--color-focus);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--color-danger);
+
+    &:focus {
+      box-shadow: 0 0 0 1px var(--color-danger);
+    }
+  }
+
+  &[readonly] {
+    background-color: var(--color-surface-raised);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+:where(.dialog) :where(textarea) {
+  height: auto;
+  min-height: calc(var(--control-height) * 2);
+  padding-block: var(--spacing-1);
+  resize: vertical;
+}
+
+/* select: own arrow in the text colour of the theme instead of the platform widget */
+:where(.dialog) :where(select:not([multiple], [size])) {
+  appearance: none;
+  padding-right: calc(var(--control-padding-x) + 1rem);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-muted) 50%),
+    linear-gradient(135deg, var(--color-muted) 50%, transparent 50%);
+  background-position:
+    right calc(var(--control-padding-x) + 5px) center,
+    right var(--control-padding-x) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+:where(.dialog) :where(select[multiple], select[size]) {
+  height: auto;
+  padding-block: var(--spacing-1);
+}
+
+:where(.dialog) :where(select option) {
+  color: var(--color-input-text);
+  background-color: var(--color-input-bg);
+}
+
+/* ------------------------------------------- checkboxes / radios in dialogs */
+
+:where(.dialog) :where(input[type='checkbox'], input[type='radio']) {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  :where(.dialog) :where(input, select, textarea) {
+    transition: none;
+  }
+}
+
+/* labels that hold a checkbox/radio or sit in a row: as high as a field, no top margin
+   (the general `label { margin-top }` in styles.css is for labels above a field) – so
+   "Match case" and "in the last [7] days" line up with the fields next to them */
+:where(.dialog) label:is(.check, .inline) {
+  margin-top: 0;
+  min-height: var(--control-height);
+}

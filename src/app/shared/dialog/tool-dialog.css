@@ -37,28 +37,7 @@
   gap: var(--spacing-1);
 }
 
-input[type='text'],
-input[type='number'],
-select {
-  padding: 2px var(--spacing-1);
-  font-size: var(--font-size-sm);
-  color: var(--color-input-text);
-  background: var(--color-input-bg);
-  border: var(--border-width) solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-
-  &[aria-invalid='true'] {
-    border-color: var(--color-danger);
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-  }
-}
+/* look and height of inputs, selects and buttons: src/styles/controls.css */
 
 .mono,
 .field input[type='text'] {
@@ -134,16 +113,4 @@ select {
   justify-content: flex-end;
   gap: var(--spacing-2);
   margin-left: auto;
-}
-
-.btn.primary {
-  color: var(--color-button-primary-text);
-  background: var(--color-button-primary-bg);
-  border-color: var(--color-button-primary-bg);
-}
-
-.btn.danger {
-  color: var(--color-on-danger);
-  background: var(--color-danger);
-  border-color: var(--color-danger);
 }

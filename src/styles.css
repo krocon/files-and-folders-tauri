@@ -1,5 +1,6 @@
 @import './assets/font-awesome-4.5.0/css/font-awesome.min.css';
 @import './styles/ge-table-theme.css';
+@import './styles/controls.css';
 
 /*
  * Design tokens (design 013 §3). Components use these variables instead of literal values.
@@ -214,36 +215,7 @@ body {
   background: var(--color-bg);
 }
 
-.btn {
-  min-height: 36px;
-  min-width: 80px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-1);
-  padding: var(--spacing-1) var(--spacing-3);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--color-button-text);
-  background: var(--color-button-bg);
-  border: var(--border-width) solid var(--color-button-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    border-color: var(--color-accent);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus);
-    outline-offset: 1px;
-  }
-}
+/* .btn and the form controls in dialogs: src/styles/controls.css */
 
 /* Scrollbars (WebKitGTK, WKWebView and WebView2 all support ::-webkit-scrollbar). */
 ::-webkit-scrollbar {

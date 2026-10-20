@@ -1,15 +1,5 @@
 .query {
   width: 100%;
-  padding: var(--spacing-2);
-  font: inherit;
-  color: var(--color-input-text);
-  background: var(--color-input-bg);
-  border: var(--border-width) solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-
-  &:focus-visible {
-    outline: var(--focus-ring-width) solid var(--color-focus);
-  }
 }
 
 .list {
