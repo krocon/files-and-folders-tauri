@@ -1,0 +1,349 @@
+{
+  "themes": [
+    "classic-light",
+    "classic-paper",
+    "classic-bitbucket",
+    "classic-cypress",
+    "classic-blackboard",
+    "classic-coffee",
+    "classic-combat",
+    "classic-norton",
+    "light",
+    "dark",
+    "crimson"
+  ],
+  "prelude": [
+    {
+      "action": "SELECT_RIGHT_PANEL"
+    },
+    {
+      "action": "TOGGLE_MARK_AND_ADVANCE"
+    },
+    {
+      "action": "TOGGLE_MARK_AND_ADVANCE"
+    },
+    {
+      "action": "TOGGLE_MARK_AND_ADVANCE"
+    },
+    {
+      "key": "ArrowDown"
+    },
+    {
+      "action": "TOGGLE_MARK_AND_ADVANCE"
+    },
+    {
+      "key": "ArrowUp"
+    },
+    {
+      "key": "ArrowUp"
+    }
+  ],
+  "scenes": [
+    {
+      "name": "main",
+      "steps": []
+    },
+    {
+      "name": "actions-menu",
+      "steps": [
+        {
+          "action": "OPEN_ACTIONS_MENU"
+        }
+      ]
+    },
+    {
+      "name": "command-palette",
+      "steps": [
+        {
+          "action": "OPEN_COMMAND_PALETTE"
+        },
+        {
+          "type": "co"
+        }
+      ]
+    },
+    {
+      "name": "context-menu",
+      "steps": [
+        {
+          "action": "OPEN_CONTEXT_MENU"
+        }
+      ]
+    },
+    {
+      "name": "folder-menu",
+      "steps": [
+        {
+          "action": "OPEN_FOLDER_MENU_RIGHT"
+        }
+      ]
+    },
+    {
+      "name": "copy-dialog",
+      "steps": [
+        {
+          "action": "OPEN_COPY_DLG"
+        }
+      ]
+    },
+    {
+      "name": "move-dialog",
+      "steps": [
+        {
+          "action": "OPEN_MOVE_DLG"
+        }
+      ]
+    },
+    {
+      "name": "delete-dialog",
+      "steps": [
+        {
+          "action": "OPEN_DELETE_DLG"
+        }
+      ]
+    },
+    {
+      "name": "mkdir-dialog",
+      "steps": [
+        {
+          "action": "OPEN_MKDIR_DLG"
+        }
+      ]
+    },
+    {
+      "name": "create-file-dialog",
+      "steps": [
+        {
+          "action": "OPEN_CREATE_FILE_DLG"
+        }
+      ]
+    },
+    {
+      "name": "rename-dialog",
+      "steps": [
+        {
+          "action": "DESELECT_ALL"
+        },
+        {
+          "action": "OPEN_RENAME_DLG"
+        }
+      ]
+    },
+    {
+      "name": "multi-rename-dialog",
+      "steps": [
+        {
+          "action": "OPEN_MULTIRENAME_DLG"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "type": "Italy 2026 - [C].[E]"
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "multi-mkdir-dialog",
+      "steps": [
+        {
+          "action": "OPEN_MULTIMKDIR_DLG"
+        }
+      ]
+    },
+    {
+      "name": "group-files-dialog",
+      "steps": [
+        {
+          "action": "OPEN_GROUPFILES_DLG"
+        }
+      ]
+    },
+    {
+      "name": "clean-folders-dialog",
+      "steps": [
+        {
+          "action": "OPEN_DELETE_EMPTY_FOLDERS_DLG"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "name": "mark-pattern-dialog",
+      "steps": [
+        {
+          "action": "OPEN_MARK_PATTERN_DLG"
+        }
+      ]
+    },
+    {
+      "name": "find-dialog",
+      "steps": [
+        {
+          "action": "OPEN_FIND_DLG"
+        }
+      ]
+    },
+    {
+      "name": "search-results",
+      "steps": [
+        {
+          "action": "OPEN_FIND_DLG"
+        },
+        {
+          "type": "*.jpg"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 500
+        }
+      ]
+    },
+    {
+      "name": "find-duplicates-dialog",
+      "steps": [
+        {
+          "action": "OPEN_FIND_DUPLICATES_DLG"
+        }
+      ]
+    },
+    {
+      "name": "folder-finder-dialog",
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "action": "OPEN_FOLDER_FINDER_DLG"
+        },
+        {
+          "wait": 500
+        }
+      ]
+    },
+    {
+      "name": "view-image",
+      "steps": [
+        {
+          "action": "OPEN_VIEW_DLG"
+        },
+        {
+          "wait": 500
+        }
+      ]
+    },
+    {
+      "name": "view-text",
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "type": "README"
+        },
+        {
+          "action": "OPEN_VIEW_DLG"
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "quick-view",
+      "steps": [
+        {
+          "action": "QUICK_VIEW"
+        },
+        {
+          "wait": 500
+        }
+      ]
+    },
+    {
+      "name": "properties-dialog",
+      "steps": [
+        {
+          "action": "OPEN_ATTRIBUTE_DLG"
+        },
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
+      "name": "pack-dialog",
+      "steps": [
+        {
+          "action": "OPEN_PACK_DLG"
+        }
+      ]
+    },
+    {
+      "name": "tools-dialog",
+      "steps": [
+        {
+          "action": "OPEN_TOOLS_DLG"
+        }
+      ]
+    },
+    {
+      "name": "task-list",
+      "steps": [
+        {
+          "action": "OPEN_TASK_DLG"
+        }
+      ],
+      "mock": {
+        "jobs": true
+      }
+    },
+    {
+      "name": "shell",
+      "steps": [
+        {
+          "action": "TOGGLE_SHELL"
+        }
+      ]
+    },
+    {
+      "name": "settings-dialog",
+      "steps": [
+        {
+          "action": "OPEN_SETUP_DLG"
+        }
+      ]
+    },
+    {
+      "name": "shortcuts-dialog",
+      "steps": [
+        {
+          "action": "OPEN_SHORTCUT_DLG"
+        }
+      ]
+    },
+    {
+      "name": "colour-schemes-dialog",
+      "steps": [
+        {
+          "action": "OPEN_THEMES_DLG"
+        }
+      ]
+    },
+    {
+      "name": "about-dialog",
+      "steps": [
+        {
+          "action": "OPEN_ABOUT_DLG"
+        }
+      ]
+    }
+  ]
+}

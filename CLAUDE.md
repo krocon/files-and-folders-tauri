@@ -50,6 +50,7 @@
 | Frontend-Build | `pnpm build` |
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
 | Alles prüfen | `pnpm check` |
+| Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), einmalig `pnpm screenshots:install` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
@@ -167,7 +168,8 @@ src-tauri/                   Rust (Tauri 2)
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
   capabilities/default.json  nur core:default
   icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
-scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test)
+scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);
+                             screenshots/ (Playwright + Mock-Backend + Demo-Dateisystem, Szenen in scenes.json)
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md, release.md, licenses.md,
                              ci/ (Workflow-Vorlagen),
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/
