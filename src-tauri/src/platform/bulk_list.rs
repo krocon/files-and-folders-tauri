@@ -512,37 +512,64 @@ mod tests {
         assert_passes_the_check(&bulk.entries);
     }
 
-    /// Speed on a real folder (e.g. an SMB share):
-    /// `FNF_BENCH_DIR=/Volumes/share/folder cargo test --release --lib listing_speed -- --ignored --nocapture`
+    /// Speed on a real folder (e.g. an SMB share). The first listing of a round is the
+    /// only cold one (macOS caches what it read), so the way to measure cold goes first:
+    /// `FNF_BENCH_FIRST=bulk|portable` (default bulk). Compare two folders of similar size
+    /// that were not opened before, one per way:
+    /// `FNF_BENCH_FIRST=bulk FNF_BENCH_DIR=/Volumes/share/a cargo test --release --lib listing_speed -- --ignored --nocapture`
     #[test]
     #[ignore]
     fn listing_speed() {
         let dir = std::path::PathBuf::from(std::env::var("FNF_BENCH_DIR").expect("FNF_BENCH_DIR"));
-        for round in 1..=3 {
+        let bulk_first = std::env::var("FNF_BENCH_FIRST").map_or(true, |v| v != "portable");
+        let time = |bulk: bool| {
             let t = std::time::Instant::now();
-            let n = crate::listing::list_directory_std(&dir)
-                .unwrap()
-                .entries
-                .len();
-            let portable = t.elapsed();
-            #[cfg(target_os = "macos")]
-            {
-                let t = std::time::Instant::now();
-                let bulk = list(&dir);
-                println!(
-                    "round {round}: {n} entries · portable {portable:?} · bulk {:?} ({:?} entries)",
-                    t.elapsed(),
-                    bulk.as_ref().map(|l| l.entries.len())
-                );
-                // on this share too: the same entries, and they pass the check of E5
-                if let Some(bulk) = bulk {
-                    let portable = crate::listing::list_directory_std(&dir).unwrap();
-                    assert_eq!(bulk.entries, portable.entries, "bulk differs from portable");
-                    assert_passes_the_check(&bulk.entries);
+            let n = if bulk {
+                #[cfg(target_os = "macos")]
+                {
+                    list(&dir).map(|l| l.entries.len())
                 }
-            }
-            #[cfg(not(target_os = "macos"))]
-            println!("round {round}: {n} entries · portable {portable:?} (bulk only on macOS)");
+                #[cfg(not(target_os = "macos"))]
+                {
+                    None::<usize>
+                }
+            } else {
+                Some(
+                    crate::listing::list_directory_std(&dir)
+                        .unwrap()
+                        .entries
+                        .len(),
+                )
+            };
+            (t.elapsed(), n)
+        };
+        for round in 1..=3 {
+            let order = if bulk_first {
+                [true, false]
+            } else {
+                [false, true]
+            };
+            let results: Vec<String> = order
+                .iter()
+                .map(|&bulk| {
+                    let (d, n) = time(bulk);
+                    let name = if bulk { "bulk" } else { "portable" };
+                    let cold = if round == 1 && bulk == order[0] {
+                        " (cold)"
+                    } else {
+                        ""
+                    };
+                    format!("{name}{cold} {d:?} ({n:?} entries)")
+                })
+                .collect();
+            println!("round {round}: {}", results.join(" · "));
+        }
+        // on this share too: the same entries, and they pass the check of E5
+        #[cfg(target_os = "macos")]
+        if let Some(bulk) = list(&dir) {
+            let portable = crate::listing::list_directory_std(&dir).unwrap();
+            assert_eq!(bulk.entries, portable.entries, "bulk differs from portable");
+            assert_passes_the_check(&bulk.entries);
         }
     }
 }
