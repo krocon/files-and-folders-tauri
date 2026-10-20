@@ -23,6 +23,7 @@ export interface SettingsValues {
   'shell.loginPath': boolean;
   'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
+  'search.templates': readonly unknown[];
 }
 
 export type SettingKey = keyof SettingsValues;
