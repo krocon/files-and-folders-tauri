@@ -1,6 +1,6 @@
-# TODO – Stand Montag, 19.10.2026
+# TODO – Stand Mittwoch, 21.10.2026
 
-Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokumente
+Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen) (Details: `prompts/README.md`, Design-Dokumente
 `prompts/NNN-*.design.md` mit Abschnitten „Review“ und „Offen“). `pnpm check` auf `main` grün (Linux).
 
 ## 0. SCSS → CSS
@@ -9,10 +9,21 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 
 ## 1. Laufende Prompts
 
+- [x] **022, 024, 025, 026, 031** (20./21.10., alle in `main`, PRs #19/#20): Konfigurations-Editoren, Attribute ändern,
+      Archive erweitert (7z/RAR/Passwörter/ansehen), Import alter Konfiguration, Tabs ziehen + Verknüpfungen. Je ein
+      **externes Review** (separater Agent), alle Befunde behoben – Tabellen „Externes Review“ in den Designs
+      (`prompts/done/`). Wichtigste Korrekturen: Jobs arbeiten mit dem geprüften Pfad, `..` abgelehnt, Gefahrenprüfung
+      physisch (alle Job-Arten); Attribute über Ordner-Deskriptoren ohne Link-Folgen; 7z-Header fail-closed geprüft
+      (Bomben-Testdaten, Mutations-Fuzzing ohne Befund); Tools aus dem Import einzeln sichtbar/gewählt + Digest.
+- [ ] **023 eingebauter Editor** – verworfen (Marc, 20.10.).
+- [ ] **027 Persistenz je Ordner** – Prompt noch zu schreiben.
+- [ ] **Neuer Folge-Prompt „Archive bearbeiten“**: in ZIP/TAR (dann 7z) kopieren und darin löschen – Temp-Datei +
+      atomar ersetzen, als Job (025 E9).
+
 - [x] **030 Ordner-Cache + schnelleres Listing (SMB)** (20.10., in `main`). `getattrlistbulk` auf dem Mac geprüft (gleich
       auf APFS/SMB), an der SMB-Freigabe gemessen – kein Gewinn, ausgebaut (Branch `chore/ohne-getattrlistbulk`).
       **Bei Marc:** in der App in einen SMB-Ordner, Unterordner, zurück → sofort da, „Stand … · wird geprüft …“.
-- [x] **029 Bedienbar bei langen Jobs** (20.10., Branch `feat/reaktionsfaehig-bei-jobs`, gepusht, **nicht** gemergt):
+- [x] **029 Bedienbar bei langen Jobs** (20.10., in `main`):
       Anlass Marcs Screenshot (Ziel-Panel beim Kopieren aufs langsame Laufwerk gesperrt). Auffrischen ohne Overlay,
       Drossel, Hinweis „antwortet langsam“ + Esc, Tab-Wechsel sofort aus dem letzten Listing, Watcher hält Rescans von
       Job-Zielen zurück, ein Listing je hängendem Ordner, 1-MiB-Blöcke + `F_NOCACHE`, Commands async. E2E unter Xvfb
@@ -20,7 +31,7 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
       bedienbar? `F_NOCACHE` messbar (Aktivitätsanzeige → Speicher)? Menüs/Fenster nach der async-Umstellung normal?
 - [x] **015 Einstellungen/i18n** – in `main` (19.10.): `main` eingemergt (About aus 017 bleibt, Texte von
       016/017/019 übersetzt), E2E unter Xvfb, Review (16 Befunde, Tabelle in Design §6), Doku. Offen (Design §9):
-      Button-Editor, Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
+      ~~Button-Editor~~ (022), Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
       Netzlaufwerk-Polling nur E2E bzw. ohne eigenen Store-Test.
 - [x] **018 Feature-Parität + 020 Actions-Menü** (19.10.): Matrix gegen `old_project/` in `docs/feature-parity.md`
       (192 ✅, 26 🟡, 11 ⬜, 24 ✖), kleine Lücken geschlossen, E2E Linux. Nächstes: Folge-Prompts **021–028** schreiben
@@ -42,6 +53,14 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 - [ ] Arbeitstag (018) auf macOS und Windows: markieren, F5 mit Konflikt, Multi-Rename, Gruppieren, Suchen, Tabs,
       Neustart; alte Kürzel ⌃⌘D (abwählen), ⌃⌥D (Pfad), ⌃⌘C/M/R/A, ⌃⌥G/N/M, ⇧Leertaste.
 - [ ] Actions-Menü (020): ⌃K ⌃M öffnet es (macOS), Badges `^ ⌘ alt ⇧` lesbar in hellen und dunklen Designs.
+- [ ] Konfig-Editoren (022): Vollbild über die Palette (macOS) und F11 (Windows); Button-/Dateityp-Editor.
+- [ ] Attribute (024): macOS „versteckt“ im Finder, Erstellzeit; Windows R/H/S/A im Explorer, Zeiten auf Ordnern,
+      lange Pfade (> 260).
+- [ ] Archive (025): 7z/RAR auf macOS/Windows öffnen und entpacken, Passwortdialog; aus einem heruntergeladenen Archiv
+      Entpacktes trägt die Quarantäne (macOS) bzw. Zone.Identifier (Windows) – Datei öffnen zeigt die Warnung.
+- [ ] Import (026): echte alte mr-Installation (macOS) importieren, Kürzel/Buttons/Tools prüfen.
+- [ ] Tabs/Links (031): Tab mit ⌥ ziehen (Kopie), ⌃⇧Bild↑/↓; Datei mit ⌘⌥ ziehen = Link; Windows ohne Entwicklermodus
+      → Meldung `link_not_permitted`.
 
 ## 3. CI und Plattformen
 
@@ -49,19 +68,32 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
       `#[cfg]`-Code aus 006–016 auf, der im Container nie kompiliert wurde (Fehler wahrscheinlich).
 - [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
       007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
-- [ ] Projektlizenz festlegen (Voraussetzung für jedes Release, `docs/release.md`) + `THIRD-PARTY-NOTICES`.
+- [ ] `THIRD-PARTY-NOTICES` erzeugen (Lizenz MIT ist festgelegt); UnRAR-Lizenzabsatz ist Pflicht (`docs/licenses.md`).
+- [ ] CI muss neu den Code aus 022–031 für macOS/Windows kompilieren: `platform/attributes.rs` (`Dir`, `setattrlistat`,
+      `SetFileInformationByHandle`), `entry_id`, `make_symlink`, `platform/origin_mark.rs`, UnRAR-C++-Build
+      (Xcode/MSVC, Feature `rar`). Rust ≥ 1.93 in den Workflow-Vorlagen (`docs/ci/`) prüfen.
 
 ## 4. Kleinere offene Punkte
+
+- [ ] 022: doppelte Kategorienamen nur in der gespeicherten Form verglichen („Filme“ neben `movies`); `aria-invalid` an
+      `role=option`; Buttons für Tools aus `tools.json`.
+- [ ] 024: Eigentümer/Gruppe ändern (`getgroups` + `fchownat`); Windows: Zwischenordner werden per Pfad aufgelöst.
+- [ ] 025: Passwort-Banner im Panel zeigt den Text doppelt; mehrteilige Archive; 7z-Passwörter mit 1024 Zeichen und
+      2²² Runden ≈ 45 s (Längengrenze?); UnRAR formal Data Race (blake2s/ErrHandler, upstream); Upstream-Issue an
+      `sevenz-rust2`: Grenzen in `Archive::read`, keine Header-Suche ohne CRC.
+- [ ] 026: Fokus nach der Rückfrage ins Pfadfeld statt auf „Importieren“; kein Timeout beim Scan auf hängendem NAS.
+- [ ] 031: „Verknüpfung anlegen“ im Kontextmenü der Liste.
+- [ ] Flackernd unter Last: `watch::tests::a_busy_target_holds_its_reload_until_the_job_ends` (wie der Rescan-Test).
 
 - [ ] Flackernder Test: `watch::tests::a_mass_change_becomes_a_rescan` scheiterte einmal im Gesamtlauf (timing).
 - [ ] Bundle-Budget auf 1,5 MB angehoben (Merge 009) – Dialoge per `@defer` nachladen, dann zurücksetzen.
 - [ ] 019: Kontrast-Korrekturen in `docs/legacy-themes-contrast.md` durchsehen; Fehlertext in Dialogen hat kein
       eigenes Token (Norton 1,9:1).
-- [ ] 016: 7z/RAR, Dateien im Archiv ansehen, ZIP-Zeiten als UTC, Konfliktdialog sagt „Cancel copying“.
+- [x] 016: 7z/RAR, Dateien im Archiv ansehen, ZIP-Zeiten, Konfliktdialog „Cancel copying“ – erledigt mit 025.
 - [x] 012: Ziehen aus der App ins System – **028** (20.10., Branch `feat/drag-ins-system`). **Bei Marc prüfen:**
       Datei/Ordner/mehrere markierte aus der Liste in den Finder, auf den Schreibtisch und in Mail ziehen (macOS);
-      Explorer/Desktop unter Windows (erst die CI kompiliert den Code – `drag`-Crate). Offen: Verknüpfung per Drag,
-      Tabs zwischen den Seiten ziehen, Verschieben ins System.
+      Explorer/Desktop unter Windows (erst die CI kompiliert den Code – `drag`-Crate). Verknüpfung per Drag und
+      Tabs ziehen: erledigt mit 031; Verschieben ins System bewusst nicht (031 E11).
 - [x] Drop aus dem Finder landete auf dem Mac immer links (Position doppelt skaliert) + Tabs als Drop-Ziele – Branch
       `feat/drop-ziele-tabs` (auf 028). **Bei Marc prüfen:** Finder → rechte Seite, Finder → nicht offener Tab.
 - [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).

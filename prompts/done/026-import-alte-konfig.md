@@ -2,7 +2,7 @@
 
 > **Slug:** `import-alte-konfig` · **Braucht:** 002 (Keymap-Override), 011 (Tools, mr-Import), 015 (Einstellungen,
 > Bündel-Import), 019 (`--fnf-*`-Import), 022 (Nutzerdateien Buttons/Dateitypen, Suchvorlagen) · **Umfang:** M
-> Lies zuerst `prompts/000-arbeitsweise.md`, dann `prompts/022-konfig-editoren.design.md` (E1, E4, E8: Formate) und
+> Lies zuerst `prompts/000-arbeitsweise.md`, dann `prompts/done/022-konfig-editoren.design.md` (E1, E4, E8: Formate) und
 > `docs/feature-parity.md` („Lesehilfe Kürzel alt“, Abschnitt A, „Folge-Prompts“ 026).
 > Marc hat am 20.10.2026 den Umfang festgelegt (unten); Details entscheidet das Design, ohne Haltepunkt nach Phase 1.
 

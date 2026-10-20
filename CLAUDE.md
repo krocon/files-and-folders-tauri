@@ -29,17 +29,23 @@
   Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr), Prompt 021 (Shell-Leiste mit Pipes) und Prompt
   029 (bedienbar bei langen Jobs/langsamen Laufwerken, Branch `feat/reaktionsfaehig-bei-jobs`) und Prompt 030 (Ordner-Cache
   für langsame Laufwerke; `getattrlistbulk` gemessen und wieder ausgebaut) und Prompt 028 (Ziehen ins System, nur
-  Kopieren) sind fertig. Als Nächstes: Folge-Prompts 022–027 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
+  Kopieren) und Prompt 022 (Konfigurations-Editoren: Buttons, Dateitypen, dauerhafte Suchvorlagen, Vollbild F11), Prompt
+  024 (Attribute ändern: Rechte/Oktal, R/H/S/A, macOS versteckt, Zeitstempel als Job `attributes`; Eigentümer/Gruppe
+  offen), Prompt 025 (Archive: 7z lesen/packen, RAR lesen, Passwörter nur im Speicher, Einträge ansehen/öffnen über
+  einen App-Cache; in Archive schreiben offen), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
+  Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) sind
+  fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: 027 (Persistenz je
+  Ordner) und „Archive bearbeiten“ (noch zu schreiben), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–030 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–031 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
   `docs/legacy-themes/` (die acht Default-Designs).
 
-## 2. Befehle (Root, pnpm 10 via `packageManager`, Node ≥ 22.22.3, Rust stable ≥ 1.90)
+## 2. Befehle (Root, pnpm 10 via `packageManager`, Node ≥ 22.22.3, Rust stable ≥ 1.93 – `sevenz-rust2`, Design 025)
 
 | Zweck | Befehl |
 |---|---|
@@ -97,6 +103,16 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/archive/          archive-names.ts (Endungen wie Rust, Default-Archivname) – Archive kommen über
                              `list_directory` (virtuelle Pfade, `DirectoryListing.archive`)
   app/features/archive/      ArchiveStore (Pack/Unpack/Extract als Jobs), Dialoge, Aktionen + Veto im Archiv
+  app/core/archive/ (025)    archive-api.ts (`set_archive_password`), archive-password-prompt.ts; features/archive/
+                             password-dialog.ts (Passwort nur im Speicher von Rust)
+  app/core/attributes/       DTOs des Jobs `attributes` (`AttrChange`, `TimeValue`, `ApplyTo`)
+  app/features/attributes/   attributes-logic.ts (rein: Dreifach-Zustand, Oktal, Änderung bauen), AttributesStore (Root) +
+                             Dialog, Aktion OPEN_CHANGE_ATTRIBUTES_DLG (024)
+  app/core/config/           ConfigApi + DTOs (buttons.json, filetypes.json, toggle_fullscreen); core/file-icon/
+                             file-types.json + file-types-logic.ts (`FILE_TYPES`-Signal, 022)
+  app/features/config/       ButtonConfigStore, FileTypesStore, Dialoge Buttons/Dateitypen, button-config-logic.ts (022)
+  app/core/mrimport/, features/mrimport/  Import alter mr-Konfiguration: MrImportApi, mr-import-logic.ts (rein), Root-Store,
+                             Assistent (026)
   app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen),
@@ -119,12 +135,13 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
   app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
-  app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten),
+  app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten), TabDragStore
+                             (Root: Tabs ziehen) + tab-drag-logic.ts (rein, 031),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
   app/shared/                Formatierung (Größe, Datum), dialog/ (DialogService, Modal mit Fokusfalle,
                              tool-dialog.css), preview-grid/ (GuiExpert Table für Vorschauen)
   assets/                    font-awesome-4.5.0/ (Font Awesome 4.5.0 Fonts + CSS)
-  testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
+  testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge, Fake{Config,Archive,MrImport}Api (nie im Produktivcode importieren)
   styles.css                 Design-Tokens, Font-Awesome-Import (@import assets/font-awesome-4.5.0/...)
   styles/ge-table-theme.css  GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
   styles/controls.css        `.btn` + Eingabefelder/Selects/Checkboxen in Dialogen (eine Höhe `--control-height`);
@@ -147,13 +164,22 @@ src-tauri/                   Rust (Tauri 2)
                              (Papierkorb/endgültig), rename (Multi-Rename: Prüfung, Ketten/Zyklen, Undo-Paare),
                              group (Gruppenordner + Copy/Move-Paare), clean (Aufräumen, prüft jeden Eintrag neu),
                              search (Treffer gebündelt streamen),
-                             report (Drosselung); tests_engine.rs, tests_ops.rs, tests_tools.rs
+                             report (Drosselung), attributes (024: Rekursion mit Filter, kein fremdes FS), link (031:
+                             symbolische Links, `relative_target`, nie überschreiben), view (025: Archiv-Eintrag für
+                             Enter); tests_engine.rs, tests_ops.rs, tests_tools.rs, tests_attributes.rs, tests_link.rs
   src/preview/               read_preview (Kopf 8 KiB, Limits), detect.rs (Magic Bytes, Endung passt nicht),
                              encoding.rs (UTF-8/16, 1252, Latin-1), ImageTokens + serve_image für Schema `fnfpreview`
   src/properties.rs          Eigenschaften (Zeiten, Unix-Modus/Eigentümer, Windows-Attribute, Link-Ziel)
   src/watch/                 Ordner-Überwachung: mod.rs (WatchHub, notify + PollWatcher, Thread), batch.rs (Entprellen,
                              rein), netfs.rs (Netzlaufwerk?); Commands in commands/watch.rs
-  src/archive/               Archive: Index (ZIP/TAR/TAR.GZ), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
+  src/attributes.rs          Attribute als Differenz, Validierung je OS (024); platform/attributes.rs: `Dir` (Ordner-
+                             Deskriptor, *at-Aufrufe ohne Link-Folgen / Windows-Handle + FileBasicInfo)
+  src/config_file.rs         gemeinsamer Lader für Nutzerdateien; buttons.rs, filetypes.rs, commands/config.rs (022)
+  src/mr_import/             Import der mr-Konfiguration (026): mod.rs Fundort/Scan/apply, keys.rs Id-Tabelle/Notation/†,
+                             tests.rs + fixtures/; commands/mr_import.rs
+  src/archive/               Archive: Index (ZIP/TAR/TAR.GZ, 7z `sevenz.rs` + fail-closed Vorabprüfung
+                             `sevenz_header.rs`, RAR `rar.rs` = einziges FFI/`unsafe`, Feature `rar`), `secrets.rs`
+                             (Passwörter), `view.rs` (App-Cache zum Ansehen), testdata/ (+ Generatoren), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
                              `list_directory_or_archive` (virtuelle Pfade); Jobs `jobs/extract.rs`, `jobs/pack.rs`,
                              `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`
   src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
@@ -169,7 +195,8 @@ src-tauri/                   Rust (Tauri 2)
   src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `os_drag.rs` (nativer Drag:
-                             Crate `drag` auf macOS/Windows, eigenes GTK unter Linux)
+                             Crate `drag` auf macOS/Windows, eigenes GTK unter Linux), `origin_mark.rs` (Mark-of-the-Web/
+                             Quarantäne aufs Entpackte, 025), `clock.rs`; `make_symlink`, `entry_id` in platform.rs
   capabilities/default.json  nur core:default
   icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
 scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);
@@ -212,6 +239,12 @@ prompts/                     Feature-Prompts (s. o.)
   bleibt bedienbar), automatische nur über `requestRefresh` (Drossel nach langsamen Listings).
 - **Blockierende I/O nie auf dem Async-Runtime-Thread**: `tauri::async_runtime::spawn_blocking` oder eigene Worker.
   Lange Operationen (Kopieren, Suche) als Job mit Fortschritt über `tauri::ipc::Channel` und Abbruch-Token.
+- **Job-Pfade** (Review 024/031): `JobManager::start` normalisiert jeden Pfad jeder Job-Art (`paths::validate_job_path`,
+  ohne `.`/abschließenden Separator), `..` wird abgelehnt; der Job arbeitet genau mit dem geprüften Pfad. Die
+  Gefahrenprüfung (`paths::DangerCheck`) prüft zusätzlich den physischen Ort (Elternordner kanonisch).
+- **Fremde Archive sind feindlich** (025): Vorabprüfungen fail-closed (was nicht sicher beurteilt wird, wird abgelehnt),
+  jede Anzahl/Größe vor der Allokation begrenzen; Passwörter nur im Speicher (`archive::secrets`, `Zeroizing`), nie
+  serialisiert, geloggt oder in Events; Entpacktes erbt die Herkunftsmarke des Archivs.
 - **Destruktive Operationen** (Löschen, Überschreiben, Verschieben) werden im Rust-Backend validiert und getestet
   (tempfile), nie nur im Frontend. Standard beim Löschen ist der Papierkorb.
 - **Sicherheit**: keine Tauri-Plugins mit breitem Dateisystem- oder Shell-Zugriff; jede Fähigkeit als schmaler,

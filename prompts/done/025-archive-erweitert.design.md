@@ -1,6 +1,6 @@
 # Design 025: Archive erweitert – 7z, RAR, Passwörter, Dateien im Archiv öffnen
 
-> **Status:** ✅ umgesetzt ohne Freigabe-Halt (Marc, 20.10.2026: „jetzt und selbständig“, Rahmen in `prompts/025-*.md`) ·
+> **Status:** ✅ umgesetzt ohne Freigabe-Halt (Marc, 20.10.2026: „jetzt und selbständig“, Rahmen in `prompts/done/025-*.md`) ·
 > **Datum:** 2026-10-20 · **Branch:** `feat/archive-erweitert` (von `main`)
 > **Grundlage:** Design 016 (E1–E5, Review, Offen), mr `cmd/pack` + `cmd/unzip` (node-7z, Passwortfeld, 7z als
 > Default), Design 010 (Vorschau), 011 (Öffnen mit Standard-App), 005/006 (Jobs, Konfliktfrage).

@@ -1,6 +1,6 @@
 # macOS: Signieren und Notarisieren (Direktvertrieb)
 
-> Prompt 031 (`prompts/031-apple.md`). Ziel: `.app`/`.dmg` außerhalb des App Stores, die Gatekeeper ohne Warnung
+> Prompt 031 (`prompts/done/031-apple.md`). Ziel: `.app`/`.dmg` außerhalb des App Stores, die Gatekeeper ohne Warnung
 > öffnet – **Developer ID Application** + Notarisierung über `notarytool`. Überblick über alle Plattformen:
 > [release.md](release.md). Stand Okt. 2026, Tauri 2 (Quelle: <https://v2.tauri.app/distribute/sign/macos/>).
 
