@@ -42,6 +42,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 020 | [020-actions-menue.md](020-actions-menue.md) | Actions-Menü nach Vorbild der alten Version (4 kuratierte Spalten, Trennlinien, Shortcut-Badges nach mr §1.8) | 002, 004, 014 | S–M |
 | 021 | [021-shell-leiste.md](021-shell-leiste.md) | Shell-Leiste (`TOGGLE_SHELL`): Befehlszeile im Ordner des aktiven Panels, gestreamte Ausgabe als Job, `cd` navigiert das Panel, Verlauf, Sicherheitsmodell | 004, 005, 011, 012 | M |
 | 022–028 | (Vorschlag aus 018, noch kein Prompt) | Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner · Drag & Drop erweitert – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
+| 029 | [029-reaktionsfaehig-bei-jobs.md](029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
