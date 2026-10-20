@@ -342,7 +342,12 @@ pub fn bundle(files: &ConfigFiles) -> Value {
     // design 022 E10: the button sets of the user file; the categories or null without a user file
     out.insert(
         "buttons".into(),
-        serde_json::to_value(buttons::load(&files.buttons).value.sets).unwrap_or(Value::Null),
+        // no user file = null (skipped on import, like fileTypes – external review 022/026 #11)
+        if files.buttons.exists() {
+            serde_json::to_value(buttons::load(&files.buttons).value.sets).unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
     );
     out.insert(
         "fileTypes".into(),
@@ -781,6 +786,20 @@ mod tests {
     }
 
     #[test]
+    fn a_bundle_without_own_buttons_does_not_reset_them() {
+        // external review 022/026 #11: no user file = null (skipped on import), like fileTypes
+        let dir = tempdir().unwrap();
+        let files = config(&dir.path().join("cfg"));
+        let b = bundle(&files);
+        assert_eq!(b["buttons"], Value::Null);
+        assert_eq!(b["fileTypes"], Value::Null);
+        let mut sets = buttons::Sets::new();
+        sets.insert("shift".into(), vec!["OPEN_COPY_DLG".into()]);
+        buttons::save(&files.buttons, sets).unwrap();
+        assert_eq!(bundle(&files)["buttons"]["shift"][0], "OPEN_COPY_DLG");
+    }
+
+    #[test]
     fn import_skips_invalid_parts_and_sanitises_settings() {
         let dir = tempdir().unwrap();
         let dst = config(dir.path());
@@ -847,7 +866,7 @@ mod tests {
         let out = export(&empty, &dir.path().join("b ü")).unwrap();
         let bundle = read_bundle(&out).unwrap();
         assert_eq!(bundle["fileTypes"], Value::Null);
-        assert_eq!(bundle["buttons"], json!({}));
+        assert_eq!(bundle["buttons"], Value::Null);
         let report = import(&empty, &bundle, &["fileTypes".into()]).unwrap();
         assert!(report.imported.is_empty());
         assert_eq!(report.warnings[0].code, "part_skipped");

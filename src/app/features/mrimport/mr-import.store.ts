@@ -52,6 +52,8 @@ export class MrImportStore {
   readonly scan = signal<MrScan | null>(null);
   readonly mode = signal<ImportMode>('merge');
   readonly chosen = signal<ReadonlySet<MrAreaId>>(new Set());
+  /** Tools are chosen one by one (review 026 #1); none by default (they start programs). */
+  readonly chosenTools = signal<ReadonlySet<string>>(new Set());
   readonly busy = signal(false);
   /** Result or error of the last step (live region). */
   readonly message = signal('');
@@ -75,7 +77,7 @@ export class MrImportStore {
 
   readonly plans = computed<readonly AreaPlan[]>(() => {
     const scan = this.scan();
-    return scan ? planAll(scan, this.state(), this.mode()) : [];
+    return scan ? planAll(scan, this.state(), this.mode(), this.chosenTools()) : [];
   });
 
   /** Conflicts in the chosen areas (they need a confirmation, E12). */
@@ -108,7 +110,8 @@ export class MrImportStore {
   /** Reads the folder (stale answers are dropped). */
   async find(): Promise<void> {
     const path = this.path().trim();
-    if (!path) {
+    // one scan at a time: a hanging drive must not collect threads (review 026 #8)
+    if (!path || this.busy()) {
       return;
     }
     const seq = ++this.seq;
@@ -120,6 +123,7 @@ export class MrImportStore {
       if (seq !== this.seq) {
         return;
       }
+      this.chosenTools.set(new Set());
       this.scan.set(scan);
       this.chosen.set(defaultSelection(this.plans()));
       this.message.set(MR_IMPORT_TEXTS.found(scan.root));
@@ -140,6 +144,10 @@ export class MrImportStore {
   }
 
   toggle(area: MrAreaId, on: boolean): void {
+    if (area === 'tools') {
+      // the area box chooses all tools or none
+      this.chosenTools.set(new Set(on ? (this.scan()?.tools?.items ?? []).map((t) => t.id) : []));
+    }
     const next = new Set(this.chosen());
     if (on) {
       next.add(area);
@@ -147,6 +155,24 @@ export class MrImportStore {
       next.delete(area);
     }
     this.chosen.set(next);
+  }
+
+  /** One tool on or off; the area is chosen while at least one tool is. */
+  toggleTool(id: string, on: boolean): void {
+    const next = new Set(this.chosenTools());
+    if (on) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    this.chosenTools.set(next);
+    const areas = new Set(this.chosen());
+    if (next.size > 0) {
+      areas.add('tools');
+    } else {
+      areas.delete('tools');
+    }
+    this.chosen.set(areas);
   }
 
   /** Asks if own entries are replaced (E12), then writes and reloads. */
@@ -190,6 +216,12 @@ export class MrImportStore {
           notes.push(MR_IMPORT_TEXTS.partFailed(name, w.path ?? ''));
         } else if (w.code === 'part_skipped') {
           notes.push(MR_IMPORT_TEXTS.partSkipped(name));
+        } else if (w.code === 'source_changed') {
+          notes.push(MR_IMPORT_TEXTS.sourceChanged);
+        } else if (w.code === 'too_many') {
+          notes.push(MR_IMPORT_TEXTS.tooManyTools);
+        } else if (w.code === 'invalid_value') {
+          notes.push(MR_IMPORT_TEXTS.valueRefused(w.key ?? ''));
         }
       }
       const themesBlocked = report.warnings.some((w) => w.key === 'themes');
@@ -209,6 +241,15 @@ export class MrImportStore {
         }
       }
       await this.reload(report.imported);
+      if (report.imported.includes('tools')) {
+        // review 026 #10: tool shortcuts that were left out after loading
+        const labels = (plans.find((p) => p.area === 'tools')?.apply?.tools?.ids ?? []).map(
+          (id) => this.scan()?.tools?.items.find((t) => t.id === id)?.label ?? id,
+        );
+        notes.push(
+          ...this.actions.extraProblems().filter((x) => labels.some((l) => x.includes(l))),
+        );
+      }
       const names = areaList(done);
       this.message.set(
         [
@@ -222,6 +263,7 @@ export class MrImportStore {
       this.chosen.set(new Set());
       // the next plan starts from the new state, without a surprise "replace"
       this.mode.set('merge');
+      this.chosenTools.set(new Set());
     } catch (err) {
       this.message.set('');
       this.error.set(MR_IMPORT_TEXTS.failed(errorText(toFsError(err))));
@@ -265,6 +307,13 @@ export class MrImportStore {
         ACTIONS[c.to].label,
       );
     }
+    if (c.kind === 'toolShortcut') {
+      return t.toolShortcut(
+        c.tool,
+        formatShortcut(c.shortcut, this.actions.platform()),
+        ACTIONS[c.owner].label,
+      );
+    }
     if (c.kind === 'action') {
       return t.replaced(ACTIONS[c.id].label);
     }
@@ -284,7 +333,7 @@ function partsOf(p: AreaPlan): SettingsPart[] {
     [a.buttons, 'buttons'],
     [a.fileTypes, 'fileTypes'],
     [a.settings, 'settings'],
-    [a.toolsFrom, 'tools'],
+    [a.tools, 'tools'],
   ];
   for (const [value, part] of parts) {
     if (value !== undefined) {

@@ -490,7 +490,10 @@ pub fn merge_file(
             None => own.push(v),
         }
     }
-    own.truncate(MAX_TOOLS);
+    if own.len() > MAX_TOOLS {
+        // review 026 #6: never drop tools silently
+        return Err("too_many".into());
+    }
     Ok(serde_json::json!({
         "version": VERSION,
         "replaceDefaults": file.replace_defaults,

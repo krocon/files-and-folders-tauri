@@ -107,7 +107,8 @@ Menü hat ⌃⌘F, ein zweites Kürzel würde doppelt schalten. Menü „Ansicht
 Palette auf allen OS.
 
 **E10 Export/Import:** `PARTS` += `buttons`, `fileTypes`. Bündel enthält die geprüfte Nutzerdatei (Buttons: das
-`sets`-Objekt; Dateitypen: die Kategorien oder `null` ohne eigene Datei – wie `tools`). Import schreibt über die
+`sets`-Objekt; Dateitypen: die Kategorien) oder `null` ohne eigene Datei – wie `tools` (externes Review #11: Buttons
+waren vorher `{}` und setzten beim Import die Leiste des Ziels zurück). Import schreibt über die
 Module (sanitize, atomar), hebt `write_blocked` auf; das Frontend lädt die Stores neu. Ein `null`-Teil wird wie
 bisher als `part_skipped` gemeldet.
 
@@ -212,7 +213,15 @@ Vorlage speichern…“ bekam keinen Fokus → `startNaming()` fokussiert es.
 | 6 | Erfolgsmeldung nach Speichern als klebende Notiz wäre störend – entfernt; die Leiste/Liste ändert sich sichtbar, der Fokus kehrt zum Öffner zurück | ok |
 | 7 | Namensvergleich „schon vergeben“ nutzt die gespeicherten Namen – ein deutscher Nutzer kann „Filme“ neben `movies` anlegen (zwei gleich aussehende Einträge) | offen, gering |
 | 8 | `aria-invalid` an `role="option"` (Kategorie mit Fehler) ist in ARIA 1.2 nicht mehr global; der Fehlertext steht zusätzlich im Detailbereich (`aria-live`) | offen, gering |
-| 9 | Ein Bündel ohne eigene Dateitypen exportiert `fileTypes: null` → Import meldet „übersprungen“ statt „zurücksetzen“ (wie `tools`) | bewusst |
+| 9 | Ein Bündel ohne eigene Dateitypen exportiert `fileTypes: null` → Import meldet „übersprungen“ statt „zurücksetzen“ (wie `tools`); seit dem externen Review #11 gilt das auch für `buttons` | bewusst |
+
+## 6a. Externes Review (21.10.2026)
+
+Unabhängiges Review von 022 und 026; Befunde 1–10 betreffen 026 (Design 026 §6a).
+
+| Nr | Schwere | Befund | Status / Test |
+|---|---|---|---|
+| 11 | niedrig | Bündel-Asymmetrie: `buttons` ohne Nutzerdatei als `{}` (Import setzte die Buttons des Ziels zurück), `fileTypes` als `null` (übersprungen) | behoben: beide `null` ohne Nutzerdatei, Import überspringt (`part_skipped`) – Rust `settings.rs` › `a_bundle_without_own_buttons_does_not_reset_them`, `buttons_and_file_types_are_exported_and_imported` |
 
 ## 7. Offen
 

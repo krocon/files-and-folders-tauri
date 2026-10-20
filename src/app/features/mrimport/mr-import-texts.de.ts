@@ -75,7 +75,14 @@ export const MR_IMPORT_DE: Translation<typeof MR_IMPORT_EN> = {
   backups: (n) => (n === 1 ? '1 Sicherung angelegt.' : `${n} Sicherungen angelegt.`),
   partFailed: (part, path) => `${part} konnte nicht geschrieben werden (${path}).`,
   partSkipped: (part) =>
-    `${part} wurden übersprungen: die vorhandene Datei konnte nicht gelesen werden.`,
+    `${part} wurden übersprungen: die vorhandene Datei ist nicht lesbar oder stammt von einer neueren Version.`,
+  sourceChanged:
+    'Tools wurden nicht importiert: die Datei der alten Version hat sich nach der Vorschau geändert – bitte erneut suchen.',
+  tooManyTools: 'Tools wurden nicht importiert: es wären zu viele Tools (höchstens 200).',
+  valueRefused: (key) =>
+    `${key} wurde nicht geändert: der importierte Wert ist zu groß oder ungültig.`,
+  toolShortcut: (tool, shortcut, owner) =>
+    `${tool}: ${shortcut} gehört zu ${owner} – das Tool bekommt kein Kürzel`,
   colorFailed: (name, reason) => `${name}: ${reason}`,
   failed: (reason) => `Der Import ist fehlgeschlagen: ${reason}`,
 };

@@ -34,12 +34,14 @@ pub async fn apply_old_config<R: Runtime>(
             None,
         ));
     }
-    if let Some(root) = &plan.tools_from {
-        resolve_input(&app, root)?;
-    }
+    // review 026 #9: the checked path is the one that is read
+    let tools_dir = match &plan.tools {
+        Some(t) => Some(resolve_input(&app, &t.from)?),
+        None => None,
+    };
     let files = ConfigFiles::in_dir(&config_dir(&app)?);
     let report = blocking("Importing the old configuration", move || {
-        Ok(mr_import::apply(&files, plan, MrOs::current()))
+        Ok(mr_import::apply(&files, plan, MrOs::current(), tools_dir))
     })
     .await?;
     unblock_imported(&app, &report.imported);

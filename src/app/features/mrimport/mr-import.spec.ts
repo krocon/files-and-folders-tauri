@@ -110,7 +110,7 @@ describe('mr import (design 026)', () => {
       OPEN_FIND_DLG: ['Alt+F7'],
       OPEN_COMMAND_PALETTE: ['Mod+Shift+P', 'Mod+F'],
     });
-    expect(written!.toolsFrom).toBeUndefined();
+    expect(written!.tools).toBeUndefined();
     const actions = TestBed.inject(ActionService);
     expect(actions.keymap().lookup.get('Mod+F')).toBe('OPEN_COMMAND_PALETTE');
     expect(store.message()).toBe('Imported: Keyboard shortcuts. 1 backup made.');
@@ -134,7 +134,7 @@ describe('mr import (design 026)', () => {
     expect(api.applied).toEqual([]);
   });
 
-  it('not found, errors and stale answers', async () => {
+  it('not found and errors; a search while one runs is ignored', async () => {
     const store = await setup();
     api.failScan = { code: 'not_found', message: 'x', path: '/nope' };
     store.path.set('/nope');
@@ -147,6 +147,9 @@ describe('mr import (design 026)', () => {
     api.result = emptyScan({ root: '/b/assets' });
     store.path.set('/b');
     await Promise.all([first, store.find()]);
+    // the second call came while the first ran: ignored (review 026 #8)
+    expect(api.scanned).toEqual(['/nope', '/a']);
+    await store.find();
     expect(store.scan()?.root).toBe('/b/assets');
   });
 
@@ -177,6 +180,93 @@ describe('mr import (design 026)', () => {
     expect(colors.unchanged).toBe(1);
     expect(colors.colorPaths).toEqual(['/old/color/custom/gone.json']);
     expect(store.mode()).toBe('merge');
+  });
+
+  it('tools are shown one by one with program and arguments and chosen one by one (review #1, #2)', async () => {
+    const store = await setup();
+    const tool = {
+      id: 'edit',
+      label: 'Edit',
+      program: '/tmp/x.sh',
+      args: ['{file}'],
+      perFile: true,
+      fileLimit: 4,
+    };
+    api.result = emptyScan({
+      tools: area(
+        [tool, { ...tool, id: 'meld', label: 'Meld', program: 'meld', args: ['-n', '{file}'] }],
+        {
+          digest: 'abc',
+          skipped: [{ item: 'Script', reason: 'old_script' }],
+          skippedMore: 3,
+        },
+      ),
+    });
+    store.path.set('/old');
+    const fixture = TestBed.createComponent(MrImportDialog);
+    fixture.detectChanges();
+    await store.find();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const rows = [...el.querySelectorAll<HTMLElement>('.tools li')];
+    expect(rows.map((r) => r.querySelector('.mono')?.textContent?.trim())).toEqual([
+      '/tmp/x.sh {file}',
+      'meld -n {file}',
+    ]);
+    const boxes = rows.map((r) => r.querySelector<HTMLInputElement>('input[type="checkbox"]')!);
+    expect(boxes.every((b) => !b.checked)).toBe(true);
+    expect(store.chosen().has('tools')).toBe(false);
+    boxes[1].click();
+    fixture.detectChanges();
+    expect(store.chosen().has('tools')).toBe(true);
+    const summary = [...el.querySelectorAll('.areas .summary')][4].textContent?.trim();
+    expect(summary).toBe('1 to import · 4 not transferred');
+    await store.run();
+    expect(api.applied[0].tools).toEqual({
+      from: '/old/apps/fnf-api/src/assets',
+      digest: 'abc',
+      ids: ['meld'],
+      replace: false,
+    });
+  });
+
+  it('reports a changed source, too many tools, refused values and taken tool shortcuts', async () => {
+    const store = await setup();
+    api.result = emptyScan({ setup: area({ 'view.density': 'condensed' }) });
+    store.path.set('/old');
+    await store.find();
+    api.report = {
+      imported: [],
+      warnings: [
+        { code: 'source_changed', key: 'tools', path: '/cfg/tools.json' },
+        { code: 'too_many', key: 'tools', path: '/cfg/tools.json' },
+        { code: 'invalid_value', key: 'search.templates', path: null },
+        { code: 'part_skipped', key: 'settings', path: '/cfg/settings.json' },
+      ],
+      backups: [],
+    };
+    await store.run();
+    const m = store.message();
+    expect(m).toContain('changed after the preview');
+    expect(m).toContain('too many tools');
+    expect(m).toContain('search.templates was not changed');
+    expect(m).toContain('Settings were skipped');
+  });
+
+  it('a second search while one runs is ignored (review #8)', async () => {
+    const store = await setup();
+    let release: () => void = () => undefined;
+    api.scan = (path: string) => {
+      api.scanned.push(path);
+      return new Promise((resolve) => (release = () => resolve(emptyScan())));
+    };
+    store.path.set('/slow');
+    const first = store.find();
+    await store.find();
+    await store.find();
+    expect(api.scanned).toEqual(['/slow']);
+    release();
+    await first;
   });
 
   it('dialog: folder field, areas as checkboxes with summary and details, German texts', async () => {

@@ -20,7 +20,7 @@ import {
   MrSkipped,
   MrSkipReason,
 } from '../../core/mrimport/mr-import.models';
-import { DEFAULTS, SCHEMA, SettingKey } from '../../core/settings/settings.models';
+import { acceptsValue, DEFAULTS, SCHEMA, SettingKey } from '../../core/settings/settings.models';
 import { DEFAULT_FORM, Preset, presetGlob } from '../search/find-form';
 import { SearchTemplate } from '../search/search.store';
 
@@ -78,7 +78,14 @@ export type Conflict =
     }
   | { readonly kind: 'name'; readonly name: string }
   /** Replace mode: the own shortcuts of this action are dropped. */
-  | { readonly kind: 'action'; readonly id: ActionId };
+  | { readonly kind: 'action'; readonly id: ActionId }
+  /** The shortcut of an imported tool is taken: the tool gets none (review 026 #10). */
+  | {
+      readonly kind: 'toolShortcut';
+      readonly tool: string;
+      readonly shortcut: string;
+      readonly owner: ActionId;
+    };
 
 export interface AreaPlan {
   readonly area: MrAreaId;
@@ -91,6 +98,8 @@ export interface AreaPlan {
   readonly unchanged: number;
   readonly conflicts: readonly Conflict[];
   readonly skipped: readonly MrSkipped[];
+  /** Not transferred beyond the reported ones (only counted). */
+  readonly skippedMore: number;
   /** What to write for this area (null = nothing). */
   readonly apply: MrApply | null;
   /** Colour files to import through the theme import (E9). */
@@ -110,6 +119,7 @@ function plan(
     unchanged: source?.unchanged ?? 0,
     conflicts: [],
     skipped: source?.skipped ?? [],
+    skippedMore: source?.skippedMore ?? 0,
     apply: null,
     colorPaths: [],
     ...over,
@@ -345,18 +355,31 @@ export function planSearch(
       wholeName: true,
     };
     const i = templates.findIndex((t) => t.label === p.label);
+    let before: SearchTemplate | undefined;
     if (i >= 0) {
       if (templates[i].form.name === form.name) {
         unchanged++;
         continue;
       }
       conflicts.push({ kind: 'name', name: p.label });
+      before = templates[i];
       templates[i] = { label: p.label, form };
     } else if (templates.length >= MAX_TEMPLATES) {
       skipped.push({ item: p.label, reason: 'too_many' });
       continue;
     } else {
       templates.push({ label: p.label, form });
+    }
+    // review 026 #3: what does not fit into the setting is left out, the rest stays
+    if (!acceptsValue(SCHEMA['search.templates'], templates)) {
+      if (i >= 0) {
+        templates[i] = before ?? templates[i];
+        conflicts.pop();
+      } else {
+        templates.pop();
+      }
+      skipped.push({ item: p.label, reason: 'too_big' });
+      continue;
     }
     count++;
   }
@@ -370,25 +393,53 @@ export function planSearch(
 }
 
 /**
- * E8: tools of the same id are replaced; Rust reads them again from `root` (the scanned
- * `assets` folder) and merges them into `tools.json`.
+ * E8: only the tools chosen one by one (review 026 #1); an own tool of the same id is
+ * replaced. Rust reads them again from `root` and writes nothing if the file no longer
+ * matches `digest` (#2). A taken or invalid tool shortcut is shown (#10).
  */
 export function planTools(
   source: MrScan['tools'],
   state: ImportState,
   mode: ImportMode,
   root: string,
+  chosen: ReadonlySet<string>,
 ): AreaPlan {
   if (!source || source.error || source.items.length === 0) {
     return plan('tools', source);
   }
-  const conflicts: Conflict[] = source.items
-    .filter((t) => state.toolIds.includes(t.id))
-    .map((t) => ({ kind: 'name', name: t.label }));
+  const picked = source.items.filter((t) => chosen.has(t.id));
+  const lookup = resolveKeymap(state.platform, state.override).lookup;
+  const conflicts: Conflict[] = [];
+  const skipped: MrSkipped[] = [...source.skipped];
+  for (const t of picked) {
+    if (state.toolIds.includes(t.id)) {
+      conflicts.push({ kind: 'name', name: t.label });
+    }
+    if (t.shortcut) {
+      const c = canonicalShortcut(t.shortcut, state.platform);
+      const owner = c === null ? undefined : lookup.get(c);
+      if (c === null) {
+        skipped.push({ item: `${t.label}: ${t.shortcut}`, reason: 'invalid_shortcut' });
+      } else if (owner) {
+        conflicts.push({ kind: 'toolShortcut', tool: t.label, shortcut: c, owner });
+      }
+    }
+  }
   return plan('tools', source, {
-    count: source.items.length,
+    count: picked.length,
     conflicts,
-    apply: { toolsFrom: root, toolsReplace: mode === 'replace' },
+    skipped,
+    apply:
+      picked.length > 0
+        ? {
+            tools: {
+              from: root,
+              digest: source.digest ?? '',
+              ids: picked.map((t) => t.id),
+              replace: mode === 'replace',
+            },
+          }
+        : null,
   });
 }
 
@@ -444,13 +495,18 @@ export function planSetup(source: MrScan['setup'], state: ImportState): AreaPlan
 }
 
 /** All areas in the order of {@link MR_AREAS}. */
-export function planAll(scan: MrScan, state: ImportState, mode: ImportMode): readonly AreaPlan[] {
+export function planAll(
+  scan: MrScan,
+  state: ImportState,
+  mode: ImportMode,
+  chosenTools: ReadonlySet<string> = new Set(),
+): readonly AreaPlan[] {
   return [
     planShortcuts(scan.shortcuts, state, mode),
     planButtons(scan.buttons, state, mode),
     planFileTypes(scan.fileTypes, state, mode),
     planSearch(scan.search, state, mode),
-    planTools(scan.tools, state, mode, scan.root),
+    planTools(scan.tools, state, mode, scan.root, chosenTools),
     planColors(scan.colors, state),
     planSetup(scan.setup, state),
   ];

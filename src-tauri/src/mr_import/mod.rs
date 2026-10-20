@@ -19,7 +19,7 @@ use crate::tools::{self, Tool};
 use keys::{MrOs, map_action, never_fired, translate_shortcut};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -36,6 +36,8 @@ pub const MAX_COLOR_FILES: usize = 50;
 /// Search for a packed `assets` folder: depth and folders looked at.
 const MAX_SEARCH_DEPTH: usize = 4;
 const MAX_SEARCH_DIRS: usize = 2000;
+/// Entries reported per area; more are only counted (review 026 #4).
+pub const MAX_SKIPPED: usize = 200;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,7 +56,11 @@ pub struct MrArea<T> {
     pub error: Option<String>,
     pub items: T,
     pub unchanged: u32,
+    /// At most [`MAX_SKIPPED`]; the rest is only counted in `skipped_more`.
     pub skipped: Vec<MrSkipped>,
+    pub skipped_more: u32,
+    /// SHA-256 of the translated items (tools): `apply` writes only what was shown (review 026 #2).
+    pub digest: Option<String>,
 }
 
 impl<T: Default> MrArea<T> {
@@ -65,6 +71,8 @@ impl<T: Default> MrArea<T> {
             items: T::default(),
             unchanged: 0,
             skipped: Vec::new(),
+            skipped_more: 0,
+            digest: None,
         }
     }
 
@@ -76,6 +84,10 @@ impl<T: Default> MrArea<T> {
     }
 
     fn skip(&mut self, item: impl Into<String>, reason: &str) {
+        if self.skipped.len() >= MAX_SKIPPED {
+            self.skipped_more += 1;
+            return;
+        }
         self.skipped.push(MrSkipped {
             item: item.into(),
             reason: reason.into(),
@@ -123,8 +135,18 @@ pub struct MrScan {
 
 // ---- finding mr's assets folder (E2) ----
 
+/// mr's `assets`: an area folder with `custom`/`defaults`, or at least two area folders
+/// (review 026 #7 – one folder named `search` is no evidence).
 fn is_assets(dir: &Path) -> bool {
-    AREAS.iter().any(|a| dir.join(a).is_dir())
+    let areas: Vec<PathBuf> = AREAS
+        .iter()
+        .map(|a| dir.join(a))
+        .filter(|p| p.is_dir())
+        .collect();
+    areas.len() >= 2
+        || areas
+            .iter()
+            .any(|p| p.join("custom").is_dir() || p.join("defaults").is_dir())
 }
 
 /// The `assets` folder for what the user typed: the folder itself, a known place below
@@ -206,6 +228,13 @@ fn search_assets(root: &Path) -> Option<PathBuf> {
 
 /// `Ok(None)` = no file; errors are reason codes (`too_big`, `broken`, `unreadable`).
 fn read_json(file: &Path, max: u64) -> Result<Option<Value>, &'static str> {
+    // only regular files: a FIFO or device would block `open` (review 026 #8)
+    match fs::metadata(file) {
+        Ok(m) if m.is_file() => {}
+        Ok(_) => return Err("unreadable"),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("unreadable"),
+    }
     let f = match fs::File::open(file) {
         Ok(f) => f,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -402,8 +431,14 @@ struct RawCategory {
 
 /// mr `[{label, extensions}]` → checked categories; what `bound` drops is reported.
 fn categories(list: Vec<Value>, area: &mut MrArea<Vec<FileType>>) -> Vec<FileType> {
+    // linear: each candidate checked on its own, stop at the limit (review 026 #4)
     let mut out: Vec<FileType> = Vec::new();
+    let mut taken: HashSet<String> = HashSet::new();
     for v in list {
+        if out.len() == filetypes::MAX_CATEGORIES {
+            area.skip(label_of(&v), "too_many");
+            continue;
+        }
         let Ok(raw) = serde_json::from_value::<RawCategory>(v) else {
             area.skip("?", "invalid");
             continue;
@@ -419,16 +454,21 @@ fn categories(list: Vec<Value>, area: &mut MrArea<Vec<FileType>>) -> Vec<FileTyp
             icon: None,
             color: None,
         };
-        let mut next = out.clone();
-        next.push(candidate);
-        let bounded = filetypes::bound(next);
-        if bounded.len() > out.len() {
-            out = bounded;
-        } else {
-            area.skip(if label.is_empty() { "?".into() } else { label }, "invalid");
+        match filetypes::bound(vec![candidate]).pop() {
+            Some(c) if taken.insert(c.label.to_lowercase()) => out.push(c),
+            _ => area.skip(if label.is_empty() { "?".into() } else { label }, "invalid"),
         }
     }
     out
+}
+
+fn label_of(v: &Value) -> String {
+    v.get("label")
+        .and_then(Value::as_str)
+        .unwrap_or("?")
+        .chars()
+        .take(64)
+        .collect()
 }
 
 /// E6: the whole list, unless it equals mr's defaults.
@@ -495,6 +535,16 @@ fn scan_search(assets: &Path) -> Option<MrArea<Vec<MrPattern>>> {
     Some(area)
 }
 
+/// SHA-256 (hex) of the translated tools as JSON.
+fn digest(items: &[Tool]) -> String {
+    use sha2::{Digest, Sha256};
+    let bytes = serde_json::to_vec(items).unwrap_or_default();
+    Sha256::digest(&bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 fn sorted(mut v: Vec<String>) -> Vec<String> {
     v.sort();
     v
@@ -536,6 +586,7 @@ fn scan_tools(assets: &Path, os: MrOs) -> Option<MrArea<Vec<Tool>>> {
             Err(reason) => area.skip(name, reason),
         }
     }
+    area.digest = Some(digest(&area.items));
     Some(area)
 }
 
@@ -637,6 +688,19 @@ fn scan_setup(assets: &Path) -> Option<MrArea<Map<String, Value>>> {
 
 // ---- writing (E11) ----
 
+/// The tools the user chose in the preview (review 026 #1/#2/#9): ids, and the digest of
+/// the list shown – Rust reads the mr file again and writes nothing if it changed.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MrToolsChoice {
+    /// The `assets` folder of the scan (checked by the command layer).
+    pub from: String,
+    pub digest: String,
+    pub ids: Vec<String>,
+    #[serde(default)]
+    pub replace: bool,
+}
+
 /// The parts to write, planned by the frontend against the current state.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -650,12 +714,10 @@ pub struct MrApply {
     /// Only the keys to set; merged into `settings.json`.
     #[serde(default)]
     pub settings: Option<Map<String, Value>>,
-    /// The `assets` folder of the scan: Rust reads the tools there again – programs and
-    /// arguments never come from the frontend (CLAUDE.md §4, external tools).
+    /// Programs and arguments never come from the frontend (CLAUDE.md §4): Rust reads them
+    /// again from the mr file and checks them against the digest of the preview.
     #[serde(default)]
-    pub tools_from: Option<String>,
-    #[serde(default)]
-    pub tools_replace: bool,
+    pub tools: Option<MrToolsChoice>,
     /// Colours follow through the theme import: only back up `themes.json`.
     #[serde(default)]
     pub backup_themes: bool,
@@ -666,22 +728,87 @@ pub struct MrApply {
 pub struct MrApplyReport {
     /// Bundle parts written (`keymap`, `buttons`, `fileTypes`, `settings`, `tools`).
     pub imported: Vec<String>,
+    /// `part_failed`, `part_skipped` (file of a newer version or unreadable), `source_changed`,
+    /// `too_many` (key = part), `invalid_value` (key = setting, the old value stays).
     pub warnings: Vec<SettingsWarning>,
     /// Paths of the backups made.
     pub backups: Vec<String>,
 }
 
+fn warn(report: &mut MrApplyReport, code: &str, part: &str, file: Option<&Path>) {
+    report
+        .warnings
+        .push(SettingsWarning::new(code, Some(part), file));
+}
+
+/// Whether the current file of a part may be replaced (review 026 #5): not a file of a
+/// newer version, not something we cannot read (a folder, no rights). Without side effects –
+/// the modules' `load` would move a broken file aside. A broken file is backed up and replaced.
+fn writable(files: &ConfigFiles, part: &str) -> bool {
+    let (file, version) = match part {
+        "settings" => (&files.settings, settings::VERSION),
+        "keymap" => (&files.keymap, keymap::VERSION),
+        "buttons" => (&files.buttons, buttons::VERSION),
+        "fileTypes" => (&files.file_types, filetypes::VERSION),
+        "tools" => (&files.tools, tools::VERSION),
+        _ => return true,
+    };
+    match fs::metadata(file) {
+        Err(e) if e.kind() == io::ErrorKind::NotFound => true,
+        Err(_) => false,
+        Ok(m) if !m.is_file() => false,
+        Ok(_) => match fs::read_to_string(file) {
+            Err(_) => false,
+            Ok(text) => serde_json::from_str::<Value>(&text)
+                .ok()
+                .and_then(|v| v.get("version").and_then(Value::as_u64))
+                .is_none_or(|v| v <= u64::from(version)),
+        },
+    }
+}
+
+/// The chosen tools, read again from `dir`; error = warning code.
+fn chosen_tools(
+    dir: Option<&Path>,
+    choice: &MrToolsChoice,
+    os: MrOs,
+) -> Result<Vec<Tool>, &'static str> {
+    let area = dir
+        .filter(|d| is_assets(d))
+        .and_then(|d| scan_tools(d, os))
+        .filter(|a| a.error.is_none())
+        .ok_or("part_skipped")?;
+    if area.digest.as_deref() != Some(choice.digest.as_str()) {
+        return Err("source_changed");
+    }
+    Ok(area
+        .items
+        .into_iter()
+        .filter(|t| choice.ids.contains(&t.id))
+        .collect())
+}
+
 /// Backs up every file to be replaced, then writes the parts through the bundle import
-/// (checked per module, atomic). A part whose backup failed is not written.
-pub fn apply(files: &ConfigFiles, plan: MrApply, os: MrOs) -> MrApplyReport {
+/// (checked per module, atomic). A part whose backup failed is not written. `tools_dir` is
+/// the checked folder of `plan.tools.from`.
+pub fn apply(
+    files: &ConfigFiles,
+    plan: MrApply,
+    os: MrOs,
+    tools_dir: Option<PathBuf>,
+) -> MrApplyReport {
     let mut report = MrApplyReport {
         imported: Vec::new(),
         warnings: Vec::new(),
         backups: Vec::new(),
     };
     let mut bundle: Map<String, Value> = Map::new();
-    let backed_up = |part: &str, report: &mut MrApplyReport| -> bool {
+    let ready = |part: &str, report: &mut MrApplyReport| -> bool {
         let file = files.path_of(part);
+        if !writable(files, part) {
+            warn(report, "part_skipped", part, Some(file));
+            return false;
+        }
         match backup_copy(file) {
             Ok(b) => {
                 report
@@ -690,66 +817,75 @@ pub fn apply(files: &ConfigFiles, plan: MrApply, os: MrOs) -> MrApplyReport {
                 true
             }
             Err(_) => {
-                report
-                    .warnings
-                    .push(SettingsWarning::new("part_failed", Some(part), Some(file)));
+                warn(report, "part_failed", part, Some(file));
                 false
             }
         }
     };
     if let Some(b) = plan.keymap
-        && backed_up("keymap", &mut report)
+        && ready("keymap", &mut report)
     {
         bundle.insert("keymap".into(), json(keymap::bound(b)));
     }
     if let Some(s) = plan.buttons
-        && backed_up("buttons", &mut report)
+        && ready("buttons", &mut report)
     {
         bundle.insert("buttons".into(), json(buttons::bound(s)));
     }
     if let Some(c) = plan.file_types
-        && backed_up("fileTypes", &mut report)
+        && ready("fileTypes", &mut report)
     {
         bundle.insert("fileTypes".into(), json(filetypes::bound(c)));
     }
     if let Some(keys) = plan.settings
-        && backed_up("settings", &mut report)
+        && ready("settings", &mut report)
     {
+        // review 026 #3: a value the schema refuses keeps the old one; a default removes it
         let mut current = settings::load(&files.settings).settings;
-        current.extend(keys);
+        let wanted: Vec<String> = keys.keys().cloned().collect();
+        let (clean, refused) = settings::sanitize(keys);
+        for key in wanted {
+            if let Some(w) = refused
+                .iter()
+                .find(|w| w.key.as_deref() == Some(key.as_str()))
+            {
+                report.warnings.push(w.clone());
+            } else if let Some(v) = clean.get(&key) {
+                current.insert(key, v.clone());
+            } else {
+                current.remove(&key);
+            }
+        }
         bundle.insert("settings".into(), Value::Object(current));
     }
-    if let Some(root) = plan.tools_from {
-        let list = Some(PathBuf::from(root))
-            .filter(|a| is_assets(a))
-            .and_then(|a| scan_tools(&a, os))
-            .filter(|area| area.error.is_none())
-            .map(|area| area.items)
-            .ok_or_else(|| "no tools".to_string());
+    if let Some(choice) = plan.tools {
         let existing = match fs::read_to_string(&files.tools) {
             Ok(t) => Ok(Some(t)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(e),
+            Err(_) => Err("part_skipped"),
         };
-        match existing
-            .map_err(|e| e.to_string())
-            .and_then(|text| tools::merge_file(text.as_deref(), list?, plan.tools_replace))
-        {
+        let merged = existing.and_then(|text| {
+            let list = chosen_tools(tools_dir.as_deref(), &choice, os)?;
+            tools::merge_file(text.as_deref(), list, choice.replace).map_err(|e| {
+                if e == "too_many" {
+                    "too_many"
+                } else {
+                    // a hand-edited file we cannot read is not replaced
+                    "part_skipped"
+                }
+            })
+        });
+        match merged {
             Ok(v) => {
-                if backed_up("tools", &mut report) {
+                if ready("tools", &mut report) {
                     bundle.insert("tools".into(), v);
                 }
             }
-            // a hand-edited file we cannot read is not replaced
-            Err(_) => report.warnings.push(SettingsWarning::new(
-                "part_skipped",
-                Some("tools"),
-                Some(&files.tools),
-            )),
+            Err(code) => warn(&mut report, code, "tools", Some(&files.tools)),
         }
     }
     if plan.backup_themes {
-        backed_up("themes", &mut report);
+        ready("themes", &mut report);
     }
     let parts: Vec<String> = bundle.keys().cloned().collect();
     if let Ok(r) = settings::import(files, &bundle, &parts) {
@@ -780,5 +916,7 @@ pub fn plan_ok(plan: &MrApply) -> bool {
             .settings
             .as_ref()
             .is_none_or(|m| m.len() <= settings::MAX_UNKNOWN_KEYS)
-        && plan.tools_from.as_ref().is_none_or(|p| p.len() <= 4096)
+        && plan.tools.as_ref().is_none_or(|t| {
+            t.from.len() <= 4096 && t.digest.len() <= 128 && t.ids.len() <= tools::MAX_TOOLS
+        })
 }

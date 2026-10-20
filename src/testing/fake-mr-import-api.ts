@@ -19,7 +19,16 @@ export function emptyScan(over: Partial<MrScan> = {}): MrScan {
 
 /** One area with defaults for the bookkeeping fields. */
 export function area<T>(items: T, over: Partial<Omit<MrArea<T>, 'items'>> = {}): MrArea<T> {
-  return { file: '/old/x.json', error: null, items, unchanged: 0, skipped: [], ...over };
+  return {
+    file: '/old/x.json',
+    error: null,
+    items,
+    unchanged: 0,
+    skipped: [],
+    skippedMore: 0,
+    digest: null,
+    ...over,
+  };
 }
 
 /** In-memory MrImportApi: `result` answers scans (or `failScan`), applies are recorded. */
