@@ -10,7 +10,8 @@ use super::{
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
-use crate::fileops::check_danger;
+use crate::fileops::check_danger_with;
+use crate::paths::DangerCheck;
 use crate::paths::validate_input_path;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -98,6 +99,8 @@ impl JobManager {
     /// Validates the spec and queues (or starts) the job. Returns its id.
     pub fn start(self: &Arc<Self>, spec: JobSpec) -> Result<String, FsError> {
         let home = self.home.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let mut spec = spec;
+        normalize(&mut spec)?;
         validate(&spec, home.as_deref())?;
         let parallel = spec.is_parallel();
         let (id, run_now, info) = {
@@ -800,9 +803,89 @@ impl JobManager {
     }
 }
 
+/// Replaces every path of a job by its validated form (external review #1):
+/// no `..` (refused), no `.`, no trailing separator. `validate` checks these
+/// paths and the job works on exactly them – the raw `link/` would make the
+/// system follow the link the check saw as a link, `x/link/..` would lead
+/// physically somewhere else than the danger check looked. Search and
+/// duplicates check their roots themselves (they only read).
+fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
+    fn one(p: &mut String) -> Result<(), FsError> {
+        let v = crate::paths::validate_job_path(p)?;
+        *p = v.to_string_lossy().into_owned(); // from a String: stays exact
+        Ok(())
+    }
+    fn all<'a>(ps: impl IntoIterator<Item = &'a mut String>) -> Result<(), FsError> {
+        ps.into_iter().try_for_each(one)
+    }
+    match spec {
+        JobSpec::Copy {
+            sources,
+            target_dir,
+            ..
+        }
+        | JobSpec::Pack {
+            sources,
+            target_dir,
+            ..
+        }
+        | JobSpec::Link {
+            sources,
+            target_dir,
+            ..
+        } => {
+            all(sources.iter_mut())?;
+            one(target_dir)
+        }
+        JobSpec::Move {
+            sources,
+            target_dir,
+            expected,
+            ..
+        } => {
+            all(sources.iter_mut())?;
+            all(expected.iter_mut().map(|e| &mut e.path))?;
+            one(target_dir)
+        }
+        JobSpec::Delete {
+            paths, expected, ..
+        } => {
+            all(paths.iter_mut())?;
+            all(expected.iter_mut().map(|e| &mut e.path))
+        }
+        JobSpec::Rename { items, .. } => all(items.iter_mut().map(|i| &mut i.path)),
+        JobSpec::Group { root, items, .. } => {
+            one(root)?;
+            all(items.iter_mut().map(|i| &mut i.path))
+        }
+        JobSpec::Clean { roots, items, .. } => {
+            all(roots.iter_mut())?;
+            all(items.iter_mut().map(|i| &mut i.path))
+        }
+        JobSpec::Extract {
+            archive,
+            entries,
+            target_dir,
+            ..
+        } => {
+            one(archive)?;
+            all(entries.iter_mut())?;
+            one(target_dir)
+        }
+        JobSpec::Count { paths } | JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
+        JobSpec::DirSize { path } => one(path),
+        JobSpec::Search { .. }
+        | JobSpec::Duplicates { .. }
+        | JobSpec::Shell { .. }
+        | JobSpec::Simulate { .. } => Ok(()),
+    }
+}
+
 /// Checks paths before a job is accepted (the operation validates again).
 fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
     let nothing = || FsError::new(FsErrorCode::InvalidPath, "Nothing selected", None);
+    // also where a path really leads; each folder is resolved once (external review #2)
+    let mut danger = DangerCheck::new(home);
     match spec {
         JobSpec::Copy {
             sources,
@@ -827,7 +910,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                 return Err(nothing());
             }
             for s in sources {
-                check_danger(&validate_input_path(s)?, home, *allow_dangerous)?;
+                check_danger_with(&mut danger, &validate_input_path(s)?, *allow_dangerous)?;
             }
             validate_input_path(target_dir)?;
         }
@@ -840,7 +923,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                 return Err(nothing());
             }
             for p in paths {
-                check_danger(&validate_input_path(p)?, home, *allow_dangerous)?;
+                check_danger_with(&mut danger, &validate_input_path(p)?, *allow_dangerous)?;
             }
         }
         JobSpec::Rename { items, .. } => {
@@ -879,7 +962,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             for i in items {
                 let p = validate_input_path(&i.path)?;
                 if *transfer == Transfer::Move {
-                    check_danger(&p, home, false)?;
+                    check_danger_with(&mut danger, &p, false)?;
                 }
                 // group names are checked per group in the job (an error there fails only that group)
             }
@@ -1007,7 +1090,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                 let p = validate_input_path(p)?;
                 // `chmod -R` on root, home or a system folder can break the system (E8)
                 if *recursive {
-                    check_danger(&p, home, false)?;
+                    check_danger_with(&mut danger, &p, false)?;
                 }
             }
         }

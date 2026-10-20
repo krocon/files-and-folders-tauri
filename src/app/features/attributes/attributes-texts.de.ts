@@ -46,7 +46,7 @@ export const AT_DE: Translation<typeof AT_EN> = {
       skipped === 0
         ? ''
         : skipped === 1
-          ? ' (1 Link übersprungen)'
-          : ` (${skipped} Links übersprungen)`
+          ? ' (1 Link oder anderes Laufwerk übersprungen)'
+          : ` (${skipped} Links oder andere Laufwerke übersprungen)`
     }`,
 };

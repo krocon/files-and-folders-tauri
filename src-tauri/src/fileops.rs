@@ -3,7 +3,7 @@
 //! Pure std, no Tauri – unit-tested with temp folders.
 
 use crate::error::{FsError, FsErrorCode};
-use crate::paths::{Danger, danger_of, validate_name};
+use crate::paths::{Danger, DangerCheck, validate_name};
 use crate::platform::rename_noreplace;
 use std::fs::{self, OpenOptions};
 use std::io;
@@ -27,9 +27,22 @@ fn named(mut e: FsError, path: &Path) -> FsError {
 }
 
 /// Refuses root, home and system paths unless the user confirmed twice.
+/// Also where the path really leads (links on the way, external review #2).
 pub fn check_danger(path: &Path, home: Option<&Path>, allow: bool) -> Result<(), FsError> {
-    match danger_of(path, home) {
-        Some(d) if !allow => Err(FsError::new(
+    check_danger_with(&mut DangerCheck::new(home), path, allow)
+}
+
+/// [`check_danger`] for many paths (each folder resolved once).
+pub fn check_danger_with(
+    check: &mut DangerCheck<'_>,
+    path: &Path,
+    allow: bool,
+) -> Result<(), FsError> {
+    if allow {
+        return Ok(());
+    }
+    match check.of(path) {
+        Some(d) => Err(FsError::new(
             FsErrorCode::DangerousPath,
             match d {
                 Danger::Root => "This is a drive or volume root",

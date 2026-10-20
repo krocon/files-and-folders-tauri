@@ -1077,3 +1077,144 @@ fn expected_is_optional_in_the_spec() {
         serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"trash"}"#).unwrap();
     assert!(matches!(spec, JobSpec::Delete { expected, .. } if expected.is_empty()));
 }
+
+/// External review 20.10.2026 #1: every job works on the path that was checked.
+/// `..` is refused in every job (lexically `x/link/..` is `x`, physically the
+/// parent of the link's target); the job gets the normalised path.
+#[test]
+fn every_job_refuses_dotdot_in_its_paths() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let a = s(d.path());
+    let up = s(&d.path().join("x").join(".."));
+    let specs = [
+        format!(r#"{{"kind":"copy","sources":["{up}"],"targetDir":"{a}"}}"#),
+        format!(r#"{{"kind":"copy","sources":["{a}"],"targetDir":"{up}"}}"#),
+        format!(r#"{{"kind":"move","sources":["{up}"],"targetDir":"{a}"}}"#),
+        format!(r#"{{"kind":"delete","paths":["{up}"],"mode":"permanent"}}"#),
+        format!(r#"{{"kind":"rename","items":[{{"path":"{up}","newName":"n"}}]}}"#),
+        format!(
+            r#"{{"kind":"group","root":"{a}","items":[{{"path":"{up}","group":"g"}}],"transfer":"move"}}"#
+        ),
+        format!(
+            r#"{{"kind":"clean","roots":["{a}"],"items":[{{"path":"{up}","kind":"dir"}}],"mode":"permanent"}}"#
+        ),
+        format!(r#"{{"kind":"extract","archive":"{up}","targetDir":"{a}"}}"#),
+        format!(
+            r#"{{"kind":"pack","sources":["{up}"],"targetDir":"{a}","name":"p.zip","format":"zip"}}"#
+        ),
+        format!(r#"{{"kind":"link","sources":["{up}"],"targetDir":"{a}"}}"#),
+        format!(r#"{{"kind":"count","paths":["{up}"]}}"#),
+        format!(r#"{{"kind":"dirSize","path":"{up}"}}"#),
+        format!(
+            r#"{{"kind":"attributes","paths":["{up}"],"change":{{"modified":{{"type":"now"}}}}}}"#
+        ),
+    ];
+    for json in specs {
+        let spec: JobSpec = serde_json::from_str(&json).expect(&json);
+        let err = h.mgr.start(spec).expect_err(&json);
+        assert_eq!(err.code, FsErrorCode::InvalidPath, "{json}");
+    }
+}
+
+#[test]
+fn the_job_gets_the_checked_path_without_dot_or_trailing_separator() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let dir = d.path().join("Ordner ä");
+    fs::create_dir(&dir).unwrap();
+    let raw = format!(
+        "{}{}.{}",
+        s(&dir),
+        std::path::MAIN_SEPARATOR,
+        std::path::MAIN_SEPARATOR
+    );
+    let id = h
+        .mgr
+        .start(JobSpec::Count {
+            paths: vec![raw.clone()],
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    let JobSpec::Count { paths } = &info.spec else {
+        panic!()
+    };
+    assert_eq!(paths, &vec![s(&dir)], "stored and run as validated");
+}
+
+#[cfg(unix)]
+#[test]
+fn delete_with_a_trailing_slash_removes_the_link_not_the_target() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let target = d.path().join("target");
+    fs::create_dir(&target).unwrap();
+    fs::write(target.join("keep"), "x").unwrap();
+    let link = d.path().join("link");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    let id = h
+        .mgr
+        .start(JobSpec::Delete {
+            paths: vec![format!("{}/", s(&link))],
+            mode: DeleteMode::Permanent,
+            background: false,
+            allow_dangerous: false,
+            expected: Vec::new(),
+        })
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert!(fs::symlink_metadata(&link).is_err(), "the link is gone");
+    assert!(target.join("keep").exists(), "its target is untouched");
+}
+
+/// External review #2: the danger check also looks where a path really leads.
+#[cfg(unix)]
+#[test]
+fn danger_is_checked_where_the_path_really_leads() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let home = d.path().join("home");
+    fs::create_dir_all(home.join("sub")).unwrap();
+    let x = d.path().join("x");
+    fs::create_dir(&x).unwrap();
+    std::os::unix::fs::symlink(d.path(), x.join("up")).unwrap();
+    h.mgr.set_home(Some(home.clone()));
+    // x/up/home is the home folder
+    let via_link = x.join("up").join("home");
+    for spec in [
+        JobSpec::Delete {
+            paths: vec![s(&via_link)],
+            mode: DeleteMode::Permanent,
+            background: false,
+            allow_dangerous: false,
+            expected: Vec::new(),
+        },
+        JobSpec::Move {
+            sources: vec![s(&via_link)],
+            target_dir: s(&x),
+            background: false,
+            options: CopyOptions::default(),
+            allow_dangerous: false,
+            expected: Vec::new(),
+        },
+    ] {
+        assert_eq!(
+            h.mgr.start(spec).unwrap_err().code,
+            FsErrorCode::DangerousPath
+        );
+    }
+    assert!(home.join("sub").exists());
+    // the link itself is no danger: deleting it leaves its target alone
+    let id = h
+        .mgr
+        .start(JobSpec::Delete {
+            paths: vec![s(&x.join("up"))],
+            mode: DeleteMode::Permanent,
+            background: false,
+            allow_dangerous: false,
+            expected: Vec::new(),
+        })
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert!(home.join("sub").exists());
+}
