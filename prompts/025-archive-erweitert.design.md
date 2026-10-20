@@ -291,6 +291,11 @@ nicht sicher beurteilen kann, wird als `archive_error` („The 7z header cannot 
 | B4 | niedrig | Prüfung und `Archive::read` öffneten die Datei getrennt (TOCTOU) | ✅ `check(&mut File, …)`: `sevenz::open` und `verify_7z` öffnen einmal, prüfen, spulen zurück und geben **dieselbe** Datei an die Crate | Code |
 | A1 | niedrig | UnRAR schreibt die globalen `ErrHandler`-Zähler und die statischen SSE-Konstanten von BLAKE2s (`blake2s_init_sse`, bei jedem `blake2s_init_param`) ungeschützt parallel | dokumentiert, nicht geändert: die SSE-Konstanten werden bei jedem Aufruf mit **denselben** Werten überschrieben (formal ein Data Race, praktisch harmlos); ein einmaliges Vorab-Init ginge nur über einen RAR-5-Hash-Lauf unter der Sperre – kein Zugang über die DLL-API. `ErrHandler`-Zähler lesen wir nicht: Ergebnisse kommen aus den Rückgabewerten je Handle (`RARReadHeaderEx`/`RARProcessFileW`). Sauber nur upstream (UnRAR) | – |
 
+E2E (Xvfb :95, Debug-Build): `bomb-zero-start.7z`, `bomb-digests.7z`, `bomb-bzip2-header.7z` öffnen → sofort Banner
+„The archive is broken or uses an unsupported feature … The 7z header cannot be checked (…) – not opened“;
+`bomb-aes-header.7z` → Passwortdialog, mit `geheim` → „The archive declares 2000000 entries (at most 200000) – refused“
+im Dialog; `sevenzip-enc-names.7z` mit `geheim` öffnet weiter (Badge „encrypted“).
+
 Damit erledigt sich auch Selbst-Review #7 (PPMd-Header ohne Speichergrenze): solche Header werden nicht mehr gelesen.
 
 ## 8. Fortschritt

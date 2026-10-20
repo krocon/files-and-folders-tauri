@@ -485,7 +485,7 @@ fn check_inner(file: &mut File, password: Option<&Secret>) -> R<Checked> {
     // B1: a zeroed start header makes the crate search the end for a header without
     // any check – never accepted; every start header must match its CRC
     if start_crc == 0 && start[12..32].iter().all(|b| *b == 0) {
-        return Err(Refusal::Unknown("missing start header (damaged archive)"));
+        return Err(Refusal::Unknown("missing start header, damaged archive"));
     }
     if crc(&start[12..32]) != start_crc {
         return Err(Refusal::Unknown("start header CRC mismatch"));
