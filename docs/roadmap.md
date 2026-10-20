@@ -34,7 +34,7 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 7 OS-Integration | 011 (Laufwerke, Tools, Zwischenablage ✅), 012 (Überwachung, Drag & Drop ✅) |
 | 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs ✅), 015 (Einstellungen, Deutsch/Englisch ✅) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 (✅ alle Fehler aus mr §11/legacy §9 behoben oder entfallen) |
-| 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Lizenz, Signierung, Prüfung macOS/Windows) |
+| 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Signierung, Prüfung macOS/Windows) |
 | 11 Feature-Parität | 018 ✅ Matrix gegen `old_project/` (mr) in [feature-parity.md](feature-parity.md): 195 ✅, 26 🟡, 9 ⬜, 23 ✖ (Stand 021); 020 ✅ Actions-Menü |
 | 12 Nach der Parität (Vorschlag) | 021 Shell-Leiste ✅ (Pipes, Sicherheitsmodell), 029 Bedienbar bei langen Jobs/langsamen Laufwerken ✅, 030 Ordner-Cache für langsame Laufwerke ✅ (`getattrlistbulk` gemessen und verworfen), 022 Konfigurations-Editoren (Buttons, Dateitypen, Suchvorlagen, Vollbild), 023 eingebauter Editor, 024 Attribute ändern, 025 Archive erweitert (7z/RAR, Passwörter), 026 Import alter Konfiguration, 027 Persistenz je Ordner, 028 Drag & Drop erweitert |
 
@@ -46,4 +46,4 @@ Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.
 - „Up“ endet am Laufwerks-Root; Laufwerke wechseln über das Ordnermenü (`Alt+F1`/`Alt+F2`, 011).
 - macOS/Windows-Teile von 011 (Volumes, Finder/Explorer, Terminal) nur auf Linux gebaut und getestet.
 - UI-Texte nur Englisch.
-- Lizenz des Projekts noch nicht festgelegt.
+- Lizenz des Projekts: MIT.

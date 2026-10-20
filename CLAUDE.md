@@ -290,7 +290,7 @@ prompts/                     Feature-Prompts (s. o.)
 
 ## 8. Lizenzen & Referenzen
 
-- Eigene Lizenz: noch nicht festgelegt (`license` leer) – nicht eigenmächtig setzen.
+- Eigene Lizenz: **MIT** (`LICENSE`, `license` in `package.json`, `Cargo.toml`, `bundle.license` in `tauri.conf.json`).
 - GuiExpert Table: MIT (aktuelle Releases).
 - Alte Projekte: `krocon/node-files-and-folders-client`, `krocon/node-files-and-folders-server`, npm
   `files-and-folders` (MIT laut package.json) – fachliche Vorlage, Code wird nicht übernommen (AngularJS/Node passt

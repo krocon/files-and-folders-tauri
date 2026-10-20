@@ -1,354 +1,214 @@
-# Files and Folders (Tauri)
+<p align="center">
+  <img src="docs/logo/png/ff-green-128x128.png" width="96" height="96" alt="Files and Folders logo">
+</p>
 
-Plattformübergreifender Dateimanager für macOS, Windows und Linux in Richtung Total Commander –
-gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CSS** und einem
-**Rust**-Backend.
+<h1 align="center">Files and Folders</h1>
 
-> **Status: Prompt 006 (Basisoperationen) auf Basis von 001–005.** Zwei Seiten wie im Norton/Total Commander mit Pfad-Header, Tabs,
-> GuiExpert-Dateiliste und Statuszeile, gemeinsamer Splitter, Button-Leiste (Gerüst); Tabs, aktive Seite, Splitter,
-> Favoriten und Fenstergröße werden gespeichert. Kopieren, Verschieben, Löschen (Papierkorb), Ordner/Datei anlegen, Umbenennen, Multi-Rename mit Rückgängig, Dateien gruppieren, Ordner aufräumen, mehrere Ordner anlegen. Siehe [docs/roadmap.md](docs/roadmap.md) und [prompts/README.md](prompts/README.md).
+<p align="center">
+  A fast, keyboard-driven, two-panel file manager for <b>macOS</b>, <b>Windows</b> and <b>Linux</b> –
+  in the spirit of Total Commander and Norton Commander.
+</p>
 
-## Was funktioniert
+<p align="center">
+  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-orange">
+  <img alt="Platforms: macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="Built with Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB">
+  <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031">
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-000000">
+</p>
 
-- **Fensteraufbau** nach [docs/ui-layout.md](docs/ui-layout.md): links und rechts je Pfad-Header (Breadcrumb,
-  klickbar, bei langen Pfaden rechtsbündig; Favoriten-Stern), Tab-Leiste, Dateiliste und Statuszeile
-  (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (noch
-  fehlende Funktionen gedimmt, „kommt in Prompt …“).
-- **Aktive Seite** = Quelle, andere = Ziel; Klick in eine Seite oder `Tab` wechselt, Ansage für Screenreader.
-- **Tabs je Seite**: klonen (`+`), schließen (`−`, der letzte bleibt), Kontextmenü (Neu laden, Schließen, ins andere
-  Panel verschieben/klonen, nach links/rechts), Doppelklick lädt neu, Mittelklick schließt; jeder Tab behält Pfad,
-  Sortierung, Spaltenbreiten, Cursor und Scrollposition.
-- **Sitzung**: Tabs beider Seiten, aktive Seite, Splitter, Favoriten und Fenstergröße/-position werden in
-  `session.json` im App-Config-Verzeichnis gespeichert und beim Start wiederhergestellt; gelöschte Ordner →
-  nächster existierender Elternordner mit Hinweis; kaputte Datei → Defaults + Warnung (alte Datei als `.bad`).
-- Ohne gespeicherte Sitzung: beide Seiten im Home-Ordner des aktuellen Benutzers.
-- **Navigation** (Prompt 003): „..“-Zeile, Zurück/Vor je Tab (auch Maustasten 4/5) mit Cursor und Scrollposition,
-  Cursor und Markierung je Ordner gemerkt, Menü ▾ mit Home, Favoriten und zuletzt besuchten Ordnern (`Alt+F1`/`Alt+F2`),
-  Pfadeingabe (`Strg/⌘+L`, `~` erlaubt, Datei → Ordner mit Cursor darauf).
-- **Versteckte Dateien** (👁, `Strg+H` / `⌘⇧.`) und **Schnellfilter** (⏷, `Strg/⌘+Alt+F`, z. B. `*.jpg -thumb`) je Tab;
-  **Typ-Ahead**: Buchstaben tippen springt zum passenden Namen.
-- **Ordnergröße**: Leertaste auf einem Ordner markiert ihn und berechnet die Größe (abbrechbar, folgt keinen Symlinks);
-  `Alt+Shift+Enter` für alle markierten Ordner.
-- **Dateien öffnen** mit der Standard-App (Enter/Doppelklick); Programme erst nach Rückfrage.
-- **Kopieren und Verschieben** (`F5`/`F6`, Prompt 005/006): Dialog mit Live-Zählung (Dateien, Ordner, Größe), Zielordner
-  (Textfeld + Vorschläge: andere Seite, Tabs, Favoriten, zuletzt besucht), neuem Namen bei einer einzelnen Quelle
-  (Kopie im selben Ordner), Vorgabe bei vorhandenen Dateien und „im Hintergrund“. Läuft als Job mit Fortschritt, Rate
-  und Restzeit (Tasks-Button, Task-Liste `Strg+F11` / `⌃K F6`), Pause, Weiter, Abbruch; nie eine halbe Datei unter dem
-  echten Namen. Existiert eine Datei schon: Überschreiben, Überspringen (Vorgabe), Umbenennen, wenn neuer, Abbrechen –
-  auch „für alle“. Verschieben benennt auf demselben Laufwerk nur um; über Laufwerke wird jede Datei erst kopiert und
-  dann gelöscht.
-- **Löschen**: `F8`/`Entf` (macOS `⌘⌫`) in den Papierkorb, `Shift+F8`/`Shift+Entf` (macOS `⌘⌥⌫`) endgültig mit rotem
-  Dialog (Enter = Abbrechen); schreibgeschützte Einträge fragen nach. Wurzel, Laufwerke, Home- und Systemordner
-  brauchen eine zweite Bestätigung.
-- **Ordner anlegen** (`F7`, auch `a/b/c`; Vorschlag `S03` nach `S01`, `S02`), **Datei anlegen** (`Shift+F4`),
-  **Umbenennen** (`Shift+F6` als Dialog, `F2` direkt in der Liste; die Endung ist nicht markiert). Der Cursor steht
-  danach auf dem Ergebnis. Alle Operationen nehmen die markierten Einträge, sonst den unter dem Cursor.
-- **Multi-Rename** (`Strg+M`/`Strg+F6`, macOS `⌘F6`): Muster mit `[N]` `[E]` `[C]` `[P]` `[Q]` `[R]` `[D]` `[T]`,
-  Bereichen (`[N2-5]`), Zähler, Schreibweise (bis Chicago Manual of Style), Umlaute/riskante Zeichen/Leerzeichen,
-  vier Ersetzungszeilen mit Regex und „nur wenn“, Makros, Vorlagen; Live-Vorschau (GuiExpert Table, 10 000 Einträge)
-  mit Prüfung gegen die Platte. `README`, Ordner und `.gitignore` bleiben ganz, `a.tar.gz` behält `tar.gz`; Tausch
-  `a↔b` und Ketten laufen sicher, nie wird überschrieben. **Rückgängig** in der Task-Liste oder per Befehlspalette
-  („Undo last multi rename“).
-- **Dateien gruppieren** (`Alt+G`, `Strg+Alt+G`): markierte (sonst alle angezeigten) Einträge nach laufender Nummer,
-  Minus-Trenner, erstem Wort, ersten Buchstaben oder in einen neuen Ordner – Vorschau-Tabelle, Mindestgröße, Klammern
-  ignorieren; Ziel `<anderes Panel oder Quellordner>/<Gruppe>/<Name>` per Kopieren oder Verschieben, Konflikte über
-  den Dialog der Job-Engine.
-- **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`): leere Ordner (optional mit Systemmüll wie `.DS_Store`) und
-  Dateien nach Muster (`*.bak`) unterhalb des aktuellen bzw. der markierten Ordner – Vorschau, Papierkorb als Standard,
-  nie oberhalb des Startordners, Links werden nie verfolgt; jeder Eintrag wird vor dem Löschen erneut geprüft.
-- **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
-  Elternordner `[P]`, Schreibweise.
-- **Suche** (`Alt+F7`, Prompt 009): Name als Glob (`*.mp3;*.flac`), Regex oder Text, Groß/klein, ganzer Name/Teil;
-  Dateien/Ordner/Links, Größe, Änderungsdatum (letzte N Tage, von–bis), Text im Inhalt (mit Größenlimit), versteckte
-  Einträge, Links folgen (zyklensicher), max. Tiefe, Ausschlüsse (`.git; node_modules`), max. Treffer; Vorlagen
-  (Filme, Bilder, Audio, Comics …), eigene Vorlagen und letzte Suchen (für die Sitzung). Treffer streamen in einen
-  **Ergebnis-Tab** (Lupe, Spinner, Spalte „Folder“): markieren, kopieren, verschieben, löschen wie im Ordner,
-  „Zur Datei“ (`Strg+Shift+G` / `⌘⇧G`) öffnet den Ordner in neuem Tab mit Cursor auf der Datei, Enter auf einem Ordner
-  ebenso; `Stop`, `Search again` (`Strg+Shift+F7`), Doppelklick auf den Header ändert die Suche. Unlesbare Ordner
-  werden gemeldet; Ergebnis-Tabs werden nicht gespeichert.
-- **Ordner-Finder** (`Alt+F10`, alt „Change Dir“): alle Unterordner bis Tiefe 5 (Regler 1–10/∞), Filter unscharf und
-  live, `↑ ↓ Bild↑ Bild↓`, Enter wechselt dorthin, Esc bricht ab.
-- **Archive** (Prompt 016): Enter auf `.zip`, `.tar`, `.tar.gz`/`.tgz` öffnet das Archiv wie einen Ordner (nur
-  lesend, Hinweis im Header, Einträge mit unsicheren Namen ausgeblendet und gezählt). `F5` im Archiv entpackt die
-  Markierung, `Alt+F9` entpackt markierte Archive (optional in einen Unterordner ihres Namens), `Alt+F5` packt die
-  Markierung als ZIP, TAR oder TAR.GZ. Zip-Slip (`../`, absolute Pfade, Laufwerke), Links im Archiv und Zip-Bomben
-  werden abgewiesen; vorhandene Dateien lösen die Konfliktfrage aus.
-- **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
-  Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
-  eine Datei je Gruppe, `F8` löscht in den Papierkorb (Warnung, wenn von einer Gruppe nichts übrig bliebe).
-- Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
-- **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
-  Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
-  Netzlaufwerk erscheint nach 1,5 s als „not reachable“, die Oberfläche blockiert nicht.
-- **Im Dateimanager zeigen** (`Strg/⌘+Shift+F`: Finder `open -R`, Explorer `/select`, Linux über D-Bus
-  `FileManager1`, sonst der Ordner) und **Terminal hier** (`Strg/⌘+Shift+C`: macOS Terminal, Windows Terminal bzw.
-  `cmd`, Linux `$TERMINAL` → `x-terminal-emulator` → konsole/gnome-terminal/… je Desktop; eigenes Terminal in
-  `tools.json`, z. B. `"terminal": {"program": "open", "args": ["-a", "iTerm", "{dir}"]}`).
-- **Externe Tools**: `tools.json` im App-Config-Verzeichnis (Tool configuration… → „Open tools.json“ legt sie mit den
-  Defaults an). Je Tool `program` + `args` (Array, **keine Shell**), Platzhalter je Argument `{file}`, `{files}`,
-  `{name}`, `{dir}`, `{targetDir}`, `perFile` (höchstens 50 Starts je Aufruf), `fileLimit`, `shortcut`
-  (Keymap-Notation), `workingDir` (absolut nach dem Ersetzen). `program` ist ein blanker Name (Suche im `PATH`) oder
-  ein absoluter Pfad. **Empfohlen: `{file}`/`{files}`** (volle Pfade) statt `{name}` – `{name}` am Argumentanfang wird
-  bei führendem `-` zu `./-name`. Tools, die an die Standard-App übergeben (`xdg-open`, `open`, `explorer`, … oder
-  `"defaultApp": true`), fragen bei Programmen/Skripten nach wie `Enter`. Einträge im alten Format
-  (`cmd`, `para`, `$file`, `$dir`) werden beim Laden umgestellt. Tools stehen in der Befehlspalette, im Actions-Menü,
-  unter **Open with tool…** (`Strg/⌘+Shift+X`) und auf ihrem Kürzel; `F4` startet das Tool `edit` (macOS
-  Text-Editor, Windows Notepad, Linux Standard-App – für einen Editor z. B.
-  `{"id": "edit", "label": "Edit", "program": "gnome-text-editor", "args": ["{files}"]}` eintragen).
-- **Zwischenablage**: Namen (`Strg/⌘+Alt+N`) bzw. volle Pfade (`Strg/⌘+Alt+C`) der markierten Einträge (sonst
-  Cursor, Ordner eingeschlossen) als Zeilen; als JSON über Befehlspalette/Actions-Menü.
-- **Shell-Zeile** (Prompt 021, `Shift+F11`): Befehlszeile über der Button-Leiste im Ordner des aktiven Panels (im
-  Ergebnis-Tab im Suchordner, im Archiv gesperrt). Ausgabe gestreamt (stderr farbig, Exit-Code), Esc bzw. `Ctrl+C`
-  bricht samt Kindprozessen ab; `cd`, `cd ..`, `cd ~`, `cd -` navigieren das Panel, `clear`/`cls` leert. ↑/↓ blättern im
-  Verlauf (100 Befehle, `shell-history.json`), Vorschläge aus dem Verlauf, `Strg/⌘+Shift+Enter` bzw.
-  `Strg/⌘+Alt+Enter` fügen markierte Namen/Pfade quotiert ein. Pipes statt Terminal: interaktive Programme (vim, ssh,
-  top) über **Terminal hier**. macOS/Linux lesen einmal den `PATH` der Login-Shell (Homebrew, cargo; zsh liest dabei `.zprofile`, nicht `.zshrc`), Windows
-  wahlweise `cmd.exe` oder PowerShell; abschaltbar unter Einstellungen › Shell.
-- **Ansicht** (`F3`): Text mit Zeilennummern, Suche (`Strg/⌘+F`, Enter/`F3` = nächster Treffer), Umbruch, Kodierung
-  (Auto, UTF-8, UTF-16 LE/BE, Windows-1252, Latin-1), Hex-Ansicht für Binärdateien, Bilder mit Einpassen/Zoom;
-  `←`/`→` blättert durch die Dateien des Panels (der Cursor folgt), `Esc` schließt. Der Typ wird am **Inhalt** erkannt
-  (`bild.txt`, das ein PNG ist, wird als Bild gezeigt, mit Hinweis); große Dateien zeigen nur den Anfang (1 MiB Text,
-  4 KiB Hex) – auch eine 2-GB-Datei öffnet sofort.
-- **Schnellvorschau** (`Strg+Q`, macOS `⌃Q`): das andere Panel zeigt die Datei unter dem Cursor.
-- **Eigenschaften** (`Alt+Enter`, macOS auch `⌘I`): Typ, Größe (Ordner per Knopf als Job), Zeiten, Rechte `rwxr-xr-x`
-  und Eigentümer bzw. Windows-Attribute, Link-Ziel. **Bearbeiten** (`F4`) startet das Tool `edit` (Default: Standard-App, s. Externe Tools).
-- **Automatische Aktualisierung** (012): die sichtbaren Ordner beider Panels werden überwacht (`notify`, nicht
-  rekursiv); Dateien, die andere Programme anlegen, ändern, umbenennen oder löschen, erscheinen nach < 1 s – Cursor,
-  Markierung und Scrollposition bleiben, ein gelöschter Cursor-Eintrag gibt den Cursor an den nächsten weiter.
-  Massenänderungen (z. B. 50 000 entpackte Dateien) laden höchstens alle 1,5 s neu; ein gelöschter Ordner führt zum
-  nächsten vorhandenen Elternordner. Netzlaufwerke werden nicht überwacht (Hinweis in der Statuszeile, `Strg/⌘+R`).
-- **Drag & Drop** (012): Markierung (bzw. die Zeile) in das andere Panel oder auf eine Ordnerzeile ziehen öffnet den
-  Kopieren-Dialog (mit `Shift`, macOS `⌘`: Verschieben); `Esc` bricht ab. Dateien aus Finder/Explorer/Dateimanager auf
-  ein Panel oder eine Ordnerzeile ziehen öffnet den Kopieren-Dialog. Ziehen aus der App ins System: noch nicht.
-- **Kontextmenü** (Rechtsklick, `Shift+F10`, Kontextmenü-Taste): passend zu Datei, Ordner, Markierung, freier
-  Fläche oder Ergebnis-Tab, mit Kürzeln und Untermenüs (**Open with tool** mit den Tools, **Copy to clipboard**);
-  nicht verfügbare Einträge sind gedimmt. Rechtsklick setzt den Cursor, die Markierung bleibt – mit Markierung wirkt
-  das Menü auf die markierten Einträge (Überschrift „N marked entries“).
-- **Menüleiste** File · Edit · View · Go · Tools · Window · Help mit allen Aktionen und ihren Kürzeln: unter macOS
-  nativ (App-Menü mit About, Settings `⌘,`, Services, Hide, Quit; Edit mit Copy/Paste für Textfelder), unter
-  Windows/Linux in der App (`Alt+M` fokussiert sie). Kürzel kommen aus der Keymap inkl. Override.
-- Rust-Command `list_directory(path: Option<String>)` liefert Name, Pfad, Typ (Datei/Ordner/Symlink
-  inkl. Ziel-Typ), Größe, Änderungszeit und Hidden-Kennzeichen (Dot-Files sowie natives
-  Hidden-Flag unter Windows/macOS).
-- Dateiliste mit der [GuiExpert Table](https://gui.expert) (virtuelles Scrollen, 100 000 Einträge flüssig):
-  Spalten Name, Erweiterung, Größe (`<DIR>` für Ordner), Geändert; Spaltenbreiten veränderbar und beim
-  Ordnerwechsel erhalten.
-- Sortieren per **Doppelklick** auf den Spaltenkopf; Ordner bleiben in beiden Richtungen oben, Namen natürlich
-  sortiert (`file2` vor `file10`), leere Werte unten.
-- Zeilen-Cursor (aktiv/inaktiv), markierte Einträge rot mit Häkchen, versteckte Einträge gedimmt.
-- Lade-, Leer- und Fehlerzustände (z. B. „Access denied“) ohne Absturz; die vorherige Ansicht bleibt bei Fehlern.
-- Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
-- **Farbschemata** (Prompt 013, 019): die acht Designs der alten Version (**Light** – Standard beim ersten Start –,
-  Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat, Norton) plus „Modern light/dark“; „Follow the system“ (folgt
-  `prefers-color-scheme` live, Paar Light/Coffee) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
-  („Colour scheme: …“) oder `Strg+Alt+Shift+T` / `⌘⌃⌥T` (nächstes Schema). Der Dialog **Colour schemes…** ist ein
-  Live-Editor: jede Farbe (Liste, Cursor aktiv/inaktiv, markiert, versteckt, Symlink, Kopf, Tabs, Statuszeile,
-  Buttons, Dialoge, Scrollbar, Tooltip) mit Farbwähler und Textfeld, Vorschau sofort, Kontrastprüfung (WCAG AA) mit
-  Liste der verletzten Paare; „Save as new“/„Save“/„Delete“/„Reset“. **Import** liest die Datei unter dem Cursor
-  (auch alte `{name, colors}`-Dateien – ergibt dasselbe Design wie das mitgelieferte), **Export** schreibt
-  `<Name>.theme.json` in den Ordner des aktiven Panels, **Export (old format)** im alten `--fnf-*`-Format. Alle
-  Designs bestehen WCAG AA; wo die alten Farben das nicht schafften, sind sie minimal angepasst
-  ([Kontrastbericht](docs/legacy-themes-contrast.md)).
-  Gespeichert in `themes.json` im App-Config-Verzeichnis.
-- **Einstellungen** (`Strg+,` / `⌘,`, Prompt 015): Dialog mit Suche über alle Bereiche; jede Änderung wirkt sofort
-  (oder sagt „wirkt beim nächsten Start“). Ansicht (Größen binär/dezimal/Bytes, Datum in Sprache oder ISO,
-  Zeilenhöhe, `[Ordner]`, Namen ohne Endung, Menüleiste), Verhalten (Papierkorb, Bestätigung, Doppelklick,
-  Leertaste, Start-Ordner), Tastatur (Konflikte, Kürzel bearbeiten/zurücksetzen), Tools, Farben, Daten (alles als
-  eine Datei exportieren/importieren). Gespeichert in `settings.json`; kaputte Datei → Defaults + Warnung (`.bad`).
-- **Actions-Menü ▴** in der Button-Leiste (Prompt 020): vier Spalten wie in der alten Version (Navigation/Ansicht,
-  Auswahl/Seiten/Tabs, Dateioperationen, Konfiguration + Tools) mit Trennlinien, kurzen Namen und Kürzeln als dunkle
-  Badges (`^` `⌘` `alt` `⇧`, Akkorde als zwei Badges); Pfeiltasten, `Pos1`/`Ende`, `Enter`, `Esc`.
-- **Deutsch und Englisch**: Oberfläche, Menüs, Fehlertexte, Datums- und Zahlenformat; Umschalten ohne Neustart
-  (Vorgabe: Systemsprache).
+---
 
-### Tastenkürzel (Stand Prompt 002)
+> [!WARNING]
+> **This app is under active development.** There is no public release yet, things change daily and some
+> features are still missing or only lightly tested (especially on Windows and macOS). Use it on data you have
+> backed up – and feedback is very welcome!
 
-Jede Funktion ist eine Aktion mit stabiler Id; Kürzel kommen aus einer Keymap je Betriebssystem
-(`src/app/core/actions/keymaps/`) und lassen sich im Dialog **Keyboard shortcuts** (⌨ in der Button-Leiste,
-`Strg+Shift+K` / `⌘⇧K`) ändern – gespeichert in `keymap.json` im App-Config-Verzeichnis. Alle Aktionen findet die
-Befehlspalette (`Strg+Shift+P` / `⌘⇧P`). Aktionen späterer Prompts sind schon gelistet und gedimmt.
-Einfache Tasten (Leertaste, Enter, Tab, Buchstaben) wirken nur, wenn die Dateiliste den Fokus hat; die
-Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
+**Files and Folders** (FnF) is the desktop successor of the browser-based
+[`files-and-folders`](https://www.npmjs.com/package/files-and-folders) (Node.js + AngularJS, 2016) and of
+[files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) (Angular + NestJS, 2025). It is rebuilt
+from scratch as a native desktop app with **[Tauri 2](https://tauri.app)**, **Angular 22** and a **Rust** backend –
+no local web server, no browser tab, just one small app.
 
-| Aktion | Windows / Linux | macOS |
+The file list is a [GuiExpert Table](https://github.com/guiexperttable/mono): virtual scrolling, 100 000 entries
+without stutter.
+
+![Files and Folders with the classic Norton colour scheme: two panels with tabs, marked files and the button bar](docs/screenshots/fnf-norton.png)
+
+<p align="center"><i>The classic <b>Norton</b> colour scheme – one of ten built-in designs.</i></p>
+
+## Main features
+
+- **Cross-platform** – one app for macOS, Windows and Linux, with native menus on macOS and keymaps per OS
+- **Orthodox two-panel layout** – source and target side by side, path breadcrumbs, favourites, status line,
+  button bar that changes with `Shift` / `Alt` / `Ctrl` (`⌘`)
+- **Tabs** on both sides – clone, move to the other side, each tab keeps path, sort order, column widths and cursor
+- **Session restore** – tabs, active side, splitter, favourites and window position survive a restart
+- **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
+  (*Go to anything*) finds every action
+- **Background jobs** – copy, move, delete, pack and search run as jobs with progress, rate, remaining time,
+  pause, resume and cancel; conflicts are asked once or “for all”
+- **Safe by default** – delete goes to the **trash**, no half-written files under the real name, rename never
+  overwrites, dangerous targets (root, home, system folders) need a second confirmation
+- **Multi rename** with live preview, macros, counters, case rules, regex replacements, presets and **undo**
+- **Group files** into folders by name, **clean folders** (empty folders, `*.bak`, `.DS_Store` …),
+  **create many folders** from a template
+- **Search** with glob/regex, content, size, date, depth and presets – results stream into a **result tab** you
+  can work with like a normal folder
+- **Archives** – open ZIP / TAR / TAR.GZ like a folder, pack and unpack (zip-slip and zip-bomb safe)
+- **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
+- **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
+- **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
+- **Drag & drop** between panels and from Finder / Explorer / your file manager
+- **External tools** and *Open terminal here* / *Show in Finder/Explorer* – tools are started **without a
+  shell**, configured in a small JSON file
+- **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
+- **Colour schemes** – the eight classic designs (Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat,
+  Norton) plus modern light/dark, *follow the system*, a live editor with WCAG contrast check, import/export
+- **Settings dialog** with search, export/import of the whole configuration
+- **English and German** UI, switchable at runtime
+
+![The Actions menu: every action grouped in four columns, with its keyboard shortcut](docs/screenshots/fnf-norton-actions-menu.png)
+
+<p align="center"><i>The <b>Actions</b> menu (<code>Ctrl+F12</code>) lists every action with its shortcut.</i></p>
+
+The complete feature list with all details (in German) is in **[docs/features.md](docs/features.md)**; the
+comparison with the previous version is in [docs/feature-parity.md](docs/feature-parity.md).
+
+## Status and roadmap
+
+| Area | State |
+| --- | --- |
+| File list, panels, tabs, session | ✅ done |
+| Copy / move / delete / rename / create, job engine | ✅ done |
+| Multi rename, group files, clean folders, multi mkdir | ✅ done |
+| Search, folder finder, duplicates, archives | ✅ done |
+| Viewer, quick view, properties | ✅ done |
+| Watcher, drag & drop (into the app), clipboard, external tools, shell line | ✅ done |
+| Colour schemes, settings, menus, English/German | ✅ done |
+| Slow and network drives (responsive UI, listing cache) | ✅ done |
+| Drag from the app into other programs | 🚧 open |
+| Further features from the previous version | 🚧 planned (see [feature-parity](docs/feature-parity.md)) |
+| Signed packages, first public release, auto update | 🚧 prepared, not set up |
+
+Details: [docs/roadmap.md](docs/roadmap.md).
+
+## Supported platforms
+
+| OS | Minimum | Package |
 | --- | --- | --- |
-| Open | `Enter` | `Enter` |
-| Parent folder | `Backspace` | `Backspace` |
-| Open folder in new tab | `Ctrl+Enter` | `⌘Enter` |
-| Reload | `Ctrl+R` | `⌘R` |
-| History back | `Alt+ArrowLeft` | `⌘[` |
-| History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L`, `Ctrl+Alt+D` | `⌘L`, `⌃⌥D` |
-| Find folder (change dir)… | `Alt+F10` | `⌥F10` |
-| Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
-| Folder menu, left panel | `Alt+F1` | `⌥F1` |
-| Folder menu, right panel | `Alt+F2` | `⌥F2` |
-| Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
-| Context menu | `Shift+F10`, Kontextmenü-Taste | `⇧F10` |
-| Menu bar | `Alt+M` | – (nativ) |
-| Einstellungen… | `Ctrl+,` | `⌘,` |
-| Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
-| Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
-| Toggle shell | `Shift+F11` | `⇧F11` |
-| Namen in die Shell einfügen | `Ctrl+Shift+Enter` | `⌘⇧Enter` |
-| Volle Pfade in die Shell einfügen | `Ctrl+Alt+Enter` | `⌘⌥Enter` |
-| Copy names to clipboard | `Ctrl+Alt+N` | `⌘⌥N` |
-| Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
-| Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
-| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
-| Go to anything… | `Ctrl+Shift+P` | `⌘⇧P`, `⌘⌃G` |
-| Actions menu ▴ | `Ctrl+F12` | `⌃K ⌃M` |
-| Toggle mark and move up / in place | `Shift+Space` / `Ctrl+Shift+Space` | `⇧Space` / `⌘⇧Space` |
-| Call action… | `F10` | `F10` |
-| Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
-| Mark and move down | `Shift+ArrowDown` | `⇧ArrowDown` |
-| Mark and move up | `Shift+ArrowUp` | `⇧ArrowUp` |
-| Mark to the first entry | `Shift+Home` | `⇧Home` |
-| Mark to the last entry | `Shift+End` | `⇧End` |
-| Mark all | `Ctrl+A`, `Ctrl+NumpadAdd` | `⌘A`, `⌘NumpadAdd` |
-| Unmark all | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract` | `⌘⇧A`, `⌘NumpadSubtract` |
-| Invert marks | `NumpadMultiply` | `NumpadMultiply` |
-| Mark by pattern… | `NumpadAdd` | `NumpadAdd` |
-| Unmark by pattern… | `NumpadSubtract` | `NumpadSubtract` |
-| Switch panel | `Tab` | `Tab` |
-| Left panel | `Alt+1` | `⌥1` |
-| Right panel | `Alt+2` | `⌥2` |
-| Next tab | `Ctrl+Tab` | `⌃Tab` |
-| Previous tab | `Ctrl+Shift+Tab` | `⌃⇧Tab` |
-| Clone tab | `Ctrl+T` | `⌘⌥T` |
-| Close tab | `Ctrl+W` | `⌘⌥W` |
-| Toggle favourite | `Ctrl+D` | `⌘D` |
-| Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
-| Search again | `Ctrl+Shift+F7` | `⌘⇧F7` |
+| macOS | 12 Monterey (Apple Silicon and Intel) | `.dmg` (universal) |
+| Windows | 10 / 11 (x64) | `-setup.exe` (no admin needed) or `.msi` |
+| Linux | WebKitGTK 4.1 – Ubuntu 22.04+, Debian 12+, Fedora 36+ | `.deb`, `.rpm`, `.AppImage` |
+
+## Installation
+
+There is **no published release yet.** Until then, build the app yourself (see [Development](#development)).
+Once releases are available they will appear on the
+[GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases):
+
+- **macOS:** open the DMG and drag *Files and Folders* to *Applications*.
+- **Windows:** run the installer (WebView2 is installed if missing).
+- **Linux:** `sudo apt install ./files-and-folders_<version>_amd64.deb`, `sudo dnf install ./….rpm`,
+  or make the AppImage executable (`chmod +x`) and start it.
+
+Early packages will be **unsigned**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
+*More info* → *Run anyway*.
+
+## Keyboard shortcuts (selection)
+
+All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘⇧K`); the command palette
+(`Ctrl+Shift+P` / `⌘⇧P`) lists every action.
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
 | View | `F3` | `F3` |
-| Quick view in the other panel | `Ctrl+Q` | `⌃Q` |
-| Edit (default app until 011) | `F4` | `F4` |
-| Create file… | `Shift+F4` | `⇧F4` |
-| Copy… | `F5` | `F5` |
-| Move… | `F6` | `F6` |
-| Rename… | `Shift+F6` | `⇧F6` |
-| Create folder… | `F7`, `Shift+F7` | `F7`, `⇧F7` |
-| Delete… | `F8`, `Delete` | `F8`, `⌘Backspace` |
-| Multi rename… | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M` | `⌘F6` |
-| Create several folders… | `Ctrl+F7` | `⌘F7` |
-| Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
-| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
-| Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
-| Pack… | `Alt+F5` | `⌥F5` |
-| Unpack… | `Alt+F9` | `⌥F9` |
-| Find duplicates… | `Alt+Shift+F7` | `⌥⇧F7` |
-| Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
-| Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
-| Tasks… | `Ctrl+F11` | `⌃K F6` |
-| Next colour scheme | `Ctrl+Alt+Shift+T` | `⌘⌃⌥T` |
+| Edit (tool `edit`) | `F4` | `F4` |
+| Copy / Move | `F5` / `F6` | `F5` / `F6` |
+| Create folder | `F7` | `F7` |
+| Delete (trash) / delete permanently | `F8` / `Shift+F8` | `F8`, `⌘⌫` / `⌘⌥⌫` |
+| Rename in list / dialog | `F2` / `Shift+F6` | `F2` / `⇧F6` |
+| Multi rename | `Ctrl+M` | `⌘F6` |
+| Find | `Alt+F7` | `⌥F7` |
+| Find folder (change dir) | `Alt+F10` | `⌥F10` |
+| Mark / unmark | `Space`, `Insert` | `Space` |
+| Switch panel | `Tab` | `Tab` |
+| New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |
+| Go to path | `Ctrl+L` | `⌘L` |
+| Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
+| Quick view | `Ctrl+Q` | `⌃Q` |
+| Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
+| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
+| Shell line | `Shift+F11` | `⇧F11` |
+| Settings | `Ctrl+,` | `⌘,` |
 
-Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
-Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,
-`←` `→` `Pos1` `Ende`, Doppelklick/`Enter` = 50 / 50. Mit gedrückter Shift-/Alt-/⌘- bzw. Strg-Taste zeigt die
-Button-Leiste den passenden Satz (Total-Commander-Prinzip).
+The full table is in [docs/features.md](docs/features.md#tastenkürzel-stand-prompt-002).
 
-## Installation für Nutzer
+## Customization
 
-Noch gibt es **kein veröffentlichtes Release**. Pakete entstehen über den Release-Workflow (Vorlage
-[`docs/ci/release.yml`](docs/ci/release.yml), Ablauf: [docs/release.md](docs/release.md)) als Entwurf eines
-GitHub-Releases:
+Everything is stored as JSON in the app's config folder and can be edited from within the app:
 
-| OS | Paket | Installation |
-| --- | --- | --- |
-| macOS 12+ (Apple Silicon und Intel) | `Files and Folders_<v>_universal.dmg` | DMG öffnen, App nach „Programme“ ziehen |
-| Windows 10/11 | `Files and Folders_<v>_x64-setup.exe` (ohne Admin) oder `.msi` | Installer starten; WebView2 wird bei Bedarf nachgeladen |
-| Linux (x86_64) | `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE), `.AppImage` | `sudo apt install ./files-and-folders_<v>_amd64.deb` bzw. `sudo dnf install ./….rpm`; AppImage: `chmod +x` und starten |
+- **Colours** – *Colour schemes…* dialog with live preview; schemes can be exported as `<name>.theme.json` and
+  imported again (the old `--fnf-*` format of the previous versions is understood as well).
+- **Shortcuts** – per OS (`macos`, `windows`, `linux`), overrides in `keymap.json`. An action can have several
+  shortcuts, chords like `⌃K F6` are possible.
+- **External tools** – `tools.json`: `program` + `args` array with placeholders such as `{file}`, `{files}`,
+  `{dir}`, `{targetDir}`; optional `shortcut`. Example:
 
-**Bekannte Einschränkungen je Plattform**
+  ```json
+  { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
+  ```
 
-- **Unsignierte Pakete** (solange keine Zertifikate eingerichtet sind): macOS meldet „nicht verifizierter
-  Entwickler“ → im Finder Rechtsklick → *Öffnen* (bzw. Systemeinstellungen → Datenschutz & Sicherheit → *Trotzdem
-  öffnen*); Windows SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*.
-- **macOS:** Zugriff auf Schreibtisch, Dokumente, Downloads, externe/Netz-Volumes fragt das System beim ersten
-  Mal ab. Papierkorb über den Finder (einmalige Erlaubnis „Finder steuern“). Praktisch erst wenig getestet.
-- **Windows:** Auf Laufwerken ohne Papierkorb (Netz, manche USB-Sticks) kann Windows beim „Löschen in den
-  Papierkorb“ endgültig löschen (eigene Prüfung noch offen, Design 006 E1). Praktisch erst wenig getestet (die CI
-  kompiliert und testet, s. `docs/ci/`).
-- **Linux:** braucht WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 36+). AppImage benötigt FUSE
-  (`libfuse2`) oder `--appimage-extract-and-run`.
-- Keine automatischen Updates (Updater bewertet, nicht aktiviert).
+- **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language …); the whole
+  configuration can be exported and imported as one file.
 
-Die Version steht im Dialog **About** (Menü Hilfe bzw. macOS „Über Files and Folders“, oder Befehlspalette).
+## Development
 
-## Voraussetzungen (Entwicklung)
-
-| Werkzeug | Version                                                                                   |
-| -------- | ----------------------------------------------------------------------------------------- |
-| Node.js  | `^22.22.3`, `^24.15.0` oder `>=26` (Vorgabe von Angular 22)                              |
-| pnpm     | 10.x (siehe `packageManager` in `package.json`; z. B. `corepack enable`)                  |
-| Rust     | stable ≥ 1.90 (`rustup`)                                                                  |
-| System   | [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/) je Betriebssystem      |
-
-- **macOS:** Xcode Command Line Tools (`xcode-select --install`).
-- **Windows:** Microsoft C++ Build Tools und WebView2 (bei Windows 10/11 meist vorhanden).
-- **Linux (Debian/Ubuntu):**
-  `sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
-
-## Installation und Start
+Requirements: **Node.js** `^22.22.3` / `^24.15.0` / `>=26`, **pnpm** 10 (`corepack enable`), **Rust** stable ≥ 1.90
+and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS
+(macOS: Xcode command line tools; Windows: C++ build tools + WebView2; Linux: `libwebkit2gtk-4.1-dev` and friends).
 
 ```bash
+git clone https://github.com/krocon/files-and-folders-tauri.git
+cd files-and-folders-tauri
 pnpm install
-pnpm tauri dev        # startet Angular-Dev-Server (Port 1420) + Desktop-App
+pnpm tauri dev        # Angular dev server (port 1420) + desktop window
 ```
 
-`pnpm start` allein startet nur das Frontend im Browser; dort gibt es kein Backend, und die App
-zeigt den Hinweis „The desktop backend is not available“.
+| Task | Command |
+| --- | --- |
+| All checks (format, lint, tests, build, Rust) | `pnpm check` |
+| Frontend tests (Vitest) | `pnpm test` |
+| Rust tests / clippy | `pnpm rust:test` / `pnpm rust:lint` |
+| Release build (packages per OS) | `pnpm tauri build` |
 
-## Checks
+Architecture and rules: [docs/architecture.md](docs/architecture.md) and [CLAUDE.md](CLAUDE.md);
+release process: [docs/release.md](docs/release.md).
 
-```bash
-pnpm format:check     # Prettier
-pnpm lint             # ESLint (angular-eslint)
-pnpm test             # Angular-Unit-Tests (Vitest, jsdom)
-pnpm build            # Production-Build des Frontends
-pnpm rust:fmt         # cargo fmt --check
-pnpm rust:lint        # cargo clippy -D warnings
-pnpm rust:test        # cargo test
-pnpm version:check    # Version gleich in package.json, tauri.conf.json, Cargo.toml/.lock
-pnpm scripts:test     # Tests der Skripte (Version, Release Notes, Lizenzbericht)
-pnpm check            # alles oben nacheinander
-```
+### Tech stack
 
-Release-Build: `pnpm tauri build` (Bundles in `src-tauri/target/release/bundle/`; Linux: deb, rpm, AppImage).
-Version setzen: `pnpm version:set X.Y.Z`; Release Notes: `pnpm release:notes`; Lizenzbericht:
-`pnpm licenses:report > docs/licenses.md`. Signierung und Notarisierung sind vorbereitet, nicht eingerichtet –
-[docs/release.md](docs/release.md), CI-Vorlagen: [docs/ci/](docs/ci/README.md). App-Icon: Quelle
-`src-tauri/icons/source/app-icon.svg` → `pnpm tauri icon src-tauri/icons/source/app-icon.svg` (danach die
-Ordner `android/`, `ios/` und `64x64.png` löschen).
+- **Tauri 2** – small native shell, narrow validated commands, strict CSP, no broad file-system or shell plugins
+- **Rust** – listing, file operations, job engine, search, archives, watcher, platform code
+- **Angular 22** – standalone components, signals, zoneless, plain CSS with design tokens
+- **[GuiExpert Table](https://github.com/guiexperttable/mono)** – the file list and all preview grids
+- **Font Awesome 4.5** – icons
 
-## Projektstruktur
+## History
 
-```
-src/                       Angular-Frontend
-  app/core/fs/             DTO-Typen, Fehler-Mapping, FsApi (einziger Ort mit invoke())
-  app/features/browser/    FileBrowserStore (Signals), FileBrowser
-    file-list/             FileList (GuiExpert Table), Controller, Bridge, Spalten, Renderer
-  app/shared/              Formatierung (Größe, Datum)
-  styles.css               Design-Tokens (CSS Custom Properties)
-src-tauri/                 Rust-Backend (Tauri 2)
-  src/commands.rs          Tauri-Commands (dünne Schicht)
-  src/listing.rs           Verzeichnis-Listing (rein std, getestet)
-  src/paths.rs             Pfadvalidierung, Eltern-/Breadcrumb-Logik
-  src/model.rs, error.rs   DTOs und strukturierte Fehler
-docs/                      Architektur, Roadmap, Feature-Parität, Analyse des alten Codes
-prompts/                   Feature-Prompts für die nächsten Ausbaustufen (Index: prompts/README.md)
-CLAUDE.md                  Leitfaden für die Arbeit am Repo (Regeln, Befehle, GuiExpert Table)
-```
+| Year | Project | Stack |
+| --- | --- | --- |
+| 2016 | [`files-and-folders`](https://www.npmjs.com/package/files-and-folders) | Node.js, Socket.IO, AngularJS – runs in the browser |
+| 2025 | [files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) | NestJS, Angular 20 – runs in the browser |
+| 2026 | **files-and-folders-tauri** (this repo) | Tauri 2, Rust, Angular 22 – native desktop app |
 
-## Referenzen und Lizenzen
+## Contributing
 
-Fachliche Referenzen (nur Funktionsumfang, kein übernommener Code):
+Issues and ideas are welcome on [GitHub](https://github.com/krocon/files-and-folders-tauri/issues). Since the app
+is still moving fast, please open an issue before starting a larger pull request.
 
-- npm [`files-and-folders`](https://www.npmjs.com/package/files-and-folders) – MIT (laut package.json)
-- [krocon/node-files-and-folders](https://github.com/krocon/node-files-and-folders) – MIT (laut package.json)
-- [krocon/files-and-folders](https://github.com/krocon/files-and-folders) – „ISC“ in package.json, keine LICENSE-Datei
-- [krocon/files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) – Custom Source-Available License (CSAL) v1.0 (Rechteinhaber: GUI Expert GmbH); Nutzung als Referenz, Code-Übernahme nur nach Marcs ausdrücklicher Freigabe
-- [GuiExpert Table](https://github.com/guiexperttable/mono) – MIT (aktuelle Releases)
+## License
 
-Die Lizenz dieses Projekts ist noch nicht festgelegt (`license` in `Cargo.toml`/`package.json` leer) – Voraussetzung
-für das erste Release. Lizenzen der Abhängigkeiten: [docs/licenses.md](docs/licenses.md).
+[MIT](LICENSE) © Marc Kronberg
+
+Third-party licenses: [docs/licenses.md](docs/licenses.md).
