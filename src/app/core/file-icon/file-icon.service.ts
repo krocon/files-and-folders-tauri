@@ -1,109 +1,23 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
+import { FileType, IconColorGroup } from '../config/config.models';
 import { DirEntry, isNavigableDir, isParentRow } from '../fs/fs.models';
+import { cleanFileTypes, FileTypeIndex, indexFileTypes } from './file-types-logic';
+import builtInJson from './file-types.json';
 
-export interface FileCategoryDefinition {
-  readonly label: string;
-  readonly extensions: readonly string[];
-}
+export type { IconColorGroup };
 
-export const FILE_CATEGORIES: readonly FileCategoryDefinition[] = [
-  {
-    label: 'movies',
-    extensions: ['.avi', '.mkv', '.mp4', '.mov', '.wmv', '.flv', '.webm'],
-  },
-  {
-    label: 'audio',
-    extensions: ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.wma', '.m4a'],
-  },
-  {
-    label: 'images',
-    extensions: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg', '.heic'],
-  },
-  {
-    label: 'documents',
-    extensions: [
-      '.pdf',
-      '.doc',
-      '.docx',
-      '.xls',
-      '.xlsx',
-      '.ppt',
-      '.pptx',
-      '.odt',
-      '.ods',
-      '.odp',
-      '.txt',
-      '.rtf',
-      '.md',
-    ],
-  },
-  {
-    label: 'archives',
-    extensions: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso'],
-  },
-  {
-    label: 'code',
-    extensions: [
-      '.html',
-      '.css',
-      '.js',
-      '.ts',
-      '.jsx',
-      '.tsx',
-      '.py',
-      '.java',
-      '.c',
-      '.cpp',
-      '.cs',
-      '.rb',
-      '.php',
-      '.go',
-      '.rs',
-      '.sh',
-      '.xml',
-      '.json',
-      '.yml',
-      '.yaml',
-      '.sql',
-    ],
-  },
-  {
-    label: 'executables',
-    extensions: ['.exe', '.msi', '.bat', '.sh', '.apk', '.app', '.jar', '.com', '.bin', '.cmd'],
-  },
-  {
-    label: 'fonts',
-    extensions: ['.ttf', '.otf', '.woff', '.woff2', '.eot'],
-  },
-  {
-    label: 'ebooks',
-    extensions: ['.epub', '.mobi', '.azw', '.azw3', '.fb2', '.cbz', '.cbr'],
-  },
-  {
-    label: 'design',
-    extensions: ['.psd', '.ai', '.xd', '.sketch', '.fig', '.indd', '.cdr'],
-  },
-  {
-    label: '3d',
-    extensions: ['.obj', '.fbx', '.stl', '.dae', '.3ds', '.blend'],
-  },
-];
+/** The built-in categories (mr `filetype/defaults/data.json` + icon and colour, design 022 E4). */
+export const BUILT_IN_FILE_TYPES: readonly FileType[] = cleanFileTypes(
+  builtInJson as unknown as FileType[],
+);
 
-/** Extension-to-category mapping for fast lookup. */
-const EXTENSION_TO_CATEGORY: ReadonlyMap<string, string> = (() => {
-  const map = new Map<string, string>();
-  for (const cat of FILE_CATEGORIES) {
-    for (const ext of cat.extensions) {
-      const normalized = ext.toLowerCase().replace(/^\./, '');
-      if (!map.has(normalized)) {
-        map.set(normalized, cat.label);
-      }
-    }
-  }
-  return map;
-})();
+/**
+ * The categories in use (design 022 E5): set by the `FileTypesStore`, read by the
+ * renderers without injection – the file list repaints when it changes.
+ */
+export const FILE_TYPES = signal<FileTypeIndex>(indexFileTypes(BUILT_IN_FILE_TYPES));
 
-/** Specific extension to FontAwesome 4.5.0 icon name overrides. */
+/** Finer icons for some documents: they refine the generic document icon only (design 022 E6). */
 const EXTENSION_SPECIFIC_ICONS: Readonly<Record<string, string>> = {
   pdf: 'fa-file-pdf-o',
   doc: 'fa-file-word-o',
@@ -120,22 +34,8 @@ const EXTENSION_SPECIFIC_ICONS: Readonly<Record<string, string>> = {
   md: 'fa-file-text-o',
 };
 
-/** Category to default FontAwesome 4.5.0 icon name. */
-const CATEGORY_DEFAULT_ICONS: Readonly<Record<string, string>> = {
-  movies: 'fa-file-video-o',
-  audio: 'fa-file-audio-o',
-  images: 'fa-file-image-o',
-  documents: 'fa-file-text-o',
-  archives: 'fa-file-archive-o',
-  code: 'fa-file-code-o',
-  executables: 'fa-cogs',
-  fonts: 'fa-font',
-  ebooks: 'fa-book',
-  design: 'fa-paint-brush',
-  '3d': 'fa-cube',
-};
-
 const DEFAULT_FILE_ICON = 'fa-file-o';
+const GENERIC_DOCUMENT_ICON = 'fa-file-text-o';
 
 /** Extracts clean extension without leading dot in lowercase. */
 export function extractExtension(filenameOrExt: string): string {
@@ -153,14 +53,12 @@ export function iconNameForExtension(filenameOrExt: string): string {
   if (!ext) {
     return DEFAULT_FILE_ICON;
   }
-  if (EXTENSION_SPECIFIC_ICONS[ext]) {
+  const category = FILE_TYPES().byExtension.get(ext);
+  const icon = category ? (category.icon ?? DEFAULT_FILE_ICON) : null;
+  if ((icon === null || icon === GENERIC_DOCUMENT_ICON) && EXTENSION_SPECIFIC_ICONS[ext]) {
     return EXTENSION_SPECIFIC_ICONS[ext];
   }
-  const category = EXTENSION_TO_CATEGORY.get(ext);
-  if (category && CATEGORY_DEFAULT_ICONS[category]) {
-    return CATEGORY_DEFAULT_ICONS[category];
-  }
-  return DEFAULT_FILE_ICON;
+  return icon ?? DEFAULT_FILE_ICON;
 }
 
 /** Resolves FontAwesome icon name (e.g. `fa-folder`, `fa-file-video-o`) for a DirEntry. */
@@ -187,24 +85,6 @@ export function iconNameForEntry(entry: DirEntry): string {
   }
 }
 
-/** Colour group of a file icon (theme tokens `--color-icon-<group>`). */
-export type IconColorGroup =
-  'folder' | 'document' | 'image' | 'video' | 'audio' | 'archive' | 'code' | 'executable';
-
-const CATEGORY_COLOR_GROUPS: Readonly<Record<string, IconColorGroup>> = {
-  movies: 'video',
-  audio: 'audio',
-  images: 'image',
-  design: 'image',
-  '3d': 'image',
-  documents: 'document',
-  ebooks: 'document',
-  fonts: 'document',
-  archives: 'archive',
-  code: 'code',
-  executables: 'executable',
-};
-
 /** Colour group of an entry's icon; `null` = plain text colour (`..`, unknown types, broken links). */
 export function iconColorGroupForEntry(entry: DirEntry): IconColorGroup | null {
   const icon = iconNameForEntry(entry);
@@ -214,8 +94,7 @@ export function iconColorGroupForEntry(entry: DirEntry): IconColorGroup | null {
   if (isParentRow(entry) || icon === 'fa-chain-broken' || icon === 'fa-question-circle') {
     return null;
   }
-  const category = EXTENSION_TO_CATEGORY.get(extractExtension(entry.name));
-  return category ? (CATEGORY_COLOR_GROUPS[category] ?? null) : null;
+  return FILE_TYPES().byExtension.get(extractExtension(entry.name))?.color ?? null;
 }
 
 /** Returns full CSS class string with `fa` prefix (e.g. `fa fa-folder`, `fa fa-file-code-o`). */
@@ -227,11 +106,13 @@ export function iconFor(entry: DirEntry): string {
   providedIn: 'root',
 })
 export class FileIconService {
-  readonly categories: readonly FileCategoryDefinition[] = FILE_CATEGORIES;
+  /** The categories in use (built in or the user's, design 022). */
+  get categories(): readonly FileType[] {
+    return FILE_TYPES().categories;
+  }
 
   getCategory(filenameOrExt: string): string | undefined {
-    const ext = extractExtension(filenameOrExt);
-    return EXTENSION_TO_CATEGORY.get(ext);
+    return FILE_TYPES().byExtension.get(extractExtension(filenameOrExt))?.label;
   }
 
   getIconName(entryOrExt: DirEntry | string): string {

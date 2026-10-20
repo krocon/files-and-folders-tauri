@@ -3,11 +3,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './pattern';
+import { compilePattern, defaultPattern, PatternMode } from './pattern';
+import { fileTypeGlob } from '../../core/file-icon/file-types-logic';
+import { CONFIG_TEXTS, fileTypeLabel } from '../config/config-texts';
+import { FileTypesStore } from '../config/file-types.store';
 
 /**
  * Num+ / Num−: mark or unmark the displayed entries whose name matches a glob
- * or regex pattern; presets of the old program; live count.
+ * or regex pattern; presets = the file types (design 022); live count.
  */
 @Component({
   selector: 'app-mark-pattern-dialog',
@@ -54,9 +57,14 @@ import { compilePattern, defaultPattern, PATTERN_PRESETS, PatternMode } from './
           {{ mode() === 'glob' ? t.helpGlob : t.helpRegex }}
         </p>
         <div class="presets" role="group" [attr.aria-label]="t.presets">
-          @for (p of presets; track p.label) {
-            <button type="button" class="btn" (click)="usePreset(p.pattern)">
-              {{ t.presetNames[p.label] ?? p.label }}
+          @for (p of presets(); track $index) {
+            <button
+              type="button"
+              class="btn"
+              [attr.title]="p.pattern"
+              (click)="usePreset(p.pattern)"
+            >
+              {{ p.label }}
             </button>
           }
         </div>
@@ -84,7 +92,15 @@ export class MarkPatternDialog {
   protected readonly t = ACT_TEXTS;
   protected readonly dialogs = inject(DialogService);
   private readonly ws = inject(WorkspaceStore);
-  protected readonly presets = PATTERN_PRESETS;
+  private readonly fileTypes = inject(FileTypesStore);
+  /** The file type categories (design 022 E7, mr selection dialog) and "everything". */
+  protected readonly presets = computed(() => [
+    ...this.fileTypes
+      .categories()
+      .filter((c) => c.extensions.length > 0)
+      .map((c) => ({ label: fileTypeLabel(c.label), pattern: fileTypeGlob(c) })),
+    { label: CONFIG_TEXTS.everything, pattern: '*' },
+  ]);
   private readonly list = this.ws.panel()?.controller();
 
   protected readonly text = signal(defaultPattern(this.list?.cursorEntry()?.name));

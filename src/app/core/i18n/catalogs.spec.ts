@@ -11,6 +11,7 @@ import '../../features/about/about-texts';
 import '../../features/actions/actions-texts';
 import '../../features/archive/archive-texts';
 import '../../features/cleanfolders/clean-texts';
+import '../../features/config/config-texts';
 import '../../features/dnd/dnd-logic';
 import '../../features/duplicates/duplicates-texts';
 import '../../features/groupfiles/groupfiles-texts';

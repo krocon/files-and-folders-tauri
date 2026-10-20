@@ -54,18 +54,6 @@ function termToRegex(term: string): string {
   return `^${escaped.replace(/\*/g, '.*').replace(/\?/g, '.')}$`;
 }
 
-/** Presets of the old program, extended (legacy §3, mr §3). */
-export const PATTERN_PRESETS: readonly { readonly label: string; readonly pattern: string }[] = [
-  { label: 'Images', pattern: '*.jpg *.jpeg *.png *.gif *.webp *.heic *.tif *.tiff *.bmp *.svg' },
-  { label: 'Videos', pattern: '*.mp4 *.mkv *.avi *.mov *.webm *.m4v' },
-  { label: 'Audio', pattern: '*.mp3 *.flac *.m4a *.wav *.ogg *.aac' },
-  { label: 'Documents', pattern: '*.pdf *.doc *.docx *.odt *.txt *.md *.rtf' },
-  { label: 'Comics', pattern: '*.cbr *.cbz' },
-  { label: 'E-books', pattern: '*.epub *.mobi *.azw3' },
-  { label: 'Archives', pattern: '*.zip *.rar *.7z *.tar *.gz *.bz2 *.xz' },
-  { label: 'Everything', pattern: '*' },
-];
-
 /** Default pattern: `*.<ext>` of the file under the cursor (mr), otherwise `*`. */
 export function defaultPattern(name: string | undefined): string {
   const m = name ? /\.([^.]+)$/.exec(name) : null;

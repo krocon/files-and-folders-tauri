@@ -18,7 +18,8 @@ import { ActionsMenu } from '../../actions/actions-menu';
 import { THEME_TEXTS } from '../../themes/theme-texts';
 import { ContextMenu, MenuCloseReason, MenuItem } from '../context-menu';
 import { TEXTS } from '../texts';
-import { BUTTON_SETS, modifierSet } from './button-config';
+import { modifierSet } from './button-config';
+import { ButtonConfigStore } from '../../config/button-config.store';
 
 interface ToolButton {
   readonly id: ActionId;
@@ -112,6 +113,7 @@ export class ButtonBar {
   private readonly keys = inject(KeyboardDispatcher);
   private readonly jobs = inject(JobsStore);
   private readonly theme = inject(ThemeService);
+  private readonly config = inject(ButtonConfigStore);
   protected readonly menuOpen = signal(false);
 
   constructor() {
@@ -148,7 +150,7 @@ export class ButtonBar {
     const held = this.keys.held();
     const platform = this.actions.platform();
     this.actions.keymap();
-    return BUTTON_SETS[modifierSet(held, platform)].map((id) => {
+    return this.config.sets()[modifierSet(held, platform)].map((id) => {
       const state = this.actions.state(id);
       const shortcut = this.actions.shortcutLabel(id);
       return {

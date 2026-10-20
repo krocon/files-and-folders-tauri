@@ -20,7 +20,8 @@ import { FindStore } from './find.store';
 import { FolderFinderStore } from './folder-finder.store';
 import { registerSearchActions } from './search-actions';
 import { SEARCH_TEXTS } from './search-texts';
-import { PUBLISH_MS, SearchStore } from './search.store';
+import { MAX_TEMPLATES, PUBLISH_MS, restoreTemplates, SearchStore } from './search.store';
+import { SettingsStore } from '../../core/settings/settings.store';
 
 const CRITERIA: SearchCriteria = {
   roots: ['/r'],
@@ -114,6 +115,37 @@ describe('SearchStore and result tabs (design 009)', () => {
     expect(recent[0]).toEqual(big(8));
     expect(recent.length).toBeGreaterThan(1);
     expect(recent.length).toBeLessThan(9);
+  });
+
+  it('own templates are kept in the settings, replaced by name and deleted (design 022 E8)', () => {
+    const settings = TestBed.inject(SettingsStore);
+    const form = { ...DEFAULT_FORM, name: '*.cbz' };
+    expect(search.saveTemplate('  Comics ', form)).toBe(true);
+    expect(search.saveTemplate('', form)).toBe(false);
+    expect(settings.get('search.templates')).toEqual([{ label: 'Comics', form }]);
+    const other = { ...form, name: '*.cbr' };
+    expect(search.saveTemplate('Comics', other)).toBe(true);
+    expect(search.templates()).toEqual([{ label: 'Comics', form: other }]);
+    for (let i = 1; i < MAX_TEMPLATES; i++) {
+      search.saveTemplate(`t${i}`, form);
+    }
+    expect(search.templates()).toHaveLength(MAX_TEMPLATES);
+    expect(search.saveTemplate('one too many', form)).toBe(false);
+    search.deleteTemplate('Comics');
+    expect(search.templates().some((t) => t.label === 'Comics')).toBe(false);
+  });
+
+  it('restores templates from the settings: label and form checked, first of a name wins', () => {
+    expect(
+      restoreTemplates([
+        { label: 'a', form: { name: '*.x' } },
+        { label: 'a', form: {} },
+        { label: ' ', form: {} },
+        { label: 'b', form: 'nope' },
+        'junk',
+        null,
+      ]),
+    ).toEqual([{ label: 'a', form: { ...DEFAULT_FORM, name: '*.x' } }]);
   });
 
   it('a refused start opens nothing and returns the error', async () => {

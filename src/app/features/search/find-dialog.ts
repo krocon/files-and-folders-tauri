@@ -328,6 +328,7 @@ const ERR = 'fnf-find-error';
 
           <div class="foot">
             <p class="error" role="alert" [id]="errId">{{ find.error()?.message ?? '' }}</p>
+            <p class="help" aria-live="polite">{{ saved() }}</p>
             <label class="check">
               <input
                 type="checkbox"
@@ -338,6 +339,11 @@ const ERR = 'fnf-find-error';
               {{ t.newTab }}
             </label>
             <div class="buttons">
+              @if (chosenTemplate(); as name) {
+                <button type="button" class="btn" (click)="deleteTemplate(name)">
+                  {{ t.deleteTemplate(name) }}
+                </button>
+              }
               @if (naming()) {
                 <input
                   type="text"
@@ -375,6 +381,10 @@ export class FindDialog {
   protected readonly presets: readonly Preset[] = PRESETS_BUILT_IN;
   protected readonly errId = ERR;
   protected readonly naming = signal(false);
+  /** The own template last chosen (can be deleted, design 022 E8). */
+  protected readonly chosenTemplate = signal<string | null>(null);
+  /** Screen-reader confirmation of a saved template. */
+  protected readonly saved = signal('');
   private readonly errorField = computed(() => this.find.error()?.field ?? null);
 
   protected invalid(field: FormField): 'true' | null {
@@ -398,12 +408,14 @@ export class FindDialog {
     const select = evt.target as HTMLSelectElement;
     const v = select.value;
     const i = Number(v.slice(1));
+    this.chosenTemplate.set(null);
     if (v.startsWith('p')) {
       this.set({ name: presetGlob(this.presets[i]), nameMode: 'glob', wholeName: true });
     } else if (v.startsWith('t')) {
       const tpl = this.search.templates()[i];
       if (tpl) {
         this.find.apply(tpl.form);
+        this.chosenTemplate.set(tpl.label);
       }
     } else if (v.startsWith('r')) {
       const r = this.search.recent()[i];
@@ -415,8 +427,17 @@ export class FindDialog {
   }
 
   protected saveTemplate(label: string): void {
-    this.find.saveTemplate(label);
+    if (this.find.saveTemplate(label)) {
+      this.saved.set(this.t.templateSaved(label.trim()));
+      this.chosenTemplate.set(label.trim());
+    }
     this.naming.set(false);
+  }
+
+  protected deleteTemplate(label: string): void {
+    this.search.deleteTemplate(label);
+    this.chosenTemplate.set(null);
+    this.saved.set('');
   }
 
   protected text(evt: Event): string {

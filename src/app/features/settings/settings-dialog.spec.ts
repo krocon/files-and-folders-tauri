@@ -132,7 +132,14 @@ describe('SettingsDialog', () => {
     api.importReport = { imported: ['settings'], warnings: [] };
     button('Import').click();
     await fixture.whenStable();
-    expect(api.imports[0].parts).toEqual(['settings', 'keymap', 'themes', 'renamePresets']);
+    expect(api.imports[0].parts).toEqual([
+      'settings',
+      'keymap',
+      'themes',
+      'renamePresets',
+      'buttons',
+      'fileTypes',
+    ]);
     fixture.detectChanges();
     expect(el.querySelector('.message')?.textContent).toContain('Imported: Settings.');
     expect(TestBed.inject(DialogService).open()).toBeNull();
