@@ -17,7 +17,8 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
           class="ghost"
           [class.no-target]="!d.target"
           [class.move]="d.kind === 'move'"
-          [style.left.px]="d.x + 16"
+          [style.left.px]="flip(d.x) ? null : d.x + 16"
+          [style.right.px]="flip(d.x) ? viewportWidth() - d.x + 16 : null"
           [style.top.px]="d.y + 18"
         >
           <span class="what">{{ t }}</span>
@@ -41,7 +42,7 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
       display: flex;
       flex-direction: column;
       gap: 2px;
-      max-width: 360px;
+      max-width: 440px;
       padding: var(--spacing-1) var(--spacing-2);
       font-size: var(--font-size-sm);
       color: var(--color-accent-text);
@@ -79,6 +80,13 @@ export class DragGhost {
   protected readonly store = inject(DragStore);
   protected get hint(): string {
     return DND_TEXTS.hint(IS_MAC);
+  }
+  /** Near the right edge the hint goes left of the pointer – it stays readable up to the edge. */
+  protected flip(x: number): boolean {
+    return x > this.viewportWidth() - 460;
+  }
+  protected viewportWidth(): number {
+    return typeof window === 'undefined' ? Infinity : window.innerWidth;
   }
   /** Changes only with kind and target, not with every pointer move. */
   protected readonly text = computed(() => {

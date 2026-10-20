@@ -158,7 +158,7 @@ export const DND_EN = {
     `${kind === 'copy' ? 'Copy' : 'Move'} ${count === 1 ? first : `${count} entries`}` +
     (target ? ` → ${target.name}` : ' – no target here'),
   hint: (isMac: boolean) =>
-    `${isMac ? '⌘: move' : 'Shift: move'} · Esc: cancel · out of the window: to other apps`,
+    `${isMac ? '⌘: move' : 'Shift: move'} · Esc: cancel · out of the window: other apps`,
   notFromArchive: 'Entries inside an archive cannot be dragged to other apps – unpack them first.',
   dropFromSystem: (count: number) => `Copy ${count === 1 ? '1 item' : `${count} items`} here`,
   nothingDropped: 'The dropped items do not exist (any more).',

@@ -86,7 +86,20 @@ Neue Fehlercodes: keine. `DragState` bekommt `inArchive` (Quelle ist ein Archiv-
 ## 5. Fortschritt
 
 - [x] Prompt + Design
-- [ ] Rust
-- [ ] Frontend
-- [ ] E2E
-- [ ] Doku
+- [x] Rust (`os_drag.rs`, `platform/os_drag.rs`, `commands/os_drag.rs`; `command_rules` kennt die neue Datei)
+- [x] Frontend (`OsDragApi`, `DragStore.handOff`, `file-list.ts`, Ghost klappt am rechten Rand nach links)
+- [x] E2E unter Xvfb (Linux, 20.10.2026) – Debug-Build, GTK-Testfenster (`python3.12` + PyGObject), Drag per `xdotool`:
+  - eine Datei `Grüße mit Leerzeichen %41 #1.txt` → kam als
+    `file:///tmp/e2e/home/Test/Gr%C3%BC%C3%9Fe%20mit%20Leerzeichen%20%2541%20%231.txt` an;
+  - zwei markierte Einträge (`Ordner äö`, `emoji 🎉.txt`) → beide URIs, Reihenfolge des Listings;
+  - Drag aus dem Fenster und zurück auf das rechte Panel → „Copy 1 item here → home“, Loslassen öffnet den
+    Kopieren-Dialog (E7); Vorschaubild = App-Icon;
+  - Drag aus einem ZIP-Ordner hinaus → Statusmeldung „Entries inside an archive cannot be dragged …“, nichts kam an;
+  - interner Drag auf das andere Panel öffnet weiterhin den Dialog, Esc bricht ab.
+- [x] Doku (architecture, feature-parity, roadmap, README, CLAUDE.md, TODO.md, prompts/README.md)
+- [ ] macOS/Windows: im Container nicht kompilierbar (kein Target, kein SDK) – erst die CI bzw. Marc
+
+## 6. Offen
+
+- macOS (`NSDraggingSession` über `drag`) und Windows (`DoDragDrop`) ungeprüft – Finder, Schreibtisch, Mail, Explorer.
+- Verschieben ins System (E3), Tabs zwischen den Seiten ziehen, Verknüpfung per Drag (012 E5).

@@ -10,7 +10,7 @@ export const DND_DE: Translation<typeof DND_EN> = {
     `${count === 1 ? first : `${count} Einträge`} ${kind === 'copy' ? 'kopieren' : 'verschieben'}` +
     (target ? ` → ${target.name}` : ' – hier kein Ziel'),
   hint: (isMac) =>
-    `${isMac ? '⌘: verschieben' : 'Umschalt: verschieben'} · Esc: abbrechen · aus dem Fenster: in andere Programme`,
+    `${isMac ? '⌘: verschieben' : 'Umschalt: verschieben'} · Esc: abbrechen · aus dem Fenster: andere Programme`,
   notFromArchive:
     'Einträge in einem Archiv lassen sich nicht in andere Programme ziehen – zuerst entpacken.',
   dropFromSystem: (count) => `${count === 1 ? '1 Element' : `${count} Elemente`} hierher kopieren`,
