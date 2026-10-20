@@ -31,6 +31,11 @@ export abstract class ThemeApi {
     name: string,
     theme: ThemeFileContent | LegacyThemeFileContent,
   ): Promise<string>;
+  /**
+   * Native window frame like the tab bar: title bar colour `#rrggbb` (macOS) and
+   * light/dark frame (all OS).
+   */
+  abstract setWindowChrome(color: string, dark: boolean): Promise<void>;
 }
 
 @Injectable()
@@ -53,6 +58,10 @@ export class TauriThemeApi extends ThemeApi {
     theme: ThemeFileContent | LegacyThemeFileContent,
   ): Promise<string> {
     return call<string>('export_theme', { dir, name, theme });
+  }
+
+  setWindowChrome(color: string, dark: boolean): Promise<void> {
+    return call<void>('set_window_chrome', { color, dark });
   }
 }
 

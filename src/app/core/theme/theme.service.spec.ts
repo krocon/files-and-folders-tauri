@@ -256,6 +256,20 @@ describe('ThemeService', () => {
     expect(api.saved.at(-1)?.themes.map((t) => t.name)).toEqual(['Pale']);
   });
 
+  it('colours the native title bar like the tab bar (header background), once per change', async () => {
+    const s = create();
+    await s.init();
+    TestBed.tick();
+    expect(api.chrome.at(-1)).toEqual({ color: '#eef0f3', dark: false });
+    await s.select('crimson');
+    TestBed.tick();
+    expect(api.chrome.at(-1)).toEqual({ color: '#212127', dark: true });
+    const calls = api.chrome.length;
+    await s.select('crimson');
+    TestBed.tick();
+    expect(api.chrome.length).toBe(calls);
+  });
+
   it('cycles with next()', async () => {
     const s = create();
     await s.init();

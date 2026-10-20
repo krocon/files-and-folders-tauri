@@ -648,6 +648,17 @@ pub fn export(dir: &Path, name: &str, theme: &Value) -> Result<PathBuf, FsError>
     ))
 }
 
+/// `#rrggbb` → (r, g, b) – the colour of the native title bar (`set_window_chrome`).
+/// Anything else (names, alpha, `var(…)`) is refused: the frontend resolves it first.
+pub fn parse_hex_rgb(value: &str) -> Option<(u8, u8, u8)> {
+    let hex = value.strip_prefix('#')?;
+    if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    let byte = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
+    Some((byte(0)?, byte(2)?, byte(4)?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -972,5 +983,23 @@ mod tests {
             export(dir.path(), "x", &json!([1])).unwrap_err().code,
             FsErrorCode::InvalidPath
         );
+    }
+
+    #[test]
+    fn title_bar_colour_is_plain_hex_only() {
+        assert_eq!(parse_hex_rgb("#212127"), Some((0x21, 0x21, 0x27)));
+        assert_eq!(parse_hex_rgb("#FFaa00"), Some((255, 0xaa, 0)));
+        for bad in [
+            "212127",
+            "#fff",
+            "#2121277f",
+            "#21212g",
+            "red",
+            "var(--x)",
+            "#ü1212",
+            "",
+        ] {
+            assert_eq!(parse_hex_rgb(bad), None, "{bad}");
+        }
     }
 }

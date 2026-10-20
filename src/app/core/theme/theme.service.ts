@@ -2,7 +2,7 @@ import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angul
 import { ActionService } from '../actions/action.service';
 import { errorText, toFsError } from '../fs/fs-error';
 import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
-import { toHex } from './color';
+import { blend, toHex } from './color';
 import { convertLegacy, toLegacyFile } from './legacy-theme';
 import { ThemeApi, ThemeFileContent } from './theme-api';
 import {
@@ -90,6 +90,8 @@ export class ThemeService {
   private persist = true;
   private saving: Promise<void> = Promise.resolve();
   private appliedNames = new Set<string>();
+  /** Last frame sent to Rust (`color|dark`), so preview edits do not repeat it. */
+  private chrome = '';
 
   constructor() {
     const media = typeof matchMedia === 'function' ? matchMedia(DARK_QUERY) : null;
@@ -302,5 +304,23 @@ export class ThemeService {
       document.head.appendChild(meta);
     }
     meta.content = bg ? toHex(bg) : theme.dark ? '#000000' : '#ffffff';
+    this.applyWindowChrome(theme);
+  }
+
+  /** Native title bar in the colour of the tab bar (`--color-header-bg`, opaque on the window). */
+  private applyWindowChrome(theme: ThemeDraft): void {
+    const header = resolveColor('--color-header-bg', theme.tokens);
+    const bg = resolveColor('--color-bg', theme.tokens);
+    if (!header) {
+      return;
+    }
+    const color = toHex(header.a < 1 && bg ? blend(header, bg) : header);
+    const key = `${color}|${theme.dark}`;
+    if (key === this.chrome) {
+      return;
+    }
+    this.chrome = key;
+    // no backend (browser) or an old window: the frame keeps the system colours
+    this.api.setWindowChrome(color, theme.dark).catch(() => undefined);
   }
 }

@@ -1013,6 +1013,32 @@ pub async fn export_theme<R: Runtime>(
     .await
 }
 
+/// Colours the native window frame like the app's tab bar: title bar background
+/// (`#rrggbb`, macOS with `titleBarStyle: Transparent`) and light/dark frame (all OS).
+#[tauri::command]
+pub async fn set_window_chrome<R: Runtime>(
+    app: AppHandle<R>,
+    color: String,
+    dark: bool,
+) -> Result<(), FsError> {
+    let (r, g, b) = themes::parse_hex_rgb(&color)
+        .ok_or_else(|| FsError::new(FsErrorCode::InvalidPath, "Not a #rrggbb colour", None))?;
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return Ok(());
+    };
+    let io = |e: tauri::Error| FsError::new(FsErrorCode::Io, e.to_string(), None);
+    window
+        .set_theme(Some(if dark {
+            tauri::Theme::Dark
+        } else {
+            tauri::Theme::Light
+        }))
+        .map_err(io)?;
+    window
+        .set_background_color(Some(tauri::window::Color(r, g, b, 255)))
+        .map_err(io)
+}
+
 // ---- settings (design 015) ----
 
 /// Whether `settings.json` may be written (false: newer version, or a broken file stayed in place).

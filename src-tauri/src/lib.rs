@@ -225,6 +225,7 @@ pub fn run() {
             commands::save_themes,
             commands::import_theme,
             commands::export_theme,
+            commands::set_window_chrome,
             commands::set_app_menu,
             commands::set_menu_enabled,
             commands::subscribe_menu,

@@ -13,6 +13,8 @@ export class FakeThemeApi extends ThemeApi {
   }[] = [];
   files = new Map<string, unknown>();
   saveError: FsError | null = null;
+  /** Calls of `setWindowChrome`, newest last. */
+  readonly chrome: { color: string; dark: boolean }[] = [];
 
   load(): Promise<LoadedThemes> {
     return Promise.resolve(structuredClone(this.loaded));
@@ -42,5 +44,10 @@ export class FakeThemeApi extends ThemeApi {
   ): Promise<string> {
     this.exported.push({ dir, name, theme: structuredClone(theme) });
     return Promise.resolve(`${dir}/${name}.theme.json`);
+  }
+
+  setWindowChrome(color: string, dark: boolean): Promise<void> {
+    this.chrome.push({ color, dark });
+    return Promise.resolve();
   }
 }
