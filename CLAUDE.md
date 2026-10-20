@@ -28,7 +28,7 @@
   CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`), Prompt 018 (Feature-Parität gegen `old_project/`,
   Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr), Prompt 021 (Shell-Leiste mit Pipes) und Prompt
   029 (bedienbar bei langen Jobs/langsamen Laufwerken, Branch `feat/reaktionsfaehig-bei-jobs`) und Prompt 030 (Ordner-Cache
-  für langsame Laufwerke, `getattrlistbulk` auf macOS, Branch `feat/ordner-cache-smb`) sind fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
+  für langsame Laufwerke; `getattrlistbulk` gemessen und wieder ausgebaut) sind fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
@@ -128,7 +128,7 @@ src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
   src/listing_gate.rs        ein Listing je hängendem Ordner (029 E6); test_slow.rs: Testschalter FNF_TEST_SLOW (nur Debug,
-                             Präfix gilt auch als Netzlaufwerk); platform/bulk_list.rs: getattrlistbulk (030 E7)
+                             Präfix gilt auch als Netzlaufwerk)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen

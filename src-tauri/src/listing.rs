@@ -16,17 +16,6 @@ use std::time::UNIX_EPOCH;
 /// are returned with [`EntryKind::Unknown`] and counted in
 /// `unreadable_entries`.
 pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
-    // macOS: one call for many entries instead of a stat each – much faster on SMB
-    // (design 030 E7); any problem falls back to the portable way below
-    #[cfg(target_os = "macos")]
-    if let Some(listing) = crate::platform::bulk_list::list(dir) {
-        return Ok(listing);
-    }
-    list_directory_std(dir)
-}
-
-/// The portable listing: `read_dir` + `symlink_metadata` per entry.
-pub fn list_directory_std(dir: &Path) -> Result<DirectoryListing, FsError> {
     let meta = fs::metadata(dir).map_err(|e| FsError::from_io(&e, dir))?;
     if !meta.is_dir() {
         return Err(FsError::new(

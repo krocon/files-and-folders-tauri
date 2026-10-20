@@ -41,19 +41,14 @@ nur die Art – deren mtime ändert sich bei jedem Inhalt). Abweichung → Eintr
 **E6 `network` im Listing.** `DirectoryListing.network: bool` (Rust `netfs::is_network`, ein `statfs` je Listing,
 `#[serde(default)]`, TS optional) – DTO-Vertrag beidseitig + Test.
 
-**E7 macOS: `getattrlistbulk`.** In `platform/bulk_list.rs`:
-- **rein und überall testbar:** `parse_entries(buf, count) -> Vec<RawEntry>` liest die gepackten Einträge nach
-  `getattrlistbulk(2)`: `u32 length`, `attribute_set_t returned`, falls zurückgegeben `u32 error` (direkt nach
-  `returned`, wie im Beispiel der Man-Page), dann in Bit-Reihenfolge `ATTR_CMN_NAME` (`attrreference_t`, Offset relativ
-  zur Referenz, Länge inkl. NUL), `ATTR_CMN_OBJTYPE` (u32), `ATTR_CMN_MODTIME` (`timespec`, 16 Byte), `ATTR_CMN_FLAGS`
-  (u32), `ATTR_FILE_DATALENGTH` (off_t, nur Dateien); jedes Feld nur, wenn sein Bit in `returned` gesetzt ist; Lesen
-  mit `read_unaligned` und Längenprüfung (kaputter Puffer → Fehler, nie UB). `raw_to_dto(dir, raw)` macht daraus das
-  `DirEntryDto` wie `listing::entry_from_metadata` (Symlink-Ziel weiter per `fs::metadata`, `UF_HIDDEN`, Punktdateien,
-  nicht-UTF-8 lossy, `ATTR_CMN_ERROR`/fehlende Art → `Unknown` + unlesbar).
-- **nur macOS (im Container nicht kompilierbar – Marc baut/testet):** `open(O_RDONLY|O_DIRECTORY|O_CLOEXEC)`,
-  Schleife `getattrlistbulk` mit 256-KiB-Puffer bis 0, `close`. Jeder Fehler → `None` → bisheriger Weg.
-- Gleichheitstest gegen `listing::list_directory` (`#[cfg(target_os = "macos")]`) und ein ignorierter Mess-Test
-  `listing_speed` (`FNF_BENCH_DIR=<pfad>`), der beide Wege je 3× misst.
+**E7 macOS: `getattrlistbulk` – umgesetzt, gemessen, wieder ausgebaut** (Branch `chore/ohne-getattrlistbulk`).
+Messung an Marcs SMB-Freigabe (20.10.2026, `listing_speed`, je Weg ein ungeöffneter Ordner): kalt `getattrlistbulk`
+30,3 ms für 81 Einträge (0,37 ms/Eintrag), `read_dir` + `lstat` 22,6 ms für 90 (0,25 ms/Eintrag); warm beide 0,2–0,4 ms.
+Gleichheit und Prüfung (E5) auf SMB und APFS bestanden. Kein Gewinn – der SMB-Client von macOS holt die Attribute
+beim Auflisten offenbar schon gebündelt; ein erster Lauf mit 336 ms war das Aufwachen des Servers. Langsam ist auf
+SMB nicht das Listing, sondern ein schlafender oder beschäftigter Server – dagegen helfen 029 und der Cache (E1–E5).
+Der Code (Parser, FFI, Tests) liegt in der Git-Historie (`platform/bulk_list.rs`, Commit `1dfa923` ff.), falls ein
+anderer Server/sehr große Ordner es je rechtfertigen.
 
 **E8 Kein rekursives Vorladen** (Prompt D).
 
@@ -75,7 +70,7 @@ E2E: Xvfb mit `FNF_TEST_SLOW`.
 | 4 | Rust: veraltetes `expected` löscht/verschiebt nichts | ✅ `tests_ops` (gewachsene Datei bleibt, Datei→Ordner wird nicht verschoben) |
 | 5 | Änderung von außen erscheint nach der Prüfung | ✅ Datei während des Besuchs im Unterordner angelegt → nach Backspace erst gemerkter Stand, nach der Prüfung mit neuer Datei |
 | 6 | Speichergrenze | ✅ Spec (`listing-cache.spec.ts`, LRU nach Einträgen) |
-| 7 | macOS `getattrlistbulk` gleich + Messung | ✅ Marc, 20.10.2026: kompiliert, `bulk_equals_portable_on_macos` grün (APFS, 3 000 Dateien, Umlaute/Emoji, versteckt, Links) – Pufferformat inkl. `ATTR_CMN_ERROR`-Position bestätigt; ⏳ Messung + Gleichheit an der SMB-Freigabe (`listing_speed`) |
+| 7 | macOS `getattrlistbulk` gleich + Messung | ✅ gleich auf APFS und SMB; Messung ohne Gewinn → ausgebaut (E7) |
 | 8 | `pnpm check`, Debug-Build | ✅ |
 
 ## Fortschritt
