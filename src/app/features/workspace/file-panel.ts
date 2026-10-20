@@ -164,6 +164,24 @@ export class FilePanel implements OnInit {
    * cursor and table state may be written back only once it changed.
    */
   private listingAtSwitch: DirectoryListing | null | undefined = undefined;
+  /** "as of 10:05" of a listing shown from the cache and not checked yet (design 030 E3). */
+  protected readonly cachedLabel = computed(() => {
+    const at = this.store.cachedAt();
+    return at === null ? null : TEXTS.cachedAt(new Date(at));
+  });
+  /** Tooltip with the full date and what waits for the check. */
+  protected readonly cachedTitle = computed(() => {
+    const at = this.store.cachedAt();
+    return at === null ? null : TEXTS.cachedTitle(new Date(at));
+  });
+  /** The tab shown before the one being opened: Esc goes back there (design 029 E5). */
+  private previousTabId: string | null = null;
+  /** Opening this tab's folder was cancelled and nothing else could be shown. */
+  protected readonly cancelledTab = signal<string | null>(null);
+  /** The tab's own path while its folder opens (the list is empty then). */
+  protected readonly openingPath = computed(() =>
+    this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null,
+  );
 
   constructor() {
     effect(() => {
@@ -288,6 +306,7 @@ export class FilePanel implements OnInit {
     const unregister = this.ws.registerPanel(this.side(), {
       store: this.store,
       controller: () => this.list()?.listController,
+      cancelLoading: () => this.cancelLoading(),
     });
     this.destroyRef.onDestroy(unregister);
     const unwatch = this.watch.on((event) => this.onWatchEvent(event));
@@ -471,6 +490,10 @@ export class FilePanel implements OnInit {
     }
     this.store.rememberCurrent();
     this.store.cancelSizeJobs();
+    if (previous !== id) {
+      this.previousTabId = previous;
+    }
+    this.cancelledTab.set(null);
     this.shownTabId = id;
     this.listingAtSwitch = this.store.listing();
     const tab = this.ws.activeTab(this.side());
@@ -484,7 +507,14 @@ export class FilePanel implements OnInit {
       this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? 'search');
       return;
     }
+    // a slow folder seen before comes from the cache at once (design 030 E1, replaces 029 E5)
+    // nothing of another tab under this one: an empty list and this tab's path until it is read
+    if (this.listingAtSwitch !== null && this.listingAtSwitch?.path !== tab.path) {
+      this.store.clearListing();
+      this.listingAtSwitch = null;
+    }
     this.store.navigationLocked.set(true);
+    const applied = this.store.appliedCount;
     try {
       await this.store.load(tab.path ?? undefined, {
         cursor: tab.cursor,
@@ -500,7 +530,8 @@ export class FilePanel implements OnInit {
       return;
     }
     const listing = this.store.listing();
-    if (listing === this.listingAtSwitch) {
+    // not "the same object as before": a cached listing can be exactly that (review 030 #3)
+    if (this.store.appliedCount === applied) {
       // folder not readable: keep showing what is there; navigation from here belongs to this tab
       this.store.setPendingTableState(null);
       return;
@@ -509,5 +540,36 @@ export class FilePanel implements OnInit {
     if (listing) {
       this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
     }
+  }
+
+  /**
+   * Esc / "Cancel" while a folder opens (design 029 E4/E5): a navigation is given
+   * up and the list stays; a tab whose folder never showed goes back to the tab
+   * before it (at once from the cache if that folder is slow), else it offers "Try again".
+   */
+  cancelLoading(): boolean {
+    const opening = this.store.navigationLocked() && this.store.listing() === null;
+    if (!this.store.cancelLoad()) {
+      return false;
+    }
+    // the given-up request may never come back (hanging drive): unlock now
+    this.store.navigationLocked.set(false);
+    if (!opening) {
+      return true;
+    }
+    const tabs = this.ws.panels()[this.side()].tabs;
+    const back = tabs.findIndex((t) => t.id === this.previousTabId);
+    if (back >= 0 && this.previousTabId !== this.shownTabId) {
+      this.ws.selectTab(this.side(), back);
+    } else {
+      this.cancelledTab.set(this.shownTabId);
+    }
+    return true;
+  }
+
+  /** "Try again" after a cancelled tab. */
+  protected retryTab(): void {
+    this.cancelledTab.set(null);
+    void this.showTab(this.tabId());
   }
 }

@@ -42,6 +42,8 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 020 | [020-actions-menue.md](020-actions-menue.md) | Actions-Menü nach Vorbild der alten Version (4 kuratierte Spalten, Trennlinien, Shortcut-Badges nach mr §1.8) | 002, 004, 014 | S–M |
 | 021 | [021-shell-leiste.md](021-shell-leiste.md) | Shell-Leiste (`TOGGLE_SHELL`): Befehlszeile im Ordner des aktiven Panels, gestreamte Ausgabe als Job, `cd` navigiert das Panel, Verlauf, Sicherheitsmodell | 004, 005, 011, 012 | M |
 | 022–028 | (Vorschlag aus 018, noch kein Prompt) | Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner · Drag & Drop erweitert – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
+| 029 | [029-reaktionsfaehig-bei-jobs.md](029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
+| 030 | [030-ordner-cache-smb.md](030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand, `getattrlistbulk` auf macOS; kein rekursives Vorladen | 029, 012 | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
@@ -81,4 +83,4 @@ Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprot
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
 - [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [x] 011 ·
-  [x] 012 (Ziehen ins System offen) · [x] 013 · [x] 014 · [x] 015 (Button-Editor, Spaltenauswahl, weitere Sprachen offen) · [x] 016 (7z, Passwörter, in Archive schreiben offen) · [x] 017 (Workflows als Vorlage in `docs/ci/`, Signierung nur vorbereitet, Lizenz offen) · [x] 018 (Matrix + kleine Lücken; Folge-Prompts 021–028 vorgeschlagen; macOS/Windows-Durchlauf bei Marc) · [x] 019 · [x] 020 · [x] 021 (Pipes statt PTY; Dateinamen-Vervollständigung, Windows-Ausführung in der CI und macOS-`PATH` bei Marc offen)
+  [x] 012 (Ziehen ins System offen) · [x] 013 · [x] 014 · [x] 015 (Button-Editor, Spaltenauswahl, weitere Sprachen offen) · [x] 016 (7z, Passwörter, in Archive schreiben offen) · [x] 017 (Workflows als Vorlage in `docs/ci/`, Signierung nur vorbereitet, Lizenz offen) · [x] 018 (Matrix + kleine Lücken; Folge-Prompts 021–028 vorgeschlagen; macOS/Windows-Durchlauf bei Marc) · [x] 019 · [x] 020 · [x] 021 (Pipes statt PTY; Dateinamen-Vervollständigung, Windows-Ausführung in der CI und macOS-`PATH` bei Marc offen) · [x] 029 (Branch `feat/reaktionsfaehig-bei-jobs`; macOS-Test am echten langsamen Laufwerk bei Marc offen) · [x] 030 (Branch `feat/ordner-cache-smb`; `getattrlistbulk` kompilieren/testen/messen bei Marc)

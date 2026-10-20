@@ -2,7 +2,7 @@
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
 import type { ShellChunk, ShellSummary } from '../shell/shell.models';
-import { ArchiveFormat, DirSize, FsError } from '../fs/fs.models';
+import { ArchiveFormat, DirSize, EntryKind, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
@@ -24,6 +24,14 @@ export interface GroupItem {
   readonly group: string;
 }
 
+/** What a panel showed for an entry (design 030 E5). Rust `jobs::expect::ExpectedEntry`. */
+export interface ExpectedEntry {
+  readonly path: string;
+  readonly kind: EntryKind;
+  readonly size?: number | null;
+  readonly modifiedMs?: number | null;
+}
+
 export type JobSpec =
   | {
       readonly kind: 'copy';
@@ -40,6 +48,8 @@ export type JobSpec =
       readonly options?: CopyOptions;
       /** The user confirmed a root/home/system path a second time. */
       readonly allowDangerous?: boolean;
+      /** What the panel showed (design 030 E5): changed sources are left alone. */
+      readonly expected?: readonly ExpectedEntry[];
     }
   | {
       readonly kind: 'delete';
@@ -47,6 +57,7 @@ export type JobSpec =
       readonly mode: DeleteMode;
       readonly background?: boolean;
       readonly allowDangerous?: boolean;
+      readonly expected?: readonly ExpectedEntry[];
     }
   /** Multi-rename (design 007); `undoOf` = the job this one undoes. */
   | {

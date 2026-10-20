@@ -61,4 +61,16 @@ describe('ActionService', () => {
     expect(api.saved.at(-1)).toEqual({ NOPE: ['F1'], OPEN_DELETE_DLG: [] });
     expect(actions.shortcuts('OPEN_COPY_DLG')).toEqual(['F5']);
   });
+
+  it('several vetoes: the first reason wins, each can be removed alone (design 030 E4)', () => {
+    const svc = TestBed.inject(ActionService);
+    svc.register({ OPEN_DELETE_DLG: { run: () => undefined } });
+    const a = svc.setVeto((id) => (id === 'OPEN_DELETE_DLG' ? 'archive' : null));
+    const b = svc.setVeto(() => 'cache');
+    expect(svc.state('OPEN_DELETE_DLG')).toBe('disabled');
+    a();
+    expect(svc.state('OPEN_DELETE_DLG')).toBe('disabled');
+    b();
+    expect(svc.state('OPEN_DELETE_DLG')).toBe('ready');
+  });
 });

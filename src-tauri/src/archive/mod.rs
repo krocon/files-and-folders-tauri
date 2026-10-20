@@ -815,6 +815,7 @@ pub fn list_index(
             unsafe_entries: index.unsafe_entries,
             entries: index.total_entries,
         }),
+        network: false,
     })
 }
 

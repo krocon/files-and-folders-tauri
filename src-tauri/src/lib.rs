@@ -40,6 +40,7 @@ pub mod fs_atomic;
 pub mod jobs;
 pub mod keymap;
 pub mod listing;
+pub mod listing_gate;
 pub mod model;
 pub mod opener;
 pub mod paths;
@@ -51,6 +52,7 @@ pub mod search;
 pub mod session;
 pub mod settings;
 pub mod shell;
+pub mod test_slow;
 pub mod themes;
 pub mod tools;
 pub mod watch;
@@ -94,6 +96,51 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // folders a job writes into: the watcher holds their reloads back until it
+            // ends and pauses polling there (design 029 E8)
+            {
+                let handle = app.handle().clone();
+                app.state::<commands::JobsState>()
+                    .manager
+                    .set_target_guard(std::sync::Arc::new(move |dirs| {
+                        let token = handle
+                            .state::<commands::watch::WatchState>()
+                            .hub()
+                            .busy(dirs);
+                        let handle = handle.clone();
+                        // resuming a polled folder scans it (slow drive!): not on the job
+                        // thread, whose end the user waits for (review 029 #1)
+                        Box::new(move || {
+                            let slot = std::sync::Arc::new(std::sync::Mutex::new(Some(token)));
+                            let release = {
+                                let (slot, handle) = (slot.clone(), handle.clone());
+                                move || {
+                                    let token =
+                                        slot.lock().unwrap_or_else(|e| e.into_inner()).take();
+                                    if let Some(token) = token {
+                                        handle
+                                            .state::<commands::watch::WatchState>()
+                                            .hub()
+                                            .release(token);
+                                    }
+                                }
+                            };
+                            let spawned = std::thread::Builder::new()
+                                .name("fnf-watch-release".into())
+                                .spawn(release);
+                            if spawned.is_err() {
+                                // no thread: release here rather than hold the reloads for ever
+                                let token = slot.lock().unwrap_or_else(|e| e.into_inner()).take();
+                                if let Some(token) = token {
+                                    handle
+                                        .state::<commands::watch::WatchState>()
+                                        .hub()
+                                        .release(token);
+                                }
+                            }
+                        })
+                    }));
+            }
             // Windows: a watched folder keeps itself and its parents from being
             // renamed or deleted – pause the watches below what a job changes (review 012 #3)
             if cfg!(windows) {

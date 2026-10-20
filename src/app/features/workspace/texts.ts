@@ -1,5 +1,5 @@
 import { formatCount } from '../../shared/format';
-import { translatable } from '../../core/i18n/i18n';
+import { localeFor, translatable } from '../../core/i18n/i18n';
 import { TEXTS_DE } from './texts.de';
 /**
  * User-facing texts of the window skeleton, kept in one place so that prompt
@@ -36,6 +36,20 @@ export const TEXTS_EN = {
     `Folder no longer exists: ${from} – showing ${to} instead.`,
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,
   loading: 'Loading…',
+  /** Design 029 E4/E5: a folder that is slow to open. */
+  slowFolder: 'The folder is slow to respond…',
+  cancelLoading: 'Cancel',
+  cancelHint: 'Esc',
+  openCancelled: 'Opening the folder was cancelled.',
+  retry: 'Try again',
+  refreshing: 'refreshing…',
+  /** Design 030 E3/E4: a listing from the cache, not checked yet. */
+  cachedAt: (at: Date) =>
+    `as of ${at.toLocaleTimeString(localeFor('en'), { hour: '2-digit', minute: '2-digit' })} · checking…`,
+  cachedTitle: (at: Date) =>
+    `Shown from memory (${at.toLocaleString(localeFor('en'))}) – the folder is being read again. Deleting, moving and renaming wait until then.`,
+  cachedAnnounce: 'Shown from memory, checking the folder.',
+  unchecked: 'the folder is still being checked – try again in a moment',
   unreadable: (n: number) => `${n} unreadable`,
   /** Folder watching (design 012 E2). */
   notWatched: (reason: string | null) =>

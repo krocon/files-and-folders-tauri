@@ -44,6 +44,8 @@ export interface DirectoryListing {
   readonly unreadableEntries: number;
   /** Inside an archive: `path` and the entry paths are virtual (`…/a.zip/dir`). */
   readonly archive?: ArchiveInfo | null;
+  /** On a network drive (design 030 E6): the listing is kept in the `ListingCache`. */
+  readonly network?: boolean;
 }
 
 export type FsErrorCode =
@@ -85,6 +87,7 @@ export type FsErrorCode =
   /** Shell bar (design 021). */
   | 'shell_disabled'
   | 'shell_busy'
+  | 'changed_since_listing'
   | 'invalid_command'
   | 'unquotable_name'
   | 'invalid_path'

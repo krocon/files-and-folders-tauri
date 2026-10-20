@@ -24,6 +24,7 @@ impl Harness {
                 background: false,
                 options,
                 allow_dangerous: false,
+                expected: Vec::new(),
             })
             .unwrap()
     }
@@ -46,6 +47,7 @@ impl Harness {
                 mode,
                 background: false,
                 allow_dangerous: false,
+                expected: Vec::new(),
             })
             .unwrap()
     }
@@ -216,6 +218,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             background: false,
             options: CopyOptions::default(),
             allow_dangerous: false,
+            expected: Vec::new(),
         })
         .unwrap_err();
     assert_eq!(err.code, FsErrorCode::DangerousPath);
@@ -226,6 +229,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             mode: DeleteMode::Permanent,
             background: false,
             allow_dangerous: false,
+            expected: Vec::new(),
         })
         .unwrap_err();
     assert_eq!(err.code, FsErrorCode::DangerousPath);
@@ -237,6 +241,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             background: false,
             options: CopyOptions::default(),
             allow_dangerous: true,
+            expected: Vec::new(),
         })
         .unwrap();
     assert_eq!(h.finish(&id).state, JobState::Done);
@@ -880,4 +885,195 @@ fn dest_bytes_leaves_out_files_and_folders_merged_into_existing_ones() {
     assert_eq!(summary.bytes_done, 1100);
     // the merged folder holds more than this job wrote, a file needs no live size
     assert!(summary.dest_bytes.is_empty(), "{:?}", summary.dest_bytes);
+}
+
+#[test]
+fn the_target_guard_marks_the_folders_a_job_writes_into() {
+    let tmp = tempdir().unwrap();
+    let a = tmp.path().join("a");
+    let b = tmp.path().join("b");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&a).unwrap();
+    fs::create_dir_all(&b).unwrap();
+    fs::create_dir_all(&target).unwrap();
+    let h = Harness::new();
+    let log: Arc<Mutex<Vec<String>>> = Arc::default();
+    let l = log.clone();
+    h.mgr.set_target_guard(Arc::new(move |paths: &[PathBuf]| {
+        let names: Vec<String> = paths
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        l.lock().unwrap().push(format!("busy {}", names.join(",")));
+        let l = l.clone();
+        Box::new(move || l.lock().unwrap().push("free".into()))
+    }));
+    let id = h.copy(&[&a], &target, false);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    let id = h.start_move(&[&a], &target.join("a"), CopyOptions::default());
+    h.finish(&id);
+    let id = h.delete(&[&b], DeleteMode::Permanent);
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert_eq!(
+        *log.lock().unwrap(),
+        vec!["busy t", "free", "busy a", "free"],
+        "delete writes nowhere"
+    );
+}
+
+/// Throughput of a large copy (design 029 E10). Not part of the suite:
+/// `FNF_BENCH_MB=2048 cargo test --release --lib copy_throughput -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn copy_throughput() {
+    use std::io::Write;
+    let mb: usize = std::env::var("FNF_BENCH_MB")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1024);
+    let tmp = tempfile::tempdir_in(std::env::var("FNF_BENCH_DIR").unwrap_or_else(|_| ".".into()))
+        .unwrap();
+    let src = tmp.path().join("big.bin");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&target).unwrap();
+    {
+        let mut f = fs::File::create(&src).unwrap();
+        let chunk: Vec<u8> = (0..1 << 20).map(|i| (i * 31 % 251) as u8).collect();
+        for _ in 0..mb {
+            f.write_all(&chunk).unwrap();
+        }
+        f.sync_all().unwrap();
+    }
+    // cold cache (needs root; ignored otherwise)
+    let _ = fs::write("/proc/sys/vm/drop_caches", b"3");
+    let h = Harness::new();
+    let t = std::time::Instant::now();
+    let id = h.start_copy(&[&src], &target, CopyOptions::default());
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    // until the data is on the disk, not only in the cache
+    fs::File::open(target.join("big.bin"))
+        .unwrap()
+        .sync_all()
+        .unwrap();
+    let secs = t.elapsed().as_secs_f64();
+    println!(
+        "copy {mb} MiB in {secs:.2} s = {:.0} MiB/s",
+        mb as f64 / secs
+    );
+}
+
+#[test]
+fn the_target_guard_is_released_when_a_copy_is_cancelled_midway() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("big.bin");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&target).unwrap();
+    fs::write(&src, vec![7u8; 64 * 1024 * 1024]).unwrap();
+    let h = Harness::new();
+    let held: Arc<Mutex<i32>> = Arc::default();
+    let c = held.clone();
+    h.mgr.set_target_guard(Arc::new(move |_paths: &[PathBuf]| {
+        *c.lock().unwrap() += 1;
+        let c = c.clone();
+        Box::new(move || *c.lock().unwrap() -= 1)
+    }));
+    let id = h.start_copy(&[&src], &target, CopyOptions::default());
+    h.mgr.cancel(&id);
+    // usually cancelled mid-file; a very fast disk may finish first – balanced either way
+    let state = h.finish(&id).state;
+    assert!(
+        matches!(state, JobState::Cancelled | JobState::Done),
+        "{state:?}"
+    );
+    assert_eq!(*held.lock().unwrap(), 0, "busy and free stay balanced");
+}
+
+// ---- design 030 E5: nothing destructive on an outdated listing ----
+
+fn expected_of(p: &Path) -> super::expect::ExpectedEntry {
+    let meta = fs::symlink_metadata(p).unwrap();
+    let e = crate::listing::entry_from_metadata("x".into(), p, &meta, false);
+    super::expect::ExpectedEntry {
+        path: s(p),
+        kind: e.kind,
+        size: e.size,
+        modified_ms: e.modified_ms,
+    }
+}
+
+#[test]
+fn delete_leaves_entries_alone_that_changed_since_the_listing() {
+    let tmp = tempdir().unwrap();
+    let same = tmp.path().join("gleich.txt");
+    let grown = tmp.path().join("gewachsen ä.txt");
+    fs::write(&same, b"1").unwrap();
+    fs::write(&grown, b"1").unwrap();
+    let expected = vec![expected_of(&same), expected_of(&grown)];
+    fs::write(&grown, b"jemand hat weitergeschrieben").unwrap();
+    let h = Harness::new();
+    let id = h
+        .mgr
+        .start(JobSpec::Delete {
+            paths: vec![s(&same), s(&grown)],
+            mode: DeleteMode::Permanent,
+            background: false,
+            allow_dangerous: false,
+            expected,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(!same.exists());
+    assert!(grown.exists(), "the changed file stays");
+    let summary = info.summary.unwrap();
+    assert_eq!(summary.items_failed, 1);
+    assert_eq!(
+        summary.errors[0].error.code,
+        crate::error::FsErrorCode::ChangedSinceListing
+    );
+}
+
+#[test]
+fn a_move_of_only_changed_entries_does_nothing_and_says_so() {
+    let tmp = tempdir().unwrap();
+    let f = tmp.path().join("datei");
+    let target = tmp.path().join("ziel");
+    fs::create_dir(&target).unwrap();
+    fs::write(&f, b"1").unwrap();
+    let expected = vec![expected_of(&f)];
+    // replaced by a folder of the same name
+    fs::remove_file(&f).unwrap();
+    fs::create_dir(&f).unwrap();
+    let h = Harness::new();
+    let id = h
+        .mgr
+        .start(JobSpec::Move {
+            sources: vec![s(&f)],
+            target_dir: s(&target),
+            background: false,
+            options: CopyOptions::default(),
+            allow_dangerous: false,
+            expected,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(f.is_dir());
+    assert!(!target.join("datei").exists());
+    assert_eq!(info.summary.unwrap().items_failed, 1);
+}
+
+#[test]
+fn expected_is_optional_in_the_spec() {
+    let spec: JobSpec = serde_json::from_str(
+        r#"{"kind":"delete","paths":["/a"],"mode":"trash","expected":[{"path":"/a","kind":"file","size":3,"modifiedMs":5}]}"#,
+    )
+    .unwrap();
+    let JobSpec::Delete { expected, .. } = spec else {
+        panic!()
+    };
+    assert_eq!(expected[0].size, Some(3));
+    let spec: JobSpec =
+        serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"trash"}"#).unwrap();
+    assert!(matches!(spec, JobSpec::Delete { expected, .. } if expected.is_empty()));
 }

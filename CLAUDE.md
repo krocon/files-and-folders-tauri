@@ -26,8 +26,9 @@
   (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
   Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit), Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
   CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`), Prompt 018 (Feature-Parität gegen `old_project/`,
-  Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr) und Prompt 021 (Shell-Leiste mit Pipes) sind
-  fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
+  Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr), Prompt 021 (Shell-Leiste mit Pipes) und Prompt
+  029 (bedienbar bei langen Jobs/langsamen Laufwerken, Branch `feat/reaktionsfaehig-bei-jobs`) und Prompt 030 (Ordner-Cache
+  für langsame Laufwerke, `getattrlistbulk` auf macOS, Branch `feat/ordner-cache-smb`) sind fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
@@ -52,7 +53,8 @@
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
-Nicht ausführbare Checks im Abschlussbericht mit Grund nennen. `pnpm tauri dev` braucht ein Fenster – in einer
+Nicht ausführbare Checks im Abschlussbericht mit Grund nennen. Langsames Laufwerk im Debug-Build simulieren:
+`FNF_TEST_SLOW=<pfad-präfix>:<listing-ms>:<block-ms>` (029 E13). `pnpm tauri dev` braucht ein Fenster – in einer
 Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die Binary unter `Xvfb` starten
 (Screenshot mit `import -window root`, Tasten mit `xdotool`). So wurde Phase 1 verifiziert.
 
@@ -60,7 +62,8 @@ Container-Sitzung ohne Display: `pnpm tauri build --debug --no-bundle` und die B
 
 ```
 src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
-  app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory)
+  app/core/fs/               DTOs (fs.models.ts), Fehler-Mapping (fs-error.ts), FsApi (invoke list_directory),
+                             ListingCache (Root: Listings langsamer Ordner, 030)
   app/core/session/          Sitzungs-DTOs, SessionApi (invoke load_session/save_session)
   app/core/jobs/             Job-DTOs, JobsApi (ein Ereigniskanal), JobsStore (Root: alle Jobs, Konflikte, Waiter)
   app/core/rename/           Multi-Rename-DTOs, RenameApi (plan_rename, undo_rename, Vorlagen)
@@ -124,6 +127,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri
+  src/listing_gate.rs        ein Listing je hängendem Ordner (029 E6); test_slow.rs: Testschalter FNF_TEST_SLOW (nur Debug,
+                             Präfix gilt auch als Netzlaufwerk); platform/bulk_list.rs: getattrlistbulk (030 E7)
   src/model.rs, error.rs     DTOs (serde camelCase) und FsError { code, message, path }
   src/session.rs             Sitzungsdatei (Schema v1, sanitize, atomar), window_state.rs (Fenstergeometrie)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
@@ -189,6 +194,14 @@ prompts/                     Feature-Prompts (s. o.)
   erzeugt – Dual-Pane und Tabs brauchen unabhängige Instanzen. Globales (Einstellungen, Job-Queue, Keymap) in
   Root-Services.
 - **Veraltete Antworten verwerfen** (Request-Sequenz wie in `FileBrowserStore.load`), bei Listing, Suche, Vorschau.
+- **Commands nie synchron** (029 E11): `async fn` oder `#[tauri::command(async)]` – synchrone Commands laufen in Tauri 2
+  auf dem Main-Thread und frieren bei jedem Hänger das Fenster ein. Ausnahme nur Menü/Fenster (`set_app_menu`,
+  `set_menu_enabled`, `subscribe_menu`, `close_main_window`); der Test `commands::command_rules` prüft das.
+- **Ungeprüfte Listings** (030 E4/E5): Was aus dem `ListingCache` kommt (`cachedAt`), ist bis zur Antwort von Rust
+  ungeprüft – Aktionen, die Einträge ändern oder entfernen, kommen in `OFF_WHILE_UNCHECKED`; Delete/Move schicken für
+  Netzlaufwerke und ungeprüfte Listings `expected` mit (`expectedFor`).
+- **Auffrischen ≠ Navigieren** (029 E1): Reloads durch Watcher/Jobs/Ctrl+R laufen mit `background` (kein Overlay, Liste
+  bleibt bedienbar), automatische nur über `requestRefresh` (Drossel nach langsamen Listings).
 - **Blockierende I/O nie auf dem Async-Runtime-Thread**: `tauri::async_runtime::spawn_blocking` oder eigene Worker.
   Lange Operationen (Kopieren, Suche) als Job mit Fortschritt über `tauri::ipc::Channel` und Abbruch-Token.
 - **Destruktive Operationen** (Löschen, Überschreiben, Verschieben) werden im Rust-Backend validiert und getestet

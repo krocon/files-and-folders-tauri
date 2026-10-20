@@ -1,6 +1,7 @@
-import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
+import { ListingCache } from '../../core/fs/listing-cache';
 import { toFsError } from '../../core/fs/fs-error';
 import {
   DirEntry,
@@ -27,6 +28,13 @@ interface FolderDelta {
   readonly removed: readonly string[];
 }
 
+/** Cursor, marks and scroll of a folder being left. */
+interface FolderState {
+  cursor: string | null;
+  marks: string[];
+  scrollTop: number;
+}
+
 export type HistoryMode = 'push' | 'back' | 'forward' | 'none';
 
 export interface LoadOptions {
@@ -43,6 +51,11 @@ export interface LoadOptions {
   readonly keepCursor?: boolean;
   /** Scroll position to restore once the listing is shown (back/forward). */
   readonly scrollTop?: number;
+  /**
+   * Refresh of the shown folder (design 029 E1): the list stays usable, no
+   * loading overlay – `refreshing` instead of `loading`.
+   */
+  readonly background?: boolean;
 }
 
 /** A folder size calculation of this panel (a `dirSize` job of the engine). */
@@ -56,6 +69,20 @@ export interface SizeJob {
 export const DIR_SIZE_ANIMATION_DELAY_MS = 2000;
 /** Live folder sizes during a copy/move are written at most this often (each write re-sorts the table). */
 export const TRANSFER_SIZE_INTERVAL_MS = 500;
+/** A navigation that takes longer is reported as slow, with a way to cancel it (design 029 E4). */
+export const SLOW_LOAD_MS = 2000;
+
+/**
+ * Pause between automatic reloads (watcher, jobs) after a listing that took
+ * `lastMs` (design 029 E2): none for fast folders, 2× the listing time for slow
+ * ones (1–10 s) – a busy drive is not kept busier by reloading it non-stop.
+ */
+export function refreshGapMs(lastMs: number): number {
+  if (lastMs < 200) {
+    return 0;
+  }
+  return Math.min(10_000, Math.max(1000, 2 * lastMs));
+}
 
 /**
  * State of one file panel. Provided per component (not root): two panels and
@@ -68,8 +95,10 @@ export const TRANSFER_SIZE_INTERVAL_MS = 500;
  * - folder sizes are written into the listing (`size` of directories).
  */
 @Injectable()
-export class FileBrowserStore {
+export class FileBrowserStore implements OnDestroy {
   private readonly api = inject(FsApi);
+  /** Listings of slow folders, shared by both panels (design 030 E1). */
+  private readonly cache = inject(ListingCache);
   /** Monotonic id to drop responses of superseded requests. */
   private requestSeq = 0;
   private pendingTableState: Partial<TableStateIf> | null = null;
@@ -80,11 +109,27 @@ export class FileBrowserStore {
   private deltasDuringLoad: FolderDelta[] = [];
   /** A reload was requested while another load ran (design 012 E4). */
   private refreshAfterLoad: string | null = null;
+  /** An automatic reload waits for the gap after the last listing (design 029 E2). */
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private slowTimer: ReturnType<typeof setTimeout> | null = null;
+  /** How long the last listing took and when it ended (ms). */
+  private lastListMs = 0;
+  private lastLoadEnd = 0;
   /** Wall-clock time (ms) the shown listing was requested – changes after it may be missing. */
   listedAt: number | null = null;
 
   readonly listing = signal<DirectoryListing | null>(null);
+  /** A navigation runs: the folder shown is about to be replaced (overlay, never blocking). */
   readonly loading = signal(false);
+  /** The shown folder is being read again in the background (design 029 E1). */
+  readonly refreshing = signal(false);
+  /** The running navigation takes longer than {@link SLOW_LOAD_MS} (design 029 E4). */
+  readonly slow = signal(false);
+  /**
+   * The shown listing comes from the cache and is not checked yet (design 030 E2):
+   * when it was listed (ms). Destructive actions wait for the check (E4).
+   */
+  readonly cachedAt = signal<number | null>(null);
   readonly error = signal<FsError | null>(null);
   readonly cursorPath = signal<string | null>(null);
   readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
@@ -124,6 +169,15 @@ export class FileBrowserStore {
   confirmExecutable: (entry: DirEntry) => Promise<boolean> = () => Promise.resolve(false);
 
   constructor() {
+    // a kept folder keeps the newest state it was shown in (watcher deltas, folder sizes)
+    effect(() => {
+      const listing = this.listing();
+      untracked(() => {
+        if (listing && this.searchKey() === null) {
+          this.cache.update(listing, this.listedAt);
+        }
+      });
+    });
     // sizes of folders a copy/move is writing into follow the job's progress (no watcher needed)
     effect(() => {
       const jobs = this.jobs.jobs();
@@ -152,7 +206,7 @@ export class FileBrowserStore {
   });
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
   readonly parent = computed(() => this.listing()?.parent ?? null);
-  readonly canGoUp = computed(() => this.parent() !== null && !this.loading());
+  readonly canGoUp = computed(() => this.parent() !== null);
   readonly canGoBack = computed(() => (this.historyVersion(), this.memoryRef.back.length > 0));
   readonly canGoForward = computed(
     () => (this.historyVersion(), this.memoryRef.forward.length > 0),
@@ -203,61 +257,67 @@ export class FileBrowserStore {
   async load(path?: string, options: LoadOptions = {}): Promise<void> {
     const seq = this.supersede();
     const startedAt = Date.now();
-    const leaving = this.searchKey() === null ? this.listing() : null;
-    const leavingState = leaving ? this.captureFolderState() : null;
-    this.loading.set(true);
+    const background = options.background === true;
+    // a slow folder seen before: at once from the cache, then checked (design 030 E2)
+    const hit = !background && path !== undefined ? this.cache.get(path) : null;
+    if (hit) {
+      const leaving = this.searchKey() === null ? this.listing() : null;
+      const leavingState = leaving ? this.captureFolderState() : null;
+      this.endLoad();
+      this.apply(hit.listing, options, leaving, leavingState, hit.listedAt);
+      this.cachedAt.set(hit.listedAt);
+      void this.load(hit.listing.path, {
+        cursor: this.cursorPath(),
+        keepCursor: true,
+        history: 'none',
+        background: true,
+      });
+      return;
+    }
+    this.loading.set(!background);
+    this.refreshing.set(background);
+    if (this.slowTimer !== null) {
+      clearTimeout(this.slowTimer);
+      this.slowTimer = null;
+    }
+    if (!background) {
+      this.slowTimer = setTimeout(() => {
+        this.slowTimer = null;
+        if (seq === this.requestSeq && this.loading()) {
+          this.slow.set(true);
+        }
+      }, SLOW_LOAD_MS);
+    }
+    let recheck = false;
     try {
       const start = performance.now();
       const listing = await this.api.listDirectory(path);
       if (seq !== this.requestSeq) {
         return;
       }
-      recordPerf('list_directory (Rust + IPC)', since(start), `${listing.entries.length} entries`);
-      // a tab switch to the same folder is still "another folder": the other tab's marks must not leak
-      const samePath =
-        leaving !== null && listing.path === leaving.path && options.remember !== false;
-      if (leaving && leavingState && !samePath) {
-        this.cancelSizeJobs();
-        if (options.remember !== false) {
-          this.leave(leaving.path, leavingState, options.history ?? 'push');
-        }
-      }
-      const paths = new Set(listing.entries.map((e) => e.path));
-      const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
-      this.searchKey.set(null);
-      this.listedAt = startedAt;
-      this.listing.set(listing);
-      this.error.set(null);
-      const wanted =
-        options.keepCursor && samePath
-          ? this.cursorPath()
-          : options.cursor !== undefined
-            ? options.cursor
-            : (remembered?.cursor ?? null);
-      this.cursorPath.set(wanted !== null && paths.has(wanted) ? wanted : null);
-      if (samePath) {
-        this.marked.set(intersect(this.marked(), paths));
-      } else {
-        this.marked.set(remembered ? intersect(new Set(remembered.marks), paths) : EMPTY_MARKS);
-        if (remembered && options.cursor === undefined && this.pendingTableState === null) {
-          this.pendingTableState = { scroll: { left: 0, top: remembered.scrollTop } };
-        }
-      }
-      if (options.scrollTop !== undefined) {
-        this.pendingTableState = { scroll: { left: 0, top: options.scrollTop } };
-      }
-      // the listing may be older than changes reported meanwhile – they win
-      for (const d of this.deltasDuringLoad) {
-        if (d.dir === listing.path) {
-          this.applyDelta(d, null);
-        }
-      }
+      this.lastListMs = since(start);
+      recordPerf(
+        'list_directory (Rust + IPC)',
+        this.lastListMs,
+        `${listing.entries.length} entries`,
+      );
+      this.cache.remember(listing, startedAt, this.lastListMs);
+      this.cachedAt.set(null);
+      // the folder being left as it is now: it stayed usable while this one loaded (review 029 #5)
+      const leaving = this.searchKey() === null ? this.listing() : null;
+      const leavingState = leaving ? this.captureFolderState() : null;
+      this.apply(listing, options, leaving, leavingState, startedAt);
     } catch (err) {
       if (seq !== this.requestSeq) {
         return;
       }
+      // a failed navigation away superseded the check of a cached folder (review 030 #2)
+      recheck = !background && this.cachedAt() !== null;
       const error = toFsError(err);
       this.error.set(error);
+      if (error.code === 'not_found' && path !== undefined) {
+        this.cache.forget(path);
+      }
       // a deleted history target must not block the history forever
       if (
         error.code === 'not_found' &&
@@ -268,13 +328,120 @@ export class FileBrowserStore {
       }
     } finally {
       if (seq === this.requestSeq) {
-        this.loading.set(false);
+        this.endLoad();
+        this.lastLoadEnd = Date.now();
         this.deltasDuringLoad = [];
         const again = this.refreshAfterLoad;
         this.refreshAfterLoad = null;
         if (again !== null && again === this.path()) {
-          void this.refresh();
+          this.requestRefresh();
         }
+        if (recheck) {
+          this.recheckCached();
+        }
+      }
+    }
+  }
+
+  /** Reads a folder shown from the cache (still unchecked) again in the background. */
+  private recheckCached(): void {
+    const path = this.path();
+    if (this.cachedAt() === null || path === null) {
+      return;
+    }
+    void this.load(path, {
+      cursor: this.cursorPath(),
+      keepCursor: true,
+      history: 'none',
+      background: true,
+    });
+  }
+
+  /** The panel goes away: no timer may reload into a dead store (review 029 #7). */
+  ngOnDestroy(): void {
+    this.supersede();
+    this.endLoad();
+  }
+
+  /** Clears the list while a tab's folder opens (design 029 E5): nothing old is shown under the new tab. */
+  clearListing(): void {
+    this.supersede();
+    this.endLoad();
+    this.cachedAt.set(null);
+    this.listing.set(null);
+    this.error.set(null);
+  }
+
+  /** Gives up a running navigation; the shown list stays (design 029 E4). */
+  cancelLoad(): boolean {
+    if (!this.loading()) {
+      return false;
+    }
+    this.supersede();
+    this.endLoad();
+    // the given-up navigation had superseded the check of a cached folder (review 030 #2)
+    this.recheckCached();
+    return true;
+  }
+
+  private endLoad(): void {
+    this.loading.set(false);
+    this.refreshing.set(false);
+    this.slow.set(false);
+    if (this.slowTimer !== null) {
+      clearTimeout(this.slowTimer);
+      this.slowTimer = null;
+    }
+  }
+
+  /** Bumped whenever a listing is shown – a tab switch sees whether its load showed one (review 030 #3). */
+  appliedCount = 0;
+
+  private apply(
+    listing: DirectoryListing,
+    options: LoadOptions,
+    leaving: DirectoryListing | null,
+    leavingState: FolderState | null,
+    startedAt: number,
+  ): void {
+    // a tab switch to the same folder is still "another folder": the other tab's marks must not leak
+    const samePath =
+      leaving !== null && listing.path === leaving.path && options.remember !== false;
+    if (leaving && leavingState && !samePath) {
+      this.cancelSizeJobs();
+      if (options.remember !== false) {
+        this.leave(leaving.path, leavingState, options.history ?? 'push');
+      }
+    }
+    this.appliedCount++;
+    const paths = new Set(listing.entries.map((e) => e.path));
+    const remembered = samePath ? undefined : recallFolder(this.memoryRef, listing.path);
+    this.searchKey.set(null);
+    this.listedAt = startedAt;
+    this.listing.set(listing);
+    this.error.set(null);
+    const wanted =
+      options.keepCursor && samePath
+        ? this.cursorPath()
+        : options.cursor !== undefined
+          ? options.cursor
+          : (remembered?.cursor ?? null);
+    this.cursorPath.set(wanted !== null && paths.has(wanted) ? wanted : null);
+    if (samePath) {
+      this.marked.set(intersect(this.marked(), paths));
+    } else {
+      this.marked.set(remembered ? intersect(new Set(remembered.marks), paths) : EMPTY_MARKS);
+      if (remembered && options.cursor === undefined && this.pendingTableState === null) {
+        this.pendingTableState = { scroll: { left: 0, top: remembered.scrollTop } };
+      }
+    }
+    if (options.scrollTop !== undefined) {
+      this.pendingTableState = { scroll: { left: 0, top: options.scrollTop } };
+    }
+    // the listing may be older than changes reported meanwhile – they win
+    for (const d of this.deltasDuringLoad) {
+      if (d.dir === listing.path) {
+        this.applyDelta(d, null);
       }
     }
   }
@@ -298,6 +465,8 @@ export class FileBrowserStore {
       }
     }
     this.searchKind.set(kind);
+    this.endLoad();
+    this.cachedAt.set(null);
     const paths = new Set(hits.map((h) => h.path));
     this.searchKey.set(key);
     this.listing.set({
@@ -307,7 +476,6 @@ export class FileBrowserStore {
       entries: hits,
       unreadableEntries: 0,
     });
-    this.loading.set(false);
     if (!same) {
       this.error.set(null);
     }
@@ -388,9 +556,12 @@ export class FileBrowserStore {
     });
   }
 
-  /** Reloads the folder, keeping cursor and (still existing) marks. */
+  /**
+   * Reloads the folder in the background (design 029 E1), keeping cursor and
+   * (still existing) marks. Not while a navigation replaces the folder anyway.
+   */
   refresh(): Promise<void> {
-    if (this.navigationLocked() || this.searchKey() !== null) {
+    if (this.navigationLocked() || this.searchKey() !== null || this.loading()) {
       return Promise.resolve();
     }
     const path = this.path();
@@ -398,6 +569,7 @@ export class FileBrowserStore {
       cursor: this.cursorPath(),
       keepCursor: true,
       history: 'none',
+      background: true,
     });
   }
 
@@ -409,20 +581,36 @@ export class FileBrowserStore {
   private supersede(): number {
     this.deltasDuringLoad = [];
     this.refreshAfterLoad = null;
+    if (this.refreshTimer !== null) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     return ++this.requestSeq;
   }
 
   /**
    * Reload requested by the watcher or a finished job (design 012 E4): while
-   * any load runs, one reload is queued instead (never several).
+   * any load runs, one reload is queued instead (never several); after a slow
+   * listing it waits {@link refreshGapMs} (design 029 E2).
    */
   requestRefresh(): void {
     const path = this.path();
     if (path === null || this.navigationLocked()) {
       return;
     }
-    if (this.loading()) {
+    if (this.loading() || this.refreshing()) {
       this.refreshAfterLoad = path;
+      return;
+    }
+    if (this.refreshTimer !== null) {
+      return;
+    }
+    const wait = refreshGapMs(this.lastListMs) - (Date.now() - this.lastLoadEnd);
+    if (wait > 0) {
+      this.refreshTimer = setTimeout(() => {
+        this.refreshTimer = null;
+        this.requestRefresh();
+      }, wait);
       return;
     }
     void this.refresh();
@@ -441,7 +629,7 @@ export class FileBrowserStore {
     displayed: readonly DirEntry[] = this.visibleEntries(),
   ): void {
     const delta: FolderDelta = { dir, upserted, removed };
-    if (this.loading()) {
+    if (this.loading() || this.refreshing()) {
       this.deltasDuringLoad.push(delta);
     }
     if (dir === this.path()) {
@@ -761,7 +949,7 @@ export class FileBrowserStore {
     this.listing.set({ ...listing, entries });
   }
 
-  private captureFolderState(): { cursor: string | null; marks: string[]; scrollTop: number } {
+  private captureFolderState(): FolderState {
     return { cursor: this.cursorPath(), marks: [...this.marked()], scrollTop: this.scrollTop() };
   }
 

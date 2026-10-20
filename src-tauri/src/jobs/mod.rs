@@ -9,6 +9,7 @@ pub mod control;
 pub mod copy;
 pub mod delete;
 pub mod duplicates;
+pub mod expect;
 pub mod extract;
 pub mod group;
 pub mod manager;
@@ -97,6 +98,9 @@ pub enum JobSpec {
         /// The user confirmed moving a root/home/system path a second time.
         #[serde(default)]
         allow_dangerous: bool,
+        /// What the panel showed for the sources (design 030 E5); changed ones are left alone.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        expected: Vec<expect::ExpectedEntry>,
     },
     /// Delete to the trash (default) or permanently.
     Delete {
@@ -106,6 +110,9 @@ pub enum JobSpec {
         background: bool,
         #[serde(default)]
         allow_dangerous: bool,
+        /// What the panel showed for the paths (design 030 E5); changed ones are left alone.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        expected: Vec<expect::ExpectedEntry>,
     },
     /// Multi-rename (design 007): every entry gets a new name in its folder.
     /// `undo_of` = the job this one undoes (runs the valid pairs even if others
@@ -211,6 +218,20 @@ impl JobSpec {
             _ => Vec::new(),
         };
         strs.into_iter().map(std::path::PathBuf::from).collect()
+    }
+
+    /// Folders the job writes new entries into (design 029 E8): watched folders at or
+    /// below them hold their reloads back while it runs – the job reports its changes.
+    pub fn target_dirs(&self) -> Vec<std::path::PathBuf> {
+        let dir = match self {
+            JobSpec::Copy { target_dir, .. }
+            | JobSpec::Move { target_dir, .. }
+            | JobSpec::Extract { target_dir, .. }
+            | JobSpec::Pack { target_dir, .. } => target_dir,
+            JobSpec::Group { root, .. } => root,
+            _ => return Vec::new(),
+        };
+        vec![crate::paths::normalize_lexically(std::path::Path::new(dir))]
     }
 
     /// Helper jobs (folder size, count, search) are no tasks of the user: quitting
@@ -516,7 +537,8 @@ mod tests {
                     conflict_default: ConflictDefault::OverwriteIfNewer,
                     rename_to: Some("x".into())
                 },
-                allow_dangerous: false
+                allow_dangerous: false,
+                expected: Vec::new(),
             }
         );
         let spec: JobSpec =

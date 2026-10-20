@@ -4,8 +4,9 @@
 
 use super::report::Reporter;
 use super::{
-    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, duplicates, extract, group, pack, rename, search, shell,
+    Control, Decision, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem,
+    Summary, Transfer, clean, copy, delete, duplicates, expect, extract, group, pack, rename,
+    search, shell,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -55,6 +56,8 @@ pub struct JobManager {
     /// What the last rename jobs did (job id → pairs that undo it), newest last.
     undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
     fs_guard: Mutex<Option<FsGuard>>,
+    /// Marks the folders a job writes into (the watcher holds their reloads; design 029 E8).
+    target_guard: Mutex<Option<FsGuard>>,
 }
 
 /// Rename jobs that can be undone (design 007 E7).
@@ -70,6 +73,7 @@ impl JobManager {
             force_copy_on_move: AtomicBool::new(false),
             undo_log: Mutex::new(VecDeque::new()),
             fs_guard: Mutex::new(None),
+            target_guard: Mutex::new(None),
         })
     }
 
@@ -80,6 +84,11 @@ impl JobManager {
     /// Installs the guard called around jobs that move, rename or delete.
     pub fn set_fs_guard(&self, guard: FsGuard) {
         *self.fs_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
+    }
+
+    /// Called with [`JobSpec::target_dirs`] when a job starts; the returned function runs when it ends.
+    pub fn set_target_guard(&self, guard: FsGuard) {
+        *self.target_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -202,18 +211,38 @@ impl JobManager {
                         sources,
                         target_dir,
                         options,
+                        expected,
                         ..
                     } => {
                         let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        // what changed since the panel listed it stays where it is (design 030 E5)
+                        let (sources, skipped) = expect::filter(
+                            id,
+                            sources,
+                            expected,
+                            &|| control.is_cancelled(),
+                            &emit,
+                        );
                         let target = PathBuf::from(target_dir);
                         let mode = copy::Mode::Move {
                             force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
                         };
-                        copy::run(id, &sources, &target, options, mode, &control, &emit)
+                        with_skipped(skipped, sources.len(), || {
+                            copy::run(id, &sources, &target, options, mode, &control, &emit)
+                        })
                     }
-                    JobSpec::Delete { paths, mode, .. } => {
+                    JobSpec::Delete {
+                        paths,
+                        mode,
+                        expected,
+                        ..
+                    } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-                        delete::run(id, &paths, *mode, &control, &emit)
+                        let (paths, skipped) =
+                            expect::filter(id, paths, expected, &|| control.is_cancelled(), &emit);
+                        with_skipped(skipped, paths.len(), || {
+                            delete::run(id, &paths, *mode, &control, &emit)
+                        })
                     }
                     JobSpec::Group {
                         root,
@@ -313,10 +342,22 @@ impl JobManager {
         let release = guard
             .filter(|_| !changed.is_empty() && !control.is_cancelled())
             .map(|g| g(&changed));
+        let targets = spec.target_dirs();
+        let target_guard = self
+            .target_guard
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let release_targets = target_guard
+            .filter(|_| !targets.is_empty() && !control.is_cancelled())
+            .map(|g| g(&targets));
         // a panic (a bug, or inside a crate such as `trash`) must not leave the job
         // "running" forever and block the serial queue
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work));
         if let Some(release) = release {
+            release();
+        }
+        if let Some(release) = release_targets {
             release();
         }
         let (state, summary) = result.unwrap_or_else(|_| {
@@ -1030,6 +1071,35 @@ fn run_dir_size(
         bytes_done: size.bytes,
         dir_size: Some(size),
         ..Summary::default()
+    };
+    (state, summary)
+}
+
+/// Runs `work` unless everything was skipped, and counts the skipped entries in (design 030 E5).
+fn with_skipped(
+    skipped: Vec<ItemError>,
+    left: usize,
+    work: impl FnOnce() -> (JobState, Summary),
+) -> (JobState, Summary) {
+    if skipped.is_empty() {
+        return work();
+    }
+    let n = skipped.len() as u64;
+    // nothing left to do: no run with an empty list ("nothing selected")
+    let (state, mut summary) = if left == 0 {
+        (JobState::Done, Summary::default())
+    } else {
+        work()
+    };
+    summary.items_failed += n;
+    let mut errors = skipped;
+    errors.append(&mut summary.errors);
+    errors.truncate(super::MAX_REPORTED_ERRORS);
+    summary.errors = errors;
+    let state = if state == JobState::Done {
+        JobState::DoneWithErrors
+    } else {
+        state
     };
     (state, summary)
 }

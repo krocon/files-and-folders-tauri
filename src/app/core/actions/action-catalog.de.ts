@@ -6,6 +6,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   NAVIGATE_PARENT: 'Übergeordneter Ordner',
   OPEN_IN_NEW_TAB: 'Ordner in neuem Tab öffnen',
   RELOAD_DIR: 'Neu laden',
+  CANCEL_LOADING: 'Öffnen des Ordners abbrechen',
   NAVIGATE_BACK: 'Verlauf zurück',
   NAVIGATE_FORWARD: 'Verlauf vor',
   OPEN_CHDIR_DLG: 'Gehe zu Pfad…',

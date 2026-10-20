@@ -29,7 +29,7 @@ use tauri::{AppHandle, Manager, Runtime};
 pub const MAIN_WINDOW: &str = "main";
 
 /// Name, version and platform for the About dialog (design 017).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_app_info<R: Runtime>(app: AppHandle<R>) -> crate::about::AppInfo {
     let info = app.package_info();
     crate::about::app_info(&info.name, &info.version.to_string())
@@ -42,9 +42,17 @@ pub async fn list_directory<R: Runtime>(
     path: Option<String>,
 ) -> Result<DirectoryListing, FsError> {
     let dir = resolve_dir(&app, path)?;
-    tauri::async_runtime::spawn_blocking(move || crate::archive::list_directory_or_archive(&dir))
-        .await
-        .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
+    // a folder that hangs is listed once, further requests wait for it (design 029 E6)
+    crate::listing_gate::global().list(dir, list_dir).await
+}
+
+fn list_dir(dir: &std::path::Path) -> Result<DirectoryListing, FsError> {
+    crate::test_slow::listing(dir);
+    let mut listing = crate::archive::list_directory_or_archive(dir)?;
+    // the frontend caches listings of network drives (design 030 E6); one statfs
+    listing.network = listing.archive.is_none()
+        && (crate::watch::netfs::is_network(dir) || crate::test_slow::is_network(dir));
+    Ok(listing)
 }
 
 pub(crate) fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
@@ -319,7 +327,7 @@ pub async fn find_empty_dirs<R: Runtime>(
 }
 
 /// Stops the search `scan_id` (a newer one started, the dialog closed).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cancel_clean_scan<R: Runtime>(app: AppHandle<R>, scan_id: String) {
     app.state::<CleanScanState>().cancel(&scan_id);
 }
@@ -363,7 +371,7 @@ pub struct PathCheck {
 }
 
 /// Which of the paths are a root, the home folder or a system folder (second confirmation).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn check_paths<R: Runtime>(
     app: AppHandle<R>,
     paths: Vec<String>,
@@ -635,7 +643,7 @@ pub async fn plan_rename<R: Runtime>(
 }
 
 /// Undoes a rename job (`None` = the last one); returns the id of the undo job.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn undo_rename<R: Runtime>(
     app: AppHandle<R>,
     job_id: Option<String>,
@@ -1149,7 +1157,7 @@ impl JobsState {
 }
 
 /// Subscribes to job events; returns the current jobs (state after a reload).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn subscribe_jobs<R: Runtime>(
     app: AppHandle<R>,
     webview: tauri::Webview<R>,
@@ -1164,27 +1172,27 @@ pub fn subscribe_jobs<R: Runtime>(
     state.manager.list()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn start_job<R: Runtime>(app: AppHandle<R>, spec: JobSpec) -> Result<String, FsError> {
     app.state::<JobsState>().manager.start(spec)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cancel_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.cancel(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn pause_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.pause(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resume_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.resume(&id);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn resolve_conflict<R: Runtime>(
     app: AppHandle<R>,
     id: String,
@@ -1197,12 +1205,12 @@ pub fn resolve_conflict<R: Runtime>(
         .resolve_conflict(&id, conflict_id, decision, apply_to_all);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn list_jobs<R: Runtime>(app: AppHandle<R>) -> Vec<JobInfo> {
     app.state::<JobsState>().manager.list()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn clear_finished_jobs<R: Runtime>(app: AppHandle<R>) {
     app.state::<JobsState>().manager.clear_finished();
 }
@@ -1297,6 +1305,10 @@ pub struct MenuState {
 
 /// Installs the native menu bar (macOS, or `FNF_NATIVE_MENU=1`). Returns false when
 /// this platform uses the in-app menu bar – the frontend then shows its own.
+///
+/// The four menu/window commands stay synchronous on purpose (design 029 E11): they
+/// change the native menu or the window, the main thread is the safe place for that
+/// on macOS, and they do no file I/O. Every other command is `async`.
 #[tauri::command]
 pub fn set_app_menu<R: Runtime>(
     app: AppHandle<R>,
@@ -1388,5 +1400,104 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
             .close()
             .map_err(|e| FsError::new(FsErrorCode::Io, e.to_string(), None)),
         None => Ok(()),
+    }
+}
+
+/// Design 029 E11: synchronous commands run on the main thread in Tauri 2 – one
+/// slow call there freezes the whole window. Only the menu/window commands may.
+#[cfg(test)]
+mod command_rules {
+    const SOURCES: [(&str, &str); 3] = [
+        ("commands.rs", include_str!("commands.rs")),
+        ("commands/watch.rs", include_str!("commands/watch.rs")),
+        ("commands/shell.rs", include_str!("commands/shell.rs")),
+    ];
+    const MAIN_THREAD: [&str; 4] = [
+        "set_app_menu",
+        "set_menu_enabled",
+        "subscribe_menu",
+        "close_main_window",
+    ];
+
+    /// The name of a synchronous command declared at `lines[i]`, if it is one.
+    fn sync_command(lines: &[&str], i: usize) -> Option<String> {
+        let attr = lines[i].trim();
+        if !attr.starts_with("#[tauri::command") || attr.contains("(async") {
+            return None;
+        }
+        // skip further attributes and doc comments between the attribute and the fn
+        let decl = lines[i + 1..]
+            .iter()
+            .map(|l| l.trim())
+            .find(|l| !l.starts_with("#[") && !l.starts_with("//") && !l.is_empty())?;
+        let rest = decl
+            .strip_prefix("pub(crate) ")
+            .or_else(|| decl.strip_prefix("pub "))
+            .unwrap_or(decl);
+        if rest.starts_with("async fn ") {
+            return None;
+        }
+        let rest = rest.strip_prefix("fn ")?;
+        Some(
+            rest.chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn no_command_runs_on_the_main_thread_unless_allowed() {
+        let mut sync = Vec::new();
+        for (file, src) in SOURCES {
+            let lines: Vec<&str> = src.lines().collect();
+            for i in 0..lines.len() {
+                if let Some(name) = sync_command(&lines, i)
+                    && !MAIN_THREAD.contains(&name.as_str())
+                {
+                    sync.push(format!("{file}: {name}"));
+                }
+            }
+        }
+        assert!(
+            sync.is_empty(),
+            "make these `async fn` or `#[tauri::command(async)]`: {sync:?}"
+        );
+    }
+
+    #[test]
+    fn the_rule_sees_every_command_file_and_every_spelling() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands");
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let name = format!("commands/{}", entry.unwrap().file_name().to_string_lossy());
+            assert!(
+                SOURCES.iter().any(|(f, _)| *f == name),
+                "{name} is missing in SOURCES"
+            );
+        }
+        let lines = [
+            "#[tauri::command(rename_all = \"snake_case\")]",
+            "/// doc",
+            "#[allow(clippy::x)]",
+            "fn hidden<R: Runtime>() {}",
+            "#[tauri::command(async)]",
+            "pub fn fine() {}",
+            "#[tauri::command]",
+            "pub async fn also_fine() {}",
+        ];
+        assert_eq!(sync_command(&lines, 0).as_deref(), Some("hidden"));
+        assert_eq!(sync_command(&lines, 4), None);
+        assert_eq!(sync_command(&lines, 6), None);
+    }
+}
+
+#[cfg(test)]
+mod listing_contract {
+    #[test]
+    fn a_local_listing_says_network_false_on_the_wire() {
+        let tmp = tempfile::tempdir().unwrap();
+        let l = super::list_dir(tmp.path()).unwrap();
+        assert!(!l.network);
+        let json = serde_json::to_value(&l).unwrap();
+        assert_eq!(json["network"], serde_json::Value::Bool(false));
     }
 }

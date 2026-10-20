@@ -22,6 +22,8 @@ export interface PanelHandle {
   readonly store: FileBrowserStore;
   /** Undefined until the table is ready. */
   controller(): FileListController | undefined;
+  /** Gives up the folder being opened (design 029 E4); false if nothing loads. */
+  cancelLoading?(): boolean;
 }
 
 /** A result tab of a search (design 009 E4): points to a result in the root `SearchStore`. */

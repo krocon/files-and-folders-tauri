@@ -2,7 +2,7 @@
 //! Pure logic without `notify` or threads: the caller feeds touches with a
 //! timestamp and asks which folders are due.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -59,11 +59,17 @@ struct DirState {
 }
 
 impl DirState {
-    fn ready_at(&self) -> Option<Instant> {
+    /// When the batch is due. A reload keeps the gap after the last one unless
+    /// the folder itself is gone (design 029 E7); `held` (a job writes into the
+    /// folder) keeps a pending reload back until the job ends (design 029 E8).
+    fn ready_at(&self, held: bool) -> Option<Instant> {
         let (first, last) = (self.first?, self.last?);
+        if self.rescan && !self.self_removed && held {
+            return None;
+        }
         let at = (last + QUIET).min(first + MAX_DELAY);
         if self.rescan
-            && !self.self_changed
+            && !self.self_removed
             && let Some(prev) = self.last_rescan
         {
             return Some(at.max(prev + RESCAN_GAP));
@@ -76,6 +82,10 @@ impl DirState {
 #[derive(Debug, Default)]
 pub struct Batcher {
     dirs: HashMap<PathBuf, DirState>,
+    /// Targets of running jobs: reloads of folders at or below them wait (design 029 E8).
+    busy_roots: Vec<PathBuf>,
+    /// Folders whose last batch is still being resolved: the next one waits (design 029 E9).
+    resolving: HashSet<PathBuf>,
 }
 
 impl Batcher {
@@ -123,17 +133,51 @@ impl Batcher {
         }
     }
 
+    /// Replaces the targets of running jobs (folders at or below them hold their reloads).
+    pub fn set_busy_roots(&mut self, roots: Vec<PathBuf>) {
+        self.busy_roots = roots;
+    }
+
+    /// Marks a folder whose batch is being resolved (`true`) or done (`false`).
+    pub fn set_resolving(&mut self, dir: &Path, resolving: bool) {
+        if resolving {
+            self.resolving.insert(dir.to_path_buf());
+        } else {
+            self.resolving.remove(dir);
+        }
+    }
+
+    fn ready_at(&self, dir: &Path, state: &DirState) -> Option<Instant> {
+        if self.resolving.contains(dir) {
+            return None;
+        }
+        let held = self.busy_roots.iter().any(|r| dir.starts_with(r));
+        state.ready_at(held)
+    }
+
     /// The earliest time a batch becomes due.
     pub fn next_deadline(&self) -> Option<Instant> {
-        self.dirs.values().filter_map(DirState::ready_at).min()
+        self.dirs
+            .iter()
+            .filter_map(|(d, s)| self.ready_at(d, s))
+            .min()
     }
 
     /// Takes the batches that are due at `now`.
     pub fn due(&mut self, now: Instant) -> Vec<Flush> {
         let mut out = Vec::new();
-        for (dir, state) in &mut self.dirs {
-            if !state.ready_at().is_some_and(|at| at <= now) {
+        let ready: Vec<PathBuf> = self
+            .dirs
+            .iter()
+            .filter(|(d, s)| self.ready_at(d, s).is_some_and(|at| at <= now))
+            .map(|(d, _)| d.clone())
+            .collect();
+        for dir in &ready {
+            let Some(state) = self.dirs.get_mut(dir) else {
                 continue;
+            };
+            if state.rescan {
+                state.last_rescan = Some(now);
             }
             let flush = if state.self_changed {
                 Flush::SelfChanged {
@@ -143,7 +187,6 @@ impl Batcher {
                     removed: state.self_removed,
                 }
             } else if state.rescan {
-                state.last_rescan = Some(now);
                 Flush::Rescan { dir: dir.clone() }
             } else {
                 Flush::Changes {
@@ -334,6 +377,89 @@ mod tests {
         assert_eq!(
             classify(&aliases, Path::new("/var/x/.fnf-notes.txt")),
             Some(child(".fnf-notes.txt"))
+        );
+    }
+
+    #[test]
+    fn the_gap_also_spaces_reloads_that_come_with_a_self_change() {
+        let t0 = Instant::now();
+        let mut b = batcher(&["/a"]);
+        b.touch(Path::new("/a"), Touch::Rescan, t0);
+        assert_eq!(b.due(t0 + QUIET), vec![Flush::Rescan { dir: "/a".into() }]);
+        let t1 = t0 + QUIET + ms(10);
+        b.touch(Path::new("/a"), Touch::SelfChanged, t1);
+        b.touch(Path::new("/a"), Touch::Rescan, t1);
+        assert!(b.due(t1 + QUIET).is_empty());
+        assert_eq!(b.next_deadline(), Some(t0 + QUIET + RESCAN_GAP));
+        assert_eq!(
+            b.due(t0 + QUIET + RESCAN_GAP),
+            vec![Flush::SelfChanged {
+                dir: "/a".into(),
+                names: vec![],
+                rescan: true,
+                removed: false
+            }]
+        );
+    }
+
+    #[test]
+    fn a_removed_folder_is_never_held_back() {
+        let t0 = Instant::now();
+        let mut b = batcher(&["/a"]);
+        b.set_busy_roots(vec!["/a".into()]);
+        b.touch(Path::new("/a"), Touch::Rescan, t0);
+        b.touch(Path::new("/a"), Touch::SelfRemoved, t0);
+        assert_eq!(b.due(t0 + QUIET).len(), 1);
+    }
+
+    #[test]
+    fn reloads_below_a_busy_target_wait_for_the_job_but_changes_flow() {
+        let t0 = Instant::now();
+        let mut b = batcher(&["/t", "/t/sub", "/other"]);
+        b.set_busy_roots(vec!["/t".into()]);
+        b.touch(Path::new("/t"), child("new.txt"), t0);
+        b.touch(Path::new("/t/sub"), Touch::Rescan, t0);
+        b.touch(Path::new("/other"), Touch::Rescan, t0);
+        assert_eq!(
+            b.due(t0 + QUIET),
+            vec![
+                Flush::Rescan {
+                    dir: "/other".into()
+                },
+                Flush::Changes {
+                    dir: "/t".into(),
+                    names: vec!["new.txt".into()]
+                },
+            ]
+        );
+        assert_eq!(b.next_deadline(), None);
+        assert!(b.due(t0 + ms(10_000)).is_empty());
+        // the job ends: the held reload comes at once
+        b.set_busy_roots(vec![]);
+        assert_eq!(
+            b.due(t0 + ms(10_000)),
+            vec![Flush::Rescan {
+                dir: "/t/sub".into()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_folder_being_resolved_collects_until_it_is_done() {
+        let t0 = Instant::now();
+        let mut b = batcher(&["/a"]);
+        b.set_resolving(Path::new("/a"), true);
+        b.touch(Path::new("/a"), child("x"), t0);
+        b.touch(Path::new("/a"), child("y"), t0 + ms(100));
+        assert_eq!(b.next_deadline(), None);
+        assert!(b.due(t0 + ms(1000)).is_empty());
+        b.set_resolving(Path::new("/a"), false);
+        assert_eq!(
+            b.due(t0 + ms(1000)),
+            vec![Flush::Changes {
+                dir: "/a".into(),
+                names: vec!["x".into(), "y".into()]
+            }]
         );
     }
 }
