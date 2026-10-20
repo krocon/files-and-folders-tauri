@@ -87,3 +87,10 @@ app-context-menu {
 app-context-menu {
   display: contents;
 }
+
+/* the gear of the Tasks button turns while a task runs (fa-spin) – not for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .fa-spin {
+    animation: none;
+  }
+}
