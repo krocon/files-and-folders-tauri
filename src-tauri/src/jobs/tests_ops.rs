@@ -915,3 +915,44 @@ fn the_target_guard_marks_the_folders_a_job_writes_into() {
         "delete writes nowhere"
     );
 }
+
+/// Throughput of a large copy (design 029 E10). Not part of the suite:
+/// `FNF_BENCH_MB=2048 cargo test --release --lib copy_throughput -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn copy_throughput() {
+    use std::io::Write;
+    let mb: usize = std::env::var("FNF_BENCH_MB")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1024);
+    let tmp = tempfile::tempdir_in(std::env::var("FNF_BENCH_DIR").unwrap_or_else(|_| ".".into()))
+        .unwrap();
+    let src = tmp.path().join("big.bin");
+    let target = tmp.path().join("t");
+    fs::create_dir_all(&target).unwrap();
+    {
+        let mut f = fs::File::create(&src).unwrap();
+        let chunk: Vec<u8> = (0..1 << 20).map(|i| (i * 31 % 251) as u8).collect();
+        for _ in 0..mb {
+            f.write_all(&chunk).unwrap();
+        }
+        f.sync_all().unwrap();
+    }
+    // cold cache (needs root; ignored otherwise)
+    let _ = fs::write("/proc/sys/vm/drop_caches", b"3");
+    let h = Harness::new();
+    let t = std::time::Instant::now();
+    let id = h.start_copy(&[&src], &target, CopyOptions::default());
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    // until the data is on the disk, not only in the cache
+    fs::File::open(target.join("big.bin"))
+        .unwrap()
+        .sync_all()
+        .unwrap();
+    let secs = t.elapsed().as_secs_f64();
+    println!(
+        "copy {mb} MiB in {secs:.2} s = {:.0} MiB/s",
+        mb as f64 / secs
+    );
+}

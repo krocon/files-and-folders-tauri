@@ -42,9 +42,13 @@ pub async fn list_directory<R: Runtime>(
     path: Option<String>,
 ) -> Result<DirectoryListing, FsError> {
     let dir = resolve_dir(&app, path)?;
-    tauri::async_runtime::spawn_blocking(move || crate::archive::list_directory_or_archive(&dir))
-        .await
-        .map_err(|e| FsError::new(FsErrorCode::Io, format!("Listing task failed: {e}"), None))?
+    // a folder that hangs is listed once, further requests wait for it (design 029 E6)
+    crate::listing_gate::global().list(dir, list_dir).await
+}
+
+fn list_dir(dir: &std::path::Path) -> Result<DirectoryListing, FsError> {
+    crate::test_slow::listing(dir);
+    crate::archive::list_directory_or_archive(dir)
 }
 
 pub(crate) fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {

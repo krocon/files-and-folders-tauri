@@ -28,7 +28,8 @@ use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, UNIX_EPOCH};
 
-const BLOCK: usize = 64 * 1024;
+/// Same block size as a copy (design 029 E10).
+const BLOCK: usize = 1024 * 1024;
 const MAX_LIVE_ERRORS: u64 = 100;
 
 /// One entry to extract: where it goes, relative to the target root.
@@ -132,6 +133,7 @@ impl Run<'_> {
             let mut out = options
                 .open(&tmp)
                 .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
+            crate::platform::io_hints::prepare_write(&out);
             let mut buf = vec![0u8; BLOCK];
             loop {
                 if self.control.is_cancelled() || !self.control.wait_while_paused() {

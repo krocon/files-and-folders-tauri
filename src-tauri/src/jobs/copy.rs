@@ -12,7 +12,7 @@ use super::{
 };
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
-use crate::platform::{file_id, rename_noreplace};
+use crate::platform::{file_id, io_hints, rename_noreplace};
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs::{self, File, Metadata};
@@ -20,7 +20,9 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-const BLOCK: usize = 64 * 1024;
+/// 1 MiB: few, large writes keep a slow drive's queue short; pause/cancel are
+/// still checked per block (≤ 1 s even at 1 MB/s; design 029 E10).
+const BLOCK: usize = 1024 * 1024;
 /// `ItemFailed` events per job; further errors are only counted in the summary.
 const MAX_LIVE_ERRORS: u64 = 100;
 
@@ -496,7 +498,12 @@ impl Run<'_> {
             let mut input = File::open(src)?;
             let src_meta = input.metadata()?;
             let mut out = File::create(&tmp)?;
-            let mut buf = vec![0u8; BLOCK];
+            io_hints::prepare_read(&input);
+            io_hints::prepare_write(&out);
+            let mut dropped = 0u64;
+            // small files need no 1 MiB buffer each
+            let len = usize::try_from(src_meta.len()).unwrap_or(BLOCK);
+            let mut buf = vec![0u8; len.clamp(8 * 1024, BLOCK)];
             loop {
                 if self.control.is_cancelled() || !self.control.wait_while_paused() {
                     return Err(CopyError::Cancelled);
@@ -506,7 +513,12 @@ impl Run<'_> {
                     break;
                 }
                 out.write_all(&buf[..n])?;
+                crate::test_slow::block(dst);
                 written += n as u64;
+                if written - dropped >= io_hints::DROP_EVERY {
+                    io_hints::done_reading(&input, dropped, written - dropped);
+                    dropped = written;
+                }
                 self.rep.progress.bytes_done += n as u64;
                 if let Some(td) = &top_dst
                     && let Some(b) = self.rep.progress.dest_bytes.get_mut(td)
