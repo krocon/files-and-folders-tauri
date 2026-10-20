@@ -17,7 +17,7 @@ import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
 import { cursorAfterRemoval } from '../ops/ops-logic';
 import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
-import { ARCHIVE_TEXTS } from '../archive/archive-texts';
+import { ArchivePasswordPrompt } from '../../core/archive/archive-password-prompt';
 
 const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
 
@@ -139,6 +139,7 @@ export class FileBrowserStore implements OnDestroy {
   readonly filterActive = signal(false);
   readonly filterText = signal('');
   private readonly jobs = inject(JobsStore);
+  private readonly passwordPrompt = inject(ArchivePasswordPrompt);
   /** Size jobs started by this panel: job id → folder path. */
   private readonly ownSizeJobs = signal<ReadonlyMap<string, string>>(new Map());
   /** Folder path → start timestamp for size calculations started by this panel. */
@@ -315,6 +316,10 @@ export class FileBrowserStore implements OnDestroy {
       recheck = !background && this.cachedAt() !== null;
       const error = toFsError(err);
       this.error.set(error);
+      // an encrypted archive: ask for the password, then load again (design 025 E4)
+      if (!background && path !== undefined) {
+        this.passwordPrompt.askFor(error, null, () => this.load(path, options));
+      }
       if (error.code === 'not_found' && path !== undefined) {
         this.cache.forget(path);
       }
@@ -513,14 +518,36 @@ export class FileBrowserStore implements OnDestroy {
       return;
     }
     if (inArchive) {
-      this.error.set({
-        code: 'archive_error',
-        message: ARCHIVE_TEXTS.openInside,
-        path: entry.path,
-      });
-      return;
+      return this.openInArchive(entry);
     }
     await this.openFile(entry);
+  }
+
+  /**
+   * Enter on a file inside an archive (design 025 E5): job `viewEntry` extracts it
+   * into the app's cache (progress in Tasks for big entries), then it opens like any
+   * file. A missing or wrong password opens the password dialog and tries again.
+   */
+  async openInArchive(entry: DirEntry): Promise<void> {
+    const archive = this.archive()?.path ?? null;
+    let id: string;
+    try {
+      id = await this.jobs.start({ kind: 'viewEntry', path: entry.path });
+    } catch (err) {
+      this.error.set(toFsError(err));
+      return;
+    }
+    const job = await this.jobs.whenFinished(id);
+    const error = job.summary?.error ?? null;
+    const viewPath = job.summary?.viewPath ?? null;
+    if (job.state === 'done' && viewPath) {
+      await this.openFile({ ...entry, path: viewPath });
+    } else if (
+      error &&
+      !this.passwordPrompt.askFor(error, archive, () => this.openInArchive(entry))
+    ) {
+      this.error.set(error);
+    }
   }
 
   /** Navigates to the parent and puts the cursor on the folder we came from. */

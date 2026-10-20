@@ -26,7 +26,7 @@ describe('archive names (design 016)', () => {
     expect(archiveFormatOf('a.tar.gz')).toBe('tarGz');
     expect(archiveFormatOf('a.tar')).toBe('tar');
     expect(archiveFormatOf('.zip')).toBeNull();
-    expect(archiveFormatOf('a.7z')).toBeNull();
+    expect(archiveFormatOf('a.7z')).toBe('sevenZ'); // design 025
     expect(isArchiveEntry(file('Fotos 📷.zip'))).toBe(true);
     expect(isArchiveEntry(file('link.zip', 'symlink'))).toBe(true);
     expect(isArchiveEntry(file('ordner.zip', 'directory'))).toBe(false);

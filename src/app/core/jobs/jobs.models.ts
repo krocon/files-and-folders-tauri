@@ -114,7 +114,11 @@ export type JobSpec =
       readonly name: string;
       readonly format: ArchiveFormat;
       readonly level?: number | null;
+      /** ZIP (AES-256) / 7z (AES-256 + names) – Rust never sends it back (design 025 E4). */
+      readonly password?: string;
     }
+  /** Enter on a file inside an archive (design 025 E5): copy in the view cache → `Summary.viewPath`. */
+  | { readonly kind: 'viewEntry'; readonly path: string }
   /** Symbolic links to the sources in `targetDir` (design 031 E9) – never replaces a name. */
   | {
       readonly kind: 'link';
@@ -225,6 +229,8 @@ export interface Summary {
   readonly shell?: ShellSummary | null;
   /** Final bytes copied/moved into each top-level target destination. */
   readonly destBytes?: Readonly<Record<string, number>>;
+  /** Job `viewEntry`: the read-only copy of the entry (design 025 E5). */
+  readonly viewPath?: string | null;
 }
 
 export interface JobInfo {

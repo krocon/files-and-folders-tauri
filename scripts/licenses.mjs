@@ -88,6 +88,29 @@ function section(title, packages) {
   return lines;
 }
 
+/**
+ * Source code compiled into the app whose licence the crate's own licence field does not
+ * show (design 025 E2). The UnRAR licence asks for its paragraph 2 in the documentation.
+ */
+const BUNDLED_SOURCE = [
+  '## Bundled source with its own licence',
+  '',
+  '- `unrar-ng-sys` (MIT OR Apache-2.0) compiles the vendored **UnRAR** C++ source (RAR',
+  '  read/extract only, Cargo feature `rar`, on by default). UnRAR licence, paragraph 2:',
+  '',
+  '  > UnRAR source code may be used in any software to handle RAR archives without',
+  '  > limitations free of charge, but cannot be used to develop RAR (WinRAR) compatible',
+  '  > archiver and to re-create RAR compression algorithm, which is proprietary.',
+  '  > Distribution of modified UnRAR source code in separate form or as a part of other',
+  '  > software is permitted, provided that full text of this paragraph, starting from',
+  '  > "UnRAR source code" words, is included in license, or in documentation if license',
+  '  > is not available, and in source code comments of resulting package.',
+  '',
+  '  All copyrights to RAR and UnRAR are owned by Alexander Roshal. Files and Folders never',
+  '  creates RAR archives. Build without it: `cargo build --no-default-features`.',
+  '',
+];
+
 function main() {
   const npmProd = npmPackages(true);
   const npmAll = npmPackages(false);
@@ -102,6 +125,7 @@ function main() {
     '',
     ...section('Rust crates (Cargo.lock)', cargo),
     ...section('npm – runtime (in the app bundle)', npmProd),
+    ...BUNDLED_SOURCE,
     `## npm – development tooling (not shipped)`,
     '',
     `${npmAll.length} packages; not purely permissive: ${npmAll.filter((p) => !isPermissive(p.license)).length}`,

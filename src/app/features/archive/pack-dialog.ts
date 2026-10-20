@@ -1,13 +1,17 @@
 import { TargetField } from '../ops/target-field';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { defaultArchiveName, withFormat } from '../../core/archive/archive-names';
+import {
+  canEncrypt,
+  defaultArchiveName,
+  PACK_FORMATS,
+  withFormat,
+} from '../../core/archive/archive-names';
 import { ArchiveFormat, FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from '../ops/ops-logic';
 import { ArchiveStore } from './archive.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
 
-const FORMATS: readonly ArchiveFormat[] = ['zip', 'tar', 'tarGz'];
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /**
@@ -53,6 +57,35 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
               </label>
             }
           </fieldset>
+          @if (canEncrypt(format())) {
+            <label class="field">
+              <span>{{ t.packPassword }}</span>
+              <input
+                type="password"
+                autocomplete="new-password"
+                spellcheck="false"
+                [value]="password()"
+                aria-describedby="fnf-pack-pw-hint"
+                (input)="password.set($any($event.target).value); error.set(null)"
+              />
+            </label>
+            @if (password() !== '') {
+              <label class="field">
+                <span>{{ t.passwordRepeat }}</span>
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  spellcheck="false"
+                  [value]="repeat()"
+                  [attr.aria-invalid]="repeat() !== password() ? 'true' : null"
+                  (input)="repeat.set($any($event.target).value); error.set(null)"
+                />
+              </label>
+              <p id="fnf-pack-pw-hint" class="help">
+                {{ format() === 'zip' ? t.zipAesHint : t.sevenZHint }}
+              </p>
+            }
+          }
           @if (format() !== 'tar') {
             <label class="field">
               <span>{{ t.level }}</span>
@@ -102,7 +135,10 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 })
 export class PackDialog {
   protected readonly t = ARCHIVE_TEXTS;
-  protected readonly formats = FORMATS;
+  protected readonly formats = PACK_FORMATS;
+  protected readonly canEncrypt = canEncrypt;
+  protected readonly password = signal('');
+  protected readonly repeat = signal('');
   protected readonly levels = LEVELS;
   protected readonly store = inject(ArchiveStore);
   protected readonly req = this.store.pack;
@@ -154,6 +190,8 @@ export class PackDialog {
           format: this.format(),
           level: this.level(),
           target: this.target(),
+          password: this.password(),
+          repeat: this.repeat(),
         }),
       );
     } finally {

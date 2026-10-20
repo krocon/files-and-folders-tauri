@@ -151,6 +151,10 @@ const OS_CODES: ReadonlySet<FsErrorCode> = new Set<FsErrorCode>([
 
 /** The error line of an operation dialog (our own messages are written for the user already). */
 export function dialogError(e: FsError): string {
+  // password errors come from Rust in English: always the translated text (design 025)
+  if (e.code === 'archive_password_wrong' || e.code === 'archive_password_required') {
+    return e.path === null ? e.message : describeFsError(e);
+  }
   return OS_CODES.has(e.code) ? `${describeFsError(e)} (${e.message})` : e.message;
 }
 

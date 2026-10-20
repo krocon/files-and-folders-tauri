@@ -24,6 +24,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'archive_error',
   'unsafe_entry',
   'archive_too_large',
+  'archive_password_required',
+  'archive_password_wrong',
   'invalid_menu',
   'invalid_settings',
   'shell_disabled',

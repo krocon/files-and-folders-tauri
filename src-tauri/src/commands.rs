@@ -173,7 +173,30 @@ pub async fn read_preview<R: Runtime>(
     let tokens = state.tokens.clone();
     let options = options.unwrap_or_default();
     blocking("Reading the preview", move || {
+        // a file inside an archive: its copy in the view cache (design 025 E5)
+        let file = if std::fs::symlink_metadata(&file).is_err()
+            && crate::archive::resolve(&file).is_some()
+        {
+            crate::archive::view::for_preview(&file, options.image_slot.as_deref())?
+        } else {
+            file
+        };
         crate::preview::read_preview(&file, &options, |p, slot| tokens.issue_in(p, slot))
+    })
+    .await
+}
+
+/// Checks a password for an archive and keeps it in memory for this run (design 025 E4).
+/// Never logged, never stored on disk.
+#[tauri::command]
+pub async fn set_archive_password<R: Runtime>(
+    app: AppHandle<R>,
+    archive: String,
+    password: crate::archive::secrets::Secret,
+) -> Result<(), FsError> {
+    let file = resolve_input(&app, &archive)?;
+    blocking("Checking the password", move || {
+        crate::archive::set_password(&file, password)
     })
     .await
 }

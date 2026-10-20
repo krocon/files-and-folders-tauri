@@ -52,6 +52,7 @@ impl Harness {
                 name: name.into(),
                 format,
                 level: None,
+                password: None,
             })
             .unwrap()
     }
@@ -442,6 +443,7 @@ fn packing_onto_an_existing_archive_asks() {
         name: "a/b.zip".into(),
         format: ArchiveFormat::Zip,
         level: None,
+        password: None,
     });
     assert_eq!(bad.unwrap_err().code, FsErrorCode::InvalidName);
     let bad = h.mgr.start(JobSpec::Pack {
@@ -450,6 +452,7 @@ fn packing_onto_an_existing_archive_asks() {
         name: "b.zip".into(),
         format: ArchiveFormat::Zip,
         level: Some(12),
+        password: None,
     });
     assert!(bad.is_err());
     // packing the folder that holds the archive being replaced: it never packs itself

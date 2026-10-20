@@ -1,5 +1,16 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { isArchiveEntry, stripArchiveExtension } from '../../core/archive/archive-names';
+import { ArchiveApi } from '../../core/archive/archive-api';
+import {
+  ArchivePasswordPrompt,
+  isPasswordError,
+  PasswordNeeded,
+} from '../../core/archive/archive-password-prompt';
+import {
+  archiveFormatOf,
+  canEncrypt,
+  isArchiveEntry,
+  stripArchiveExtension,
+} from '../../core/archive/archive-names';
 import { FsApi } from '../../core/fs/fs-api';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { ArchiveFormat, DirEntry, FsError } from '../../core/fs/fs.models';
@@ -39,23 +50,47 @@ export interface UnpackRequest {
   readonly entryCount: number;
   readonly target: string;
   readonly targets: readonly TargetOption[];
+  /**
+   * Offer a password field (design 025 E4): inside an encrypted archive without a
+   * known password, and for archives not opened yet (Alt+F9 – unknown).
+   */
+  readonly askPassword: boolean;
 }
+
+/** The password dialog (design 025 E4); the archive path is shown as it is (opaque). */
+export type PasswordRequest = PasswordNeeded;
 
 export interface PackInput {
   readonly name: string;
   readonly format: ArchiveFormat;
   readonly level: number;
   readonly target: string;
+  /** ZIP/7z only; empty = not encrypted. */
+  readonly password?: string;
+  /** Must equal `password` (typos would lock the data away). */
+  readonly repeat?: string;
 }
 
 export interface UnpackInput {
   readonly target: string;
   readonly intoSubfolder: boolean;
   readonly conflictDefault: ConflictDefault;
+  /** Optional: checked in Rust and kept there for this run. */
+  readonly password?: string;
 }
 
 function err(code: FsError['code'], message: string): FsError {
   return { code, message, path: null };
+}
+
+/** UnRAR takes at most 511 characters (external review 025 #11, Rust `rar::MAX_PASSWORD_CHARS`). */
+export const MAX_RAR_PASSWORD = 511;
+
+/** A password UnRAR cannot take – a clear message instead of "wrong" for ever. */
+function rarPasswordTooLong(archive: string, password: string): FsError | null {
+  return archiveFormatOf(archive) === 'rar' && [...password].length > MAX_RAR_PASSWORD
+    ? err('unknown', ARCHIVE_TEXTS.passwordTooLongRar(MAX_RAR_PASSWORD))
+    : null;
 }
 
 /**
@@ -69,9 +104,53 @@ export class ArchiveStore {
   private readonly jobs = inject(JobsStore);
   private readonly fs = inject(FsApi);
   private readonly dialogs = inject(DialogService);
+  private readonly api = inject(ArchiveApi);
+  private readonly prompt = inject(ArchivePasswordPrompt);
 
   readonly pack = signal<PackRequest | null>(null);
   readonly unpack = signal<UnpackRequest | null>(null);
+  readonly password = signal<PasswordRequest | null>(null);
+
+  constructor() {
+    // panels and jobs that hit an encrypted archive ask through the bridge (design 025 E4)
+    this.prompt.setHandler((req) => this.askPassword(req));
+  }
+
+  /** Opens the password dialog; `retry` runs once the password fits. */
+  askPassword(req: PasswordNeeded): void {
+    if (this.dialogs.open() !== null && this.dialogs.open() !== 'archive-password') {
+      // another dialog is open: report instead of stacking dialogs
+      this.jobs.report(ARCHIVE_TEXTS.passwordNeeded(req.archive));
+      return;
+    }
+    this.password.set(req);
+    this.dialogs.show('archive-password');
+  }
+
+  /** Checks the password in Rust; null = accepted (dialog closed, retry runs) or the error. */
+  async submitPassword(req: PasswordRequest, password: string): Promise<FsError | null> {
+    if (password === '') {
+      return err('archive_password_required', ARCHIVE_TEXTS.emptyPassword);
+    }
+    const tooLong = rarPasswordTooLong(req.archive, password);
+    if (tooLong) {
+      return tooLong;
+    }
+    try {
+      await this.api.setPassword(req.archive, password);
+    } catch (e) {
+      return toFsError(e);
+    }
+    this.password.set(null);
+    this.dialogs.close();
+    await req.retry();
+    return null;
+  }
+
+  closePassword(): void {
+    this.password.set(null);
+    this.dialogs.close();
+  }
 
   /** A real folder of `side` (null for result tabs and archives) – a possible target. */
   private folderOf(side: Side): string | null {
@@ -172,6 +251,7 @@ export class ArchiveStore {
         archiveName: null,
         fromArchive: true,
         entryCount: sel.length,
+        askPassword: !!info.encrypted && !info.passwordKnown,
       };
       if (sel.length === 0) {
         throw err('unknown', OPS_TEXTS.nothingSelected);
@@ -187,6 +267,7 @@ export class ArchiveStore {
         archiveName: archives.length === 1 ? stripArchiveExtension(archives[0].name) : null,
         fromArchive: false,
         entryCount: archives.length,
+        askPassword: true,
       };
     }
     this.unpack.set({ ...req, ...this.targetsFor(side) });
@@ -218,6 +299,10 @@ export class ArchiveStore {
     if (name === '') {
       return err('invalid_name', ARCHIVE_TEXTS.emptyName);
     }
+    const password = canEncrypt(input.format) ? (input.password ?? '') : '';
+    if (password !== (canEncrypt(input.format) ? (input.repeat ?? '') : '')) {
+      return err('unknown', ARCHIVE_TEXTS.passwordsDiffer);
+    }
     const dir = await this.resolveTarget(input.target);
     if (typeof dir !== 'string') {
       return dir;
@@ -229,6 +314,7 @@ export class ArchiveStore {
       name,
       format: input.format,
       level: input.level,
+      ...(password !== '' ? { password } : {}),
     };
     try {
       this.watch(await this.jobs.start(spec));
@@ -246,17 +332,39 @@ export class ArchiveStore {
     if (typeof dir !== 'string') {
       return dir;
     }
+    const password = input.password ?? '';
+    if (password !== '') {
+      // checked per archive before any job starts – a wrong one stays in the dialog
+      for (const job of req.jobs) {
+        const tooLong = rarPasswordTooLong(job.archive, password);
+        if (tooLong) {
+          return tooLong;
+        }
+        try {
+          await this.api.setPassword(job.archive, password);
+        } catch (e) {
+          const error = toFsError(e);
+          // archives without encryption accept nothing to check – only real errors count
+          if (req.jobs.length === 1 || !isPasswordError(error)) {
+            return error;
+          }
+        }
+      }
+    }
     for (const job of req.jobs) {
+      const spec: JobSpec = {
+        kind: 'extract',
+        archive: job.archive,
+        entries: job.entries,
+        targetDir: dir,
+        intoSubfolder: input.intoSubfolder,
+        options: { conflictDefault: input.conflictDefault },
+      };
       try {
-        const id = await this.jobs.start({
-          kind: 'extract',
-          archive: job.archive,
-          entries: job.entries,
-          targetDir: dir,
-          intoSubfolder: input.intoSubfolder,
-          options: { conflictDefault: input.conflictDefault },
-        });
-        this.watch(id, req.fromArchive ? { side: req.side, paths: job.entries } : null);
+        await this.startExtract(
+          spec,
+          req.fromArchive ? { side: req.side, paths: job.entries } : null,
+        );
       } catch (e) {
         return toFsError(e);
       }
@@ -266,13 +374,32 @@ export class ArchiveStore {
     return null;
   }
 
+  /** Starts an extract job; a password error asks for it and starts the job again. */
+  private async startExtract(
+    spec: JobSpec & { kind: 'extract' },
+    marked: { side: Side; paths: readonly string[] } | null,
+  ): Promise<void> {
+    const id = await this.jobs.start(spec);
+    this.watch(id, marked, () => void this.startExtract(spec, marked).catch(() => undefined));
+  }
+
   /**
    * Errors of a finished job go to the status message (details in Tasks);
    * extracted entries are unmarked like copied ones (failed ones stay marked).
    */
-  private watch(id: string, marked: { side: Side; paths: readonly string[] } | null = null): void {
+  private watch(
+    id: string,
+    marked: { side: Side; paths: readonly string[] } | null = null,
+    retry: (() => void) | null = null,
+  ): void {
     void this.jobs.whenFinished(id).then((job: JobInfo) => {
       const summary = job.summary;
+      const archive = job.spec.kind === 'extract' ? job.spec.archive : null;
+      if (job.state === 'failed' && summary?.error && retry && archive) {
+        if (this.prompt.askFor(summary.error, archive, retry)) {
+          return;
+        }
+      }
       if (marked && (job.state === 'done' || job.state === 'doneWithErrors')) {
         const failed = new Set(summary?.errors.map((e) => e.path) ?? []);
         this.ws.panel(marked.side)?.store.setMarked(

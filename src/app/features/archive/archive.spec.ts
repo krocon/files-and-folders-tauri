@@ -25,7 +25,6 @@ import { WorkspaceStore } from '../workspace/workspace.store';
 import { contextMenuFor, nativeEnabled, resolveMenu, toNativeSpec } from '../menus/menu-model';
 import { registerArchiveActions } from './archive-actions';
 import { ArchiveStore } from './archive.store';
-import { ARCHIVE_TEXTS } from './archive-texts';
 
 /** `/data` with an archive, and the root of that archive (virtual paths from "Rust"). */
 const DATA: DirectoryListing = {
@@ -103,13 +102,31 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     ws.setActive('left');
   });
 
-  it('Enter on an archive opens it as a folder; files inside are not opened', async () => {
+  it('Enter on an archive opens it as a folder; files inside open from the view cache', async () => {
     await left.open(left.entries()[0]);
     expect(left.path()).toBe('/data/Fotos 📷.zip');
     expect(left.archive()?.format).toBe('zip');
-    await left.open(left.entries()[1]);
-    expect(left.error()?.message).toBe(ARCHIVE_TEXTS.openInside);
-    expect(fsApi.opened).toEqual([]);
+    const opening = left.open(left.entries()[1]);
+    await wait();
+    const job = jobsApi.started.at(-1)!;
+    expect(job.spec).toEqual({ kind: 'viewEntry', path: '/data/Fotos 📷.zip/bild.jpg' });
+    jobsApi.emit({
+      type: 'finished',
+      id: job.id,
+      state: 'done',
+      summary: {
+        itemsDone: 1,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 3,
+        errors: [],
+        error: null,
+        dirSize: null,
+        viewPath: '/cache/run-1/1/bild.jpg',
+      },
+    });
+    await opening;
+    expect(fsApi.opened).toEqual([{ path: '/cache/run-1/1/bild.jpg', allowExecutable: false }]);
     actions.register({ OPEN_VIEW_DLG: { run: () => undefined } });
     await left.up();
     expect(actions.state('OPEN_VIEW_DLG')).toBe('ready');
@@ -128,9 +145,14 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     expect(actions.state('OPEN_RENAME_DLG') === 'ready').toBe(false);
     expect(actions.state('OPEN_PACK_DLG') === 'ready').toBe(false);
     // every action that needs real files is vetoed centrally (also those of other features)
-    actions.register({ OPEN_VIEW_DLG: { run: () => undefined } });
-    expect(actions.state('OPEN_VIEW_DLG')).toBe('disabled');
-    expect(await actions.run('OPEN_VIEW_DLG')).toBe(false);
+    actions.register({
+      OPEN_EDIT_DLG: { run: () => undefined },
+      OPEN_VIEW_DLG: { run: () => undefined },
+    });
+    expect(actions.state('OPEN_EDIT_DLG')).toBe('disabled');
+    expect(await actions.run('OPEN_EDIT_DLG')).toBe(false);
+    // F3 works on a copy in the view cache (design 025 E10)
+    expect(actions.state('OPEN_VIEW_DLG')).toBe('ready');
     await ops.openCopyMove('copy');
     const req = archive.unpack()!;
     expect(TestBed.inject(DialogService).open()).toBe('unpack');
@@ -391,6 +413,7 @@ describe('unpack and pack dialogs render (design 016)', () => {
       entryCount: 1,
       target: '/t',
       targets: [{ path: '/t', group: 'Other panel' }],
+      askPassword: false,
     });
     const f = TestBed.createComponent(UnpackDialog);
     f.detectChanges();

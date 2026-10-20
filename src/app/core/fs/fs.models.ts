@@ -22,7 +22,8 @@ export interface PathSegment {
   readonly path: string;
 }
 
-export type ArchiveFormat = 'zip' | 'tar' | 'tarGz';
+/** `sevenZ`/`rar` since design 025 (RAR: read and extract only). */
+export type ArchiveFormat = 'zip' | 'tar' | 'tarGz' | 'sevenZ' | 'rar';
 
 /** Set when a listing is a folder inside an archive (design 016 E1). Rust `archive::ArchiveInfo`. */
 export interface ArchiveInfo {
@@ -34,6 +35,10 @@ export interface ArchiveInfo {
   /** Entries hidden because of an unsafe name (`..`, absolute, drive letter). */
   readonly unsafeEntries: number;
   readonly entries: number;
+  /** Some entry (or the list of names) is encrypted (design 025 E4). */
+  readonly encrypted?: boolean;
+  /** A password for this archive was entered this session (kept in Rust only). */
+  readonly passwordKnown?: boolean;
 }
 
 export interface DirectoryListing {
@@ -81,6 +86,10 @@ export type FsErrorCode =
   | 'unsafe_entry'
   /** An archive exceeds the limits (entries, size, ratio – zip bomb). */
   | 'archive_too_large'
+  /** The archive is encrypted and no password is known (design 025 E4). */
+  | 'archive_password_required'
+  /** The known password does not fit. */
+  | 'archive_password_wrong'
   | 'invalid_menu'
   /** A file to import is no settings export (design 015). */
   | 'invalid_settings'

@@ -57,7 +57,9 @@ without stutter.
   **create many folders** from a template
 - **Search** with glob/regex, content, size, date, depth and presets – results stream into a **result tab** you
   can work with like a normal folder
-- **Archives** – open ZIP / TAR / TAR.GZ like a folder, pack and unpack (zip-slip and zip-bomb safe)
+- **Archives** – open ZIP / TAR / TAR.GZ / 7z / RAR like a folder, view (F3) and open (Enter) files inside,
+  pack (ZIP, 7z, TAR, TAR.GZ) and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR; kept in memory only)
+  – zip-slip and zip-bomb safe
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /

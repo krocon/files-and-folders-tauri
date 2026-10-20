@@ -66,6 +66,10 @@ pub enum FsErrorCode {
     UnquotableName,
     /// A drag out of the window was asked for while no mouse button is held (design 028 E2).
     DragNotHeld,
+    /// The archive (or entry) is encrypted and no password is known (design 025 E4).
+    ArchivePasswordRequired,
+    /// The password known for the archive does not fit (design 025 E4).
+    ArchivePasswordWrong,
     /// The system refuses symbolic links here (Windows without developer mode, FAT …) (design 031 E9).
     LinkNotPermitted,
     /// A relative link cannot point to the source (other drive, or a linked folder on the way) (031 E9).
@@ -172,6 +176,16 @@ mod tests {
         );
         let e = FsError::new(FsErrorCode::ArchiveError, "broken", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "archive_error");
+        let e = FsError::new(FsErrorCode::ArchivePasswordRequired, "pw", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "archive_password_required"
+        );
+        let e = FsError::new(FsErrorCode::ArchivePasswordWrong, "pw", None);
+        assert_eq!(
+            serde_json::to_value(&e).unwrap()["code"],
+            "archive_password_wrong"
+        );
         let e = FsError::new(FsErrorCode::InvalidMenu, "bad", None);
         assert_eq!(serde_json::to_value(&e).unwrap()["code"], "invalid_menu");
     }

@@ -175,6 +175,9 @@
     @if (store.archive(); as a) {
       <span class="archive-badge" [attr.title]="a.path">
         {{ archiveTexts.archiveBadge(a.format) }}
+        @if (a.encrypted) {
+          · <i class="fa fa-lock" aria-hidden="true"></i> {{ archiveTexts.encryptedBadge }}
+        }
         @if (a.unsafeEntries > 0) {
           · <span class="warn">{{ archiveTexts.unsafeHidden(a.unsafeEntries) }}</span>
         }
