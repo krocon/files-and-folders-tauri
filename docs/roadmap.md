@@ -29,14 +29,14 @@ Analyse des alten Codes ([legacy-analysis.md](legacy-analysis.md)). Zuordnung zu
 | 2 Navigation & Liste | 001 (GuiExpert-Dateiliste), 003 (Navigation, Filter, Statuszeile) |
 | 3 Sichere Basisoperationen | 005 (Job-Engine ✅), 006 (Operationen ✅), 007 (Multi-Rename ✅), 008 (Gruppieren, Ordner aufräumen, Multi-MkDir ✅) |
 | 4 Suche & Filter | 003 (Schnellfilter ✅), 009 (Suche, Ergebnis-Tabs, Ordner-Finder ✅) |
-| 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop ✅, ins System offen), 014 (Kontextmenü, Menüleiste ✅) |
+| 5 Total-Commander-Bedienung | 004 (Fensteraufbau ✅), 002 (als Nächstes) (Aktionen/Tastatur), 012 (Drag & Drop ✅), 028 (ins System ✅), 014 (Kontextmenü, Menüleiste ✅) |
 | 6 Vorschau & Eigenschaften | 010 (Ansicht, Schnellvorschau, Eigenschaften ✅) |
 | 7 OS-Integration | 011 (Laufwerke, Tools, Zwischenablage ✅), 012 (Überwachung, Drag & Drop ✅) |
 | 8 Einstellungen & UX | 013 (Farbschemata ✅), 019 (alte Designs ✅), 015 (Einstellungen, Deutsch/Englisch ✅) |
 | 9 Stabilität, Sicherheit, Performance | in jedem Prompt (Review-Schwerpunkte), 018 (✅ alle Fehler aus mr §11/legacy §9 behoben oder entfallen) |
 | 10 Distribution | 017 (✅ vorbereitet: Version, Icon, Pakete, Vorlagen, Doku; offen: Signierung, Prüfung macOS/Windows) |
 | 11 Feature-Parität | 018 ✅ Matrix gegen `old_project/` (mr) in [feature-parity.md](feature-parity.md): 195 ✅, 26 🟡, 9 ⬜, 23 ✖ (Stand 021); 020 ✅ Actions-Menü |
-| 12 Nach der Parität (Vorschlag) | 021 Shell-Leiste ✅ (Pipes, Sicherheitsmodell), 029 Bedienbar bei langen Jobs/langsamen Laufwerken ✅, 030 Ordner-Cache für langsame Laufwerke ✅ (`getattrlistbulk` gemessen und verworfen), 022 Konfigurations-Editoren (Buttons, Dateitypen, Suchvorlagen, Vollbild), 023 eingebauter Editor, 024 Attribute ändern, 025 Archive erweitert (7z/RAR, Passwörter), 026 Import alter Konfiguration, 027 Persistenz je Ordner, 028 Drag & Drop erweitert |
+| 12 Nach der Parität (Vorschlag) | 021 Shell-Leiste ✅ (Pipes, Sicherheitsmodell), 029 Bedienbar bei langen Jobs/langsamen Laufwerken ✅, 030 Ordner-Cache für langsame Laufwerke ✅ (`getattrlistbulk` gemessen und verworfen), 022 Konfigurations-Editoren (Buttons, Dateitypen, Suchvorlagen, Vollbild), 023 eingebauter Editor, 024 Attribute ändern, 025 Archive erweitert (7z/RAR, Passwörter), 026 Import alter Konfiguration, 027 Persistenz je Ordner, 028 Ziehen ins System ✅ (Tabs ziehen offen) |
 
 Fensteraufbau: [ui-layout.md](ui-layout.md). Status je Prompt: [`prompts/README.md`](../prompts/README.md#status).
 

@@ -58,7 +58,10 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 - [ ] 019: Kontrast-Korrekturen in `docs/legacy-themes-contrast.md` durchsehen; Fehlertext in Dialogen hat kein
       eigenes Token (Norton 1,9:1).
 - [ ] 016: 7z/RAR, Dateien im Archiv ansehen, ZIP-Zeiten als UTC, Konfliktdialog sagt „Cancel copying“.
-- [ ] 012: Ziehen aus der App ins System, Verknüpfung per Drag.
+- [x] 012: Ziehen aus der App ins System – **028** (20.10., Branch `feat/drag-ins-system`). **Bei Marc prüfen:**
+      Datei/Ordner/mehrere markierte aus der Liste in den Finder, auf den Schreibtisch und in Mail ziehen (macOS);
+      Explorer/Desktop unter Windows (erst die CI kompiliert den Code – `drag`-Crate). Offen: Verknüpfung per Drag,
+      Tabs zwischen den Seiten ziehen, Verschieben ins System.
 - [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
 - [ ] 015: `loadingText` der Table folgt keinem Sprachwechsel (Overlay-Texte nur beim Erzeugen, `TODO(guiexpert)`).
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).

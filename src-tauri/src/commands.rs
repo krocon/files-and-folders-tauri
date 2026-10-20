@@ -1434,10 +1434,11 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 3] = [
+    const SOURCES: [(&str, &str); 4] = [
         ("commands.rs", include_str!("commands.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
+        ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
     ];
     const MAIN_THREAD: [&str; 4] = [
         "set_app_menu",

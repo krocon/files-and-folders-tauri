@@ -21,14 +21,15 @@
   Prompt 008 (Dateien gruppieren, Ordner aufräumen, Multi-MkDir), Prompt 009 (Suche mit Ergebnis-Tabs,
   Ordner-Finder), Prompt 010 (Ansicht F3, Schnellvorschau, Eigenschaften), Prompt 011 (Laufwerke im Ordnermenü,
   Finder/Explorer/Terminal, externe Tools ohne Shell, F4 = Tool `edit`, Zwischenablage), Prompt 012
-  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System offen), Prompt 013 (Farbschemata: Mechanik,
+  (Verzeichnis-Überwachung, Drag & Drop; Ziehen ins System → 028), Prompt 013 (Farbschemata: Mechanik,
   Live-Editor, System folgen), Prompt 014 (Kontextmenü, Menüleiste nativ/HTML aus einem Menümodell), Prompt 019
   (die acht alten Designs, `--fnf-*`-Import/Export, WCAG-Korrektur), Prompt 016 (Archive ZIP/TAR als Ordner,
   Packen/Entpacken, Duplikate), Prompt 015 (Einstellungen, Deutsch/Englisch zur Laufzeit), Prompt 017 (Version aus einer Quelle, App-Icon, Pakete je OS, About,
   CI-/Release-Vorlagen in `docs/ci/`, `docs/release.md`), Prompt 018 (Feature-Parität gegen `old_project/`,
   Matrix in `docs/feature-parity.md`), Prompt 020 (Actions-Menü wie mr), Prompt 021 (Shell-Leiste mit Pipes) und Prompt
   029 (bedienbar bei langen Jobs/langsamen Laufwerken, Branch `feat/reaktionsfaehig-bei-jobs`) und Prompt 030 (Ordner-Cache
-  für langsame Laufwerke; `getattrlistbulk` gemessen und wieder ausgebaut) sind fertig. Als Nächstes: Folge-Prompts 022–028 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
+  für langsame Laufwerke; `getattrlistbulk` gemessen und wieder ausgebaut) und Prompt 028 (Ziehen ins System, nur
+  Kopieren) sind fertig. Als Nächstes: Folge-Prompts 022–027 (Vorschlag in `docs/feature-parity.md`, noch zu schreiben).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
@@ -98,7 +99,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/archive/      ArchiveStore (Pack/Unpack/Extract als Jobs), Dialoge, Aktionen + Veto im Archiv
   app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
-                             Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen)
+                             Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen),
+                             OsDragApi (`start_os_drag`: aus dem Fenster in andere Programme, 028)
   app/features/dnd/          DragStore (Root: Ziehen, Zonen, Übergabe an den Kopieren/Verschieben-Dialog), dnd-logic.ts
                              (rein), DragGhost (Hinweis am Zeiger)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
@@ -164,8 +166,10 @@ src-tauri/                   Rust (Tauri 2)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   src/themes.rs              Farbschemata (`themes.json`, harmlose CSS-Werte), Import/Export von `.theme.json`
   src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
+  src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
-                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal)
+                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `os_drag.rs` (nativer Drag:
+                             Crate `drag` auf macOS/Windows, eigenes GTK unter Linux)
   capabilities/default.json  nur core:default
   icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
 scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);

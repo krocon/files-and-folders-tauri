@@ -26,8 +26,8 @@ Erkennung: `pointermove` mit Koordinaten außerhalb von `0 ≤ x < innerWidth`, 
 liefern WebKit/WebView2 diese weiter) **oder** `mouseout` mit `relatedTarget === null` am Dokument (falls eine
 Plattform außerhalb nichts liefert). Reine Funktion `leftWindow(x, y, w, h)` in `dnd-logic.ts`.
 
-**E2 Command `start_os_drag(paths: string[])`** in `commands/os_drag.rs`, `async`: nur Hauptfenster
-(`main_only`-Muster, Code `not_allowed`), höchstens 10 000 Pfade (`too_many`), jeder Pfad über
+**E2 Command `start_os_drag(paths: string[])`** in `commands/os_drag.rs`, `async`: startet am aufrufenden Fenster (es gibt nur
+das Hauptfenster; eine eigene Prüfung bräuchte einen neuen Fehlercode ohne Nutzen), höchstens 10 000 Pfade (`too_many`), jeder Pfad über
 `validate_input_path` (absolut, ohne `..`) und `symlink_metadata` (existiert; virtuelle Archivpfade scheitern hier).
 Leere Liste → `invalid_path`. Der Start läuft per `run_on_main_thread`; das Ergebnis des Starts kommt über einen
 Kanal zurück (Windows: `DoDragDrop` ist modal, die Antwort kommt erst nach dem Drop – unkritisch, der Command ist
@@ -64,15 +64,15 @@ hervorgehoben, Kopieren-Dialog, gleicher Ordner = nichts. Kein Sonderfall.
 Rust:
 ```rust
 #[tauri::command]
-pub async fn start_os_drag<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, paths: Vec<String>)
-    -> Result<(), FsError>;
-// Fehlercodes: invalid_path, not_found (u. a.), too_many, not_allowed, io (Start fehlgeschlagen)
+pub async fn start_os_drag<R: Runtime>(window: WebviewWindow<R>, paths: Vec<String>) -> Result<(), FsError>;
+// Fehlercodes: invalid_path (leer, relativ, NUL), not_found/not_a_directory/permission_denied (aus symlink_metadata),
+// too_many, io (Start fehlgeschlagen)
 ```
 TS:
 ```ts
 export abstract class OsDragApi { abstract startOsDrag(paths: readonly string[]): Promise<void>; }
 ```
-Neue Fehlercodes: keine (vorhandene `too_many`, `not_allowed`? → prüfen; fehlt einer, beidseitig ergänzen).
+Neue Fehlercodes: keine. `DragState` bekommt `inArchive` (Quelle ist ein Archiv-Listing, E6).
 
 ## 4. Tests
 

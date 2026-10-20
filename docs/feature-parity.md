@@ -302,7 +302,7 @@ eine Leerzeile).
 | Konflikte | keine | Überschreiben/Überspringen/Umbenennen/alle, „wenn neuer“ | ✅ | Rust `jobs/tests_engine.rs` › `apply_to_all_overwrite_if_newer_asks_once`; `features/jobs/dialogs.spec.ts` › „conflict: Alt+letter answers, "apply to all" is passed on“ | |
 | Task-UI | Bottom-Sheet: Status, Restzeit, Tabelle Grp/Cmd/Status/Dauer/Datei, Clean List, Stop All, Pause, Resume, Löschen je Zeile | `features/jobs/job-list-dialog.ts` | ✅ | `features/jobs/dialogs.spec.ts` › „job list: progress, pause/cancel, errors after the end, clear finished“; `features/jobs/job-format.spec.ts` › „shows size, rate and time left“ | |
 | Rückfrage beim Beenden | – | ja | ✅ | `features/workspace/workspace.spec.ts` › „opens the conflict question automatically and asks before quitting“ | neu |
-| Drag & Drop | – (legacy: Drop-Dialog „not implemented“) | Panels/Ordnerzeilen/vom System → Dialog | 🟡 | `features/dnd/dnd.spec.ts` › „drop on the other panel opens the copy dialog with that folder – nothing runs yet“ | Ziehen ins System fehlt |
+| Drag & Drop | – (legacy: Drop-Dialog „not implemented“) | Panels/Ordnerzeilen/vom System → Dialog; aus dem Fenster → andere Programme (nur Kopieren, 028) | ✅ | `features/dnd/dnd.spec.ts` › „drop on the other panel opens the copy dialog with that folder – nothing runs yet“, „out of the window the drag goes on as a system drag with the same entries (design 028)“; Rust `os_drag.rs` › `existing_entries_pass_in_order_without_duplicates`, `platform/os_drag.rs` › `uris_are_percent_encoded` | Verschieben ins System, Tab-Drag und Verknüpfung per Drag offen |
 
 ---
 
@@ -432,5 +432,5 @@ eine Leerzeile).
 | 025 Archive erweitert | 7z/RAR lesen, Passwörter, in Archive schreiben, Dateien im Archiv öffnen. |
 | 026 Import alter Konfiguration | mr-`shortcut/custom/*.json` (Ids übersetzen), Buttons, Suchmuster, Dateitypen. |
 | 027 Persistenz je Ordner | Cursor/Markierung je Ordner über einen Neustart, Dialogeingaben von Gruppieren/Aufräumen/Multi-MkDir. |
-| 028 Drag & Drop erweitert | Ziehen aus der App ins System, Tabs zwischen den Seiten ziehen. |
+| 028 Drag & Drop erweitert | ✅ Ziehen aus der App ins System (Design `prompts/done/028-drag-ins-system.design.md`). Offen: Tabs zwischen den Seiten ziehen, Verknüpfung per Drag. |
 | später | KI-Funktionen (Namen normalisieren, Gruppieren; Schlüssel im OS-Schlüsselbund), Dateien teilen/zusammenfügen. |

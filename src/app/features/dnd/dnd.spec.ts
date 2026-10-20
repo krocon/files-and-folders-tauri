@@ -12,7 +12,8 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
-import { FakeDragDropApi, FakeWatchApi } from '../../../testing/fake-watch-api';
+import { OsDragApi } from '../../core/dnd/os-drag-api';
+import { FakeDragDropApi, FakeOsDragApi, FakeWatchApi } from '../../../testing/fake-watch-api';
 import { dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { OpsStore } from '../ops/ops.store';
@@ -23,6 +24,8 @@ import {
   dragOriginDir,
   dragSources,
   DragOrigin,
+  leavingAtEdge,
+  leftWindow,
   panelZoneHit,
   resolveDropTarget,
   ZoneHit,
@@ -136,10 +139,32 @@ describe('dnd-logic – result tabs and keys (review 012)', () => {
   });
 });
 
+describe('dnd-logic: out of the window (design 028 E1)', () => {
+  it('outside the viewport means the window was left', () => {
+    expect(leftWindow(0, 0, 800, 600)).toBe(false);
+    expect(leftWindow(799, 599, 800, 600)).toBe(false);
+    expect(leftWindow(-1, 10, 800, 600)).toBe(true);
+    expect(leftWindow(10, -3, 800, 600)).toBe(true);
+    expect(leftWindow(800, 10, 800, 600)).toBe(true);
+    expect(leftWindow(10, 600, 800, 600)).toBe(true);
+  });
+
+  it('a mouseout towards nothing counts only at the edge', () => {
+    const out = (clientX: number, clientY: number, relatedTarget: unknown = null) =>
+      leavingAtEdge({ clientX, clientY, relatedTarget }, 800, 600);
+    expect(out(0, 300)).toBe(true);
+    expect(out(799, 300)).toBe(true);
+    expect(out(400, 599)).toBe(true);
+    expect(out(400, 300)).toBe(false); // e.g. pointer capture moving the target
+    expect(out(0, 300, document.body)).toBe(false);
+  });
+});
+
 describe('DragStore', () => {
   let fs: FakeFsApi;
   let watch: FakeWatchApi;
   let osDrag: FakeDragDropApi;
+  let toSystem: FakeOsDragApi;
   let store: DragStore;
   let ops: OpsStore;
   let dialogs: DialogService;
@@ -162,6 +187,7 @@ describe('DragStore', () => {
       );
     watch = new FakeWatchApi();
     osDrag = new FakeDragDropApi();
+    toSystem = new FakeOsDragApi();
     TestBed.configureTestingModule({
       providers: [
         { provide: FsApi, useValue: fs },
@@ -170,6 +196,7 @@ describe('DragStore', () => {
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
         { provide: WatchApi, useValue: watch },
         { provide: DragDropApi, useValue: osDrag },
+        { provide: OsDragApi, useValue: toSystem },
       ],
     });
     ops = TestBed.inject(OpsStore);
@@ -263,5 +290,53 @@ describe('DragStore', () => {
     osDrag.emit({ type: 'drop', paths: ['/ext/x'], x: 150, y: -1 });
     await new Promise((r) => setTimeout(r));
     expect(dialogs.open()).toBeNull();
+  });
+
+  it('out of the window the drag goes on as a system drag with the same entries (design 028)', async () => {
+    store.begin({
+      side: 'left',
+      sourceDir: '/src',
+      sources: [a, folder],
+      kind: 'move',
+      x: 10,
+      y: 1,
+    });
+    await store.handOff();
+    expect(store.drag()).toBeNull();
+    expect(toSystem.started).toEqual([['/src/a.txt', '/src/Ordner äö']]);
+    expect(dialogs.open()).toBeNull(); // nothing runs in the app
+  });
+
+  it('entries inside an archive are not handed to the system – a note instead', async () => {
+    store.begin({
+      side: 'left',
+      sourceDir: '/src/a.zip',
+      sources: [a],
+      kind: 'copy',
+      x: 10,
+      y: 1,
+      inArchive: true,
+    });
+    await store.handOff();
+    expect(store.drag()).toBeNull();
+    expect(toSystem.started).toEqual([]);
+    expect(jobs.messages().join(' ')).toContain('archive');
+  });
+
+  it('a failed start is reported; without a drag nothing happens', async () => {
+    await store.handOff();
+    expect(toSystem.started).toEqual([]);
+    toSystem.fail = { code: 'not_found', message: 'gone', path: '/src/a.txt' };
+    store.begin({ side: 'left', sourceDir: '/src', sources: [a], kind: 'copy', x: 10, y: 1 });
+    await store.handOff();
+    expect(store.drag()).toBeNull();
+    expect(jobs.messages().length).toBeGreaterThan(0);
+  });
+
+  it('a drag from the system is never handed back to the system', async () => {
+    osDrag.emit({ type: 'enter', paths: ['/ext/x'], x: 150, y: -1 });
+    await store.handOff();
+    expect(toSystem.started).toEqual([]);
+    expect(store.drag()).toBeNull();
   });
 });

@@ -2,6 +2,8 @@ import { WatchApi } from '../app/core/watch/watch-api';
 import { DescribedPaths, WatchEvent, WatchStatus, WatchMode } from '../app/core/watch/watch.models';
 import { DirEntry } from '../app/core/fs/fs.models';
 import { DragDropApi, OsDragEvent } from '../app/core/dnd/drag-drop-api';
+import { OsDragApi } from '../app/core/dnd/os-drag-api';
+import { FsError } from '../app/core/fs/fs.models';
 
 /** In-memory WatchApi: records `watchDirs` calls, `emit` simulates the backend. */
 export class FakeWatchApi extends WatchApi {
@@ -61,5 +63,21 @@ export class FakeDragDropApi extends DragDropApi {
 
   emit(event: OsDragEvent): void {
     this.handler?.(event);
+  }
+}
+
+/** OsDragApi that records the dragged paths; `fail` makes the next start fail. */
+export class FakeOsDragApi extends OsDragApi {
+  started: string[][] = [];
+  fail: FsError | null = null;
+
+  startOsDrag(paths: readonly string[]): Promise<void> {
+    if (this.fail) {
+      const err = this.fail;
+      this.fail = null;
+      return Promise.reject(err);
+    }
+    this.started.push([...paths]);
+    return Promise.resolve();
   }
 }

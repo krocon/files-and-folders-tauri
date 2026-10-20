@@ -29,6 +29,8 @@ import {
   dragKind,
   dragOriginDir,
   dragSources,
+  leavingAtEdge,
+  leftWindow,
   panelZoneHit,
 } from '../../dnd/dnd-logic';
 import { DragStore } from '../../dnd/drag.store';
@@ -384,6 +386,7 @@ export class FileList implements OnDestroy {
     window.addEventListener('pointercancel', this.onPointerCancel, true);
     window.addEventListener('keydown', this.onDragKey, true);
     window.addEventListener('keyup', this.onDragKey, true);
+    document.addEventListener('mouseout', this.onWindowOut, true);
   }
 
   private readonly onPointerMove = (evt: PointerEvent): void => {
@@ -420,12 +423,31 @@ export class FileList implements OnDestroy {
         kind: dragKind(evt, IS_MAC),
         x: evt.clientX,
         y: evt.clientY,
+        inArchive: !!this.store.listing()?.archive,
       });
+    } else if (leftWindow(evt.clientX, evt.clientY, window.innerWidth, window.innerHeight)) {
+      this.handOffToSystem();
     } else {
       this.dnd.move(evt.clientX, evt.clientY, dragKind(evt, IS_MAC));
     }
     evt.preventDefault();
   };
+
+  /** Fallback when moves outside the window are not reported (design 028 E1). */
+  private readonly onWindowOut = (evt: MouseEvent): void => {
+    if (this.dragging && leavingAtEdge(evt, window.innerWidth, window.innerHeight)) {
+      this.handOffToSystem();
+    }
+  };
+
+  /**
+   * Out of the window: the system takes over (design 028 E1). Capture and
+   * listeners go first – the native drag needs the mouse.
+   */
+  private handOffToSystem(): void {
+    this.endPress();
+    void this.dnd.handOff();
+  }
 
   private readonly onPointerUp = (evt: PointerEvent): void => {
     if (this.dragging) {
@@ -487,6 +509,7 @@ export class FileList implements OnDestroy {
     window.removeEventListener('pointercancel', this.onPointerCancel, true);
     window.removeEventListener('keydown', this.onDragKey, true);
     window.removeEventListener('keyup', this.onDragKey, true);
+    document.removeEventListener('mouseout', this.onWindowOut, true);
   }
 
   /** Behaviour of this list for the panel's actions (undefined until the table is ready). */

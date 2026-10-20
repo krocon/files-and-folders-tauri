@@ -10,7 +10,9 @@ export const DND_DE: Translation<typeof DND_EN> = {
     `${count === 1 ? first : `${count} Einträge`} ${kind === 'copy' ? 'kopieren' : 'verschieben'}` +
     (target ? ` → ${target.name}` : ' – hier kein Ziel'),
   hint: (isMac) =>
-    isMac ? '⌘: verschieben · Esc: abbrechen' : 'Umschalt: verschieben · Esc: abbrechen',
+    `${isMac ? '⌘: verschieben' : 'Umschalt: verschieben'} · Esc: abbrechen · aus dem Fenster: in andere Programme`,
+  notFromArchive:
+    'Einträge in einem Archiv lassen sich nicht in andere Programme ziehen – zuerst entpacken.',
   dropFromSystem: (count) => `${count === 1 ? '1 Element' : `${count} Elemente`} hierher kopieren`,
   nothingDropped: 'Die abgelegten Elemente existieren nicht (mehr).',
   missingDropped: (n) => `${n} abgelegte(s) Element(e) existieren nicht und wurden ausgelassen.`,

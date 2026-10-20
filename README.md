@@ -60,7 +60,8 @@ without stutter.
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
-- **Drag & drop** between panels and from Finder / Explorer / your file manager
+- **Drag & drop** between panels, from Finder / Explorer / your file manager, and out of the window into other
+  programs (copy)
 - **External tools** and *Open terminal here* / *Show in Finder/Explorer* – tools are started **without a
   shell**, configured in a small JSON file
 - **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
@@ -106,7 +107,7 @@ every colour scheme ([docs/screenshots.md](docs/screenshots.md)).
 | Watcher, drag & drop (into the app), clipboard, external tools, shell line | ✅ done |
 | Colour schemes, settings, menus, English/German | ✅ done |
 | Slow and network drives (responsive UI, listing cache) | ✅ done |
-| Drag from the app into other programs | 🚧 open |
+| Drag from the app into other programs | ✅ done (copy only) |
 | Further features from the previous version | 🚧 planned (see [feature-parity](docs/feature-parity.md)) |
 | Signed packages, first public release, auto update | 🚧 prepared, not set up |
 

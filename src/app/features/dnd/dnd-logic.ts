@@ -84,6 +84,31 @@ export function dragOriginDir(view: PanelView): string | null {
   return view.locationKey();
 }
 
+/**
+ * The pointer is outside the window (design 028 E1) – a drag from a panel then
+ * becomes a system drag. With pointer capture the webview keeps reporting moves
+ * outside, with coordinates beyond the viewport.
+ */
+export function leftWindow(x: number, y: number, width: number, height: number): boolean {
+  return x < 0 || y < 0 || x >= width || y >= height;
+}
+
+/**
+ * A `mouseout` towards nothing (`relatedTarget` null) at the window's edge: the
+ * fallback in case a platform reports no moves outside the window (design 028 E1).
+ */
+export function leavingAtEdge(
+  evt: { readonly clientX: number; readonly clientY: number; readonly relatedTarget: unknown },
+  width: number,
+  height: number,
+): boolean {
+  const edge = 2;
+  const { clientX: x, clientY: y } = evt;
+  return (
+    evt.relatedTarget === null && (x < edge || y < edge || x >= width - edge || y >= height - edge)
+  );
+}
+
 /** A key while dragging: cancel (Esc), switch copy/move (modifiers) or swallow (review 012 #9). */
 export function dragKeyAction(evt: {
   readonly key: string;
@@ -132,7 +157,9 @@ export const DND_EN = {
   label: (kind: DragKind, count: number, first: string, target: DropTarget | null) =>
     `${kind === 'copy' ? 'Copy' : 'Move'} ${count === 1 ? first : `${count} entries`}` +
     (target ? ` → ${target.name}` : ' – no target here'),
-  hint: (isMac: boolean) => (isMac ? '⌘: move · Esc: cancel' : 'Shift: move · Esc: cancel'),
+  hint: (isMac: boolean) =>
+    `${isMac ? '⌘: move' : 'Shift: move'} · Esc: cancel · out of the window: to other apps`,
+  notFromArchive: 'Entries inside an archive cannot be dragged to other apps – unpack them first.',
   dropFromSystem: (count: number) => `Copy ${count === 1 ? '1 item' : `${count} items`} here`,
   nothingDropped: 'The dropped items do not exist (any more).',
   missingDropped: (n: number) => `${n} dropped item(s) do not exist and were left out.`,

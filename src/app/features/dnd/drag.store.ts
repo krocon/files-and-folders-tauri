@@ -1,5 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DragDropApi, OsDragEvent } from '../../core/dnd/drag-drop-api';
+import { OsDragApi } from '../../core/dnd/os-drag-api';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DirEntry } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -32,6 +33,8 @@ export interface DragState {
   readonly sources: readonly DirEntry[];
   /** Paths dragged from the system. */
   readonly paths: readonly string[];
+  /** The entries lie inside an archive (virtual paths) – not for other apps (design 028). */
+  readonly inArchive: boolean;
   readonly x: number;
   readonly y: number;
   readonly target: DropTarget | null;
@@ -48,6 +51,7 @@ export class DragStore {
   private readonly dialogs = inject(DialogService);
   private readonly jobs = inject(JobsStore);
   private readonly watchApi = inject(WatchApi, { optional: true });
+  private readonly osDragApi = inject(OsDragApi, { optional: true });
   private readonly zones = new Map<Side, DropZone>();
 
   readonly drag = signal<DragState | null>(null);
@@ -78,6 +82,7 @@ export class DragStore {
     kind: DragKind;
     x: number;
     y: number;
+    inArchive?: boolean;
   }): void {
     const origin: DragOrigin = {
       side: args.side,
@@ -90,6 +95,7 @@ export class DragStore {
       kind: args.kind,
       sources: args.sources,
       paths: [],
+      inArchive: args.inArchive ?? false,
       x: args.x,
       y: args.y,
       target: this.targetAt(args.x, args.y, origin),
@@ -125,6 +131,28 @@ export class DragStore {
         sources: d.sources,
         target: d.target.dir,
       });
+    } catch (err) {
+      this.jobs.report(errorText(toFsError(err)));
+    }
+  }
+
+  /**
+   * The pointer left the window (design 028 E1): the drag from a panel goes on
+   * as a system drag ("copy", E3) with the same entries – into Finder, Explorer,
+   * Mail … Dragged back in, it arrives as a drop from the system (012 E6).
+   */
+  async handOff(): Promise<void> {
+    const d = this.drag();
+    this.drag.set(null);
+    if (!d || d.fromSystem || d.sources.length === 0 || !this.osDragApi) {
+      return;
+    }
+    if (d.inArchive) {
+      this.jobs.report(DND_TEXTS.notFromArchive);
+      return;
+    }
+    try {
+      await this.osDragApi.startOsDrag(d.sources.map((e) => e.path));
     } catch (err) {
       this.jobs.report(errorText(toFsError(err)));
     }
@@ -166,6 +194,7 @@ export class DragStore {
           kind: 'copy',
           sources: [],
           paths: e.paths,
+          inArchive: false,
           x: e.x,
           y: e.y,
           target: this.targetAt(e.x, e.y, origin),
