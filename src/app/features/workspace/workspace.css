@@ -23,21 +23,22 @@
   grid-column: 2;
   grid-row: 1 / 5;
   cursor: col-resize;
-  background: rgba(128, 128, 128, 0.5);
-  opacity: 0.5;
+  /* above the left header/tabs/status line, which run under it (file-panel.css) */
+  position: relative;
+  z-index: 1;
+  /* translucency lives in the token (default 10 % grey), so a scheme can paint it solid */
+  background: var(--color-splitter);
   touch-action: none;
 
   &:hover,
   &:focus-visible {
     background: var(--color-splitter-active);
-    opacity: 1;
     outline: none;
   }
 }
 
 :host(.resizing) .splitter {
   background: var(--color-splitter-active);
-  opacity: 1;
 }
 
 .shell {

@@ -9,6 +9,7 @@
   background: var(--color-footer-bg);
   border-top: 0; /* no border in the middle of the 'footer'  */
   --color-focus: var(--color-footer-focus);
+  --color-accent: var(--color-footer-accent);
 }
 
 /* the menus are positioned on their own: their hosts take no place in the flex row
@@ -74,7 +75,7 @@ app-context-menu {
   right: 3px;
   bottom: 1px;
   height: 2px;
-  background: var(--color-surface-raised);
+  background: var(--color-footer-button-border);
 
   span {
     display: block;

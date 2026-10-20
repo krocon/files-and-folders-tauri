@@ -5,7 +5,11 @@ import {
   DomServiceIf,
   RendererCleanupFnType,
 } from '@guiexpert/table';
-import { iconFor, iconNameForEntry } from '../../../core/file-icon/file-icon.service';
+import {
+  iconColorGroupForEntry,
+  iconFor,
+  iconNameForEntry,
+} from '../../../core/file-icon/file-icon.service';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { formatModified, formatSize } from '../../../shared/format';
 import { DISPLAY } from '../../../core/settings/display';
@@ -59,6 +63,10 @@ export class NameCellRenderer implements CellRendererIf {
       domService.addClass(i, 'fa');
       domService.addClass(i, iconNameForEntry(entry));
       domService.appendChild(icon, i);
+      const group = iconColorGroupForEntry(entry);
+      if (group) {
+        domService.addClass(icon, `fnf-icon-${group}`);
+      }
     }
     domService.appendChild(cellDiv, icon);
     if (marked) {

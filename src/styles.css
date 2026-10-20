@@ -30,6 +30,7 @@
   --color-danger-text: #7d1720;
   --color-favorite: #a87300;
   --color-search-hit: #ffe58a;
+  --color-splitter: rgb(128 128 128 / 10%);
   --color-splitter-active: #7fb2ff;
   --color-backdrop: rgb(0 0 0 / 25%);
   --shadow-popup: 0 4px 16px rgb(0 0 0 / 18%);
@@ -55,6 +56,16 @@
   --color-error-text: var(--color-danger);
   --font-list: var(--font-sans);
   --font-size-list: 0.875rem;
+
+  /* file icons by type (ge-table-theme.css `fnf-icon-<group>`) */
+  --color-icon-folder: #a87300;
+  --color-icon-document: #2f6fde;
+  --color-icon-image: #24874a;
+  --color-icon-video: #8e44e0;
+  --color-icon-audio: #8e44e0;
+  --color-icon-archive: #c2650a;
+  --color-icon-code: #11808b;
+  --color-icon-executable: #d93432;
 
   /* active panel */
   --color-active-list-bg: var(--color-list-bg);
@@ -92,6 +103,7 @@
   --color-shortcut-text: #f2f4f7;
   --color-footer-error-text: var(--color-danger);
   --color-footer-focus: var(--color-focus);
+  --color-footer-accent: var(--color-accent);
 
   /* shell bar (design 021) */
   --color-shell-bg: var(--color-surface);
@@ -170,6 +182,14 @@
     --shadow-popup: 0 4px 16px rgb(0 0 0 / 55%);
 
     --color-row-hover: #262d3b;
+    --color-icon-folder: #f7d046;
+    --color-icon-document: #6f9cfb;
+    --color-icon-image: #5fcf80;
+    --color-icon-video: #b07cf0;
+    --color-icon-audio: #b07cf0;
+    --color-icon-archive: #f39a3a;
+    --color-icon-code: #6fd6e0;
+    --color-icon-executable: #ff6b68;
     --color-group-alt-bg: #232730;
     --color-cursor-bg: #2c5bb8;
     --color-cursor-text: #ffffff;

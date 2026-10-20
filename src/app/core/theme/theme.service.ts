@@ -1,8 +1,8 @@
-import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { ActionService } from '../actions/action.service';
 import { errorText, toFsError } from '../fs/fs-error';
 import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
-import { blend, toHex } from './color';
+import { blend, luminance, toHex } from './color';
 import { convertLegacy, toLegacyFile } from './legacy-theme';
 import { ThemeApi, ThemeFileContent } from './theme-api';
 import {
@@ -22,6 +22,8 @@ import { DEFAULT_SELECTION, Theme, ThemeSelection, ThemesFile } from './theme.mo
 import { ACTION_TEXTS } from '../actions/action-texts';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
+/** Below this luminance white text beats black text (WCAG): a dark frame. */
+const DARK_FRAME_LUMINANCE = 0.179;
 
 /** Result of an import: selected only without contrast problems. */
 export interface ImportedScheme extends ImportedTheme {
@@ -307,20 +309,34 @@ export class ThemeService {
     this.applyWindowChrome(theme);
   }
 
-  /** Native title bar in the colour of the tab bar (`--color-header-bg`, opaque on the window). */
+  /**
+   * Native title bar in the colour of the tab bar (`--color-header-bg`, opaque on the window).
+   * The frame's light/dark appearance follows that colour (title text stays readable, e.g. the
+   * white header of Crimson). Exception "follow the system": the window appearance also sets the
+   * WebView's `prefers-color-scheme` – a flipped appearance would switch the scheme – so the
+   * frame keeps the scheme's appearance and takes `--color-bg` when the header does not fit it.
+   */
   private applyWindowChrome(theme: ThemeDraft): void {
     const header = resolveColor('--color-header-bg', theme.tokens);
     const bg = resolveColor('--color-bg', theme.tokens);
     if (!header) {
       return;
     }
-    const color = toHex(header.a < 1 && bg ? blend(header, bg) : header);
-    const key = `${color}|${theme.dark}`;
+    let frame = header.a < 1 && bg ? blend(header, bg) : header;
+    let dark = luminance(frame) <= DARK_FRAME_LUMINANCE;
+    if (dark !== theme.dark && untracked(this.selection).mode === 'system') {
+      dark = theme.dark;
+      if (bg && bg.a === 1) {
+        frame = bg;
+      }
+    }
+    const color = toHex(frame);
+    const key = `${color}|${dark}`;
     if (key === this.chrome) {
       return;
     }
     this.chrome = key;
     // no backend (browser) or an old window: the frame keeps the system colours
-    this.api.setWindowChrome(color, theme.dark).catch(() => undefined);
+    this.api.setWindowChrome(color, dark).catch(() => undefined);
   }
 }

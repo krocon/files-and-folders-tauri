@@ -99,6 +99,44 @@
   min-width: 2.25em;
 }
 
+/* icon colour by file type (NameCellRenderer: `fnf-icon-<group>`), only in the active panel – the other
+   one stays calm; the cursor row keeps one colour */
+.fnf-active-panel .ge-table .fnf-icon-folder {
+  color: var(--color-icon-folder);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-document {
+  color: var(--color-icon-document);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-image {
+  color: var(--color-icon-image);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-video {
+  color: var(--color-icon-video);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-audio {
+  color: var(--color-icon-audio);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-archive {
+  color: var(--color-icon-archive);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-code {
+  color: var(--color-icon-code);
+}
+
+.fnf-active-panel .ge-table .fnf-icon-executable {
+  color: var(--color-icon-executable);
+}
+
+.fnf-active-panel .ge-table .fnf-cursor .fnf-icon {
+  color: inherit;
+}
+
 /* Row states (classes from FileBodyModel.getCustomClassesAt, set on every cell of the row). */
 .ge-table .fnf-hidden {
   color: var(--color-hidden-text);

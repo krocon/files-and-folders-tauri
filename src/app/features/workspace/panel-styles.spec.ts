@@ -16,6 +16,15 @@ describe('panel styles', () => {
     expect(rule(scss, '.list')).toContain('background: var(--color-list-bg)');
   });
 
+  it('run header, tabs and status line under the splitter (no dark gap behind it)', () => {
+    const panel = readFileSync('src/app/features/workspace/file-panel.css', 'utf8');
+    expect(rule(panel, ':host(.side-left) .part:not(.list)')).toContain('grid-column: 1 / 3');
+    const ws = readFileSync('src/app/features/workspace/workspace.css', 'utf8');
+    const splitter = rule(ws, '.splitter');
+    expect(splitter).toContain('z-index: 1');
+    expect(splitter).not.toContain('opacity');
+  });
+
   it('the menus of the button bar take no place in its flex row (Actions/Tasks stay right)', () => {
     const css = readFileSync('src/app/features/workspace/button-bar/button-bar.css', 'utf8');
     expect(rule(css, 'app-actions-menu,\napp-context-menu')).toContain('display: contents');

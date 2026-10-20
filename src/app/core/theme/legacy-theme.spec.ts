@@ -223,6 +223,30 @@ describe('old designs (prompt 019)', () => {
     console.log(report);
     expect(readFileSync(REPORT, 'utf8')).toBe(report);
   });
+
+  it('Blackboard, Coffee and Combat keep the icons in the list text colour', () => {
+    for (const id of ['classic-blackboard', 'classic-coffee', 'classic-combat']) {
+      const theme = CLASSIC_THEMES.find((t) => t.id === id)!;
+      for (const g of [
+        'folder',
+        'document',
+        'image',
+        'video',
+        'audio',
+        'archive',
+        'code',
+        'executable',
+      ]) {
+        expect(theme.tokens[`--color-icon-${g}`], `${id} ${g}`).toBe(
+          theme.tokens['--color-active-list-text'],
+        );
+      }
+    }
+    const norton = CLASSIC_THEMES.find((t) => t.id === 'classic-norton')!;
+    expect(norton.tokens['--color-icon-folder']).not.toBe(
+      norton.tokens['--color-active-list-text'],
+    );
+  });
 });
 
 const REPORT_PAIRS = [

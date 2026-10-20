@@ -9,6 +9,7 @@ import { THEME_LABELS_DE } from './theme-labels.de';
 export type TokenGroup =
   | 'general'
   | 'list'
+  | 'icons'
   | 'activePanel'
   | 'header'
   | 'footer'
@@ -33,6 +34,7 @@ export const themeLabel = phrasebook('themeLabels', { de: THEME_LABELS_DE });
 const GROUP_LABELS_EN: Readonly<Record<TokenGroup, string>> = {
   general: 'General',
   list: 'File list',
+  icons: 'File icons',
   activePanel: 'Active panel',
   header: 'Panel header and tabs',
   footer: 'Status line and button bar',
@@ -82,6 +84,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-danger-text', 'general', 'Error panel text'),
   t('--color-favorite', 'general', 'Favourite star'),
   t('--color-search-hit', 'general', 'Search hit background'),
+  t('--color-splitter', 'general', 'Splitter'),
   t('--color-splitter-active', 'general', 'Splitter (dragging)'),
   t('--color-backdrop', 'general', 'Dialog backdrop'),
   t('--shadow-popup', 'general', 'Popup shadow', 'shadow'),
@@ -105,6 +108,15 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-error-text', 'list', 'Unreadable entries'),
   t('--font-list', 'list', 'Font', 'font'),
   t('--font-size-list', 'list', 'Font size', 'length'),
+
+  t('--color-icon-folder', 'icons', 'Folders'),
+  t('--color-icon-document', 'icons', 'Documents'),
+  t('--color-icon-image', 'icons', 'Images'),
+  t('--color-icon-video', 'icons', 'Videos'),
+  t('--color-icon-audio', 'icons', 'Audio'),
+  t('--color-icon-archive', 'icons', 'Archives'),
+  t('--color-icon-code', 'icons', 'Code'),
+  t('--color-icon-executable', 'icons', 'Programs'),
 
   t('--color-active-list-bg', 'activePanel', 'List background'),
   t('--color-active-list-text', 'activePanel', 'List text'),
@@ -139,6 +151,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-shortcut-text', 'footer', 'Shortcut badge text'),
   t('--color-footer-error-text', 'footer', 'Warning text'),
   t('--color-footer-focus', 'footer', 'Focus ring'),
+  t('--color-footer-accent', 'footer', 'Accent (busy, attention)'),
 
   t('--color-shell-bg', 'shell', 'Background'),
   t('--color-shell-text', 'shell', 'Text'),

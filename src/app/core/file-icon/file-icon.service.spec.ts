@@ -4,6 +4,7 @@ import { parentRow } from '../fs/fs.models';
 import {
   extractExtension,
   FileIconService,
+  iconColorGroupForEntry,
   iconFor,
   iconNameForEntry,
   iconNameForExtension,
@@ -216,6 +217,30 @@ describe('FileIconService', () => {
       expect(iconFor(entry('song.flac'))).toBe('fa fa-file-audio-o');
       expect(iconFor(entry('code.rs'))).toBe('fa fa-file-code-o');
       expect(iconFor(entry('plain.unknown'))).toBe('fa fa-file-o');
+    });
+  });
+
+  describe('iconColorGroupForEntry', () => {
+    it('groups the categories into the eight icon colours', () => {
+      expect(iconColorGroupForEntry(dir('src'))).toBe('folder');
+      expect(iconColorGroupForEntry(entry('a.pdf'))).toBe('document');
+      expect(iconColorGroupForEntry(entry('a.epub'))).toBe('document');
+      expect(iconColorGroupForEntry(entry('a.JPG'))).toBe('image');
+      expect(iconColorGroupForEntry(entry('a.psd'))).toBe('image');
+      expect(iconColorGroupForEntry(entry('a.mkv'))).toBe('video');
+      expect(iconColorGroupForEntry(entry('a.flac'))).toBe('audio');
+      expect(iconColorGroupForEntry(entry('a.zip'))).toBe('archive');
+      expect(iconColorGroupForEntry(entry('a.rs'))).toBe('code');
+      expect(iconColorGroupForEntry(entry('a.exe'))).toBe('executable');
+    });
+
+    it('leaves the parent row, unknown types and broken links in the text colour', () => {
+      expect(iconColorGroupForEntry(parentRow('/parent'))).toBeNull();
+      expect(iconColorGroupForEntry(entry('plain.unknown'))).toBeNull();
+      expect(iconColorGroupForEntry(entry('weird', { kind: 'unknown' }))).toBeNull();
+      expect(
+        iconColorGroupForEntry(entry('gone.pdf', { kind: 'symlink', targetKind: null })),
+      ).toBeNull();
     });
   });
 });
