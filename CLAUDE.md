@@ -124,6 +124,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   testing/                   Fixtures, FakeFsApi, FakeSessionApi, FakeTableBridge (nie im Produktivcode importieren)
   styles.css                 Design-Tokens, Font-Awesome-Import (@import assets/font-awesome-4.5.0/...)
   styles/ge-table-theme.css  GuiExpert-Brücke: einzige Stelle mit `--ge-table-*`
+  styles/controls.css        `.btn` + Eingabefelder/Selects/Checkboxen in Dialogen (eine Höhe `--control-height`);
+                             Dialog-CSS setzt nur Breite/Schrift, nie Rahmen/Padding/Farben von Controls
 src-tauri/                   Rust (Tauri 2)
   src/commands.rs            dünne Command-Schicht (validieren, Default auflösen, spawn_blocking)
   src/listing.rs, paths.rs   reine std-Logik, unit-getestet, ohne Tauri

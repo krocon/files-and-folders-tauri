@@ -135,18 +135,6 @@
   color: var(--color-muted);
 }
 
-.primary {
-  color: var(--color-button-primary-text);
-  background: var(--color-button-primary-bg);
-  border-color: var(--color-button-primary-bg);
-}
-
-.danger {
-  color: var(--color-danger-text);
-  background: var(--color-danger-bg);
-  border-color: var(--color-danger);
-}
-
 .sr-only {
   position: absolute;
   width: 1px;

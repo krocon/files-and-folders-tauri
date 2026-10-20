@@ -29,17 +29,6 @@
   font-size: var(--font-size-sm);
 }
 
-select,
-input[type='search'] {
-  font: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 2px var(--spacing-1);
-}
-
 input[type='search'] {
   width: 16rem;
 }
