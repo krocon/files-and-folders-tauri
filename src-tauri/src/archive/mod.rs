@@ -1,13 +1,21 @@
-//! Archives as virtual folders (design 016 E1–E3): ZIP, TAR and TAR.GZ are
-//! read into an index (names checked, limits against zip bombs) and listed
+//! Archives as virtual folders (design 016 E1–E3, 025): ZIP, TAR, TAR.GZ, 7z
+//! and RAR are read into an index (names checked, limits against zip bombs) and listed
 //! like a folder under a *virtual path* `…/a.zip/inner/dir` (built with
 //! `Path::join`, so the frontend keeps treating paths as opaque strings). A
 //! virtual path can never exist on disk: one of its ancestors is a file.
 //! Extraction and packing are jobs (`jobs/extract.rs`, `jobs/pack.rs`).
-//! Pure std + `zip`/`tar`/`flate2`, without Tauri.
+//! Pure std + `zip`/`tar`/`flate2`/`sevenz-rust2` (+ UnRAR, feature `rar`), without Tauri.
+//! Passwords: [`secrets`]; files opened from an archive: [`view`].
 
+#[cfg(feature = "rar")]
+pub(crate) mod rar;
+pub mod secrets;
+pub(crate) mod sevenz;
 #[cfg(test)]
 pub(crate) mod tests;
+#[cfg(test)]
+pub(crate) mod tests_formats;
+pub mod view;
 
 use crate::error::{FsError, FsErrorCode};
 use crate::listing::compare_entries;
@@ -27,8 +35,12 @@ pub const MAX_ENTRIES: usize = 200_000;
 pub const MAX_TOTAL_SIZE: u64 = 64 << 30;
 /// Deflate reaches ~1 032 : 1 at best – more means overlapping entries or lying headers.
 pub const MAX_RATIO: u64 = 1100;
+/// 7z (LZMA2, PPMd) and RAR reach ~7 000 : 1 on zeros legitimately (design 025 E3.3).
+pub const MAX_RATIO_STRONG: u64 = 20_000;
 /// Allowance on top of the ratio (tiny archives with a few empty-ish files).
 pub const RATIO_SLACK: u64 = 1 << 20;
+/// Largest dictionary / model memory a 7z block or RAR entry may ask for (design 025 E3.4).
+pub const MAX_DICT: u64 = 1 << 30;
 /// Archives whose index is kept (path + size + modification time as key).
 const CACHE_SIZE: usize = 4;
 /// Longest TAR metadata header (GNU long name/link, PAX) read into memory (review 016 #1).
@@ -46,6 +58,10 @@ pub enum ArchiveFormat {
     Zip,
     Tar,
     TarGz,
+    /// 7z (design 025): read, extract, pack.
+    SevenZ,
+    /// RAR (design 025): read and extract only (feature `rar`).
+    Rar,
 }
 
 impl ArchiveFormat {
@@ -54,11 +70,21 @@ impl ArchiveFormat {
             ArchiveFormat::Zip => ".zip",
             ArchiveFormat::Tar => ".tar",
             ArchiveFormat::TarGz => ".tar.gz",
+            ArchiveFormat::SevenZ => ".7z",
+            ArchiveFormat::Rar => ".rar",
+        }
+    }
+
+    /// Unpacked : packed bytes a legitimate archive of this format reaches at most.
+    pub fn max_ratio(self) -> u64 {
+        match self {
+            ArchiveFormat::Zip | ArchiveFormat::Tar | ArchiveFormat::TarGz => MAX_RATIO,
+            ArchiveFormat::SevenZ | ArchiveFormat::Rar => MAX_RATIO_STRONG,
         }
     }
 }
 
-/// Format by file name (`.zip`, `.tar`, `.tar.gz`, `.tgz`, without case).
+/// Format by file name (`.zip`, `.tar`, `.tar.gz`, `.tgz`, `.7z`, `.rar`, without case).
 pub fn format_of_name(name: &str) -> Option<ArchiveFormat> {
     let n = name.to_lowercase();
     if n.ends_with(".zip") && n.len() > 4 {
@@ -67,6 +93,10 @@ pub fn format_of_name(name: &str) -> Option<ArchiveFormat> {
         Some(ArchiveFormat::TarGz)
     } else if n.ends_with(".tar") && n.len() > 4 {
         Some(ArchiveFormat::Tar)
+    } else if n.ends_with(".7z") && n.len() > 3 {
+        Some(ArchiveFormat::SevenZ)
+    } else if cfg!(feature = "rar") && n.ends_with(".rar") && n.len() > 4 {
+        Some(ArchiveFormat::Rar)
     } else {
         None
     }
@@ -75,7 +105,7 @@ pub fn format_of_name(name: &str) -> Option<ArchiveFormat> {
 /// The archive name without its extension (`Fotos.tar.gz` → `Fotos`) – folder for "unpack into a subfolder".
 pub fn stem_of(name: &str) -> String {
     let lower = name.to_lowercase();
-    for ext in [".tar.gz", ".tgz", ".zip", ".tar"] {
+    for ext in [".tar.gz", ".tgz", ".zip", ".tar", ".7z", ".rar"] {
         if lower.ends_with(ext) && name.len() > ext.len() {
             return name[..name.len() - ext.len()].to_string();
         }
@@ -96,6 +126,10 @@ pub struct ArchiveInfo {
     pub unsafe_entries: u32,
     /// All entries of the archive (incl. unsafe ones).
     pub entries: u32,
+    /// Some entry (or the list of names) is encrypted (design 025 E4).
+    pub encrypted: bool,
+    /// A password for this archive is known (entered this session).
+    pub password_known: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,8 +152,22 @@ pub struct IndexEntry {
     pub modified_ms: Option<i64>,
     /// Unix permission bits, if the archive has them.
     pub mode: Option<u32>,
-    /// Position in the archive: ZIP index, or ordinal in the TAR stream.
+    /// Position in the archive: ZIP/7z index, or ordinal in the TAR/RAR stream.
     pub pos: usize,
+    /// The data needs a password (design 025 E4).
+    pub encrypted: bool,
+}
+
+/// One entry as a format reader sees it, before the name check.
+#[derive(Debug, Clone)]
+pub(crate) struct RawEntry {
+    pub name: String,
+    pub kind: EntryType,
+    pub size: u64,
+    pub modified_ms: Option<i64>,
+    pub mode: Option<u32>,
+    pub pos: usize,
+    pub encrypted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +180,8 @@ pub struct ArchiveIndex {
     pub archive_size: u64,
     /// Bytes of all stored names (bounded by [`MAX_NAME_BYTES`]).
     pub name_bytes: usize,
+    /// Some entry is encrypted, or the names are (7z `-mhe`, RAR `-hp`).
+    pub encrypted: bool,
 }
 
 pub(crate) fn archive_error(message: impl Into<String>, path: &Path) -> FsError {
@@ -142,6 +192,15 @@ pub(crate) fn too_large(message: impl Into<String>, path: &Path) -> FsError {
     FsError::new(FsErrorCode::ArchiveTooLarge, message, Some(path))
 }
 
+/// A decoding error of an encrypted entry: almost always a wrong password.
+pub(crate) fn password_wrong(path: &Path) -> FsError {
+    FsError::new(
+        FsErrorCode::ArchivePasswordWrong,
+        "Wrong password (or a broken archive)",
+        Some(path),
+    )
+}
+
 pub(crate) fn zip_error(e: zip::result::ZipError, path: &Path) -> FsError {
     use zip::result::ZipError;
     match e {
@@ -149,11 +208,20 @@ pub(crate) fn zip_error(e: zip::result::ZipError, path: &Path) -> FsError {
         ZipError::FileNotFound => {
             FsError::new(FsErrorCode::NotFound, "Not in the archive", Some(path))
         }
-        ZipError::UnsupportedArchive(m) => archive_error(format!("Not supported: {m}"), path),
         ZipError::CompressionMethodNotSupported(m) => {
             archive_error(format!("Compression method {m} is not supported"), path)
         }
-        ZipError::InvalidPassword => archive_error("Encrypted entries are not supported", path),
+        ZipError::InvalidPassword => FsError::new(
+            FsErrorCode::ArchivePasswordWrong,
+            "Wrong password",
+            Some(path),
+        ),
+        ZipError::UnsupportedArchive(m) if m == ZipError::PASSWORD_REQUIRED => FsError::new(
+            FsErrorCode::ArchivePasswordRequired,
+            "The entry is encrypted – a password is needed",
+            Some(path),
+        ),
+        ZipError::UnsupportedArchive(m) => archive_error(format!("Not supported: {m}"), path),
         other => archive_error(format!("Broken archive: {other}"), path),
     }
 }
@@ -217,8 +285,9 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
-/// ZIP (DOS) time → ms. DOS times carry no time zone: read as UTC, written as
-/// UTC by [`zip_time`] – our own archives round-trip exactly.
+/// ZIP (DOS) time → ms. DOS times carry no time zone; the convention (Info-ZIP,
+/// 7-Zip, Windows) is local time (design 025 E7). Exact times come from the
+/// Extended Timestamp field ([`zip_mtime_ms`]) where there is one.
 fn zip_ms(t: zip::DateTime) -> Option<i64> {
     if !t.is_valid() {
         return None;
@@ -228,21 +297,51 @@ fn zip_ms(t: zip::DateTime) -> Option<i64> {
         u32::from(t.month()),
         u32::from(t.day()),
     );
-    let secs = days * 86_400
+    let local = days * 86_400
         + i64::from(t.hour()) * 3600
         + i64::from(t.minute()) * 60
         + i64::from(t.second());
-    Some(secs * 1000)
+    Some(crate::platform::clock::local_to_utc_secs(local) * 1000)
 }
 
-/// Modification time → ZIP time (UTC, 1980–2107; outside: the ZIP default).
+/// A packed DOS date/time (RAR 4, `HeaderDataEx.FileTime`) in local time → ms.
+#[cfg_attr(not(feature = "rar"), allow(dead_code))]
+pub(crate) fn dos_local_ms(dos: u32) -> Option<i64> {
+    let (date, time) = ((dos >> 16) as u16, dos as u16);
+    let t = zip::DateTime::try_from_msdos(date, time).ok()?;
+    zip_ms(t)
+}
+
+/// The modification time of a ZIP entry: Extended Timestamp (UTC) if present,
+/// else the DOS time as local time.
+pub(crate) fn zip_mtime_ms<R: Read>(f: &zip::read::ZipFile<'_, R>) -> Option<i64> {
+    let ext = f.extra_data_fields().find_map(|x| match x {
+        zip::ExtraField::ExtendedTimestamp(t) => t.mod_time(),
+        _ => None,
+    });
+    match ext {
+        Some(secs) => Some(i64::from(secs) * 1000),
+        None => f.last_modified().and_then(zip_ms),
+    }
+}
+
+/// The Extended Timestamp extra field (`0x5455`, modification time only).
+pub(crate) fn zip_ext_time(modified: Option<std::time::SystemTime>) -> Option<[u8; 5]> {
+    let secs = modified?.duration_since(UNIX_EPOCH).ok()?.as_secs();
+    let secs = u32::try_from(secs).ok()?;
+    let b = secs.to_le_bytes();
+    Some([1, b[0], b[1], b[2], b[3]])
+}
+
+/// Modification time → ZIP time (local time, 1980–2107; outside: the ZIP default).
 pub(crate) fn zip_time(modified: Option<std::time::SystemTime>) -> zip::DateTime {
-    let Some(secs) = modified
+    let Some(utc) = modified
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map(|d| d.as_secs() as i64)
     else {
         return zip::DateTime::default();
     };
+    let secs = utc + crate::platform::clock::local_offset_secs(utc);
     let (y, m, d) = civil_from_days(secs.div_euclid(86_400));
     let rest = secs.rem_euclid(86_400);
     let (h, mi, s) = (
@@ -278,10 +377,15 @@ impl<R: Read> Read for LimitedReader<R> {
 pub(crate) const BOMB_MESSAGE: &str =
     "The archive unpacks to far more data than it holds (zip bomb?) – refused";
 
-/// Unpacked bytes an archive of `archive_size` may produce at most.
+/// Unpacked bytes a Deflate archive (ZIP, TAR.GZ) of `archive_size` may produce at most.
 pub fn unpack_limit(archive_size: u64) -> u64 {
+    unpack_limit_for(ArchiveFormat::Zip, archive_size)
+}
+
+/// Unpacked bytes an archive of `format` and `archive_size` may produce at most.
+pub fn unpack_limit_for(format: ArchiveFormat, archive_size: u64) -> u64 {
     archive_size
-        .saturating_mul(MAX_RATIO)
+        .saturating_mul(format.max_ratio())
         .saturating_add(RATIO_SLACK)
         .min(MAX_TOTAL_SIZE)
 }
@@ -319,40 +423,53 @@ fn check_limits(index: &ArchiveIndex, path: &Path) -> Result<(), FsError> {
             path,
         ));
     }
-    if total > unpack_limit(index.archive_size) {
+    if total > unpack_limit_for(index.format, index.archive_size) {
         return Err(too_large(BOMB_MESSAGE, path));
     }
     Ok(())
 }
 
-fn push_entry(
-    index: &mut ArchiveIndex,
-    raw: &str,
-    kind: EntryType,
-    size: u64,
-    modified_ms: Option<i64>,
-    mode: Option<u32>,
-    pos: usize,
-) {
+fn push_entry(index: &mut ArchiveIndex, raw: RawEntry) {
     index.total_entries += 1;
-    match sanitize(raw) {
+    if raw.encrypted {
+        index.encrypted = true;
+    }
+    match sanitize(&raw.name) {
         Ok(name) if name.is_empty() => {}
         Ok(name) => {
             index.name_bytes += name.iter().map(|n| n.len() + 1).sum::<usize>();
             index.entries.push(IndexEntry {
                 name,
-                kind,
-                size: if kind == EntryType::Dir { 0 } else { size },
-                modified_ms,
-                mode,
-                pos,
+                kind: raw.kind,
+                size: if raw.kind == EntryType::Dir {
+                    0
+                } else {
+                    raw.size
+                },
+                modified_ms: raw.modified_ms,
+                mode: raw.mode,
+                pos: raw.pos,
+                encrypted: raw.encrypted,
             })
         }
         Err(_) => index.unsafe_entries += 1,
     }
 }
 
-fn too_many(path: &Path) -> FsError {
+fn names_too_long(index: &ArchiveIndex, path: &Path) -> Result<(), FsError> {
+    if index.name_bytes > MAX_NAME_BYTES {
+        return Err(too_large(
+            format!(
+                "The names in the archive exceed {} MiB – refused",
+                MAX_NAME_BYTES >> 20
+            ),
+            path,
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn too_many(path: &Path) -> FsError {
     too_large(
         format!("The archive has more than {MAX_ENTRIES} entries – refused"),
         path,
@@ -372,7 +489,9 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
         .file_name()
         .and_then(|n| n.to_str())
         .and_then(format_of_name)
-        .ok_or_else(|| archive_error("Not a supported archive (ZIP, TAR, TAR.GZ)", path))?;
+        .ok_or_else(|| {
+            archive_error("Not a supported archive (ZIP, TAR, TAR.GZ, 7z, RAR)", path)
+        })?;
     let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
     let meta = file.metadata().map_err(|e| FsError::from_io(&e, path))?;
     if !meta.is_file() {
@@ -385,6 +504,7 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
         total_entries: 0,
         archive_size: meta.len(),
         name_bytes: 0,
+        encrypted: false,
     };
     match format {
         ArchiveFormat::Zip => {
@@ -414,19 +534,54 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
                 } else {
                     EntryType::File
                 };
-                let modified = e.last_modified().and_then(zip_ms);
-                let mode = e.unix_mode().map(|m| m & 0o777);
-                push_entry(&mut index, &name, kind, e.size(), modified, mode, i);
+                let raw = RawEntry {
+                    name,
+                    kind,
+                    size: e.size(),
+                    modified_ms: e.last_modified().and_then(zip_ms),
+                    mode: e.unix_mode().map(|m| m & 0o777),
+                    pos: i,
+                    encrypted: e.encrypted(),
+                };
+                push_entry(&mut index, raw);
             }
-            if index.name_bytes > MAX_NAME_BYTES {
-                return Err(too_large(
-                    format!(
-                        "The names in the archive exceed {} MiB – refused",
-                        MAX_NAME_BYTES >> 20
-                    ),
-                    path,
-                ));
+            names_too_long(&index, path)?;
+        }
+        ArchiveFormat::SevenZ => {
+            drop(file);
+            let (_, archive, header_encrypted) = sevenz::open(path)?;
+            if archive.files.len() > MAX_ENTRIES {
+                return Err(too_many(path));
             }
+            index.encrypted = header_encrypted;
+            for raw in sevenz::raw_entries(&archive) {
+                push_entry(&mut index, raw);
+            }
+            names_too_long(&index, path)?;
+        }
+        #[cfg(feature = "rar")]
+        ArchiveFormat::Rar => {
+            drop(file);
+            let pw = secrets::get(path);
+            let (headers, header_encrypted) = rar::headers(path, pw.as_ref(), MAX_ENTRIES)?;
+            index.encrypted = header_encrypted;
+            for (pos, h) in headers.into_iter().enumerate() {
+                let raw = RawEntry {
+                    name: h.name,
+                    kind: h.kind,
+                    size: h.size,
+                    modified_ms: h.modified_ms,
+                    mode: h.mode,
+                    pos,
+                    encrypted: h.encrypted,
+                };
+                push_entry(&mut index, raw);
+                names_too_long(&index, path)?;
+            }
+        }
+        #[cfg(not(feature = "rar"))]
+        ArchiveFormat::Rar => {
+            return Err(archive_error("RAR support is not built in", path));
         }
         ArchiveFormat::Tar | ArchiveFormat::TarGz => {
             let mut archive = tar::Archive::new(tar_stream(file, format, meta.len()));
@@ -448,18 +603,17 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
                 let header = entry.header();
                 let kind = tar_kind(header.entry_type());
                 let raw = name_string(name);
-                let modified = header.mtime().ok().map(|s| (s as i64).saturating_mul(1000));
-                let mode = header.mode().ok().map(|m| m & 0o777);
-                push_entry(&mut index, &raw, kind, entry.size(), modified, mode, pos);
-                if index.name_bytes > MAX_NAME_BYTES {
-                    return Err(too_large(
-                        format!(
-                            "The names in the archive exceed {} MiB – refused",
-                            MAX_NAME_BYTES >> 20
-                        ),
-                        path,
-                    ));
-                }
+                let raw = RawEntry {
+                    name: raw,
+                    kind,
+                    size: entry.size(),
+                    modified_ms: header.mtime().ok().map(|s| (s as i64).saturating_mul(1000)),
+                    mode: header.mode().ok().map(|m| m & 0o777),
+                    pos,
+                    encrypted: false,
+                };
+                push_entry(&mut index, raw);
+                names_too_long(&index, path)?;
             }
         }
     }
@@ -814,6 +968,8 @@ pub fn list_index(
             format: index.format,
             unsafe_entries: index.unsafe_entries,
             entries: index.total_entries,
+            encrypted: index.encrypted,
+            password_known: secrets::known(archive),
         }),
         network: false,
     })
@@ -832,4 +988,139 @@ pub fn list_directory_or_archive(dir: &Path) -> Result<DirectoryListing, FsError
         }
         Err(e) => Err(e),
     }
+}
+
+/// Largest entry read completely to check a password (bigger ones: the
+/// password check value only – a wrong password shows when extracting).
+const VERIFY_BYTES: u64 = 16 << 20;
+
+/// Checks `secret` against `archive` and remembers it if it fits (design 025 E4):
+/// 7z/RAR with encrypted names – the names must decode; encrypted data – the
+/// smallest encrypted entry (≤ 16 MiB) must decode with a valid checksum.
+pub fn set_password(archive: &Path, secret: secrets::Secret) -> Result<(), FsError> {
+    let format = archive
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(format_of_name)
+        .ok_or_else(|| archive_error("Not a supported archive", archive))?;
+    if secret.is_empty() {
+        return Err(password_wrong(archive));
+    }
+    match format {
+        ArchiveFormat::Zip => verify_zip(archive, &secret)?,
+        ArchiveFormat::SevenZ => verify_7z(archive, &secret)?,
+        #[cfg(feature = "rar")]
+        ArchiveFormat::Rar => verify_rar(archive, &secret)?,
+        // TAR has no encryption: nothing to check
+        _ => {}
+    }
+    secrets::remember(archive, secret);
+    Ok(())
+}
+
+fn drain_bounded(r: &mut dyn Read, path: &Path) -> Result<(), FsError> {
+    let mut limited = r.take(VERIFY_BYTES);
+    io::copy(&mut limited, &mut io::sink())
+        .map(|_| ())
+        .map_err(|_| password_wrong(path))
+}
+
+fn verify_zip(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
+    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let mut za = zip::ZipArchive::new(BufReader::new(file)).map_err(|e| zip_error(e, path))?;
+    let mut smallest: Option<(usize, u64)> = None;
+    for i in 0..za.len().min(MAX_ENTRIES) {
+        let e = za.by_index_data(i).map_err(|e| zip_error(e, path))?;
+        if e.encrypted() && !e.is_dir() && smallest.is_none_or(|(_, s)| e.size() < s) {
+            smallest = Some((i, e.size()));
+        }
+    }
+    let Some((i, size)) = smallest else {
+        return Ok(());
+    };
+    let mut f = za
+        .by_index_decrypt(i, secret.expose().as_bytes())
+        .map_err(|e| zip_error(e, path))?;
+    if size <= VERIFY_BYTES {
+        drain_bounded(&mut f, path)?;
+    }
+    Ok(())
+}
+
+fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
+    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let mut reader = BufReader::new(file);
+    let password = sevenz::password_of(Some(secret));
+    let archive = match sevenz_rust2::Archive::read(&mut reader, &password) {
+        Ok(a) => a,
+        // with a password in play every decoding error of the header means "wrong"
+        Err(sevenz_rust2::Error::Io(e, _))
+            if matches!(
+                e.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::PermissionDenied
+            ) =>
+        {
+            return Err(FsError::from_io(&e, path));
+        }
+        Err(sevenz_rust2::Error::BadSignature(_)) => {
+            return Err(archive_error("Not a 7z archive", path));
+        }
+        Err(_) => return Err(password_wrong(path)),
+    };
+    // the smallest encrypted block holding a file
+    let block = archive
+        .blocks
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| sevenz::block_encrypted(b))
+        .min_by_key(|(_, b)| b.get_unpack_size())
+        .map(|(i, _)| i);
+    let Some(b) = block else {
+        return Ok(());
+    };
+    sevenz::check_memory(&archive.blocks[b], path)?;
+    let mut result = Ok(());
+    let decoded = sevenz_rust2::BlockDecoder::new(1, b, &archive, &password, &mut reader)
+        .for_each_entries(&mut |_e, rd| {
+            result = drain_bounded(rd, path);
+            Ok(false) // the first entry is enough
+        });
+    if decoded.is_err() {
+        return Err(password_wrong(path));
+    }
+    result
+}
+
+#[cfg(feature = "rar")]
+fn verify_rar(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
+    let (headers, _) = rar::headers(path, Some(secret), MAX_ENTRIES)?;
+    let target = headers
+        .iter()
+        .enumerate()
+        .filter(|(_, h)| h.encrypted && h.kind == EntryType::File && !h.split)
+        .min_by_key(|(_, h)| h.size)
+        .map(|(i, h)| (i, h.size));
+    let Some((pos, size)) = target else {
+        return Ok(());
+    };
+    if size > VERIFY_BYTES {
+        return Ok(());
+    }
+    let mut a = rar::RarArchive::open(path, Some(secret), true)?;
+    let mut i = 0usize;
+    while let Some(h) = a.next_header()? {
+        if i == pos {
+            a.test_into(&h, &mut |_| true).map_err(|e| {
+                if e.code == FsErrorCode::ArchiveError {
+                    password_wrong(path)
+                } else {
+                    e
+                }
+            })?;
+            return Ok(());
+        }
+        a.skip()?;
+        i += 1;
+    }
+    Ok(())
 }

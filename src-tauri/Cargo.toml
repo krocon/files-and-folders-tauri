@@ -6,7 +6,7 @@ authors = ["krocon"]
 license = "MIT"
 repository = "https://github.com/krocon/files-and-folders-tauri"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.93"
 
 [lib]
 name = "fnf_lib"
@@ -22,11 +22,19 @@ open = "5"
 regex = "1.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["aes256", "bzip2", "compress", "ppmd"] }
 sha2 = "0.10"
 tar = { version = "0.4.46", default-features = false }
 tauri = { version = "2.12.4", features = [] }
 trash = { version = "5.2.9", default-features = false, features = ["coinit_apartmentthreaded"] }
-zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2"] }
+unrar-ng-sys = { version = "=0.7.7", optional = true }
+zeroize = "1.9"
+zip = { version = "9.0.5", default-features = false, features = ["aes-crypto", "deflate-flate2"] }
+
+[features]
+default = ["rar"]
+# design 025 E2: RAR (read + extract) through the vendored UnRAR source (C++, unRAR licence – docs/licenses.md)
+rar = ["dep:unrar-ng-sys"]
 
 [dev-dependencies]
 tempfile = "3"
@@ -49,6 +57,7 @@ windows-sys = { version = "0.61", features = [
   "Win32_Security",
   "Win32_System_JobObjects",
   "Win32_System_Threading",
+  "Win32_System_Time",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }

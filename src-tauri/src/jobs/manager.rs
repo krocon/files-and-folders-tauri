@@ -297,6 +297,7 @@ impl JobManager {
                         name,
                         format,
                         level,
+                        password,
                     } => {
                         let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
                         pack::run(
@@ -306,9 +307,13 @@ impl JobManager {
                             name,
                             *format,
                             *level,
+                            password.as_ref(),
                             &control,
                             &emit,
                         )
+                    }
+                    JobSpec::ViewEntry { path } => {
+                        crate::archive::view::run_job(id, &PathBuf::from(path), &control, &emit)
                     }
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
@@ -908,6 +913,9 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             for e in entries {
                 validate_input_path(e)?;
             }
+        }
+        JobSpec::ViewEntry { path } => {
+            validate_input_path(path)?;
         }
         JobSpec::Pack {
             sources,

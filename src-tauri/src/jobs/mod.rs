@@ -23,6 +23,8 @@ mod tests_archive;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
+mod tests_formats;
+#[cfg(test)]
 mod tests_ops;
 #[cfg(all(test, unix))]
 mod tests_shell;
@@ -158,10 +160,17 @@ pub enum JobSpec {
         target_dir: String,
         name: String,
         format: ArchiveFormat,
-        /// Compression level 1–9 (ZIP, TAR.GZ); default 6.
+        /// Compression level 1–9 (ZIP, TAR.GZ, 7z); default 6.
         #[serde(default)]
         level: Option<u32>,
+        /// ZIP (AES-256) / 7z (AES-256, names too) password (design 025 E4). Read from
+        /// the frontend, never serialised back (job events carry the spec).
+        #[serde(default, skip_serializing)]
+        password: Option<crate::archive::secrets::Secret>,
     },
+    /// Extracts one file of an archive into the app's view cache (design 025 E5):
+    /// Enter on a file inside an archive; the copy's path is `Summary.view_path`.
+    ViewEntry { path: String },
     /// Duplicate files (design 016 E6): groups are streamed as `searchHits`.
     Duplicates { criteria: DuplicateCriteria },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
@@ -193,7 +202,8 @@ impl JobSpec {
             | JobSpec::Clean { .. }
             | JobSpec::Extract { .. }
             | JobSpec::Pack { .. } => false,
-            JobSpec::Duplicates { .. }
+            JobSpec::ViewEntry { .. }
+            | JobSpec::Duplicates { .. }
             | JobSpec::DirSize { .. }
             | JobSpec::Count { .. }
             | JobSpec::Search { .. }
@@ -258,6 +268,7 @@ impl JobSpec {
             JobSpec::Search { .. } => "search",
             JobSpec::Extract { .. } => "extract",
             JobSpec::Pack { .. } => "pack",
+            JobSpec::ViewEntry { .. } => "viewEntry",
             JobSpec::Duplicates { .. } => "duplicates",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
@@ -426,6 +437,9 @@ pub struct Summary {
     /// Final bytes copied/moved into each top-level target destination.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub dest_bytes: HashMap<String, u64>,
+    /// Job `viewEntry`: the copy of the entry in the view cache (design 025 E5).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view_path: Option<String>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;

@@ -84,7 +84,6 @@ fn formats_by_name() {
     assert_eq!(format_of_name("a.tgz"), Some(ArchiveFormat::TarGz));
     assert_eq!(format_of_name(".zip"), None);
     assert_eq!(format_of_name("a.gz"), None);
-    assert_eq!(format_of_name("a.7z"), None);
     assert_eq!(stem_of("Fotos 2024.tar.gz"), "Fotos 2024");
     assert_eq!(stem_of("x.ZIP"), "x");
     assert_eq!(stem_of("x.tgz"), "x");
@@ -268,6 +267,7 @@ fn entry(size: u64) -> IndexEntry {
         modified_ms: None,
         mode: None,
         pos: 0,
+        encrypted: false,
     }
 }
 
@@ -287,6 +287,7 @@ fn zip_bombs_are_refused() {
         total_entries: 2,
         archive_size: 42_000,
         name_bytes: 0,
+        encrypted: false,
     };
     assert_eq!(
         check_limits(&index, p).unwrap_err().code,

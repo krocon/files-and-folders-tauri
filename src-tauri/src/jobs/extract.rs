@@ -1,4 +1,4 @@
-//! Extract job (design 016 E3/E4): entries of a ZIP/TAR/TAR.GZ into a folder.
+//! Extract job (design 016 E3/E4, 025): entries of a ZIP/TAR/TAR.GZ/7z/RAR into a folder.
 //!
 //! Safety first – every point has a test in `tests_archive.rs`:
 //! - names were checked when the index was read (`archive::sanitize`: no `..`,
@@ -10,7 +10,15 @@
 //!   already refused archives above the size/ratio/count limits;
 //! - an existing target raises the conflict question of copying;
 //! - every file goes to `.fnf-<job>-<n>.part` first and is renamed to its name
-//!   (never replacing a file unless "overwrite" was chosen).
+//!   (never replacing a file unless "overwrite" was chosen);
+//! - encrypted entries need the password of the archive (`archive::secrets`):
+//!   none known → the job fails with `archive_password_required` before it
+//!   writes anything, a wrong one stops it with `archive_password_wrong`
+//!   (the frontend asks and starts it again, design 025 E4).
+//!
+//! The data of an entry arrives through a *fill* function that pushes chunks
+//! into the temporary file: from a `Read` (ZIP, TAR, 7z) or from the UnRAR
+//! callback (RAR, which cannot be read as a stream).
 
 use super::ask::Asker;
 use super::report::Reporter;
@@ -18,11 +26,12 @@ use super::{
     Control, CopyOptions, Decision, FileMeta, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS,
     Summary,
 };
+use crate::archive::secrets::Secret;
 use crate::archive::{self, ArchiveFormat, EntryType, IndexEntry};
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::validate_name;
 use crate::platform::rename_noreplace;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -39,9 +48,40 @@ struct Item {
     rel: Vec<String>,
 }
 
-enum WriteError {
+pub(crate) enum WriteError {
     Cancelled,
     Fs(FsError),
+}
+
+/// Pushes one chunk of an entry's data into its temporary file.
+type Push<'a> = dyn FnMut(&[u8]) -> Result<(), WriteError> + 'a;
+/// Produces the data of one entry through `push`.
+type Fill<'a> = dyn FnMut(&mut Push<'_>) -> Result<(), WriteError> + 'a;
+
+/// Copies a reader into `push`; read errors become entry errors (`encrypted` =
+/// a decoding error most likely means a wrong password).
+fn fill_from(
+    reader: &mut dyn Read,
+    label: &Path,
+    encrypted: bool,
+    push: &mut Push<'_>,
+) -> Result<(), WriteError> {
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        let n = reader.read(&mut buf).map_err(|e| {
+            WriteError::Fs(
+                if encrypted && e.kind() != io::ErrorKind::PermissionDenied {
+                    archive::password_wrong(label)
+                } else {
+                    read_error(&e, label)
+                },
+            )
+        })?;
+        if n == 0 {
+            return Ok(());
+        }
+        push(&buf[..n])?;
+    }
 }
 
 struct Run<'a> {
@@ -56,6 +96,10 @@ struct Run<'a> {
     verified: HashSet<PathBuf>,
     /// Folders that could not be created: everything below them is skipped.
     failed_dirs: Vec<Vec<String>>,
+    /// Password of the archive (design 025 E4), if known.
+    password: Option<Secret>,
+    /// A password error ends the job (the frontend asks again).
+    password_error: Option<FsError>,
 }
 
 pub fn unsafe_entry(message: &str, path: &Path) -> FsError {
@@ -64,6 +108,13 @@ pub fn unsafe_entry(message: &str, path: &Path) -> FsError {
 
 impl Run<'_> {
     fn fail(&mut self, path: &Path, error: FsError) {
+        if matches!(
+            error.code,
+            FsErrorCode::ArchivePasswordWrong | FsErrorCode::ArchivePasswordRequired
+        ) && self.password_error.is_none()
+        {
+            self.password_error = Some(error.clone());
+        }
         self.summary.items_failed += 1;
         let item = ItemError {
             path: path.to_string_lossy().into_owned(),
@@ -108,11 +159,12 @@ impl Run<'_> {
         parent.join(format!(".fnf-{}-{}.part", self.id, self.temp_seq))
     }
 
-    /// Writes one file from `reader` (at most `entry.size` bytes) via a temporary name.
+    /// Writes one file from `fill` (at most `entry.size` bytes) via a temporary name.
     fn write_file(
         &mut self,
-        reader: &mut dyn Read,
+        fill: &mut Fill<'_>,
         entry: &IndexEntry,
+        modified_ms: Option<i64>,
         parent: &Path,
         dst: &Path,
         overwrite: bool,
@@ -130,48 +182,46 @@ impl Run<'_> {
                 use std::os::unix::fs::OpenOptionsExt;
                 options.mode(m & 0o777);
             }
-            let mut out = options
+            let out = options
                 .open(&tmp)
                 .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
             crate::platform::io_hints::prepare_write(&out);
             // small entries need no 1 MiB buffer each (review 029 #12)
             let len = usize::try_from(entry.size).unwrap_or(BLOCK);
-            let mut buf = vec![0u8; len.clamp(8 * 1024, BLOCK)];
-            loop {
-                if self.control.is_cancelled() || !self.control.wait_while_paused() {
+            let mut out = io::BufWriter::with_capacity(len.clamp(8 * 1024, BLOCK), out);
+            let control = self.control;
+            let rep = &mut self.rep;
+            let size = entry.size;
+            let mut push = |chunk: &[u8]| -> Result<(), WriteError> {
+                // pausing waits here – except under the RAR library lock (see `extract_rar`)
+                if control.is_cancelled() || !control.wait_while_paused() {
                     return Err(WriteError::Cancelled);
                 }
-                let n = reader.read(&mut buf).map_err(|e| {
-                    WriteError::Fs(read_error(
-                        &e,
-                        &archive::virtual_path(self.archive, &entry.name),
-                    ))
-                })?;
-                if n == 0 {
-                    break;
-                }
-                written += n as u64;
-                if written > entry.size {
+                written += chunk.len() as u64;
+                if written > size {
                     return Err(WriteError::Fs(FsError::new(
                         FsErrorCode::ArchiveTooLarge,
                         "The entry holds more data than it declares (zip bomb?) – refused",
                         Some(dst),
                     )));
                 }
-                out.write_all(&buf[..n])
+                out.write_all(chunk)
                     .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
-                self.rep.progress.bytes_done += n as u64;
-                self.rep.tick(false);
-            }
+                rep.progress.bytes_done += chunk.len() as u64;
+                rep.tick(false);
+                Ok(())
+            };
+            fill(&mut push)?;
+            let out = out
+                .into_inner()
+                .map_err(|e| WriteError::Fs(FsError::from_io(e.error(), dst)))?;
             if written != entry.size {
                 return Err(WriteError::Fs(archive::archive_error(
                     "The entry is shorter than declared (broken archive)",
                     dst,
                 )));
             }
-            out.flush()
-                .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
-            if let Some(ms) = entry.modified_ms.and_then(|m| u64::try_from(m).ok()) {
+            if let Some(ms) = modified_ms.and_then(|m| u64::try_from(m).ok()) {
                 let _ = out.set_modified(UNIX_EPOCH + Duration::from_millis(ms));
             }
             drop(out);
@@ -340,12 +390,38 @@ impl Run<'_> {
         Ok(Step::Done)
     }
 
-    /// Writes the data of a prepared file. `Err` = the job was cancelled.
+    /// Writes the data of a prepared file from a reader. `Err` = the job was cancelled.
     fn write(
         &mut self,
         item: &Item,
         step: Step,
         reader: Result<&mut dyn Read, FsError>,
+    ) -> Result<(), ()> {
+        let label = self.label(item);
+        let encrypted = item.entry.encrypted;
+        match reader {
+            Ok(r) => self.write_fill(item, step, None, &mut |push: &mut Push<'_>| {
+                fill_from(r, &label, encrypted, push)
+            }),
+            Err(e) => {
+                if matches!(step, Step::Write { .. }) {
+                    let before = self.rep.progress.bytes_done;
+                    self.fail(&label, e);
+                    self.finish(item, before);
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Writes the data of a prepared file from `fill`; `modified_ms` overrides
+    /// the index time (ZIP Extended Timestamp). `Err` = the job was cancelled.
+    fn write_fill(
+        &mut self,
+        item: &Item,
+        step: Step,
+        modified_ms: Option<i64>,
+        fill: &mut Fill<'_>,
     ) -> Result<(), ()> {
         let Step::Write {
             parent,
@@ -357,15 +433,8 @@ impl Run<'_> {
         };
         let label = self.label(item);
         let before = self.rep.progress.bytes_done;
-        let reader = match reader {
-            Ok(r) => r,
-            Err(e) => {
-                self.fail(&label, e);
-                self.finish(item, before);
-                return Ok(());
-            }
-        };
-        match self.write_file(reader, &item.entry, &parent, &dst, overwrite) {
+        let modified = modified_ms.or(item.entry.modified_ms);
+        match self.write_file(fill, &item.entry, modified, &parent, &dst, overwrite) {
             Ok(()) => self.summary.items_done += 1,
             Err(WriteError::Cancelled) => return Err(()),
             Err(WriteError::Fs(e)) => {
@@ -491,8 +560,11 @@ pub fn run(
         archive: archive_path,
         verified: HashSet::new(),
         failed_dirs: Vec::new(),
+        password: None,
+        password_error: None,
     };
     run.state(JobState::Planning);
+    run.password = archive::secrets::get(archive_path);
     let failed = |mut summary: Summary, e: FsError| {
         summary.error = Some(e);
         (JobState::Failed, summary)
@@ -531,6 +603,19 @@ pub fn run(
         }
     }
     let (items, missing) = plan(&index, &selections);
+    if run.password.is_none()
+        && let Some(item) = items
+            .iter()
+            .find(|i| i.entry.encrypted && i.entry.kind == EntryType::File)
+    {
+        // ask before anything is written (design 025 E4)
+        let e = FsError::new(
+            FsErrorCode::ArchivePasswordRequired,
+            "The archive is encrypted – a password is needed",
+            Some(&archive::virtual_path(archive_path, &item.entry.name)),
+        );
+        return failed(run.summary, e);
+    }
     if entries.is_empty() && index.unsafe_entries > 0 {
         // never extracted, and never part of the listing: one error for all of them
         let n = index.unsafe_entries;
@@ -590,11 +675,27 @@ pub fn run(
         ArchiveFormat::Tar | ArchiveFormat::TarGz => {
             extract_tar(&mut run, &root, &items, index.format, index.archive_size)
         }
+        ArchiveFormat::SevenZ => extract_7z(&mut run, &root, &items),
+        #[cfg(feature = "rar")]
+        ArchiveFormat::Rar => extract_rar(&mut run, &root, &items),
+        #[cfg(not(feature = "rar"))]
+        ArchiveFormat::Rar => {
+            run.fail(
+                archive_path,
+                archive::archive_error("RAR support is not built in", archive_path),
+            );
+            false
+        }
     };
     run.rep.progress.current = None;
     run.summary.bytes_done = run.rep.progress.bytes_done;
     run.rep.tick(true);
     run.rep.flush_dirs();
+    if let Some(e) = run.password_error.take() {
+        // the frontend asks for the password and starts the job again
+        run.summary.error = Some(e);
+        return (JobState::Failed, run.summary);
+    }
     let state = if cancelled || control.is_cancelled() {
         JobState::Cancelled
     } else if run.summary.items_failed > 0 {
@@ -620,9 +721,13 @@ fn extract_zip(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
             return false;
         }
     };
+    let password = run.password.clone();
     for item in items {
         if run.control.is_cancelled() || !run.control.wait_while_paused() {
             return true;
+        }
+        if run.password_error.is_some() {
+            return false;
         }
         let Ok(step) = run.prepare(root, item) else {
             return true;
@@ -631,12 +736,257 @@ fn extract_zip(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
             continue;
         }
         let label = run.label(item);
-        let result = match za.by_index(item.entry.pos) {
-            Ok(mut f) => run.write(item, step, Ok(&mut f)),
+        let opened = match (&password, item.entry.encrypted) {
+            (Some(pw), true) => za.by_index_decrypt(item.entry.pos, pw.expose().as_bytes()),
+            _ => za.by_index(item.entry.pos),
+        };
+        let result = match opened {
+            Ok(mut f) => {
+                let modified = archive::zip_mtime_ms(&f);
+                let encrypted = item.entry.encrypted;
+                run.write_fill(item, step, modified, &mut |push: &mut Push<'_>| {
+                    // a ZipCrypto check byte lets 1 of 256 wrong passwords through: the CRC
+                    // (or the AES HMAC) at the end tells
+                    fill_from(&mut f, &label, encrypted, push)
+                })
+            }
             Err(e) => run.write(item, step, Err(archive::zip_error(e, &label))),
         };
         if result.is_err() {
             return true;
+        }
+    }
+    false
+}
+
+/// Remembers whether a reader failed (a solid 7z block is out of sync then).
+struct Watched<'r> {
+    inner: &'r mut dyn Read,
+    failed: bool,
+}
+
+impl Read for Watched<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf).inspect_err(|_| self.failed = true)
+    }
+}
+
+/// `true` = cancelled. Decodes only the blocks that hold planned entries, one
+/// at a time and in order; unplanned entries of a block are read and dropped
+/// (the decoder streams through a block).
+fn extract_7z(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
+    use sevenz_rust2::BlockDecoder;
+    let archive_path = run.archive;
+    let (mut source, archive, _) = match archive::sevenz::open(archive_path) {
+        Ok(x) => x,
+        Err(e) => {
+            run.fail(archive_path, e);
+            return false;
+        }
+    };
+    let password = archive::sevenz::password_of(run.password.as_ref());
+    let by_pos: HashMap<usize, &Item> = items.iter().map(|i| (i.entry.pos, i)).collect();
+    let block_of = |pos: usize| {
+        archive
+            .stream_map
+            .file_block_index
+            .get(pos)
+            .copied()
+            .flatten()
+    };
+    let blocks: BTreeSet<usize> = items.iter().filter_map(|i| block_of(i.entry.pos)).collect();
+    let mut handled: HashSet<usize> = HashSet::new();
+    for b in blocks {
+        if run.control.is_cancelled() || !run.control.wait_while_paused() {
+            return true;
+        }
+        if run.password_error.is_some() {
+            return false;
+        }
+        let Some(block) = archive.blocks.get(b) else {
+            continue;
+        };
+        let encrypted = archive::sevenz::block_encrypted(block);
+        let checked = archive::sevenz::check_memory(block, archive_path);
+        let mut cancelled = false;
+        let result = match checked {
+            Err(e) => Err(e),
+            Ok(()) => {
+                let Some(&start) = archive.stream_map.block_first_file_index.get(b) else {
+                    continue;
+                };
+                let mut k = start;
+                let decoded = BlockDecoder::new(1, b, &archive, &password, &mut source)
+                    .for_each_entries(&mut |_entry, rd| {
+                        let pos = k;
+                        k += 1;
+                        let Some(item) = by_pos.get(&pos).copied() else {
+                            // keep the stream in step: read and drop
+                            io::copy(rd, &mut io::sink())?;
+                            return Ok(true);
+                        };
+                        handled.insert(pos);
+                        let Ok(step) = run.prepare(root, item) else {
+                            cancelled = true;
+                            return Ok(false);
+                        };
+                        let mut watched = Watched {
+                            inner: rd,
+                            failed: false,
+                        };
+                        let wrote = if matches!(step, Step::Done) {
+                            io::copy(&mut watched, &mut io::sink())
+                                .map(|_| ())
+                                .map_err(|_| ())
+                        } else {
+                            run.write(item, step, Ok(&mut watched))
+                        };
+                        if wrote.is_err() && !watched.failed {
+                            cancelled = true;
+                            return Ok(false);
+                        }
+                        // a failed read leaves the block out of step: stop it
+                        Ok(!watched.failed && run.password_error.is_none())
+                    });
+                decoded.map_err(|e| archive::sevenz::map_error(e, archive_path, encrypted))
+            }
+        };
+        if cancelled {
+            return true;
+        }
+        let failed_with = result.err();
+        // planned entries of this block that were not reached
+        for item in items.iter().filter(|i| block_of(i.entry.pos) == Some(b)) {
+            if handled.insert(item.entry.pos) {
+                let label = run.label(item);
+                let before = run.rep.progress.bytes_done;
+                let e = failed_with.clone().unwrap_or_else(|| {
+                    archive::archive_error("Not reached (broken archive)", &label)
+                });
+                run.fail(
+                    &label,
+                    FsError {
+                        path: Some(label.to_string_lossy().into_owned()),
+                        ..e
+                    },
+                );
+                run.finish(item, before);
+            }
+        }
+    }
+    // entries without data (empty files, folders, links)
+    for item in items.iter().filter(|i| block_of(i.entry.pos).is_none()) {
+        if run.control.is_cancelled() || !run.control.wait_while_paused() {
+            return true;
+        }
+        if run.password_error.is_some() {
+            return false; // nothing more is written with a wrong password
+        }
+        let Ok(step) = run.prepare(root, item) else {
+            return true;
+        };
+        if run.write(item, step, Ok(&mut io::empty())).is_err() {
+            return true;
+        }
+    }
+    false
+}
+
+/// `true` = cancelled. The library tests each planned entry and hands its data
+/// to our temporary file; everything else is skipped. Pausing takes effect
+/// between entries: a pause inside the callback would hold the library lock.
+#[cfg(feature = "rar")]
+fn extract_rar(run: &mut Run<'_>, root: &Path, items: &[Item]) -> bool {
+    let archive_path = run.archive;
+    let password = run.password.clone();
+    let mut a = match archive::rar::RarArchive::open(archive_path, password.as_ref(), true) {
+        Ok(a) => a,
+        Err(e) => {
+            run.fail(archive_path, e);
+            return false;
+        }
+    };
+    let not_reached = |run: &mut Run<'_>, rest: &[&Item], e: Option<FsError>| {
+        for item in rest {
+            let label = run.label(item);
+            let err = e
+                .clone()
+                .unwrap_or_else(|| archive::archive_error("Not reached (broken archive)", &label));
+            run.fail(
+                &label,
+                FsError {
+                    path: Some(label.to_string_lossy().into_owned()),
+                    ..err
+                },
+            );
+        }
+    };
+    let planned: Vec<&Item> = items.iter().collect();
+    let mut next = 0usize;
+    let mut pos = 0usize;
+    while next < planned.len() {
+        if run.control.is_cancelled() || !run.control.wait_while_paused() {
+            return true;
+        }
+        if run.password_error.is_some() {
+            return false;
+        }
+        let header = match a.next_header() {
+            Ok(Some(h)) => h,
+            Ok(None) => {
+                not_reached(run, &planned[next..], None);
+                return false;
+            }
+            Err(e) => {
+                not_reached(run, &planned[next..], Some(e));
+                return false;
+            }
+        };
+        let this = pos;
+        pos += 1;
+        let item = planned[next];
+        if item.entry.pos != this {
+            if let Err(e) = a.skip() {
+                not_reached(run, &planned[next..], Some(e));
+                return false;
+            }
+            continue;
+        }
+        next += 1;
+        let Ok(step) = run.prepare(root, item) else {
+            return true;
+        };
+        let mut processed = false;
+        let label = run.label(item);
+        let result = run.write_fill(item, step, None, &mut |push: &mut Push<'_>| {
+            processed = true;
+            let mut failure: Option<WriteError> = None;
+            let done = a
+                .test_into(&header, &mut |chunk: &[u8]| match push(chunk) {
+                    Ok(()) => true,
+                    Err(e) => {
+                        failure = Some(e);
+                        false
+                    }
+                })
+                .map_err(|e| {
+                    WriteError::Fs(FsError {
+                        path: Some(label.to_string_lossy().into_owned()),
+                        ..e
+                    })
+                })?;
+            match failure {
+                Some(e) => Err(e),
+                None if done => Ok(()),
+                None => Err(WriteError::Cancelled),
+            }
+        });
+        if result.is_err() {
+            return true;
+        }
+        if !processed && let Err(e) = a.skip() {
+            not_reached(run, &planned[next..], Some(e));
+            return false;
         }
     }
     false

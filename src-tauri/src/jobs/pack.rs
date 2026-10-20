@@ -1,4 +1,6 @@
-//! Pack job (design 016 E5): sources into a new ZIP/TAR/TAR.GZ. Planned like
+//! Pack job (design 016 E5, 025 E4/E6): sources into a new ZIP/7z/TAR/TAR.GZ –
+//! ZIP with AES-256 and 7z with AES-256 + encrypted names if a password is
+//! given (never ZipCrypto, never RAR). Planned like
 //! copying (`copy::walk`, links never followed – they are skipped and
 //! reported), written to `.fnf-<job>.part` next to the target and renamed to
 //! its name at the end; an existing archive raises the conflict question.
@@ -11,7 +13,8 @@ use super::report::Reporter;
 use super::{
     Control, Decision, FileMeta, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS, Summary,
 };
-use crate::archive::{ArchiveFormat, zip_time};
+use crate::archive::secrets::Secret;
+use crate::archive::{ArchiveFormat, sevenz, zip_ext_time, zip_time};
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
 use crate::platform::{open_regular_file_no_follow, rename_noreplace};
@@ -79,9 +82,60 @@ impl Read for ExactLen<'_> {
 }
 
 enum Writer {
-    Zip(Box<zip::ZipWriter<BufWriter<File>>>),
+    /// ZIP and the password for its entries (AES-256).
+    Zip(Box<zip::ZipWriter<BufWriter<File>>>, Option<Secret>),
     Tar(Box<tar::Builder<BufWriter<File>>>),
     TarGz(Box<tar::Builder<flate2::write::GzEncoder<BufWriter<File>>>>),
+    /// 7z, one block per file (design 025 E6).
+    SevenZ(Box<sevenz_rust2::ArchiveWriter<BufWriter<File>>>),
+}
+
+/// Options of a ZIP entry: local time + Extended Timestamp (design 025 E7),
+/// AES-256 with a password.
+fn zip_options<'k>(
+    modified: Option<std::time::SystemTime>,
+    mode: u32,
+    password: Option<&'k Secret>,
+) -> zip::write::FullFileOptions<'k, 'static> {
+    let mut o = zip::write::FullFileOptions::default()
+        .last_modified_time(zip_time(modified))
+        .unix_permissions(mode);
+    if let Some(ext) = zip_ext_time(modified) {
+        // only fails beyond 64 KiB of extra data
+        let _ = o.add_extra_field(0x5455, ext, false);
+    }
+    if let Some(pw) = password {
+        o = o.with_aes_encryption(zip::AesMode::Aes256, pw.expose());
+    }
+    o
+}
+
+/// A 7z entry with time and Unix mode.
+fn sevenz_entry(
+    rel: &str,
+    dir: bool,
+    mode: u32,
+    modified: Option<std::time::SystemTime>,
+) -> sevenz_rust2::ArchiveEntry {
+    let mut e = if dir {
+        sevenz_rust2::ArchiveEntry::new_directory(rel)
+    } else {
+        sevenz_rust2::ArchiveEntry::new_file(rel)
+    };
+    if let Some(t) = sevenz::nt_time(modified) {
+        e.last_modified_date = t;
+        e.has_last_modified_date = true;
+    }
+    e.windows_attributes = sevenz::attributes(mode, dir);
+    e.has_windows_attributes = true;
+    e
+}
+
+fn sevenz_io(e: sevenz_rust2::Error) -> io::Error {
+    match e {
+        sevenz_rust2::Error::Io(io, _) | sevenz_rust2::Error::FileOpen(io, _) => io,
+        other => io::Error::other(format!("{other:?}")),
+    }
 }
 
 impl Writer {
@@ -98,13 +152,16 @@ impl Writer {
         };
         let io_err = |e: io::Error| FsError::new(FsErrorCode::Io, e.to_string(), None);
         match self {
-            Writer::Zip(z) => {
-                let opts = zip::write::SimpleFileOptions::default()
-                    .last_modified_time(zip_time(modified))
-                    .unix_permissions(mode);
+            Writer::Zip(z, _) => {
+                // folders are never encrypted (they have no data)
+                let opts = zip_options(modified, mode, None);
                 z.add_directory(format!("{rel}/"), opts)
                     .map_err(|e| crate::archive::zip_error(e, Path::new(rel)))
             }
+            Writer::SevenZ(w) => w
+                .push_archive_entry(sevenz_entry(rel, true, mode, modified), None::<&[u8]>)
+                .map(|_| ())
+                .map_err(|e| io_err(sevenz_io(e))),
             Writer::Tar(b) => {
                 tar_dir(&mut |h| b.append_data(h, format!("{rel}/"), io::empty())).map_err(io_err)
             }
@@ -131,16 +188,21 @@ impl Writer {
             h
         };
         match self {
-            Writer::Zip(z) => {
-                let opts = zip::write::SimpleFileOptions::default()
+            Writer::Zip(z, password) => {
+                let opts = zip_options(meta.modified().ok(), mode_of(meta), password.as_ref())
                     .compression_method(zip::CompressionMethod::Deflated)
                     .compression_level(Some(i64::from(level)))
-                    .last_modified_time(zip_time(meta.modified().ok()))
-                    .unix_permissions(mode_of(meta))
                     .large_file(len >= u64::from(u32::MAX));
                 z.start_file(rel, opts)
                     .map_err(|e| io::Error::other(e.to_string()))?;
                 io::copy(reader, z.as_mut()).map(|_| ())
+            }
+            Writer::SevenZ(w) => {
+                let entry = sevenz_entry(rel, false, mode_of(meta), meta.modified().ok());
+                // the size recorded is what was read: a shrinking file stays consistent
+                w.push_archive_entry(entry, Some(reader))
+                    .map(|_| ())
+                    .map_err(sevenz_io)
             }
             // the header promises `len` bytes: a file that shrank fails instead of a broken archive
             Writer::Tar(b) => b.append_data(&mut header(), rel, ExactLen::new(reader, len)),
@@ -152,10 +214,11 @@ impl Writer {
     fn finish(self) -> io::Result<File> {
         let unbuffer = |w: BufWriter<File>| w.into_inner().map_err(|e| e.into_error());
         match self {
-            Writer::Zip(z) => z
+            Writer::Zip(z, _) => z
                 .finish()
                 .map_err(|e| io::Error::other(e.to_string()))
                 .and_then(unbuffer),
+            Writer::SevenZ(w) => w.finish().and_then(unbuffer),
             Writer::Tar(b) => b.into_inner().and_then(unbuffer),
             Writer::TarGz(b) => b.into_inner()?.finish().and_then(unbuffer),
         }
@@ -199,6 +262,7 @@ pub fn run(
     name: &str,
     format: ArchiveFormat,
     level: Option<u32>,
+    password: Option<&Secret>,
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
@@ -229,6 +293,21 @@ pub fn run(
         }
     };
     if let Err(e) = validate_name(name) {
+        return failed(summary, e);
+    }
+    let password = password.filter(|p| !p.is_empty());
+    if format == ArchiveFormat::Rar
+        || (password.is_some() && !matches!(format, ArchiveFormat::Zip | ArchiveFormat::SevenZ))
+    {
+        let e = FsError::new(
+            FsErrorCode::InvalidPath,
+            if format == ArchiveFormat::Rar {
+                "RAR archives cannot be created (licence) – choose ZIP or 7z"
+            } else {
+                "Only ZIP and 7z can be encrypted"
+            },
+            None,
+        );
         return failed(summary, e);
     }
     match fs::metadata(target_dir) {
@@ -354,11 +433,45 @@ pub fn run(
     };
     let level = level.unwrap_or(DEFAULT_LEVEL).clamp(1, 9);
     let mut writer = match format {
-        ArchiveFormat::Zip => Writer::Zip(Box::new(zip::ZipWriter::new(BufWriter::new(file)))),
+        ArchiveFormat::Zip => Writer::Zip(
+            Box::new(zip::ZipWriter::new(BufWriter::new(file))),
+            password.cloned(),
+        ),
         ArchiveFormat::Tar => Writer::Tar(Box::new(tar::Builder::new(BufWriter::new(file)))),
         ArchiveFormat::TarGz => Writer::TarGz(Box::new(tar::Builder::new(
             flate2::write::GzEncoder::new(BufWriter::new(file), flate2::Compression::new(level)),
         ))),
+        ArchiveFormat::SevenZ => {
+            let made = sevenz_rust2::ArchiveWriter::new(BufWriter::new(file)).map(|mut w| {
+                let lzma2 = sevenz_rust2::encoder_options::Lzma2Options::from_level(level);
+                match password {
+                    Some(pw) => {
+                        w.set_content_methods(vec![
+                            sevenz_rust2::encoder_options::AesEncoderOptions::new(
+                                sevenz::password_of(Some(pw)),
+                            )
+                            .into(),
+                            lzma2.into(),
+                        ]);
+                        // names are encrypted too (design 025 E4)
+                        w.set_encrypt_header(true);
+                    }
+                    None => {
+                        w.set_content_methods(vec![lzma2.into()]);
+                        w.set_encrypt_header(false);
+                    }
+                }
+                w
+            });
+            match made {
+                Ok(w) => Writer::SevenZ(Box::new(w)),
+                Err(e) => {
+                    let _ = fs::remove_file(&tmp);
+                    return failed(summary, FsError::from_io(&sevenz_io(e), &target));
+                }
+            }
+        }
+        ArchiveFormat::Rar => unreachable!("refused above"),
     };
 
     let result = (|| -> Result<(), Fatal> {

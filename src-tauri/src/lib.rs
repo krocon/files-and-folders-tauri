@@ -22,7 +22,8 @@
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
 //! - [`search`]       recursive search: criteria, name/content matching, cycle-safe walk (design 009)
 //! - [`about`]        data for the About dialog (version, platform; design 017)
-//! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ index, name checks, zip-bomb limits (design 016)
+//! - [`archive`]      archives as virtual folders: ZIP/TAR/TAR.GZ/7z/RAR index, name checks, zip-bomb limits,
+//!   passwords, view cache (designs 016, 025)
 //! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`commands`]     thin Tauri command layer
@@ -94,6 +95,10 @@ pub fn run() {
         })
         .setup(|app| {
             commands::init_session(app.handle());
+            // files opened from archives: private cache folder, stale runs removed (design 025 E5)
+            if let Ok(dir) = app.path().app_cache_dir() {
+                archive::view::init(&dir.join("archive-view"));
+            }
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
@@ -234,11 +239,16 @@ pub fn run() {
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths,
-            commands::os_drag::start_os_drag
+            commands::os_drag::start_os_drag,
+            commands::set_archive_password
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let RunEvent::Exit = event {
+                archive::view::cleanup();
+                return;
+            }
             // Cmd+Q / quit from the menu does not send CloseRequested
             if let RunEvent::ExitRequested { api, .. } = event {
                 let jobs = app.state::<commands::JobsState>();

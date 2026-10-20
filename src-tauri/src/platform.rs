@@ -1,6 +1,7 @@
 //! Platform functions with one signature per OS (CLAUDE.md §4).
 //! Submodules: [`volumes`] (drives, mount points), [`desktop`] (file manager, terminal).
 
+pub mod clock;
 pub mod desktop;
 pub mod io_hints;
 pub mod os_drag;
