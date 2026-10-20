@@ -41,6 +41,7 @@ describe('built-in themes', () => {
       'classic-norton',
       'light',
       'dark',
+      'crimson',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });

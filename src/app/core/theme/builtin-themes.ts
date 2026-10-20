@@ -8,6 +8,7 @@ import nortonJson from './legacy/norton.json';
 import paperJson from './legacy/paper.json';
 import { ContrastAdjustment } from './contrast-fix';
 import { convertLegacy } from './legacy-theme';
+import crimsonJson from './themes/crimson.json';
 import darkJson from './themes/dark.json';
 import lightJson from './themes/light.json';
 import { Theme } from './theme.models';
@@ -20,6 +21,8 @@ import { Theme } from './theme.models';
  */
 export const LIGHT: Theme = { ...lightJson, builtIn: true };
 export const DARK: Theme = { ...darkJson, builtIn: true };
+/** Dark scheme with a crimson accent (after the Nest.js course slides); base = `dark`. */
+export const CRIMSON: Theme = { ...crimsonJson, builtIn: true };
 
 interface LegacyFile {
   readonly name: string;
@@ -56,4 +59,4 @@ export const CLASSIC_THEMES: readonly Theme[] = CLASSIC_FILES.map((file) => {
   };
 });
 
-export const BUILT_IN_THEMES: readonly Theme[] = [...CLASSIC_THEMES, LIGHT, DARK];
+export const BUILT_IN_THEMES: readonly Theme[] = [...CLASSIC_THEMES, LIGHT, DARK, CRIMSON];

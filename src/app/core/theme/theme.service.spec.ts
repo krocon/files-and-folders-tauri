@@ -149,6 +149,7 @@ describe('ThemeService', () => {
       ...CLASSIC_THEMES.map((t) => t.id),
       'light',
       'dark',
+      'crimson',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();
@@ -260,6 +261,8 @@ describe('ThemeService', () => {
     await s.init();
     await s.next();
     expect(s.active().id).toBe('dark');
+    await s.next();
+    expect(s.active().id).toBe('crimson');
     await s.next();
     expect(s.active().id).toBe('classic-light');
     await s.next();
