@@ -13,7 +13,7 @@ use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::model::DirectoryListing;
 use crate::opener;
-use crate::paths::{Danger, danger_of, expand_tilde, validate_input_path};
+use crate::paths::{Danger, expand_tilde, validate_input_path};
 use crate::rename_presets::{self, LoadedPresets, RenamePresets};
 use crate::session::{self, LoadOutcome, LoadedSession, Session, WindowGeometry};
 use crate::themes::{self, LoadedThemes, ThemesFile};
@@ -402,12 +402,14 @@ pub fn check_paths<R: Runtime>(
     paths: Vec<String>,
 ) -> Result<Vec<PathCheck>, FsError> {
     let home = home_dir(&app).ok();
+    // like the jobs: also where the path really leads (external review #2)
+    let mut check = crate::paths::DangerCheck::new(home.as_deref());
     paths
         .into_iter()
         .map(|p| {
             let v = validate_input_path(&p)?;
             Ok(PathCheck {
-                danger: danger_of(&v, home.as_deref()),
+                danger: check.of(&v),
                 path: p,
             })
         })

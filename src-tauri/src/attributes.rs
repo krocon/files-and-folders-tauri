@@ -7,7 +7,6 @@
 use crate::error::{FsError, FsErrorCode};
 use crate::platform::attributes as sys;
 use serde::{Deserialize, Serialize};
-use std::fs::Metadata;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -15,8 +14,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const MAX_ITEMS: usize = 10_000;
 /// Permission bits incl. setuid, setgid and sticky.
 pub const MODE_MASK: u32 = 0o7777;
-/// 1601-01-01 (Windows `FILETIME` 0) … 9999-12-31: what every OS can store.
-pub const MIN_MS: i64 = -11_644_473_600_000;
+/// 1601-01-01 00:00:00.001 … 9999-12-31: what every OS can store. Not 1601-01-01
+/// 00:00:00.000 itself: that is `FILETIME` 0, which Windows reads as "leave the
+/// time unchanged" (external review #6).
+pub const MIN_MS: i64 = -11_644_473_600_000 + 1;
 pub const MAX_MS: i64 = 253_402_300_799_999;
 
 /// Which entries a change applies to (selected ones and the contents of folders, E2).
@@ -183,9 +184,23 @@ impl AttrChange {
     }
 
     /// The owner gets read or execute permission they do not have yet: a folder
-    /// is then changed before its contents, otherwise after them (E7).
+    /// is then (partly) changed before its contents, otherwise after them (E7).
     pub fn owner_gains_access(&self, current: u32) -> bool {
         self.new_mode(current) & !current & 0o500 != 0
+    }
+
+    /// When a folder with mode `current` is changed relative to its contents
+    /// (E7, external review #8).
+    pub fn folder_order(&self, current: u32) -> FolderOrder {
+        if !self.owner_gains_access(current) {
+            return FolderOrder::After;
+        }
+        let new = self.new_mode(current);
+        if new & 0o500 == 0o500 {
+            return FolderOrder::First; // the owner can read and enter it afterwards
+        }
+        // e.g. u+x u-r: first only what is gained, the rest after the contents
+        FolderOrder::Staged(current | (new & !current))
     }
 
     /// Fixes "now" for every entry of the job.
@@ -214,6 +229,17 @@ impl AttrChange {
     }
 }
 
+/// When a folder is changed during a recursive walk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderOrder {
+    /// Before its contents (the change opens it for the owner).
+    First,
+    /// The gained bits (this mode) before the contents, the full change after them.
+    Staged(u32),
+    /// After its contents (`chmod -R a-x` does not lock itself out).
+    After,
+}
+
 /// Milliseconds since the Unix epoch (negative = before 1970) as a time.
 pub fn time_of_ms(ms: i64) -> SystemTime {
     let d = Duration::from_millis(ms.unsigned_abs());
@@ -238,51 +264,25 @@ impl Resolved {
         self.mode_set | self.mode_clear != 0
     }
 
-    /// Applies the change to one entry that is no link (`meta` from `symlink_metadata`).
-    /// Order: attributes, permissions, times – setting the times last keeps them.
-    pub fn apply(&self, path: &Path, meta: &Metadata) -> Result<(), FsError> {
-        let io = |e: std::io::Error| FsError::from_io(&e, path);
-        if !self.flags.is_empty() {
-            sys::set_flags(path, meta, &self.flags).map_err(io)?;
-        }
-        if self.changes_mode() {
-            self.apply_mode(path, meta)?;
-        }
-        if !self.times.is_empty() {
-            sys::set_times(path, &self.times).map_err(io)?;
-        }
-        Ok(())
-    }
-
-    #[cfg(unix)]
-    fn apply_mode(&self, path: &Path, meta: &Metadata) -> Result<(), FsError> {
-        use std::os::unix::fs::MetadataExt;
-        let current = meta.mode() & MODE_MASK;
-        let change = AttrChange {
-            mode_set: self.mode_set,
-            mode_clear: self.mode_clear,
-            ..AttrChange::default()
+    /// What changes on an entry that is no link (`st` read right before).
+    pub fn for_entry(&self, st: &sys::Stat) -> sys::Apply {
+        let mode = if self.changes_mode() && cfg!(unix) {
+            let change = AttrChange {
+                mode_set: self.mode_set,
+                mode_clear: self.mode_clear,
+                ..AttrChange::default()
+            };
+            Some(change.new_mode(st.mode)).filter(|&m| m != st.mode) // no needless change of ctime
+        } else if self.changes_mode() {
+            Some(0) // refused by the platform (validated before)
+        } else {
+            None
         };
-        let mode = change.new_mode(current);
-        if mode == current {
-            return Ok(()); // no needless change of ctime
+        sys::Apply {
+            mode,
+            flags: self.flags,
+            times: self.times,
         }
-        sys::set_mode(path, mode).map_err(|e| {
-            if e.kind() == std::io::ErrorKind::Unsupported {
-                symlink_skipped(path) // a link swapped in since the check
-            } else {
-                FsError::from_io(&e, path)
-            }
-        })
-    }
-
-    #[cfg(not(unix))]
-    fn apply_mode(&self, path: &Path, _meta: &Metadata) -> Result<(), FsError> {
-        Err(FsError::new(
-            FsErrorCode::InvalidPath,
-            "Permissions cannot be changed on this system",
-            Some(path),
-        ))
     }
 }
 
@@ -433,5 +433,40 @@ mod tests {
         assert_eq!(r.times.created, None);
         assert!(r.flags.is_empty());
         assert_eq!(time_of_ms(1234), UNIX_EPOCH + Duration::from_millis(1234));
+    }
+
+    /// External review #8: a folder the owner can read and enter afterwards is
+    /// changed first; one that only gains a part gets that part first.
+    #[test]
+    fn folder_order_opens_up_before_and_closes_after_the_contents() {
+        let c = |set, clear| AttrChange {
+            mode_set: set,
+            mode_clear: clear,
+            ..AttrChange::default()
+        };
+        assert_eq!(c(0o500, 0).folder_order(0o000), FolderOrder::First);
+        assert_eq!(c(0o100, 0).folder_order(0o600), FolderOrder::First);
+        assert_eq!(
+            c(0o100, 0o400).folder_order(0o600),
+            FolderOrder::Staged(0o700)
+        );
+        assert_eq!(
+            c(0o400, 0o100).folder_order(0o300),
+            FolderOrder::Staged(0o700)
+        );
+        assert_eq!(c(0o020, 0).folder_order(0o700), FolderOrder::After);
+        assert_eq!(c(0, 0o111).folder_order(0o755), FolderOrder::After);
+    }
+
+    /// External review #6: 1601-01-01 00:00:00.000 is `FILETIME` 0 ("unchanged").
+    #[test]
+    fn the_earliest_time_is_one_millisecond_after_1601() {
+        assert_eq!(MIN_MS, -11_644_473_599_999);
+        let at = |ms| AttrChange {
+            created: Some(TimeValue::At { ms }),
+            ..AttrChange::default()
+        };
+        assert!(at(MIN_MS).validate_for(WINDOWS).is_ok());
+        assert!(at(MIN_MS - 1).validate_for(WINDOWS).is_err());
     }
 }

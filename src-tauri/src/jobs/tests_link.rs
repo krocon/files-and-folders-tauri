@@ -356,3 +356,56 @@ fn many_links_and_cancel() {
     h.finish(&blocker);
     assert_eq!(fs::read_dir(&other).unwrap().count(), 0);
 }
+
+/// External review 031 #11: the link gets the source's name byte for byte (Linux
+/// allows names that are no UTF-8; macOS file systems do not).
+#[cfg(target_os = "linux")]
+#[test]
+fn a_name_that_is_no_utf8_is_kept() {
+    use std::os::unix::ffi::OsStrExt;
+    let d = tempdir().unwrap();
+    let (src_dir, dst) = (d.path().join("src"), d.path().join("dst"));
+    fs::create_dir(&src_dir).unwrap();
+    fs::create_dir(&dst).unwrap();
+    let src = src_dir.join(std::ffi::OsStr::from_bytes(b"a\xffb.txt"));
+    fs::write(&src, "x").unwrap();
+    let ctl = Control::default();
+    let (state, summary) = link::run(
+        "x",
+        std::slice::from_ref(&src),
+        &dst,
+        &LinkOptions::default(),
+        &ctl,
+        &|_| {},
+    );
+    assert_eq!(state, JobState::Done, "{:?}", summary.errors);
+    let names: Vec<_> = fs::read_dir(&dst)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(names.len(), 1);
+    assert_eq!(names[0].as_bytes(), b"a\xffb.txt", "link name lost bytes");
+    assert_eq!(fs::read_link(dst.join(&names[0])).unwrap(), src);
+}
+
+/// External review 031 #1: a trailing separator names the folder itself.
+#[test]
+fn a_trailing_separator_on_the_target_folder() {
+    let h = Harness::new();
+    let (_d, src, dst) = setup();
+    let f = src.join("Grüße 🎉.txt");
+    let target = format!("{}{}", s(&dst), std::path::MAIN_SEPARATOR);
+    let id = h
+        .mgr
+        .start(JobSpec::Link {
+            sources: vec![s(&f)],
+            target_dir: target,
+            options: LinkOptions::default(),
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    let JobSpec::Link { target_dir, .. } = &info.spec else {
+        panic!()
+    };
+    assert_eq!(target_dir, &s(&dst));
+}

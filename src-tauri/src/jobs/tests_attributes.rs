@@ -544,4 +544,203 @@ mod unix {
         assert_eq!(info.state, JobState::DoneWithErrors);
         assert_eq!(mode(&dir), 0o700);
     }
+
+    // --- external review 20.10.2026 ---
+
+    /// #1a: `link/` must not make the system follow the selected link.
+    #[test]
+    fn a_trailing_separator_still_names_the_link() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let target = d.path().join("target");
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("f"), "x").unwrap();
+        chmod(&target.join("f"), 0o644);
+        symlink(&target, d.path().join("link")).unwrap();
+        for raw in [
+            format!("{}/link/", s(d.path())),
+            format!("{}/link/.", s(d.path())),
+        ] {
+            let id = h
+                .mgr
+                .start(JobSpec::Attributes {
+                    paths: vec![raw],
+                    change: bits(0o002, 0),
+                    recursive: true,
+                    apply_to: ApplyTo::All,
+                })
+                .unwrap();
+            let info = h.finish(&id);
+            assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+            assert_eq!(
+                info.summary.unwrap().errors[0].error.code,
+                FsErrorCode::SymlinkSkipped
+            );
+        }
+        assert_eq!(mode(&target.join("f")), 0o644, "the link was followed");
+    }
+
+    /// #1b/#1c: `..` behind a link leads elsewhere than checked – refused, nothing changes.
+    #[test]
+    fn dotdot_behind_a_link_is_refused() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let other = d.path().join("other");
+        fs::create_dir_all(other.join("deep")).unwrap();
+        fs::write(other.join("f"), "x").unwrap();
+        chmod(&other.join("f"), 0o644);
+        let proj = d.path().join("proj");
+        fs::create_dir(&proj).unwrap();
+        symlink(other.join("deep"), proj.join("link")).unwrap();
+        let home = d.path().join("home");
+        fs::create_dir_all(home.join("sub")).unwrap();
+        chmod(&home, 0o755);
+        symlink(home.join("sub"), proj.join("to-home-sub")).unwrap();
+        h.mgr.set_home(Some(home.clone()));
+        for raw in [
+            format!("{}/link/..", s(&proj)),
+            format!("{}/to-home-sub/..", s(&proj)),
+        ] {
+            let err = h
+                .mgr
+                .start(JobSpec::Attributes {
+                    paths: vec![raw],
+                    change: bits(0o002, 0),
+                    recursive: true,
+                    apply_to: ApplyTo::All,
+                })
+                .unwrap_err();
+            assert_eq!(err.code, FsErrorCode::InvalidPath);
+        }
+        assert_eq!(mode(&other.join("f")), 0o644);
+        assert_eq!(mode(&home), 0o755, "home changed recursively despite E8");
+    }
+
+    /// #2: `x/rootlink/etc` is `/etc` – the danger check looks where the path leads.
+    #[test]
+    fn a_linked_folder_on_the_way_does_not_hide_a_dangerous_place() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        symlink("/", d.path().join("rootlink")).unwrap();
+        let err = h
+            .mgr
+            .start(spec(
+                &[&d.path().join("rootlink").join("etc")],
+                bits(0o002, 0),
+                true,
+                ApplyTo::All,
+            ))
+            .unwrap_err();
+        assert_eq!(err.code, FsErrorCode::DangerousPath);
+    }
+
+    /// #3: the walk stays on the file system of the selected folder. Needs a
+    /// tmpfs mount (root, e.g. the container); skipped elsewhere.
+    #[test]
+    fn recursion_stays_on_one_file_system() {
+        if !is_root() {
+            return;
+        }
+        let d = tempdir().unwrap();
+        let sub = d.path().join("sub");
+        fs::create_dir(&sub).unwrap();
+        let (c_src, c_dst, c_fs) = (
+            std::ffi::CString::new("tmpfs").unwrap(),
+            std::ffi::CString::new(s(&sub)).unwrap(),
+            std::ffi::CString::new("tmpfs").unwrap(),
+        );
+        // SAFETY: valid NUL-terminated strings, no data
+        let rc = unsafe {
+            libc::mount(
+                c_src.as_ptr(),
+                c_dst.as_ptr(),
+                c_fs.as_ptr(),
+                0,
+                std::ptr::null(),
+            )
+        };
+        if rc != 0 {
+            return; // no permission to mount (container without CAP_SYS_ADMIN)
+        }
+        struct Unmount(std::ffi::CString);
+        impl Drop for Unmount {
+            fn drop(&mut self) {
+                // SAFETY: valid path
+                unsafe { libc::umount(self.0.as_ptr()) };
+            }
+        }
+        let _unmount = Unmount(c_dst.clone());
+        fs::write(sub.join("inner"), "x").unwrap();
+        chmod(&sub.join("inner"), 0o644);
+        fs::write(d.path().join("outer"), "x").unwrap();
+        chmod(&d.path().join("outer"), 0o644);
+        let h = Harness::new();
+        let info = h.attrs_with(&[d.path()], bits(0o002, 0), true, ApplyTo::Files);
+        assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+        assert_eq!(mode(&d.path().join("outer")), 0o646);
+        assert_eq!(
+            mode(&sub.join("inner")),
+            0o644,
+            "crossed into another file system"
+        );
+        assert_eq!(info.summary.unwrap().items_skipped, 1, "the mount point");
+    }
+
+    /// #5: a folder whose contents cannot be read counts once and stays as it is.
+    #[test]
+    fn an_unreadable_folder_counts_once_and_stays_unchanged() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let top = d.path().join("top");
+        let locked = top.join(crate::jobs::attributes::UNOPENABLE_FOR_TESTS);
+        fs::create_dir_all(&locked).unwrap();
+        fs::write(top.join("f"), "x").unwrap();
+        chmod(&top, 0o750);
+        chmod(&locked, 0o750);
+        chmod(&top.join("f"), 0o640);
+        let info = h.attrs_with(&[&top], bits(0o005, 0), true, ApplyTo::All);
+        assert_eq!(info.state, JobState::DoneWithErrors);
+        let summary = info.summary.unwrap();
+        assert_eq!(summary.items_failed, 1, "{:?}", summary.errors);
+        assert_eq!(summary.items_done, 2, "top and f – not the locked folder");
+        assert_eq!(mode(&locked), 0o750, "left unchanged");
+        assert_eq!(mode(&top), 0o755);
+        assert_eq!(
+            info.progress.items_done, 3,
+            "every entry once in the progress"
+        );
+    }
+
+    /// #8: u+x u-r – the folder gains x first, its contents follow, then it loses r.
+    #[test]
+    fn a_change_that_opens_and_closes_a_folder_reaches_its_contents() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let dir = d.path().join("dir");
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("f"), "x").unwrap();
+        chmod(&dir.join("f"), 0o600);
+        chmod(&dir, 0o600);
+        let info = h.attrs_with(&[&dir], bits(0o100, 0o400), true, ApplyTo::All);
+        chmod(&dir, 0o700);
+        assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+        assert_eq!(mode(&dir.join("f")), 0o300, "contents changed");
+        assert_eq!(
+            info.summary.unwrap().items_done,
+            2,
+            "the folder counts once"
+        );
+    }
+
+    /// #8 without root: the final mode of the folder is the asked one.
+    #[test]
+    fn a_staged_folder_ends_with_the_asked_mode() {
+        let h = Harness::new();
+        let d = tempdir().unwrap();
+        let dir = d.path().join("dir");
+        fs::create_dir(&dir).unwrap();
+        chmod(&dir, 0o600);
+        h.attrs_with(&[&dir], bits(0o100, 0o400), true, ApplyTo::All);
+        assert_eq!(mode(&dir), 0o300);
+    }
 }

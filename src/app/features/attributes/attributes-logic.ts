@@ -111,8 +111,15 @@ export function fromLocalInput(value: string): number | null {
   }
   const [y, mo, d, h, mi, s] = m.slice(1).map((x) => Number(x ?? 0));
   const date = new Date(y, mo - 1, d, h, mi, s);
-  // 2026-02-31 would roll over into March – not a valid input
-  if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) {
+  // 2026-02-31 would roll over into March, 02:30 in the gap of the switch to
+  // summer time silently into 03:30 (external review #12) – no valid input
+  if (
+    date.getFullYear() !== y ||
+    date.getMonth() !== mo - 1 ||
+    date.getDate() !== d ||
+    date.getHours() !== h ||
+    date.getMinutes() !== mi
+  ) {
     return null;
   }
   return date.getTime();

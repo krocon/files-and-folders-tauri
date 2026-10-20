@@ -60,7 +60,11 @@ export const AT_EN = {
   withErrors: (n: number) => `Attributes changed – ${entries(n)} could not be changed (see Tasks)`,
   done: (n: number, skipped: number) =>
     `Attributes of ${entries(n)} changed${
-      skipped === 0 ? '' : skipped === 1 ? ' (1 link skipped)' : ` (${skipped} links skipped)`
+      skipped === 0
+        ? ''
+        : skipped === 1
+          ? ' (1 link or other drive skipped)'
+          : ` (${skipped} links or other drives skipped)`
     }`,
 };
 

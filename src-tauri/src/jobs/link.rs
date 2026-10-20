@@ -11,6 +11,7 @@ use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
 use crate::platform;
 use serde::{Deserialize, Serialize};
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
@@ -44,7 +45,11 @@ pub fn relative_target(source: &Path, link_dir: &Path) -> Option<PathBuf> {
     }
     let s: Vec<Component> = source.components().collect();
     let d: Vec<Component> = link_dir.components().collect();
-    let common = s.iter().zip(&d).take_while(|(a, b)| a == b).count();
+    let common = s
+        .iter()
+        .zip(&d)
+        .take_while(|(a, b)| same_component(a, b))
+        .count();
     // the root (and on Windows the drive prefix) must be shared
     let root_len = s
         .iter()
@@ -66,17 +71,46 @@ pub fn relative_target(source: &Path, link_dir: &Path) -> Option<PathBuf> {
     Some(rel)
 }
 
-/// `a` and `b` (links not followed) name the same entry. Unix: device + inode;
-/// Windows (no stable id in std): kind, size and modification time.
-fn same_entry(a: &Path, b: &Path) -> bool {
-    match (fs::symlink_metadata(a), fs::symlink_metadata(b)) {
-        (Ok(ma), Ok(mb)) => match (platform::file_id(&ma), platform::file_id(&mb)) {
-            (Some(x), Some(y)) => x == y,
-            _ => {
-                ma.file_type() == mb.file_type()
-                    && platform::entry_stamp(&ma) == platform::entry_stamp(&mb)
-            }
+/// The drive or share of a Windows prefix, comparable: `c:`, `C:` and `\\?\C:`
+/// are one drive; `\\srv\share` and `\\?\UNC\SRV\Share` one share (external
+/// review 031 #9). Ignoring case is right for drive letters and server/share
+/// names; the file-system check in `link_target` stays the last word.
+fn prefix_key(p: std::path::PrefixComponent<'_>) -> Option<String> {
+    use std::path::Prefix;
+    let lower = |s: &std::ffi::OsStr| s.to_string_lossy().to_lowercase();
+    match p.kind() {
+        Prefix::Disk(d) | Prefix::VerbatimDisk(d) => {
+            Some(format!("{}:", char::from(d.to_ascii_lowercase())))
+        }
+        Prefix::UNC(server, share) | Prefix::VerbatimUNC(server, share) => {
+            Some(format!(r"\\{}\{}", lower(server), lower(share)))
+        }
+        Prefix::Verbatim(_) | Prefix::DeviceNS(_) => None,
+    }
+}
+
+fn same_component(a: &Component<'_>, b: &Component<'_>) -> bool {
+    match (a, b) {
+        (Component::Prefix(x), Component::Prefix(y)) => match (prefix_key(*x), prefix_key(*y)) {
+            (Some(kx), Some(ky)) => kx == ky,
+            _ => x == y,
         },
+        _ => a == b,
+    }
+}
+
+/// `a` and `b` (links not followed) name the same entry: device + inode (Unix),
+/// volume serial number + file index (Windows, external review 031 #10).
+/// Without an id (a file system that has none): kind, size and modification time.
+fn same_entry(a: &Path, b: &Path) -> bool {
+    if let (Some(x), Some(y)) = (platform::entry_id(a), platform::entry_id(b)) {
+        return x == y;
+    }
+    match (fs::symlink_metadata(a), fs::symlink_metadata(b)) {
+        (Ok(ma), Ok(mb)) => {
+            ma.file_type() == mb.file_type()
+                && platform::entry_stamp(&ma) == platform::entry_stamp(&mb)
+        }
         _ => false,
     }
 }
@@ -113,16 +147,31 @@ fn link_target(source: &Path, target_dir: &Path, relative: bool) -> Result<PathB
     Ok(rel)
 }
 
-/// Creates the link for one source; returns the link's path.
+/// Creates the link for one source; returns the link's path. `name` is the
+/// typed new name or the source's own name – taken as it is, also when it is
+/// no UTF-8 (external review 031 #11).
 fn link_one(
     source: &Path,
     target_dir: &Path,
-    name: &str,
+    name: &OsStr,
     options: &LinkOptions,
 ) -> Result<PathBuf, FsError> {
     // exists (a dangling link too); a virtual archive path does not
     fs::symlink_metadata(source).map_err(|e| FsError::from_io(&e, source))?;
-    validate_name(name)?;
+    match name.to_str() {
+        Some(n) => validate_name(n)?,
+        // not UTF-8 (Unix): the name of an existing entry – one segment, never `.`/`..`
+        None if Path::new(name).components().count() != 1
+            || Path::new(name).file_name() != Some(name) =>
+        {
+            return Err(FsError::new(
+                FsErrorCode::InvalidName,
+                "The name is not a single file name",
+                Some(source),
+            ));
+        }
+        None => {}
+    }
     let target = link_target(source, target_dir, options.relative)?;
     // Windows: a link to a folder (also through links) must be a folder link
     let dir = fs::metadata(source).map(|m| m.is_dir()).unwrap_or(false);
@@ -186,11 +235,11 @@ pub fn run(
             break;
         }
         let source = normalize_lexically(source);
-        let name = match (&options.rename_to, single) {
-            (Some(n), true) => n.clone(),
+        let name: OsString = match (&options.rename_to, single) {
+            (Some(n), true) => n.into(),
             _ => source
                 .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
+                .map(OsStr::to_os_string)
                 .unwrap_or_default(),
         };
         report.progress.current = Some(source.to_string_lossy().into_owned());
@@ -252,5 +301,23 @@ mod tests {
             Some(PathBuf::from(r"..\b.txt"))
         );
         assert_eq!(r(r"D:\a\b.txt", r"C:\a"), None);
+    }
+
+    /// External review 031 #9: the drive letter's case and the verbatim prefix
+    /// do not make another drive.
+    #[cfg(windows)]
+    #[test]
+    fn drive_letters_ignore_case_and_the_verbatim_prefix() {
+        let r = |s: &str, d: &str| relative_target(Path::new(s), Path::new(d));
+        assert_eq!(
+            r(r"c:\a\b.txt", r"C:\a\x"),
+            Some(PathBuf::from(r"..\b.txt"))
+        );
+        assert_eq!(r(r"\\?\C:\a\b.txt", r"C:\a"), Some(PathBuf::from("b.txt")));
+        assert_eq!(
+            r(r"\\SRV\Share\a.txt", r"\\?\UNC\srv\share\x"),
+            Some(PathBuf::from(r"..\a.txt"))
+        );
+        assert_eq!(r(r"\\srv\other\a.txt", r"\\srv\share"), None);
     }
 }
