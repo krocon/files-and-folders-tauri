@@ -312,6 +312,48 @@ pub fn file_id(meta: &Metadata) -> Option<(u64, u64)> {
     }
 }
 
+/// Identity of the entry at `path` (links not followed): Unix device + inode;
+/// Windows volume serial number + file index from `GetFileInformationByHandle`
+/// (external review 031 #10 – std's `Metadata` has no stable id there). `None`
+/// if it cannot be read.
+pub fn entry_id(path: &Path) -> Option<(u64, u64)> {
+    #[cfg(unix)]
+    {
+        file_id(&fs::symlink_metadata(path).ok()?)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::Storage::FileSystem::{
+            BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle,
+        };
+        const FILE_READ_ATTRIBUTES: u32 = 0x80;
+        const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        // std adds `\\?\` for long paths; folders need backup semantics; a link is opened itself
+        let file = fs::OpenOptions::new()
+            .access_mode(FILE_READ_ATTRIBUTES)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
+            .open(path)
+            .ok()?;
+        let mut info = BY_HANDLE_FILE_INFORMATION::default();
+        // SAFETY: the handle is open for the call; info is a valid out-pointer
+        let ok = unsafe { GetFileInformationByHandle(file.as_raw_handle() as _, &mut info) };
+        (ok != 0).then(|| {
+            (
+                u64::from(info.dwVolumeSerialNumber),
+                (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
+            )
+        })
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        None
+    }
+}
+
 /// What tells an entry apart from a new one under the same name later (undo,
 /// design 007 review R1). Unix: device + inode + birth time (inode numbers are
 /// reused at once after a delete; without a birth time – file system or kernel
@@ -508,6 +550,27 @@ mod tests {
         assert!(!a.exists());
         rename_noreplace(&t.path().join("d"), &t.path().join("e")).unwrap();
         assert!(t.path().join("e").is_dir());
+    }
+
+    /// External review 031 #10: two identical copies are two entries – also on Windows.
+    #[test]
+    fn entry_id_tells_identical_copies_apart() {
+        let t = tempdir().unwrap();
+        let (a, b) = (t.path().join("a ä"), t.path().join("b"));
+        fs::write(&a, "same").unwrap();
+        fs::copy(&a, &b).unwrap();
+        let m = fs::metadata(&a).unwrap().modified().unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&b)
+            .unwrap()
+            .set_modified(m)
+            .unwrap();
+        let (ia, ib) = (entry_id(&a), entry_id(&b));
+        assert!(ia.is_some());
+        assert_ne!(ia, ib);
+        assert_eq!(entry_id(&t.path().join(".").join("a ä")), ia);
+        assert_eq!(entry_id(&t.path().join("missing")), None);
     }
 
     #[test]
