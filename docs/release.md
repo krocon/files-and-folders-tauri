@@ -49,6 +49,9 @@ Ohne Secrets baut `release.yml` **unsignierte** Pakete. Folgen für Nutzer: READ
 
 Voraussetzung: Apple Developer Program (Team), Zertifikat **Developer ID Application**.
 
+Schritt-für-Schritt (Zertifikat, API-Schlüssel, lokaler Build, Prüfung mit `spctl`/`stapler`, Browser-Prompt):
+**[macos-signing.md](macos-signing.md)** (Prompt 031).
+
 | Secret | Inhalt |
 |---|---|
 | `APPLE_CERTIFICATE` | `.p12` des Developer-ID-Zertifikats, base64 (`base64 -i cert.p12`) |
@@ -57,6 +60,7 @@ Voraussetzung: Apple Developer Program (Team), Zertifikat **Developer ID Applica
 | `APPLE_ID` | Apple-ID für die Notarisierung |
 | `APPLE_PASSWORD` | app-spezifisches Passwort dieser Apple-ID |
 | `APPLE_TEAM_ID` | Team-ID |
+| `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_PRIVATE_KEY` | statt Apple-ID (empfohlen): App-Store-Connect-API-Schlüssel – Issuer-ID, Schlüssel-ID, Inhalt der `.p8` |
 
 Tauri signiert mit Hardened Runtime und reicht bei gesetzten `APPLE_ID`/`APPLE_PASSWORD`/`APPLE_TEAM_ID` zur
 Notarisierung ein (statt Apple-ID geht auch ein App-Store-Connect-API-Schlüssel: `APPLE_API_KEY`,
