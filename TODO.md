@@ -9,6 +9,8 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 
 ## 1. Laufende Prompts
 
+- [ ] **030 Ordner-Cache + schnelleres Listing (SMB)** – Prompt geschrieben (20.10.), baut auf 029 auf. Teil C
+      (`getattrlistbulk`) braucht Test und Messung auf Marcs Mac an der SMB-Freigabe.
 - [x] **029 Bedienbar bei langen Jobs** (20.10., Branch `feat/reaktionsfaehig-bei-jobs`, gepusht, **nicht** gemergt):
       Anlass Marcs Screenshot (Ziel-Panel beim Kopieren aufs langsame Laufwerk gesperrt). Auffrischen ohne Overlay,
       Drossel, Hinweis „antwortet langsam“ + Esc, Tab-Wechsel sofort aus dem letzten Listing, Watcher hält Rescans von

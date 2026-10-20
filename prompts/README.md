@@ -43,6 +43,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 021 | [021-shell-leiste.md](021-shell-leiste.md) | Shell-Leiste (`TOGGLE_SHELL`): Befehlszeile im Ordner des aktiven Panels, gestreamte Ausgabe als Job, `cd` navigiert das Panel, Verlauf, Sicherheitsmodell | 004, 005, 011, 012 | M |
 | 022–028 | (Vorschlag aus 018, noch kein Prompt) | Konfigurations-Editoren · Editor · Attribute · Archive erweitert · Import alter Konfiguration · Persistenz je Ordner · Drag & Drop erweitert – Details: `docs/feature-parity.md` „Folge-Prompts“ | 018 | je S–M |
 | 029 | [029-reaktionsfaehig-bei-jobs.md](029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
+| 030 | [030-ordner-cache-smb.md](030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand, `getattrlistbulk` auf macOS; kein rekursives Vorladen | 029, 012 | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
