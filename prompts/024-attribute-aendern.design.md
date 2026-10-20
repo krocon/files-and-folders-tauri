@@ -146,7 +146,7 @@ Fehlerzeile (role=alert)                      [Cancel] [Change] (Strg/⌘+Enter)
     changed“;
   - vier markierte Einträge (`b.txt` 664, `c 🎉.txt` 600, `Grüße ä.txt`, Link `link-b`): Gruppe/Andere „gemischt“
     (Strich), Hinweis „1 link stays unchanged“; Änderungszeit über den Kalender auf den 15.10. → die Liste zeigt das
-    neue Datum ohne Auffrischen, der Link (und sein Ziel nur, weil selbst markiert) – Link unverändert, Task-Liste:
+    neue Datum ohne Auffrischen; `link-b` blieb unverändert (sein Ziel `b.txt` war selbst markiert), Task-Liste:
     „1 failed … This is a link – links are left unchanged“;
   - `Ordner äö` rekursiv, „Nur Ordner“, `o+rx` → alle drei Ordner 755, Dateien 640, Link `zu-aussen` und der Ordner
     außerhalb unberührt, Meldung „… 3 entries changed (1 link skipped)“;
