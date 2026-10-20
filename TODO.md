@@ -10,8 +10,7 @@ Fertig und in `main`: **001–020** (Details: `prompts/README.md`, Design-Dokume
 ## 1. Laufende Prompts
 
 - [x] **030 Ordner-Cache + schnelleres Listing (SMB)** (20.10., Branch `feat/ordner-cache-smb` auf 029, gepusht, nicht
-      gemergt). **Bei Marc auf dem Mac:** (1) `cd src-tauri && cargo test bulk_list` – kompiliert der macOS-Teil, ist
-      `bulk_equals_portable_on_macos` grün? (im Container nicht baubar); (2) Messung an der SMB-Freigabe:
+      gemergt). **Bei Marc auf dem Mac:** (1) ✅ `cargo test bulk_list` auf dem Mac grün (20.10.); (2) Messung an der SMB-Freigabe:
       `FNF_BENCH_DIR=/Volumes/<share>/<ordner> cargo test --release --lib listing_speed -- --ignored --nocapture`
       (Ordner mit ~200 und ~2 000 Einträgen); (3) App: in einen SMB-Ordner, Unterordner, zurück → sofort da, Statuszeile
       „Stand … · wird geprüft …“, F6/F8 kurz gesperrt.

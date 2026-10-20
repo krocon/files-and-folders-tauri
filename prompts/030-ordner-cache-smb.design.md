@@ -75,7 +75,7 @@ E2E: Xvfb mit `FNF_TEST_SLOW`.
 | 4 | Rust: veraltetes `expected` löscht/verschiebt nichts | ✅ `tests_ops` (gewachsene Datei bleibt, Datei→Ordner wird nicht verschoben) |
 | 5 | Änderung von außen erscheint nach der Prüfung | ✅ Datei während des Besuchs im Unterordner angelegt → nach Backspace erst gemerkter Stand, nach der Prüfung mit neuer Datei |
 | 6 | Speichergrenze | ✅ Spec (`listing-cache.spec.ts`, LRU nach Einträgen) |
-| 7 | macOS `getattrlistbulk` gleich + Messung | ⏳ Parser/Umwandlung auf Linux getestet (handgebaute Puffer, Gleichheit der DTOs); FFI, Gleichheitstest und Messung nur auf Marcs Mac |
+| 7 | macOS `getattrlistbulk` gleich + Messung | ✅ Marc, 20.10.2026: kompiliert, `bulk_equals_portable_on_macos` grün (APFS, 3 000 Dateien, Umlaute/Emoji, versteckt, Links) – Pufferformat inkl. `ATTR_CMN_ERROR`-Position bestätigt; ⏳ Messung + Gleichheit an der SMB-Freigabe (`listing_speed`) |
 | 8 | `pnpm check`, Debug-Build | ✅ |
 
 ## Fortschritt
