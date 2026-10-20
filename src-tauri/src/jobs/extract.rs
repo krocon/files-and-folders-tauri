@@ -210,6 +210,8 @@ impl Run<'_> {
                 }
                 out.write_all(chunk)
                     .map_err(|e| WriteError::Fs(FsError::from_io(&e, dst)))?;
+                // debug builds: simulate a slow target (FNF_TEST_SLOW, design 029 E13)
+                crate::test_slow::block(dst);
                 rep.progress.bytes_done += chunk.len() as u64;
                 rep.tick(false);
                 Ok(())

@@ -273,6 +273,8 @@ Unabhängiger Reviewer, Probe-Archive und rote Tests unter `/tmp/review-025/`. J
 | 11 | niedrig | UnRAR nimmt höchstens 511 Zeichen; längere Passwörter endlos „falsch“ | ✅ Rust lehnt mit klarer Meldung ab (`rar::MAX_PASSWORD_CHARS`), das Frontend schon vorher (übersetzt) | `rar_passwords_longer_than_unrar_takes_are_refused_clearly`, `archive-025.spec.ts` › „review 025 #11 …“ |
 | – | – | Kleinigkeiten: 24 h vs. 3 Tage; keine Größengrenze für Enter | ✅ Design auf 3 Tage korrigiert; Enter höchstens 4 GiB je Eintrag (`view::OPEN_LIMIT`) | Code |
 
+E2E nach den Fixes (Xvfb :95, Debug-Build): `bomb-header.7z` und `bomb-files.7z` öffnen → sofort „The archive exceeds the safety limits … header would unpack to 128 MiB“ bzw. „declares 2000000 entries“, Speicherspitze der App 185 MB (vorher > 2 GB); Alt+F9 auf die Bombe → Job „Failed“ mit derselben Meldung. RAR-Entpacken (256 MB, gespeichert, Ziel mit `FNF_TEST_SLOW` gebremst – der Hook gilt jetzt auch für Entpacken) bei 32 MB pausiert → ein anderes RAR lässt sich währenddessen sofort öffnen; Abbrechen lässt keine `.part`-Datei zurück.
+
 Nebenbefund beim Gesamtlauf: `jobs::tests_link::many_links_and_cancel` (aus 031, `main`) scheiterte oft – der „Blocker“ war eine Simulation, die parallel läuft, der abgebrochene Link-Job startete also sofort. Behoben: ein serieller Link-Job davor (nur der Test geändert).
 
 ## 8. Fortschritt
