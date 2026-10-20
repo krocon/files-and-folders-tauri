@@ -382,6 +382,33 @@ fn seven_zip_headers_the_check_cannot_judge_are_refused() {
     assert!(e.message.contains("2000000"), "{}", e.message);
 }
 
+/// Second re-check 025 N1/N3/N4.
+#[test]
+fn seven_zip_folder_bombs_broken_lzma_and_empty_archives() {
+    let d = tempdir().unwrap();
+    // N1: 10 000 000 folders of two bytes – refused by count, not kept in memory
+    let e = read_index(&fixture(d.path(), "bomb-folders.7z")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveError, "{e:?}");
+    assert!(e.message.contains("cannot be checked"), "{}", e.message);
+    // N3: broken LZMA data in the encoded header is a broken archive, not an I/O error
+    let broken = fixture(d.path(), "bomb-files.7z");
+    let mut b = std::fs::read(&broken).unwrap();
+    b[32..48].fill(0xFF);
+    std::fs::write(&broken, b).unwrap();
+    let e = read_index(&broken).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveError, "{e:?}");
+    // N4: an empty archive (32 bytes, next header size 0) opens with no entries
+    let mut empty = b"7z\xBC\xAF\x27\x1C\x00\x04".to_vec();
+    let mut h = crc32fast::Hasher::new();
+    h.update(&[0u8; 20]);
+    empty.extend_from_slice(&h.finalize().to_le_bytes());
+    empty.extend_from_slice(&[0u8; 20]);
+    let p = d.path().join("empty.7z");
+    std::fs::write(&p, empty).unwrap();
+    let index = read_index(&p).unwrap();
+    assert!(index.entries.is_empty());
+}
+
 /// Review 025 #8: a block up to 16 MiB is decoded completely for the check.
 #[test]
 fn a_wrong_7z_password_fails_on_a_whole_small_solid_block() {

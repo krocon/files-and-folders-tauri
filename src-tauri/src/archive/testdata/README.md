@@ -21,6 +21,7 @@ fixture into a temporary folder (the password store is keyed by path).
 | `bomb-digests.7z` | same (re-check B2) | plain header, pack info with 2^36 streams and "not all defined" CRCs |
 | `bomb-bzip2-header.7z` | same (re-check B3) | the 2 000 000-file header packed with BZip2 |
 | `bomb-aes-header.7z` | same (re-check B3) | the 2 000 000-file header, LZMA behind AES-256 – `geheim` (2^6 key rounds) |
+| `bomb-folders.7z` | same (second re-check N1) | encoded LZMA header (4 KB) unpacking to 30 MiB: 10 000 000 folders of two bytes each |
 
 RAR files cannot be made with free tools (`rar` is proprietary); the crafted one is enough to test
 names, links and lying sizes, the crate fixtures cover compression, encryption and Unicode.

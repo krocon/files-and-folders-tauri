@@ -79,6 +79,8 @@ pub fn remember(archive: &Path, secret: Secret) {
 pub fn forget(archive: &Path) {
     let mut s = store().lock().unwrap_or_else(|e| e.into_inner());
     s.remove(&key(archive));
+    drop(s);
+    super::sevenz_header::forget_keys();
 }
 
 #[cfg(test)]

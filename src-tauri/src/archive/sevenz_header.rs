@@ -22,12 +22,15 @@ use crate::error::{FsError, FsErrorCode};
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
+use std::sync::Mutex;
+use zeroize::Zeroizing;
 
 /// Largest unpacked header accepted (200 000 entries need about 22–30 MiB).
 pub const MAX_HEADER: u64 = 32 << 20;
 const SIGNATURE: [u8; 6] = [b'7', b'z', 0xBC, 0xAF, 0x27, 0x1C];
-/// AES key derivation: 2^n SHA-256 rounds (7-Zip writes 19; the crate allows 24).
-const MAX_AES_CYCLES_POWER: u8 = 24;
+/// AES key derivation: at most 2^22 SHA-256 rounds (7-Zip writes 19; the crate
+/// would allow 24 – 3 min per try with a long password, N2). 0x3F = raw key.
+pub(crate) const MAX_AES_CYCLES_POWER: u8 = 22;
 
 const K_END: u8 = 0x00;
 const K_HEADER: u8 = 0x01;
@@ -56,6 +59,8 @@ pub struct Checked {
     pub files: u64,
     /// The header was encrypted (names need the password).
     pub encrypted_header: bool,
+    /// No next header at all: an empty archive.
+    pub empty: bool,
 }
 
 /// Why the check failed (mapped to an [`FsError`] in [`check`]).
@@ -197,7 +202,6 @@ impl<'a> Cursor<'a> {
 struct Coder {
     id: Vec<u8>,
     props: Vec<u8>,
-    outs: u64,
 }
 
 struct Folder {
@@ -213,7 +217,9 @@ struct StreamsInfo {
     folders: Vec<Folder>,
 }
 
-fn folder(c: &mut Cursor<'_>) -> R<Folder> {
+/// One folder: the number of coder outputs, and the coders themselves only when
+/// `keep` (the encoded header) – the main header's folders are only counted (N1).
+fn folder(c: &mut Cursor<'_>, keep: bool) -> R<(u64, Option<Folder>)> {
     let n = c.count(32)?;
     let mut coders = Vec::new();
     let (mut ins, mut outs) = (0u64, 0u64);
@@ -222,7 +228,7 @@ fn folder(c: &mut Cursor<'_>) -> R<Folder> {
         if flag & 0x80 != 0 {
             return broken(); // alternative methods: never written by 7-Zip
         }
-        let id = c.bytes(u64::from(flag & 0x0F))?.to_vec();
+        let id = c.bytes(u64::from(flag & 0x0F))?;
         let (i, o) = if flag & 0x10 != 0 {
             (c.count(32)?, c.count(32)?)
         } else {
@@ -230,13 +236,18 @@ fn folder(c: &mut Cursor<'_>) -> R<Folder> {
         };
         let props = if flag & 0x20 != 0 {
             let len = c.count(1 << 16)?;
-            c.bytes(len)?.to_vec()
+            c.bytes(len)?
         } else {
-            Vec::new()
+            &[]
         };
         ins += i;
         outs += o;
-        coders.push(Coder { id, props, outs: o });
+        if keep {
+            coders.push(Coder {
+                id: id.to_vec(),
+                props: props.to_vec(),
+            });
+        }
     }
     let Some(bind_pairs) = outs.checked_sub(1) else {
         return broken();
@@ -253,31 +264,40 @@ fn folder(c: &mut Cursor<'_>) -> R<Folder> {
             c.number()?;
         }
     }
-    Ok(Folder {
+    let kept = keep.then_some(Folder {
         coders,
         unpack_sizes: Vec::new(),
-    })
+    });
+    Ok((outs, kept))
 }
 
-fn streams_info(c: &mut Cursor<'_>) -> R<StreamsInfo> {
+/// Streams info. With `keep` (the encoded header: one folder, one pack stream)
+/// the folder and pack sizes are returned; otherwise everything is only checked
+/// and skipped, with at most [`MAX_ENTRIES`] folders – 7-Zip writes no folder
+/// without a file, so more folders than allowed files cannot be a valid archive
+/// within the limits (N1: two header bytes per folder must not become 100+ bytes
+/// of memory).
+fn streams_info(c: &mut Cursor<'_>, keep: bool) -> R<StreamsInfo> {
     let mut info = StreamsInfo::default();
+    // per folder: coder outputs (≤ 32 × 32) and whether its CRC is known
+    let mut folder_outs: Vec<u16> = Vec::new();
     let mut folder_crc: Vec<bool> = Vec::new();
+    let max_folders = if keep { 1 } else { MAX_ENTRIES as u64 };
     loop {
         match c.byte()? {
             K_END => return Ok(info),
             K_PACK_INFO => {
                 info.pack_pos = c.number()?;
-                let n = c.count(u64::MAX)?;
+                let n = c.count(if keep { 1 } else { u64::MAX })?;
                 loop {
                     match c.byte()? {
                         K_END => break,
                         K_SIZE => {
-                            if n > c.remaining() {
-                                return broken();
-                            }
                             for _ in 0..n {
                                 let size = c.number()?;
-                                info.pack_sizes.push(size);
+                                if keep {
+                                    info.pack_sizes.push(size);
+                                }
                             }
                         }
                         K_CRC => c.skip_digests(n)?,
@@ -289,25 +309,28 @@ fn streams_info(c: &mut Cursor<'_>) -> R<StreamsInfo> {
                 if c.byte()? != K_FOLDER {
                     return broken();
                 }
-                let n = c.count(u64::MAX)?;
+                let n = c.count(max_folders)?;
                 if c.byte()? != 0 {
                     return broken(); // "external": never written by 7-Zip
                 }
+                folder_outs = Vec::with_capacity(n as usize);
                 for _ in 0..n {
-                    let f = folder(c)?;
-                    info.folders.push(f);
+                    let (outs, f) = folder(c, keep)?;
+                    folder_outs.push(u16::try_from(outs).map_err(|_| Refusal::Unknown("coders"))?);
+                    info.folders.extend(f);
                 }
                 if c.byte()? != K_CODERS_UNPACK_SIZE {
                     return broken();
                 }
-                for f in &mut info.folders {
-                    let outs: u64 = f.coders.iter().map(|c| c.outs).sum();
-                    for _ in 0..outs {
+                for (i, outs) in folder_outs.iter().enumerate() {
+                    for _ in 0..*outs {
                         let size = c.number()?;
-                        f.unpack_sizes.push(size);
+                        if let Some(f) = info.folders.get_mut(i) {
+                            f.unpack_sizes.push(size);
+                        }
                     }
                 }
-                folder_crc = vec![false; info.folders.len()];
+                folder_crc = vec![false; folder_outs.len()];
                 loop {
                     match c.byte()? {
                         K_END => break,
@@ -317,7 +340,7 @@ fn streams_info(c: &mut Cursor<'_>) -> R<StreamsInfo> {
                 }
             }
             K_SUBSTREAMS_INFO => {
-                let mut streams = vec![1u64; info.folders.len()];
+                let mut streams = vec![1u64; folder_outs.len()];
                 loop {
                     match c.byte()? {
                         K_END => break,
@@ -374,7 +397,7 @@ fn files_in_header(data: &[u8]) -> R<u64> {
                 c.bytes(len)?;
             },
             K_ADDITIONAL_STREAMS | K_MAIN_STREAMS => {
-                streams_info(&mut c)?;
+                streams_info(&mut c, false)?;
             }
             K_FILES_INFO => return c.number(),
             _ => return broken(),
@@ -407,11 +430,74 @@ fn lzma_reader<'a>(coder: &Coder, input: impl Read + 'a, size: u64) -> R<Box<dyn
     }
 }
 
+/// A derived AES key, kept for the next check of the same archive (N2: up to
+/// 2^22 SHA-256 rounds per check); zeroed when dropped.
+struct CachedKey {
+    salt: Vec<u8>,
+    cycles: u8,
+    password: Zeroizing<Vec<u8>>,
+    key: Zeroizing<[u8; 32]>,
+}
+
+/// The last few derived keys (newest last).
+static KEYS: Mutex<Vec<CachedKey>> = Mutex::new(Vec::new());
+const KEYS_KEPT: usize = 4;
+
+/// Drops all cached keys (with a forgotten password).
+pub(crate) fn forget_keys() {
+    KEYS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+}
+
+/// 7-Zip's key derivation: SHA-256 over 2^cycles rounds of salt, UTF-16LE
+/// password and a counter – cached per (salt, rounds, password).
+fn derived_key(salt: &[u8], cycles: u8, pw: &[u8]) -> Zeroizing<[u8; 32]> {
+    use sha2::Digest;
+    {
+        let keys = KEYS.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(k) = keys
+            .iter()
+            .find(|k| k.cycles == cycles && k.salt == salt && k.password[..] == *pw)
+        {
+            return k.key.clone();
+        }
+    }
+    let mut sha = sha2::Sha256::new();
+    let mut counter = [0u8; 8];
+    for _ in 0..(1u64 << cycles) {
+        sha.update(salt);
+        sha.update(pw);
+        sha.update(counter);
+        for b in &mut counter {
+            *b = b.wrapping_add(1);
+            if *b != 0 {
+                break;
+            }
+        }
+    }
+    let mut key = Zeroizing::new([0u8; 32]);
+    key.copy_from_slice(&sha.finalize());
+    let mut keys = KEYS.lock().unwrap_or_else(|e| e.into_inner());
+    if keys.len() >= KEYS_KEPT {
+        keys.remove(0);
+    }
+    keys.push(CachedKey {
+        salt: salt.to_vec(),
+        cycles,
+        password: Zeroizing::new(pw.to_vec()),
+        key: key.clone(),
+    });
+    key
+}
+
+/// The key rounds (2^n) an AES coder asks for; `None` for unreadable properties.
+pub(crate) fn aes_cycles(props: &[u8]) -> Option<u8> {
+    props.first().map(|b| b & 0x3F)
+}
+
 /// AES-256-CBC with 7-Zip's key derivation (SHA-256 over salt, UTF-16LE
 /// password and a counter, 2^n rounds), whole buffer at once.
 fn aes_decrypt(props: &[u8], password: &Secret, data: &mut [u8]) -> R<()> {
     use cbc::cipher::{BlockModeDecrypt, KeyIvInit, array::Array};
-    use sha2::Digest;
     let (Some(&b0), Some(&b1)) = (props.first(), props.get(1)) else {
         return broken();
     };
@@ -426,37 +512,25 @@ fn aes_decrypt(props: &[u8], password: &Secret, data: &mut [u8]) -> R<()> {
     };
     let mut iv = [0u8; 16];
     iv[..iv_size].copy_from_slice(iv_bytes);
-    let pw = zeroize::Zeroizing::new(
+    let pw = Zeroizing::new(
         password
             .expose()
             .encode_utf16()
             .flat_map(u16::to_le_bytes)
             .collect::<Vec<u8>>(),
     );
-    let mut key = zeroize::Zeroizing::new([0u8; 32]);
-    if cycles == 0x3F {
+    let key = if cycles == 0x3F {
+        let mut key = Zeroizing::new([0u8; 32]);
         key[..salt_size].copy_from_slice(salt);
         let n = pw.len().min(32 - salt_size);
         key[salt_size..salt_size + n].copy_from_slice(&pw[..n]);
+        key
     } else {
         if cycles > MAX_AES_CYCLES_POWER {
             return Err(Refusal::Unknown("AES work factor"));
         }
-        let mut sha = sha2::Sha256::new();
-        let mut counter = [0u8; 8];
-        for _ in 0..(1u64 << cycles) {
-            sha.update(salt);
-            sha.update(&pw[..]);
-            sha.update(counter);
-            for b in &mut counter {
-                *b = b.wrapping_add(1);
-                if *b != 0 {
-                    break;
-                }
-            }
-        }
-        key.copy_from_slice(&sha.finalize());
-    }
+        derived_key(salt, cycles, &pw)
+    };
     if !data.len().is_multiple_of(16) {
         return broken();
     }
@@ -497,6 +571,7 @@ fn check_inner(file: &mut File, password: Option<&Secret>) -> R<Checked> {
         return Ok(Checked {
             files: 0,
             encrypted_header: false,
+            empty: true,
         });
     }
     let Some(pos) = 32u64.checked_add(off) else {
@@ -515,13 +590,14 @@ fn check_inner(file: &mut File, password: Option<&Secret>) -> R<Checked> {
         Some(&K_HEADER) => Ok(Checked {
             files: files_in_header(&header)?,
             encrypted_header: false,
+            empty: false,
         }),
         Some(&K_ENCODED_HEADER) => {
             let mut c = Cursor {
                 data: &header,
                 pos: 1,
             };
-            let info = streams_info(&mut c)?;
+            let info = streams_info(&mut c, true)?;
             let ([f], [packed]) = (info.folders.as_slice(), info.pack_sizes.as_slice()) else {
                 return Err(Refusal::Unknown("unusual encoded header"));
             };
@@ -563,13 +639,18 @@ fn check_inner(file: &mut File, password: Option<&Secret>) -> R<Checked> {
             }
             let encrypted = aes.is_some();
             let mut plain = Vec::new();
-            let decoded = lzma_reader(&f.coders[li], &data[..], out)
-                .and_then(|r| Ok(r.take(out).read_to_end(&mut plain)?));
+            // a decoding error is a broken (or wrongly decrypted) header, not I/O (N3)
+            let decoded = lzma_reader(&f.coders[li], &data[..], out).and_then(|r| {
+                r.take(out)
+                    .read_to_end(&mut plain)
+                    .map_err(|_| Refusal::Unknown("LZMA data of the header"))
+            });
             let files = decoded.and_then(|_| files_in_header(&plain));
             match files {
                 Ok(files) => Ok(Checked {
                     files,
                     encrypted_header: encrypted,
+                    empty: false,
                 }),
                 // garbage after decryption: the password does not fit
                 Err(_) if encrypted => Err(Refusal::PasswordWrong),
@@ -620,6 +701,75 @@ mod tests {
         assert_eq!(n(&[0x81, 0x00]), 0x100);
         assert_eq!(n(&[0xC0, 0x34, 0x12]), 0x1234);
         assert_eq!(n(&[0xFF, 1, 0, 0, 0, 0, 0, 0, 0]), 1);
+    }
+
+    /// N1: folders are counted, not kept; more than [`MAX_ENTRIES`] are refused.
+    #[test]
+    fn many_folders_are_refused() {
+        let n = 1_000_000u64;
+        let mut d = vec![
+            K_HEADER,
+            K_MAIN_STREAMS,
+            K_UNPACK_INFO,
+            K_FOLDER,
+            0xE0 | (n >> 24) as u8,
+        ];
+        d.extend_from_slice(&(n as u32).to_le_bytes()[..3]);
+        d.push(0);
+        for _ in 0..n {
+            d.extend_from_slice(&[0x01, 0x00]);
+        }
+        d.push(K_CODERS_UNPACK_SIZE);
+        d.extend(std::iter::repeat_n(0u8, n as usize));
+        d.extend_from_slice(&[K_END, K_END, K_END]);
+        assert!(files_in_header(&d).is_err());
+    }
+
+    /// N2: more key rounds than 7-Zip ever writes (19) plus margin are refused.
+    #[test]
+    fn aes_work_factor_is_bounded() {
+        let mut data = [0u8; 16];
+        let pw = Secret::new("geheim");
+        let props = [
+            0x40 | 23,
+            0x0F,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ];
+        assert!(matches!(
+            aes_decrypt(&props, &pw, &mut data),
+            Err(Refusal::Unknown(_))
+        ));
+    }
+
+    /// N2: a derived key is reused for the same salt, rounds and password only.
+    #[test]
+    fn derived_keys_are_cached_per_salt_rounds_and_password() {
+        let a = derived_key(b"salt-n2", 4, b"g\0e\0");
+        assert_eq!(derived_key(b"salt-n2", 4, b"g\0e\0")[..], a[..]);
+        assert_ne!(derived_key(b"salt-n2", 4, b"x\0")[..], a[..]);
+        assert_ne!(derived_key(b"salt-n2", 5, b"g\0e\0")[..], a[..]);
+        assert!(
+            KEYS.lock()
+                .unwrap()
+                .iter()
+                .any(|k| k.salt == b"salt-n2" && k.cycles == 4)
+                || KEYS.lock().unwrap().len() == KEYS_KEPT
+        );
     }
 
     /// B2: huge declared counts are refused before anything is allocated.

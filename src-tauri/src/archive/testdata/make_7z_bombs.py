@@ -87,3 +87,11 @@ hdr += bytes([0x0C]) + num(len(payload)) + num(len(lz)) + bytes([0x00]) + bytes(
 start = struct.pack("<QQI", len(packed), len(hdr), zlib.crc32(hdr))
 sig = b"7z\xbc\xaf\x27\x1c" + bytes([0, 4]) + struct.pack("<I", zlib.crc32(start)) + start
 open(os.path.join(out, "bomb-aes-header.7z"), "wb").write(sig + packed + hdr)
+
+# --- second re-check 025 (N1): 10 000 000 folders of two bytes each (`01 00`), every
+# folder costs ~112 bytes in a parser that keeps them – a 30 MiB header from ~5 KB LZMA
+nfold = 10_000_000
+payload = bytes([0x01, 0x04, 0x07, 0x0B]) + num(nfold) + b"\0" + b"\x01\x00" * nfold
+payload += b"\x0C" + b"\0" * nfold + b"\0\0\0"
+packed = lzma.compress(payload, format=lzma.FORMAT_RAW, filters=filt)
+open(os.path.join(out, "bomb-folders.7z"), "wb").write(archive(len(payload), packed))

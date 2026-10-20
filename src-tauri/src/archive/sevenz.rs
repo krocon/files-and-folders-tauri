@@ -76,7 +76,12 @@ pub(crate) fn open(path: &Path) -> Result<(BufReader<File>, Archive, bool), FsEr
     // first – on the same open file it reads next (re-check B4)
     let mut file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
     let secret = super::secrets::get(path);
-    super::sevenz_header::check(&mut file, path, secret.as_ref())?;
+    let checked = super::sevenz_header::check(&mut file, path, secret.as_ref())?;
+    if checked.empty {
+        // no next header at all (7-Zip writes this for an empty archive); the crate
+        // would fail with UnexpectedEof (N4)
+        return Ok((BufReader::new(file), Archive::default(), false));
+    }
     file.seek(SeekFrom::Start(0))
         .map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
@@ -134,6 +139,16 @@ pub(crate) fn memory_need(method: &[u8], props: &[u8]) -> Option<u64> {
 /// crate allows any size: a 4 GiB LZMA dictionary in a tiny archive).
 pub(crate) fn check_memory(block: &Block, path: &Path) -> Result<(), FsError> {
     for c in &block.coders {
+        // N2: the crate derives AES keys with up to 2^24 rounds per try – we allow 2^22
+        if c.encoder_method_id() == EncoderMethod::ID_AES256_SHA256
+            && super::sevenz_header::aes_cycles(c.properties())
+                .is_none_or(|n| n != 0x3F && n > super::sevenz_header::MAX_AES_CYCLES_POWER)
+        {
+            return Err(super::archive_error(
+                "The archive asks for more AES key rounds than 7-Zip writes – refused",
+                path,
+            ));
+        }
         if memory_need(c.encoder_method_id(), c.properties()).is_some_and(|n| n > MAX_DICT) {
             return Err(super::too_large(
                 "The archive needs a dictionary larger than 1 GiB – refused",

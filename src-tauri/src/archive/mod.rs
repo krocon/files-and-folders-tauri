@@ -1060,7 +1060,9 @@ fn verify_zip(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
 
 fn verify_7z(path: &Path, secret: &secrets::Secret) -> Result<(), FsError> {
     let mut file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
-    sevenz_header::check(&mut file, path, Some(secret))?;
+    if sevenz_header::check(&mut file, path, Some(secret))?.empty {
+        return Ok(()); // nothing in it, nothing encrypted (N4)
+    }
     file.seek(io::SeekFrom::Start(0))
         .map_err(|e| FsError::from_io(&e, path))?;
     let mut reader = BufReader::new(file);
