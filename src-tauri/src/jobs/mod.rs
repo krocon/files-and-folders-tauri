@@ -9,6 +9,7 @@ pub mod control;
 pub mod copy;
 pub mod delete;
 pub mod duplicates;
+pub mod expect;
 pub mod extract;
 pub mod group;
 pub mod manager;
@@ -97,6 +98,9 @@ pub enum JobSpec {
         /// The user confirmed moving a root/home/system path a second time.
         #[serde(default)]
         allow_dangerous: bool,
+        /// What the panel showed for the sources (design 030 E5); changed ones are left alone.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        expected: Vec<expect::ExpectedEntry>,
     },
     /// Delete to the trash (default) or permanently.
     Delete {
@@ -106,6 +110,9 @@ pub enum JobSpec {
         background: bool,
         #[serde(default)]
         allow_dangerous: bool,
+        /// What the panel showed for the paths (design 030 E5); changed ones are left alone.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        expected: Vec<expect::ExpectedEntry>,
     },
     /// Multi-rename (design 007): every entry gets a new name in its folder.
     /// `undo_of` = the job this one undoes (runs the valid pairs even if others
@@ -530,7 +537,8 @@ mod tests {
                     conflict_default: ConflictDefault::OverwriteIfNewer,
                     rename_to: Some("x".into())
                 },
-                allow_dangerous: false
+                allow_dangerous: false,
+                expected: Vec::new(),
             }
         );
         let spec: JobSpec =

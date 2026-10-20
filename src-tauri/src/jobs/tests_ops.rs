@@ -24,6 +24,7 @@ impl Harness {
                 background: false,
                 options,
                 allow_dangerous: false,
+                expected: Vec::new(),
             })
             .unwrap()
     }
@@ -46,6 +47,7 @@ impl Harness {
                 mode,
                 background: false,
                 allow_dangerous: false,
+                expected: Vec::new(),
             })
             .unwrap()
     }
@@ -216,6 +218,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             background: false,
             options: CopyOptions::default(),
             allow_dangerous: false,
+            expected: Vec::new(),
         })
         .unwrap_err();
     assert_eq!(err.code, FsErrorCode::DangerousPath);
@@ -226,6 +229,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             mode: DeleteMode::Permanent,
             background: false,
             allow_dangerous: false,
+            expected: Vec::new(),
         })
         .unwrap_err();
     assert_eq!(err.code, FsErrorCode::DangerousPath);
@@ -237,6 +241,7 @@ fn move_refuses_onto_itself_into_itself_and_dangerous_paths() {
             background: false,
             options: CopyOptions::default(),
             allow_dangerous: true,
+            expected: Vec::new(),
         })
         .unwrap();
     assert_eq!(h.finish(&id).state, JobState::Done);
@@ -981,4 +986,94 @@ fn the_target_guard_is_released_when_a_copy_is_cancelled_midway() {
         "{state:?}"
     );
     assert_eq!(*held.lock().unwrap(), 0, "busy and free stay balanced");
+}
+
+// ---- design 030 E5: nothing destructive on an outdated listing ----
+
+fn expected_of(p: &Path) -> super::expect::ExpectedEntry {
+    let meta = fs::symlink_metadata(p).unwrap();
+    let e = crate::listing::entry_from_metadata("x".into(), p, &meta, false);
+    super::expect::ExpectedEntry {
+        path: s(p),
+        kind: e.kind,
+        size: e.size,
+        modified_ms: e.modified_ms,
+    }
+}
+
+#[test]
+fn delete_leaves_entries_alone_that_changed_since_the_listing() {
+    let tmp = tempdir().unwrap();
+    let same = tmp.path().join("gleich.txt");
+    let grown = tmp.path().join("gewachsen ä.txt");
+    fs::write(&same, b"1").unwrap();
+    fs::write(&grown, b"1").unwrap();
+    let expected = vec![expected_of(&same), expected_of(&grown)];
+    fs::write(&grown, b"jemand hat weitergeschrieben").unwrap();
+    let h = Harness::new();
+    let id = h
+        .mgr
+        .start(JobSpec::Delete {
+            paths: vec![s(&same), s(&grown)],
+            mode: DeleteMode::Permanent,
+            background: false,
+            allow_dangerous: false,
+            expected,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(!same.exists());
+    assert!(grown.exists(), "the changed file stays");
+    let summary = info.summary.unwrap();
+    assert_eq!(summary.items_failed, 1);
+    assert_eq!(
+        summary.errors[0].error.code,
+        crate::error::FsErrorCode::ChangedSinceListing
+    );
+}
+
+#[test]
+fn a_move_of_only_changed_entries_does_nothing_and_says_so() {
+    let tmp = tempdir().unwrap();
+    let f = tmp.path().join("datei");
+    let target = tmp.path().join("ziel");
+    fs::create_dir(&target).unwrap();
+    fs::write(&f, b"1").unwrap();
+    let expected = vec![expected_of(&f)];
+    // replaced by a folder of the same name
+    fs::remove_file(&f).unwrap();
+    fs::create_dir(&f).unwrap();
+    let h = Harness::new();
+    let id = h
+        .mgr
+        .start(JobSpec::Move {
+            sources: vec![s(&f)],
+            target_dir: s(&target),
+            background: false,
+            options: CopyOptions::default(),
+            allow_dangerous: false,
+            expected,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(f.is_dir());
+    assert!(!target.join("datei").exists());
+    assert_eq!(info.summary.unwrap().items_failed, 1);
+}
+
+#[test]
+fn expected_is_optional_in_the_spec() {
+    let spec: JobSpec = serde_json::from_str(
+        r#"{"kind":"delete","paths":["/a"],"mode":"trash","expected":[{"path":"/a","kind":"file","size":3,"modifiedMs":5}]}"#,
+    )
+    .unwrap();
+    let JobSpec::Delete { expected, .. } = spec else {
+        panic!()
+    };
+    assert_eq!(expected[0].size, Some(3));
+    let spec: JobSpec =
+        serde_json::from_str(r#"{"kind":"delete","paths":["/a"],"mode":"trash"}"#).unwrap();
+    assert!(matches!(spec, JobSpec::Delete { expected, .. } if expected.is_empty()));
 }

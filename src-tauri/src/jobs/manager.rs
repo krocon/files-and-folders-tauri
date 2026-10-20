@@ -4,8 +4,9 @@
 
 use super::report::Reporter;
 use super::{
-    Control, Decision, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem, Summary,
-    Transfer, clean, copy, delete, duplicates, extract, group, pack, rename, search, shell,
+    Control, Decision, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem,
+    Summary, Transfer, clean, copy, delete, duplicates, expect, extract, group, pack, rename,
+    search, shell,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -210,18 +211,31 @@ impl JobManager {
                         sources,
                         target_dir,
                         options,
+                        expected,
                         ..
                     } => {
                         let sources: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
+                        // what changed since the panel listed it stays where it is (design 030 E5)
+                        let (sources, skipped) = expect::filter(id, sources, expected, &emit);
                         let target = PathBuf::from(target_dir);
                         let mode = copy::Mode::Move {
                             force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
                         };
-                        copy::run(id, &sources, &target, options, mode, &control, &emit)
+                        with_skipped(skipped, sources.len(), || {
+                            copy::run(id, &sources, &target, options, mode, &control, &emit)
+                        })
                     }
-                    JobSpec::Delete { paths, mode, .. } => {
+                    JobSpec::Delete {
+                        paths,
+                        mode,
+                        expected,
+                        ..
+                    } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
-                        delete::run(id, &paths, *mode, &control, &emit)
+                        let (paths, skipped) = expect::filter(id, paths, expected, &emit);
+                        with_skipped(skipped, paths.len(), || {
+                            delete::run(id, &paths, *mode, &control, &emit)
+                        })
                     }
                     JobSpec::Group {
                         root,
@@ -1050,6 +1064,35 @@ fn run_dir_size(
         bytes_done: size.bytes,
         dir_size: Some(size),
         ..Summary::default()
+    };
+    (state, summary)
+}
+
+/// Runs `work` unless everything was skipped, and counts the skipped entries in (design 030 E5).
+fn with_skipped(
+    skipped: Vec<ItemError>,
+    left: usize,
+    work: impl FnOnce() -> (JobState, Summary),
+) -> (JobState, Summary) {
+    if skipped.is_empty() {
+        return work();
+    }
+    let n = skipped.len() as u64;
+    // nothing left to do: no run with an empty list ("nothing selected")
+    let (state, mut summary) = if left == 0 {
+        (JobState::Done, Summary::default())
+    } else {
+        work()
+    };
+    summary.items_failed += n;
+    let mut errors = skipped;
+    errors.append(&mut summary.errors);
+    errors.truncate(super::MAX_REPORTED_ERRORS);
+    summary.errors = errors;
+    let state = if state == JobState::Done {
+        JobState::DoneWithErrors
+    } else {
+        state
     };
     (state, summary)
 }

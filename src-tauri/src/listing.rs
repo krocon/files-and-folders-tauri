@@ -16,6 +16,17 @@ use std::time::UNIX_EPOCH;
 /// are returned with [`EntryKind::Unknown`] and counted in
 /// `unreadable_entries`.
 pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
+    // macOS: one call for many entries instead of a stat each – much faster on SMB
+    // (design 030 E7); any problem falls back to the portable way below
+    #[cfg(target_os = "macos")]
+    if let Some(listing) = crate::platform::bulk_list::list(dir) {
+        return Ok(listing);
+    }
+    list_directory_std(dir)
+}
+
+/// The portable listing: `read_dir` + `symlink_metadata` per entry.
+pub fn list_directory_std(dir: &Path) -> Result<DirectoryListing, FsError> {
     let meta = fs::metadata(dir).map_err(|e| FsError::from_io(&e, dir))?;
     if !meta.is_dir() {
         return Err(FsError::new(
@@ -49,16 +60,25 @@ pub fn list_directory(dir: &Path) -> Result<DirectoryListing, FsError> {
         entries.push(dto);
     }
 
-    entries.sort_by(compare_entries);
+    Ok(assemble(dir, entries, unreadable))
+}
 
-    Ok(DirectoryListing {
+/// Sorted listing of `dir` from its entries.
+pub(crate) fn assemble(
+    dir: &Path,
+    mut entries: Vec<DirEntryDto>,
+    unreadable: usize,
+) -> DirectoryListing {
+    entries.sort_by(compare_entries);
+    DirectoryListing {
         path: dir.to_string_lossy().into_owned(),
         parent: parent_of(dir).map(|p| p.to_string_lossy().into_owned()),
         segments: segments_of(dir),
         entries,
         unreadable_entries: unreadable,
         archive: None,
-    })
+        network: false,
+    }
 }
 
 /// One entry as [`list_directory`] would return it (watcher deltas, dropped
@@ -116,7 +136,7 @@ pub fn describe_paths(paths: &[std::path::PathBuf]) -> DescribedPaths {
     }
 }
 
-fn unknown_entry(name: String, path: &Path, lossy_name: bool) -> DirEntryDto {
+pub(crate) fn unknown_entry(name: String, path: &Path, lossy_name: bool) -> DirEntryDto {
     DirEntryDto {
         hidden: is_dot_name(&name),
         name,

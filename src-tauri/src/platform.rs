@@ -1,6 +1,8 @@
 //! Platform functions with one signature per OS (CLAUDE.md §4).
 //! Submodules: [`volumes`] (drives, mount points), [`desktop`] (file manager, terminal).
 
+#[cfg(unix)]
+pub mod bulk_list;
 pub mod desktop;
 pub mod io_hints;
 pub mod process;

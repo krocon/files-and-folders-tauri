@@ -58,6 +58,8 @@ pub enum FsErrorCode {
     ShellDisabled,
     /// A shell command still runs – one at a time (design 021 E3).
     ShellBusy,
+    /// The entry is no longer what the panel showed (design 030 E5): left alone.
+    ChangedSinceListing,
     /// The shell command is empty, too long or contains a line break / NUL.
     InvalidCommand,
     /// A name cannot be quoted safely for the shell (control characters, `%`/`!` for cmd.exe).

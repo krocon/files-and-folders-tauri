@@ -46,6 +46,10 @@ mod imp {
         }
     }
 
+    pub fn is_network(dir: &Path) -> bool {
+        config().is_some_and(|c| dir.starts_with(&c.prefix))
+    }
+
     pub fn block(file: &Path) {
         if let Some(c) = config().filter(|c| file.starts_with(&c.prefix)) {
             std::thread::sleep(c.block);
@@ -58,6 +62,15 @@ mod imp {
 pub fn listing(_dir: &std::path::Path) {
     #[cfg(debug_assertions)]
     imp::listing(_dir);
+}
+
+/// Folders below the prefix count as a network drive (design 030; debug builds only).
+#[inline]
+pub fn is_network(_dir: &std::path::Path) -> bool {
+    #[cfg(debug_assertions)]
+    return imp::is_network(_dir);
+    #[cfg(not(debug_assertions))]
+    false
 }
 
 /// Delays one written block below the configured prefix (debug builds only).

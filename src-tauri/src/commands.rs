@@ -48,7 +48,11 @@ pub async fn list_directory<R: Runtime>(
 
 fn list_dir(dir: &std::path::Path) -> Result<DirectoryListing, FsError> {
     crate::test_slow::listing(dir);
-    crate::archive::list_directory_or_archive(dir)
+    let mut listing = crate::archive::list_directory_or_archive(dir)?;
+    // the frontend caches listings of network drives (design 030 E6); one statfs
+    listing.network = listing.archive.is_none()
+        && (crate::watch::netfs::is_network(dir) || crate::test_slow::is_network(dir));
+    Ok(listing)
 }
 
 pub(crate) fn home_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FsError> {
@@ -1483,5 +1487,17 @@ mod command_rules {
         assert_eq!(sync_command(&lines, 0).as_deref(), Some("hidden"));
         assert_eq!(sync_command(&lines, 4), None);
         assert_eq!(sync_command(&lines, 6), None);
+    }
+}
+
+#[cfg(test)]
+mod listing_contract {
+    #[test]
+    fn a_local_listing_says_network_false_on_the_wire() {
+        let tmp = tempfile::tempdir().unwrap();
+        let l = super::list_dir(tmp.path()).unwrap();
+        assert!(!l.network);
+        let json = serde_json::to_value(&l).unwrap();
+        assert_eq!(json["network"], serde_json::Value::Bool(false));
     }
 }

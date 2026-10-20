@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryKind {
     File,
@@ -62,4 +62,7 @@ pub struct DirectoryListing {
     /// `path` and the entry paths are virtual then (`…/a.zip/dir`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub archive: Option<crate::archive::ArchiveInfo>,
+    /// The folder is on a network drive (design 030 E6): the frontend caches its listing.
+    #[serde(default)]
+    pub network: bool,
 }
