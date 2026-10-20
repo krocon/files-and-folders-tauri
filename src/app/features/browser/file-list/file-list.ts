@@ -35,7 +35,7 @@ import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
 import { FileListController } from './file-list-controller';
-import { createFileTable } from './file-table-model';
+import { createFileTable, HEADER_HEIGHT } from './file-table-model';
 import { TEXTS } from '../../workspace/texts';
 import { SettingsStore } from '../../../core/settings/settings.store';
 import { ROW_HEIGHTS } from '../../../core/settings/settings.models';
@@ -77,6 +77,9 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
     // no native HTML drag of icons/text: our own pointer drag (design 012 E5)
     '(dragstart)': '$event.preventDefault()',
     '[class.drop-target]': 'dropOnPanel()',
+    // line box = row height: text vertically centred (ge-table-theme.css)
+    '[style.--fnf-row-height.px]': 'rowHeight()',
+    '[style.--fnf-header-height.px]': 'headerHeight',
   },
 })
 export class FileList implements OnDestroy {
@@ -84,6 +87,9 @@ export class FileList implements OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly settings = inject(SettingsStore);
   private readonly injector = inject(Injector);
+  /** Body row height from the density setting (also the line height of the cells). */
+  protected readonly rowHeight = computed(() => ROW_HEIGHTS[this.settings.get('view.density')]);
+  protected readonly headerHeight = HEADER_HEIGHT;
 
   /** Id of the element naming the list (the path display) – `aria-labelledby`. */
   readonly labelledBy = input.required<string>();
@@ -195,7 +201,7 @@ export class FileList implements OnDestroy {
       dir: c.folder,
       group: c.group,
     };
-    const rowHeight = ROW_HEIGHTS[this.settings.get('view.density')];
+    const rowHeight = this.rowHeight();
     // the renderers read these at paint time – a change needs a repaint
     DISPLAY.sizeFormat();
     DISPLAY.dateFormat();

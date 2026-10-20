@@ -72,6 +72,20 @@
   --ge-table-body-east-text: var(--color-active-list-text);
 }
 
+/*
+ * Vertically centred text: the table gives every cell `line-height: 2.5` (= 35 px at 14 px), which is
+ * taller than our rows (24–34 px) – the line box overflows downwards and the text sits a few px low.
+ * A line box exactly as high as the row centres single-line text. The hosts set the heights
+ * (--fnf-row-height, --fnf-header-height); without them the table's value stays.
+ */
+.ge-table .ge-table-col-div[data-area='body'] {
+  line-height: var(--fnf-row-height, 2.5);
+}
+
+.ge-table .ge-table-col-div[data-area='header'] {
+  line-height: var(--fnf-header-height, 2.5);
+}
+
 /* Cell content of our own renderers (same inner spacing as the table's label div). */
 .ge-table .fnf-cell {
   padding-inline: 10px;
