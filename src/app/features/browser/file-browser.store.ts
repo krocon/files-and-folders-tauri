@@ -1,6 +1,7 @@
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
+import { ListingCache } from '../../core/fs/listing-cache';
 import { toFsError } from '../../core/fs/fs-error';
 import {
   DirEntry,
@@ -96,6 +97,8 @@ export function refreshGapMs(lastMs: number): number {
 @Injectable()
 export class FileBrowserStore implements OnDestroy {
   private readonly api = inject(FsApi);
+  /** Listings of slow folders, shared by both panels (design 030 E1). */
+  private readonly cache = inject(ListingCache);
   /** Monotonic id to drop responses of superseded requests. */
   private requestSeq = 0;
   private pendingTableState: Partial<TableStateIf> | null = null;
@@ -122,6 +125,11 @@ export class FileBrowserStore implements OnDestroy {
   readonly refreshing = signal(false);
   /** The running navigation takes longer than {@link SLOW_LOAD_MS} (design 029 E4). */
   readonly slow = signal(false);
+  /**
+   * The shown listing comes from the cache and is not checked yet (design 030 E2):
+   * when it was listed (ms). Destructive actions wait for the check (E4).
+   */
+  readonly cachedAt = signal<number | null>(null);
   readonly error = signal<FsError | null>(null);
   readonly cursorPath = signal<string | null>(null);
   readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
@@ -161,6 +169,15 @@ export class FileBrowserStore implements OnDestroy {
   confirmExecutable: (entry: DirEntry) => Promise<boolean> = () => Promise.resolve(false);
 
   constructor() {
+    // a kept folder keeps the newest state it was shown in (watcher deltas, folder sizes)
+    effect(() => {
+      const listing = this.listing();
+      untracked(() => {
+        if (listing && this.searchKey() === null) {
+          this.cache.update(listing);
+        }
+      });
+    });
     // sizes of folders a copy/move is writing into follow the job's progress (no watcher needed)
     effect(() => {
       const jobs = this.jobs.jobs();
@@ -241,6 +258,22 @@ export class FileBrowserStore implements OnDestroy {
     const seq = this.supersede();
     const startedAt = Date.now();
     const background = options.background === true;
+    // a slow folder seen before: at once from the cache, then checked (design 030 E2)
+    const hit = !background && path !== undefined ? this.cache.get(path) : null;
+    if (hit) {
+      const leaving = this.searchKey() === null ? this.listing() : null;
+      const leavingState = leaving ? this.captureFolderState() : null;
+      this.endLoad();
+      this.apply(hit.listing, options, leaving, leavingState, hit.listedAt);
+      this.cachedAt.set(hit.listedAt);
+      void this.load(hit.listing.path, {
+        cursor: this.cursorPath(),
+        keepCursor: true,
+        history: 'none',
+        background: true,
+      });
+      return;
+    }
     this.loading.set(!background);
     this.refreshing.set(background);
     if (this.slowTimer !== null) {
@@ -267,6 +300,8 @@ export class FileBrowserStore implements OnDestroy {
         this.lastListMs,
         `${listing.entries.length} entries`,
       );
+      this.cache.remember(listing, startedAt, this.lastListMs);
+      this.cachedAt.set(null);
       // the folder being left as it is now: it stayed usable while this one loaded (review 029 #5)
       const leaving = this.searchKey() === null ? this.listing() : null;
       const leavingState = leaving ? this.captureFolderState() : null;
@@ -277,6 +312,9 @@ export class FileBrowserStore implements OnDestroy {
       }
       const error = toFsError(err);
       this.error.set(error);
+      if (error.code === 'not_found' && path !== undefined) {
+        this.cache.forget(path);
+      }
       // a deleted history target must not block the history forever
       if (
         error.code === 'not_found' &&
@@ -321,6 +359,7 @@ export class FileBrowserStore implements OnDestroy {
   clearListing(): void {
     this.supersede();
     this.endLoad();
+    this.cachedAt.set(null);
     this.listing.set(null);
     this.error.set(null);
   }
@@ -413,6 +452,7 @@ export class FileBrowserStore implements OnDestroy {
     }
     this.searchKind.set(kind);
     this.endLoad();
+    this.cachedAt.set(null);
     const paths = new Set(hits.map((h) => h.path));
     this.searchKey.set(key);
     this.listing.set({

@@ -40,8 +40,6 @@ import { WorkspaceStore } from './workspace.store';
 import { MenuService } from '../menus/menu.service';
 
 let panelSeq = 0;
-/** Tabs whose last listing a panel keeps for an instant switch back (design 029 E5). */
-const TAB_LISTINGS_KEPT = 16;
 
 /**
  * One side of the window: path header, tab bar, file list and status line.
@@ -166,19 +164,16 @@ export class FilePanel implements OnInit {
    * cursor and table state may be written back only once it changed.
    */
   private listingAtSwitch: DirectoryListing | null | undefined = undefined;
-  /**
-   * The last listing each tab showed (design 029 E5, newest last): switching back
-   * shows it at once and refreshes in the background – no wait on a slow drive.
-   */
-  private readonly tabListings = new Map<
-    string,
-    { readonly listing: DirectoryListing; readonly listedAt: number }
-  >();
   /** The tab shown before the one being opened: Esc goes back there (design 029 E5). */
   private previousTabId: string | null = null;
   /** Opening this tab's folder was cancelled and nothing else could be shown. */
   protected readonly cancelledTab = signal<string | null>(null);
   /** The tab's own path while its folder opens (the list is empty then). */
+  /** "Stand 10:05" of a listing shown from the cache and not checked yet (design 030 E3). */
+  protected readonly cachedLabel = computed(() => {
+    const at = this.store.cachedAt();
+    return at === null ? null : TEXTS.cachedAt(new Date(at));
+  });
   protected readonly openingPath = computed(() =>
     this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null,
   );
@@ -208,7 +203,6 @@ export class FilePanel implements OnInit {
         }
         if (listing && this.ownsListing(id) && this.store.searchKey() === null) {
           this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
-          this.rememberTabListing(id, listing);
         }
       });
     });
@@ -508,24 +502,7 @@ export class FilePanel implements OnInit {
       this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? 'search');
       return;
     }
-    // shown before: at once, then read again in the background (design 029 E5)
-    const known = this.tabListings.get(id);
-    if (
-      known &&
-      tab.path !== null &&
-      known.listing.path === tab.path &&
-      known.listing !== this.listingAtSwitch
-    ) {
-      this.store.navigationLocked.set(false);
-      this.store.showListing(known.listing, known.listedAt, {
-        cursor: tab.cursor,
-        history: 'none',
-        remember: false,
-      });
-      // read again – after a slow listing with the usual gap, not on every switch (review 029 #9)
-      this.store.requestRefresh();
-      return;
-    }
+    // a slow folder seen before comes from the cache at once (design 030 E1, replaces 029 E5)
     // nothing of another tab under this one: an empty list and this tab's path until it is read
     if (this.listingAtSwitch !== null && this.listingAtSwitch?.path !== tab.path) {
       this.store.clearListing();
@@ -561,7 +538,7 @@ export class FilePanel implements OnInit {
   /**
    * Esc / "Cancel" while a folder opens (design 029 E4/E5): a navigation is given
    * up and the list stays; a tab whose folder never showed goes back to the tab
-   * before it (shown at once from its last listing), else it offers "Try again".
+   * before it (at once from the cache if that folder is slow), else it offers "Try again".
    */
   cancelLoading(): boolean {
     const opening = this.store.navigationLocked() && this.store.listing() === null;
@@ -587,24 +564,5 @@ export class FilePanel implements OnInit {
   protected retryTab(): void {
     this.cancelledTab.set(null);
     void this.showTab(this.tabId());
-  }
-
-  private rememberTabListing(id: string, listing: DirectoryListing): void {
-    this.tabListings.delete(id);
-    this.tabListings.set(id, { listing, listedAt: this.store.listedAt ?? Date.now() });
-    // closed tabs give their listing back at once (review 029 #8)
-    const open = new Set(this.ws.panels()[this.side()].tabs.map((t) => t.id));
-    for (const kept of [...this.tabListings.keys()]) {
-      if (!open.has(kept)) {
-        this.tabListings.delete(kept);
-      }
-    }
-    while (this.tabListings.size > TAB_LISTINGS_KEPT) {
-      const oldest = this.tabListings.keys().next().value;
-      if (oldest === undefined) {
-        break;
-      }
-      this.tabListings.delete(oldest);
-    }
   }
 }

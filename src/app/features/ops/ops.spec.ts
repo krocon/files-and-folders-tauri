@@ -8,6 +8,7 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { SessionApi } from '../../core/session/session-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
+import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { dir, entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
@@ -193,6 +194,39 @@ describe('file operations (design 006)', () => {
     jobsApi.refuse = { code: 'invalid_name', message: 'bad', path: null };
     expect((await ops.runCopyMove(ops.copyMove()!, INPUT))?.code).toBe('invalid_name');
     expect(dialogs.open()).toBe('copy-move');
+  });
+
+  it('030 E5: entries of a network folder go to Rust with what the panel showed', async () => {
+    left.listing.update((l) => (l ? { ...l, network: true } : l));
+    left.setCursor('/src/a.txt');
+    await actions.run('OPEN_DELETE_DLG');
+    const req = ops.del()!;
+    expect(await ops.runDelete(req, false)).toBeNull();
+    const spec = jobsApi.started[0].spec;
+    expect(spec.kind === 'delete' && spec.expected).toEqual([
+      {
+        path: '/src/a.txt',
+        kind: 'file',
+        size: req.entries[0].size ?? null,
+        modifiedMs: req.entries[0].modifiedMs ?? null,
+      },
+    ]);
+  });
+
+  it('030 E4: nothing that changes entries while the panel shows an unchecked cache listing', async () => {
+    const ws = TestBed.inject(WorkspaceStore);
+    const unregister = registerWorkspaceActions(actions, ws, dialogs);
+    ws.setActive('left');
+    left.setCursor('/src/a.txt');
+    left.cachedAt.set(Date.now());
+    expect(actions.state('OPEN_DELETE_DLG')).toBe('disabled');
+    expect(actions.state('OPEN_MOVE_DLG')).toBe('disabled');
+    expect(actions.state('OPEN_COPY_DLG')).toBe('ready');
+    await actions.run('OPEN_DELETE_DLG');
+    expect(dialogs.open()).toBeNull();
+    left.cachedAt.set(null);
+    expect(actions.state('OPEN_DELETE_DLG')).toBe('ready');
+    unregister();
   });
 
   it('F8: trash by default, the cursor moves to the next remaining entry', async () => {

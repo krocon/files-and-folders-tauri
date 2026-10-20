@@ -1,4 +1,4 @@
-import type { Translation } from '../../core/i18n/i18n';
+import { localeFor, type Translation } from '../../core/i18n/i18n';
 import { formatCount } from '../../shared/format';
 import type { TEXTS_EN } from './texts';
 
@@ -39,6 +39,11 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   openCancelled: 'Öffnen des Ordners abgebrochen.',
   retry: 'Erneut versuchen',
   refreshing: 'wird aktualisiert …',
+  cachedAt: (at) =>
+    `Stand ${at.toLocaleTimeString(localeFor('de'), { hour: '2-digit', minute: '2-digit' })} · wird geprüft …`,
+  cachedTitle:
+    'Aus dem Speicher angezeigt – der Ordner wird neu gelesen. Löschen, Verschieben und Umbenennen warten so lange.',
+  unchecked: 'der Ordner wird noch geprüft – gleich noch einmal versuchen',
   unreadable: (n) => `${n} nicht lesbar`,
   notWatched: (reason) =>
     reason === 'network'

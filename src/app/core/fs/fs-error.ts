@@ -28,6 +28,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'invalid_settings',
   'shell_disabled',
   'shell_busy',
+  'changed_since_listing',
   'invalid_command',
   'unquotable_name',
   'invalid_path',

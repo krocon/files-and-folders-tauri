@@ -3,6 +3,7 @@ import { ActionId } from '../../core/actions/action-catalog';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
+import { TEXTS } from '../workspace/texts';
 
 /**
  * Handlers of everything that exists after prompts 001/004/002. Later prompts
@@ -156,5 +157,31 @@ export function registerWorkspaceActions(
     OPEN_CALL_ACTION_DLG: { run: () => dialogs.show('call-action') },
     OPEN_SHORTCUT_DLG: { run: () => dialogs.show('shortcuts') },
   };
-  return actions.register(handlers);
+  const unregister = actions.register(handlers);
+  // nothing that changes or removes entries while the panel shows an unchecked
+  // listing from the cache (design 030 E4) – copying from it and viewing stay
+  const unveto = actions.setVeto((id) =>
+    id !== null && OFF_WHILE_UNCHECKED.has(id) && (panel()?.store.cachedAt() ?? null) !== null
+      ? TEXTS.unchecked
+      : null,
+  );
+  return () => {
+    unveto();
+    unregister();
+  };
 }
+
+/** Actions that wait until a listing from the cache is checked (design 030 E4). */
+export const OFF_WHILE_UNCHECKED: ReadonlySet<ActionId> = new Set<ActionId>([
+  'OPEN_CREATE_FILE_DLG',
+  'OPEN_MKDIR_DLG',
+  'OPEN_RENAME_DLG',
+  'RENAME_INLINE',
+  'OPEN_MOVE_DLG',
+  'OPEN_DELETE_DLG',
+  'DELETE_PERMANENT',
+  'OPEN_MULTIRENAME_DLG',
+  'OPEN_MULTIMKDIR_DLG',
+  'OPEN_GROUPFILES_DLG',
+  'OPEN_DELETE_EMPTY_FOLDERS_DLG',
+]);

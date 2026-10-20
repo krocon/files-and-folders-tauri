@@ -1,6 +1,7 @@
 <nav
   class="part header"
   [class.fnf-active-panel]="active()"
+  [class.unconfirmed]="store.cachedAt() !== null"
   [attr.aria-label]="texts.pathLabel(side())"
 >
   @if (tab().search; as ref) {
@@ -266,7 +267,10 @@
   @if (store.listing()?.unreadableEntries; as n) {
     <span class="warn">· {{ texts.unreadable(n) }}</span>
   }
-  @if (store.refreshing()) {
+  @if (cachedLabel(); as c) {
+    <!-- a listing from the cache, being checked (design 030 E3) -->
+    <span class="busy cached" [attr.title]="texts.cachedTitle">· {{ c }}</span>
+  } @else if (store.refreshing()) {
     <!-- only visible if a refresh lasts (design 029 E1): no flicker for fast folders -->
     <span class="busy refreshing">· {{ texts.refreshing }}</span>
   }

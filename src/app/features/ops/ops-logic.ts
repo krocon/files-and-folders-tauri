@@ -1,5 +1,6 @@
 import { describeFsError } from '../../core/fs/fs-error';
 import { DirEntry, FsError, FsErrorCode, isParentRow } from '../../core/fs/fs.models';
+import type { ExpectedEntry } from '../../core/jobs/jobs.models';
 
 /** What an operation needs to know about a panel. */
 export interface SelectionSource {
@@ -170,4 +171,25 @@ export function sameNames(entries: readonly DirEntry[]): string[] {
     }
   }
   return [...seen.values()].filter((s) => s.n > 1).map((s) => s.name);
+}
+
+/**
+ * What the panel shows for entries about to be deleted or moved (design 030 E5) –
+ * only where the listing may be outdated: a network drive (not watched by default)
+ * or an unchecked listing from the cache. Rust leaves changed entries alone.
+ * A folder's size here may be a calculated one: Rust compares sizes of files only.
+ */
+export function expectedFor(
+  entries: readonly DirEntry[],
+  panel: { readonly network: boolean; readonly fromCache: boolean },
+): ExpectedEntry[] | undefined {
+  if (!panel.network && !panel.fromCache) {
+    return undefined;
+  }
+  return entries.map((e) => ({
+    path: e.path,
+    kind: e.kind,
+    size: e.kind === 'file' ? (e.size ?? null) : null,
+    modifiedMs: e.kind === 'file' ? (e.modifiedMs ?? null) : null,
+  }));
 }

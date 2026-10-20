@@ -29,6 +29,7 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   invalid_settings: 'This file is not a settings export of Files and Folders.',
   shell_disabled: 'The shell bar is switched off in the settings.',
   shell_busy: 'A command is still running – Esc cancels it.',
+  changed_since_listing: 'Changed since the folder was listed – left alone.',
   invalid_command: 'The command must be one non-empty line.',
   unquotable_name:
     'A name cannot be inserted safely for this shell (control characters, or % and ! with cmd.exe).',
@@ -67,6 +68,7 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   invalid_settings: 'Diese Datei ist kein Einstellungs-Export von Files and Folders.',
   shell_disabled: 'Die Shell-Zeile ist in den Einstellungen ausgeschaltet.',
   shell_busy: 'Ein Befehl läuft noch – Esc bricht ihn ab.',
+  changed_since_listing: 'Seit dem Einlesen des Ordners geändert – nicht angefasst.',
   invalid_command: 'Der Befehl muss eine nicht leere Zeile sein.',
   unquotable_name:
     'Ein Name lässt sich für diese Shell nicht sicher einfügen (Steuerzeichen oder % und ! bei cmd.exe).',

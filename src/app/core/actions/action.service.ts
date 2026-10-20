@@ -93,17 +93,28 @@ export class ActionService {
 
   /**
    * Why an action cannot run right now, whatever its handler says (`null` =
-   * extra actions/tools) – e.g. a panel inside an archive is read-only (design 016).
+   * extra actions/tools) – e.g. a panel inside an archive is read-only (design 016),
+   * or shows an unchecked listing from the cache (design 030 E4). The first reason wins.
    */
-  private veto: (id: ActionId | null) => string | null = () => null;
+  private vetoes: ((id: ActionId | null) => string | null)[] = [];
 
-  /** Installs the veto; returns a function that removes it. */
+  private veto(id: ActionId | null): string | null {
+    for (const v of this.vetoes) {
+      const why = v(id);
+      if (why !== null) {
+        return why;
+      }
+    }
+    return null;
+  }
+
+  /** Adds a veto; returns a function that removes it. */
   setVeto(fn: (id: ActionId | null) => string | null): () => void {
-    this.veto = fn;
+    this.vetoes = [...this.vetoes, fn];
     this.registered.update((n) => n + 1);
     return () => {
-      if (this.veto === fn) {
-        this.veto = () => null;
+      if (this.vetoes.includes(fn)) {
+        this.vetoes = this.vetoes.filter((v) => v !== fn);
         this.registered.update((n) => n + 1);
       }
     };

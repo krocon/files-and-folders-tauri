@@ -149,4 +149,72 @@ describe('FileBrowserStore – slow folders (design 029)', () => {
     expect(store.path()).toBe('/w');
     expect(store.cursorPath()).toBe(b.path);
   });
+
+  describe('folder cache (design 030)', () => {
+    const smb = (p: string, names: string[]) => ({
+      ...listing(
+        p,
+        names.map((n) => entry(n, { path: `${p}/${n}` })),
+      ),
+      network: true,
+    });
+
+    it('a network folder visited before is shown at once, unchecked, then checked', async () => {
+      api.handler = (p) => Promise.resolve(smb(p ?? '/', ['a.txt']));
+      await store.load('/smb/serien');
+      await store.load('/smb/serien/sub');
+      const pending = deferred<DirectoryListing>();
+      api.handler = () => pending.promise;
+      const calls = api.calls.length;
+      await store.load('/smb/serien');
+      // at once, from the cache – in the history like a normal visit
+      expect(store.path()).toBe('/smb/serien');
+      expect(store.cachedAt()).not.toBeNull();
+      expect(store.loading()).toBe(false);
+      expect(store.refreshing()).toBe(true);
+      expect(store.canGoBack()).toBe(true);
+      expect(api.calls.slice(calls)).toEqual(['/smb/serien']);
+      pending.resolve(smb('/smb/serien', ['a.txt', 'neu.txt']));
+      await vi.waitFor(() => expect(store.cachedAt()).toBeNull());
+      expect(store.entries().map((e) => e.name)).toEqual(['a.txt', 'neu.txt']);
+    });
+
+    it('back into a cached folder restores the cursor it had', async () => {
+      api.handler = (p) =>
+        Promise.resolve(p === '/smb' ? smb('/smb', ['x', 'y']) : smb(p ?? '/', []));
+      await store.load('/smb');
+      store.setCursor('/smb/y');
+      await store.load('/smb/inner');
+      api.handler = () => new Promise(() => undefined); // the server hangs
+      await store.back();
+      expect(store.path()).toBe('/smb');
+      expect(store.cursorPath()).toBe('/smb/y');
+      expect(store.cachedAt()).not.toBeNull();
+    });
+
+    it('a fast local folder is not kept; a gone one is forgotten', async () => {
+      api.handler = (p) => Promise.resolve(listing(p ?? '/', []));
+      await store.load('/lokal');
+      await store.load('/w');
+      const calls = api.calls.length;
+      await store.load('/lokal');
+      expect(store.cachedAt()).toBeNull();
+      expect(api.calls.length).toBe(calls + 1);
+      // a network folder that is gone now: error, and out of the cache
+      api.handler = (p) => Promise.resolve(smb(p ?? '/', []));
+      await store.load('/smb/weg');
+      await store.load('/w');
+      api.handler = (p) =>
+        p === '/smb/weg'
+          ? Promise.reject({ code: 'not_found', message: 'gone', path: p })
+          : Promise.resolve(listing(p ?? '/', []));
+      await store.load('/smb/weg');
+      await vi.waitFor(() => expect(store.error()?.code).toBe('not_found'));
+      await store.load('/w');
+      const before = api.calls.length;
+      void store.load('/smb/weg');
+      expect(store.path()).toBe('/w'); // no cache hit any more
+      expect(api.calls.length).toBe(before + 1);
+    });
+  });
 });

@@ -365,30 +365,39 @@ describe('FilePanel', () => {
     expect(fs.calls.slice(before)).toEqual(['/data']);
   });
 
-  describe('slow folders (design 029 E5)', () => {
-    it('a tab shown before comes back at once and is refreshed in the background', async () => {
-      const { store, settle } = await render();
+  describe('slow folders (design 029 E5, 030)', () => {
+    it('a slow tab shown before comes back at once from the cache, marked until checked (030)', async () => {
+      const original = fs.handler;
+      // /data is on a network drive: its listing is kept (design 030 E1)
+      fs.handler = (p) =>
+        p === '/data' ? original(p).then((l) => ({ ...l, network: true })) : original(p);
+      const { store, el, settle } = await render();
       ws.selectTab('left', 1);
       await settle();
       const hanging = deferred<DirectoryListing>();
-      const original = fs.handler;
       fs.handler = (p) => (p === '/data' ? hanging.promise : original(p));
       ws.selectTab('left', 0);
       await settle();
-      // the old list of this tab, usable, while it is read again
+      // the kept list, usable, while it is read again
       expect(store.path()).toBe('/data');
       expect(store.loading()).toBe(false);
       expect(store.navigationLocked()).toBe(false);
       expect(store.refreshing()).toBe(true);
+      expect(store.cachedAt()).not.toBeNull();
+      expect(el.querySelector('.header.unconfirmed')).not.toBeNull();
+      expect(el.querySelector('.status .cached')?.textContent).toContain('checking');
       expect(fs.calls.at(-1)).toBe('/data');
-      hanging.resolve(
-        withSegments(listing('/data', [entry('neu.txt', { path: '/data/neu.txt' })]), [
+      hanging.resolve({
+        ...withSegments(listing('/data', [entry('neu.txt', { path: '/data/neu.txt' })]), [
           '/',
           'data',
         ]),
-      );
+        network: true,
+      });
       await settle();
       expect(store.entries().map((e) => e.name)).toEqual(['neu.txt']);
+      expect(store.cachedAt()).toBeNull();
+      expect(el.querySelector('.header.unconfirmed')).toBeNull();
     });
 
     it('a tab never shown: empty list and its own path while it opens, not the old tab', async () => {

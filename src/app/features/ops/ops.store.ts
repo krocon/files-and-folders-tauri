@@ -16,6 +16,7 @@ import { jobTitle } from '../jobs/job-format';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   cursorAfterRemoval,
+  expectedFor,
   selectionForAction,
   stemLength,
   suggestFolderName,
@@ -372,6 +373,7 @@ export class OpsStore {
     }
     const sources = req.sources.map((e) => e.path);
     const options = { conflictDefault: input.conflictDefault, renameTo };
+    const expected = expectedFor(req.sources, this.listingState(req.side));
     const spec: JobSpec =
       req.kind === 'copy'
         ? { kind: 'copy', sources, targetDir: dir, background: input.background, options }
@@ -382,6 +384,7 @@ export class OpsStore {
             background: input.background,
             options,
             allowDangerous: input.allowDangerous,
+            ...(expected ? { expected } : {}),
           };
     const cursor = this.ws.panel(req.side)?.store.cursorPath() ?? null;
     if (req.kind === 'move') {
@@ -400,6 +403,15 @@ export class OpsStore {
     return null;
   }
 
+  /** Whether the listing of `side` may be outdated (design 030 E5). */
+  private listingState(side: Side): { network: boolean; fromCache: boolean } {
+    const store = this.ws.panel(side)?.store;
+    return {
+      network: store?.listing()?.network === true,
+      fromCache: (store?.cachedAt() ?? null) !== null,
+    };
+  }
+
   /** Starts the delete job; the cursor moves to the next remaining entry at once. */
   async runDelete(req: DeleteRequest, allowDangerous: boolean): Promise<FsError | null> {
     const paths = req.entries.map((e) => e.path);
@@ -408,7 +420,14 @@ export class OpsStore {
     this.moveCursorOff(req.side, req.sourceDir, paths);
     let id: string;
     try {
-      id = await this.jobs.start({ kind: 'delete', paths, mode: req.mode, allowDangerous });
+      const expected = expectedFor(req.entries, this.listingState(req.side));
+      id = await this.jobs.start({
+        kind: 'delete',
+        paths,
+        mode: req.mode,
+        allowDangerous,
+        ...(expected ? { expected } : {}),
+      });
     } catch (e) {
       this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
