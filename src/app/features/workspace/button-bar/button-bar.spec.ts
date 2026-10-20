@@ -163,4 +163,25 @@ describe('ButtonBar', () => {
     fixture.detectChanges();
     expect(tasks().classList).toContain('attention');
   });
+
+  it('the gear turns while a task runs, not while all wait or are paused', async () => {
+    const { fixture, el } = await render();
+    const jobs = TestBed.inject(JobsStore);
+    await jobs.init();
+    const gear = () => el.querySelector('[aria-label^="Tasks"] i.fa-cog')!;
+    expect(gear().classList).not.toContain('fa-spin');
+    await jobs.start({ kind: 'copy', sources: ['/a'], targetDir: '/b' });
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'running' });
+    fixture.detectChanges();
+    expect(gear().classList).toContain('fa-spin');
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'paused' });
+    fixture.detectChanges();
+    expect(gear().classList).not.toContain('fa-spin');
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'running' });
+    fixture.detectChanges();
+    expect(gear().classList).toContain('fa-spin');
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'waitingForDecision' });
+    fixture.detectChanges();
+    expect(gear().classList).not.toContain('fa-spin');
+  });
 });

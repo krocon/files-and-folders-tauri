@@ -76,7 +76,7 @@ interface ToolButton {
           (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
-          <i [class]="t.icon" aria-hidden="true"></i>
+          <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
           @if (t.showLabel) {
             <span aria-hidden="true">{{ t.label }}</span>
           }
@@ -169,11 +169,14 @@ export class ButtonBar {
     const visible = this.jobs.visible();
     const finished = visible.filter((j) => isFinished(j.state)).length;
     const waiting = visible.some((j) => j.state === 'waitingForDecision');
+    // the gear turns while a task really works – not while all wait for an answer or are paused
+    const spinning = this.jobs.active().some((j) => j.state === 'running');
     const progress = this.jobs.overallProgress();
     return {
       text: `${finished} / ${visible.length}`,
       percent: progress === null ? 0 : Math.round(progress * 100),
       waiting,
+      spinning,
     };
   });
 
