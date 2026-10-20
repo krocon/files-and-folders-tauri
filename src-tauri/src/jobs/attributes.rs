@@ -3,38 +3,50 @@
 //! followed or changed: a selected link is reported (`symlink_skipped`), links
 //! inside folders are counted as skipped (E4). Folders are changed after their
 //! contents unless the change gives the owner the access needed to read them (E7).
+//!
+//! External review (20.10.2026): the walk works relative to open folders
+//! (`platform::attributes::Dir`, #4) – a folder swapped for a link after it was
+//! looked at is never entered; it stays on the file system of the selected
+//! folder (#3, like `clean`); a folder whose contents cannot be read is counted
+//! once and left unchanged (#5).
 
 use super::report::Reporter;
 use super::{Control, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS, Summary};
-use crate::attributes::{ApplyTo, AttrChange, Resolved, symlink_skipped};
-use crate::error::FsError;
-use std::fs::{self, Metadata};
+use crate::attributes::{ApplyTo, AttrChange, FolderOrder, Resolved, symlink_skipped};
+use crate::error::{FsError, FsErrorCode};
+use crate::platform::attributes::{Apply, Dir, Kind, Stat};
+use std::ffi::OsString;
+use std::io;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::time::SystemTime;
 
 const MAX_LIVE_ERRORS: u64 = 100;
+
+/// A test name that cannot be opened as a folder (no other way to make a
+/// folder unreadable for root, who runs the container tests).
+#[cfg(test)]
+pub const UNOPENABLE_FOR_TESTS: &str = "unopenable-for-tests";
 
 fn path_string(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }
 
-#[cfg(unix)]
-fn mode_of(meta: &Metadata) -> u32 {
-    use std::os::unix::fs::MetadataExt;
-    meta.mode() & crate::attributes::MODE_MASK
-}
-
-#[cfg(not(unix))]
-fn mode_of(_meta: &Metadata) -> u32 {
-    0
+/// An entry of the walk: its folder (open), its name there, its full path (for
+/// messages and `dirsChanged`) and what it was when it was looked at.
+struct Entry {
+    parent: Rc<Dir>,
+    name: OsString,
+    path: PathBuf,
+    seen: Stat,
 }
 
 /// One step of the walk through a folder (explicit stack, no recursion).
 enum Step {
-    /// Look into a folder; `meta` from `symlink_metadata`.
-    Enter(PathBuf, Metadata),
+    /// Look into a folder.
+    Enter(Entry),
     /// Change the folder itself after its contents.
-    Leave(PathBuf),
+    Leave(Entry),
 }
 
 struct Run<'a, 'e> {
@@ -44,6 +56,14 @@ struct Run<'a, 'e> {
     control: &'a Control,
     rep: Reporter<'e>,
     summary: Summary,
+}
+
+fn io_error(e: &io::Error, path: &Path) -> FsError {
+    if e.kind() == io::ErrorKind::Unsupported {
+        symlink_skipped(path) // a link swapped in since it was looked at
+    } else {
+        FsError::from_io(e, path)
+    }
 }
 
 impl Run<'_, '_> {
@@ -71,90 +91,223 @@ impl Run<'_, '_> {
         self.rep.tick(false);
     }
 
-    /// Changes one entry (checked again right before: no link, filter).
-    fn apply(&mut self, path: &Path) {
-        self.rep.progress.current = Some(path_string(path));
-        let meta = match fs::symlink_metadata(path) {
-            Ok(m) => m,
-            Err(e) => return self.fail(path, FsError::from_io(&e, path)),
+    /// Changes one entry, checked again right before: no link, still the entry
+    /// that was looked at, filter. `true` = changed (or filtered out).
+    fn apply(&mut self, e: &Entry) -> bool {
+        self.rep.progress.current = Some(path_string(&e.path));
+        let now = match e.parent.stat(&e.name) {
+            Ok(s) => s,
+            Err(err) => {
+                self.fail(&e.path, FsError::from_io(&err, &e.path));
+                return false;
+            }
         };
-        if meta.file_type().is_symlink() {
-            return self.fail(path, symlink_skipped(path));
+        if now.kind == Kind::Link {
+            self.fail(&e.path, symlink_skipped(&e.path));
+            return false;
         }
-        if !self.apply_to.matches(meta.is_dir()) {
-            return self.step_done(); // filtered out: neither done nor failed
+        if now.id() != e.seen.id() {
+            self.fail(&e.path, replaced(&e.path));
+            return false;
         }
-        match self.resolved.apply(path, &meta) {
+        if !self.apply_to.matches(now.kind == Kind::Dir) {
+            self.step_done(); // filtered out: neither done nor failed
+            return true;
+        }
+        let change = self.resolved.for_entry(&now);
+        self.set(e, &now, &change)
+    }
+
+    fn set(&mut self, e: &Entry, now: &Stat, change: &Apply) -> bool {
+        match e.parent.apply(&e.name, now, change) {
             Ok(()) => {
                 self.summary.items_done += 1;
-                if let Some(parent) = path.parent() {
+                if let Some(parent) = e.path.parent() {
                     self.rep.dir_changed(path_string(parent));
                 }
                 self.step_done();
+                true
             }
-            Err(e) => self.fail(path, e),
+            Err(err) => {
+                self.fail(&e.path, io_error(&err, &e.path));
+                false
+            }
         }
     }
 
-    /// The folder and everything below it.
-    fn walk(&mut self, root: PathBuf, meta: Metadata) {
-        let mut stack = vec![Step::Enter(root, meta)];
+    /// Only the bits a folder gains, before its contents (E7, review #8) – not
+    /// counted: the full change follows after the contents.
+    fn open_up(&mut self, e: &Entry, mode: u32) -> bool {
+        let pre = Apply {
+            mode: Some(mode),
+            ..Apply::default()
+        };
+        match e.parent.apply(&e.name, &e.seen, &pre) {
+            Ok(()) => true,
+            Err(err) => {
+                self.fail(&e.path, io_error(&err, &e.path));
+                false
+            }
+        }
+    }
+
+    /// The names in a folder that was looked at as `e` (opened without following a link).
+    fn list(&self, e: &Entry) -> io::Result<(Rc<Dir>, Vec<OsString>)> {
+        #[cfg(test)]
+        if e.name == UNOPENABLE_FOR_TESTS {
+            return Err(io::Error::from(io::ErrorKind::PermissionDenied));
+        }
+        let dir = e.parent.open_child(&e.name, &e.seen)?;
+        let names = dir.names()?;
+        Ok((Rc::new(dir), names))
+    }
+
+    /// The folder and everything below it on the same file system.
+    fn walk(&mut self, root: Entry) {
+        let device = root.seen.dev;
+        let mut stack = vec![Step::Enter(root)];
         while let Some(step) = stack.pop() {
             if self.stopped() {
                 return;
             }
-            let (dir, meta) = match step {
-                Step::Leave(dir) => {
-                    self.apply(&dir);
+            let e = match step {
+                Step::Leave(e) => {
+                    self.apply(&e);
                     continue;
                 }
-                Step::Enter(dir, meta) => (dir, meta),
+                Step::Enter(e) => e,
             };
-            let first =
-                self.apply_to.matches(true) && self.change.owner_gains_access(mode_of(&meta));
-            if first {
-                self.apply(&dir);
+            let order = if self.apply_to.matches(true) {
+                self.change.folder_order(e.seen.mode)
             } else {
-                stack.push(Step::Leave(dir.clone()));
+                FolderOrder::After // not changed at all: nothing to open up
+            };
+            let opened = match order {
+                FolderOrder::First => self.apply(&e),
+                FolderOrder::Staged(mode) => self.open_up(&e, mode),
+                FolderOrder::After => true,
+            };
+            if !opened {
+                continue; // counted once; its contents are not touched
             }
-            let entries = match fs::read_dir(&dir) {
-                Ok(rd) => rd,
-                Err(e) => {
-                    self.fail(&dir, FsError::from_io(&e, &dir));
+            let (dir, names) = match self.list(&e) {
+                Ok(listed) => listed,
+                Err(err) => {
+                    if let FolderOrder::Staged(_) = order {
+                        // do not leave it with only the gained bits: the full change, uncounted
+                        if let Ok(now) = e.parent.stat(&e.name) {
+                            let _ = e
+                                .parent
+                                .apply(&e.name, &now, &self.resolved.for_entry(&now));
+                        }
+                    }
+                    // one error for the folder, no `Leave` (review #5): unchanged – unless
+                    // `First` changed it already (then it counts as done, too)
+                    self.fail(&e.path, io_error(&err, &e.path));
                     continue;
                 }
             };
+            if order != FolderOrder::First {
+                stack.push(Step::Leave(Entry {
+                    seen: e.seen,
+                    parent: e.parent,
+                    name: e.name,
+                    path: e.path.clone(),
+                }));
+            }
             let mut dirs = Vec::new();
-            for entry in entries {
+            for name in names {
                 if self.stopped() {
                     return;
                 }
-                let entry = match entry {
-                    Ok(e) => e,
-                    Err(e) => {
-                        self.fail(&dir, FsError::from_io(&e, &dir));
+                let path = e.path.join(&name);
+                let seen = match dir.stat(&name) {
+                    Ok(s) => s,
+                    Err(err) => {
+                        self.fail(&path, FsError::from_io(&err, &path));
                         continue;
                     }
                 };
-                let path = entry.path();
-                let meta = match fs::symlink_metadata(&path) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        self.fail(&path, FsError::from_io(&e, &path));
-                        continue;
-                    }
+                let child = Entry {
+                    parent: dir.clone(),
+                    name,
+                    path,
+                    seen,
                 };
-                if meta.file_type().is_symlink() {
-                    self.summary.items_skipped += 1; // like chmod -R: not entered, not changed
-                } else if meta.is_dir() {
-                    dirs.push(Step::Enter(path, meta));
-                } else if self.apply_to.matches(false) {
-                    self.apply(&path);
+                match seen.kind {
+                    // like chmod -R: not entered, not changed
+                    Kind::Link => self.summary.items_skipped += 1,
+                    // another file system (mount point): not entered, not changed (review #3)
+                    Kind::Dir if seen.dev != device => self.summary.items_skipped += 1,
+                    Kind::Dir => dirs.push(Step::Enter(child)),
+                    Kind::Other => {
+                        if self.apply_to.matches(false) {
+                            self.apply(&child);
+                        }
+                    }
                 }
             }
             // the first sub-folder is popped first
             stack.extend(dirs.into_iter().rev());
         }
+    }
+
+    /// One selected path: looked at in its folder, then changed or walked.
+    fn selected(&mut self, path: &Path, recursive: bool, folders: &mut Folders) {
+        let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+            let e = FsError::new(
+                FsErrorCode::InvalidPath,
+                "A drive or root cannot be changed here",
+                Some(path),
+            );
+            return self.fail(path, e);
+        };
+        let dir = match folders.open(parent) {
+            Ok(d) => d,
+            Err(err) => return self.fail(path, FsError::from_io(&err, path)),
+        };
+        let seen = match dir.stat(name) {
+            Ok(s) => s,
+            Err(err) => return self.fail(path, FsError::from_io(&err, path)),
+        };
+        let e = Entry {
+            parent: dir,
+            name: name.to_os_string(),
+            path: path.to_path_buf(),
+            seen,
+        };
+        if recursive && seen.kind == Kind::Dir {
+            self.walk(e);
+        } else {
+            self.apply(&e);
+        }
+    }
+}
+
+fn replaced(path: &Path) -> FsError {
+    FsError::new(
+        FsErrorCode::Io,
+        "The entry was replaced while it was being changed",
+        Some(path),
+    )
+}
+
+/// The folder of the last selected entry stays open (selections share folders).
+#[derive(Default)]
+struct Folders {
+    last: Option<(PathBuf, Rc<Dir>)>,
+}
+
+impl Folders {
+    fn open(&mut self, path: &Path) -> io::Result<Rc<Dir>> {
+        if let Some((p, d)) = &self.last
+            && p == path
+        {
+            return Ok(d.clone());
+        }
+        let d = Rc::new(Dir::open(path)?);
+        self.last = Some((path.to_path_buf(), d.clone()));
+        Ok(d)
     }
 }
 
@@ -188,15 +341,12 @@ pub fn run(
     // without recursion the total is known; with it, only the count grows (E7)
     run.rep.progress.items_total = if recursive { 0 } else { paths.len() as u64 };
     run.rep.tick(true);
+    let mut folders = Folders::default();
     for path in &paths {
         if run.stopped() {
             break;
         }
-        match fs::symlink_metadata(path) {
-            Ok(meta) if recursive && meta.is_dir() => run.walk(path.clone(), meta),
-            Ok(_) => run.apply(path),
-            Err(e) => run.fail(path, FsError::from_io(&e, path)),
-        }
+        run.selected(path, recursive, &mut folders);
     }
     run.rep.progress.current = None;
     run.rep.tick(true);
