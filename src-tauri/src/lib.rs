@@ -43,6 +43,7 @@ pub mod listing;
 pub mod listing_gate;
 pub mod model;
 pub mod opener;
+pub mod os_drag;
 pub mod paths;
 pub mod platform;
 pub mod preview;
@@ -232,7 +233,8 @@ pub fn run() {
             commands::close_main_window,
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
-            commands::watch::describe_paths
+            commands::watch::describe_paths,
+            commands::os_drag::start_os_drag
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

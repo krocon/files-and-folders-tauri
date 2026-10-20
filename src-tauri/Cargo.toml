@@ -34,6 +34,14 @@ tempfile = "3"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# design 028 E4: GTK drag source on Linux (already in the tree through Tauri)
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+# design 028 E4: native drag source on macOS/Windows
+[target.'cfg(any(target_os = "macos", windows))'.dependencies]
+drag = "2.1.1"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",

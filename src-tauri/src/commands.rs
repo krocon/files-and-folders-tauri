@@ -1,6 +1,7 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod os_drag;
 pub mod shell;
 pub mod watch;
 
