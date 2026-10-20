@@ -17,6 +17,8 @@ export abstract class MenuApi {
   abstract subscribe(onEvent: (evt: NativeMenuEvent) => void): Promise<void>;
   /** Closes the main window like its close button (Quit of the in-app menu). */
   abstract closeMainWindow(): Promise<void>;
+  /** Full screen on/off for the main window (design 022 E9); the new state. */
+  abstract toggleFullscreen(): Promise<boolean>;
 }
 
 @Injectable()
@@ -58,6 +60,17 @@ export class TauriMenuApi extends MenuApi {
     }
     try {
       await invoke<void>('close_main_window');
+    } catch (err) {
+      throw toFsError(err);
+    }
+  }
+
+  async toggleFullscreen(): Promise<boolean> {
+    if (!isTauri()) {
+      return false;
+    }
+    try {
+      return await invoke<boolean>('toggle_fullscreen');
     } catch (err) {
       throw toFsError(err);
     }

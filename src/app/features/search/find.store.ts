@@ -5,7 +5,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { DEFAULT_FORM, errorField, FindForm, FormError, formToCriteria } from './find-form';
 import { SEARCH_TEXTS } from './search-texts';
-import { SearchStore } from './search.store';
+import { MAX_TEMPLATES, SearchStore } from './search.store';
 import { errorText } from '../../core/fs/fs-error';
 
 /** What the find dialog works on. */
@@ -83,8 +83,13 @@ export class FindStore {
     this.error.set(null);
   }
 
-  saveTemplate(label: string): void {
-    this.search.saveTemplate(label, this.form());
+  /** Saves the fields as an own template (kept in the settings, design 022 E8). */
+  saveTemplate(label: string): boolean {
+    const ok = this.search.saveTemplate(label, this.form());
+    if (!ok && label.trim()) {
+      this.error.set({ field: 'name', message: SEARCH_TEXTS.templatesFull(MAX_TEMPLATES) });
+    }
+    return ok;
   }
 
   async run(): Promise<void> {

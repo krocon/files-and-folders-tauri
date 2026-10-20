@@ -22,6 +22,9 @@ import { SEARCH_TEXTS } from './search-texts';
 /** Hits are shown at most this often while a search runs (`setRows` + sort of up to 100 000 rows). */
 export const PUBLISH_MS = 300;
 export const MAX_RECENT_SEARCHES = 10;
+/** Own templates (design 022 E8, `search.templates`). */
+export const MAX_TEMPLATES = 50;
+export const MAX_TEMPLATE_LABEL = 100;
 
 /** What a result tab shows: hits of a search, or groups of duplicate files (design 016 E6). */
 export type ResultKind = 'search' | 'duplicates';
@@ -137,8 +140,10 @@ export class SearchStore {
       .filter((f): f is FindForm => f !== null)
       .slice(0, MAX_RECENT_SEARCHES),
   );
-  /** Own templates (session only). */
-  readonly templates = signal<readonly SearchTemplate[]>([]);
+  /** Own templates, kept in the settings (design 022 E8). */
+  readonly templates = computed<readonly SearchTemplate[]>(() =>
+    restoreTemplates(this.settings.get('search.templates')),
+  );
 
   constructor() {
     effect(() => {
@@ -271,16 +276,26 @@ export class SearchStore {
     this.patch(key, { hits: r.hits.filter((h) => !gone(h)) });
   }
 
-  saveTemplate(label: string, form: FindForm): void {
-    const name = label.trim();
-    if (!name) {
-      return;
+  /** Saves a template (same name: replaced). False if the name is empty or the list is full. */
+  saveTemplate(label: string, form: FindForm): boolean {
+    const name = label.trim().slice(0, MAX_TEMPLATE_LABEL);
+    const others = this.templates().filter((x) => x.label !== name);
+    if (!name || others.length >= MAX_TEMPLATES) {
+      return false;
     }
-    this.templates.update((t) => [...t.filter((x) => x.label !== name), { label: name, form }]);
+    const next = [...others, { label: name, form }];
+    if (!acceptsValue(SCHEMA['search.templates'], next)) {
+      return false;
+    }
+    this.settings.set('search.templates', next);
+    return true;
   }
 
   deleteTemplate(label: string): void {
-    this.templates.update((t) => t.filter((x) => x.label !== label));
+    this.settings.set(
+      'search.templates',
+      this.templates().filter((x) => x.label !== label),
+    );
   }
 
   private remember(c: FindForm): void {
@@ -430,4 +445,21 @@ export class SearchStore {
       this.setResult({ ...r, ...patch });
     }
   }
+}
+
+/** Templates read back from the settings: a label and a valid form each, first of a name wins. */
+export function restoreTemplates(raw: readonly unknown[]): SearchTemplate[] {
+  const out: SearchTemplate[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      continue;
+    }
+    const rec = item as Record<string, unknown>;
+    const label = typeof rec['label'] === 'string' ? rec['label'].trim() : '';
+    const form = restoreForm(rec['form']);
+    if (label && form && !out.some((t) => t.label === label)) {
+      out.push({ label, form });
+    }
+  }
+  return out.slice(0, MAX_TEMPLATES);
 }

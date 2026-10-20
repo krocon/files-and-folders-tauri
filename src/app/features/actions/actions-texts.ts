@@ -76,16 +76,6 @@ export const ACT_EN = {
     'Terms separated by spaces, * and ? as wildcards, a|b either, -term excludes. Without wildcard a term matches anywhere in the name.',
   helpRegex: 'JavaScript regular expression, not case-sensitive, e.g. \\.(jpe?g|png)$.',
   presets: 'Presets',
-  presetNames: {
-    Images: 'Images',
-    Videos: 'Videos',
-    Audio: 'Audio',
-    Documents: 'Documents',
-    Comics: 'Comics',
-    'E-books': 'E-books',
-    Archives: 'Archives',
-    Everything: 'Everything',
-  } as Readonly<Record<string, string>>,
   invalid: (e: string) => `Invalid: ${e}`,
   matches: (n: number, total: number) => `Matches ${n} of ${total} displayed entries.`,
   // shortcuts
@@ -178,16 +168,6 @@ const ACT_DE: Translation<typeof ACT_EN> = {
   helpRegex:
     'Regulärer Ausdruck (JavaScript), ohne Beachtung von Groß/klein, z. B. \\.(jpe?g|png)$.',
   presets: 'Vorlagen',
-  presetNames: {
-    Images: 'Bilder',
-    Videos: 'Videos',
-    Audio: 'Audio',
-    Documents: 'Dokumente',
-    Comics: 'Comics',
-    'E-books': 'E-Books',
-    Archives: 'Archive',
-    Everything: 'Alles',
-  },
   invalid: (e) => `Ungültig: ${e}`,
   matches: (n, total) => `Passt auf ${n} von ${total} angezeigten Einträgen.`,
   shortcutsTitle: 'Tastenkürzel',

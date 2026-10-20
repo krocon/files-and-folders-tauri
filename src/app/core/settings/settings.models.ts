@@ -23,6 +23,7 @@ export interface SettingsValues {
   'shell.loginPath': boolean;
   'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
+  'search.templates': readonly unknown[];
 }
 
 export type SettingKey = keyof SettingsValues;
@@ -102,13 +103,16 @@ export interface LoadedSettings {
   readonly persist: boolean;
 }
 
-export type SettingsPart = 'settings' | 'keymap' | 'themes' | 'renamePresets' | 'tools';
+export type SettingsPart =
+  'settings' | 'keymap' | 'themes' | 'renamePresets' | 'tools' | 'buttons' | 'fileTypes';
 export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'settings',
   'keymap',
   'themes',
   'renamePresets',
   'tools',
+  'buttons',
+  'fileTypes',
 ];
 
 export interface ImportReport {

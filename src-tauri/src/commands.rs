@@ -1,6 +1,7 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod config;
 pub mod os_drag;
 pub mod shell;
 pub mod watch;
@@ -1162,6 +1163,8 @@ pub async fn import_settings<R: Runtime>(
             "themes" => unblock(&app.state::<ThemesState>().write_blocked),
             "keymap" => unblock(&app.state::<KeymapState>().write_blocked),
             "renamePresets" => unblock(&app.state::<PresetsState>().write_blocked),
+            "buttons" => unblock(&app.state::<config::ButtonsState>().write_blocked),
+            "fileTypes" => unblock(&app.state::<config::FileTypesState>().write_blocked),
             _ => {}
         }
     }
@@ -1457,8 +1460,9 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 4] = [
+    const SOURCES: [(&str, &str); 5] = [
         ("commands.rs", include_str!("commands.rs")),
+        ("commands/config.rs", include_str!("commands/config.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),

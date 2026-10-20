@@ -42,6 +42,7 @@ import { TEXTS } from '../../workspace/texts';
 import { SettingsStore } from '../../../core/settings/settings.store';
 import { ROW_HEIGHTS } from '../../../core/settings/settings.models';
 import { DISPLAY } from '../../../core/settings/display';
+import { FILE_TYPES } from '../../../core/file-icon/file-icon.service';
 import { locale } from '../../../core/i18n/i18n';
 import { inPlaceUpdate } from './row-update';
 import {
@@ -209,6 +210,7 @@ export class FileList implements OnDestroy {
     DISPLAY.dateFormat();
     DISPLAY.folderBrackets();
     DISPLAY.hideExtension();
+    FILE_TYPES(); // icons and their colours (design 022 E5)
     locale();
     void TEXTS.emptyFolder;
     return { headers, rowHeight };

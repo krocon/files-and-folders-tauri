@@ -15,6 +15,7 @@ import { FileListController } from '../browser/file-list/file-list-controller';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { MarkPatternDialog } from './mark-pattern-dialog';
 import { ShortcutDialog } from './shortcut-dialog';
+import { FileTypesStore } from '../config/file-types.store';
 
 describe('dialogs', () => {
   let keymap: FakeKeymapApi;
@@ -70,6 +71,37 @@ describe('dialogs', () => {
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     expect([...store.marked()]).toEqual(['/x/3']);
     expect(TestBed.inject(DialogService).open()).toBeNull();
+  });
+
+  it('mark by pattern: the presets are the file types (design 022 E7)', async () => {
+    const fixture = TestBed.createComponent(MarkPatternDialog);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const presets = [...el.querySelectorAll<HTMLButtonElement>('.presets button')];
+    expect(presets.map((b) => b.textContent?.trim())).toEqual([
+      'Movies',
+      'Audio',
+      'Images',
+      'Documents',
+      'Archives',
+      'Source code',
+      'Programs',
+      'Fonts',
+      'E-books',
+      'Design files',
+      '3D models',
+      'Everything',
+    ]);
+    TestBed.inject(FileTypesStore).user.set([
+      { label: 'Comics', extensions: ['.cbz', '.cbr'], icon: 'fa-book', color: null },
+    ]);
+    fixture.detectChanges();
+    const first = el.querySelector<HTMLButtonElement>('.presets button')!;
+    expect(first.textContent?.trim()).toBe('Comics');
+    first.click();
+    fixture.detectChanges();
+    expect(el.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('*.cbz *.cbr');
   });
 
   it('shortcuts: records a new shortcut into the override, removes and resets', async () => {

@@ -89,6 +89,12 @@ import { SettingsStore } from '../../core/settings/settings.store';
 import { SETTINGS_TEXTS } from '../settings/settings-texts';
 import { describeSettingsWarning } from '../settings/settings-warnings';
 import { WorkspaceStore } from './workspace.store';
+import { ButtonConfigDialog } from '../config/button-config-dialog';
+import { ButtonConfigStore } from '../config/button-config.store';
+import { registerConfigActions } from '../config/config-actions';
+import { FileTypesDialog } from '../config/file-types-dialog';
+import { FileTypesStore } from '../config/file-types.store';
+import { MenuApi } from '../../core/menu/menu-api';
 
 /**
  * The main window (`docs/ui-layout.md`): a CSS grid with the rows header · tabs ·
@@ -130,6 +136,8 @@ import { WorkspaceStore } from './workspace.store';
     AboutDialog,
     ContextMenu,
     ShellBar,
+    ButtonConfigDialog,
+    FileTypesDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -167,6 +175,9 @@ export class Workspace implements OnInit {
   private readonly archive = inject(ArchiveStore);
   private readonly dup = inject(DuplicatesStore);
   private readonly theme = inject(ThemeService);
+  private readonly buttonConfig = inject(ButtonConfigStore);
+  private readonly fileTypes = inject(FileTypesStore);
+  private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
   private readonly destroyRef = inject(DestroyRef);
@@ -287,6 +298,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
+    this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();
@@ -294,6 +306,8 @@ export class Workspace implements OnInit {
     void this.ws.init();
     void this.actions.init().then(() => this.os.init());
     void this.theme.init();
+    void this.buttonConfig.init();
+    void this.fileTypes.init();
   }
 
   // ---- splitter ----

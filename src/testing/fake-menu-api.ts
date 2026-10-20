@@ -29,6 +29,13 @@ export class FakeMenuApi extends MenuApi {
     return Promise.resolve();
   }
 
+  fullscreen = false;
+
+  toggleFullscreen(): Promise<boolean> {
+    this.fullscreen = !this.fullscreen;
+    return Promise.resolve(this.fullscreen);
+  }
+
   /** Simulates a click in the native menu. */
   emit(id: string): void {
     this.listener?.({ id });

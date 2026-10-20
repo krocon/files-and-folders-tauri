@@ -1,0 +1,104 @@
+[
+  {
+    "label": "movies",
+    "extensions": [".avi", ".mkv", ".mp4", ".mov", ".wmv", ".flv", ".webm"],
+    "icon": "fa-file-video-o",
+    "color": "video"
+  },
+  {
+    "label": "audio",
+    "extensions": [".mp3", ".wav", ".aac", ".flac", ".ogg", ".wma", ".m4a"],
+    "icon": "fa-file-audio-o",
+    "color": "audio"
+  },
+  {
+    "label": "images",
+    "extensions": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".svg", ".heic"],
+    "icon": "fa-file-image-o",
+    "color": "image"
+  },
+  {
+    "label": "documents",
+    "extensions": [
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".odt",
+      ".ods",
+      ".odp",
+      ".txt",
+      ".rtf",
+      ".md"
+    ],
+    "icon": "fa-file-text-o",
+    "color": "document"
+  },
+  {
+    "label": "archives",
+    "extensions": [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso"],
+    "icon": "fa-file-archive-o",
+    "color": "archive"
+  },
+  {
+    "label": "code",
+    "extensions": [
+      ".html",
+      ".css",
+      ".js",
+      ".ts",
+      ".jsx",
+      ".tsx",
+      ".py",
+      ".java",
+      ".c",
+      ".cpp",
+      ".cs",
+      ".rb",
+      ".php",
+      ".go",
+      ".rs",
+      ".sh",
+      ".xml",
+      ".json",
+      ".yml",
+      ".yaml",
+      ".sql"
+    ],
+    "icon": "fa-file-code-o",
+    "color": "code"
+  },
+  {
+    "label": "executables",
+    "extensions": [".exe", ".msi", ".bat", ".sh", ".apk", ".app", ".jar", ".com", ".bin", ".cmd"],
+    "icon": "fa-cogs",
+    "color": "executable"
+  },
+  {
+    "label": "fonts",
+    "extensions": [".ttf", ".otf", ".woff", ".woff2", ".eot"],
+    "icon": "fa-font",
+    "color": "document"
+  },
+  {
+    "label": "ebooks",
+    "extensions": [".epub", ".mobi", ".azw", ".azw3", ".fb2", ".cbz", ".cbr"],
+    "icon": "fa-book",
+    "color": "document"
+  },
+  {
+    "label": "design",
+    "extensions": [".psd", ".ai", ".xd", ".sketch", ".fig", ".indd", ".cdr"],
+    "icon": "fa-paint-brush",
+    "color": "image"
+  },
+  {
+    "label": "3d",
+    "extensions": [".obj", ".fbx", ".stl", ".dae", ".3ds", ".blend"],
+    "icon": "fa-cube",
+    "color": "image"
+  }
+]

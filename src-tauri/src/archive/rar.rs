@@ -236,6 +236,8 @@ pub(crate) struct RarArchive<'p> {
     handle: *const ffi::Handle,
     state: Box<State>,
     path: &'p Path,
+    /// Extract mode: skipping a solid entry decodes it as well.
+    extract: bool,
     /// Headers encrypted (names need the password).
     pub header_encrypted: bool,
 }
@@ -320,6 +322,7 @@ impl<'p> RarArchive<'p> {
             handle,
             state,
             path,
+            extract,
             header_encrypted: flags & ffi::ROADF_ENCHEADERS != 0,
         };
         if archive.handle.is_null() || result != ffi::ERAR_SUCCESS {
@@ -354,7 +357,18 @@ impl<'p> RarArchive<'p> {
             unsafe { ffi::RARReadHeaderEx(self.handle, (&raw mut *h).cast_const()) }
         };
         match code {
-            ffi::ERAR_SUCCESS => Ok(Some(header_of(&h))),
+            ffi::ERAR_SUCCESS => {
+                let header = header_of(&h);
+                // in extract mode even a skipped (solid) entry is decoded: check every one
+                if self.extract && header.dict > MAX_DICT {
+                    return Err(FsError::new(
+                        FsErrorCode::ArchiveTooLarge,
+                        "The archive needs a dictionary larger than 1 GiB – refused",
+                        Some(self.path),
+                    ));
+                }
+                Ok(Some(header))
+            }
             ffi::ERAR_END_ARCHIVE => Ok(None),
             _ if self.state.password_missing => {
                 Err(rar_error(ffi::ERAR_MISSING_PASSWORD, self.path, true))

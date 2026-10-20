@@ -57,7 +57,9 @@ without stutter.
   **create many folders** from a template
 - **Search** with glob/regex, content, size, date, depth and presets – results stream into a **result tab** you
   can work with like a normal folder
-- **Archives** – open ZIP / TAR / TAR.GZ like a folder, pack and unpack (zip-slip and zip-bomb safe)
+- **Archives** – open ZIP / TAR / TAR.GZ / 7z / RAR like a folder, view (F3) and open (Enter) files inside,
+  pack (ZIP, 7z, TAR, TAR.GZ) and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR; kept in memory only)
+  – zip-slip and zip-bomb safe
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
@@ -70,6 +72,9 @@ without stutter.
 - **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
 - **Colour schemes** – the eight classic designs (Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat,
   Norton) plus modern light/dark and Crimson, *follow the system*, a live editor with WCAG contrast check, import/export
+- **Configurable button bar and file types** – structured editors for the buttons per modifier set and for the
+  file type categories (icons, colours, *mark by type*); own search templates are kept
+- **Full screen** with `F11` on Windows/Linux (`⌃⌘F` on macOS)
 - **Settings dialog** with search, export/import of the whole configuration
 - **English and German** UI, switchable at runtime
 
@@ -167,6 +172,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Properties / change attributes | `Alt+Enter` / `Ctrl+Shift+F2` | `⌘I` / `⌘⇧F2` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Shell line | `Shift+F11` | `⇧F11` |
+| Full screen | `F11` | `⌃⌘F` (menu *Window*) |
 | Settings | `Ctrl+,` | `⌘,` |
 
 The full table is in [docs/features.md](docs/features.md#tastenkürzel-stand-prompt-002).
@@ -186,8 +192,12 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
-- **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language …); the whole
-  configuration can be exported and imported as one file.
+- **Buttons** – *Button configuration…* (menu *Tools*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
+  actions of the bottom bar; changed sets are kept in `buttons.json`.
+- **File types** – *File types…*: categories with extensions, icon and colour; they drive the file icons and the
+  presets of *Mark by pattern* (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
+- **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language, own search
+  templates …); the whole configuration can be exported and imported as one file.
 
 ## Development
 

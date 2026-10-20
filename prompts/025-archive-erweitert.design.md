@@ -1,6 +1,6 @@
 # Design 025: Archive erweitert – 7z, RAR, Passwörter, Dateien im Archiv öffnen
 
-> **Status:** umgesetzt ohne Freigabe-Halt (Marc, 20.10.2026: „jetzt und selbständig“, Rahmen in `prompts/025-*.md`) ·
+> **Status:** ✅ umgesetzt ohne Freigabe-Halt (Marc, 20.10.2026: „jetzt und selbständig“, Rahmen in `prompts/025-*.md`) ·
 > **Datum:** 2026-10-20 · **Branch:** `feat/archive-erweitert` (von `main`)
 > **Grundlage:** Design 016 (E1–E5, Review, Offen), mr `cmd/pack` + `cmd/unzip` (node-7z, Passwortfeld, 7z als
 > Default), Design 010 (Vorschau), 011 (Öffnen mit Standard-App), 005/006 (Jobs, Konfliktfrage).
@@ -204,22 +204,74 @@ Fokus: Passwortfeld zuerst (`data-autofocus`), Enter = Öffnen, Esc = Abbrechen,
 
 ## 6. Abweichungen bei der Umsetzung
 
-(wird während der Umsetzung gefüllt)
+| Punkt | Design | umgesetzt | Grund |
+|---|---|---|---|
+| Fehlendes Passwort beim Entpacken | Fehler je Eintrag | Job **scheitert vor dem ersten Schreiben** mit `archive_password_required` (Job-Fehler); ein falsches Passwort beendet den Job mit `archive_password_wrong` – das Frontend fragt und startet denselben Job neu | sonst entstünde eine Liste gleicher Fehler und halb entpackte Ordner |
+| Prüfung im Unpack-Dialog | – | Passwortfeld im Unpack-Dialog (wie mr): geprüft per `set_archive_password` vor dem Start; bei mehreren Archiven zählen nur echte Fehler | ein Dialog statt zwei, falsches Passwort bleibt im Dialog |
+| Passwortdialog aus F3 | – | Die Ansicht schließt sich, fragt und öffnet sich danach wieder (immer nur ein Dialog, `DialogService`) | Dialoge stapeln sich nicht |
+| Schnellvorschau | Passwortdialog | zeigt nur den Fehler | jede Cursorbewegung würde sonst fragen |
+| `set_archive_password` | Archivpfad | nimmt auch einen virtuellen Pfad (steht für sein Archiv) | Fehlerpfade der Vorschau zeigen auf den Eintrag |
+| ZIP-Zeiten beim Auflisten | Extended Timestamp | Liste: DOS-Zeit als Ortszeit; **Entpacken**: Extended Timestamp | das Feld liegt im lokalen Header; ihn für jede Zeile zu lesen hieße 200 000 Sprünge im Archiv – die Liste ist auf 2 s genau |
+| Pause bei RAR | je Block | zwischen Einträgen | eine Pause im UnRAR-Callback hielte die globale Bibliothekssperre |
+| `viewEntry` | – | kein Hilfsjob: erscheint kurz in Tasks | große Einträge sollen Fortschritt und Abbruch zeigen |
+| Lizenzhinweis | `docs/licenses.md` | im Generator `scripts/licenses.mjs` (Abschnitt „Bundled source“) | der Bericht wird erzeugt – ein Handeintrag ginge verloren |
+| Ratio-Test 7z | – | Grenzen über `unpack_limit_for` getestet, keine 7z-Bombe als Fixture | der Writer erzeugt keine lügenden Größen; die Crate prüft Länge + CRC |
+
+### E2E (Xvfb :95, Debug-Build, `HOME=/tmp/e2e-025/home`)
+
+- 7z (7-Zip, solid, Unicode/Emoji): Enter öffnet als Ordner (Badge „7Z · read-only“), **F3** zeigt `🎉.txt`, **Enter** öffnet die
+  Kopie mit LibreOffice (Standard-App), Kopie unter `~/.cache/io.github.krocon.filesandfolders/archive-view/run-…/1/` mit
+  Rechten 700 (Ordner) / 444 (Datei); F4/F7/F8 gesperrt, F5 entpackt `Ünïcödé dir` samt `sub/` in den Zielordner.
+- 7z mit verschlüsselten Namen: Enter → Passwortdialog; falsches Passwort → „Wrong password.“ im Dialog, Feld geleert;
+  richtiges → Liste, Badge „7Z · read-only · 🔒 encrypted“.
+- ZIP AES (7-Zip): Liste ohne Passwort; F3 → Passwortdialog → danach zeigt die Ansicht den Inhalt.
+- RAR (selbst erzeugtes RAR 4): Liste mit „2 unsafe entries hidden“, Link als Link.
+- Alt+F5 auf `Quelle ä` (versteckte Datei, Emoji, Link): Format 7Z, Passwort + Wiederholung, Hinweis „7z … encrypts the
+  file names too“ → `Quelle ä.7z`; `7z l -pgeheim` zeigt alle Einträge, `7z l -pfalsch` „Wrong password?“; der Link wird
+  gemeldet („1 error – details in Tasks“).
+- Beenden über Datei → Beenden: der Lauf-Ordner im Cache ist weg.
+- Funde → behoben: Passwortdialog aus F3 nannte den Eintrag statt des Archivs; Beschriftung „Password (if encrypted)“ im
+  Pack-Dialog → „Password (optional)“. Bekannt: im Fehlerbanner des Panels steht die Meldung zweimal (Text + Rust-Meldung,
+  ein Punkt Unterschied) – kosmetisch, bis zur Eingabe sichtbar.
+- Nicht prüfbar: macOS/Windows (UnRAR-Build mit Xcode/MSVC, `SystemTimeToTzSpecificLocalTime`, Breitzeichen-Pfade unter
+  Windows) – erst in der CI; gesperrter Ordner (root); dunkles Design nur über Tokens.
 
 ## 7. Review
 
-(Phase 6)
+Selbst-Review des Diffs `main...feat/archive-erweitert` (frischer Durchgang, Schwerpunkte laut Rahmen):
+
+| # | Befund | Schwere | Umgang |
+|---|---|---|---|
+| 1 | RAR im Entpack-Modus: auch **übersprungene** Einträge eines soliden Archivs werden dekodiert – die Wörterbuchprüfung lief nur vor `test_into` | mittel | behoben: `next_header` prüft im Entpack-Modus jeden Kopf (`dict > 1 GiB` → `archive_too_large`) |
+| 2 | 7z mit falschem Passwort: nach dem Fehler im Block wurden leere Dateien (ohne Block) trotzdem angelegt → beim Neustart des Jobs Konfliktfrage | mittel | behoben (Test `encrypted_entries_need_the_password_before_anything_is_written` war rot): nach einem Passwortfehler wird nichts mehr geschrieben |
+| 3 | `HeaderDataEx`/`OpenArchiveDataEx` werden von C beschrieben, aber als `*const` übergeben | gering | Zeiger aus `&raw mut` (veränderliche Herkunft), Layout im Sys-Crate per `const`-Assertions geprüft |
+| 4 | Callback in C++: Panik würde abbrechen | gering | `catch_unwind`, Rückgabe −1; kein `unwrap`/Index im Callback |
+| 5 | UnRAR-Fehlerzustand ist global (`ErrHandler`) | gering | alle Aufrufe hinter einem `Mutex`; Pause nie im Callback |
+| 6 | Passwort im Job-Spec | – | `skip_serializing` + eigener `Debug`; Test `a_password_is_never_sent_back`; Frontend hält es nur bis zum Absenden, Felder `type=password` |
+| 7 | 7z-Header mit PPMd-Kodierung könnte viel Speicher anfordern (Header wird von der Crate ohne unsere Prüfung dekodiert) | gering | offen (Crate-Grenze `MAX_MEM_LIMIT_KB`); LZMA/LZMA2 allozieren das Fenster schrittweise (`lzma-rust2`), Datenblöcke prüft `check_memory` |
+| 8 | Cache-Lauf eines zweiten App-Fensters könnte nach 3 Tagen Leerlauf gelöscht werden | gering | bewusst: Lauf-Ordner werden bei jeder Kopie frisch (mtime); offene Dateien darin bleiben unter Unix lesbar |
+| 9 | Pfade opak im Frontend | – | keine Zerlegung; der Passwortdialog zeigt den ganzen Archivpfad |
+| 10 | Commands async | – | `set_archive_password` ist `async` (`commands::command_rules` grün) |
+| 11 | Texte en+de | – | `catalogs.spec.ts` grün (`RAR` als gleichlautend erlaubt) |
 
 ## 8. Fortschritt
 
 - [x] Phase 1: Prompt + dieses Dokument
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 E2E
-- [ ] Phase 5 Doku
-- [ ] Phase 6 Abschluss
+- [x] Phase 2 Rust: `archive/{sevenz,rar,secrets,view}.rs`, `platform/clock.rs`, Jobs `extract` (Sink, 7z, RAR, Passwort),
+  `pack` (7z, ZIP-AES, Extended Timestamp), `viewEntry`, Command `set_archive_password`, `read_preview` mit virtuellen
+  Pfaden – 34 neue Tests (`archive/tests_formats.rs`, `jobs/tests_formats.rs`, `secrets`, `clock`), Fixtures in
+  `archive/testdata/` (Herkunft: `README.md`); auch `--no-default-features` (ohne RAR) clippy-grün
+- [x] Phase 3 Frontend: `ArchiveApi` (+ Fake), `ArchivePasswordPrompt`, Passwortdialog, Pack (7Z, Passwort + Wiederholung,
+  Hinweise), Unpack-Passwort, Enter/F3 im Archiv, Konflikttext je Job-Art, Badge „encrypted“ – 8 neue Specs
+  (`archive-025.spec.ts`) + angepasste
+- [x] Phase 4 E2E (s. §6)
+- [x] Phase 5 Doku: `docs/architecture.md`, `docs/feature-parity.md`, `docs/licenses.md` (+ Generator), README,
+  `prompts/README.md`
+- [x] Phase 6: `pnpm check` grün, Review (§7), Merge von `origin/main` (022, 024, 031)
 
 ## 9. Offen
 
-- In Archive schreiben (E9) – Folge-Prompt.
+- In Archive schreiben (E9) – Folge-Prompt „Archive bearbeiten“ (ZIP/TAR zuerst, `raw_copy_file`).
+- 7z-Header mit PPMd ohne Speichergrenze (Review #7) – ggf. Vorschlag an `sevenz-rust2`.
+- Doppelte Fehlermeldung im Panel-Banner bei Passwortfehlern (kosmetisch).
 - Mehrteilige Archive, `.tar.bz2`/`.tar.xz`, Suche in Archiven, Passwort im Schlüsselbund merken.

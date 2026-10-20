@@ -22,6 +22,7 @@ export const SETTINGS_EN = {
     keyboard: 'Keyboard',
     tools: 'Tools',
     colors: 'Colours',
+    customize: 'Buttons & file types',
     data: 'Data',
   },
   items: {
@@ -115,6 +116,11 @@ export const SETTINGS_EN = {
       help: 'The last 10 searches are kept across restarts.',
       keywords: 'search find history recent',
     },
+    'search.templates': {
+      label: 'Own search templates',
+      help: 'Templates saved in the find dialog (up to 50); delete single ones there.',
+      keywords: 'search find template preset own',
+    },
   },
   values: {
     system: 'System',
@@ -141,6 +147,7 @@ export const SETTINGS_EN = {
   clearShellHistory: 'Clear shell history',
   shellHistoryCleared: 'The shell history was cleared.',
   recentCount: (n: number) => (n === 1 ? '1 search remembered' : `${n} searches remembered`),
+  templateCount: (n: number) => (n === 1 ? '1 own template' : `${n} own templates`),
   // keyboard
   keyboardIntro: 'Shortcuts per action; your changes are kept in keymap.json.',
   editShortcuts: 'Edit shortcuts…',
@@ -157,9 +164,22 @@ export const SETTINGS_EN = {
   editColors: 'Colour schemes…',
   currentScheme: (name: string, system: boolean) =>
     system ? `${name} (follows the system)` : name,
+  // buttons & file types (design 022)
+  customizeIntro:
+    'The buttons of the bottom bar (buttons.json) and the file types for icons and marking (filetypes.json).',
+  editButtons: 'Button configuration…',
+  editFileTypes: 'File types…',
+  buttonSetsChanged: (n: number) =>
+    n === 0
+      ? 'Buttons: built in.'
+      : n === 1
+        ? 'Buttons: 1 set changed.'
+        : `Buttons: ${n} sets changed.`,
+  fileTypesInfo: (n: number, own: boolean) =>
+    `File types: ${n} ${n === 1 ? 'category' : 'categories'}${own ? ' (your own)' : ' (built in)'}.`,
   // data
   dataIntro:
-    'All settings in one file: settings, shortcuts, colour schemes, rename presets, tools.',
+    'All settings in one file: settings, shortcuts, colour schemes, rename presets, tools, buttons, file types.',
   exportTo: 'Export into folder',
   export: 'Export',
   exported: (path: string) => `Exported to ${path}`,
@@ -172,6 +192,8 @@ export const SETTINGS_EN = {
     themes: 'Colour schemes',
     renamePresets: 'Rename presets',
     tools: 'Tools',
+    buttons: 'Buttons',
+    fileTypes: 'File types',
   },
   toolsWarning: 'Tools start programs – import them only from a file you trust.',
   imported: (parts: string) => `Imported: ${parts}.`,
@@ -224,6 +246,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     keyboard: 'Tastatur',
     tools: 'Tools',
     colors: 'Farben',
+    customize: 'Buttons & Dateitypen',
     data: 'Daten',
   },
   items: {
@@ -317,6 +340,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Die letzten 10 Suchen bleiben über Neustarts erhalten.',
       keywords: 'suche finden verlauf zuletzt',
     },
+    'search.templates': {
+      label: 'Eigene Suchvorlagen',
+      help: 'Im Suchdialog gespeicherte Vorlagen (bis 50); einzelne dort löschen.',
+      keywords: 'suche finden vorlage muster eigene',
+    },
   },
   values: {
     system: 'System',
@@ -343,6 +371,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   clearShellHistory: 'Shell-Verlauf leeren',
   shellHistoryCleared: 'Der Shell-Verlauf wurde geleert.',
   recentCount: (n) => (n === 1 ? '1 Suche gemerkt' : `${n} Suchen gemerkt`),
+  templateCount: (n) => (n === 1 ? '1 eigene Vorlage' : `${n} eigene Vorlagen`),
   keyboardIntro: 'Kürzel je Aktion; Ihre Änderungen stehen in keymap.json.',
   editShortcuts: 'Kürzel bearbeiten…',
   resetShortcuts: 'Alle Kürzel zurücksetzen',
@@ -354,8 +383,20 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   colorsIntro: 'Farbschemata: eingebaut, eigene oder dem System folgend.',
   editColors: 'Farbschemata…',
   currentScheme: (name, system) => (system ? `${name} (folgt dem System)` : name),
+  customizeIntro:
+    'Die Buttons der unteren Leiste (buttons.json) und die Dateitypen für Symbole und Markieren (filetypes.json).',
+  editButtons: 'Button-Konfiguration…',
+  editFileTypes: 'Dateitypen…',
+  buttonSetsChanged: (n) =>
+    n === 0
+      ? 'Buttons: eingebaut.'
+      : n === 1
+        ? 'Buttons: 1 Satz geändert.'
+        : `Buttons: ${n} Sätze geändert.`,
+  fileTypesInfo: (n, own) =>
+    `Dateitypen: ${n} ${n === 1 ? 'Kategorie' : 'Kategorien'}${own ? ' (eigene)' : ' (eingebaut)'}.`,
   dataIntro:
-    'Alle Einstellungen in einer Datei: Einstellungen, Kürzel, Farbschemata, Rename-Vorlagen, Tools.',
+    'Alle Einstellungen in einer Datei: Einstellungen, Kürzel, Farbschemata, Rename-Vorlagen, Tools, Buttons, Dateitypen.',
   exportTo: 'Export in den Ordner',
   export: 'Exportieren',
   exported: (path) => `Exportiert nach ${path}`,
@@ -368,6 +409,8 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     themes: 'Farbschemata',
     renamePresets: 'Rename-Vorlagen',
     tools: 'Tools',
+    buttons: 'Buttons',
+    fileTypes: 'Dateitypen',
   },
   toolsWarning: 'Tools starten Programme – nur aus einer Datei importieren, der Sie vertrauen.',
   imported: (parts) => `Importiert: ${parts}.`,
