@@ -90,6 +90,9 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
       overflow: hidden;
+      /* = defaultRowHeights: text vertically centred (ge-table-theme.css) */
+      --fnf-row-height: 24px;
+      --fnf-header-height: 26px;
     }
     .table {
       display: block;
