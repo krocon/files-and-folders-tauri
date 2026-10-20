@@ -187,6 +187,37 @@ export function iconNameForEntry(entry: DirEntry): string {
   }
 }
 
+/** Colour group of a file icon (theme tokens `--color-icon-<group>`). */
+export type IconColorGroup =
+  'folder' | 'document' | 'image' | 'video' | 'audio' | 'archive' | 'code' | 'executable';
+
+const CATEGORY_COLOR_GROUPS: Readonly<Record<string, IconColorGroup>> = {
+  movies: 'video',
+  audio: 'audio',
+  images: 'image',
+  design: 'image',
+  '3d': 'image',
+  documents: 'document',
+  ebooks: 'document',
+  fonts: 'document',
+  archives: 'archive',
+  code: 'code',
+  executables: 'executable',
+};
+
+/** Colour group of an entry's icon; `null` = plain text colour (`..`, unknown types, broken links). */
+export function iconColorGroupForEntry(entry: DirEntry): IconColorGroup | null {
+  const icon = iconNameForEntry(entry);
+  if (icon === 'fa-folder') {
+    return 'folder';
+  }
+  if (isParentRow(entry) || icon === 'fa-chain-broken' || icon === 'fa-question-circle') {
+    return null;
+  }
+  const category = EXTENSION_TO_CATEGORY.get(extractExtension(entry.name));
+  return category ? (CATEGORY_COLOR_GROUPS[category] ?? null) : null;
+}
+
 /** Returns full CSS class string with `fa` prefix (e.g. `fa fa-folder`, `fa fa-file-code-o`). */
 export function iconFor(entry: DirEntry): string {
   return `fa ${iconNameForEntry(entry)}`;

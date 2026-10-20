@@ -9,6 +9,7 @@ import { THEME_LABELS_DE } from './theme-labels.de';
 export type TokenGroup =
   | 'general'
   | 'list'
+  | 'icons'
   | 'activePanel'
   | 'header'
   | 'footer'
@@ -33,6 +34,7 @@ export const themeLabel = phrasebook('themeLabels', { de: THEME_LABELS_DE });
 const GROUP_LABELS_EN: Readonly<Record<TokenGroup, string>> = {
   general: 'General',
   list: 'File list',
+  icons: 'File icons',
   activePanel: 'Active panel',
   header: 'Panel header and tabs',
   footer: 'Status line and button bar',
@@ -106,6 +108,15 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-error-text', 'list', 'Unreadable entries'),
   t('--font-list', 'list', 'Font', 'font'),
   t('--font-size-list', 'list', 'Font size', 'length'),
+
+  t('--color-icon-folder', 'icons', 'Folders'),
+  t('--color-icon-document', 'icons', 'Documents'),
+  t('--color-icon-image', 'icons', 'Images'),
+  t('--color-icon-video', 'icons', 'Videos'),
+  t('--color-icon-audio', 'icons', 'Audio'),
+  t('--color-icon-archive', 'icons', 'Archives'),
+  t('--color-icon-code', 'icons', 'Code'),
+  t('--color-icon-executable', 'icons', 'Programs'),
 
   t('--color-active-list-bg', 'activePanel', 'List background'),
   t('--color-active-list-text', 'activePanel', 'List text'),

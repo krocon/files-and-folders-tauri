@@ -34,6 +34,21 @@ describe('file renderers', () => {
     expect(cell.querySelector('.ge-table-sr-only')?.textContent).toBe('marked, ');
   });
 
+  it('gives the icon a colour class by file type, not to marked rows', () => {
+    const icon = (row: DirEntry) =>
+      render(new NameCellRenderer(), row, row.name).querySelector('.fnf-icon');
+    expect(icon(dir('src'))?.classList.contains('fnf-icon-folder')).toBe(true);
+    expect(icon(entry('film.mkv'))?.classList.contains('fnf-icon-video')).toBe(true);
+    expect(icon(entry('plain.unknown'))?.className).toBe('fnf-icon');
+    const cell = document.createElement('div');
+    const areaModel = {
+      getRowByIndex: () => entry('film.mkv'),
+      isMarkedAt: () => true,
+    } as unknown as AreaModelIf;
+    new NameCellRenderer().render(cell, 0, 0, 'body', areaModel, 'm', new SimpleDomService());
+    expect(cell.querySelector('.fnf-icon')?.className).toBe('fnf-icon');
+  });
+
   it('renders unicode names unchanged', () => {
     const name = 'Übersicht März 日本語 😀.md';
     expect(render(new NameCellRenderer(), entry(name), name).textContent).toContain(name);

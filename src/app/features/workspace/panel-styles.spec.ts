@@ -22,7 +22,7 @@ describe('panel styles', () => {
     const ws = readFileSync('src/app/features/workspace/workspace.css', 'utf8');
     const splitter = rule(ws, '.splitter');
     expect(splitter).toContain('z-index: 1');
-    expect(splitter).toContain('opacity: 0.2');
+    expect(splitter).not.toContain('opacity');
   });
 
   it('the menus of the button bar take no place in its flex row (Actions/Tasks stay right)', () => {

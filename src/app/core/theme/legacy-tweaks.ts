@@ -4,6 +4,14 @@
  * name. `--fnf-*` entries replace old variables before the conversion, `--color-*` entries
  * set app tokens afterwards (both still pass the contrast correction).
  */
+/** File icons in the list text colour, as before the icon colours (2026-10-20). */
+const PLAIN_ICONS: Readonly<Record<string, string>> = Object.fromEntries(
+  ['folder', 'document', 'image', 'video', 'audio', 'archive', 'code', 'executable'].map((g) => [
+    `--color-icon-${g}`,
+    'var(--color-active-list-text)',
+  ]),
+);
+
 export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   // marked files red in the active panel only (the red of the design), plain in the other one;
   // the marked values of the status line (before the `/`) in the colour of the marked files
@@ -18,6 +26,7 @@ export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, stri
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
   },
   combat: {
+    ...PLAIN_ICONS,
     '--color-status-marked': 'var(--color-active-marked)',
     '--fnf-activepanel-table-selected-row-fg-color': '#f00032',
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
@@ -30,8 +39,11 @@ export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Coffee: marks are orange already – the status line values follow them
   coffee: {
+    ...PLAIN_ICONS,
     '--color-status-marked': 'var(--color-active-marked)',
   },
+  // Blackboard: plain icons only
+  blackboard: PLAIN_ICONS,
 };
 
 /** The old variables of a design with its tweaks (`name` = file name, case-insensitive). */

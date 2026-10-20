@@ -426,6 +426,18 @@ const p = (fg: string, bg: string, label: string, min = TEXT, over?: string): Co
   over,
 });
 
+/** File icon colours (`--color-icon-<group>`, active panel only) – graphics, so 3:1. */
+const ICON_GROUPS: readonly (readonly [string, string])[] = [
+  ['folder', 'Folder icon'],
+  ['document', 'Document icon'],
+  ['image', 'Image icon'],
+  ['video', 'Video icon'],
+  ['audio', 'Audio icon'],
+  ['archive', 'Archive icon'],
+  ['code', 'Code icon'],
+  ['executable', 'Program icon'],
+];
+
 /** Text/background pairs every scheme must pass (text 4.5:1, focus/UI 3:1). */
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-text', '--color-bg', 'Text on the window'),
@@ -494,6 +506,10 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-active-marked', '--color-active-marked-bg', 'Marked, active panel', TEXT, ACTIVE_LIST),
   p('--color-active-panel-tab-text', '--color-active-panel-tab-bg', 'Selected tab, active panel'),
   p('--color-active-panel-accent', '--color-active-list-bg', 'Active panel line', UI),
+
+  ...ICON_GROUPS.map(([group, label]) =>
+    p(`--color-icon-${group}`, '--color-active-list-bg', label, UI),
+  ),
 
   p('--color-shell-text', '--color-shell-bg', 'Shell output'),
   p('--color-shell-prompt', '--color-shell-bg', 'Shell prompt'),
