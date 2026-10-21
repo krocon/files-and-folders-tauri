@@ -41,6 +41,14 @@ export const TEXTS_EN = {
   dismiss: 'Dismiss',
   sessionLoadFailed: 'The saved session could not be loaded.',
   sessionSaveFailed: 'The session could not be saved:',
+  /** Design 027: `folder-memory.json`. */
+  folderMemoryBroken: (bad: string | null) =>
+    bad
+      ? `The folder memory (folder-memory.json) was invalid and was kept as ${bad}; it starts empty.`
+      : 'The folder memory (folder-memory.json) was invalid; it starts empty and is not saved in this session.',
+  folderMemoryUnreadable:
+    'The folder memory (folder-memory.json) could not be read; it is not saved in this session.',
+  folderMemorySaveFailed: 'The folder memory could not be saved:',
   folderReplaced: (from: string, to: string) =>
     `Folder no longer exists: ${from} – showing ${to} instead.`,
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,

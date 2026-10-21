@@ -22,7 +22,7 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       `~/.ssh/config`-Aliasse, Jump-Host/Proxy, chmod auf Servern, Suche auf Servern, WebDAV/S3, parallele
       Übertragungen je Job, Master-Passwort-Datei für Linux ohne Schlüsselbund (nur auf Wunsch).
 - [ ] **023 eingebauter Editor** – verworfen (Marc, 20.10.).
-- [ ] **027 Persistenz je Ordner** – Prompt `prompts/027-persistenz-je-ordner.md` (21.10.).
+- [x] **027 Persistenz je Ordner** (21.10., in `main`): `folder-memory.json` je Tab, `dialogs.recent`.
 - [ ] **035 Archive bearbeiten** – Prompt `prompts/035-archive-bearbeiten.md`: in ZIP/TAR (dann 7z) kopieren und darin
       löschen – Temp-Datei + atomar ersetzen, als Job (025 E9).
 - [ ] **Neue Prompts 036–041** (21.10.): Ordner synchronisieren, Dateien vergleichen, Flache Ansicht, Prüfsummen,

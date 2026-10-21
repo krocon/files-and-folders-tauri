@@ -38,6 +38,13 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   dismiss: 'Schließen',
   sessionLoadFailed: 'Die gespeicherte Sitzung konnte nicht geladen werden.',
   sessionSaveFailed: 'Die Sitzung konnte nicht gespeichert werden:',
+  folderMemoryBroken: (bad) =>
+    bad
+      ? `Das Ordnergedächtnis (folder-memory.json) war ungültig und wurde als ${bad} aufbewahrt; es beginnt leer.`
+      : 'Das Ordnergedächtnis (folder-memory.json) war ungültig; es beginnt leer und wird in dieser Sitzung nicht gespeichert.',
+  folderMemoryUnreadable:
+    'Das Ordnergedächtnis (folder-memory.json) konnte nicht gelesen werden; es wird in dieser Sitzung nicht gespeichert.',
+  folderMemorySaveFailed: 'Das Ordnergedächtnis konnte nicht gespeichert werden:',
   folderReplaced: (from, to) => `Ordner existiert nicht mehr: ${from} – stattdessen ${to}.`,
   comingIn: (prompt) => `Kommt mit Prompt ${prompt}`,
   loading: 'Lade…',

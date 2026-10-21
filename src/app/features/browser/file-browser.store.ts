@@ -17,7 +17,14 @@ import { isFinished, JobInfo } from '../../core/jobs/jobs.models';
 import { recordPerf, since } from '../../shared/perf';
 import { compilePattern } from '../actions/pattern';
 import { cursorAfterRemoval } from '../ops/ops-logic';
-import { createTabMemory, pushEntry, recallFolder, rememberFolder, TabMemory } from './tab-memory';
+import {
+  createTabMemory,
+  FolderState,
+  pushEntry,
+  recallFolder,
+  rememberFolder,
+  TabMemory,
+} from './tab-memory';
 import { ArchivePasswordPrompt } from '../../core/archive/archive-password-prompt';
 
 const EMPTY_MARKS: ReadonlySet<string> = new Set<string>();
@@ -27,13 +34,6 @@ interface FolderDelta {
   readonly dir: string;
   readonly upserted: readonly DirEntry[];
   readonly removed: readonly string[];
-}
-
-/** Cursor, marks and scroll of a folder being left. */
-interface FolderState {
-  cursor: string | null;
-  marks: string[];
-  scrollTop: number;
 }
 
 export type HistoryMode = 'push' | 'back' | 'forward' | 'none';
@@ -1084,14 +1084,30 @@ export class FileBrowserStore implements OnDestroy {
   }
 
   private captureFolderState(): FolderState {
-    return { cursor: this.cursorPath(), marks: [...this.marked()], scrollTop: this.scrollTop() };
+    const state = {
+      cursor: this.cursorPath(),
+      marks: [...this.marked()],
+      scrollTop: this.scrollTop(),
+    };
+    // archives, servers and result/usage views are not kept across a restart (design 027 E3)
+    const volatile =
+      this.archive() !== null ||
+      this.remote() !== null ||
+      this.searchKey() !== null ||
+      this.isUsage();
+    return volatile ? { ...state, volatile } : state;
   }
 
-  private leave(
-    path: string,
-    state: { cursor: string | null; marks: string[]; scrollTop: number },
-    mode: HistoryMode,
-  ): void {
+  /**
+   * The folder shown now with its cursor, marks and scroll (design 027): written to
+   * the folder memory at shutdown, since only folders being left are remembered.
+   */
+  currentFolderState(): { readonly path: string; readonly state: FolderState } | null {
+    const path = this.path();
+    return path === null ? null : { path, state: this.captureFolderState() };
+  }
+
+  private leave(path: string, state: FolderState, mode: HistoryMode): void {
     rememberFolder(this.memoryRef, path, state);
     const entry = { path, cursor: state.cursor, scrollTop: state.scrollTop };
     const m = this.memoryRef;

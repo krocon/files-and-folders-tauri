@@ -18,6 +18,7 @@ export interface SettingsValues {
   'behavior.confirmTrash': boolean;
   'behavior.doubleClick': 'open' | 'view';
   'behavior.spaceCalcSize': boolean;
+  'behavior.rememberFolders': boolean;
   'watch.pollNetwork': boolean;
   'diskUsage.sizeMode': 'allocated' | 'logical';
   'diskUsage.crossFilesystems': boolean;
@@ -27,6 +28,7 @@ export interface SettingsValues {
   'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
   'search.templates': readonly unknown[];
+  'dialogs.recent': readonly unknown[];
 }
 
 export type SettingKey = keyof SettingsValues;

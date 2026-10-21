@@ -8,7 +8,15 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionInDisplayOrder } from '../multirename/multirename-logic';
 import { SearchStore } from '../search/search.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { DEFAULT_GROUP_OPTIONS, groupEntries, GroupOptions, GroupStatus } from './group-engine';
+import {
+  DEFAULT_GROUP_OPTIONS,
+  groupEntries,
+  GroupOptions,
+  GroupStatus,
+  restoreGroupOptions,
+} from './group-engine';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { recallDialog, rememberDialog } from '../../shared/dialog-memory';
 import { GF_TEXTS } from './groupfiles-texts';
 
 export interface GroupRequest {
@@ -56,6 +64,9 @@ export class GroupFilesStore {
   private readonly jobs = inject(JobsStore);
   private readonly dialogs = inject(DialogService);
   private readonly search = inject(SearchStore);
+  private readonly settings = inject(SettingsStore);
+  /** The kept options are read once, at the first opening (design 027 E5). */
+  private recalled = false;
 
   readonly request = signal<GroupRequest | null>(null);
   readonly options = signal<GroupOptions>(DEFAULT_GROUP_OPTIONS);
@@ -129,6 +140,13 @@ export class GroupFilesStore {
       throw err(GF_TEXTS.nothingSelected);
     }
     const otherDir = this.ws.targetDir(side);
+    if (!this.recalled) {
+      this.recalled = true;
+      const kept = recallDialog(this.settings, 'groupFiles');
+      if (kept !== undefined) {
+        this.options.set(restoreGroupOptions(kept));
+      }
+    }
     this.runError.set(null);
     this.busy.set(false);
     const searchKey = panel.store.searchKey();
@@ -163,6 +181,7 @@ export class GroupFilesStore {
       this.busy.set(false);
       return;
     }
+    rememberDialog(this.settings, 'groupFiles', this.options());
     this.close();
     this.busy.set(false);
     void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, items, transfer));

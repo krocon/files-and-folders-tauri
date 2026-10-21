@@ -18,6 +18,13 @@ import { TEXTS } from './texts';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DISPLAY } from '../../core/settings/display';
 import { MAX_TABS, placeIndex, tabDropCheck } from './tab-drag-logic';
+import { FolderMemoryApi } from '../../core/memory/folder-memory-api';
+import {
+  EMPTY_FOLDER_MEMORY,
+  LoadedFolderMemory,
+  SavedTabFolders,
+} from '../../core/memory/folder-memory.models';
+import { folderMemoryFile, seedTabMemory } from '../browser/folder-memory-logic';
 
 export { MAX_TABS };
 
@@ -58,6 +65,8 @@ export const MAX_HISTORY = 15;
 export const MAX_RECENT = 20;
 /** Delay before a changed state is written (Rust writes atomically). */
 export const SAVE_DEBOUNCE_MS = 400;
+/** Delay before the folder memory is written (design 027) – cursor moves are frequent. */
+export const MEMORY_SAVE_DEBOUNCE_MS = 1500;
 
 export function otherSide(side: Side): Side {
   return side === 'left' ? 'right' : 'left';
@@ -99,7 +108,15 @@ const EMPTY_PANELS: Panels = {
 export class WorkspaceStore {
   private readonly api = inject(SessionApi);
   private readonly settings = inject(SettingsStore);
+  private readonly memoryApi = inject(FolderMemoryApi);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private memoryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** What `folder-memory.json` held for tabs not opened yet this session (design 027). */
+  private savedFolders = new Map<string, SavedTabFolders>();
+  /** Off when loading failed – never overwrite a file we could not read. */
+  private memorySaveEnabled = false;
+  /** JSON last written – unchanged memory is not written again. */
+  private memoryWritten = '';
   /** Off when loading failed – never overwrite a session we could not read. */
   private saveEnabled = false;
 
@@ -146,14 +163,47 @@ export class WorkspaceStore {
       if (!this.ready()) {
         return;
       }
-      untracked(() => this.scheduleSave(snapshot));
+      untracked(() => {
+        this.scheduleSave(snapshot);
+        this.scheduleMemorySave();
+      });
     });
+    // marks change without moving the cursor (mark all, by pattern): the memory follows
+    effect(() => {
+      for (const side of ['left', 'right'] as const) {
+        this.panel(side)?.store.marked();
+      }
+      if (this.ready()) {
+        untracked(() => this.scheduleMemorySave());
+      }
+    });
+    // switched off: what was kept is forgotten at once (design 027 E4)
+    effect(() => {
+      const on = this.rememberFolders();
+      if (!this.ready()) {
+        return;
+      }
+      untracked(() => {
+        if (!on) {
+          this.savedFolders.clear();
+        }
+        this.scheduleMemorySave(0);
+      });
+    });
+  }
+
+  private rememberFolders(): boolean {
+    return this.settings.get('behavior.rememberFolders') !== false;
   }
 
   /** Loads the saved session; without one both sides show the home folder. */
   async init(): Promise<void> {
     try {
-      const [loaded] = await Promise.all([this.api.load(), this.settings.init()]);
+      const [loaded, memory] = await Promise.all([
+        this.api.load(),
+        this.loadFolderMemory(),
+        this.settings.init(),
+      ]);
       this.restore(loaded.session);
       if (this.settings.get('general.startFolder') === 'home') {
         // design 015: both sides start in the home folder (favourites, splitter stay)
@@ -167,6 +217,9 @@ export class WorkspaceStore {
         notices.push(loaded.warning);
       }
       notices.push(...loaded.adjusted.map(describeAdjusted));
+      if (memory !== null) {
+        notices.push(memory);
+      }
       this.notices.set(notices);
       this.saveEnabled = true;
     } catch (err) {
@@ -253,14 +306,105 @@ export class WorkspaceStore {
     this.folderMenuRequest.set({ side, seq: ++this.seq });
   }
 
-  /** In-memory navigation state of a tab (back/forward, per-folder cursor/marks/scroll). */
+  /**
+   * Navigation state of a tab (back/forward, per-folder cursor/marks/scroll); a tab
+   * opened the first time this session starts with its folders from the file (027).
+   */
   memory(tabId: string): TabMemory {
     let m = this.memories.get(tabId);
     if (!m) {
       m = createTabMemory();
+      if (this.rememberFolders()) {
+        seedTabMemory(m, this.savedFolders.get(tabId));
+      }
+      this.savedFolders.delete(tabId);
       this.memories.set(tabId, m);
     }
     return m;
+  }
+
+  /** Reads `folder-memory.json`; returns a notice for the user or null. */
+  private async loadFolderMemory(): Promise<string | null> {
+    let loaded: LoadedFolderMemory;
+    try {
+      loaded = await this.memoryApi.load();
+    } catch {
+      return TEXTS.folderMemoryUnreadable;
+    }
+    this.savedFolders = new Map(loaded.value.tabs.map((t) => [t.tabId, t]));
+    this.memoryWritten = JSON.stringify(loaded.value);
+    const w = loaded.warning;
+    // a file that stayed in place (unreadable, or broken and not moved aside) is never written over
+    this.memorySaveEnabled = w === null || (w.code === 'broken' && w.path !== null);
+    if (w === null) {
+      return null;
+    }
+    return w.code === 'unreadable'
+      ? TEXTS.folderMemoryUnreadable
+      : TEXTS.folderMemoryBroken(w.path);
+  }
+
+  /**
+   * The content of `folder-memory.json` now (design 027): the open tabs with the
+   * folders they remember, the shown folder of each panel as the newest one.
+   */
+  folderMemorySnapshot() {
+    if (!this.rememberFolders()) {
+      return EMPTY_FOLDER_MEMORY;
+    }
+    const shown = new Map<string, Side>([
+      [this.activeTab('left').id, 'left'],
+      [this.activeTab('right').id, 'right'],
+    ]);
+    const { left, right } = this.panels();
+    return folderMemoryFile(
+      [...left.tabs, ...right.tabs].map((t) => {
+        const side = shown.get(t.id);
+        const store = side ? this.panel(side)?.store : undefined;
+        // only while the panel really shows this tab's folder (not one still loading)
+        const current =
+          store && t.path !== null && store.path() === t.path ? store.currentFolderState() : null;
+        return {
+          tabId: t.id,
+          memory: this.memories.get(t.id),
+          current,
+          saved: this.savedFolders.get(t.id),
+        };
+      }),
+    );
+  }
+
+  private scheduleMemorySave(delay = MEMORY_SAVE_DEBOUNCE_MS): void {
+    if (!this.memorySaveEnabled) {
+      return;
+    }
+    if (this.memoryTimer !== null) {
+      clearTimeout(this.memoryTimer);
+    }
+    this.memoryTimer = setTimeout(() => {
+      this.memoryTimer = null;
+      void this.saveMemory();
+    }, delay);
+  }
+
+  private async saveMemory(): Promise<void> {
+    if (!this.memorySaveEnabled) {
+      return;
+    }
+    const file = this.folderMemorySnapshot();
+    const json = JSON.stringify(file);
+    if (json === this.memoryWritten) {
+      return;
+    }
+    try {
+      await this.memoryApi.save(file);
+      this.memoryWritten = json;
+    } catch (err) {
+      const text = `${TEXTS.folderMemorySaveFailed} ${errorText(toFsError(err))}`;
+      if (!this.notices().includes(text)) {
+        this.notices.update((n) => [...n, text]);
+      }
+    }
   }
 
   requestReload(side: Side): void {
@@ -559,12 +703,18 @@ export class WorkspaceStore {
 
   /** Writes pending changes now (e.g. when the window is hidden). */
   flush(): Promise<void> {
+    // the folder memory is written on every flush: marks of the shown folders count (027)
+    if (this.memoryTimer !== null) {
+      clearTimeout(this.memoryTimer);
+      this.memoryTimer = null;
+    }
+    const memory = this.ready() ? this.saveMemory() : Promise.resolve();
     if (this.saveTimer === null) {
-      return Promise.resolve();
+      return memory;
     }
     clearTimeout(this.saveTimer);
     this.saveTimer = null;
-    return this.save(this.snapshot());
+    return Promise.all([this.save(this.snapshot()), memory]).then(() => undefined);
   }
 
   private scheduleSave(snapshot: Session): void {

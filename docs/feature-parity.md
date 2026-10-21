@@ -29,13 +29,13 @@ nachgebildet – hier ersetzt Tauri-IPC sie.
 | A Aktionen | 66 | 5 | 3 | 13 |
 | B Button-Leiste | 9 | 2 | 1 | 1 |
 | C Dialoge und Optionen | 17 | 8 | 0 | 2 |
-| D Dateiliste | 19 | 2 | 0 | 0 |
-| E Panels, Tabs, Persistenz | 18 | 2 | 0 | 0 |
+| D Dateiliste | 20 | 1 | 0 | 0 |
+| E Panels, Tabs, Persistenz | 19 | 1 | 0 | 0 |
 | F Operationen & Jobs | 17 | 2 | 0 | 1 |
 | G Konfigurationsdateien & Editoren | 7 | 3 | 1 | 0 |
 | H Shell-Leiste, Server-Shell, KI, Electron | 5 | 2 | 3 | 4 |
 | I Bugs der alten Versionen | 37 | 0 | 1 | 2 |
-| **Summe** | **195** | **26** | **9** | **23** |
+| **Summe** | **197** | **24** | **9** | **23** |
 
 - Die ⬜-Zeilen sind die Folge-Prompts 021 ff. (Abschnitt „Folge-Prompts“), die ✖-Zeilen sind bewusst entfallen
   (Web-/Server-Transport, Electron, tote Ids, nie funktionierende Kürzel der alten Version) – Grund je Zeile.
@@ -244,7 +244,7 @@ eine Leerzeile).
 | Renderer Size/Date | `formatFileSize` 2 Dezimalen, ` DIR`; Tooltip Bytes | `<DIR>`, binär/dezimal/Bytes | ✅ | file-renderers.spec › „shows <DIR> for folders and a formatted size for files“; `shared/format.spec.ts` › „uses binary units“ | |
 | `..`-Zeile | vorangestellt, nicht markierbar | gleich | ✅ | navigation.spec › „never marks the ".." row“, „".." opens the parent“ | |
 | Ordner zuerst | ja | ja | ✅ | file-columns.spec › „sorts sizes numerically, folders first, unknown sizes last in both directions“ | |
-| Auswahl/Cursor je Ordner merken | localStorage `selection0/1`, `focus0/1` je Pfad, **über Neustart** | `TabMemory.folders` (50 Ordner je Tab), **nur im Speicher** | 🟡 | navigation.spec › „restores cursor and marks when coming back to a folder“, „remembers per tab memory: switching memory does not mix folders“ | nicht über Neustart (Design 003 E3) |
+| Auswahl/Cursor je Ordner merken | localStorage `selection0/1`, `focus0/1` je Pfad, **über Neustart** | `TabMemory.folders` (50 Ordner je Tab) + `folder-memory.json` je Tab-Id (027), Einstellung `behavior.rememberFolders` | ✅ | `features/workspace/folder-memory.spec.ts` › „a tab starts with the folders the file kept for it“; `features/browser/navigation.spec.ts` › „a memory from folder-memory.json restores cursor and the marks that still exist (design 027)“; Rust `folder_memory.rs` › `bounds_tabs_folders_marks_and_values` | je Tab statt global je Pfad (Design 027 E2); Archiv/Server/Ergebnis nie |
 | Zip-Browsing | `file.zip:` (node-stream-zip) | Archive als virtueller Ordner (ZIP/TAR/TAR.GZ/7z/RAR), Dateien darin ansehen (F3) und öffnen (Enter, Kopie im App-Cache) | ✅ | `features/archive/archive.spec.ts` › „Enter on an archive opens it as a folder; files inside open from the view cache“; Rust `jobs/tests_formats.rs` › `view_entry_extracts_a_read_only_copy_once` | in Archive schreiben offen (Folge-Prompt) |
 | Filter/Hidden | Teilstring, je Tab; Doppelklick leert | Wildcards/`\|`/`-`, je Tab, Doppelklick leert (`tab-bar.html:101`) | ✅ | navigation.spec › „filters hidden files and by pattern; ".." always passes“, „filters 100 000 entries quickly“ | |
 | Ordnergröße mit Space | walkdir-Socket, Größe in der Zelle | Job, abbrechbar, ohne Symlinks | ✅ | Rust `dirsize.rs` › `does_not_follow_symlinks_and_survives_cycles`; navigation.spec › „calculates a folder size as a job, …“ | |
@@ -278,7 +278,7 @@ eine Leerzeile).
 | Fenstergeometrie | Electron fest 1280×800 | gespeichert, Monitorprüfung | ✅ | Rust `window_state.rs` › `position_off_all_monitors_is_not_reachable` | |
 | Kontextmenü Dateien | fehlte | Datei/Ordner/Markierung/frei/Ergebnis-Tab | ✅ | `features/menus/menu-model.spec.ts` › „builds the context per situation (design 014 E2/E3)“; `features/menus/menus.spec.ts` › „right click: the cursor moves to the row, marks stay, the menu fits the context“ | neu |
 | Vollbild-Button | oben rechts, Browser-Fullscreen-API | `TOGGLE_FULLSCREEN` (`F11` Win/Linux, Menü Ansicht), macOS natives Menü ⌃⌘F | ✅ | `features/config/config-dialogs.spec.ts` › „actions: dialogs and full screen (J14)“ | Aktion statt Button (022) |
-| Letzte Dialogeingaben | localStorage `find-dlg-pattern`, `clean-dlg-pattern`, `group-files-dlg-pattern`, `groupFilesData`, `multiRenameData`, `multiMkdirData` | Suche: `search.recent` (Einstellungen); Multi-Rename: Vorlagen + „zuletzt“ (`rename-presets.json`) | 🟡 | search.store.spec › „remembered forms over the size limit: the oldest go, the new one stays (review 015 #7)“; `features/multirename/multirename.spec.ts` › „presets: save, apply, delete“; Rust `rename_presets.rs` › `round_trip` | Clean/Group/Multi-MkDir merken nichts über einen Neustart |
+| Letzte Dialogeingaben | localStorage `find-dlg-pattern`, `clean-dlg-pattern`, `group-files-dlg-pattern`, `groupFilesData`, `multiRenameData`, `multiMkdirData` | Suche: `search.recent`; Multi-Rename: Vorlagen + „zuletzt“ (`rename-presets.json`); Gruppieren/Aufräumen/Multi-MkDir: `dialogs.recent` (027) | ✅ | `features/groupfiles/tools.spec.ts` › „the three dialogs open with the inputs of their last run, also after a restart (design 027 E5)“; `shared/dialog-memory.spec.ts` › „restores only valid fields, the rest falls back to the defaults“ | gemerkt nach einem Lauf; Löschmodus von Aufräumen nie (Papierkorb) |
 
 ---
 
@@ -434,7 +434,7 @@ eine Leerzeile).
 | 024 Attribute ändern | ✅ umgesetzt (Design `prompts/done/024-attribute-aendern.design.md`): Rechte (Unix), R/H/S/A (Windows), „versteckt“ (macOS), Zeitstempel als Job `attributes`. Offen: Eigentümer/Gruppe. |
 | 025 Archive erweitert | ✅ umgesetzt (Design `prompts/done/025-archive-erweitert.design.md`): 7z lesen/packen, RAR lesen, Passwörter, Dateien im Archiv ansehen/öffnen, ZIP-Zeiten. Offen → neuer Folge-Prompt „Archive bearbeiten“ (In Archive kopieren/löschen, ZIP/TAR zuerst). |
 | 026 Import alter Konfiguration | ✅ umgesetzt (Design `prompts/done/026-import-alte-konfig.design.md`): Assistent mit Vorschau je Bereich für Kürzel, Buttons, Dateitypen, Suchmuster, Tools, Farbschemata und zwei Setup-Schalter; Zusammenführen/Ersetzen, `.bak` jeder geänderten Datei. |
-| 027 Persistenz je Ordner | Cursor/Markierung je Ordner über einen Neustart, Dialogeingaben von Gruppieren/Aufräumen/Multi-MkDir. |
+| 027 Persistenz je Ordner | ✅ umgesetzt (Design `prompts/done/027-persistenz-je-ordner.design.md`): Cursor/Markierung/Scroll je Tab über einen Neustart (`folder-memory.json`), letzte Eingaben von Gruppieren/Aufräumen/Multi-MkDir (`dialogs.recent`). |
 | 028 Drag & Drop erweitert | ✅ Ziehen aus der App ins System (Design `prompts/done/028-drag-ins-system.design.md`). |
 | 031 Drag & Drop, Teil 2 | ✅ Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen (Job `link`, Drag mit Strg+Umschalt/⌘⌥, `OPEN_LINK_DLG`); Verschieben ins System bewusst nicht (Design `prompts/done/031-drag-tabs-links.design.md` E11). |
 | 032 Starter-Menü | ✅ (neu, Vorbild Total Commander „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern…“, Programme/Skripte/Ordner/Untermenüs, TC-Parameter `%P%N` …, Kürzel je Eintrag (Design `prompts/done/032-startermenue.design.md`). |

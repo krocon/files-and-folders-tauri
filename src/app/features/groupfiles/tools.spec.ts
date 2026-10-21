@@ -30,6 +30,7 @@ import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { registerGroupFilesActions } from './groupfiles-actions';
 import { groupSelection, GroupFilesStore } from './groupfiles.store';
+import { SettingsStore } from '../../core/settings/settings.store';
 
 const SUMMARY: Summary = {
   itemsDone: 2,
@@ -301,6 +302,43 @@ describe('folder tools (design 008)', () => {
     await new Promise((r) => setTimeout(r, 5));
     cl.close();
     expect(folders.cancels).toHaveLength(2);
+  });
+
+  it('the three dialogs open with the inputs of their last run, also after a restart (design 027 E5)', async () => {
+    const settings = TestBed.inject(SettingsStore);
+    // as if read from settings.json at start
+    settings.set('dialogs.recent', [
+      { dialog: 'groupFiles', value: { mode: 'firstWord', minSize: 0, useSourceDir: true } },
+      { dialog: 'clean', value: { junkOn: true, patternsOn: true, patternsText: '*.tmp' } },
+      { dialog: 'multiMkdir', value: { template: 'Teil [C]', end: 2, digits: 1 } },
+    ]);
+    await left.load('/src');
+    gf.open();
+    expect(gf.options()).toMatchObject({ mode: 'firstWord', minSize: 0, useSourceDir: true });
+    gf.update({ mode: 'firstLetter' });
+    await gf.run('copy');
+    expect(settings.get('dialogs.recent')[0]).toEqual({
+      dialog: 'groupFiles',
+      value: { ...gf.options(), mode: 'firstLetter' },
+    });
+    // an unfinished change is not kept: only a run counts
+    gf.open();
+    gf.update({ mode: 'twoLetters' });
+    gf.close();
+    expect(JSON.stringify(settings.get('dialogs.recent'))).not.toContain('twoLetters');
+
+    cl.open();
+    expect(cl.form()).toMatchObject({ junkOn: true, patternsOn: true, patternsText: '*.tmp' });
+    expect(cl.mode()).toBe('trash'); // never kept
+    cl.close();
+
+    mm.open();
+    expect(mm.rows().map((r) => r.name)).toEqual(['Teil 1', 'Teil 2']);
+    await mm.run();
+    expect(settings.get('dialogs.recent')[0]).toMatchObject({
+      dialog: 'multiMkdir',
+      value: { template: 'Teil [C]', end: 2, digits: 1 },
+    });
   });
 
   // ---- multi mkdir ----

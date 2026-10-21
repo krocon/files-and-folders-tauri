@@ -11,6 +11,7 @@ import { FileBrowserStore } from './file-browser.store';
 import { fileComparators } from './file-list/file-columns';
 import { FileListController, TYPE_AHEAD_RESET_MS } from './file-list/file-list-controller';
 import { createTabMemory, MAX_BACK, MAX_FOLDERS, pushEntry, rememberFolder } from './tab-memory';
+import { seedTabMemory } from './folder-memory-logic';
 
 const tree: Record<string, DirectoryListing> = {
   '/h': listing(
@@ -99,6 +100,30 @@ describe('navigation (prompt 003)', () => {
     await store.load('/h/A');
     expect(store.cursorPath()).toBe('/h/A/a2');
     expect([...store.marked()]).toEqual(['/h/A/a1']);
+  });
+
+  it('a memory from folder-memory.json restores cursor and the marks that still exist (design 027)', async () => {
+    const m = createTabMemory();
+    seedTabMemory(m, {
+      tabId: 't',
+      folders: [
+        { path: '/h/A', cursor: '/h/A/a2', marks: ['/h/A/a1', '/h/A/deleted'], scrollTop: 0 },
+      ],
+    });
+    store.setMemory(m);
+    await store.load('/h/A', { history: 'none', remember: false });
+    expect(store.cursorPath()).toBe('/h/A/a2');
+    expect([...store.marked()]).toEqual(['/h/A/a1']);
+    expect(store.currentFolderState()).toEqual({
+      path: '/h/A',
+      state: { cursor: '/h/A/a2', marks: ['/h/A/a1'], scrollTop: 0 },
+    });
+  });
+
+  it('a result view is never written to the folder memory (design 027 E3)', () => {
+    store.showSearch('k', [entry('x.txt', { path: '/h/x.txt' })]);
+    store.rememberCurrent();
+    expect(store.currentFolderState()?.state.volatile ?? true).toBe(true);
   });
 
   it('remembers per tab memory: switching memory does not mix folders', async () => {

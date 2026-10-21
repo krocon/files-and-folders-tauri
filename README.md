@@ -48,7 +48,8 @@ without stutter.
 - **Panel actions** like Total Commander – swap the panels (`Ctrl+U` / `⌘U`, with all tabs `Ctrl+Shift+U`),
   *target = source* (`Ctrl+Alt+O` / `⌘⌥O`), open the folder under the cursor in the left/right panel
   (`Ctrl+←/→` / `⌘⌥←/→`)
-- **Session restore** – tabs, active side, splitter, favourites and window position survive a restart
+- **Session restore** – tabs, active side, splitter, favourites and window position survive a restart; each tab
+  also remembers cursor, marks and scroll position of its last 50 folders
 - **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
   (*Command Palette*) finds every action
 - **Background jobs** – copy, move, delete, pack and search run as jobs with progress, rate, remaining time,
