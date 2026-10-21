@@ -56,11 +56,12 @@ describe('Actions menu ▴ (design 020)', () => {
       [...g.children].map((c) =>
         c.getAttribute('role') === 'separator' ? '-' : c.querySelector('.label')?.textContent,
       );
-    expect(labels(groups[0]).slice(0, 4)).toEqual([
+    expect(labels(groups[0]).slice(0, 5)).toEqual([
       'Go to anything…',
       '-',
       'Reload',
       'Change Dir…',
+      'Connect to Server…',
     ]);
     expect(labels(groups[1])).toContain('Parent Dir');
     expect(labels(groups[2]).slice(0, 5)).toEqual([
