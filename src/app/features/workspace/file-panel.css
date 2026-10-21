@@ -155,6 +155,12 @@
   font-size: var(--font-size-sm);
 }
 
+.error.offline {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
 .error-path {
   font-family: var(--font-mono);
   word-break: break-all;

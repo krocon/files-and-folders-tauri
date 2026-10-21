@@ -70,6 +70,12 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       Unsignierter Build: macOS fragt nach jedem neuen Build einmal „Zugriff erlauben“ (erwartet, s. `docs/release.md`).
       SSH-Agent (1Password/ssh-agent) mit Anmeldung „SSH-Agent“; FTPS gegen einen echten Server mit Zertifikat einer CA.
       Windows (CI/Marc): Anmeldeinformationsverwaltung, Pageant/OpenSSH-Agent, Build von `ring`/`russh`.
+      Heruntergeladene Server-Datei (F5 oder Enter) trägt Quarantäne (macOS, `xattr -p com.apple.quarantine`) bzw.
+      `Zone.Identifier` (Windows, ZoneId=3) – Öffnen zeigt die Warnung (Review 034).
+- [ ] Server (034, offen aus dem Review): rekursives Löschen auf FTP-Servern, die Links per MLSD als `type=dir` melden
+      (Pure-FTPd, IIS) – Link-Erkennung über FTP ist unzuverlässig; Idee: auf MLSD-Servern vor dem Absteigen `LIST -ld`
+      prüfen oder rekursives Löschen dort nur nach Rückfrage. Zwei Profile für denselben Server (SFTP + FTP): Move mit
+      „Überschreiben“ kann Quelle = Ziel treffen. `Pool.killers` wächst bis zum Trennen.
 - [ ] Startermenü (032): natives Menü „Start“ (macOS), `⌥S` in der Liste öffnet das Popup (in Textfeldern tippt es
       weiter „ß“), Eintrag mit einer `.app` (`/Applications/Preview.app`, Parameter `%P%N`), Ordner-Eintrag `~/…`;
       Windows: `.bat`/`.cmd` als Kommando, `notepad.exe "%P%N"`.

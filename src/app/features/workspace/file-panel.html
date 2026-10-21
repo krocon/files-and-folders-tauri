@@ -327,7 +327,18 @@
   } @else if (quickView()) {
     <app-quick-view class="quick" />
   }
-  @if (errorText(); as text) {
+  @if (offline()) {
+    <!-- a server tab after a restart (design 034 §4.4): a state, not an error -->
+    <div class="error offline" role="status">
+      <div>
+        <strong>{{ remoteTexts.offlineTitle(offlineName()) }}</strong>
+        <div class="error-detail">{{ openingPath() }}</div>
+      </div>
+      <button type="button" class="btn primary" (click)="connectServer()">
+        <i class="fa fa-plug" aria-hidden="true"></i> {{ remoteTexts.reconnect }}
+      </button>
+    </div>
+  } @else if (errorText(); as text) {
     <div class="error" role="alert">
       <div>
         <strong>{{ text }}</strong>
@@ -336,11 +347,6 @@
         }
         <div class="error-detail">{{ store.error()?.message }}</div>
       </div>
-      @if (offline()) {
-        <button type="button" class="btn primary" (click)="connectServer()">
-          <i class="fa fa-plug" aria-hidden="true"></i> {{ remoteTexts.reconnect }}
-        </button>
-      }
       <button type="button" class="btn" (click)="store.dismissError()">{{ texts.dismiss }}</button>
     </div>
   }

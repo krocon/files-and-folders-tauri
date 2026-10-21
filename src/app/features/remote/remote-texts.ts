@@ -120,6 +120,7 @@ export const REMOTE_EN = {
   reason: 'Reason',
   // panel
   notConnected: 'Not connected',
+  offlineTitle: (name: string) => (name ? `Not connected to ${name}` : 'Not connected'),
   disconnect: 'Disconnect',
   reconnect: 'Connect',
   encrypted: 'Encrypted connection',
