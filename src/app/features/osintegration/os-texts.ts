@@ -20,7 +20,7 @@ export const OS_EN = {
   toolsPalette: 'Open with tool',
   configTitle: 'Tool configuration',
   configIntro:
-    'Tools are configured in a JSON file (program + argument list, placeholders {file}, {files}, {name}, {dir}, {targetDir} per argument; nothing goes through a shell). Entries in the old files-and-folders format (cmd, para, $file, $dir) are converted when loading.',
+    'Tools are configured in a JSON file (program + argument list, placeholders {file}, {files}, {name}, {stem}, {ext}, {dir}, {targetDir} per argument; nothing goes through a shell). Entries in the old files-and-folders format (cmd, para, $file, $dir) are converted when loading.',
   configFile: 'File',
   configNoFile: '(app config folder not available)',
   openFile: 'Open tools.json',

@@ -17,7 +17,7 @@ export const OS_DE: Translation<typeof OS_EN> = {
   toolsPalette: 'Mit Tool öffnen',
   configTitle: 'Tool-Konfiguration',
   configIntro:
-    'Tools werden in einer JSON-Datei konfiguriert (Programm + Argumentliste, Platzhalter {file}, {files}, {name}, {dir}, {targetDir} je Argument; nichts läuft über eine Shell). Einträge im alten files-and-folders-Format (cmd, para, $file, $dir) werden beim Laden umgewandelt.',
+    'Tools werden in einer JSON-Datei konfiguriert (Programm + Argumentliste, Platzhalter {file}, {files}, {name}, {stem}, {ext}, {dir}, {targetDir} je Argument; nichts läuft über eine Shell). Einträge im alten files-and-folders-Format (cmd, para, $file, $dir) werden beim Laden umgewandelt.',
   configFile: 'Datei',
   configNoFile: '(App-Konfigurationsordner nicht verfügbar)',
   openFile: 'tools.json öffnen',

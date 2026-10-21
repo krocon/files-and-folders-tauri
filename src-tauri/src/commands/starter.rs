@@ -100,7 +100,11 @@ pub async fn save_starter<R: Runtime>(
     }
     let file = file_path(&app)?;
     let state = app.state::<StarterState>();
-    if *state.write_blocked.lock().unwrap_or_else(|e| e.into_inner()) {
+    if *state
+        .write_blocked
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+    {
         return Err(FsError::new(
             FsErrorCode::Io,
             "The existing file could not be read or moved aside; not overwriting it.",

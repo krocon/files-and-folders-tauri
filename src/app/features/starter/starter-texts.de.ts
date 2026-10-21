@@ -1,0 +1,76 @@
+import type { Translation } from '../../core/i18n/i18n';
+import type { STARTER_EN } from './starter-texts';
+
+/** Deutsche Texte des Startermenüs (Design 032). */
+export const STARTER_DE: Translation<typeof STARTER_EN> = {
+  category: 'Startermenü',
+  title: 'Startermenü ändern',
+  intro:
+    'Ihr eigener Schnellstart (Menü Start, Alt+S): Programme und Skripte mit Parametern, Ordner zum Hinspringen, Untermenüs. Nichts läuft über eine Shell – jedes Wort der Parameter ist ein Argument.',
+  entries: 'Einträge',
+  noEntries: 'Noch keine Einträge – unten einen hinzufügen.',
+  listHelp: 'Alt+↑/↓ verschieben, Alt+→/← in das Untermenü darüber bzw. heraus, Entf entfernt.',
+  kinds: {
+    program: 'Programm',
+    folder: 'Ordner',
+    submenu: 'Untermenü',
+    separator: 'Trennlinie',
+  },
+  addFolder: 'Ordner',
+  addSubmenu: 'Untermenü',
+  addSeparator: 'Trennlinie',
+  addCurrentFolder: 'Aktueller Ordner',
+  addCursorFile: 'Datei unter dem Cursor',
+  addGroup: 'Hinzufügen',
+  arrangeGroup: 'Anordnen',
+  moveUp: 'Hoch',
+  moveDown: 'Runter',
+  indent: 'Ins Untermenü',
+  outdent: 'Aus dem Untermenü',
+  remove: 'Entfernen',
+  details: 'Eintrag',
+  noSelection: 'Links einen Eintrag wählen oder einen hinzufügen.',
+  label: 'Titel',
+  program: 'Kommando (Programm oder Skript)',
+  programHelp:
+    'Ein Programmname aus dem PATH (code, notepad.exe) oder ein absoluter Pfad; ~ ist Ihr Benutzerordner. Unter macOS auch eine .app.',
+  params: 'Parameter',
+  paramsHelp:
+    '%P%N Datei unter dem Cursor (voller Pfad) · %N ihr Name · %O Name ohne Endung · %E Endung · %P / %T Ordner der aktiven / anderen Seite · %S alle markierten Einträge · %% ein Prozentzeichen. Anführungszeichen fassen Wörter zusammen.',
+  workingDir: 'Startordner',
+  workingDirHelp: 'Leer = Ordner der aktiven Seite. %P, %T und ~ sind erlaubt.',
+  folder: 'Ordner',
+  folderHelp: 'Absoluter Pfad oder ~/… – die aktive Seite wechselt dorthin.',
+  shortcut: 'Tastenkürzel',
+  shortcutHelp: 'Optional, in Keymap-Schreibweise wie Alt+Shift+1 oder Mod+Shift+E.',
+  shortcutInvalid: 'Das ist kein gültiges Tastenkürzel.',
+  shortcutTaken: (owner) => `Schon belegt von „${owner}“.`,
+  separatorInfo: 'Eine Trennlinie zwischen Einträgen.',
+  submenuInfo: 'Die stärker eingerückten Einträge darunter gehören zu diesem Untermenü.',
+  newProgram: 'Neues Programm',
+  newFolder: 'Neuer Ordner',
+  newSubmenu: 'Neues Untermenü',
+  problems: {
+    label: 'Der Titel ist leer.',
+    program: 'Das Kommando muss ein Programmname oder ein absoluter Pfad sein, ohne Platzhalter.',
+    folder: 'Der Ordner muss ein absoluter Pfad sein (oder mit ~ beginnen).',
+    params_quote: 'Ein Anführungszeichen in den Parametern ist nicht geschlossen.',
+    params_files: '%S muss ein eigenes Wort der Parameter sein.',
+    working_dir: 'Der Startordner muss absolut sein (oder mit %P, %T oder ~ beginnen).',
+    too_deep: 'Zu viele verschachtelte Untermenüs.',
+    too_long: 'Zu viele Parameter.',
+  },
+  problemCount: (n) =>
+    n === 1
+      ? '1 Eintrag muss vor dem Speichern korrigiert werden.'
+      : `${n} Einträge müssen vor dem Speichern korrigiert werden.`,
+  file: (path) => `Gespeichert in ${path}`,
+  cancel: 'Abbrechen',
+  save: 'Speichern',
+  saveFailed: (reason) => `Speichern fehlgeschlagen: ${reason}`,
+  loadFailed: (reason) => `Das Startermenü konnte nicht geladen werden: ${reason}`,
+  invalidEntry: (label, problem) => `${label}: ${problem}`,
+  started: (label, n) => (n === 1 ? `${label} gestartet` : `${label} ${n}-mal gestartet`),
+  noFolder: 'Die aktive Seite zeigt keinen Ordner.',
+  tooMany: (max) => `Höchstens ${max} Einträge.`,
+};

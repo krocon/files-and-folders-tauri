@@ -9,6 +9,7 @@ export const MENU_DE: Translation<typeof MENU_EN> = {
   view: 'Ansicht',
   go: 'Gehe zu',
   tools: 'Werkzeuge',
+  start: 'Start',
   window: 'Fenster',
   help: 'Hilfe',
   duplicates: 'Duplikate',
@@ -17,6 +18,8 @@ export const MENU_DE: Translation<typeof MENU_EN> = {
   copyAs: 'In die Zwischenablage',
   openWithTool: 'Mit Tool öffnen',
   contextMenu: 'Kontextmenü',
+  starterMenu: 'Startermenü',
+  starterEmpty: 'Noch keine Einträge',
   marked: (n) => `${n} ${n === 1 ? 'markierter Eintrag' : 'markierte Einträge'}`,
   comingIn: (prompt) => `Kommt mit Prompt ${prompt}`,
 };

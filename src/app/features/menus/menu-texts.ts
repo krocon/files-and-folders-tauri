@@ -8,6 +8,7 @@ export const MENU_EN = {
   view: 'View',
   go: 'Go',
   tools: 'Tools',
+  start: 'Start',
   window: 'Window',
   help: 'Help',
   menuBar: 'Menu bar',
@@ -15,6 +16,8 @@ export const MENU_EN = {
   openWithTool: 'Open with tool',
   duplicates: 'Duplicates',
   contextMenu: 'Context menu',
+  starterMenu: 'Starter menu',
+  starterEmpty: 'No entries yet',
   marked: (n: number) => `${n} marked ${n === 1 ? 'entry' : 'entries'}`,
   comingIn: (prompt: string) => `Coming in prompt ${prompt}`,
 } as const;

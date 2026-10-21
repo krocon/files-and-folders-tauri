@@ -137,6 +137,10 @@ export class CommandPalette {
       });
     }
     for (const x of this.actions.extras()) {
+      // "Open with tool…" lists the tools only, not the starter entries (design 032)
+      if (this.scope() === 'tools' && !x.id.startsWith('tool:')) {
+        continue;
+      }
       const match = fuzzyMatch(q, x.label);
       if (!match) {
         continue;
@@ -146,7 +150,7 @@ export class CommandPalette {
         kind: 'extra',
         id: x.id,
         label: x.label,
-        category: TOOLS_CATEGORY,
+        category: x.category ?? TOOLS_CATEGORY,
         shortcut: this.actions.extraShortcutLabel(x.id),
         ready: x.enabled(),
         hint: '',

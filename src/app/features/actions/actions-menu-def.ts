@@ -67,6 +67,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_THEMES_DLG',
     'OPEN_BUTTON_CONFIG_DLG',
     'OPEN_TOOL_CONFIG_DLG',
+    'OPEN_STARTER_CONFIG_DLG',
     'OPEN_SHORTCUT_DLG',
     'OPEN_ABOUT_DLG',
     '-',

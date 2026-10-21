@@ -272,8 +272,7 @@ pub fn check(item: &StarterItem, home: Option<&Path>) -> Option<&'static str> {
         StarterKind::Submenu => None,
         StarterKind::Folder => {
             let f = with_home(&item.folder, home);
-            (f.is_empty() || !Path::new(&f).is_absolute() || f.contains('\0'))
-                .then_some("folder")
+            (f.is_empty() || !Path::new(&f).is_absolute() || f.contains('\0')).then_some("folder")
         }
         StarterKind::Program => {
             if !tools::program_ok(&with_home(&item.program, home)) {
@@ -382,9 +381,7 @@ pub fn to_tool(item: &StarterItem, home: Option<&Path>) -> Result<Tool, &'static
 
 fn is_app_bundle(program: &str) -> bool {
     let p = Path::new(program);
-    p.is_absolute()
-        && p.extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("app"))
+    p.is_absolute() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("app"))
 }
 
 /// Folder entries: the absolute target (`~` expanded).
@@ -538,10 +535,7 @@ mod tests {
             sep(),
         ];
         let p = problems(&items, Some(home));
-        let codes: Vec<(&str, &str)> = p
-            .iter()
-            .map(|p| (p.id.as_str(), p.code.as_str()))
-            .collect();
+        let codes: Vec<(&str, &str)> = p.iter().map(|p| (p.id.as_str(), p.code.as_str())).collect();
         assert_eq!(
             codes,
             [
@@ -664,6 +658,9 @@ mod tests {
     fn app_bundles_start_with_open() {
         let t = to_tool(&prog("a", "/Applications/Preview.app", "%P%N"), None).unwrap();
         assert_eq!(t.program, "open");
-        assert_eq!(args(&t, &ctx(&["/x.pdf"])), ["-a", "/Applications/Preview.app", "/x.pdf"]);
+        assert_eq!(
+            args(&t, &ctx(&["/x.pdf"])),
+            ["-a", "/Applications/Preview.app", "/x.pdf"]
+        );
     }
 }

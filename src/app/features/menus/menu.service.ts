@@ -32,7 +32,12 @@ interface OpenContext {
   readonly x: number;
   readonly y: number;
   readonly defs: readonly MenuDef[];
+  /** Accessible name of the popup (default: context menu). */
+  readonly label?: string;
 }
+
+/** The starter menu as a popup (OPEN_STARTER_MENU, design 032). */
+const STARTER_POPUP: readonly MenuDef[] = ['@starter', '-', 'OPEN_STARTER_CONFIG_DLG'];
 
 /**
  * Root service of the menus (design 014): the file-list context menu (one at a
@@ -64,7 +69,7 @@ export class MenuService {
     return {
       x: open.x,
       y: open.y,
-      label: MENU_TEXTS.contextMenu,
+      label: open.label ?? MENU_TEXTS.contextMenu,
       items: resolveMenu(open.defs, this.actions, this.actions.platform()),
     };
   });
@@ -179,6 +184,16 @@ export class MenuService {
     const x = rect ? rect.left + Math.min(48, rect.width / 2) : 0;
     const y = rect ? (cell ? rect.bottom : rect.top + 24) : 0;
     this.openFor(side, x, y, entry && !isParentRow(entry) ? entry : null);
+  }
+
+  /** Alt+S: the starter menu as a popup at the top of the active list (design 032). */
+  openStarter(): void {
+    const side = this.ws.activeSide();
+    const pane = document.getElementById(`fnf-pane-${side}`);
+    const rect = pane?.getBoundingClientRect();
+    const x = rect ? rect.left + 24 : 0;
+    const y = rect ? rect.top + 24 : 0;
+    this.open.set({ side, x, y, defs: STARTER_POPUP, label: MENU_TEXTS.starterMenu });
   }
 
   private openFor(side: Side, x: number, y: number, entry: DirEntry | null): void {

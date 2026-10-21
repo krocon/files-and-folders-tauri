@@ -24,9 +24,22 @@ export interface ExtraAction {
   readonly id: string;
   readonly label: string;
   readonly shortcut: string | null;
+  /** Group in the command palette (default: tools). */
+  readonly category?: string;
+  /** Tooltip in menus, e.g. why the entry cannot run. */
+  readonly hint?: string;
   enabled(): boolean;
   run(): void | Promise<unknown>;
 }
+
+/**
+ * The starter menu as a tree (design 032): items point to extra actions by id,
+ * submenus carry their own label.
+ */
+export type ExtraMenuNode =
+  | { readonly kind: 'item'; readonly id: string }
+  | { readonly kind: 'separator' }
+  | { readonly kind: 'sub'; readonly label: string; readonly items: readonly ExtraMenuNode[] };
 
 /**
  * Central place for actions: handlers registered by the features, the effective
@@ -47,7 +60,15 @@ export class ActionService {
     resolveKeymap(this.platform(), this.override(), DEFAULT_KEYMAPS[this.platform()]),
   );
 
-  readonly extras = signal<readonly ExtraAction[]>([]);
+  /** Extra actions per source (`tools` = tools.json, `starter` = starter.json). */
+  private readonly extraSources = signal<ReadonlyMap<string, readonly ExtraAction[]>>(new Map());
+
+  readonly extras = computed<readonly ExtraAction[]>(() =>
+    [...this.extraSources().values()].flat(),
+  );
+
+  /** The starter menu (design 032); its items are extra actions of the source `starter`. */
+  readonly starterTree = signal<readonly ExtraMenuNode[]>([]);
 
   /** Canonical shortcut → extra action; taken or invalid shortcuts are left out (see `extraProblems`). */
   private readonly extraIndex = computed(() => {
@@ -78,9 +99,9 @@ export class ActionService {
   /** Problems with the shortcuts of the extra actions. */
   readonly extraProblems = computed(() => this.extraIndex().problems);
 
-  /** Replaces the extra actions (tools). */
-  setExtras(list: readonly ExtraAction[]): void {
-    this.extras.set(list);
+  /** Replaces the extra actions of one source (default: the tools). */
+  setExtras(list: readonly ExtraAction[], source = 'tools'): void {
+    this.extraSources.update((m) => new Map(m).set(source, list));
   }
 
   extraFor(canonical: string): ExtraAction | null {

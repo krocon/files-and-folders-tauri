@@ -71,6 +71,7 @@
   "OPEN_MULTIMKDIR_DLG": ["Mod+F7"],
   "OPEN_SHORTCUT_DLG": ["Mod+Shift+K"],
   "OPEN_TOOLS_DLG": ["Mod+Shift+X"],
+  "OPEN_STARTER_MENU": ["Alt+S"],
   "OPEN_TASK_DLG": ["Ctrl+K F6"],
   "NEXT_THEME": ["Mod+Ctrl+Alt+T"],
   "OPEN_SETUP_DLG": ["Mod+,"]
