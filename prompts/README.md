@@ -55,6 +55,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 030 | [030-ordner-cache-smb.md](done/030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand; `getattrlistbulk` gemessen und verworfen; kein rekursives Vorladen | 029, 012 | M |
 | 031 | [031-drag-tabs-links.md](done/031-drag-tabs-links.md) | Drag & Drop erweitert, Teil 2: Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen per Drag/Dialog (Job `link`); Verschieben ins System bewusst nicht | 004, 006, 012, 028 | M |
 | 032 | [032-startermenue.md](done/032-startermenue.md) | Starter-Menü (TC „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern“, Programme/Skripte/Ordner/Untermenüs, TC-Parameter `%P%N` …, Kürzel je Eintrag | 002, 011, 014, 015, 022 | S–M |
+| 033 | [033-speicherbelegung.md](033-speicherbelegung.md) | Speicherbelegung: Scan als Job (Baum in Rust, Hardlinks einmal, keine Symlinks, Dateisystemgrenzen/macOS-Firmlinks), Liste nach Größe + Sunburst/Treemap, Hineinnavigieren, „Größte Dateien“, Sammelkorb → Löschen (Papierkorb, `expected`) | 003, 005, 006, 009, 010, 011, 013, 015, 030 | L |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
