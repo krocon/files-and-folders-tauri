@@ -49,7 +49,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 025 | [025-archive-erweitert.md](done/025-archive-erweitert.md) | Archive erweitert: 7z lesen/entpacken/packen, RAR lesen/entpacken (UnRAR-Quellen, Feature `rar`), Passwörter (Dialog, nur im Speicher), Dateien im Archiv ansehen/öffnen über einen App-Cache, ZIP-Zeiten | 016, 010, 011 | L |
 | 026 | [026-import-alte-konfig.md](done/026-import-alte-konfig.md) | Import alter Konfiguration (mr): Assistent mit Vorschau je Bereich – Kürzel (Ids/Notation übersetzt, † gemeldet), Buttons, Dateitypen, Suchmuster, Tools, Farbschemata, zwei Einstellungen; Zusammenführen/Ersetzen, Sicherung `.bak` jeder geänderten Datei | 002, 011, 015, 019, 022 | M |
 | 023 | – | ~~Eingebauter Editor~~ – **verworfen** (Marc, 20.10.2026): F4 bleibt das konfigurierbare Tool `edit` (011) | – | – |
-| 027 | (Vorschlag aus 018, noch kein Prompt) | Persistenz je Ordner: Cursor/Markierung über einen Neustart, Dialogeingaben von Gruppieren/Aufräumen/Multi-MkDir – Details: `docs/feature-parity.md` „Folge-Prompts“ | 003, 008 | S–M |
+| 027 | [027-persistenz-je-ordner.md](027-persistenz-je-ordner.md) | Persistenz je Ordner: Cursor/Markierung über einen Neustart, letzte Eingaben von Gruppieren/Aufräumen/Multi-MkDir | 003, 004, 008, 015 | S–M |
 | 028 | [028-drag-ins-system.md](done/028-drag-ins-system.md) | Drag & Drop erweitert, Teil 1: Einträge aus der Liste in andere Programme ziehen (nur Kopieren; Tabs ziehen, Verknüpfung offen) | 012, 011 | S–M |
 | 029 | [029-reaktionsfaehig-bei-jobs.md](done/029-reaktionsfaehig-bei-jobs.md) | Bedienbar bleiben bei langen Jobs/langsamen Laufwerken: Auffrischen ohne Sperre, Watcher unter Last, langsames Listing abbrechbar, schonendere Kopie, async Commands | 001, 005, 006, 012 | M |
 | 030 | [030-ordner-cache-smb.md](done/030-ordner-cache-smb.md) | Langsame Laufwerke (SMB): Cache je Pfad (sofort zeigen, im Hintergrund prüfen, sichtbar gekennzeichnet), nichts Destruktives auf ungeprüftem Stand; `getattrlistbulk` gemessen und verworfen; kein rekursives Vorladen | 029, 012 | M |
@@ -57,8 +57,22 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 032 | [032-startermenue.md](done/032-startermenue.md) | Starter-Menü (TC „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern“, Programme/Skripte/Ordner/Untermenüs, TC-Parameter `%P%N` …, Kürzel je Eintrag | 002, 011, 014, 015, 022 | S–M |
 | 033 | [033-speicherbelegung.md](done/033-speicherbelegung.md) | Speicherbelegung: Scan als Job (Baum in Rust, Hardlinks einmal, keine Symlinks, Dateisystemgrenzen/macOS-Firmlinks), Liste nach Größe + Sunburst/Treemap, Hineinnavigieren, „Größte Dateien“, Sammelkorb → Löschen (Papierkorb, `expected`) | 003, 005, 006, 009, 010, 011, 013, 015, 030 | L |
 | 034 | [034-server-verbindungen.md](done/034-server-verbindungen.md) | Server-Verbindungen: Profile (FTP, FTPS, SFTP) mit Dialog nach Vorlage, Passwörter/Passphrasen im Schlüsselbund des OS (nie im Klartext), Host-Key/Zertifikat prüfen, Serverordner im Panel (Tabs, Verlauf, Cache), Kopieren/Verschieben/Löschen/Anlegen/Umbenennen als Jobs, F3 über App-Cache | 003–006, 010, 011, 015, 016/025, 022, 029/030 | L |
+| 035 | [035-archive-bearbeiten.md](035-archive-bearbeiten.md) | Archive bearbeiten: in ZIP/TAR kopieren, darin löschen/Ordner anlegen (Temp-Datei + atomar ersetzen, als Job), danach 7z; RAR nie | 005, 006, 016/025, 029/030 | L |
+| 036 | [036-ordner-synchronisieren.md](036-ordner-synchronisieren.md) | Ordner vergleichen (Shift+F2 markiert Unterschiede) und synchronisieren: Vergleich als Job (Name/Größe/Datum/Inhalt), Vorschau mit Aktion je Zeile, Abgleich in eine oder beide Richtungen; Serverordner als 2. Stufe | 004–006, 009, 016, 029/030, 034 | L |
+| 037 | [037-dateien-vergleichen.md](037-dateien-vergleichen.md) | Dateien vergleichen: Text-Diff nebeneinander (nur lesend), Binär als Hex mit Abweichungen, alternativ externes Tool `diff` mit zwei Pfaden | 010, 011 | M |
+| 038 | [038-flache-ansicht.md](038-flache-ansicht.md) | Flache Ansicht (TC Strg+B): alle Dateien unterhalb des Ordners in einer Liste mit Pfad-Spalte, alle Operationen darauf | 001, 003, 005/006, 009 | M |
+| 039 | [039-pruefsummen.md](039-pruefsummen.md) | Prüfsummen erzeugen/prüfen (SHA-256/512, SHA-1, MD5; GNU/BSD-Format) als Jobs, Prüfsumme in die Zwischenablage | 005, 010, 016 | S–M |
+| 040 | [040-panel-aktionen.md](040-panel-aktionen.md) | Panel-Aktionen: Seiten tauschen (auch mit allen Tabs), Ziel = Quelle, Ordner unter dem Cursor in der linken/rechten Seite öffnen (TC Strg+U, Strg+←/→) | 002, 004, 014, 031 | S |
+| 041 | [041-spalten-ansichten.md](041-spalten-ansichten.md) | Spaltenauswahl (ein-/ausblenden, Reihenfolge, Breiten bleiben), Datumsspalte für US-Format, Kurzansicht und Miniaturen – soweit die GuiExpert Table es trägt | 001, 010, 015 | M–L |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
+
+## Nächste Prompts (Stand 21.10.2026)
+
+Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: **040** (Panel-Aktionen, S) → **027** (Persistenz,
+S–M) → **039** (Prüfsummen, S–M) → **037** (Dateien vergleichen, M) → **038** (Flache Ansicht, M) → **036** (Ordner
+synchronisieren, L) → **035** (Archive bearbeiten, L) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
+Table). Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.
 
 ## Warum diese Reihenfolge
 

@@ -22,9 +22,11 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       `~/.ssh/config`-Aliasse, Jump-Host/Proxy, chmod auf Servern, Suche auf Servern, WebDAV/S3, parallele
       Übertragungen je Job, Master-Passwort-Datei für Linux ohne Schlüsselbund (nur auf Wunsch).
 - [ ] **023 eingebauter Editor** – verworfen (Marc, 20.10.).
-- [ ] **027 Persistenz je Ordner** – Prompt noch zu schreiben.
-- [ ] **Neuer Folge-Prompt „Archive bearbeiten“**: in ZIP/TAR (dann 7z) kopieren und darin löschen – Temp-Datei +
-      atomar ersetzen, als Job (025 E9).
+- [ ] **027 Persistenz je Ordner** – Prompt `prompts/027-persistenz-je-ordner.md` (21.10.).
+- [ ] **035 Archive bearbeiten** – Prompt `prompts/035-archive-bearbeiten.md`: in ZIP/TAR (dann 7z) kopieren und darin
+      löschen – Temp-Datei + atomar ersetzen, als Job (025 E9).
+- [ ] **Neue Prompts 036–041** (21.10.): Ordner synchronisieren, Dateien vergleichen, Flache Ansicht, Prüfsummen,
+      Panel-Aktionen, Spalten/Ansichten – Reihenfolge in `prompts/README.md` „Nächste Prompts“.
 
 - [x] **030 Ordner-Cache + schnelleres Listing (SMB)** (20.10., in `main`). `getattrlistbulk` auf dem Mac geprüft (gleich
       auf APFS/SMB), an der SMB-Freigabe gemessen – kein Gewinn, ausgebaut (Branch `chore/ohne-getattrlistbulk`).
