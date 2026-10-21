@@ -337,6 +337,10 @@ pub fn resolve_missing_paths(session: &mut Session) -> Vec<AdjustedPath> {
             let Some(raw) = tab.path.clone() else {
                 continue;
             };
+            // server folders stay as they are: no network at start (design 034 §4.4)
+            if crate::remote::is_remote(&raw) {
+                continue;
+            }
             let replacement = match validate_input_path(&raw) {
                 Ok(p) => {
                     let found = nearest_existing_dir(&p);
@@ -560,6 +564,17 @@ mod tests {
             assert!(!out.persist);
             assert_eq!(fs::read_to_string(&file).unwrap(), "garbage");
         }
+    }
+
+    #[test]
+    fn server_tabs_are_kept_without_network() {
+        let mut s = Session::default();
+        s.panels.left.tabs = vec![tab("t1", Some("remote://k3x9/pub"))];
+        assert!(resolve_missing_paths(&mut s).is_empty());
+        assert_eq!(
+            s.panels.left.tabs[0].path.as_deref(),
+            Some("remote://k3x9/pub")
+        );
     }
 
     #[test]

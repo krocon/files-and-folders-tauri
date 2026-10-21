@@ -95,6 +95,7 @@ pub fn run() {
         .manage(commands::config::ButtonsState::default())
         .manage(commands::config::FileTypesState::default())
         .manage(commands::starter::StarterState::default())
+        .manage(commands::remote::RemoteState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -119,6 +120,10 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // server connections (design 034): profiles in the config folder, nothing connects yet
+            if let Ok(dir) = app.path().app_config_dir() {
+                remote::init(dir, app.path().home_dir().ok().as_deref());
+            }
             // folders a job writes into: the watcher holds their reloads back until it
             // ends and pauses polling there (design 029 E8)
             {
@@ -272,13 +277,26 @@ pub fn run() {
             commands::starter::save_starter,
             commands::starter::run_starter,
             commands::mr_import::scan_old_config,
-            commands::mr_import::apply_old_config
+            commands::mr_import::apply_old_config,
+            commands::remote::load_connections,
+            commands::remote::save_connection,
+            commands::remote::delete_connection,
+            commands::remote::remote_connect,
+            commands::remote::remote_trust_host_key,
+            commands::remote::remote_trust_certificate,
+            commands::remote::remote_disconnect,
+            commands::remote::remote_forget_secret,
+            commands::remote::remote_parse_url,
+            commands::remote::subscribe_remote
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 archive::view::cleanup();
+                if let Ok(h) = remote::hub() {
+                    h.disconnect_all();
+                }
                 return;
             }
             // Cmd+Q / quit from the menu does not send CloseRequested

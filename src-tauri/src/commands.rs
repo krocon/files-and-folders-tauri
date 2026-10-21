@@ -5,6 +5,7 @@ pub mod config;
 pub mod disk_usage;
 pub mod mr_import;
 pub mod os_drag;
+pub mod remote;
 pub mod shell;
 pub mod starter;
 pub mod watch;
@@ -46,6 +47,15 @@ pub async fn list_directory<R: Runtime>(
     app: AppHandle<R>,
     path: Option<String>,
 ) -> Result<DirectoryListing, FsError> {
+    // a server folder (design 034 E1): one listing per hanging folder as well
+    if let Some(raw) = path.as_deref().filter(|p| crate::remote::is_remote(p)) {
+        let checked = crate::remote::RemotePath::parse(raw)?.to_string();
+        return crate::listing_gate::global()
+            .list(PathBuf::from(checked), |d| {
+                crate::remote::hub()?.list_directory(&d.to_string_lossy())
+            })
+            .await;
+    }
     let dir = resolve_dir(&app, path)?;
     // a folder that hangs is listed once, further requests wait for it (design 029 E6)
     crate::listing_gate::global().list(dir, list_dir).await
@@ -144,6 +154,14 @@ pub async fn open_file<R: Runtime>(
     path: String,
     allow_executable: bool,
 ) -> Result<(), FsError> {
+    if crate::remote::is_remote(&path) {
+        // server files are opened through the job `viewEntry` (copy in the view cache)
+        return Err(FsError::at(
+            FsErrorCode::RemoteUnsupported,
+            "Server files are opened from a local copy",
+            &path,
+        ));
+    }
     let file = resolve_input(&app, &path)?;
     tauri::async_runtime::spawn_blocking(move || {
         opener::check_openable(&file, allow_executable)?;
@@ -171,6 +189,15 @@ pub async fn read_preview<R: Runtime>(
     path: String,
     options: Option<crate::preview::PreviewOptions>,
 ) -> Result<crate::preview::Preview, FsError> {
+    if crate::remote::is_remote(&path) {
+        let tokens = state.tokens.clone();
+        let options = options.unwrap_or_default();
+        return blocking("Reading the preview", move || {
+            let file = crate::remote::view::for_preview(&path, options.image_slot.as_deref())?;
+            crate::preview::read_preview(&file, &options, |p, slot| tokens.issue_in(p, slot))
+        })
+        .await;
+    }
     let file = resolve_input(&app, &path)?;
     let tokens = state.tokens.clone();
     let options = options.unwrap_or_default();
@@ -209,6 +236,12 @@ pub async fn get_properties<R: Runtime>(
     app: AppHandle<R>,
     path: String,
 ) -> Result<crate::properties::Properties, FsError> {
+    if crate::remote::is_remote(&path) {
+        return blocking("Reading the properties", move || {
+            crate::remote::hub()?.properties(&path)
+        })
+        .await;
+    }
     let file = resolve_input(&app, &path)?;
     blocking("Reading the properties", move || {
         crate::properties::properties(&file)
@@ -275,6 +308,12 @@ pub async fn make_dir<R: Runtime>(
     parent: String,
     name: String,
 ) -> Result<String, FsError> {
+    if crate::remote::is_remote(&parent) {
+        return blocking("Creating the folder", move || {
+            crate::remote::hub()?.make_dir(&parent, &name)
+        })
+        .await;
+    }
     let parent = resolve_input(&app, &parent)?;
     blocking("Creating the folder", move || {
         fileops::make_dir(&parent, &name).map(|p| p.to_string_lossy().into_owned())
@@ -367,6 +406,12 @@ pub async fn create_file<R: Runtime>(
     parent: String,
     name: String,
 ) -> Result<String, FsError> {
+    if crate::remote::is_remote(&parent) {
+        return blocking("Creating the file", move || {
+            crate::remote::hub()?.create_file(&parent, &name)
+        })
+        .await;
+    }
     let parent = resolve_input(&app, &parent)?;
     blocking("Creating the file", move || {
         fileops::create_file(&parent, &name).map(|p| p.to_string_lossy().into_owned())
@@ -382,6 +427,12 @@ pub async fn rename_entry<R: Runtime>(
     new_name: String,
     allow_dangerous: bool,
 ) -> Result<String, FsError> {
+    if crate::remote::is_remote(&path) {
+        return blocking("Renaming", move || {
+            crate::remote::hub()?.rename_entry(&path, &new_name, allow_dangerous)
+        })
+        .await;
+    }
     let path = resolve_input(&app, &path)?;
     let home = home_dir(&app).ok();
     blocking("Renaming", move || {
@@ -410,6 +461,25 @@ pub fn check_paths<R: Runtime>(
     paths
         .into_iter()
         .map(|p| {
+            // server paths: the job checks root/login/start folder (design 034 E4)
+            if crate::remote::is_remote(&p) {
+                let r = crate::remote::RemotePath::parse(&p)?;
+                let danger = crate::remote::hub().ok().and_then(|h| {
+                    let start = h.profile(r.profile()).ok().and_then(|x| x.start_path);
+                    let home = h.home_of(r.profile());
+                    crate::remote::danger::danger_of(&r, home.as_deref(), start.as_deref())
+                });
+                return Ok(PathCheck {
+                    danger: danger.map(|why| {
+                        if why == "root" {
+                            Danger::Root
+                        } else {
+                            Danger::Home
+                        }
+                    }),
+                    path: p,
+                });
+            }
             let v = validate_input_path(&p)?;
             Ok(PathCheck {
                 danger: check.of(&v),
@@ -1192,6 +1262,12 @@ pub(crate) fn unblock_imported<R: Runtime>(app: &AppHandle<R>, imported: &[Strin
                 // the next run reads the imported file
                 *state.items.lock().unwrap_or_else(|e| e.into_inner()) = None;
             }
+            // design 034: the imported profiles replace the old ones – their connections close
+            "connections" => {
+                if let Ok(h) = crate::remote::hub() {
+                    h.reload_after_import();
+                }
+            }
             _ => {}
         }
     }
@@ -1313,6 +1389,18 @@ pub async fn cancel_all_and_quit<R: Runtime>(app: AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Design 034: a server path never reaches local file code (it is no absolute path).
+    #[test]
+    fn local_commands_refuse_server_paths() {
+        for raw in ["remote://abc/x", "remote://abc/"] {
+            assert_eq!(
+                validate_input_path(raw).unwrap_err().code,
+                FsErrorCode::InvalidPath
+            );
+            assert!(crate::paths::validate_job_path(raw).is_err());
+        }
+    }
 
     /// Review 016 #7: a folder inside an archive is never a resolved location (target).
     #[test]
@@ -1486,7 +1574,7 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 8] = [
+    const SOURCES: [(&str, &str); 9] = [
         ("commands.rs", include_str!("commands.rs")),
         (
             "commands/disk_usage.rs",
@@ -1497,6 +1585,7 @@ mod command_rules {
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
         ("commands/starter.rs", include_str!("commands/starter.rs")),
+        ("commands/remote.rs", include_str!("commands/remote.rs")),
         (
             "commands/mr_import.rs",
             include_str!("commands/mr_import.rs"),

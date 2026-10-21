@@ -500,3 +500,56 @@ pub fn put(root: &Path, rel: &str, bytes: &[u8]) {
     }
     std::fs::write(p, bytes).unwrap();
 }
+
+/// The app hub for job tests (installed once; tests add their own profiles).
+pub fn global_hub() -> &'static super::Hub {
+    static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    let dir = DIR.get_or_init(|| tempfile::tempdir().expect("hub dir").keep());
+    super::install_for_tests(
+        super::Hub::new(
+            dir.clone(),
+            None,
+            Arc::new(super::credentials::MemoryStore::default()),
+        )
+        .with_test_root(test_ca()),
+    )
+}
+
+/// A connected profile on the global hub for `kind` at `port`.
+pub fn connected(kind: super::profiles::RemoteKind, port: u16) -> String {
+    let hub = global_hub();
+    let p = hub
+        .save_profile(super::profiles::RemoteProfile {
+            name: format!("T{port}"),
+            kind,
+            host: if kind == super::profiles::RemoteKind::FtpsExplicit {
+                "localhost".into()
+            } else {
+                "127.0.0.1".into()
+            },
+            port,
+            user: USER.into(),
+            timeout_secs: 5,
+            ..Default::default()
+        })
+        .expect("profile");
+    let pw = || Some(crate::secret::Secret::new(PASSWORD));
+    match hub
+        .connect(&p.id, pw(), super::Remember::Session)
+        .expect("connect")
+    {
+        super::ConnectOutcome::HostKeyUnknown { fingerprint, .. } => {
+            hub.trust_host_key(&p.id, &fingerprint).expect("trust");
+            let out = hub
+                .connect(&p.id, pw(), super::Remember::Session)
+                .expect("connect");
+            assert!(
+                matches!(out, super::ConnectOutcome::Connected { .. }),
+                "{out:?}"
+            );
+        }
+        super::ConnectOutcome::Connected { .. } => {}
+        other => panic!("{other:?}"),
+    }
+    p.id
+}

@@ -4,9 +4,9 @@
 
 use super::report::Reporter;
 use super::{
-    Control, Decision, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress, RenameItem,
-    Summary, Transfer, attributes, clean, copy, delete, duplicates, expect, extract, group, link,
-    pack, rename, search, shell,
+    Control, Decision, DeleteMode, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress,
+    RenameItem, Summary, Transfer, attributes, clean, copy, delete, duplicates, expect, extract,
+    group, link, pack, remote_delete, rename, search, shell, transfer,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -207,6 +207,59 @@ impl JobManager {
                 )
             } else {
                 let (state, summary) = match &spec {
+                    JobSpec::Copy {
+                        sources,
+                        target_dir,
+                        options,
+                        ..
+                    } if has_remote(sources, Some(target_dir)) => match crate::remote::hub() {
+                        Ok(hub) => transfer::run(
+                            hub, id, sources, target_dir, options, false, &control, &emit,
+                        ),
+                        Err(e) => failed_with(e),
+                    },
+                    JobSpec::Move {
+                        sources,
+                        target_dir,
+                        options,
+                        expected,
+                        ..
+                    } if has_remote(sources, Some(target_dir)) => match crate::remote::hub() {
+                        Ok(hub) => {
+                            let (sources, skipped) =
+                                remote_filter(hub, sources, expected, &control);
+                            with_skipped(skipped, sources.len(), || {
+                                transfer::run(
+                                    hub, id, &sources, target_dir, options, true, &control, &emit,
+                                )
+                            })
+                        }
+                        Err(e) => failed_with(e),
+                    },
+                    JobSpec::Delete {
+                        paths, expected, ..
+                    } if has_remote(paths, None) => match crate::remote::hub() {
+                        Ok(hub) => {
+                            let (paths, skipped) = remote_filter(hub, paths, expected, &control);
+                            let paths: Vec<crate::remote::RemotePath> = paths
+                                .iter()
+                                .filter_map(|p| crate::remote::RemotePath::parse(p).ok())
+                                .collect();
+                            with_skipped(skipped, paths.len(), || {
+                                remote_delete::run(hub, id, &paths, &control, &emit)
+                            })
+                        }
+                        Err(e) => failed_with(e),
+                    },
+                    JobSpec::Count { paths } if has_remote(paths, None) => {
+                        run_remote_count(id, paths, &control, &emit)
+                    }
+                    JobSpec::DirSize { path } if crate::remote::is_remote(path) => {
+                        run_remote_count(id, std::slice::from_ref(path), &control, &emit)
+                    }
+                    JobSpec::ViewEntry { path } if crate::remote::is_remote(path) => {
+                        crate::remote::view::run_job(id, path, &control, &emit)
+                    }
                     JobSpec::Copy {
                         sources,
                         target_dir,
@@ -846,13 +899,28 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
     fn all<'a>(ps: impl IntoIterator<Item = &'a mut String>) -> Result<(), FsError> {
         ps.into_iter().try_for_each(one)
     }
+    /// Local or server path (design 034): server paths are parsed and written back.
+    fn any(p: &mut String) -> Result<(), FsError> {
+        if crate::remote::is_remote(p) {
+            *p = crate::remote::RemotePath::parse(p)?.to_string();
+            Ok(())
+        } else {
+            one(p)
+        }
+    }
+    fn all_any<'a>(ps: impl IntoIterator<Item = &'a mut String>) -> Result<(), FsError> {
+        ps.into_iter().try_for_each(any)
+    }
     match spec {
         JobSpec::Copy {
             sources,
             target_dir,
             ..
+        } => {
+            all_any(sources.iter_mut())?;
+            any(target_dir)
         }
-        | JobSpec::Pack {
+        JobSpec::Pack {
             sources,
             target_dir,
             ..
@@ -871,15 +939,15 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             expected,
             ..
         } => {
-            all(sources.iter_mut())?;
-            all(expected.iter_mut().map(|e| &mut e.path))?;
-            one(target_dir)
+            all_any(sources.iter_mut())?;
+            all_any(expected.iter_mut().map(|e| &mut e.path))?;
+            any(target_dir)
         }
         JobSpec::Delete {
             paths, expected, ..
         } => {
-            all(paths.iter_mut())?;
-            all(expected.iter_mut().map(|e| &mut e.path))
+            all_any(paths.iter_mut())?;
+            all_any(expected.iter_mut().map(|e| &mut e.path))
         }
         JobSpec::Rename { items, .. } => all(items.iter_mut().map(|i| &mut i.path)),
         JobSpec::Group { root, items, .. } => {
@@ -900,13 +968,60 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             all(entries.iter_mut())?;
             one(target_dir)
         }
-        JobSpec::Count { paths } | JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
+        JobSpec::Count { paths } => all_any(paths.iter_mut()),
+        JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
         JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
-        JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => one(path),
+        JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => any(path),
         JobSpec::Search { .. }
         | JobSpec::Duplicates { .. }
         | JobSpec::Shell { .. }
         | JobSpec::Simulate { .. } => Ok(()),
+    }
+}
+
+/// A local or a server path (design 034).
+fn validate_any(p: &str) -> Result<(), FsError> {
+    if crate::remote::is_remote(p) {
+        crate::remote::RemotePath::parse(p).map(|_| ())
+    } else {
+        validate_input_path(p).map(|_| ())
+    }
+}
+
+/// All sources of one job come from one place (one panel): all local or one server.
+fn same_place(paths: &[String]) -> Result<(), FsError> {
+    let place = |p: &String| {
+        crate::remote::RemotePath::parse(p)
+            .ok()
+            .map(|r| r.profile().to_string())
+    };
+    let first = paths.first().map(place);
+    if paths.iter().any(|p| Some(place(p)) != first) {
+        return Err(FsError::new(
+            FsErrorCode::InvalidPath,
+            "The sources lie in different places",
+            None,
+        ));
+    }
+    Ok(())
+}
+
+/// Root, login folder or start folder of a server (design 034 E4).
+fn check_remote_danger(p: &str, allow: bool) -> Result<(), FsError> {
+    let path = crate::remote::RemotePath::parse(p)?;
+    if allow {
+        return Ok(());
+    }
+    let hub = crate::remote::hub()?;
+    let start = hub.profile(path.profile()).ok().and_then(|p| p.start_path);
+    let home = hub.home_of(path.profile());
+    match crate::remote::danger::danger_of(&path, home.as_deref(), start.as_deref()) {
+        Some(why) => Err(FsError::at(
+            FsErrorCode::DangerousPath,
+            format!("Dangerous path on the server ({why}) – confirm again"),
+            p,
+        )),
+        None => Ok(()),
     }
 }
 
@@ -924,10 +1039,11 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             if sources.is_empty() {
                 return Err(nothing());
             }
+            same_place(sources)?;
             for s in sources {
-                validate_input_path(s)?;
+                validate_any(s)?;
             }
-            validate_input_path(target_dir)?;
+            validate_any(target_dir)?;
         }
         JobSpec::Move {
             sources,
@@ -938,21 +1054,40 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             if sources.is_empty() {
                 return Err(nothing());
             }
+            same_place(sources)?;
             for s in sources {
-                check_danger_with(&mut danger, &validate_input_path(s)?, *allow_dangerous)?;
+                if crate::remote::is_remote(s) {
+                    check_remote_danger(s, *allow_dangerous)?;
+                } else {
+                    check_danger_with(&mut danger, &validate_input_path(s)?, *allow_dangerous)?;
+                }
             }
-            validate_input_path(target_dir)?;
+            validate_any(target_dir)?;
         }
         JobSpec::Delete {
             paths,
             allow_dangerous,
+            mode,
             ..
         } => {
             if paths.is_empty() {
                 return Err(nothing());
             }
+            same_place(paths)?;
             for p in paths {
-                check_danger_with(&mut danger, &validate_input_path(p)?, *allow_dangerous)?;
+                if crate::remote::is_remote(p) {
+                    // servers have no trash (design 034 E4)
+                    if *mode == DeleteMode::Trash {
+                        return Err(FsError::at(
+                            FsErrorCode::RemoteUnsupported,
+                            "Servers have no trash – delete permanently",
+                            p,
+                        ));
+                    }
+                    check_remote_danger(p, *allow_dangerous)?;
+                } else {
+                    check_danger_with(&mut danger, &validate_input_path(p)?, *allow_dangerous)?;
+                }
             }
         }
         JobSpec::Rename { items, .. } => {
@@ -1021,7 +1156,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::Count { paths } => {
             for p in paths {
-                validate_input_path(p)?;
+                validate_any(p)?;
             }
         }
         JobSpec::Extract {
@@ -1040,7 +1175,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             }
         }
         JobSpec::ViewEntry { path } => {
-            validate_input_path(path)?;
+            validate_any(path)?;
         }
         JobSpec::Pack {
             sources,
@@ -1099,7 +1234,7 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             crate::duplicates::compile(criteria)?;
         }
         JobSpec::DirSize { path } => {
-            validate_input_path(path)?;
+            validate_any(path)?;
         }
         JobSpec::DiskUsage {
             roots,
@@ -1164,6 +1299,106 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
 }
 
 /// Files, folders and bytes of a selection (links count as files, never followed).
+fn has_remote(paths: &[String], target: Option<&String>) -> bool {
+    paths
+        .iter()
+        .chain(target)
+        .any(|p| crate::remote::is_remote(p))
+}
+
+fn failed_with(e: FsError) -> (JobState, Summary) {
+    (
+        JobState::Failed,
+        Summary {
+            error: Some(e),
+            ..Summary::default()
+        },
+    )
+}
+
+fn remote_filter(
+    hub: &crate::remote::Hub,
+    paths: &[String],
+    expected: &[expect::ExpectedEntry],
+    control: &Control,
+) -> (Vec<String>, Vec<ItemError>) {
+    transfer::filter_remote(hub, paths.to_vec(), expected, control)
+}
+
+/// Count / folder size on a server (design 034): recursive listing.
+fn run_remote_count(
+    id: &str,
+    paths: &[String],
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    let hub = match crate::remote::hub() {
+        Ok(h) => h,
+        Err(e) => return failed_with(e),
+    };
+    emit(JobEvent::State {
+        id: id.to_string(),
+        state: JobState::Running,
+    });
+    let mut total = DirSize::default();
+    for p in paths {
+        let Ok(path) = crate::remote::RemotePath::parse(p) else {
+            total.unreadable += 1;
+            continue;
+        };
+        let loc = transfer::Loc::Remote(path.clone());
+        match transfer::stat(hub, &loc) {
+            Ok(Some(m)) if m.kind == crate::model::EntryKind::Directory => {
+                total.dirs += 1;
+                let base = total;
+                let sub = transfer::remote_size(hub, &path, control, &mut |s| {
+                    emit(JobEvent::Progress {
+                        id: id.to_string(),
+                        progress: Progress {
+                            bytes_done: base.bytes + s.bytes,
+                            items_done: base.files + base.dirs + s.files + s.dirs,
+                            ..Progress::default()
+                        },
+                    })
+                });
+                total.files += sub.files;
+                total.dirs += sub.dirs;
+                total.bytes += sub.bytes;
+                total.unreadable += sub.unreadable;
+                if sub.cancelled {
+                    total.cancelled = true;
+                    break;
+                }
+            }
+            Ok(Some(m)) => {
+                total.files += 1;
+                total.bytes += m.size;
+            }
+            Ok(None) => {}
+            Err(e) => {
+                if paths.len() == 1 {
+                    return failed_with(e);
+                }
+                total.unreadable += 1;
+            }
+        }
+    }
+    let state = if total.cancelled {
+        JobState::Cancelled
+    } else {
+        JobState::Done
+    };
+    (
+        state,
+        Summary {
+            items_done: total.files + total.dirs,
+            bytes_done: total.bytes,
+            dir_size: Some(total),
+            ..Summary::default()
+        },
+    )
+}
+
 fn run_count(
     id: &str,
     paths: &[PathBuf],

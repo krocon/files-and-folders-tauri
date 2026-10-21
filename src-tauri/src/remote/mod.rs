@@ -21,6 +21,7 @@ mod tests;
 #[cfg(test)]
 pub mod testserver;
 pub mod trust;
+pub mod view;
 
 pub use path::{RemotePath, is_remote};
 
@@ -115,6 +116,8 @@ pub struct Hub {
     profiles: Mutex<Option<Vec<RemoteProfile>>>,
     /// The profile file could not be read or moved aside – never written over.
     write_blocked: Mutex<bool>,
+    /// One change of the profile list at a time (read – change – write).
+    editing: Mutex<()>,
     pools: Mutex<HashMap<String, Pool>>,
     freed: Condvar,
     secrets: SessionSecrets,
@@ -157,6 +160,7 @@ impl Hub {
             store,
             profiles: Mutex::new(None),
             write_blocked: Mutex::new(false),
+            editing: Mutex::new(()),
             pools: Mutex::new(HashMap::new()),
             freed: Condvar::new(),
             secrets: SessionSecrets::default(),
@@ -248,6 +252,7 @@ impl Hub {
 
     /// Saves a profile (empty id = new). The keychain marker and pin stay as Rust knows them.
     pub fn save_profile(&self, mut p: RemoteProfile) -> Result<RemoteProfile, FsError> {
+        let _edit = lock(&self.editing);
         let mut list = self.profiles();
         let taken: HashSet<String> = list.iter().map(|p| p.id.clone()).collect();
         let existing = list.iter().position(|q| q.id == p.id && !p.id.is_empty());
@@ -301,6 +306,7 @@ impl Hub {
     }
 
     pub fn delete_profile(&self, id: &str) -> Result<(), FsError> {
+        let _edit = lock(&self.editing);
         self.disconnect(id);
         self.secrets.forget(id);
         for kind in [SecretKind::Password, SecretKind::Passphrase] {
@@ -321,10 +327,13 @@ impl Hub {
                 failed = Some(e);
             }
         }
-        let mut list = self.profiles();
-        if let Some(p) = list.iter_mut().find(|p| p.id == id) {
-            p.secret = SecretState::None;
-            self.write(list)?;
+        {
+            let _edit = lock(&self.editing);
+            let mut list = self.profiles();
+            if let Some(p) = list.iter_mut().find(|p| p.id == id) {
+                p.secret = SecretState::None;
+                self.write(list)?;
+            }
         }
         match failed {
             Some(e) => Err(err(FsErrorCode::KeychainUnavailable, &e.0, id)),
@@ -332,11 +341,14 @@ impl Hub {
         }
     }
 
-    pub fn import_profiles(&self, list: Vec<RemoteProfile>) -> Result<(), FsError> {
+    /// The profile file was replaced (settings import): close everything, read it again.
+    pub fn reload_after_import(&self) {
+        let _edit = lock(&self.editing);
+        self.disconnect_all();
         for p in self.profiles() {
-            self.disconnect(&p.id);
+            self.secrets.forget(&p.id);
         }
-        self.write(list)
+        self.load();
     }
 
     // ---- state ----------------------------------------------------------------
@@ -450,6 +462,7 @@ impl Hub {
     }
 
     fn mark_keychain(&self, id: &str, state: SecretState) {
+        let _edit = lock(&self.editing);
         let mut list = self.profiles();
         if let Some(p) = list.iter_mut().find(|p| p.id == id)
             && p.secret != state
@@ -667,6 +680,7 @@ impl Hub {
         let seen = lock(&self.pending_certs).remove(id);
         match seen {
             Some(s) if s.sha256.eq_ignore_ascii_case(sha256) => {
+                let _edit = lock(&self.editing);
                 let mut list = self.profiles();
                 let p = list.iter_mut().find(|p| p.id == id).ok_or_else(|| {
                     err(FsErrorCode::UnknownProfile, "Save the connection first", id)
@@ -986,5 +1000,144 @@ impl SecretStore for LazyKeyring {
     }
     fn delete(&self, p: &str, k: SecretKind) -> Result<(), credentials::StoreError> {
         credentials::system_store().delete(p, k)
+    }
+}
+
+// ---- single operations (no job: short and never overwriting) ----------------------
+
+impl Hub {
+    /// Creates folder `name` (`a/b` allowed) in `parent`; returns the topmost new path.
+    pub fn make_dir(&self, parent: &str, name: &str) -> Result<String, FsError> {
+        let parent = RemotePath::parse(parent)?;
+        let parts: Vec<&str> = name.split('/').filter(|s| !s.is_empty()).collect();
+        if parts.is_empty() {
+            return Err(err(FsErrorCode::InvalidName, "Empty name", name));
+        }
+        let mut cur = parent.clone();
+        let mut first_new: Option<RemotePath> = None;
+        self.with(parent.profile(), |c| {
+            for part in &parts {
+                cur = cur.join(part)?;
+                match c.stat(cur.server_path())? {
+                    Some(m) if m.is_dir() => continue,
+                    Some(_) => {
+                        return Err(err(
+                            FsErrorCode::AlreadyExists,
+                            "A file with this name exists",
+                            &cur.to_string(),
+                        ));
+                    }
+                    None => {
+                        c.mkdir(cur.server_path())?;
+                        if first_new.is_none() {
+                            first_new = Some(cur.clone());
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })?;
+        first_new.map(|p| p.to_string()).ok_or_else(|| {
+            err(
+                FsErrorCode::AlreadyExists,
+                "The folder exists",
+                &cur.to_string(),
+            )
+        })
+    }
+
+    /// Creates an empty file (never overwrites).
+    pub fn create_file(&self, parent: &str, name: &str) -> Result<String, FsError> {
+        let target = RemotePath::parse(parent)?.join(name)?;
+        self.with(target.profile(), |c| {
+            if c.stat(target.server_path())?.is_some() {
+                return Err(err(
+                    FsErrorCode::AlreadyExists,
+                    "The name exists",
+                    &target.to_string(),
+                ));
+            }
+            c.write(target.server_path(), &mut std::io::empty())
+                .map(|_| ())
+        })?;
+        Ok(target.to_string())
+    }
+
+    /// Renames an entry in its folder (never overwrites; root/home/start need `allow_dangerous`).
+    pub fn rename_entry(
+        &self,
+        raw: &str,
+        new_name: &str,
+        allow_dangerous: bool,
+    ) -> Result<String, FsError> {
+        let path = RemotePath::parse(raw)?;
+        let parent = path.parent().ok_or_else(|| {
+            err(
+                FsErrorCode::DangerousPath,
+                "The root cannot be renamed",
+                raw,
+            )
+        })?;
+        let target = parent.join(new_name)?;
+        if !allow_dangerous {
+            let start = self.profile(path.profile())?.start_path;
+            let home = self.home_of(path.profile());
+            if let Some(why) = danger::danger_of(&path, home.as_deref(), start.as_deref()) {
+                return Err(err(
+                    FsErrorCode::DangerousPath,
+                    &format!("Dangerous path on the server ({why})"),
+                    raw,
+                ));
+            }
+        }
+        self.with(path.profile(), |c| {
+            // only the case changes: the server sees the "same" name (case-insensitive servers)
+            let same_entry = path
+                .name()
+                .is_some_and(|n| n.eq_ignore_ascii_case(new_name));
+            if !same_entry && c.stat(target.server_path())?.is_some() {
+                return Err(err(
+                    FsErrorCode::AlreadyExists,
+                    "The name exists",
+                    &target.to_string(),
+                ));
+            }
+            c.rename(path.server_path(), target.server_path())
+        })?;
+        Ok(target.to_string())
+    }
+
+    /// Properties of a server entry (what the server tells).
+    pub fn properties(&self, raw: &str) -> Result<crate::properties::Properties, FsError> {
+        let path = RemotePath::parse(raw)?;
+        let (meta, target) = self.with(path.profile(), |c| {
+            let m = c.stat(path.server_path())?;
+            let t = match m {
+                Some(m) if m.kind == EntryKind::Symlink => c.stat_follow(path.server_path())?,
+                _ => None,
+            };
+            Ok((m, t))
+        })?;
+        let meta = meta.ok_or_else(|| err(FsErrorCode::NotFound, "Not found", raw))?;
+        let shown = target.unwrap_or(meta);
+        Ok(crate::properties::Properties {
+            name: path.name().unwrap_or("/").to_string(),
+            path: path.to_string(),
+            kind: meta.kind,
+            target_kind: (meta.kind == EntryKind::Symlink)
+                .then_some(target.map(|t| t.kind))
+                .flatten(),
+            link_target: None,
+            size: (shown.kind == EntryKind::File)
+                .then_some(shown.size)
+                .flatten(),
+            created_ms: None,
+            modified_ms: shown.modified_ms,
+            accessed_ms: None,
+            readonly: false,
+            format: None,
+            unix: None,
+            windows: None,
+        })
     }
 }

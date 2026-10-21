@@ -33,7 +33,7 @@ pub const BUNDLE_FORMAT: &str = "files-and-folders-settings";
 pub const BUNDLE_VERSION: u32 = 1;
 pub const BUNDLE_FILE_STEM: &str = "files-and-folders-settings";
 /// Parts of a bundle (`import_settings` takes a subset).
-pub const PARTS: [&str; 8] = [
+pub const PARTS: [&str; 9] = [
     "settings",
     "keymap",
     "themes",
@@ -42,6 +42,7 @@ pub const PARTS: [&str; 8] = [
     "buttons",
     "fileTypes",
     "starter",
+    "connections",
 ];
 
 const SCHEMA_JSON: &str = include_str!("../../src/app/core/settings/settings-schema.json");
@@ -272,6 +273,8 @@ pub struct ConfigFiles {
     pub buttons: PathBuf,
     pub file_types: PathBuf,
     pub starter: PathBuf,
+    /// Server profiles (design 034) – exported without secrets.
+    pub connections: PathBuf,
 }
 
 impl ConfigFiles {
@@ -285,6 +288,7 @@ impl ConfigFiles {
             "buttons" => &self.buttons,
             "fileTypes" => &self.file_types,
             "starter" => &self.starter,
+            "connections" => &self.connections,
             _ => &self.settings,
         }
     }
@@ -299,6 +303,7 @@ impl ConfigFiles {
             buttons: dir.join(buttons::FILE_NAME),
             file_types: dir.join(filetypes::FILE_NAME),
             starter: dir.join(starter::FILE_NAME),
+            connections: dir.join(crate::remote::profiles::FILE_NAME),
         }
     }
 }
@@ -362,6 +367,17 @@ pub fn bundle(files: &ConfigFiles) -> Value {
         "starter".into(),
         if files.starter.exists() {
             serde_json::to_value(starter::load(&files.starter).value).unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+    );
+    // design 034: server profiles without the keychain marker, null without a user file
+    out.insert(
+        "connections".into(),
+        if files.connections.exists() {
+            crate::remote::profiles::for_export(
+                &crate::remote::profiles::load(&files.connections).value,
+            )
         } else {
             Value::Null
         },
@@ -510,6 +526,10 @@ pub fn import(
             },
             "starter" => match serde_json::from_value::<Vec<starter::StarterItem>>(value) {
                 Ok(items) => starter::save(&files.starter, items).map(|_| true),
+                Err(_) => Ok(false),
+            },
+            "connections" => match crate::remote::profiles::from_import(&value) {
+                Ok(list) => crate::remote::profiles::save(&files.connections, &list).map(|_| true),
                 Err(_) => Ok(false),
             },
             _ => Ok(false),
@@ -816,6 +836,36 @@ mod tests {
         assert_eq!(bundle(&files)["buttons"]["shift"][0], "OPEN_COPY_DLG");
     }
 
+    /// Design 034: server profiles travel without the keychain marker.
+    #[test]
+    fn connections_are_exported_and_imported_without_secrets() {
+        use crate::remote::profiles::{RemoteProfile, SecretState};
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("a"));
+        let p = RemoteProfile {
+            id: "k3x9".into(),
+            name: "S".into(),
+            host: "h".into(),
+            user: "u".into(),
+            secret: SecretState::Keychain,
+            ..RemoteProfile::default()
+        };
+        fs::create_dir_all(src.connections.parent().unwrap()).unwrap();
+        crate::remote::profiles::save(&src.connections, &[p]).unwrap();
+        let b = bundle(&src);
+        assert_eq!(b["connections"]["profiles"][0]["secret"], "none");
+        let dst = config(&dir.path().join("b"));
+        fs::create_dir_all(dst.connections.parent().unwrap()).unwrap();
+        let m = b.as_object().unwrap().clone();
+        let report = import(&dst, &m, &["connections".into()]).unwrap();
+        assert_eq!(report.imported, ["connections"]);
+        let back = crate::remote::profiles::load(&dst.connections).value;
+        assert_eq!(
+            (back[0].id.as_str(), back[0].secret),
+            ("k3x9", SecretState::None)
+        );
+    }
+
     #[test]
     fn import_skips_invalid_parts_and_sanitises_settings() {
         let dir = tempdir().unwrap();
@@ -845,7 +895,8 @@ mod tests {
                 "tools",
                 "buttons",
                 "fileTypes",
-                "starter"
+                "starter",
+                "connections"
             ]
         );
         assert!(report.warnings.iter().any(|w| w.code == "invalid_value"));
