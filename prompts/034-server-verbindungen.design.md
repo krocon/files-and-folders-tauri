@@ -473,14 +473,32 @@ Neu – weder die alte Version noch mr hatten Server-Verbindungen. `docs/feature
 „Server-Verbindungen (FTP/FTPS/SFTP), 034“. Abweichung von TC: kein Aktivmodus-FTP, kein Papierkorb am Server,
 Kürzel `Mod+K` statt Strg+F (bei uns Suche).
 
+## Umsetzung – Abweichungen vom Entwurf
+
+| Punkt | Entwurf | Umgesetzt | Grund |
+|---|---|---|---|
+| Testen im Dialog | Command `remote_test` mit ungespeichertem Entwurf | „Testen“ speichert und verbindet (ohne Navigation) | Host-Key/Pin brauchen ein gespeichertes Profil; ein zweiter Ablauf hätte nichts gebracht |
+| Vertrauensfrage + Passwort | Frontend schickt nach „Vertrauen“ erneut | Rust hält das getippte Passwort bis zum nächsten Verbinden (`pending_secrets`, `Zeroizing`), Trennen/Abbrechen verwirft es | das Frontend schickt ein Passwort genau einmal |
+| Zertifikatsdialog | Antragsteller, Aussteller, Gültigkeit | SHA-256 (in Vierergruppen), Grund, „anderer Servername“ | ohne X.509-Parser keine weiteren Felder; der Fingerabdruck ist das Entscheidende (kein neues Crate) |
+| Pool | eine Verbindung fürs Browsen reserviert | gemeinsamer Pool bis `maxConnections`, Warten mit Zeitlimit | einfacher, bei Standard 2 genügt es; Server → Server läuft über eine lokale Temp-Datei |
+| Einstellungen §3.5 | `remote.*` im Einstellungsdialog | Werte je Profil (Zeitlimit, Verbindungen, Keepalive) | globale Defaults hätten nur die Profilwerte vorbelegt |
+| Server-Links beim Kopieren | Link-Ziele per `stat` | übersprungen (`symlink_skipped`) | kein Kopieren von Link-Zielen, keine Zyklen |
+| F4 / Ziehen ins System / Archive auf Servern | Veto | Veto, Hinweis | Folgeideen (TODO.md) |
+| Frontend-Pfade | nur `isRemotePath` | zusätzlich `profileOf` (Id für „Verbinden“), `serverPath` (Favorit vor dem ersten Verbinden), `displayPath` (Menüs) | Lesen/Erzeugen des Präfixes, kein Zerlegen von Serverpfaden; Rust prüft jeden Pfad |
+| Größe des Binarys (R4) | messen | nicht gemessen | ein Release-Build im Container ist zu teuer; neue Crates: rustls, ring (schon über Tauri? nein), russh, suppaftp – bei Marc/CI messen |
+
 ## Fortschritt
 
 - [x] Phase 1: Bestand gelesen, Crates geprüft (crates.io, 21.10.2026), Design geschrieben, freigegeben 21.10.2026.
   E3 entschieden: nur Schlüsselbund – sicherer als eine eigene Datei mit Master-Passwort (keine eigene
   Kryptografie-Bedienung, kein Master-Passwort-Dialog/Leerlauf-Vergessen als Fehlerquelle, das OS härtet den Speicher);
   ohne Schlüsselbund nur „für diese Sitzung“.
-- [ ] Phase 2: Rust
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: E2E
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschlussprüfung, Review
+- [x] Phase 2: Rust – `remote/` (Pfade, Profile, Schlüsselbund, Vertrauen, FTP/FTPS, SFTP, Hub, View-Cache),
+  `jobs/transfer.rs`, `jobs/remote_delete.rs`, Commands; 45 Tests gegen In-Process-Server (libunftp, russh-Server);
+  R1 (FTPS-Datenkanal mit Session-Reuse) gegen vsftpd `require_ssl_reuse=YES` grün, R2 (Hänger) mit stummem Server
+  getestet (Zeitlimit greift für FTP und SFTP).
+- [x] Phase 3: Frontend – Store, Dialoge, Aktionen/Kürzel, Ordnermenü, Panel-Badge/„Verbinden“, Vetos, Löschen
+  endgültig, Einstellungs-Export; 14 Specs.
+- [x] Phase 4: E2E – siehe unten.
+- [x] Phase 5: Doku (architecture, roadmap, feature-parity, features, README, release, CLAUDE.md, TODO.md).
+- [ ] Phase 6: Abschlussprüfung, Review – siehe unten.

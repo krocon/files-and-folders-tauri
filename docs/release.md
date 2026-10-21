@@ -87,6 +87,14 @@ meist auf Hardware/HSM – dann **Variante B**: Azure Trusted Signing o. ä. üb
 
 Keine Signatur nötig. Optional: Prüfsummen (`SHA256SUMS`) zum Release, GPG-Signatur der Datei.
 
+### Schlüsselbund und Signatur (Server-Verbindungen, 034)
+
+Gespeicherte Server-Passwörter liegen im Schlüsselbund des Systems (Dienst `io.github.krocon.filesandfolders`). Die
+macOS-Keychain bindet den Zugriff an die **Code-Signatur**: ein unsignierter oder ad-hoc signierter Build fragt nach
+jedem neuen Build einmal „… möchte auf den Schlüsselbund zugreifen“ („Immer erlauben“ gilt nur bis zum nächsten
+Build). Mit Developer-ID-Signatur bleibt die Erlaubnis über Updates erhalten. Windows (Credential Manager) und Linux
+(Secret Service) prüfen keine Signatur.
+
 ## Updater (`tauri-plugin-updater`) – bewertet, **nicht aktiviert**
 
 | Punkt | Bewertung |

@@ -383,6 +383,17 @@
           "wait": 300
         }
       ]
+    },
+    {
+      "name": "connections-dialog",
+      "steps": [
+        {
+          "action": "OPEN_CONNECTIONS_DLG"
+        },
+        {
+          "wait": 300
+        }
+      ]
     }
   ],
   "docs": {

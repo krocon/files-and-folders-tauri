@@ -4,7 +4,7 @@
 
 use super::report::Reporter;
 use super::{Control, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS, Summary};
-use crate::error::FsError;
+use crate::error::{FsError, FsErrorCode};
 use crate::model::EntryKind;
 use crate::remote::{Hub, RemotePath};
 
@@ -69,6 +69,17 @@ pub fn run(
             match hub.with(dir.profile(), |c| c.list(dir.server_path())) {
                 Ok(l) => {
                     for e in l.entries {
+                        if e.lossy {
+                            // the name we would send is not the real one (review 034 #9)
+                            let shown = format!("{dir}/{}", e.name);
+                            let err = FsError::at(
+                                FsErrorCode::InvalidName,
+                                "The name could not be read exactly",
+                                &shown,
+                            );
+                            fail(&rep, &mut summary, shown, err);
+                            continue;
+                        }
                         match dir.join(&e.name) {
                             Ok(p) if e.kind == EntryKind::Directory => stack.push((p, false)),
                             Ok(p) => steps.push(Step::File(p)),

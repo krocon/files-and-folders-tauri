@@ -342,7 +342,8 @@ impl<T: TlsStream + Send + 'static> FtpConn<T> {
             Err(e) if e.code == FsErrorCode::NotFound => return Ok(None),
             Err(e) => return Err(e),
         };
-        Ok(listing
+        let unreadable = listing.unreadable;
+        let found = listing
             .entries
             .into_iter()
             .find(|e| e.name == name)
@@ -351,7 +352,16 @@ impl<T: TlsStream + Send + 'static> FtpConn<T> {
                 size: e.size,
                 modified_ms: e.modified_ms,
                 mode: e.mode,
-            }))
+            });
+        if found.is_none() && unreadable > 0 {
+            // a line we could not read may be this entry: no "does not exist"
+            return Err(FsError::at(
+                FsErrorCode::RemoteProtocol,
+                "The server listing could not be read completely",
+                path,
+            ));
+        }
+        Ok(found)
     }
 
     /// Whether `path` can be entered (a folder, or a link to one).
@@ -412,8 +422,15 @@ impl<T: TlsStream + Send + 'static> RemoteFs for FtpConn<T> {
         if self.mlst {
             return match self.ftp.mlst(Some(path)) {
                 Ok(line) => Ok(ListParser::parse_mlst(&line).ok().map(|f| meta_of(&f))),
+                // 550 also means "no permission" or "busy" on some servers: "not there"
+                // only when the reply says so, else a listing of the folder decides – a
+                // wrong `None` would let a rename replace the entry (review 034)
                 Err(FtpError::UnexpectedResponse(r)) if r.status == Status::FileUnavailable => {
-                    Ok(None)
+                    if says_not_found(&String::from_utf8_lossy(&r.body)) {
+                        Ok(None)
+                    } else {
+                        self.stat_by_listing(path)
+                    }
                 }
                 Err(e) => Err(ftp_error(e, path)),
             };
@@ -554,6 +571,45 @@ impl<T: TlsStream + Send + 'static> RemoteFs for FtpConn<T> {
     }
 }
 
+/// The text of a 550 reply says the entry does not exist (vsftpd, ProFTPD, Pure-FTPd,
+/// FileZilla Server, IIS phrase it like this).
+fn says_not_found(text: &str) -> bool {
+    let t = text.to_lowercase();
+    [
+        "no such file",
+        "not found",
+        "does not exist",
+        "doesn't exist",
+        "cannot find",
+        "can't find",
+        "can't check for file existence",
+        "could not get file",
+        "the system cannot find",
+    ]
+    .iter()
+    .any(|p| t.contains(p))
+}
+
+/// A TLS connector that bounds every socket it sees (control and data channels of
+/// implicit FTPS) by the profile timeout and registers it for disconnect.
+#[derive(Debug)]
+struct TimedConnector {
+    inner: RustlsConnector,
+    timeout: Duration,
+    sockets: Sockets,
+}
+
+impl suppaftp::TlsConnector for TimedConnector {
+    type Stream = <RustlsConnector as suppaftp::TlsConnector>::Stream;
+
+    fn connect(&self, domain: &str, stream: TcpStream) -> suppaftp::FtpResult<Self::Stream> {
+        stream.set_read_timeout(Some(self.timeout)).ok();
+        stream.set_write_timeout(Some(self.timeout)).ok();
+        register(&self.sockets, &stream);
+        self.inner.connect(domain, stream)
+    }
+}
+
 /// Opens an FTP/FTPS connection. For FTPS `tls` holds the client config (OS trust + pin).
 pub fn connect(
     p: &RemoteProfile,
@@ -589,21 +645,21 @@ pub fn connect(
         RemoteKind::FtpsImplicit => {
             let cfg =
                 tls.ok_or_else(|| FsError::at(FsErrorCode::RemoteProtocol, "no TLS", &addr))?;
-            // suppaftp opens the socket itself here: the probe above ensured the host answers
+            // suppaftp opens the socket itself here: the probe above ensured the host answers.
+            // The connector gets that socket before the handshake – timeouts and kill apply
+            // from the first byte on (review 034 #6).
             let peer = tcp.peer_addr().map_err(|e| io_error(&e, &addr))?;
             drop(tcp);
             let ftp = suppaftp::RustlsFtpStream::connect_secure_implicit(
                 peer,
-                RustlsConnector::from(cfg),
+                TimedConnector {
+                    inner: RustlsConnector::from(cfg),
+                    timeout,
+                    sockets: abort.sockets.clone(),
+                },
                 &p.host,
             )
             .map_err(|e| ftp_error(e, &addr))?;
-            {
-                let s = ftp.get_ref();
-                s.set_read_timeout(Some(timeout)).ok();
-                s.set_write_timeout(Some(timeout)).ok();
-                register(&abort.sockets, &s);
-            }
             let conn = FtpConn::setup(ftp, p, password, abort, timeout, ipv6)?;
             Ok(Box::new(conn))
         }
@@ -614,6 +670,48 @@ pub fn connect(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn not_found_only_when_the_reply_says_so() {
+        assert!(says_not_found("/a: No such file or directory"));
+        assert!(says_not_found("Could not get file information"));
+        assert!(says_not_found("The system cannot find the file specified."));
+        assert!(!says_not_found("Permission denied"));
+        assert!(!says_not_found("Requested action not taken"));
+        assert!(!says_not_found(""));
+    }
+
+    /// Review 034 #6: an implicit-FTPS server that accepts and then stays silent ends
+    /// in the timeout (the TLS handshake used to wait forever).
+    #[test]
+    fn implicit_ftps_gives_up_on_a_silent_server() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            let mut held = Vec::new();
+            for s in listener.incoming() {
+                held.push(s);
+            }
+        });
+        let p = RemoteProfile {
+            kind: RemoteKind::FtpsImplicit,
+            host: "127.0.0.1".into(),
+            port,
+            user: "u".into(),
+            timeout_secs: 1,
+            ..RemoteProfile::default()
+        };
+        let (cfg, _) = super::super::trust::tls_config(None, false, None).unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let r = connect(&p, Some(&Secret::new("pw")), Some(cfg));
+            let _ = tx.send(r.err().map(|e| e.code));
+        });
+        let code = rx
+            .recv_timeout(Duration::from_secs(10))
+            .expect("connect hangs");
+        assert_eq!(code, Some(FsErrorCode::RemoteTimeout));
+    }
 
     #[test]
     fn list_lines_unix_and_dos() {

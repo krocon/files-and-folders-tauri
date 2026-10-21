@@ -121,3 +121,14 @@
   background: var(--color-danger-bg);
   border-color: var(--color-danger);
 }
+
+/* compact form: the gap of .side spaces the fields, no extra label margin */
+.details label.field,
+.body > form label.field {
+  margin-top: 0;
+}
+
+.connections .entries {
+  min-height: 10rem;
+  max-height: 20rem;
+}

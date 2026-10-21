@@ -56,7 +56,7 @@ pub fn materialize(
             .unwrap_or_else(|_| "file".into()),
     );
     let mut done = 0u64;
-    let r = crate::jobs::transfer::download(hub, &path, &file, control, &mut |n| {
+    let r = crate::jobs::transfer::download(hub, &path, &file, meta.size, max, control, &mut |n| {
         done += n;
         progress(done, size);
     });

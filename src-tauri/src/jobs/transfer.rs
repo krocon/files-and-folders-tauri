@@ -493,7 +493,9 @@ impl Run<'_> {
         match (src, to) {
             (Loc::Local(s), Loc::Remote(t)) => {
                 let file = fs::File::open(s).map_err(|e| FsError::from_io(&e, s))?;
+                let mut read = 0u64;
                 let mut count = |n: u64| {
+                    read += n;
                     rep.progress.bytes_done += n;
                     rep.tick(false);
                 };
@@ -502,8 +504,10 @@ impl Run<'_> {
                     control,
                     count: &mut count,
                 };
-                match hub.with(t.profile(), |c| c.write(t.server_path(), &mut reader)) {
-                    Ok(_) => Ok(true),
+                let r = hub.with_stream(t.profile(), |c| c.write(t.server_path(), &mut reader));
+                drop(reader);
+                match r {
+                    Ok(n) => complete(n, read, t).map(|()| true),
                     Err(_) if control.is_cancelled() => Ok(false),
                     Err(e) => Err(e),
                 }
@@ -514,6 +518,7 @@ impl Run<'_> {
                     .create_new(true)
                     .open(t)
                     .map_err(|e| FsError::from_io(&e, t))?;
+                mark_download(hub, s, &file, t);
                 let mut sink = |b: &[u8]| -> io::Result<bool> {
                     if control.is_cancelled() || !control.wait_while_paused() {
                         return Ok(false);
@@ -523,8 +528,15 @@ impl Run<'_> {
                     rep.tick(false);
                     Ok(true)
                 };
-                let done = hub.with(s.profile(), |c| c.read(s.server_path(), &mut sink))?;
+                let mut got = 0u64;
+                let mut counted = |b: &[u8]| {
+                    got += b.len() as u64;
+                    sink(b)
+                };
+                let done =
+                    hub.with_stream(s.profile(), |c| c.read(s.server_path(), &mut counted))?;
                 if done {
+                    received_all(hub, s, size, got)?;
                     file.sync_all().map_err(|e| FsError::from_io(&e, t))?;
                 }
                 Ok(done)
@@ -556,25 +568,36 @@ impl Run<'_> {
                         half(rep, b.len() as u64);
                         Ok(true)
                     };
-                    if !hub.with(s.profile(), |c| c.read(s.server_path(), &mut sink))? {
+                    let mut got = 0u64;
+                    let mut counted = |b: &[u8]| {
+                        got += b.len() as u64;
+                        sink(b)
+                    };
+                    if !hub.with_stream(s.profile(), |c| c.read(s.server_path(), &mut counted))? {
                         return Ok(false);
                     }
+                    received_all(hub, s, size, got)?;
                     drop(file);
                     let file = fs::File::open(&local).map_err(|e| FsError::from_io(&e, &local))?;
-                    let mut count = |n: u64| half(rep, n);
+                    let mut sent = 0u64;
+                    let mut count = |n: u64| {
+                        sent += n;
+                        half(rep, n)
+                    };
                     let mut reader = Counting {
                         inner: io::BufReader::with_capacity(BLOCK, file),
                         control,
                         count: &mut count,
                     };
-                    match hub.with(t.profile(), |c| c.write(t.server_path(), &mut reader)) {
-                        Ok(_) => Ok(true),
+                    let r = hub.with_stream(t.profile(), |c| c.write(t.server_path(), &mut reader));
+                    drop(reader);
+                    match r {
+                        Ok(n) => complete(n, sent, t).map(|()| true),
                         Err(_) if control.is_cancelled() => Ok(false),
                         Err(e) => Err(e),
                     }
                 })();
                 let _ = fs::remove_file(&local);
-                let _ = size;
                 result
             }
             (Loc::Local(_), Loc::Local(_)) => Err(FsError::at(
@@ -1040,11 +1063,52 @@ pub fn filter_remote(
     (keep, skipped)
 }
 
-/// A file of a server in a local file (view cache): `Ok(false)` = cancelled.
+/// Files from a server are "downloaded from the internet" for the OS (Gatekeeper,
+/// SmartScreen, Office protected view) – like files from a marked archive (025).
+fn mark_download(hub: &Hub, src: &RemotePath, file: &fs::File, path: &Path) {
+    if let Ok(p) = hub.profile(src.profile()) {
+        let mark = crate::platform::origin_mark::downloaded(&p.origin_url());
+        crate::platform::origin_mark::apply_open(file, path, &mark);
+    }
+}
+
+/// The server took fewer (or more) bytes than were read: never treated as done – a move
+/// would delete the source of a truncated copy (review 034 #1).
+fn complete(written: u64, read: u64, to: &RemotePath) -> Result<(), FsError> {
+    if written == read {
+        Ok(())
+    } else {
+        Err(FsError::at(
+            FsErrorCode::RemoteConnectionLost,
+            format!("Incomplete upload ({written} of {read} bytes)"),
+            &to.to_string(),
+        ))
+    }
+}
+
+/// A download whose length differs from the planned size counts only when the server
+/// now reports exactly that length (the file changed before the transfer started).
+fn received_all(hub: &Hub, src: &RemotePath, planned: u64, got: u64) -> Result<(), FsError> {
+    if got == planned {
+        return Ok(());
+    }
+    let now = hub.with(src.profile(), |c| c.stat(src.server_path()))?;
+    if now.and_then(|m| m.size) == Some(got) {
+        Ok(())
+    } else {
+        Err(changed(src))
+    }
+}
+
+/// A file of a server in a local file (view cache): exactly `size` bytes when the server
+/// reported a size, never more than `max`. More stops the download (a hostile or growing
+/// file cannot fill the disk, review 034 #7), less is an error. `Ok(false)` = cancelled.
 pub fn download(
     hub: &Hub,
     src: &RemotePath,
     to: &Path,
+    size: Option<u64>,
+    max: u64,
     control: &Control,
     progress: &mut dyn FnMut(u64),
 ) -> Result<bool, FsError> {
@@ -1053,13 +1117,39 @@ pub fn download(
         .create_new(true)
         .open(to)
         .map_err(|e| FsError::from_io(&e, to))?;
+    mark_download(hub, src, &file, to);
+    let limit = size.map_or(max, |s| s.min(max));
+    let mut got = 0u64;
     let mut sink = |b: &[u8]| -> io::Result<bool> {
         if control.is_cancelled() {
             return Ok(false);
+        }
+        got += b.len() as u64;
+        if got > limit {
+            return Err(io::Error::other("larger than reported"));
         }
         file.write_all(b)?;
         progress(b.len() as u64);
         Ok(true)
     };
-    hub.with(src.profile(), |c| c.read(src.server_path(), &mut sink))
+    let done = hub
+        .with_stream(src.profile(), |c| c.read(src.server_path(), &mut sink))
+        .map_err(|e| changed_or(e, got > limit, src))?;
+    if done && size.is_some_and(|s| s != got) {
+        return Err(changed(src));
+    }
+    Ok(done)
+}
+
+/// The file on the server is not the size it had a moment ago.
+fn changed(src: &RemotePath) -> FsError {
+    FsError::at(
+        FsErrorCode::ChangedSinceListing,
+        "The file changed on the server during the transfer",
+        &src.to_string(),
+    )
+}
+
+fn changed_or(e: FsError, is_changed: bool, src: &RemotePath) -> FsError {
+    if is_changed { changed(src) } else { e }
 }

@@ -89,7 +89,8 @@
   color: var(--color-muted);
 }
 
-.star {
+.star,
+.header-icon {
   flex: none;
   padding: 0 var(--spacing-1);
   font-size: 1.1rem;

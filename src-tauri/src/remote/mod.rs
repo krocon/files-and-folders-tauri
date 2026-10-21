@@ -60,7 +60,11 @@ pub enum Remember {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase", tag = "status")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "status"
+)]
 pub enum ConnectOutcome {
     Connected {
         /// `remote://<id>/…` – start path of the profile or the login folder.
@@ -97,6 +101,20 @@ pub struct RemoteEvent {
     pub state: ConnState,
 }
 
+/// How long a password typed before a trust question waits for the answer.
+const PENDING_SECRET_TTL: Duration = Duration::from_secs(300);
+
+/// A connection error as the UI shows it (timeouts stay timeouts).
+fn lost(e: FsError) -> FsError {
+    match e.code {
+        FsErrorCode::RemoteTimeout => e,
+        _ => FsError {
+            code: FsErrorCode::RemoteConnectionLost,
+            ..e
+        },
+    }
+}
+
 struct Pool {
     idle: Vec<(Box<dyn RemoteFs>, Instant)>,
     busy: usize,
@@ -126,7 +144,7 @@ pub struct Hub {
     pending_keys: Mutex<HashMap<String, sftp::HostKeySeen>>,
     /// A secret typed for a connect that stopped at a trust question: used by the next
     /// connect of that profile (after "trust"), so the frontend sends it only once.
-    pending_secrets: Mutex<HashMap<String, (Secret, Remember)>>,
+    pending_secrets: Mutex<HashMap<String, (Secret, Remember, Instant)>>,
     pending_certs: Mutex<HashMap<String, trust::CertSeen>>,
     listeners: Mutex<Vec<Listener>>,
     /// Tests: trust this root instead of the system store (FTPS).
@@ -282,7 +300,7 @@ impl Hub {
                 }
             }
         }
-        let p = profiles::check(p).map_err(|why| {
+        let mut p = profiles::check(p).map_err(|why| {
             err(
                 FsErrorCode::InvalidProfile,
                 &format!("Invalid connection: {why}"),
@@ -297,13 +315,22 @@ impl Hub {
                 || o.user != p.user
                 || o.auth != p.auth
         });
+        if changed_login {
+            // a remembered secret belongs to one login – never sent to another server
+            // (review 034 #2)
+            p.secret = SecretState::None;
+        }
         match existing {
             Some(i) => list[i] = p.clone(),
             None => list.push(p.clone()),
         }
         self.write(list)?;
         if changed_login {
-            // the old connections log in elsewhere – close them
+            for kind in [SecretKind::Password, SecretKind::Passphrase] {
+                let _ = self.store.delete(&p.id, kind);
+            }
+            self.secrets.forget(&p.id);
+            // the old connections log in elsewhere – close them (and drop open questions)
             self.disconnect(&p.id);
         }
         Ok(p)
@@ -378,9 +405,12 @@ impl Hub {
         self.secrets.has(id)
     }
 
-    /// Closes all connections of a profile (busy ones are shut down).
+    /// Closes all connections of a profile (busy ones are shut down). Open trust
+    /// questions end too: an answer belongs to the connect that asked (review 034 #8).
     pub fn disconnect(&self, id: &str) {
         lock(&self.pending_secrets).remove(id);
+        lock(&self.pending_keys).remove(id);
+        lock(&self.pending_certs).remove(id);
         if lock(&self.ephemeral).remove(id) {
             self.secrets.forget(id);
         }
@@ -502,9 +532,11 @@ impl Hub {
         };
         let mut remember = remember;
         let mut typed = typed.filter(|s| !s.is_empty());
-        let pending = lock(&self.pending_secrets).remove(&p.id);
+        let pending = lock(&self.pending_secrets)
+            .remove(&p.id)
+            .filter(|(_, _, at)| at.elapsed() < PENDING_SECRET_TTL);
         if typed.is_none()
-            && let Some((s, r)) = pending
+            && let Some((s, r, _)) = pending
         {
             typed = Some(s);
             remember = r;
@@ -578,7 +610,8 @@ impl Hub {
                         };
                         lock(&self.pending_keys).insert(p.id.clone(), seen);
                         if let Some(s) = typed {
-                            lock(&self.pending_secrets).insert(p.id.clone(), (s, remember));
+                            lock(&self.pending_secrets)
+                                .insert(p.id.clone(), (s, remember, Instant::now()));
                         }
                         Ok(out)
                     }
@@ -607,7 +640,7 @@ impl Hub {
                 };
                 lock(&self.pending_certs).insert(p.id.clone(), seen);
                 if let Some(s) = typed {
-                    lock(&self.pending_secrets).insert(p.id.clone(), (s, remember));
+                    lock(&self.pending_secrets).insert(p.id.clone(), (s, remember, Instant::now()));
                 }
                 return Ok(out);
             }
@@ -724,7 +757,13 @@ impl Hub {
                 p.pinned_cert = Some(s.sha256.to_ascii_lowercase());
                 p.accept_hostname_mismatch = accept_hostname && s.hostname_mismatch;
                 self.write(list)?;
+                // close connections made under the old pin – but keep the password typed
+                // before the question for the next connect
+                let typed = lock(&self.pending_secrets).remove(id);
                 self.disconnect(id);
+                if let Some(t) = typed {
+                    lock(&self.pending_secrets).insert(id.to_string(), t);
+                }
                 Ok(())
             }
             _ => Err(err(
@@ -837,15 +876,49 @@ impl Hub {
     }
 
     /// Runs `f` with a connection of profile `id`. A broken reused connection is
-    /// replaced once (it may have timed out on the server while idle).
+    /// replaced once (it may have timed out on the server while idle) – only for calls
+    /// that can simply run again; streams go through [`Hub::with_stream`].
     pub fn with<T>(
         &self,
         id: &str,
+        f: impl FnMut(&mut dyn RemoteFs) -> Result<T, FsError>,
+    ) -> Result<T, FsError> {
+        self.run_with(id, false, f)
+    }
+
+    /// Like [`Hub::with`] for uploads and downloads: a reused connection is checked
+    /// with a NOOP (and replaced) *before* `f` starts, and `f` never runs twice – a
+    /// reader or sink that was half consumed would otherwise produce a truncated or
+    /// doubled file (review 034 #1).
+    pub fn with_stream<T>(
+        &self,
+        id: &str,
+        f: impl FnMut(&mut dyn RemoteFs) -> Result<T, FsError>,
+    ) -> Result<T, FsError> {
+        self.run_with(id, true, f)
+    }
+
+    fn run_with<T>(
+        &self,
+        id: &str,
+        stream: bool,
         mut f: impl FnMut(&mut dyn RemoteFs) -> Result<T, FsError>,
     ) -> Result<T, FsError> {
         let mut retried = false;
         loop {
             let (mut conn, reused) = self.acquire(id)?;
+            if stream
+                && reused
+                && let Err(e) = conn.noop()
+            {
+                drop(conn);
+                self.release(id, None, true);
+                if !retried && is_connection_error(&e) {
+                    retried = true;
+                    continue;
+                }
+                return Err(lost(e));
+            }
             match f(conn.as_mut()) {
                 Ok(v) => {
                     self.release(id, Some(conn), false);
@@ -854,17 +927,11 @@ impl Hub {
                 Err(e) if is_connection_error(&e) => {
                     drop(conn);
                     self.release(id, None, true);
-                    if reused && !retried && e.code != FsErrorCode::RemoteNotConnected {
+                    if !stream && reused && !retried && e.code != FsErrorCode::RemoteNotConnected {
                         retried = true;
                         continue;
                     }
-                    return Err(match e.code {
-                        FsErrorCode::RemoteTimeout => e,
-                        _ => FsError {
-                            code: FsErrorCode::RemoteConnectionLost,
-                            ..e
-                        },
-                    });
+                    return Err(lost(e));
                 }
                 Err(e) => {
                     self.release(id, Some(conn), false);
@@ -1131,7 +1198,17 @@ impl Hub {
             let same_entry = path
                 .name()
                 .is_some_and(|n| n.eq_ignore_ascii_case(new_name));
-            if !same_entry && c.stat(target.server_path())?.is_some() {
+            // – but on a case-sensitive server another entry may have exactly that name
+            // (review 034 #4): only an exact match in the listing counts
+            let taken = if same_entry {
+                c.list(parent.server_path())?
+                    .entries
+                    .iter()
+                    .any(|e| e.name == new_name && Some(e.name.as_str()) != path.name())
+            } else {
+                c.stat(target.server_path())?.is_some()
+            };
+            if taken {
                 return Err(err(
                     FsErrorCode::AlreadyExists,
                     "The name exists",

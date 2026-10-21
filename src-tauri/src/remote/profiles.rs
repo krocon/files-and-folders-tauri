@@ -156,6 +156,20 @@ impl RemoteProfile {
     }
 
     /// `host` or `[ipv6]` plus port – for messages and known_hosts.
+    /// `sftp://host/` for the "downloaded from" mark of files taken from this server.
+    pub fn origin_url(&self) -> String {
+        let scheme = match self.kind {
+            RemoteKind::Ftp => "ftp",
+            RemoteKind::FtpsExplicit | RemoteKind::FtpsImplicit => "ftps",
+            RemoteKind::Sftp => "sftp",
+        };
+        if self.host.contains(':') {
+            format!("{scheme}://[{}]/", self.host)
+        } else {
+            format!("{scheme}://{}/", self.host)
+        }
+    }
+
     pub fn address(&self) -> String {
         if self.host.contains(':') {
             format!("[{}]:{}", self.host, self.port)
