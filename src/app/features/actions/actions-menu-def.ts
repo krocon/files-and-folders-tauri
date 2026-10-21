@@ -8,7 +8,8 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * `buttonpanel.component.ts` menuItems0–3, design 020 E1). Left out (✖, see design):
  * Download (HTTP transport), Server Shell (the terminal is a tool), Theme
  * Configuration (same dialog as the theme editor), File Type and Prompt
- * Configuration (no such configuration yet). Added: Find Duplicates, Shortcuts.
+ * Configuration (no such configuration yet). Added: Find Duplicates, Shortcuts,
+ * Connect to Server (034, next to Change Dir – it is a way to go somewhere).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
@@ -16,6 +17,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     '-',
     'RELOAD_DIR',
     'OPEN_CHDIR_DLG',
+    'OPEN_CONNECTIONS_DLG',
     'TOGGLE_FILTER',
     'TOGGLE_HIDDEN_FILES',
     'TOGGLE_SHELL',
