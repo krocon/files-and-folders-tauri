@@ -1,6 +1,6 @@
 # TODO – Stand Mittwoch, 21.10.2026
 
-Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen) (Details: `prompts/README.md`, Design-Dokumente
+Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032 Startermenü** im Branch `feat/starter-menue` (Details: `prompts/README.md`, Design-Dokumente
 `prompts/NNN-*.design.md` mit Abschnitten „Review“ und „Offen“). `pnpm check` auf `main` grün (Linux).
 
 ## 0. SCSS → CSS
@@ -59,6 +59,9 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen) (Detai
 - [ ] Archive (025): 7z/RAR auf macOS/Windows öffnen und entpacken, Passwortdialog; aus einem heruntergeladenen Archiv
       Entpacktes trägt die Quarantäne (macOS) bzw. Zone.Identifier (Windows) – Datei öffnen zeigt die Warnung.
 - [ ] Import (026): echte alte mr-Installation (macOS) importieren, Kürzel/Buttons/Tools prüfen.
+- [ ] Startermenü (032): natives Menü „Start“ (macOS), `⌥S` in der Liste öffnet das Popup (in Textfeldern tippt es
+      weiter „ß“), Eintrag mit einer `.app` (`/Applications/Preview.app`, Parameter `%P%N`), Ordner-Eintrag `~/…`;
+      Windows: `.bat`/`.cmd` als Kommando, `notepad.exe "%P%N"`.
 - [ ] Tabs/Links (031): Tab mit ⌥ ziehen (Kopie), ⌃⇧Bild↑/↓; Datei mit ⌘⌥ ziehen = Link; Windows ohne Entwicklermodus
       → Meldung `link_not_permitted`.
 

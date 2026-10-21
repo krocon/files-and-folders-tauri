@@ -33,13 +33,14 @@
   024 (Attribute ändern: Rechte/Oktal, R/H/S/A, macOS versteckt, Zeitstempel als Job `attributes`; Eigentümer/Gruppe
   offen), Prompt 025 (Archive: 7z lesen/packen, RAR lesen, Passwörter nur im Speicher, Einträge ansehen/öffnen über
   einen App-Cache; in Archive schreiben offen), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
-  Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) sind
+  Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) und
+  Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) sind
   fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: 027 (Persistenz je
   Ordner) und „Archive bearbeiten“ (noch zu schreiben), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–031 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–032 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -113,6 +114,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/config/       ButtonConfigStore, FileTypesStore, Dialoge Buttons/Dateitypen, button-config-logic.ts (022)
   app/core/mrimport/, features/mrimport/  Import alter mr-Konfiguration: MrImportApi, mr-import-logic.ts (rein), Root-Store,
                              Assistent (026)
+  app/core/starter/          StarterApi (load/save/run_starter), DTOs des Startermenüs (032)
+  app/features/starter/      StarterStore (Root: Einträge → Extra-Aktionen `starter:<id>` + `ActionService.starterTree`),
+                             starter-logic.ts (rein: Baum, Einfügen/Anordnen), Editor „Startermenü ändern“, Aktionen
+                             OPEN_STARTER_MENU (Alt+S, Popup über `MenuService.openStarter`)/OPEN_STARTER_CONFIG_DLG
   app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen),
@@ -192,6 +197,8 @@ src-tauri/                   Rust (Tauri 2)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   src/themes.rs              Farbschemata (`themes.json`, harmlose CSS-Werte), Import/Export von `.theme.json`
   src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
+  src/starter.rs             Startermenü (032): `starter.json`, `sanitize`/`problems`, TC-Platzhalter → Tool-Platzhalter,
+                             `to_tool`; Commands `commands/starter.rs` (Start über `commands::launch_tool`)
   src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `os_drag.rs` (nativer Drag:

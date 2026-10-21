@@ -194,6 +194,11 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
+- **Starter menu** – menu *Start* or `Alt+S`: your own quick launch entries (programs, scripts, folders,
+  submenus), edited with *Change starter menu…* and kept in `starter.json`. Parameters as in Total Commander –
+  `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the
+  active/other side, `%S` all marked entries; every word is one argument, nothing runs through a shell. Each entry
+  can have its own shortcut.
 - **Buttons** – *Button configuration…* (menu *Tools*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
   actions of the bottom bar; changed sets are kept in `buttons.json`.
 - **File types** – *File types…*: categories with extensions, icon and colour; they drive the file icons and the

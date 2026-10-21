@@ -167,7 +167,7 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
                 @if (it.kind === 'separator') {
                   <p class="help">{{ t.separatorInfo }}</p>
                 } @else {
-                  <label class="field">
+                  <label class="field title">
                     <span>{{ t.label }}</span>
                     <input
                       type="text"

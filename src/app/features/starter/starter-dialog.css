@@ -64,6 +64,11 @@
   .field input {
     width: 100%;
   }
+
+  /* a title is no path: the dialog font, not the mono font of path fields */
+  .field.title input {
+    font-family: inherit;
+  }
 }
 
 .foot .path {
