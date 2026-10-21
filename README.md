@@ -50,7 +50,7 @@ without stutter.
   (`Ctrl+←/→` / `⌘⌥←/→`)
 - **Session restore** – tabs, active side, splitter, favourites and window position survive a restart
 - **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
-  (*Go to anything*) finds every action
+  (*Command Palette*) finds every action
 - **Background jobs** – copy, move, delete, pack and search run as jobs with progress, rate, remaining time,
   pause, resume and cancel; conflicts are asked once or “for all”
 - **Safe by default** – delete goes to the **trash**, no half-written files under the real name, rename never

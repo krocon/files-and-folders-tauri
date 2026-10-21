@@ -29,7 +29,7 @@ const MAX_FOLDERS = 300;
 const TOOLS_CATEGORY = 'Tools';
 
 /**
- * "Go to anything" (Mod+Shift+P) and "Call action" (F10): all actions, fuzzy
+ * "Command Palette" (Mod+Shift+P, formerly "Go to anything") and "Call action" (F10): all actions, fuzzy
  * search, shortcut on the right. APG combobox with listbox; Enter runs, Esc
  * closes and returns the focus. Tools (design 011 E4) are listed too; `scope="tools"`
  * lists only them ("Open with tool…").
@@ -38,7 +38,7 @@ const TOOLS_CATEGORY = 'Tools';
   selector: 'app-command-palette',
   imports: [Modal],
   template: `
-    <app-modal [heading]="heading() ?? t.goToAnything" width="40rem" (closed)="dialogs.close()">
+    <app-modal [heading]="heading() ?? t.commandPalette" width="40rem" (closed)="dialogs.close()">
       <input
         data-autofocus
         class="query"

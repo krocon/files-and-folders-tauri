@@ -185,7 +185,7 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   REMOTE_DISCONNECT: m('Disconnect from server', 'navigation', '034'),
   REMOTE_RECONNECT: m('Connect the server of this tab', 'navigation', '034', true),
   OPEN_TERMINAL_HERE: m('Open terminal here', 'navigation', '011'),
-  OPEN_COMMAND_PALETTE: m('Go to anything…', 'navigation', '002'),
+  OPEN_COMMAND_PALETTE: m('Command Palette…', 'navigation', '002'),
   OPEN_CALL_ACTION_DLG: m('Call action…', 'navigation', '002', true),
   OPEN_CONTEXT_MENU: m('Context menu', 'navigation', '014', true),
   FOCUS_MENU_BAR: m('Menu bar', 'navigation', '014', true),

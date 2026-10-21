@@ -81,7 +81,7 @@ describe('mr import (design 026)', () => {
     expect(shortcuts.count).toBe(1);
     expect(shortcuts.unchanged).toBe(1);
     expect(store.conflictText('shortcuts', shortcuts.conflicts[0])).toBe(
-      'Ctrl+F: Find… → Go to anything…',
+      'Ctrl+F: Find… → Command Palette…',
     );
     // tools are not checked by default (they start programs)
     expect([...store.chosen()]).toEqual(['shortcuts']);
@@ -304,7 +304,7 @@ describe('mr import (design 026)', () => {
     expect(el.querySelector('.areas label')?.textContent?.trim()).toBe('Tastenkürzel (Linux)');
     const details = el.querySelector('details')!;
     expect(details.textContent).toContain('Navigationstasten gehören jetzt der Dateiliste');
-    expect(details.textContent).toContain('Ctrl+F: Suchen… → Schnellzugriff…');
+    expect(details.textContent).toContain('Ctrl+F: Suchen… → Befehlspalette…');
     const importButton = [...el.querySelectorAll<HTMLButtonElement>('.foot button')].pop()!;
     expect(importButton.disabled).toBe(false);
     boxes[0].click();

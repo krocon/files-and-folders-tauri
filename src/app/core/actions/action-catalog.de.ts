@@ -29,7 +29,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   REMOTE_DISCONNECT: 'Verbindung zum Server trennen',
   REMOTE_RECONNECT: 'Server dieses Tabs verbinden',
   OPEN_TERMINAL_HERE: 'Terminal hier öffnen',
-  OPEN_COMMAND_PALETTE: 'Schnellzugriff…',
+  OPEN_COMMAND_PALETTE: 'Befehlspalette…',
   OPEN_CALL_ACTION_DLG: 'Aktion aufrufen…',
   OPEN_CONTEXT_MENU: 'Kontextmenü',
   OPEN_ACTIONS_MENU: 'Actions-Menü',

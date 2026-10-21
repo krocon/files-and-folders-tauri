@@ -57,7 +57,7 @@ describe('Actions menu ▴ (design 020)', () => {
         c.getAttribute('role') === 'separator' ? '-' : c.querySelector('.label')?.textContent,
       );
     expect(labels(groups[0]).slice(0, 5)).toEqual([
-      'Go to anything…',
+      'Command Palette…',
       '-',
       'Reload',
       'Change Dir…',
