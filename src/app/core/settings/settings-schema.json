@@ -21,6 +21,13 @@
   "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },
   "behavior.spaceCalcSize": { "type": "bool", "default": true },
   "watch.pollNetwork": { "type": "bool", "default": false },
+  "diskUsage.sizeMode": {
+    "type": "enum",
+    "values": ["allocated", "logical"],
+    "default": "allocated"
+  },
+  "diskUsage.crossFilesystems": { "type": "bool", "default": false },
+  "diskUsage.chart": { "type": "enum", "values": ["sunburst", "treemap"], "default": "sunburst" },
   "shell.enabled": { "type": "bool", "default": true },
   "shell.loginPath": { "type": "bool", "default": true },
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },

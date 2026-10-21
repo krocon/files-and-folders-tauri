@@ -110,6 +110,9 @@ export const JOB_EN = {
     duplicates: (where: string) => `Find duplicates in ${where}`,
     count: (what: string) => `Count ${what}`,
     dirSize: (path: string) => `Folder size of ${path}`,
+    diskUsage: (what: string, rescan: boolean) =>
+      rescan ? `Disk usage: scan again` : `Disk usage of ${what}`,
+    volumeOf: (path: string) => `the drive of ${path}`,
     simulate: (n: number) => `Test job (${n} steps)`,
     shell: (command: string, cwd: string) => `Shell: ${command} (in ${cwd})`,
     viewEntry: (path: string) => `Open from the archive: ${path}`,
@@ -179,6 +182,15 @@ export function jobTitle(job: JobInfo): string {
       return t.count(spec.paths.length === 1 ? spec.paths[0] : t.entries(spec.paths.length));
     case 'dirSize':
       return t.dirSize(spec.path);
+    case 'diskUsage': {
+      const n = spec.roots.length;
+      const what = spec.volume
+        ? t.volumeOf(spec.roots[0] ?? '')
+        : n === 1
+          ? spec.roots[0]
+          : t.folders(n);
+      return t.diskUsage(what, !!spec.rescan);
+    }
     case 'simulate':
       return t.simulate(spec.items);
     case 'shell':

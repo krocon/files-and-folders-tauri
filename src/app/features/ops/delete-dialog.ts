@@ -1,3 +1,4 @@
+import { USAGE_TEXTS } from '../diskusage/disk-usage-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { DeleteMode } from '../../core/jobs/jobs.models';
@@ -45,6 +46,11 @@ const SHOWN = 5;
             }
           </ul>
 
+          @if (r.scanAgeMin !== undefined) {
+            <p class="muted" role="note" [class.strong]="r.mode === 'permanent'">
+              {{ usage.scanAge(r.scanAgeMin) }}
+            </p>
+          }
           @if (r.sizeOnly) {
             <div class="danger-box" role="note">
               <strong>{{ dup.sizeOnlyDelete }}</strong>
@@ -144,6 +150,7 @@ export class DeleteDialog {
       (this.req()?.wholeGroups ?? 0) > 0,
   );
   protected readonly dup = DUP_TEXTS;
+  protected readonly usage = USAGE_TEXTS;
   protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);

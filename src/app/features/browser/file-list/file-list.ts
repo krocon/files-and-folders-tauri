@@ -1,3 +1,4 @@
+import { USAGE_TEXTS } from '../../diskusage/disk-usage-texts';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -203,6 +204,8 @@ export class FileList implements OnDestroy {
       modifiedMs: c.modified,
       dir: c.folder,
       group: c.group,
+      share: USAGE_TEXTS.shareColumn,
+      items: USAGE_TEXTS.itemsColumn,
     };
     const rowHeight = this.rowHeight();
     // the renderers read these at paint time – a change needs a repaint
@@ -590,7 +593,14 @@ export class FileList implements OnDestroy {
     try {
       this.controller?.showRows(rows, label, state);
       // the folder column belongs to result tabs (after the state: it may carry column widths)
-      this.bridge?.setColumnVisible('dir', this.store.searchKey() !== null);
+      const usage = this.store.isUsage();
+      this.bridge?.setColumnVisible(
+        'dir',
+        this.store.searchKey() !== null &&
+          (!usage || rows.some((r) => (r as { dir?: string }).dir !== undefined)),
+      );
+      this.bridge?.setColumnVisible('share', usage);
+      this.bridge?.setColumnVisible('items', usage);
       this.bridge?.setColumnVisible(
         'group',
         this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',

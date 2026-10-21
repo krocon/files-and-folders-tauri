@@ -94,6 +94,9 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     duplicates: (where) => `Duplikate finden in ${where}`,
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
+    diskUsage: (what, rescan) =>
+      rescan ? 'Speicherbelegung: neu scannen' : `Speicherbelegung von ${what}`,
+    volumeOf: (path) => `dem Laufwerk von ${path}`,
     simulate: (n) => `Test-Task (${n} Schritte)`,
     shell: (command, cwd) => `Shell: ${command} (in ${cwd})`,
     viewEntry: (path) => `Aus dem Archiv öffnen: ${path}`,

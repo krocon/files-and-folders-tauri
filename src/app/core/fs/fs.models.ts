@@ -106,6 +106,8 @@ export type FsErrorCode =
   | 'relative_link_impossible'
   /** A selected link was left unchanged (change attributes, design 024 E4). */
   | 'symlink_skipped'
+  | 'scan_not_found'
+  | 'scan_busy'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'
@@ -135,6 +137,17 @@ export function parentRow(parentPath: string): ListRow {
     lossyName: false,
     parentLink: true,
   };
+}
+
+/**
+ * Synthetic rows that are no entry of the file system (the aggregates of the
+ * disk-usage view, design 033) have paths starting with NUL – never a real path,
+ * never sent to Rust, never marked or selected.
+ */
+export const VIRTUAL_PATH_PREFIX = '\u0000';
+
+export function isVirtualPath(path: string): boolean {
+  return path.startsWith(VIRTUAL_PATH_PREFIX);
 }
 
 export function isParentRow(entry: DirEntry): boolean {

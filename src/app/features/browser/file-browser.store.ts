@@ -9,6 +9,7 @@ import {
   FsError,
   isNavigableDir,
   isParentRow,
+  isVirtualPath,
 } from '../../core/fs/fs.models';
 import { isArchiveEntry } from '../../core/archive/archive-names';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -94,6 +95,21 @@ export function refreshGapMs(lastMs: number): number {
  * - `hiddenVisible` / `filterText`: row filter of the shown tab (design 003 E5).
  * - folder sizes are written into the listing (`size` of directories).
  */
+/** What a result tab shows (design 009 E4, 016 E6, 033). */
+export type ResultKind = 'search' | 'duplicates' | 'usage';
+
+/** Navigation of a disk-usage tab (implemented by the `DiskUsageStore`). */
+export interface ResultNavigator {
+  /** False: not handled there (a file – opened like everywhere). */
+  open(entry: DirEntry): Promise<boolean>;
+  up(): Promise<void>;
+  back(): Promise<void>;
+  forward(): Promise<void>;
+  canBack(): boolean;
+  canForward(): boolean;
+  refresh(): Promise<void>;
+}
+
 @Injectable()
 export class FileBrowserStore implements OnDestroy {
   private readonly api = inject(FsApi);
@@ -188,8 +204,18 @@ export class FileBrowserStore implements OnDestroy {
 
   /** Set while the panel shows a search result (design 009 E4) – then there is no folder. */
   readonly searchKey = signal<string | null>(null);
-  /** What the result tab shows: hits of a search, or groups of duplicates (design 016 E6). */
-  readonly searchKind = signal<'search' | 'duplicates'>('search');
+  /**
+   * What the result tab shows: hits of a search, groups of duplicates (design 016 E6)
+   * or a level of a disk-usage scan (design 033).
+   */
+  readonly searchKind = signal<ResultKind>('search');
+  /** Disk-usage tab: navigation happens inside the scan (set by the panel). */
+  usageNav: ResultNavigator | null = null;
+  /**
+   * Disk-usage tab: the marked entries of all levels (the basket, design 033 E3) –
+   * what operations work on instead of the marks of the shown level.
+   */
+  readonly markedOverride = signal<readonly DirEntry[] | null>(null);
   /** Set while the panel shows a folder inside an archive (design 016 E1): read-only, virtual paths. */
   readonly archive = computed(() =>
     this.searchKey() !== null ? null : (this.listing()?.archive ?? null),
@@ -208,9 +234,15 @@ export class FileBrowserStore implements OnDestroy {
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
   readonly parent = computed(() => this.listing()?.parent ?? null);
   readonly canGoUp = computed(() => this.parent() !== null);
-  readonly canGoBack = computed(() => (this.historyVersion(), this.memoryRef.back.length > 0));
-  readonly canGoForward = computed(
-    () => (this.historyVersion(), this.memoryRef.forward.length > 0),
+  readonly canGoBack = computed(() =>
+    this.searchKind() === 'usage' && this.searchKey() !== null
+      ? (this.usageNav?.canBack() ?? false)
+      : (this.historyVersion(), this.memoryRef.back.length > 0),
+  );
+  readonly canGoForward = computed(() =>
+    this.searchKind() === 'usage' && this.searchKey() !== null
+      ? (this.usageNav?.canForward() ?? false)
+      : (this.historyVersion(), this.memoryRef.forward.length > 0),
   );
 
   /** Row filter: hidden entries and the quick filter; the ".." row always passes. */
@@ -228,6 +260,10 @@ export class FileBrowserStore implements OnDestroy {
     return path === null ? null : (this.entries().find((e) => e.path === path) ?? null);
   });
   readonly markedEntries = computed(() => {
+    const override = this.markedOverride();
+    if (override !== null && this.isUsage()) {
+      return override;
+    }
     const marked = this.marked();
     return marked.size === 0 ? [] : this.entries().filter((e) => marked.has(e.path));
   });
@@ -458,7 +494,8 @@ export class FileBrowserStore implements OnDestroy {
   showSearch(
     key: string,
     hits: readonly DirEntry[],
-    kind: 'search' | 'duplicates' = 'search',
+    kind: ResultKind = 'search',
+    usage?: { readonly parent: string | null; readonly marked: ReadonlySet<string> },
   ): void {
     this.supersede(); // a folder still loading must not replace the result
     const same = this.searchKey() === key;
@@ -468,6 +505,10 @@ export class FileBrowserStore implements OnDestroy {
       if (kind === 'duplicates' && this.pendingTableState === null) {
         this.pendingTableState = { sort: [{ property: 'group', sortState: 'asc' }] };
       }
+      // disk usage: largest first, folders and files mixed (design 033 E1)
+      if (kind === 'usage' && this.pendingTableState === null) {
+        this.pendingTableState = { sort: [{ property: 'share', sortState: 'desc' }] };
+      }
     }
     this.searchKind.set(kind);
     this.endLoad();
@@ -476,7 +517,7 @@ export class FileBrowserStore implements OnDestroy {
     this.searchKey.set(key);
     this.listing.set({
       path: `search:${key}`,
-      parent: null,
+      parent: usage?.parent ?? null,
       segments: [],
       entries: hits,
       unreadableEntries: 0,
@@ -485,14 +526,35 @@ export class FileBrowserStore implements OnDestroy {
       this.error.set(null);
     }
     const cursor = this.cursorPath();
-    this.cursorPath.set(cursor !== null && paths.has(cursor) ? cursor : null);
-    this.marked.set(same ? intersect(this.marked(), paths) : EMPTY_MARKS);
+    const parent = usage?.parent ?? null;
+    this.cursorPath.set(
+      cursor !== null && (paths.has(cursor) || cursor === parent) ? cursor : null,
+    );
+    if (usage) {
+      // the basket decides what is marked on this level
+      const now = this.marked();
+      if (now.size !== usage.marked.size || [...usage.marked].some((p) => !now.has(p))) {
+        this.marked.set(new Set(usage.marked));
+      }
+    } else {
+      this.marked.set(same ? intersect(this.marked(), paths) : EMPTY_MARKS);
+    }
   }
 
   /** Opens an entry: folder → into it, ".." → up, file → default application. */
   async open(entry: DirEntry): Promise<void> {
     if (this.navigationLocked()) {
       return;
+    }
+    if (this.isUsage()) {
+      // disk usage: folders open inside the scan (design 033); files like everywhere
+      if (!isParentRow(entry)) {
+        this.setCursor(entry.path);
+      }
+      if (await this.usageNav?.open(entry)) {
+        return;
+      }
+      return this.openFile(entry);
     }
     if (this.searchKey() !== null) {
       // result tab: a folder opens in a new tab, the result stays
@@ -552,6 +614,9 @@ export class FileBrowserStore implements OnDestroy {
 
   /** Navigates to the parent and puts the cursor on the folder we came from. */
   up(): Promise<void> {
+    if (this.isUsage()) {
+      return this.usageNav?.up() ?? Promise.resolve();
+    }
     const parent = this.parent();
     if (parent === null || this.navigationLocked()) {
       return Promise.resolve();
@@ -560,6 +625,9 @@ export class FileBrowserStore implements OnDestroy {
   }
 
   back(): Promise<void> {
+    if (this.isUsage()) {
+      return this.usageNav?.back() ?? Promise.resolve();
+    }
     const entry = this.memoryRef.back.at(-1);
     if (!entry || this.navigationLocked() || this.searchKey() !== null) {
       return Promise.resolve();
@@ -572,6 +640,9 @@ export class FileBrowserStore implements OnDestroy {
   }
 
   forward(): Promise<void> {
+    if (this.isUsage()) {
+      return this.usageNav?.forward() ?? Promise.resolve();
+    }
     const entry = this.memoryRef.forward.at(-1);
     if (!entry || this.navigationLocked() || this.searchKey() !== null) {
       return Promise.resolve();
@@ -774,7 +845,8 @@ export class FileBrowserStore implements OnDestroy {
       !isNavigableDir(entry) ||
       isParentRow(entry) ||
       entry.kind === 'symlink' ||
-      this.archive() !== null
+      this.archive() !== null ||
+      this.isUsage()
     ) {
       return;
     }
@@ -1053,8 +1125,14 @@ export class FileBrowserStore implements OnDestroy {
     this.applyDirSizes(sizes);
   }
 
+  /** ".." and the synthetic rows of the disk-usage view are never marked. */
   private isParentPath(path: string): boolean {
-    return path === this.parent();
+    return path === this.parent() || isVirtualPath(path);
+  }
+
+  /** The panel shows a disk-usage scan (design 033). */
+  isUsage(): boolean {
+    return this.searchKind() === 'usage' && this.searchKey() !== null;
   }
 }
 

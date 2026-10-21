@@ -8,9 +8,12 @@ import {
 } from '@guiexpert/table';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
 import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
+import { ItemsCellRenderer, itemsOf, ShareCellRenderer } from '../../diskusage/usage-renderers';
+import { usageOf } from '../../diskusage/usage-rows';
 
 /** Column properties of the file list. `ext` is computed from the name. */
-export type FileColumn = 'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'group';
+export type FileColumn =
+  'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'group' | 'share' | 'items';
 
 const COLLATOR_OPTIONS: Intl.CollatorOptions = { numeric: true, sensitivity: 'base' };
 
@@ -77,6 +80,27 @@ function fileComparator(
   };
 }
 
+/**
+ * Disk usage (design 033): by a number, folders and files mixed; ".." on top and
+ * the aggregates ("12 smaller files") at the end in both directions.
+ */
+function usageComparator(value: (e: DirEntry) => number): ValueRowSortComparator {
+  return (_va: unknown, _vb: unknown, rowA?: DirEntry, rowB?: DirEntry, f = 1) => {
+    if (!rowA || !rowB) {
+      return 0;
+    }
+    if (isParentRow(rowA) !== isParentRow(rowB)) {
+      return f * (isParentRow(rowA) ? -1 : 1);
+    }
+    const va = usageOf(rowA)?.virtual === true;
+    const vb = usageOf(rowB)?.virtual === true;
+    if (va !== vb) {
+      return f * (va ? 1 : -1);
+    }
+    return value(rowA) - value(rowB) || compareNames(rowA, rowB);
+  };
+}
+
 /** Comparators per column, exported for unit tests. */
 export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
   name: fileComparator(compareNames),
@@ -97,6 +121,8 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
       (groupOf(a) as number) - (groupOf(b) as number) || collator.compare(dirOf(a), dirOf(b)),
     (e) => groupOf(e) === undefined,
   ),
+  share: usageComparator((e) => usageOf(e)?.share ?? 0),
+  items: usageComparator(itemsOf),
 };
 
 /** Group of a duplicate (`SearchHit.group`), undefined elsewhere. */
@@ -166,6 +192,31 @@ export function createFileColumns(): ColumnDefIf[] {
       sortable: TrueFn,
       sortComparator: fileComparators.group,
       valueGetter: (row: DirEntry) => groupOf(row) ?? '',
+      headerClasses: ['ge-table-text-align-end'],
+      bodyClasses: ['ge-table-text-align-end'],
+    }),
+    // only shown in a disk-usage tab (design 033)
+    ColumnDef.create({
+      property: 'share',
+      headerLabel: 'Share',
+      width: px(120),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.share,
+      valueGetter: (row: DirEntry) => usageOf(row)?.share ?? 0,
+      bodyRenderer: new ShareCellRenderer(),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    ColumnDef.create({
+      property: 'items',
+      headerLabel: 'Objects',
+      width: px(80),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.items,
+      valueGetter: (row: DirEntry) => itemsOf(row),
+      bodyRenderer: new ItemsCellRenderer(),
       headerClasses: ['ge-table-text-align-end'],
       bodyClasses: ['ge-table-text-align-end'],
     }),

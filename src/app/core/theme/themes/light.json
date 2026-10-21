@@ -110,6 +110,20 @@
     "--color-tooltip-bg": "#2b2f37",
     "--color-tooltip-text": "#ffffff",
     "--color-tooltip-input-bg": "#ffffff",
-    "--color-tooltip-input-text": "#1d2027"
+    "--color-tooltip-input-text": "#1d2027",
+    "--color-usage-1": "#4e79a7",
+    "--color-usage-2": "#e07b1f",
+    "--color-usage-3": "#59a14f",
+    "--color-usage-4": "#d9474b",
+    "--color-usage-5": "#5fa7a1",
+    "--color-usage-6": "#d4ad1f",
+    "--color-usage-7": "#a0688f",
+    "--color-usage-8": "#8c6a54",
+    "--color-usage-files": "#b8bec9",
+    "--color-usage-rest": "#d5d9e0",
+    "--color-usage-unreadable": "#c9302c",
+    "--color-usage-free": "#9fd19a",
+    "--color-usage-uncounted": "#cfc8bb",
+    "--color-usage-bar": "#4e79a7"
   }
 }

@@ -37,6 +37,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'link_not_permitted',
   'relative_link_impossible',
   'symlink_skipped',
+  'scan_not_found',
+  'scan_busy',
   'invalid_path',
   'no_home_directory',
   'io',
