@@ -5,6 +5,7 @@
 pub mod attributes;
 pub mod clock;
 pub mod desktop;
+pub mod disk_usage;
 pub mod io_hints;
 pub mod origin_mark;
 pub mod os_drag;

@@ -76,6 +76,10 @@ pub enum FsErrorCode {
     RelativeLinkImpossible,
     /// A selected link was left unchanged – attributes are never changed through links (design 024 E4).
     SymlinkSkipped,
+    /// A disk-usage scan is unknown or was released (design 033 E4).
+    ScanNotFound,
+    /// A part of the disk-usage scan is being scanned again (design 033 E4).
+    ScanBusy,
     Io,
 }
 

@@ -1,6 +1,6 @@
 # Design 033: Speicherbelegung
 
-> **Status:** Entwurf – wartet auf Freigabe 🛑 · **Datum:** 21.10.2026 · **Branch:** `feat/speicherbelegung`
+> **Status:** freigegeben (Marc, 21.10.2026) – in Arbeit · **Datum:** 21.10.2026 · **Branch:** `feat/speicherbelegung`
 > Auftrag: `prompts/033-speicherbelegung.md`. Neu (kein Gegenstück in legacy/mr) → `docs/feature-parity.md` A.4.
 
 ## Entscheidungen auf einen Blick
@@ -288,4 +288,11 @@ Korb, Windows-Hardlink-Erkennung.
 
 ## Fortschritt
 
-- 21.10.2026: Bestand gelesen, Design geschrieben – wartet auf Freigabe.
+- 21.10.2026: Bestand gelesen, Design geschrieben, von Marc freigegeben („go“).
+- Phase 2 (Rust) fertig: `disk_usage/{mod,tree,walk,tests}.rs`, `platform/disk_usage.rs`, Job `jobs/disk_usage.rs`
+  (+ `tests_disk_usage.rs`), `commands/disk_usage.rs`, Fehlercodes `scan_not_found`/`scan_busy`.
+  **Messung** (Container, 2 Kerne, Release, `measure`-Test): generiert 200 000 Dateien/2100 Ordner – 1 Thread
+  0,43 s, 2 Threads 0,25 s; `/usr` (142 000 Dateien, 15 000 Ordner, warmer Cache) – 1 Thread kalt 2,5 s, 2 Threads
+  0,41 s, 8 Threads 0,26 s → Worker = 2 × Kerne, 4–8. Knoten 136 B + Name (über dem Ziel ≤ 100 B) →
+  `MAX_NODES` 3 Mio. (≈ 0,5 GB höchstens). Abweichung vom Entwurf: ein vor dem Start abgebrochener Scan legt keinen
+  Baum an (`scan_not_found` – das Frontend zeigt „abgebrochen“).
