@@ -39,12 +39,12 @@
   (Server-Verbindungen FTP/FTPS/SFTP: Pfade `remote://<profil>/…`, Passwörter nur im Schlüsselbund, `Mod+K`) und Prompt
   040 (Panel-Aktionen: Seiten tauschen, Ziel = Quelle, Strg+←/→) und Prompt 027 (Ordnergedächtnis je Tab über einen
   Neustart in `folder-memory.json`, letzte Dialogeingaben in `dialogs.recent`) und Prompt 039 (Prüfsummen erzeugen/prüfen, Jobs `checksum`/
-  `verifyChecksums`) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035–038, 041–044
+  `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 038, 041–044
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 039, 040 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037, 039, 040 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -213,6 +213,8 @@ src-tauri/                   Rust (Tauri 2)
                              testserver.rs (libunftp + russh-Server im Test), testdata/; Jobs `jobs/transfer.rs`,
                              `jobs/remote_delete.rs`; Commands `commands/remote.rs`
   src/secret.rs              `Secret` (Zeroizing, kein Serialize) für Archiv- und Server-Passwörter
+  src/diff.rs                Dateien vergleichen (037): Text nebeneinander (`similar`), binär; Command `diff_files`;
+                             Frontend core/diff/, features/diff/ (compare-files-logic.ts rein, DiffStore, Dialog)
   src/checksum.rs            Prüfsummen (039): Hashing MD5/SHA-1/SHA-256/SHA-512, GNU/BSD-Zeilen, `resolve` (feindliche
                              Namen); Jobs `jobs/checksum.rs` (+ tests_checksum.rs); Frontend features/checksum/
   src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`

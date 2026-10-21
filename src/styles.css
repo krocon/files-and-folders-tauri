@@ -47,6 +47,10 @@
   --color-row-hover: #eef3fc;
   /* every other group of a duplicate tab (design 016 E6) */
   --color-group-alt-bg: #f3f5f8;
+  /* compare files (design 037) */
+  --color-diff-added: #e3f5e8;
+  --color-diff-removed: #fde8ea;
+  --color-diff-changed: #fff3d1;
   --color-cursor-bg: #1f56c4;
   --color-cursor-text: #ffffff;
   --color-cursor-inactive-bg: #dde6f7;
@@ -209,6 +213,9 @@
     --color-icon-code: #6fd6e0;
     --color-icon-executable: #ff6b68;
     --color-group-alt-bg: #232730;
+    --color-diff-added: #1d3a29;
+    --color-diff-removed: #47202a;
+    --color-diff-changed: #3d3519;
     --color-cursor-bg: #2c5bb8;
     --color-cursor-text: #ffffff;
     --color-cursor-inactive-bg: #2a3240;

@@ -188,6 +188,23 @@ pub struct PreviewState {
     pub slots: Arc<crate::preview::ServeSlots>,
 }
 
+/// Compares two local files (design 037): text side by side or binary byte by byte, bounded.
+#[tauri::command]
+pub async fn diff_files<R: Runtime>(
+    app: AppHandle<R>,
+    left: String,
+    right: String,
+    options: Option<crate::diff::DiffOptions>,
+) -> Result<crate::diff::DiffResult, FsError> {
+    let left = resolve_input(&app, &left)?;
+    let right = resolve_input(&app, &right)?;
+    let options = options.unwrap_or_default();
+    blocking("Comparing the files", move || {
+        crate::diff::diff_files(&left, &right, &options)
+    })
+    .await
+}
+
 /// Bounded preview of a file (text, image token, hex); never reads more than the limits.
 #[tauri::command]
 pub async fn read_preview<R: Runtime>(

@@ -130,6 +130,20 @@ export class OsStore {
     this.status.set(OS_TEXTS.toolStarted(tool.label, n));
   }
 
+  /** Runs tool `id` with given files (compare dialog, design 037) – not the selection. */
+  async runToolWith(id: string, files: readonly string[]): Promise<void> {
+    const tool = this.tools().find((t) => t.id === id);
+    if (!tool) {
+      throw { code: 'unknown_tool', message: `There is no tool "${id}"`, path: null };
+    }
+    const n = await this.api.runTool(id, {
+      files,
+      dir: this.folder(),
+      targetDir: this.ws.targetDir(),
+    });
+    this.status.set(OS_TEXTS.toolStarted(tool.label, n));
+  }
+
   /** F4: the tool `edit`. */
   async edit(): Promise<void> {
     if (!this.tools().some((t) => t.id === 'edit')) {

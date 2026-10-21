@@ -83,6 +83,12 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Markierung, `Alt+F9` entpackt markierte Archive (optional in einen Unterordner ihres Namens), `Alt+F5` packt die
   Markierung als ZIP, TAR oder TAR.GZ. Zip-Slip (`../`, absolute Pfade, Laufwerke), Links im Archiv und Zip-Bomben
   werden abgewiesen; vorhandene Dateien lösen die Konfliktfrage aus.
+- **Dateien vergleichen** (Prompt 037, Menü *Datei*, Kontextmenü bei Markierung): genau zwei markierte Dateien oder
+  die Cursor-Dateien beider Seiten; nebeneinander mit Zeilennummern, hinzugefügt/entfernt/geändert farbig, gleiche
+  Zeilen bis auf 3 Zeilen Kontext ausgeblendet (*Ganze Datei* zeigt alles), *Leerraum ignorieren*, *Groß/klein
+  ignorieren*, `F7`/`Shift+F7` springen zum nächsten/vorigen Unterschied; Kodierung und Zeilenende je Seite (UTF-8 und
+  Latin-1 gleichen Inhalts sind gleich). Binärdateien: Anzahl abweichender Bytes, Bereiche, Hex um die erste
+  Abweichung. *In … öffnen* übergibt beide Dateien an das Tool `diff` (FileMerge, WinMerge, Meld).
 - **Prüfsummen** (Prompt 039, Menü *Datei*): *Prüfsummen erzeugen…* für Markierung oder Cursor (Ordner rekursiv,
   Verknüpfungen nie) – SHA-256/SHA-512/SHA-1/MD5 als eine Liste (`CHECKSUMS.sha256`, Format wie `sha256sum`, Namen
   relativ) oder je Datei (`x.iso.sha256`); *Prüfsummen prüfen* auf einer `.md5/.sha1/.sha256/.sha512`- oder

@@ -234,6 +234,28 @@
   font-weight: 600;
 }
 
+/* compare files (design 037): monospace, differences coloured, left-out lines muted */
+.ge-table .fnf-diff {
+  font-family: var(--font-mono);
+}
+
+.ge-table .fnf-diff-added {
+  background: var(--color-diff-added);
+}
+
+.ge-table .fnf-diff-removed {
+  background: var(--color-diff-removed);
+}
+
+.ge-table .fnf-diff-changed {
+  background: var(--color-diff-changed);
+}
+
+.ge-table .fnf-diff-skip {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
 /* the folder row a drag would drop into (design 012 E5) */
 .ge-table .fnf-drop-target {
   box-shadow:

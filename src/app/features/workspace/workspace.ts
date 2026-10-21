@@ -37,6 +37,9 @@ import { ChecksumDialog } from '../checksum/checksum-dialog';
 import { ChecksumResultDialog } from '../checksum/checksum-result-dialog';
 import { registerChecksumActions } from '../checksum/checksum-actions';
 import { ChecksumStore } from '../checksum/checksum.store';
+import { DiffDialog } from '../diff/diff-dialog';
+import { registerDiffActions } from '../diff/diff-actions';
+import { DiffStore } from '../diff/diff.store';
 import { CleanFoldersStore } from '../cleanfolders/clean.store';
 import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
@@ -138,6 +141,7 @@ import { RemoteStore } from '../remote/remote.store';
     CleanFoldersDialog,
     ChecksumDialog,
     ChecksumResultDialog,
+    DiffDialog,
     MultiMkdirDialog,
     ToolConfigDialog,
     StarterDialog,
@@ -186,6 +190,7 @@ export class Workspace implements OnInit {
   private readonly gf = inject(GroupFilesStore);
   private readonly cl = inject(CleanFoldersStore);
   private readonly cs = inject(ChecksumStore);
+  private readonly diff = inject(DiffStore);
   private readonly mm = inject(MultiMkdirStore);
   private readonly os = inject(OsStore);
   protected readonly shell = inject(ShellStore);
@@ -326,6 +331,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerChecksumActions(this.actions, this.cs));
+    this.destroyRef.onDestroy(registerDiffActions(this.actions, this.diff));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
     this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
     this.destroyRef.onDestroy(registerShellActions(this.actions, this.shell));
