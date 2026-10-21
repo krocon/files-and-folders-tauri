@@ -3,12 +3,12 @@ import {
   Component,
   effect,
   input,
-  OnDestroy,
   OnInit,
   output,
+  signal,
   untracked,
 } from '@angular/core';
-import { TableComponent } from '@guiexpert/angular-table';
+import { TableSignalComponent } from '@guiexpert/angular-table';
 import {
   AreaModelObjectArrayWithColumndefs,
   ColumnDef,
@@ -70,14 +70,14 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
  */
 @Component({
   selector: 'app-preview-grid',
-  imports: [TableComponent],
+  imports: [TableSignalComponent],
   template: `
     @if (model) {
-      <guiexpert-table
+      <guiexpert-table-signal
         class="table"
         [tableModel]="model"
         [tableOptions]="options"
-        (tableReady)="onReady($event)"
+        [(tableApi)]="api"
       />
     }
   `,
@@ -104,7 +104,7 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
+export class PreviewGrid<T extends object> implements OnInit {
   readonly columns = input.required<readonly GridColumn[]>();
   readonly rows = input.required<readonly T[]>();
   readonly rowClass = input<RowClassFn<T> | null>(null);
@@ -114,24 +114,46 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
   readonly activeIndex = input<number>(-1);
   /** Click on a body row (displayed index). */
   readonly rowClick = output<{ index: number; clickCount: number }>();
-  private unsubscribe: (() => void) | null = null;
 
   protected options: TableOptionsIf = new TableOptions();
   protected model: TableModelIf | null = null;
-  private api: TableApi | null = null;
+  /** Set by `<guiexpert-table-signal>`; `undefined` before the table exists and after it is gone. */
+  protected readonly api = signal<TableApi | undefined>(undefined);
 
   constructor() {
-    effect(() => {
-      const rows = this.rows();
-      untracked(() => this.show(rows));
+    // core event, not the debounced output: every click with its clickCount
+    effect((onCleanup) => {
+      const api = this.api();
+      if (!api) {
+        return;
+      }
+      const unsubscribe = api.subscribe({
+        onMouseClicked: (evt) => {
+          if (evt.areaIdent === 'body' && evt.rowIndex >= 0) {
+            this.rowClick.emit({ index: evt.rowIndex, clickCount: evt.clickCount });
+          }
+        },
+      });
+      onCleanup(unsubscribe);
     });
     effect(() => {
+      const api = this.api();
+      const rows = this.rows();
+      if (api) {
+        untracked(() => {
+          api.setRows([...rows]);
+          api.repaintHard();
+        });
+      }
+    });
+    effect(() => {
+      const api = this.api();
       const index = this.activeIndex();
       untracked(() => {
-        if (this.api && index >= 0) {
-          this.api.ensureRowIsVisible(index);
+        if (api && index >= 0) {
+          api.ensureRowIsVisible(index);
         }
-        this.api?.repaint();
+        api?.repaint();
       });
     });
   }
@@ -171,31 +193,5 @@ export class PreviewGrid<T extends object> implements OnInit, OnDestroy {
       columnDefs,
       tableOptions: this.options,
     });
-  }
-
-  protected onReady(api: TableApi): void {
-    this.api = api;
-    this.unsubscribe = api.subscribe({
-      onMouseClicked: (evt) => {
-        if (evt.areaIdent === 'body' && evt.rowIndex >= 0) {
-          this.rowClick.emit({ index: evt.rowIndex, clickCount: evt.clickCount });
-        }
-      },
-    });
-    this.show(this.rows());
-  }
-
-  private show(rows: readonly T[]): void {
-    const api = this.api;
-    if (!api) {
-      return;
-    }
-    api.setRows([...rows]);
-    api.repaintHard();
-  }
-
-  ngOnDestroy(): void {
-    this.unsubscribe?.();
-    this.api = null;
   }
 }

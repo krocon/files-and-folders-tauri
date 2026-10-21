@@ -3,10 +3,10 @@ import {
   Component,
   effect,
   input,
-  OnDestroy,
+  signal,
   untracked,
 } from '@angular/core';
-import { TableComponent } from '@guiexpert/angular-table';
+import { TableSignalComponent } from '@guiexpert/angular-table';
 import {
   AreaModelObjectArrayWithColumndefs,
   ColumnDef,
@@ -94,13 +94,13 @@ function columns(): ColumnDefIf[] {
  */
 @Component({
   selector: 'app-mr-preview-table',
-  imports: [TableComponent],
+  imports: [TableSignalComponent],
   template: `
-    <guiexpert-table
+    <guiexpert-table-signal
       class="table"
       [tableModel]="model"
       [tableOptions]="options"
-      (tableReady)="onReady($event)"
+      [(tableApi)]="api"
     />
   `,
   styles: `
@@ -126,7 +126,7 @@ function columns(): ColumnDefIf[] {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreviewTable implements OnDestroy {
+export class PreviewTable {
   readonly rows = input.required<readonly PreviewRow[]>();
   readonly filter = input<PreviewFilter>('all');
 
@@ -150,26 +150,22 @@ export class PreviewTable implements OnDestroy {
     columnDefs: this.columnDefs,
     tableOptions: this.options,
   });
-  private api: TableApi | null = null;
+  /** Set by `<guiexpert-table-signal>`; `undefined` before the table exists and after it is gone. */
+  protected readonly api = signal<TableApi | undefined>(undefined);
 
   constructor() {
+    // runs when the table appears and for every new row set / filter
     effect(() => {
+      const api = this.api();
       const rows = this.rows();
       this.filter();
-      untracked(() => this.show(rows));
+      if (api) {
+        untracked(() => this.show(api, rows));
+      }
     });
   }
 
-  protected onReady(api: TableApi): void {
-    this.api = api;
-    this.show(this.rows());
-  }
-
-  private show(rows: readonly PreviewRow[]): void {
-    const api = this.api;
-    if (!api) {
-      return;
-    }
+  private show(api: TableApi, rows: readonly PreviewRow[]): void {
     const start = performance.now();
     api.setRows([...rows]);
     api.externalFilterChanged();
@@ -177,9 +173,5 @@ export class PreviewTable implements OnDestroy {
     if (rows.length >= 1000) {
       recordPerf('multi-rename preview table', since(start), `${rows.length} rows`);
     }
-  }
-
-  ngOnDestroy(): void {
-    this.api = null;
   }
 }

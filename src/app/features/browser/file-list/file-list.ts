@@ -10,9 +10,10 @@ import {
   input,
   OnDestroy,
   output,
+  signal,
   untracked,
 } from '@angular/core';
-import { TableComponent } from '@guiexpert/angular-table';
+import { TableSignalComponent } from '@guiexpert/angular-table';
 import { TableApi, TableStateIf } from '@guiexpert/table';
 import {
   DirEntry,
@@ -62,14 +63,14 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
  */
 @Component({
   selector: 'app-file-list',
-  imports: [TableComponent],
+  imports: [TableSignalComponent],
   template: `
-    <guiexpert-table
+    <guiexpert-table-signal
       class="table"
       [tableModel]="table().model"
       [tableOptions]="table().options"
       [loading]="store.loading()"
-      (tableReady)="onTableReady($event)"
+      [(tableApi)]="api"
     />
   `,
   styleUrl: './file-list.css',
@@ -127,6 +128,8 @@ export class FileList implements OnDestroy {
   protected readonly table = computed(() =>
     createFileTable(this.labelledBy(), () => this.store.rowFilter()),
   );
+  /** The API of the current table – set by `<guiexpert-table-signal>`, `undefined` before/after it. */
+  protected readonly api = signal<TableApi | undefined>(undefined);
   private shownPath: string | null = null;
   /** The listing the table shows (for in-place row updates). */
   private shownListing: DirectoryListing | null = null;
@@ -147,6 +150,15 @@ export class FileList implements OnDestroy {
       () => setTimeout(() => this.controller?.restoreCursor()),
       { capture: true },
     );
+    // a (new) table: wire bridge, controller and listeners; released with the table or the list
+    effect((onCleanup) => {
+      const api = this.api();
+      if (!api) {
+        return;
+      }
+      untracked(() => this.onTableReady(api));
+      onCleanup(() => this.releaseTable());
+    });
     effect(() => {
       const listing = this.store.listing();
       untracked(() => {
@@ -238,7 +250,14 @@ export class FileList implements OnDestroy {
     );
   }
 
-  protected onTableReady(api: TableApi): void {
+  private releaseTable(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+    this.unregisterZone?.();
+    this.unregisterZone = undefined;
+  }
+
+  private onTableReady(api: TableApi): void {
     const table = this.table();
     const bridge = createTableBridge(api, table.body, table.columnDefs);
     const controller = new FileListController(bridge, this.store, {
@@ -622,8 +641,7 @@ export class FileList implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.unsubscribe?.();
-    this.unregisterZone?.();
+    this.releaseTable();
     if (this.dragging) {
       this.dnd.cancel();
     }
