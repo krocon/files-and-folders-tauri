@@ -1,8 +1,9 @@
 import { DiskUsageView, UsageNode } from '../../core/diskusage/disk-usage.models';
 import { isVirtualPath } from '../../core/fs/fs.models';
+import { dragSources } from '../dnd/dnd-logic';
 import { selectionForAction } from '../ops/ops-logic';
 import { basketView, withLevelMarks, withoutPaths } from './basket-logic';
-import { arcPath, MIN_ANGLE, sunburst, treemap } from './chart-layout';
+import { arcPath, MIN_ANGLE, sunburst, TILE_HEAD, TILE_PAD, treemap } from './chart-layout';
 import { usageStart } from './disk-usage-actions';
 import { fillOf, labelOn, UsagePalette } from './usage-colors';
 import {
@@ -79,7 +80,22 @@ describe('disk usage rows (design 033)', () => {
     expect(isVirtualPath(rows[3].path)).toBe(true);
     expect(isVirtualPath(rows[0].path)).toBe(false);
     expect(rows[2].usage.kind).toBe('mount');
+    // another drive is never marked or sent to Rust (review 033 #11)
+    expect(isVirtualPath(rows[2].path)).toBe(true);
     expect(isVirtualPath(upPath('j7'))).toBe(true);
+  });
+
+  it('a lossy path is never sent to Rust (review 033 #7)', () => {
+    const lossy = { ...node(9, 'a\ufffd', 50, 'dir'), lossyName: true };
+    const rows = viewRows(view({ ...TREE, children: [lossy] }), 'j7', T);
+    expect(isVirtualPath(rows[0].path)).toBe(true);
+    expect(rows[0].usage.virtual).toBe(false);
+  });
+
+  it('a synthetic row cannot be dragged (review 033 #13)', () => {
+    const rows = viewRows(view(TREE), 'j7', T);
+    expect(dragSources(rows[3], () => false, [])).toBeNull();
+    expect(dragSources(rows[0], () => true, [rows[0], rows[3]])).toEqual([rows[0]]);
   });
 
   it('keys of disk-usage tabs', () => {
@@ -100,6 +116,7 @@ describe('disk usage rows (design 033)', () => {
           path: '/r/big/film.mkv',
           dir: 'big',
           dirId: 1,
+          ancestors: [0, 1],
           allocated: 500,
           logical: 499,
           modifiedMs: 1,
@@ -111,6 +128,7 @@ describe('disk usage rows (design 033)', () => {
           path: '/r/f.iso',
           dir: '',
           dirId: 0,
+          ancestors: [0],
           allocated: 300,
           logical: 300,
           modifiedMs: 1,
@@ -240,6 +258,8 @@ describe('disk usage chart layout (design 033 E2)', () => {
     expect(film.x).toBeGreaterThanOrEqual(big.x);
     expect(film.x + film.w).toBeLessThanOrEqual(big.x + big.w + 1e-6);
     expect(treemap(TREE, 'allocated', 400, 300)).toEqual(t);
+    // a tall first-level folder keeps room for its name above its children
+    expect(film.y).toBeGreaterThanOrEqual(big.y + TILE_PAD + TILE_HEAD - 1e-6);
   });
 });
 

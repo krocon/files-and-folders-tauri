@@ -71,6 +71,16 @@ export class FakeDiskUsageApi extends DiskUsageApi {
     }
   }
 
+  private chain(nodes: Stored[], id: number): number[] {
+    const out: number[] = [];
+    for (let c = id; ; c = nodes[c].parent) {
+      out.unshift(c);
+      if (c === 0) {
+        return out;
+      }
+    }
+  }
+
   private scan(scanId: string) {
     const s = this.scans.get(scanId);
     if (!s) {
@@ -172,6 +182,7 @@ export class FakeDiskUsageApi extends DiskUsageApi {
             path: n.path ?? '',
             dir,
             dirId: id,
+            ancestors: this.chain(s.nodes, id),
             allocated: n.size,
             logical: n.size,
             modifiedMs: 1_000,
@@ -189,19 +200,19 @@ export class FakeDiskUsageApi extends DiskUsageApi {
     return Promise.resolve(s.nodes.find((n) => n.path === path && !n.removed)?.id ?? null);
   }
 
-  prune(scanId: string, paths: readonly string[]): Promise<number> {
+  prune(scanId: string, paths: readonly string[]): Promise<readonly string[]> {
     this.calls.push(`prune ${scanId} ${paths.join(',')}`);
     const s = this.scan(scanId);
-    let count = 0;
+    const went: string[] = [];
     for (const p of paths) {
       const n = s.nodes.find((x) => x.path === p && !x.removed);
       if (n && !this.exists(p)) {
         n.removed = true;
-        count++;
+        went.push(p);
       }
     }
     s.version++;
-    return Promise.resolve(count);
+    return Promise.resolve(went);
   }
 
   release(scanId: string): Promise<void> {

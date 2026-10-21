@@ -222,7 +222,7 @@ fn grafting_replaces_a_folder_and_its_totals() {
     let mut fresh = Tree::new(&[r.join("a")], SizeMode::Allocated);
     let neu = fresh.add_entries(TOP, vec![dir("neu"), file("frisch", 40)])[0].0;
     fresh.add_entries(neu, vec![file("tief", 2)]);
-    t.graft(a, &fresh);
+    assert!(t.graft(a, &fresh));
     let tot = t.totals(TOP).unwrap();
     assert_eq!((tot.allocated, tot.files, tot.dirs), (47, 3, 2));
     assert_eq!(t.totals(a).unwrap().allocated, 42);
@@ -518,7 +518,7 @@ fn prune_removes_only_what_is_gone() {
         r.join(".versteckt"), // still there
         r.join("nie gescannt"),
     ]);
-    assert_eq!(n, 2);
+    assert_eq!(n, [r.join("a.txt"), r.join("Unter ordner 📁")]);
     let tot = scan.read().totals(TOP).unwrap();
     assert_eq!((tot.files, tot.dirs, tot.logical), (1, 1, 5));
     let v = scan.view(None, 1, 0.0, 10).unwrap();
@@ -635,4 +635,65 @@ fn measure() {
             t.len()
         );
     }
+}
+
+// ---- external review 033 ----
+
+#[test]
+fn content_of_a_removed_folder_is_not_counted() {
+    let mut t = Tree::new(&[root()], SizeMode::Allocated);
+    let a = t.add_entries(TOP, vec![dir("a"), file("f", 7)])[0].0;
+    let b = t.add_entries(a, vec![dir("b")])[0].0;
+    assert!(t.remove(a));
+    // the walker still had `b` in its queue
+    assert!(
+        t.add_entries(b, vec![file("spät", 100), dir("c")])
+            .is_empty()
+    );
+    t.set_dir_self(b, 4096, None);
+    t.mark_unreadable(b);
+    t.add_unreadable(b, 3);
+    let tot = t.totals(TOP).unwrap();
+    assert_eq!(
+        (tot.allocated, tot.files, tot.dirs, tot.unreadable),
+        (7, 1, 0, 0)
+    );
+}
+
+#[test]
+fn a_graft_never_grows_the_tree_past_the_limit() {
+    let r = root();
+    let mut t = Tree::new(std::slice::from_ref(&r), SizeMode::Allocated);
+    let a = t.add_entries(TOP, vec![dir("a")])[0].0;
+    t.set_max_nodes(4);
+    let mut fresh = Tree::new(&[r.join("a")], SizeMode::Allocated);
+    fresh.add_entries(TOP, vec![file("x", 1), file("y", 2)]);
+    assert!(!t.graft(a, &fresh));
+    assert_eq!(t.totals(TOP).unwrap().files, 0, "unchanged");
+}
+
+#[test]
+fn largest_files_carry_all_their_folders() {
+    let mut t = Tree::new(&[root()], SizeMode::Allocated);
+    let a = t.add_entries(TOP, vec![dir("a")])[0].0;
+    let b = t.add_entries(a, vec![dir("b")])[0].0;
+    t.add_entries(b, vec![file("big", 5 * MIB)]);
+    assert_eq!(t.largest(TOP, 1)[0].ancestors, [TOP, a, b]);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn entries_below_a_non_utf8_folder_are_lossy_too() {
+    use std::os::unix::ffi::OsStrExt;
+    let r = root();
+    let mut t = Tree::new(std::slice::from_ref(&r), SizeMode::Allocated);
+    let bad = Scanned {
+        name: std::ffi::OsStr::from_bytes(b"a\xff").to_os_string(),
+        ..dir("x")
+    };
+    let a = t.add_entries(TOP, vec![bad])[0].0;
+    t.add_entries(a, vec![file("ok.txt", 2 * MIB)]);
+    let child = &t.view(a, 1, 0.0, 9).unwrap().children.unwrap()[0];
+    assert!(child.lossy_name);
+    assert!(t.largest(TOP, 1)[0].lossy_name);
 }

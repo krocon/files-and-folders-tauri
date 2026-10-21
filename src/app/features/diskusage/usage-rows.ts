@@ -93,12 +93,15 @@ export function nodeRow(
   t: RowTexts,
 ): UsageRow {
   const virtual = n.kind === 'files' || n.kind === 'rest' || n.path === null;
+  // never sent to Rust: a lossy path names another entry, another drive is not this scan's
+  // (still navigable by id, review 033 #7/#11)
+  const opaque = virtual || n.lossyName || n.kind === 'mount';
   const name =
     n.kind === 'files' ? t.smallFiles(n.files) : n.kind === 'rest' ? t.rest(n.files) : n.name;
   const size = sizeOf(n, mode);
   return {
     name,
-    path: virtual ? `${VIRTUAL}${scanId}:${n.kind}:${n.id}` : (n.path as string),
+    path: opaque ? `${VIRTUAL}${scanId}:${n.kind}:${n.id}` : (n.path as string),
     kind: entryKind(n.kind),
     targetKind: null,
     size,
@@ -144,7 +147,7 @@ export function largestRows(
     const size = sizeOf(f, mode);
     return {
       name: f.name,
-      path: f.path,
+      path: f.lossyName ? `${VIRTUAL}largest:${f.id}` : f.path,
       kind: 'file',
       targetKind: null,
       size,
@@ -162,7 +165,7 @@ export function largestRows(
         dirs: 0,
         unreadable: 0,
         virtual: false,
-        ancestors: f.dirId === view.node.id ? ancestors : [...ancestors, f.dirId],
+        ancestors: f.ancestors.length > 0 ? f.ancestors : ancestors,
       },
     };
   });

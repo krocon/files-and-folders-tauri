@@ -21,8 +21,9 @@ pub const TOP: NodeId = 0;
 pub const KEEP_PER_DIR: usize = 16;
 /// Files at least this big are always kept (exact "largest files").
 pub const KEEP_MIN_BYTES: u64 = 1024 * 1024;
-/// Hard limit of nodes (≈ 136 B + name each, design 033 E4: ≈ 0.5 GB at most);
-/// beyond it the rest is only counted (`simplified`).
+/// Hard limit of nodes (≈ 136 B + name each, design 033 E4: ≈ 0.5 GB at most).
+/// Beyond it files only add to their folder's sums, and further folders are counted
+/// but neither kept nor read – their content is missing (`simplified`).
 pub const MAX_NODES: usize = 3_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -183,6 +184,8 @@ pub struct UsageFile {
     pub dir: String,
     /// The folder node (to navigate to).
     pub dir_id: NodeId,
+    /// Folders from the top node down to `dir_id` (nesting in the basket, review 033 #9).
+    pub ancestors: Vec<NodeId>,
     pub allocated: u64,
     pub logical: u64,
     pub modified_ms: Option<i64>,
@@ -327,6 +330,9 @@ impl Tree {
 
     /// Own size of a folder (its directory entry), added once when it is read.
     pub fn set_dir_self(&mut self, dir: NodeId, allocated: u64, modified_ms: Option<i64>) {
+        if self.nodes[dir as usize].removed {
+            return;
+        }
         let delta = Totals {
             allocated,
             newest_ms: modified_ms.unwrap_or(i64::MIN),
@@ -339,7 +345,7 @@ impl Tree {
 
     /// Entries of `dir` that could not be read (the folder itself could).
     pub fn add_unreadable(&mut self, dir: NodeId, count: u64) {
-        if count == 0 {
+        if count == 0 || self.nodes[dir as usize].removed {
             return;
         }
         let delta = Totals {
@@ -352,6 +358,9 @@ impl Tree {
 
     /// The folder could not be read.
     pub fn mark_unreadable(&mut self, dir: NodeId) {
+        if self.nodes[dir as usize].removed {
+            return;
+        }
         self.nodes[dir as usize].unreadable = true;
         let delta = Totals {
             unreadable: 1,
@@ -365,6 +374,11 @@ impl Tree {
     /// the index of their entry in `entries`. Folders left out because of
     /// [`MAX_NODES`] are missing there.
     pub fn add_entries(&mut self, dir: NodeId, entries: Vec<Scanned>) -> Vec<(NodeId, usize)> {
+        // a folder removed (pruned, replaced by a rescan) while the walker read it: its
+        // content belongs nowhere – counting it would inflate the live folders above (review 033 #3)
+        if self.nodes[dir as usize].removed {
+            return Vec::new();
+        }
         let mode = self.mode;
         let mut delta = Totals::empty();
         let mut new_dirs = Vec::new();
@@ -512,11 +526,14 @@ impl Tree {
 
     fn usage_node(&self, id: NodeId) -> UsageNode {
         let n = &self.nodes[id as usize];
-        let (name, lossy_name) = display_name(&n.name);
+        let (name, lossy) = display_name(&n.name);
+        let path = self.path_of(id);
+        // a folder above with a non-Unicode name makes the path lossy too (review 033 #7)
+        let lossy_name = lossy || path.as_ref().is_some_and(|p| p.to_str().is_none());
         UsageNode {
             id,
             name,
-            path: self.path_of(id).map(|p| p.to_string_lossy().into_owned()),
+            path: path.map(|p| p.to_string_lossy().into_owned()),
             kind: n.kind,
             allocated: n.totals.allocated,
             logical: n.totals.logical,
@@ -650,8 +667,9 @@ impl Tree {
             .into_iter()
             .map(|(_, f)| {
                 let n = &self.nodes[f as usize];
-                let (name, lossy_name) = display_name(&n.name);
+                let (name, lossy) = display_name(&n.name);
                 let path = self.path_of(f).unwrap_or_default();
+                let lossy_name = lossy || path.to_str().is_none();
                 let dir = path
                     .parent()
                     .and_then(|p| match &base {
@@ -666,6 +684,7 @@ impl Tree {
                     path: path.to_string_lossy().into_owned(),
                     dir,
                     dir_id: n.parent,
+                    ancestors: self.crumbs(n.parent).into_iter().map(|c| c.id).collect(),
                     allocated: n.totals.allocated,
                     logical: n.totals.logical,
                     modified_ms: n.modified_ms,
@@ -700,9 +719,13 @@ impl Tree {
 
     /// Replaces the content of folder `id` with the content of `other` (its single
     /// root = the same folder, scanned again).
-    pub fn graft(&mut self, id: NodeId, other: &Tree) {
+    pub fn graft(&mut self, id: NodeId, other: &Tree) -> bool {
         if self.node(id).is_none() {
-            return;
+            return false;
+        }
+        // nodes are never freed: a rescan may not grow the arena past the limit (review 033 #5)
+        if self.nodes.len() + other.nodes.len() > self.max_nodes {
+            return false;
         }
         // drop the old content
         let old = std::mem::take(&mut self.nodes[id as usize].children);
@@ -750,6 +773,7 @@ impl Tree {
         self.simplified |= other.simplified;
         self.sort_children();
         self.version += 1;
+        true
     }
 
     /// Whether `id` is a folder whose content could not be read.

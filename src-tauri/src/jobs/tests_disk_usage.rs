@@ -225,3 +225,30 @@ fn wire_format() {
             .is_none()
     );
 }
+
+#[test]
+fn a_rescan_waits_for_the_first_walk() {
+    let h = Harness::new();
+    let scan = std::sync::Arc::new(crate::disk_usage::Scan::new(
+        crate::disk_usage::Tree::new(&[std::env::temp_dir()], SizeMode::Allocated),
+        false,
+    ));
+    h.mgr.disk_usage().insert("jX", scan);
+    let j = h
+        .mgr
+        .start(JobSpec::DiskUsage {
+            roots: vec![],
+            volume: false,
+            rescan: Some(Rescan {
+                scan_id: "jX".into(),
+                node_id: 0,
+            }),
+            options: DiskUsageOptions::default(),
+        })
+        .unwrap();
+    let info = h.finish(&j);
+    assert_eq!(
+        info.summary.unwrap().error.unwrap().code,
+        crate::error::FsErrorCode::ScanBusy
+    );
+}

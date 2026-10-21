@@ -1,4 +1,5 @@
 import { SizeMode } from '../../core/diskusage/disk-usage.models';
+import { isVirtualPath } from '../../core/fs/fs.models';
 import { UsageRow } from './usage-rows';
 
 /**
@@ -46,7 +47,7 @@ export function withLevelMarks(
 ): Map<number, UsageRow> {
   const next = new Map(basket);
   for (const r of levelRows) {
-    if (r.usage.virtual) {
+    if (r.usage.virtual || isVirtualPath(r.path)) {
       continue;
     }
     if (marked.has(r.path)) {

@@ -12,21 +12,20 @@
       [attr.title]="usageTexts.headerTitle"
       [attr.aria-busy]="st?.view?.running ? 'true' : null"
     >
-      <b class="search-label">{{ usageTexts.header }}:</b>
       @if (st?.view; as v) {
         @for (c of v.crumbs; track c.id; let i = $index, last = $last) {
           @if (i > 0) {
-            <span class="usage-sep" aria-hidden="true">›</span>
+            <span class="sep" aria-hidden="true">›</span>
           }
-          @if (last) {
-            <span class="usage-crumb current" aria-current="location">{{
-              c.name || usageTexts.selection
-            }}</span>
-          } @else {
-            <button type="button" class="usage-crumb" (click)="usageCrumb(c.id)">
-              {{ c.name || usageTexts.selection }}
-            </button>
-          }
+          <button
+            type="button"
+            class="crumb"
+            [class.current]="last"
+            [attr.aria-current]="last ? 'location' : null"
+            (click)="usageCrumb(c.id)"
+          >
+            {{ c.name || usageTexts.selection }}
+          </button>
         }
         <span class="search-count"
           >· {{ formatSize(v.sizeMode === 'allocated' ? v.node.allocated : v.node.logical) }} ·

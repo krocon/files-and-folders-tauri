@@ -20,8 +20,8 @@ export abstract class DiskUsageApi {
   ): Promise<DiskUsageView>;
   abstract largest(scanId: string, nodeId: number, limit: number): Promise<readonly UsageFile[]>;
   abstract locate(scanId: string, path: string): Promise<number | null>;
-  /** Removes the entries of `paths` that no longer exist; returns how many went. */
-  abstract prune(scanId: string, paths: readonly string[]): Promise<number>;
+  /** Removes the entries of `paths` that no longer exist; returns the paths that went. */
+  abstract prune(scanId: string, paths: readonly string[]): Promise<readonly string[]>;
   /** Forgets the scan (a running one is cancelled). */
   abstract release(scanId: string): Promise<void>;
 }
@@ -46,7 +46,7 @@ export class TauriDiskUsageApi extends DiskUsageApi {
     return call('disk_usage_locate', { scanId, path });
   }
 
-  prune(scanId: string, paths: readonly string[]): Promise<number> {
+  prune(scanId: string, paths: readonly string[]): Promise<readonly string[]> {
     return call('disk_usage_prune', { scanId, paths });
   }
 

@@ -296,3 +296,13 @@ Korb, Windows-Hardlink-Erkennung.
   0,41 s, 8 Threads 0,26 s → Worker = 2 × Kerne, 4–8. Knoten 136 B + Name (über dem Ziel ≤ 100 B) →
   `MAX_NODES` 3 Mio. (≈ 0,5 GB höchstens). Abweichung vom Entwurf: ein vor dem Start abgebrochener Scan legt keinen
   Baum an (`scan_not_found` – das Frontend zeigt „abgebrochen“).
+- Phase 3 (Frontend) fertig: `core/diskusage/`, `features/diskusage/` (Store, Zeilen, Korb, Layouts, Farben, Chart,
+  Renderer, Aktionen, Texte en/de), Anbindung in `FileBrowserStore` (`ResultKind 'usage'`, `usageNav`,
+  `markedOverride`, synthetische Zeilen nie markierbar), `FilePanel` (Kopf, Chart in der anderen Seite), `OpsStore`
+  (`expected` + Alter des Scans, `prune` nach Delete/Move), Spalten `share`/`items`, Menüs, Keymaps, Tokens.
+  **Abweichungen vom Entwurf** (bewusst klein gehalten): Einstellungen nur `sizeMode`, `crossFilesystems`, `chart`
+  (Ringtiefe 4, „Größte Dateien“ 100 und Farbe nach Zweig fest – der Dialog kennt keine Zahlenfelder, `colorBy`
+  entfällt); im Belegungs-Tab werden versteckte Einträge immer gezeigt (der Platz ist belegt; Rust kennt das
+  Windows-Attribut dort nicht); die Umschalter Ringe/Kacheln und „Größte Dateien“ stehen im Menü *Ansicht*; Rename,
+  Anlegen, Attribute, Multi-Rename usw. sind im Belegungs-Tab gesperrt (Veto `OFF_IN_USAGE`), Kopieren/Verschieben
+  gehen (Verschieben prunt danach wie Löschen).

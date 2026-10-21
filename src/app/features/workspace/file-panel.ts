@@ -62,8 +62,8 @@ let panelSeq = 0;
   host: {
     '[class.side-left]': "side() === 'left'",
     '[class.side-right]': "side() === 'right'",
-    '(pointerdown)': 'activate()',
-    '(focusin)': 'activate()',
+    '(pointerdown)': 'activate($event)',
+    '(focusin)': 'activate($event)',
     '(click)': 'onHeaderClick($event)',
   },
 })
@@ -226,6 +226,17 @@ export class FilePanel implements OnInit {
         }
       });
     });
+    // marks of the shown level → the scan's basket (registered first: a Space press and a
+    // poll result in the same flush must not lose the mark, review 033 #8)
+    effect(() => {
+      const marked = this.store.marked();
+      untracked(() => {
+        const id = this.usageScan();
+        if (id !== null && this.store.isUsage()) {
+          this.usage.setLevelMarks(id, marked);
+        }
+      });
+    });
     // disk-usage tab (design 033): the shown level of its scan
     effect(() => {
       const tab = this.tab();
@@ -234,16 +245,6 @@ export class FilePanel implements OnInit {
       untracked(() => {
         if (id !== null && st && this.shownTabId === tab.id) {
           this.showUsage(id, st);
-        }
-      });
-    });
-    // marks of the shown level → the scan's basket
-    effect(() => {
-      const marked = this.store.marked();
-      untracked(() => {
-        const id = this.usageScan();
-        if (id !== null && this.store.isUsage()) {
-          this.usage.setLevelMarks(id, marked);
         }
       });
     });
@@ -388,7 +389,13 @@ export class FilePanel implements OnInit {
     }
   }
 
-  protected activate(): void {
+  protected activate(evt?: Event): void {
+    // the chart of the other side's disk-usage tab works for that side (design 033 E1):
+    // clicking it must not make this side active (the chart would vanish under the pointer)
+    const target = evt?.target;
+    if (target instanceof Element && target.closest('app-disk-usage-chart')) {
+      return;
+    }
     this.ws.setActive(this.side());
   }
 
@@ -562,10 +569,12 @@ export class FilePanel implements OnInit {
         this.showUsage(id, st);
       } else {
         // the scan is gone (released): an empty result with a hint
+        this.store.leaveResult();
         this.store.showSearch(tab.search.key, [], 'usage', { parent: null, marked: new Set() });
       }
       return;
     }
+    this.store.leaveResult();
     if (tab.search) {
       this.store.navigationLocked.set(false);
       this.store.setCursor(tab.cursor);

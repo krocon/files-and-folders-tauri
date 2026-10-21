@@ -147,8 +147,8 @@ impl Scan {
         })
     }
 
-    /// Removes the nodes of `paths` that no longer exist; returns how many went.
-    pub fn prune(&self, paths: &[PathBuf]) -> u32 {
+    /// Removes the nodes of `paths` that no longer exist; returns the paths that went.
+    pub fn prune(&self, paths: &[PathBuf]) -> Vec<PathBuf> {
         // check the file system before taking the lock
         let gone: Vec<&PathBuf> = paths
             .iter()
@@ -157,15 +157,15 @@ impl Scan {
             })
             .collect();
         let mut t = self.write();
-        let mut n = 0;
+        let mut out = Vec::new();
         for p in gone {
             if let Some(id) = t.locate(p)
                 && t.remove(id)
             {
-                n += 1;
+                out.push(p.clone());
             }
         }
-        n
+        out
     }
 }
 

@@ -2,7 +2,7 @@ import { computed, effect, inject, Injectable, signal, untracked } from '@angula
 import { DiskUsageApi } from '../../core/diskusage/disk-usage-api';
 import { DiskUsageView, SizeMode, UsageNode } from '../../core/diskusage/disk-usage.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
-import { DirEntry, FsError, isParentRow } from '../../core/fs/fs.models';
+import { DirEntry, FsError, isParentRow, isVirtualPath } from '../../core/fs/fs.models';
 import { ExpectedEntry } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
@@ -51,6 +51,8 @@ export interface UsageState {
   /** Where the list cursor goes after a navigation (`cursorSeq` changes with it). */
   readonly cursor: string | null;
   readonly cursorSeq: number;
+  /** Cursor of a navigation whose level is still being read (applied with its rows). */
+  readonly pendingCursor?: string | null;
   readonly startedAt: number;
 }
 
@@ -241,12 +243,20 @@ export class DiskUsageStore {
         error: null,
         // the basket follows renamed sizes; a row that went (pruned) stays until the job says so
         basket: refreshBasket(st.basket, rows),
+        // the cursor of a navigation lands together with the rows of its level
+        ...(st.pendingCursor !== undefined
+          ? { cursor: st.pendingCursor, cursorSeq: st.cursorSeq + 1, pendingCursor: undefined }
+          : {}),
       }));
       this.schedulePoll(scanId, view.running);
     } catch (e) {
       if (this.seqs.get(scanId) === seq) {
         const error = toFsError(e);
-        this.patch(scanId, (st) => ({ ...st, error }));
+        // a scan Rust no longer keeps: nothing of it may be deleted any more (review 033 #6)
+        const gone = error.code === 'scan_not_found';
+        this.patch(scanId, (st) =>
+          gone ? { ...st, error, rows: [], chart: null, basket: new Map() } : { ...st, error },
+        );
         this.schedulePoll(scanId, false);
       }
     }
@@ -289,7 +299,7 @@ export class DiskUsageStore {
         forward = forward.slice(0, -1);
         back = [...back, s.node];
       }
-      return { ...s, node, back, forward, mode: 'all', cursor, cursorSeq: s.cursorSeq + 1 };
+      return { ...s, node, back, forward, mode: 'all', pendingCursor: cursor };
     });
     return this.refresh(scanId);
   }
@@ -317,6 +327,10 @@ export class DiskUsageStore {
         return true;
       }
       await this.go(scanId, u.id, 'push', null);
+      return true;
+    }
+    if (isVirtualPath(entry.path)) {
+      // a lossy name: opening would hit another path (review 033 #7)
       return true;
     }
     if (s.mode === 'largest' && u.ancestors.length > 0) {
@@ -367,7 +381,7 @@ export class DiskUsageStore {
     if (!s || s.mode === mode) {
       return;
     }
-    this.patch(scanId, (st) => ({ ...st, mode, cursor: null, cursorSeq: st.cursorSeq + 1 }));
+    this.patch(scanId, (st) => ({ ...st, mode, pendingCursor: null }));
     await this.refresh(scanId);
   }
 
@@ -421,6 +435,12 @@ export class DiskUsageStore {
     const job = await this.jobs.whenFinished(id);
     if (job.state === 'failed' && job.summary?.error) {
       this.jobs.report(errorText(job.summary.error));
+    } else if (job.state === 'done') {
+      // what is inside got new ids: its marks would point to nothing (review 033 #2)
+      this.patch(scanId, (st) => ({
+        ...st,
+        basket: new Map([...st.basket].filter(([, r]) => !r.usage.ancestors.includes(node.id))),
+      }));
     }
     await this.refresh(scanId);
   }
@@ -504,12 +524,14 @@ export class DiskUsageStore {
     if (!this.state(scanId) || done.length === 0) {
       return;
     }
+    let went: readonly string[] = [];
     try {
-      await this.api.prune(scanId, done);
+      went = await this.api.prune(scanId, done);
     } catch (e) {
       this.jobs.report(errorText(toFsError(e)));
     }
-    const gone = new Set(done);
+    // only what is really gone leaves the basket (review 033 #10)
+    const gone = new Set(went);
     this.patch(scanId, (s) => ({ ...s, basket: withoutPaths(s.basket, gone) }));
     await this.refresh(scanId);
   }

@@ -1130,9 +1130,21 @@ export class FileBrowserStore implements OnDestroy {
     return path === this.parent() || isVirtualPath(path);
   }
 
-  /** The panel shows a disk-usage scan (design 033). */
+  /**
+   * The panel shows a disk-usage scan (design 033) – and its rows, not an empty list
+   * while another tab's folder opens (review 033 #1).
+   */
   isUsage(): boolean {
-    return this.searchKind() === 'usage' && this.searchKey() !== null;
+    const key = this.searchKey();
+    return (
+      this.searchKind() === 'usage' && key !== null && this.listing()?.path === `search:${key}`
+    );
+  }
+
+  /** The panel leaves a disk-usage tab: no navigation into the scan, no basket (review 033 #1). */
+  leaveResult(): void {
+    this.usageNav = null;
+    this.markedOverride.set(null);
   }
 }
 

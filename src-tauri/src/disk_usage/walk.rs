@@ -221,7 +221,9 @@ fn read_one(
         };
         let name = item.file_name();
         let ft = meta.file_type();
-        if ft.is_symlink() || is_reparse_point(&meta) {
+        // Windows: std reports symbolic links and junctions as links; other reparse points
+        // (OneDrive placeholders, dedup files) are files and folders (review 033 #4)
+        if ft.is_symlink() {
             let a = ident.allocated(&child, &meta);
             bytes += a;
             entries.push(Scanned {
@@ -309,16 +311,4 @@ fn read_one(
         out.push((id, p));
     }
     out
-}
-
-#[cfg(windows)]
-fn is_reparse_point(meta: &Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-    meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
-}
-
-#[cfg(not(windows))]
-fn is_reparse_point(_meta: &Metadata) -> bool {
-    false
 }

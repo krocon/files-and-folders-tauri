@@ -59,6 +59,8 @@ export interface UsageFile {
   /** Folder relative to the asked node (`''` = the node itself) – display only. */
   readonly dir: string;
   readonly dirId: number;
+  /** Folders from the top node down to `dirId`. */
+  readonly ancestors: readonly number[];
   readonly allocated: number;
   readonly logical: number;
   readonly modifiedMs: number | null;

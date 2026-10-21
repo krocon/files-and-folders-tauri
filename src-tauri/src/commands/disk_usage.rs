@@ -61,13 +61,13 @@ pub fn disk_usage_locate<R: Runtime>(
 }
 
 /// Removes the given entries that no longer exist (after a delete job) and
-/// corrects the totals; returns how many nodes went.
+/// corrects the totals; returns the paths that went (as given).
 #[tauri::command]
 pub async fn disk_usage_prune<R: Runtime>(
     app: AppHandle<R>,
     scan_id: String,
     paths: Vec<String>,
-) -> Result<u32, FsError> {
+) -> Result<Vec<String>, FsError> {
     if paths.len() > MAX_PRUNE {
         return Err(FsError::new(
             crate::error::FsErrorCode::TooMany,
@@ -80,7 +80,14 @@ pub async fn disk_usage_prune<R: Runtime>(
         .map(|p| validate_input_path(p))
         .collect::<Result<Vec<_>, _>>()?;
     let scan = hub(&app).get(&scan_id)?;
-    blocking("Updating the disk usage", move || Ok(scan.prune(&paths))).await
+    blocking("Updating the disk usage", move || {
+        Ok(scan
+            .prune(&paths)
+            .into_iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect())
+    })
+    .await
 }
 
 /// Forgets a scan (its tab closed); a running scan is cancelled.

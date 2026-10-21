@@ -269,6 +269,57 @@ describe('DiskUsageStore and disk-usage tabs (design 033)', () => {
     expect(api.calls).toContain('prune j1 /r/f.iso');
   });
 
+  it('another tab opening in the same panel never gets the basket (review 033 #1)', async () => {
+    await usage.start('left', ['/r'], 'r');
+    show();
+    left.toggleMark('/r/f.iso');
+    usage.setLevelMarks('j1', left.marked());
+    show();
+    expect(left.markedEntries()).toHaveLength(1);
+    // the panel switches to a folder tab: the list is emptied while the folder opens
+    left.leaveResult();
+    left.clearListing();
+    expect(left.isUsage()).toBe(false);
+    expect(left.markedEntries()).toEqual([]);
+  });
+
+  it('only entries that are really gone leave the basket (review 033 #10)', async () => {
+    await usage.start('left', ['/r'], 'r');
+    show();
+    left.toggleMark('/r/f.iso');
+    left.toggleMark('/r/big');
+    usage.setLevelMarks('j1', left.marked());
+    api.exists = (p) => p === '/r/big'; // big could not be deleted
+    await usage.afterRemoval('j1', ['/r/f.iso', '/r/big']);
+    expect(usage.basket('j1').effective.map((r) => r.name)).toEqual(['big']);
+  });
+
+  it('a scan Rust dropped keeps nothing to delete (review 033 #6)', async () => {
+    await usage.start('left', ['/r'], 'r');
+    show();
+    left.toggleMark('/r/f.iso');
+    usage.setLevelMarks('j1', left.marked());
+    api.scans.delete('j1');
+    await usage.refresh('j1');
+    expect(usage.basket('j1').effective).toEqual([]);
+    expect(usage.state('j1')!.rows).toEqual([]);
+  });
+
+  it('rescanning a folder drops the marks inside it (new ids, review 033 #2)', async () => {
+    await usage.start('left', ['/r'], 'r');
+    api.setRunning('j1', false);
+    await usage.refresh('j1');
+    await usage.open('j1', row('big'));
+    show();
+    left.toggleMark('/r/big/film.mkv');
+    usage.setLevelMarks('j1', left.marked());
+    const p = usage.rescan('j1');
+    await wait();
+    jobsApi.emit({ type: 'finished', id: 'j2', state: 'done', summary: SUMMARY });
+    await p;
+    expect(usage.basket('j1').effective).toEqual([]);
+  });
+
   it('rescans the shown folder; releases the scan with its tab', async () => {
     await usage.start('left', ['/r'], 'r');
     api.setRunning('j1', false);

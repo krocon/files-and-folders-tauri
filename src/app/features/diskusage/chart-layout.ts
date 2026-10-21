@@ -38,6 +38,8 @@ export const TILE_DEPTH = 3;
 export const MIN_AREA = 24;
 /** Inner padding of a folder tile around its children. */
 export const TILE_PAD = 2;
+/** Room for the name of a first-level folder tile above its children. */
+export const TILE_HEAD = 14;
 
 function isVirtual(n: UsageNode): boolean {
   return n.kind === 'files' || n.kind === 'rest' || n.path === null;
@@ -266,13 +268,14 @@ export function treemap(
         h: r.h,
       });
       if (n.kind === 'dir' && r.w > 4 * TILE_PAD && r.h > 4 * TILE_PAD) {
+        const head = level === 1 && r.w > 40 && r.h > 3 * TILE_HEAD ? TILE_HEAD : 0;
         walk(
           n,
           level + 1,
           r.x + TILE_PAD,
-          r.y + TILE_PAD,
+          r.y + TILE_PAD + head,
           r.w - 2 * TILE_PAD,
-          r.h - 2 * TILE_PAD,
+          r.h - 2 * TILE_PAD - head,
           b,
         );
       }

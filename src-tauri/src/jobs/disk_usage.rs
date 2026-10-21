@@ -63,7 +63,8 @@ pub fn run(
                     }
                 }
             };
-            if scan.busy.swap(true, Ordering::SeqCst) {
+            // never next to the first walk: it still adds to the nodes a graft replaces (review 033 #3)
+            if scan.running.load(Ordering::SeqCst) || scan.busy.swap(true, Ordering::SeqCst) {
                 return failed(FsError::new(
                     FsErrorCode::ScanBusy,
                     "This scan is being updated",
@@ -133,11 +134,12 @@ pub fn run(
     });
     report(&progress);
     target.write().sort_children();
+    let mut too_large = false;
     match graft_into {
         Some(node) => {
             if finished {
                 let fresh = target.read();
-                scan.write().graft(node, &fresh);
+                too_large = !scan.write().graft(node, &fresh);
             }
             scan.busy.store(false, Ordering::SeqCst);
         }
@@ -171,6 +173,13 @@ pub fn run(
         }),
         ..Summary::default()
     };
+    if too_large {
+        return failed(FsError::new(
+            FsErrorCode::TooMany,
+            "The scan has grown too large – scan the folder again as a whole",
+            None,
+        ));
+    }
     let state = if finished {
         JobState::Done
     } else {

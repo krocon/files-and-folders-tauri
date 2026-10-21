@@ -601,6 +601,9 @@ export class FileList implements OnDestroy {
       );
       this.bridge?.setColumnVisible('share', usage);
       this.bridge?.setColumnVisible('items', usage);
+      // disk usage: the name needs the room the share bar takes (design 033)
+      this.bridge?.setColumnVisible('ext', !usage);
+      this.bridge?.setColumnVisible('modifiedMs', !usage);
       this.bridge?.setColumnVisible(
         'group',
         this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',

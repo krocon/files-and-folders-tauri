@@ -164,6 +164,7 @@ eine Leerzeile).
 | Rückgängig Multi-Rename | `UNDO_RENAME` | ✅ | `features/multirename/multirename.spec.ts` › „undo: the action takes the last undoable job“; Rust `jobs/tests_ops.rs` › `rename_job_swap_undo_and_undo_of_undo` |
 | Duplikat-Helfer | `DUP_MARK_KEEP_NEWEST/OLDEST/FIRST` | ✅ | `features/duplicates/duplicates-logic.spec.ts` › „keeps exactly one file per group“ |
 | Kontextmenü / Menüleiste / Beenden | `OPEN_CONTEXT_MENU` `Shift+F10`, `FOCUS_MENU_BAR` `Alt+M` (Win/Lx), `QUIT_APP` | ✅ | `core/actions/keyboard-dispatcher.spec.ts` › „opens the context menu with Shift+F10 only in the list …“; `features/menus/menus.spec.ts` › „html: the menu bar opens with ↓, moves with →, closes with Esc; FOCUS_MENU_BAR focuses it“ |
+| Speicherbelegung (033) | `OPEN_DISK_USAGE` `Mod+Shift+D`, `OPEN_DISK_USAGE_VOLUME`; Tab „Belegung“ + Ringe/Kacheln, Sammelkorb, `F8` | ✅ | Rust `disk_usage/tests.rs` › `hard_links_count_once_and_links_are_never_followed`, `stays_on_the_allowed_devices_and_skips_the_data_volume`, `prune_removes_only_what_is_gone`; `jobs/tests_disk_usage.rs` › `rescans_a_folder_and_replaces_its_content`; `features/diskusage/disk-usage.store.spec.ts` › „F8 in a disk-usage tab deletes the basket with "expected" and prunes afterwards“ |
 | Mit Tool öffnen | `OPEN_TOOLS_DLG` `Mod+Shift+X` | ✅ | `features/osintegration/os.spec.ts` › „the palette in tools scope lists only the tools and runs one“ |
 
 ---

@@ -77,6 +77,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
 - **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
   Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
   eine Datei je Gruppe, `F8` löscht in den Papierkorb (Warnung, wenn von einer Gruppe nichts übrig bliebe).
+- **Speicherbelegung** (Prompt 033, `Strg+Umschalt+D` / `⌘⇧D`; „Speicherbelegung des Laufwerks…“ aus Palette und
+  Menü): scannt die markierten Ordner, sonst den Ordner unter dem Cursor bzw. das ganze Laufwerk, als Job im
+  Hintergrund (Ergebnis wächst sichtbar, Stopp behält den Teil). Tab „Belegung“ mit der normalen Liste – nach Größe,
+  Spalten *Anteil* (Balken) und *Objekte* –, daneben in der anderen Seite Ringe oder Kacheln und der Sammelkorb.
+  Enter/Klick geht in einen Ordner, Backspace/Mitte/Brotkrume hinaus, *Größte Dateien* zeigt die größten Dateien
+  des Teilbaums. Markierungen gelten über alle Ebenen; `F8` bzw. *Entfernen…* löscht sie (Papierkorb, Gefahrenprüfung
+  wie immer, was sich seit dem Scan geändert hat, bleibt liegen), danach stimmen die Summen ohne neuen Scan. Belegte
+  Größe (Blöcke) als Standard, Hardlinks einmal, Links nie verfolgt, andere Laufwerke nur gezeigt.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
@@ -244,6 +252,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Pack… | `Alt+F5` | `⌥F5` |
 | Unpack… | `Alt+F9` | `⌥F9` |
 | Find duplicates… | `Alt+Shift+F7` | `⌥⇧F7` |
+| Disk usage… | `Ctrl+Shift+D` | `⌘⇧D` |
 | Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
 | Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
 | Tasks… | `Ctrl+F11` | `⌃K F6` |

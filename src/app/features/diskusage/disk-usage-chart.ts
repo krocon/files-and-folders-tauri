@@ -233,10 +233,6 @@ interface Drawn {
       display: flex;
       gap: 2px;
     }
-    .btn[aria-pressed='true'] {
-      background: var(--color-selection);
-      color: var(--color-selection-text);
-    }
     .volume {
       display: flex;
       height: 8px;
@@ -579,8 +575,11 @@ export class DiskUsageChart {
     const mid = (arc.a0 + arc.a1) / 2;
     const radius = (r0 + r1) / 2;
     const text = nameOf(arc.node);
-    // a label only where the arc is long enough for a few characters
-    const fits = span * radius > Math.min(80, text.length * 6.5) && arc.depth <= 2;
+    // horizontal text must stay inside its ring: the further it is from 12/6 o'clock, the
+    // less of the ring's thickness it may cross (and never longer than the arc)
+    const room = Math.min(span * radius, (r - 4) / Math.max(0.15, Math.abs(Math.sin(mid))));
+    const chars = Math.floor(room / 6.5);
+    const fits = chars >= 4 && arc.depth <= 2;
     return {
       key: `a${i}-${arc.node.id}-${arc.node.kind}`,
       shape: arc,
@@ -590,7 +589,7 @@ export class DiskUsageChart {
         ? {
             x: this.cx() + radius * Math.sin(mid),
             y: this.cy() - radius * Math.cos(mid),
-            text: clip(text, Math.floor((span * radius) / 6.5)),
+            text: clip(text, chars),
             color: labelOn(fill),
           }
         : null,
@@ -607,7 +606,7 @@ export class DiskUsageChart {
       rect: { x: tile.x, y: tile.y, w: Math.max(0, tile.w), h: Math.max(0, tile.h) },
       fill: hex(fill),
       label:
-        fits && (tile.node.kind !== 'dir' || tile.h > 40 || tile.depth === TILE_LABEL_DEPTH)
+        fits && (tile.node.kind !== 'dir' || tile.depth === TILE_LABEL_DEPTH)
           ? {
               x: tile.x + tile.w / 2,
               y: tile.node.kind === 'dir' ? tile.y + 9 : tile.y + tile.h / 2,
