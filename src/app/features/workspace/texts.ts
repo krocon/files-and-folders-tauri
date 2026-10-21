@@ -68,6 +68,7 @@ export const TEXTS_EN = {
   calculating: (n: number) =>
     n === 1 ? 'Calculating folder size…' : `Calculating ${n} folder sizes…`,
   hiddenMarked: (n: number) => `+${n} marked but filtered out`,
+  removing: 'Being removed…',
   runProgramTitle: 'Run program?',
   runProgramMessage: 'This file is a program. Run it only if you trust it.',
   runProgramConfirm: 'Run',

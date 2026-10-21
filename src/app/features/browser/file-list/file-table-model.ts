@@ -26,6 +26,8 @@ export interface FileRowState {
   isDropTarget?(path: string): boolean;
   /** The folder's size is currently being calculated and > 2s elapsed. */
   isCalculatingSize?(path: string): boolean;
+  /** A running delete/move takes the entry away: progress 0–1, `null` unknown, `undefined` no. */
+  removing?(path: string): number | null | undefined;
 }
 
 /**
@@ -48,6 +50,11 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
 
   isCalculatingSize(path: string): boolean {
     return this.state.isCalculatingSize?.(path) ?? false;
+  }
+
+  /** Used by the size renderer: progress of the job removing the entry (see `FileRowState`). */
+  removingOf(path: string): number | null | undefined {
+    return this.state.removing?.(path);
   }
 
   /** In-place rename (F2): only this entry's name cell is editable, with this editor. */
@@ -121,6 +128,9 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
     }
     if (entry.kind === 'unknown') {
       classes.push('fnf-unreadable');
+    }
+    if (this.state.removing?.(entry.path) !== undefined) {
+      classes.push('fnf-removing');
     }
     // duplicate tab: every other group shaded (design 016 E6)
     const group = (entry as DirEntry & { group?: number }).group;

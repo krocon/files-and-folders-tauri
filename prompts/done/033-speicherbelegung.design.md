@@ -333,3 +333,14 @@ Korb, Windows-Hardlink-Erkennung.
 | 11 | Fremdes Laufwerk (0 B) markier- und löschbar | Zeilen `mount` haben einen virtuellen Pfad (nicht markierbar, nie an Rust) |
 | 12 | Doku zu `MAX_NODES` falsch | Kommentar korrigiert (Ordner über dem Limit werden gezählt, ihr Inhalt fehlt) |
 | 13 | Synthetische Zeile ziehbar | `dragSources` filtert virtuelle Pfade; Test |
+
+## Nachtrag (Marc, 21.10.2026): lange Löschoperationen sichtbar machen
+
+Einträge, die ein laufender Job `delete`/`move`/`clean` entfernt (`JobsStore.removing`: Pfad → Fortschritt 0–1 bzw.
+`null`), bekommen in jeder Dateiliste die Zeilenklasse `fnf-removing` (durchgestrichen, kursiv, gedämpft, schraffiert);
+die Größenspalte zeigt Kreisel + Prozent (Kreisel per negativer `animation-delay` im Takt der Uhr, weil Zellen bei
+jedem Repaint neu entstehen). Neu gezeichnet wird nur, wenn sich die Menge oder der Fortschritt in 5-%-Schritten
+ändert (`removingShown`) – ein Repaint je Fortschrittsereignis ließ die Liste flackern. Diagramm: betroffene Segmente
+und ihr Inhalt pulsieren (aus bei `prefers-reduced-motion`), Korb-Einträge durchgestrichen. Tests: `jobs.store.spec`
+(Menge, Fortschritt, Ende), `file-table-model.spec` (Klasse); E2E mit 120 000 kleinen Dateien (endgültig löschen)
+in Ordner- und Belegungs-Tab.

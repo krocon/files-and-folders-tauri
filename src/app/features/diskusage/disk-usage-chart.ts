@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
+import { JobsStore } from '../../core/jobs/jobs.store';
 import { sizeOf, UsageNode } from '../../core/diskusage/disk-usage.models';
 import { Side } from '../../core/session/session.models';
 import { SettingsStore } from '../../core/settings/settings.store';
@@ -95,6 +96,7 @@ interface Drawn {
               [class.virtual]="d.shape.virtual"
               [class.hot]="d.shape.node.id === highlight() && !d.shape.virtual"
               [class.nav]="d.shape.node.kind === 'dir'"
+              [class.removing]="isRemoving(d.shape)"
               (pointerenter)="enter(d, $event)"
               (pointermove)="move($event)"
               (click)="pick(d.shape)"
@@ -109,6 +111,7 @@ interface Drawn {
               [class.virtual]="d.shape.virtual"
               [class.hot]="d.shape.node.id === highlight() && !d.shape.virtual"
               [class.nav]="d.shape.node.kind === 'dir'"
+              [class.removing]="isRemoving(d.shape)"
               (pointerenter)="enter(d, $event)"
               (pointermove)="move($event)"
               (click)="pick(d.shape)"
@@ -186,7 +189,11 @@ interface Drawn {
       } @else {
         <ul>
           @for (b of basketRows(); track b.id) {
-            <li [class.covered]="b.covered" [attr.title]="b.path">
+            <li
+              [class.covered]="b.covered"
+              [class.removing]="removing().has(b.path)"
+              [attr.title]="b.path"
+            >
               <span class="name">{{ b.name }}</span>
               <span class="size">{{ b.covered ? t.inMarkedFolder : b.size }}</span>
               <button
@@ -287,6 +294,28 @@ interface Drawn {
     .nav {
       cursor: pointer;
     }
+    /* taken away by a running delete/move (design 033 follow-up) */
+    .removing {
+      animation: fnf-usage-fade 0.9s ease-in-out infinite alternate;
+    }
+    li.removing .name {
+      font-style: italic;
+      text-decoration: line-through;
+    }
+    @keyframes fnf-usage-fade {
+      from {
+        opacity: 0.85;
+      }
+      to {
+        opacity: 0.25;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .removing {
+        animation: none;
+        opacity: 0.4;
+      }
+    }
     .hot {
       stroke: var(--color-text);
       stroke-width: 2.5;
@@ -385,6 +414,9 @@ export class DiskUsageChart {
   private readonly actions = inject(ActionService);
   private readonly settings = inject(SettingsStore);
   private readonly theme = inject(ThemeService);
+  private readonly jobs = inject(JobsStore);
+  /** Entries running delete/move jobs take away. */
+  protected readonly removing = computed(() => this.jobs.removing());
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
 
   protected readonly state = computed(() => this.usage.state(this.scanId()) ?? null);
@@ -616,6 +648,28 @@ export class DiskUsageChart {
           : null,
     };
   }
+
+  protected isRemoving(shape: Shape): boolean {
+    return this.removingIds().has(shape.node.id) || this.removingIds().has(shape.parent);
+  }
+
+  /** Nodes being taken away, and everything drawn inside them (shapes come parents first). */
+  private readonly removingIds = computed<ReadonlySet<number>>(() => {
+    const paths = this.removing();
+    const ids = new Set<number>();
+    if (paths.size === 0) {
+      return ids;
+    }
+    for (const d of this.drawn()) {
+      const n = d.shape.node;
+      if ((n.path !== null && paths.has(n.path)) || ids.has(d.shape.parent)) {
+        if (!d.shape.virtual) {
+          ids.add(n.id);
+        }
+      }
+    }
+    return ids;
+  });
 
   protected enter(d: Drawn, evt: PointerEvent): void {
     this.hover.set(d);

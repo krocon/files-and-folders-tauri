@@ -176,6 +176,7 @@ export class FileList implements OnDestroy {
       this.store.marked();
       this.dropRow();
       this.store.animatedSizePaths();
+      this.store.removingShown();
       untracked(() => this.bridge?.repaint());
     });
     // language, formats, name display and density (design 015): live, no new table
@@ -266,6 +267,7 @@ export class FileList implements OnDestroy {
       isMarked: (path) => this.store.isMarked(path),
       isDropTarget: (path) => this.dropRow() === path,
       isCalculatingSize: (path) => this.store.isSizeAnimated(path),
+      removing: (path) => this.store.removingOf(path),
     });
     const side = this.side();
     if (side) {

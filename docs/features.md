@@ -85,6 +85,10 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   des Teilbaums. Markierungen gelten über alle Ebenen; `F8` bzw. *Entfernen…* löscht sie (Papierkorb, Gefahrenprüfung
   wie immer, was sich seit dem Scan geändert hat, bleibt liegen), danach stimmen die Summen ohne neuen Scan. Belegte
   Größe (Blöcke) als Standard, Hardlinks einmal, Links nie verfolgt, andere Laufwerke nur gezeigt.
+- **Wird entfernt**: Solange ein Lösch-, Verschiebe- oder Aufräum-Job läuft, sind seine Einträge in der Liste
+  durchgestrichen, kursiv, gedämpft und schraffiert; in der Spalte *Größe* dreht ein kleiner Kreisel mit dem
+  Fortschritt des Jobs (`…` solange er plant bzw. beim Papierkorb für einen einzelnen Eintrag). Im Diagramm der
+  Speicherbelegung pulsieren die betroffenen Segmente samt Inhalt, im Sammelkorb sind sie durchgestrichen.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes

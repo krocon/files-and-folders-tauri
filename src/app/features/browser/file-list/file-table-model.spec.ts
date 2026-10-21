@@ -39,6 +39,19 @@ describe('FileBodyModel.getCustomClassesAt', () => {
     expect(body.getCustomClassesAt(3, 0)).toContain('fnf-unreadable');
     expect(body.getCustomClassesAt(9, 0)).not.toContain('fnf-cursor');
   });
+
+  it('marks entries a running delete/move takes away (design 033 follow-up)', () => {
+    const { body } = createFileTable('x');
+    body.setRows([dir('a', { path: '/a' }), dir('b', { path: '/b' })]);
+    body.setRowState({
+      cursorRow: () => -1,
+      isMarked: () => false,
+      removing: (p) => (p === '/a' ? 0.4 : undefined),
+    });
+    expect(body.getCustomClassesAt(0, 0)).toContain('fnf-removing');
+    expect(body.getCustomClassesAt(1, 0)).not.toContain('fnf-removing');
+    expect(body.removingOf('/a')).toBe(0.4);
+  });
 });
 
 describe('FileBodyModel.replaceRows (review 012 #5)', () => {

@@ -209,6 +209,7 @@ describe('disk usage chart layout (design 033 E2)', () => {
     const inner = arcs.filter((a) => a.depth === 2);
     expect(inner.map((a) => a.node.name)).toEqual(['film.mkv', 'x']);
     expect(inner.every((a) => a.branch === 0)).toBe(true);
+    expect(inner.every((a) => a.parent === 1)).toBe(true);
     expect(arcs.find((a) => a.node.id === 4)?.virtual).toBe(true);
     // a tiny child is folded
     const many = node(0, 'r', 10_000, 'dir', [
@@ -277,6 +278,7 @@ describe('disk usage colours', () => {
       depth,
       branch,
       virtual: false,
+      parent: 0,
     });
     expect(fillOf(shape(node(1, 'a', 1), 1), p)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
     expect(fillOf(shape(node(1, 'a', 1), 2), p).g).toBeGreaterThan(0);

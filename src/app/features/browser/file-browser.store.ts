@@ -1131,6 +1131,36 @@ export class FileBrowserStore implements OnDestroy {
   }
 
   /**
+   * `undefined`: not being removed; otherwise a running delete/move takes the entry
+   * away – with the job's progress (0–1) or `null` if unknown (design 033, follow-up).
+   */
+  removingOf(path: string): number | null | undefined {
+    return this.removing().get(path);
+  }
+
+  /** Entries running jobs take away (see {@link removingOf}). */
+  readonly removing = computed(() => this.jobs.removing());
+  /**
+   * What the list must repaint for: which shown entries are being removed and their
+   * progress in 5 % steps – progress events come several times a second, a repaint
+   * per event would let the list flicker.
+   */
+  readonly removingShown = computed(() => {
+    const m = this.removing();
+    if (m.size === 0) {
+      return '';
+    }
+    let key = '';
+    for (const e of this.entries()) {
+      const r = m.get(e.path);
+      if (r !== undefined) {
+        key += `${e.path}\u0000${r === null ? '-' : Math.floor(r * 20)}\u0000`;
+      }
+    }
+    return key;
+  });
+
+  /**
    * The panel shows a disk-usage scan (design 033) – and its rows, not an empty list
    * while another tab's folder opens (review 033 #1).
    */

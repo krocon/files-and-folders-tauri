@@ -15,6 +15,8 @@ export interface Shape {
   readonly branch: number;
   /** An aggregate or a folded rest – nothing to navigate to. */
   readonly virtual: boolean;
+  /** Id of the folder the shape lies in (shapes come parents first). */
+  readonly parent: number;
 }
 
 export interface Arc extends Shape {
@@ -93,7 +95,15 @@ export function sunburst(
         return;
       }
       const b = level === 1 ? i : branch;
-      out.push({ node: c, depth: level, branch: b, virtual: isVirtual(c), a0: a, a1: a + span });
+      out.push({
+        node: c,
+        depth: level,
+        branch: b,
+        virtual: isVirtual(c),
+        parent: node.id,
+        a0: a,
+        a1: a + span,
+      });
       if (c.kind === 'dir') {
         walk(c, level + 1, a, a + span, b);
       }
@@ -105,6 +115,7 @@ export function sunburst(
         depth: level,
         branch: level === 1 ? -1 : branch,
         virtual: true,
+        parent: node.id,
         a0: a,
         a1: a + restSpan,
       });
@@ -262,6 +273,7 @@ export function treemap(
         depth: level,
         branch: b,
         virtual: isVirtual(n),
+        parent: node.id,
         x: r.x,
         y: r.y,
         w: r.w,
