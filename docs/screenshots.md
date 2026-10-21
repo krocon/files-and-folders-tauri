@@ -8,7 +8,7 @@ Chromium mit einem nachgebauten Backend.
 
 ```bash
 pnpm screenshots:install          # einmalig: Chromium für Playwright laden (~150 MB)
-pnpm screenshots                  # baut das Frontend, dann 11 Farbschemata × 32 Szenen → screenshots/
+pnpm screenshots                  # baut das Frontend, dann 11 Farbschemata × 33 Szenen → screenshots/
 ```
 
 Ergebnis: `screenshots/<farbschema>/<szene>.png` (der Ordner ist in `.gitignore`). Ein voller Lauf dauert
@@ -96,7 +96,8 @@ Schritte:
 - `{ "wait": 500 }`: warten (ms).
 - `{ "click": "css-selector" }`: klicken.
 
-Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf) und `"mock": { "jobs": true }`
-(Task-Liste mit Beispieljobs). Braucht eine neue Szene einen Command, den der Mock noch nicht kennt
+Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf), `"mock": { "jobs": true }`
+(Task-Liste mit Beispieljobs) und `"mock": { "bigFiles": true }` (ein paar große Dateien in sonst leeren
+Ordnern, damit die Speicherbelegung etwas zu zeigen hat – Szene `disk-usage`). Braucht eine neue Szene einen Command, den der Mock noch nicht kennt
 (Antwort `null`), ergänzt man ihn in `mock-backend.js` mit der Form aus dem passenden `*.models.ts`.
 `pnpm scripts:test` prüft, dass jede Aktion der Szenen auf allen drei Systemen auslösbar ist.

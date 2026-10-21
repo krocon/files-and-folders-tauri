@@ -101,6 +101,8 @@ comparison with the previous version is in [docs/feature-parity.md](docs/feature
 | **Multi rename** – pattern, counter, preview (*Modern light*) | **Search** – results stream into a tab (*Modern dark*) |
 | ![Image viewer](docs/screenshots/viewer.png) | ![Colour scheme editor with contrast check](docs/screenshots/colour-schemes.png) |
 | **Viewer** (`F3`) – text, hex and images (*Blackboard*) | **Colour schemes** – live editor, WCAG check (*Coffee*) |
+| ![Disk usage: the home folder by size with share bars, rings in the other panel and two folders marked for removal](docs/screenshots/disk-usage.png) | |
+| **Disk usage** (`Ctrl+Shift+D`) – list by size, rings or tiles, remove what is big (*Norton*) | |
 
 All eleven built-in colour schemes:
 

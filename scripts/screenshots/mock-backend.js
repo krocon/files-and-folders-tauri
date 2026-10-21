@@ -175,6 +175,8 @@
   function startJob(args) {
     const spec = args?.spec ?? {};
     const id = `job-${++jobNo}`;
+    // the tree exists before the id returns: the app reads it at once
+    if (spec.kind === 'diskUsage') scans[id] = buildScan(spec.roots ?? []);
     setTimeout(() => {
       if (spec.kind === 'search') {
         const hits = searchHits(spec.criteria ?? {});
@@ -208,12 +210,181 @@
         const dirSize = { files, dirs: dirCount, bytes, unreadable: 0, cancelled: false };
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         send({ type: 'finished', id, state: 'done', summary: summary({ dirSize }) });
+      } else if (spec.kind === 'diskUsage') {
+        send({ type: 'added', job: jobInfo(id, spec, 'running') });
+        const entries = scans[id].length;
+        const diskUsage = { complete: true, entries, unreadable: 0, simplified: false, elapsedMs: 840 };
+        send({ type: 'finished', id, state: 'done', summary: summary({ itemsDone: entries, diskUsage }) });
       } else {
         // copy, move, delete, …: shown as running – screenshots never wait for an end
         send({ type: 'added', job: jobInfo(id, spec, 'running', { itemsTotal: 1 }) });
       }
     }, 0);
     return id;
+  }
+
+  // ---- disk usage (design 033): a scan of the demo tree, kept here like Rust keeps it --------
+  // Scene option `mock.bigFiles`: a few large files in otherwise empty folders, so the chart
+  // has something to show (only for that scene – other screenshots stay as they are).
+  if (cfg.mock?.bigFiles) {
+    const big = (name, size, modified) => ({
+      name,
+      kind: 'file',
+      targetKind: null,
+      size,
+      modifiedMs: Date.parse(`${modified}Z`),
+      hidden: name.startsWith('.'),
+      lossyName: false,
+    });
+    const add = (dir, list) => (dirs[dir] = [...(dirs[dir] ?? []), ...list]);
+    add(`${home}/Videos`, [
+      big('Dolomites 4K.mp4', Math.round(4.2 * gb), '2026-07-02T19:30:00'),
+      big('Wedding Anna & Tom.mov', Math.round(2.7 * gb), '2026-06-14T22:10:00'),
+      big('Drone flight Lake Garda.mp4', Math.round(1.1 * gb), '2026-09-08T18:05:00'),
+    ]);
+    add(`${home}/.cache`, [
+      big('pnpm-store.tar', Math.round(1.6 * gb), '2026-10-20T08:00:00'),
+      big('playwright-chromium.zip', Math.round(620 * mb), '2026-10-12T09:30:00'),
+    ]);
+    add(`${home}/Projects/guiexpert-table`, [
+      big('node_modules.tar', Math.round(980 * mb), '2026-10-15T14:00:00'),
+      big('demo-recording.mov', Math.round(410 * mb), '2026-10-01T11:20:00'),
+    ]);
+    add(`${home}/Downloads`, [big('ubuntu-26.04-desktop-arm64.iso', Math.round(3.4 * gb), '2026-10-19T20:00:00')]);
+  }
+
+  const scans = {};
+
+  function buildScan(roots) {
+    const nodes = [];
+    const push = (name, path, kind, parent, modifiedMs, size = 0) => {
+      const id = nodes.length;
+      nodes.push({ id, name, path, kind, parent, modifiedMs, size, files: 0, dirs: 0, children: [] });
+      if (parent !== null) nodes[parent].children.push(id);
+      return id;
+    };
+    const fill = (id) => {
+      const n = nodes[id];
+      for (const e of entriesOf(n.path)) {
+        if (e.kind === 'directory') {
+          const c = push(e.name, e.path, 'dir', id, e.modifiedMs);
+          fill(c);
+          n.size += nodes[c].size;
+          n.files += nodes[c].files;
+          n.dirs += nodes[c].dirs + 1;
+        } else {
+          push(e.name, e.path, e.kind === 'symlink' ? 'link' : 'file', id, e.modifiedMs, e.size ?? 0);
+          n.size += e.size ?? 0;
+          n.files += 1;
+        }
+      }
+      n.children.sort((a, b) => nodes[b].size - nodes[a].size);
+    };
+    if (roots.length === 1) {
+      fill(push(nameOf(roots[0]), roots[0], 'dir', null, null));
+    } else {
+      const top = push('', null, 'dir', null, null);
+      for (const r of roots) {
+        const c = push(nameOf(r), r, 'dir', top, null);
+        fill(c);
+        nodes[top].size += nodes[c].size;
+        nodes[top].files += nodes[c].files;
+        nodes[top].dirs += nodes[c].dirs + 1;
+      }
+    }
+    return nodes;
+  }
+
+  function usageNode(nodes, id, depth, threshold, limit) {
+    const n = nodes[id];
+    const out = {
+      id,
+      name: n.name,
+      path: n.path,
+      kind: n.kind,
+      allocated: n.size,
+      logical: n.size,
+      files: n.files,
+      dirs: n.dirs,
+      unreadable: 0,
+      modifiedMs: n.modifiedMs,
+      lossyName: false,
+    };
+    if (depth > 0 && n.kind === 'dir') {
+      const shown = [];
+      let rest = { count: 0, size: 0 };
+      for (const c of n.children) {
+        if (shown.length < limit && nodes[c].size >= threshold) {
+          shown.push(usageNode(nodes, c, depth - 1, threshold, limit));
+        } else {
+          rest = { count: rest.count + 1, size: rest.size + nodes[c].size };
+        }
+      }
+      if (rest.count > 0) {
+        shown.push({ ...out, id, name: '', path: null, kind: 'rest', allocated: rest.size, logical: rest.size, files: rest.count, dirs: 0, modifiedMs: null });
+      }
+      out.children = shown;
+    }
+    return out;
+  }
+
+  const chainOf = (nodes, id) => {
+    const out = [];
+    for (let c = id; c !== null; c = nodes[c].parent) out.unshift(c);
+    return out;
+  };
+
+  function usageView(a) {
+    const nodes = scans[a?.scanId];
+    if (!nodes) throw fsError('scan_not_found', 'The scan is no longer available');
+    const id = a?.nodeId ?? 0;
+    const threshold = nodes[id].size * (a?.minFraction ?? 0);
+    return {
+      node: usageNode(nodes, id, a?.depth ?? 1, threshold, a?.limit ?? 2000),
+      crumbs: chainOf(nodes, id).map((c) => ({ id: c, name: nodes[c].name })),
+      virtualTop: nodes[0].path === null,
+      running: false,
+      complete: true,
+      simplified: false,
+      scannedAtMs: Date.parse('2026-10-21T10:12:00Z'),
+      version: 1,
+      sizeMode: 'allocated',
+      volume: null,
+      scannedAllocated: nodes[0].size,
+    };
+  }
+
+  function usageLargest(a) {
+    const nodes = scans[a?.scanId];
+    if (!nodes) throw fsError('scan_not_found', 'The scan is no longer available');
+    const base = nodes[a?.nodeId ?? 0];
+    const files = [];
+    const visit = (id) => {
+      for (const c of nodes[id].children) {
+        if (nodes[c].kind === 'dir') visit(c);
+        else if (nodes[c].kind === 'file') files.push(c);
+      }
+    };
+    visit(base.id);
+    return files
+      .sort((x, y) => nodes[y].size - nodes[x].size)
+      .slice(0, a?.limit ?? 100)
+      .map((c) => {
+        const n = nodes[c];
+        const dir = parentOf(n.path);
+        return {
+          id: c,
+          name: n.name,
+          path: n.path,
+          dir: base.path && dir.startsWith(base.path) ? dir.slice(base.path.length + 1) : dir,
+          dirId: n.parent,
+          ancestors: chainOf(nodes, n.parent),
+          allocated: n.size,
+          logical: n.size,
+          modifiedMs: n.modifiedMs,
+          lossyName: false,
+        };
+      });
   }
 
   // ---- viewer, quick view, properties ---------------------------------------------------
@@ -351,6 +522,15 @@
       warnings: [],
       file: `${home}/.config/files-and-folders/tools.json`,
     }),
+    // configuration files of 022/032: none changed by the user
+    load_buttons: () => ({ value: { sets: {} }, warning: null }),
+    load_file_types: () => ({ value: null, warning: null }),
+    load_starter: () => ({
+      items: [],
+      warning: null,
+      problems: [],
+      file: `${home}/.config/files-and-folders/starter.json`,
+    }),
     load_rename_presets: () => ({ presets: { version: 1, last: null, presets: [] }, warning: null }),
     plan_rename: (a) => {
       const rows = (a?.items ?? []).map((it) => ({
@@ -367,6 +547,13 @@
     },
     list_jobs: () => [],
     start_job: startJob,
+    disk_usage_view: usageView,
+    disk_usage_largest: usageLargest,
+    disk_usage_locate: (a) => scans[a?.scanId]?.find((n) => n.path === a?.path)?.id ?? null,
+    disk_usage_prune: () => [],
+    disk_usage_release: (a) => {
+      delete scans[a?.scanId];
+    },
     watch_dirs: (a) =>
       (a?.dirs ?? []).map((dir) => ({ dir, mode: 'native', reason: null, modifiedMs: null })),
     find_empty_dirs: (a) => {

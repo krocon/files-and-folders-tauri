@@ -1,3 +1,4 @@
+import { expireNotices } from '../../shared/expire-notices';
 import type { ShellChunk } from '../shell/shell.models';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../fs/fs-error';
@@ -62,6 +63,8 @@ export class JobsStore {
   readonly quitRequest = signal<{ running: number; seq: number } | null>(null);
   /** Messages for the user (failed start, …). */
   readonly messages = signal<readonly string[]>([]);
+  // messages go by themselves after a minute (or are dismissed before)
+  private readonly expiring = expireNotices(this.messages);
 
   /** The newest rename job that can be undone (action UNDO_RENAME). */
   readonly lastUndoable = computed(

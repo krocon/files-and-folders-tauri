@@ -262,7 +262,9 @@ export class FileBrowserStore implements OnDestroy {
   readonly markedEntries = computed(() => {
     const override = this.markedOverride();
     if (override !== null && this.isUsage()) {
-      return override;
+      // what a running job already removes is not offered a second time (F8 again)
+      const removing = this.removing();
+      return removing.size === 0 ? override : override.filter((e) => !removing.has(e.path));
     }
     const marked = this.marked();
     return marked.size === 0 ? [] : this.entries().filter((e) => marked.has(e.path));

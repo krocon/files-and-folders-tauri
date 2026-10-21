@@ -264,6 +264,9 @@ describe('DiskUsageStore and disk-usage tabs (design 033)', () => {
       paths: ['/r/f.iso'],
       expected: [{ path: '/r/f.iso', kind: 'file', size: 300, modifiedMs: 1000 }],
     });
+    // while it runs, F8 again offers nothing: the entry is already being removed
+    show();
+    expect(left.markedEntries()).toEqual([]);
     jobsApi.emit({ type: 'finished', id: del.id, state: 'done', summary: SUMMARY });
     await wait(10);
     expect(api.calls).toContain('prune j1 /r/f.iso');

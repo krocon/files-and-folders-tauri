@@ -40,6 +40,7 @@ export const USAGE_DE: Translation<typeof USAGE_EN> = {
     'Einträge mit Leertaste oder Einfg markieren – über alle Ordner hinweg –, um sie hier zu sammeln.',
   basketSum: (n, size) => `${n === 1 ? '1 Eintrag' : `${formatCount(n)} Einträge`} · ${size}`,
   remove: 'Entfernen…',
+  basketRemoving: (n) => `${formatCount(n)} ${n === 1 ? 'wird' : 'werden'} entfernt`,
   removeTitle:
     'Verschiebt die markierten Einträge in den Papierkorb (F8; Umschalt+F8 löscht endgültig)',
   clear: 'Alle abwählen',
