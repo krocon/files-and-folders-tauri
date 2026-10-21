@@ -6,6 +6,7 @@ use crate::commands::{MAIN_WINDOW, blocking, config_dir};
 use crate::config_file::Loaded;
 use crate::error::{FsError, FsErrorCode};
 use crate::filetypes::{self, FileType};
+use crate::folder_memory::{self, FolderMemory};
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
@@ -19,6 +20,12 @@ pub struct ButtonsState {
 /// Same for `filetypes.json`.
 #[derive(Default)]
 pub struct FileTypesState {
+    pub(crate) write_blocked: Mutex<bool>,
+}
+
+/// Same for `folder-memory.json` (design 027).
+#[derive(Default)]
+pub struct FolderMemoryState {
     pub(crate) write_blocked: Mutex<bool>,
 }
 
@@ -116,4 +123,40 @@ pub async fn toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<bool, Fs
     let next = !window.is_fullscreen().map_err(io)?;
     window.set_fullscreen(next).map_err(io)?;
     Ok(next)
+}
+
+/// Cursor, marks and scroll of the last folders per tab (design 027).
+#[tauri::command]
+pub async fn load_folder_memory<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Loaded<FolderMemory>, FsError> {
+    let file = config_dir(&app)?.join(folder_memory::FILE_NAME);
+    let loaded = blocking("Loading the folder memory", move || {
+        Ok(folder_memory::load(&file))
+    })
+    .await?;
+    set_blocked(
+        &app.state::<FolderMemoryState>().write_blocked,
+        !loaded.persist,
+    );
+    Ok(loaded)
+}
+
+/// Replaces `folder-memory.json` (bounded, written atomically; empty = forget all).
+#[tauri::command]
+pub async fn save_folder_memory<R: Runtime>(
+    app: AppHandle<R>,
+    memory: FolderMemory,
+) -> Result<(), FsError> {
+    if memory.tabs.len() > folder_memory::MAX_TABS * 2 {
+        return Err(FsError::new(FsErrorCode::TooMany, "Too many tabs", None));
+    }
+    let file = config_dir(&app)?.join(folder_memory::FILE_NAME);
+    if is_blocked(&app.state::<FolderMemoryState>().write_blocked) {
+        return Err(not_overwriting(&file));
+    }
+    blocking("Saving the folder memory", move || {
+        folder_memory::save(&file, memory).map_err(|e| FsError::from_io(&e, &file))
+    })
+    .await
 }

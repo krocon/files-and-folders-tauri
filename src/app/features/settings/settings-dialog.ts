@@ -154,7 +154,9 @@ import { SETTINGS_TEXTS } from './settings-texts';
                   <span>{{
                     key === 'search.recent'
                       ? t.recentCount(listCount(key))
-                      : t.templateCount(listCount(key))
+                      : key === 'dialogs.recent'
+                        ? t.dialogCount(listCount(key))
+                        : t.templateCount(listCount(key))
                   }}</span>
                   <button
                     type="button"

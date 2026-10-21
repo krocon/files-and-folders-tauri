@@ -28,6 +28,7 @@
 //! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`buttons`], [`filetypes`] user files of the button bar and the file type categories (design 022)
+//! - [`folder_memory`] cursor, marks and scroll of the last folders per tab (design 027)
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
 //! - [`secret`]       secret texts (passwords) – never printed or serialised
@@ -47,6 +48,7 @@ pub mod duplicates;
 pub mod error;
 pub mod fileops;
 pub mod filetypes;
+pub mod folder_memory;
 pub mod fs_atomic;
 pub mod jobs;
 pub mod keymap;
@@ -94,6 +96,7 @@ pub fn run() {
         .manage(commands::shell::ShellState::default())
         .manage(commands::config::ButtonsState::default())
         .manage(commands::config::FileTypesState::default())
+        .manage(commands::config::FolderMemoryState::default())
         .manage(commands::starter::StarterState::default())
         .manage(commands::remote::RemoteState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
@@ -273,6 +276,8 @@ pub fn run() {
             commands::config::load_file_types,
             commands::config::save_file_types,
             commands::config::toggle_fullscreen,
+            commands::config::load_folder_memory,
+            commands::config::save_folder_memory,
             commands::starter::load_starter,
             commands::starter::save_starter,
             commands::starter::run_starter,

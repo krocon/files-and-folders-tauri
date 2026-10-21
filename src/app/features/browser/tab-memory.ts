@@ -3,6 +3,8 @@ export interface FolderState {
   readonly cursor: string | null;
   readonly marks: readonly string[];
   readonly scrollTop: number;
+  /** Inside an archive, on a server or a result view: never written to disk (design 027 E3). */
+  readonly volatile?: boolean;
 }
 
 export interface HistoryEntry {
@@ -12,9 +14,10 @@ export interface HistoryEntry {
 }
 
 /**
- * In-memory navigation state of one tab (design 003 E3): back/forward stacks and
- * the state of the last visited folders. Not persisted; owned by the
- * WorkspaceStore per tab id so it moves with the tab.
+ * Navigation state of one tab (design 003 E3): back/forward stacks (in memory) and
+ * the state of the last visited folders (kept across restarts in
+ * `folder-memory.json`, design 027); owned by the WorkspaceStore per tab id so it
+ * moves with the tab.
  */
 export interface TabMemory {
   back: HistoryEntry[];

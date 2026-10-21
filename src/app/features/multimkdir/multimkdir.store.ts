@@ -7,7 +7,9 @@ import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { parentNames } from '../multirename/multirename-logic';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { DEFAULT_MKDIR, folderNames, MkdirTemplate } from './mkdir-engine';
+import { DEFAULT_MKDIR, folderNames, MkdirTemplate, restoreMkdir } from './mkdir-engine';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { recallDialog, rememberDialog } from '../../shared/dialog-memory';
 import { MM_TEXTS } from './multimkdir-texts';
 
 export interface MkdirRequest {
@@ -38,6 +40,9 @@ export class MultiMkdirStore {
   private readonly jobs = inject(JobsStore);
   private readonly api = inject(FoldersApi);
   private readonly dialogs = inject(DialogService);
+  private readonly settings = inject(SettingsStore);
+  /** The kept template is read once, at the first opening (design 027 E5). */
+  private recalled = false;
 
   readonly request = signal<MkdirRequest | null>(null);
   readonly template = signal<MkdirTemplate>(DEFAULT_MKDIR);
@@ -81,6 +86,13 @@ export class MultiMkdirStore {
     }
     // the new folders go *into* this folder: its name is [P] (as for files in 007)
     const parents = parentNames(store.listing()?.segments ?? []);
+    if (!this.recalled) {
+      this.recalled = true;
+      const kept = recallDialog(this.settings, 'multiMkdir');
+      if (kept !== undefined) {
+        this.template.set(restoreMkdir(kept));
+      }
+    }
     this.busy.set(false);
     this.runError.set(null);
     this.request.set({ side, parent, parents });
@@ -106,6 +118,7 @@ export class MultiMkdirStore {
     this.busy.set(true);
     try {
       const res = await this.api.createFolders(req.parent, names);
+      rememberDialog(this.settings, 'multiMkdir', this.template());
       this.refresh(req, res.created[0] ?? null);
       if (res.errors.length > 0) {
         const list = res.errors.map((e) => `${e.name} (${describeFsError(e.error)})`).join(', ');

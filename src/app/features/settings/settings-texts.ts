@@ -91,6 +91,11 @@ export const SETTINGS_EN = {
       help: 'Marking a folder with Space also calculates its size.',
       keywords: 'space mark folder size',
     },
+    'behavior.rememberFolders': {
+      label: 'Remember cursor and marks per folder',
+      help: 'Each tab remembers cursor, marks and scroll position of its last 50 folders, also across restarts (folder-memory.json). Switching it off forgets what was kept.',
+      keywords: 'remember cursor marks selection folder restart memory history',
+    },
     'diskUsage.sizeMode': {
       label: 'Disk usage: sizes',
       help: 'On disk counts the blocks a file takes (sparse and cloud files take little); the size is what the file reports. Applies to new scans.',
@@ -136,6 +141,11 @@ export const SETTINGS_EN = {
       help: 'Templates saved in the find dialog (up to 50); delete single ones there.',
       keywords: 'search find template preset own',
     },
+    'dialogs.recent': {
+      label: 'Last inputs of the tool dialogs',
+      help: 'Group files, Clean folders and Create several folders open with the values of their last run.',
+      keywords: 'remember last inputs dialog group clean folders mkdir template',
+    },
   },
   values: {
     system: 'System',
@@ -167,6 +177,7 @@ export const SETTINGS_EN = {
   shellHistoryCleared: 'The shell history was cleared.',
   recentCount: (n: number) => (n === 1 ? '1 search remembered' : `${n} searches remembered`),
   templateCount: (n: number) => (n === 1 ? '1 own template' : `${n} own templates`),
+  dialogCount: (n: number) => (n === 1 ? '1 dialog remembered' : `${n} dialogs remembered`),
   // keyboard
   keyboardIntro: 'Shortcuts per action; your changes are kept in keymap.json.',
   editShortcuts: 'Edit shortcuts…',
@@ -337,6 +348,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Markieren eines Ordners mit der Leertaste berechnet auch seine Größe.',
       keywords: 'leertaste markieren ordner größe',
     },
+    'behavior.rememberFolders': {
+      label: 'Cursor und Markierung je Ordner merken',
+      help: 'Jeder Tab merkt sich Cursor, Markierung und Scrollposition seiner letzten 50 Ordner, auch über einen Neustart (folder-memory.json). Ausschalten vergisst das Gemerkte.',
+      keywords: 'merken cursor markierung auswahl ordner neustart gedächtnis verlauf',
+    },
     'diskUsage.sizeMode': {
       label: 'Speicherbelegung: Größen',
       help: 'Belegt zählt die Blöcke auf dem Datenträger (Sparse- und Cloud-Dateien belegen wenig); die Größe ist die, die die Datei meldet. Gilt für neue Scans.',
@@ -382,6 +398,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Im Suchdialog gespeicherte Vorlagen (bis 50); einzelne dort löschen.',
       keywords: 'suche finden vorlage muster eigene',
     },
+    'dialogs.recent': {
+      label: 'Letzte Eingaben der Werkzeug-Dialoge',
+      help: 'Dateien gruppieren, Ordner aufräumen und Mehrere Ordner anlegen öffnen mit den Werten ihres letzten Laufs.',
+      keywords: 'merken letzte eingaben dialog gruppieren aufräumen ordner anlegen vorlage',
+    },
   },
   values: {
     system: 'System',
@@ -413,6 +434,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   shellHistoryCleared: 'Der Shell-Verlauf wurde geleert.',
   recentCount: (n) => (n === 1 ? '1 Suche gemerkt' : `${n} Suchen gemerkt`),
   templateCount: (n) => (n === 1 ? '1 eigene Vorlage' : `${n} eigene Vorlagen`),
+  dialogCount: (n) => (n === 1 ? '1 Dialog gemerkt' : `${n} Dialoge gemerkt`),
   keyboardIntro: 'Kürzel je Aktion; Ihre Änderungen stehen in keymap.json.',
   editShortcuts: 'Kürzel bearbeiten…',
   resetShortcuts: 'Alle Kürzel zurücksetzen',

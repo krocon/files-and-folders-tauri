@@ -20,6 +20,7 @@
   "behavior.confirmTrash": { "type": "bool", "default": true },
   "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },
   "behavior.spaceCalcSize": { "type": "bool", "default": true },
+  "behavior.rememberFolders": { "type": "bool", "default": true },
   "watch.pollNetwork": { "type": "bool", "default": false },
   "diskUsage.sizeMode": {
     "type": "enum",
@@ -32,5 +33,6 @@
   "shell.loginPath": { "type": "bool", "default": true },
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
   "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 },
-  "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 }
+  "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
+  "dialogs.recent": { "type": "json", "default": [], "maxItems": 3, "maxBytes": 16384 }
 }

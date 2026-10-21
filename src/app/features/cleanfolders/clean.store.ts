@@ -14,6 +14,9 @@ import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { CL_TEXTS } from './clean-texts';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { recallDialog, rememberDialog } from '../../shared/dialog-memory';
+import { boolOr, record, textOr } from '../../shared/restore-fields';
 
 /** The search runs this long after the last change of an option. */
 export const SCAN_DEBOUNCE_MS = 250;
@@ -36,6 +39,20 @@ export const DEFAULT_CLEAN_FORM: CleanForm = {
   patternsOn: false,
   patternsText: '*.bak',
 };
+
+/** The form kept from the last run (design 027 E5) – never the delete mode (trash every time). */
+export function restoreCleanForm(v: unknown): CleanForm {
+  const r = record(v);
+  const d = DEFAULT_CLEAN_FORM;
+  return {
+    emptyDirs: boolOr(r['emptyDirs'], d.emptyDirs),
+    includeRoots: boolOr(r['includeRoots'], d.includeRoots),
+    junkOn: boolOr(r['junkOn'], d.junkOn),
+    junkText: textOr(r['junkText'], d.junkText),
+    patternsOn: boolOr(r['patternsOn'], d.patternsOn),
+    patternsText: textOr(r['patternsText'], d.patternsText),
+  };
+}
 
 export interface CleanRequest {
   readonly side: Side;
@@ -88,6 +105,9 @@ export class CleanFoldersStore {
   private readonly jobs = inject(JobsStore);
   private readonly api = inject(FoldersApi);
   private readonly dialogs = inject(DialogService);
+  private readonly settings = inject(SettingsStore);
+  /** The kept form is read once, at the first opening (design 027 E5). */
+  private recalled = false;
 
   readonly request = signal<CleanRequest | null>(null);
   readonly form = signal<CleanForm>(DEFAULT_CLEAN_FORM);
@@ -140,6 +160,13 @@ export class CleanFoldersStore {
       throw err(CL_TEXTS.noFolder);
     }
     const roots = cleanRoots(folder, store.markedEntries());
+    if (!this.recalled) {
+      this.recalled = true;
+      const kept = recallDialog(this.settings, 'clean');
+      if (kept !== undefined) {
+        this.form.set(restoreCleanForm(kept));
+      }
+    }
     this.scanned.set(null);
     this.scanError.set(null);
     this.runError.set(null);
@@ -238,6 +265,7 @@ export class CleanFoldersStore {
       this.busy.set(false);
       return;
     }
+    rememberDialog(this.settings, 'clean', this.form());
     this.close();
     this.busy.set(false);
     void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req));

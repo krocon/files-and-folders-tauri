@@ -7,6 +7,7 @@
  */
 import { checkGroupName } from '../groupfiles/group-engine';
 import { MM_TEXTS } from './multimkdir-texts';
+import { intOr, oneOf, record, textOr } from '../../shared/restore-fields';
 
 export const MAX_FOLDERS = 1000;
 
@@ -29,6 +30,23 @@ export const DEFAULT_MKDIR: MkdirTemplate = {
   digits: 2,
   letterCase: 'none',
 };
+
+const LETTER_CASES: readonly LetterCase[] = ['none', 'upper', 'lower'];
+const COUNTER_LIMIT = 1_000_000;
+
+/** The template kept from the last run (design 027 E5): every field checked, else the default. */
+export function restoreMkdir(v: unknown): MkdirTemplate {
+  const r = record(v);
+  const d = DEFAULT_MKDIR;
+  return {
+    template: textOr(r['template'], d.template, 500),
+    start: intOr(r['start'], d.start, -COUNTER_LIMIT, COUNTER_LIMIT),
+    end: intOr(r['end'], d.end, -COUNTER_LIMIT, COUNTER_LIMIT),
+    step: intOr(r['step'], d.step, 1, COUNTER_LIMIT),
+    digits: intOr(r['digits'], d.digits, 0, 20),
+    letterCase: oneOf(r['letterCase'], LETTER_CASES, d.letterCase),
+  };
+}
 
 export interface FolderName {
   readonly name: string;

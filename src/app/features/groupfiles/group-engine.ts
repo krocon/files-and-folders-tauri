@@ -1,4 +1,5 @@
 import { GF_TEXTS } from './groupfiles-texts';
+import { boolOr, oneOf, record, textOr } from '../../shared/restore-fields';
 /**
  * Group files (design 008 E1): which sub-folder an entry goes to. Pure, no
  * Angular. The rules follow the old program (legacy §3.2) with Unicode words
@@ -52,6 +53,19 @@ export const DEFAULT_GROUP_OPTIONS: GroupOptions = {
   minSize: 2,
   useSourceDir: false,
 };
+
+/** Options kept from the last run (design 027 E5): every field checked, else the default. */
+export function restoreGroupOptions(v: unknown): GroupOptions {
+  const r = record(v);
+  const d = DEFAULT_GROUP_OPTIONS;
+  return {
+    mode: oneOf(r['mode'], GROUP_MODES, d.mode),
+    newFolder: textOr(r['newFolder'], d.newFolder, 255),
+    ignoreBrackets: boolOr(r['ignoreBrackets'], d.ignoreBrackets),
+    minSize: oneOf(r['minSize'], MIN_SIZES, d.minSize),
+    useSourceDir: boolOr(r['useSourceDir'], d.useSourceDir),
+  };
+}
 
 const BRACKETS_SQUARE = /\[[^\]]*\]/g;
 const BRACKETS_ROUND = /\([^)]*\)/g;
