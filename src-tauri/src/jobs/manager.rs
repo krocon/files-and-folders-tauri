@@ -382,6 +382,26 @@ impl JobManager {
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
                     }
+                    JobSpec::Checksum {
+                        paths,
+                        base_dir,
+                        algo,
+                        output,
+                    } => {
+                        let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+                        super::checksum::run_create(
+                            id,
+                            &paths,
+                            &PathBuf::from(base_dir),
+                            *algo,
+                            output,
+                            &control,
+                            &emit,
+                        )
+                    }
+                    JobSpec::VerifyChecksums { file } => {
+                        super::checksum::run_verify(id, &PathBuf::from(file), &control, &emit)
+                    }
                     JobSpec::Link {
                         sources,
                         target_dir,
@@ -970,6 +990,13 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
         }
         JobSpec::Count { paths } => all_any(paths.iter_mut()),
         JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
+        JobSpec::Checksum {
+            paths, base_dir, ..
+        } => {
+            all(paths.iter_mut())?;
+            one(base_dir)
+        }
+        JobSpec::VerifyChecksums { file } => one(file),
         JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
         JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => any(path),
         JobSpec::Search { .. }
@@ -1232,6 +1259,39 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::Duplicates { criteria } => {
             crate::duplicates::compile(criteria)?;
+        }
+        JobSpec::Checksum {
+            paths,
+            base_dir,
+            output,
+            ..
+        } => {
+            if paths.is_empty() {
+                return Err(nothing());
+            }
+            if paths.len() > super::checksum::MAX_FILES {
+                return Err(FsError::new(FsErrorCode::TooMany, "Too many entries", None));
+            }
+            let base = validate_input_path(base_dir)?;
+            for p in paths {
+                let p = validate_input_path(p)?;
+                // a list names its files relative to its folder: they must be below it
+                if matches!(output, super::checksum::ChecksumOutput::List { .. })
+                    && !p.starts_with(&base)
+                {
+                    return Err(FsError::new(
+                        FsErrorCode::InvalidPath,
+                        "The files of a checksum list must lie in its folder",
+                        Some(&p),
+                    ));
+                }
+            }
+            if let super::checksum::ChecksumOutput::List { name, .. } = output {
+                crate::paths::validate_name(name)?;
+            }
+        }
+        JobSpec::VerifyChecksums { file } => {
+            validate_input_path(file)?;
         }
         JobSpec::DirSize { path } => {
             validate_any(path)?;

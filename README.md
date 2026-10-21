@@ -70,6 +70,8 @@ without stutter.
   Manager, Secret Service) – never in a file of the app; SSH host keys and FTPS certificates are checked, plain FTP
   is marked as unencrypted
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
+- **Checksums** – create SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible) or one file per file, verify a
+  checksum file with a list of changed and missing files, copy the SHA-256 of a file to the clipboard
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
   access / creation time; for many entries at once (only what you touch changes) and optionally for folder contents

@@ -143,7 +143,7 @@ export const SETTINGS_EN = {
     },
     'dialogs.recent': {
       label: 'Last inputs of the tool dialogs',
-      help: 'Group files, Clean folders and Create several folders open with the values of their last run.',
+      help: 'Group files, Clean folders, Create several folders and Create checksums open with the values of their last run.',
       keywords: 'remember last inputs dialog group clean folders mkdir template',
     },
   },
@@ -400,7 +400,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     },
     'dialogs.recent': {
       label: 'Letzte Eingaben der Werkzeug-Dialoge',
-      help: 'Dateien gruppieren, Ordner aufräumen und Mehrere Ordner anlegen öffnen mit den Werten ihres letzten Laufs.',
+      help: 'Dateien gruppieren, Ordner aufräumen, Mehrere Ordner anlegen und Prüfsummen erzeugen öffnen mit den Werten ihres letzten Laufs.',
       keywords: 'merken letzte eingaben dialog gruppieren aufräumen ordner anlegen vorlage',
     },
   },

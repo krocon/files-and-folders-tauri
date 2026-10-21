@@ -33,6 +33,9 @@ export const OFF_IN_ARCHIVE: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_FIND_DLG',
   'OPEN_FOLDER_FINDER_DLG',
   'OPEN_FIND_DUPLICATES_DLG',
+  'OPEN_CHECKSUM_CREATE_DLG',
+  'CHECKSUM_VERIFY',
+  'COPY_CHECKSUM',
 ]);
 
 /** Pack, unpack and duplicate actions (design 016 E7). */

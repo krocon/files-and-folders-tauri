@@ -92,6 +92,8 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     link: (what, target, renameTo) =>
       `Verknüpfung zu ${what} → ${target}${renameTo ? ` als ${renameTo}` : ''}`,
     duplicates: (where) => `Duplikate finden in ${where}`,
+    checksum: (what, algo) => `${algo}-Prüfsummen von ${what}`,
+    verifyChecksums: (file) => `Prüfsummen prüfen: ${file}`,
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
     diskUsage: (what, rescan) =>

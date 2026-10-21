@@ -5,6 +5,7 @@
 
 pub mod ask;
 pub mod attributes;
+pub mod checksum;
 pub mod clean;
 pub mod control;
 pub mod copy;
@@ -26,6 +27,8 @@ pub mod shell;
 mod tests_archive;
 #[cfg(test)]
 mod tests_attributes;
+#[cfg(test)]
+mod tests_checksum;
 #[cfg(test)]
 mod tests_disk_usage;
 #[cfg(test)]
@@ -196,6 +199,16 @@ pub enum JobSpec {
     },
     /// Duplicate files (design 016 E6): groups are streamed as `searchHits`.
     Duplicates { criteria: DuplicateCriteria },
+    /// Checksums of the selection (design 039): a list file in `base_dir`, one file
+    /// per file, or only the digests (`show`, for the clipboard).
+    Checksum {
+        paths: Vec<String>,
+        base_dir: String,
+        algo: crate::checksum::Algo,
+        output: checksum::ChecksumOutput,
+    },
+    /// Checks every file named in a checksum file (design 039).
+    VerifyChecksums { file: String },
     /// Counts files, folders and bytes of a selection (copy dialog; parallel).
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
@@ -242,6 +255,11 @@ impl JobSpec {
             JobSpec::Copy { background, .. }
             | JobSpec::Move { background, .. }
             | JobSpec::Delete { background, .. } => *background,
+            // a digest for the clipboard should not wait behind a long copy
+            JobSpec::Checksum { output, .. } => {
+                matches!(output, checksum::ChecksumOutput::Show)
+            }
+            JobSpec::VerifyChecksums { .. } => false,
             JobSpec::Rename { .. }
             | JobSpec::Group { .. }
             | JobSpec::Clean { .. }
@@ -288,6 +306,9 @@ impl JobSpec {
             | JobSpec::Pack { target_dir, .. }
             | JobSpec::Link { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
+            JobSpec::Checksum {
+                base_dir, output, ..
+            } if !matches!(output, checksum::ChecksumOutput::Show) => base_dir,
             // the folders of the changed entries (design 024 E2)
             JobSpec::Attributes { paths, .. } => {
                 let mut dirs: Vec<std::path::PathBuf> = paths
@@ -332,6 +353,8 @@ impl JobSpec {
             JobSpec::ViewEntry { .. } => "viewEntry",
             JobSpec::Link { .. } => "link",
             JobSpec::Duplicates { .. } => "duplicates",
+            JobSpec::Checksum { .. } => "checksum",
+            JobSpec::VerifyChecksums { .. } => "verifyChecksums",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
             JobSpec::DiskUsage { .. } => "diskUsage",
@@ -507,6 +530,9 @@ pub struct Summary {
     /// Job `viewEntry`: the copy of the entry in the view cache (design 025 E5).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub view_path: Option<String>,
+    /// Jobs `checksum` / `verifyChecksums` (design 039).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checksums: Option<checksum::ChecksumSummary>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;

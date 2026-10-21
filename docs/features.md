@@ -83,6 +83,11 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Markierung, `Alt+F9` entpackt markierte Archive (optional in einen Unterordner ihres Namens), `Alt+F5` packt die
   Markierung als ZIP, TAR oder TAR.GZ. Zip-Slip (`../`, absolute Pfade, Laufwerke), Links im Archiv und Zip-Bomben
   werden abgewiesen; vorhandene Dateien lösen die Konfliktfrage aus.
+- **Prüfsummen** (Prompt 039, Menü *Datei*): *Prüfsummen erzeugen…* für Markierung oder Cursor (Ordner rekursiv,
+  Verknüpfungen nie) – SHA-256/SHA-512/SHA-1/MD5 als eine Liste (`CHECKSUMS.sha256`, Format wie `sha256sum`, Namen
+  relativ) oder je Datei (`x.iso.sha256`); *Prüfsummen prüfen* auf einer `.md5/.sha1/.sha256/.sha512`- oder
+  `*SUMS`-Datei (auch BSD-Format) zeigt OK/geändert/fehlt/nicht lesbar, Namen außerhalb des Ordners werden nicht
+  gelesen, „Geänderte Dateien markieren“; *SHA-256 in die Zwischenablage* für die Datei unter dem Cursor.
 - **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
   Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
   eine Datei je Gruppe, `F8` löscht in den Papierkorb (Warnung, wenn von einer Gruppe nichts übrig bliebe).

@@ -28,6 +28,7 @@
 //! - [`duplicates`]   duplicate files: size → partial hash → full SHA-256 (design 016)
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`buttons`], [`filetypes`] user files of the button bar and the file type categories (design 022)
+//! - [`checksum`] checksums: hashing, GNU/BSD checksum files, hostile names (design 039)
 //! - [`folder_memory`] cursor, marks and scroll of the last folders per tab (design 027)
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
@@ -39,6 +40,7 @@ pub mod app_menu;
 pub mod archive;
 pub mod attributes;
 pub mod buttons;
+pub mod checksum;
 pub mod clean;
 pub mod commands;
 pub mod config_file;
