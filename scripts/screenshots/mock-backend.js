@@ -533,6 +533,33 @@
     // configuration files of 022/032: none changed by the user
     load_buttons: () => ({ value: { sets: {} }, warning: null }),
     load_file_types: () => ({ value: null, warning: null }),
+    // compare files (design 037): a small, made-up difference of two tsconfig files
+    diff_files: () => {
+      const eq = (l, r, a, b = a) => ({ kind: 'equal', left: [l, a], right: [r, b] });
+      return {
+        kind: 'text',
+        left: { size: 409, encoding: 'utf-8', eol: 'lf' },
+        right: { size: 988, encoding: 'utf-8', eol: 'lf' },
+        rows: [
+          eq(1, 1, '{'),
+          { kind: 'changed', left: [2, '  "extends": "./tsconfig.json",'], right: [2, '  "compileOnSave": false,'] },
+          eq(3, 3, '  "compilerOptions": {'),
+          { kind: 'changed', left: [4, '    "outDir": "./out-tsc/spec",'], right: [4, '    "outDir": "./dist/out-tsc",'] },
+          { kind: 'added', left: null, right: [5, '    "strict": true,'] },
+          { kind: 'added', left: null, right: [6, '    "noImplicitOverride": true,'] },
+          eq(5, 7, '    "types": ["vitest/globals"]'),
+          eq(6, 8, '  },'),
+          { kind: 'skip', left: null, right: null, skipped: 12 },
+          eq(19, 21, '  "include": ['),
+          { kind: 'removed', left: [20, '    "src/**/*.spec.ts",'], right: null },
+          eq(21, 22, '    "src/**/*.d.ts"'),
+          eq(22, 23, '  ]'),
+          eq(23, 24, '}'),
+        ],
+        changes: 3,
+        truncated: false,
+      };
+    },
     // folder memory of 027: nothing kept yet
     load_folder_memory: () => ({ value: { version: 1, tabs: [] }, warning: null }),
     load_starter: () => ({

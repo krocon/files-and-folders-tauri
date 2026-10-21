@@ -70,6 +70,9 @@ without stutter.
   Manager, Secret Service) – never in a file of the app; SSH host keys and FTPS certificates are checked, plain FTP
   is marked as unencrypted
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
+- **Compare files** – two files side by side with line numbers and coloured differences (ignore white space or
+  case, whole file or only the changes, `F7` jumps to the next one), binaries byte by byte; or hand them to
+  FileMerge, WinMerge or Meld
 - **Checksums** – create SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible) or one file per file, verify a
   checksum file with a list of changed and missing files, copy the SHA-256 of a file to the clipboard
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**

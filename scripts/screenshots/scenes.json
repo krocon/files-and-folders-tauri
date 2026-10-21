@@ -394,6 +394,32 @@
           "wait": 300
         }
       ]
+    },
+    {
+      "name": "compare-files",
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "key": "End"
+        },
+        {
+          "key": "ArrowUp"
+        },
+        {
+          "action": "TOGGLE_MARK_AND_ADVANCE"
+        },
+        {
+          "action": "TOGGLE_MARK_AND_ADVANCE"
+        },
+        {
+          "action": "COMPARE_FILES"
+        },
+        {
+          "wait": 300
+        }
+      ]
     }
   ],
   "docs": {

@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-12 von 71 Paaren unter AA im Original, 11 Farben angepasst.
+12 von 74 Paaren unter AA im Original, 11 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -44,7 +44,7 @@
 
 ## paper (hell)
 
-44 von 71 Paaren unter AA im Original, 34 Farben angepasst.
+44 von 74 Paaren unter AA im Original, 34 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -103,7 +103,7 @@
 
 ## bitbucket (hell)
 
-31 von 71 Paaren unter AA im Original, 24 Farben angepasst.
+31 von 74 Paaren unter AA im Original, 24 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -152,11 +152,11 @@
 
 ## cypress (dunkel)
 
-30 von 71 Paaren unter AA im Original, 22 Farben angepasst.
+33 von 74 Paaren unter AA im Original, 24 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
-| List | 3.43 ⚠ | 4.59 |
+| List | 3.43 ⚠ | 5.23 |
 | Active panel list | 15.90 | 15.90 |
 | Cursor | 4.62 | 4.62 |
 | Marked | 6.96 | 6.96 |
@@ -178,8 +178,10 @@
 | `--color-menu-text` | `#657786` | `#7c8c98` | Menus (Actions menu, folder menu) |
 | `--color-muted` | `#4d5e6d` | `#7e8b95` | Muted text |
 | `--color-search-hit` | `#e0ce00` | `#272300` | Search hit |
-| `--color-list-text` | `#657786` | `#7c8c98` | List |
+| `--color-list-text` | `#657786` | `#8796a1` | List; Compare, removed lines |
 | `--color-group-alt-bg` | `#1a2736` | `#182331` | List, every other duplicate group |
+| `--color-diff-added` | `#1d3a29` | `#13261b` | Compare, added lines |
+| `--color-diff-changed` | `#3d3519` | `#332c15` | Compare, changed lines |
 | `--color-list-header-text` | `#657786` | `#7c8c98` | Column header |
 | `--color-hidden-text` | `#4d5e6d` | `#7e8b95` | Hidden entries |
 | `--color-error-text` | `#e00034` | `#ea5476` | Unreadable entries |
@@ -199,7 +201,7 @@
 
 ## blackboard (dunkel)
 
-15 von 71 Paaren unter AA im Original, 11 Farben angepasst.
+15 von 74 Paaren unter AA im Original, 11 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -235,7 +237,7 @@
 
 ## coffee (dunkel)
 
-7 von 71 Paaren unter AA im Original, 6 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+7 von 74 Paaren unter AA im Original, 6 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -266,7 +268,7 @@
 
 ## combat (dunkel)
 
-9 von 71 Paaren unter AA im Original, 8 Farben angepasst.
+9 von 74 Paaren unter AA im Original, 8 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -299,7 +301,7 @@
 
 ## norton (dunkel)
 
-16 von 71 Paaren unter AA im Original, 14 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+16 von 74 Paaren unter AA im Original, 14 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|

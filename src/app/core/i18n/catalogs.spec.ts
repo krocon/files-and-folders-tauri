@@ -12,6 +12,7 @@ import '../../features/actions/actions-texts';
 import '../../features/archive/archive-texts';
 import '../../features/attributes/attributes-texts';
 import '../../features/checksum/checksum-texts';
+import '../../features/diff/diff-texts';
 import '../../features/cleanfolders/clean-texts';
 import '../../features/config/config-texts';
 import '../../features/dnd/dnd-logic';

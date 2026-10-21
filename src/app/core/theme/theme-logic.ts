@@ -457,6 +457,9 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-list-text', '--color-list-bg', 'List'),
   p('--color-list-text', '--color-row-hover', 'List, row under the mouse', TEXT, LIST),
   p('--color-list-text', '--color-group-alt-bg', 'List, every other duplicate group', TEXT, LIST),
+  p('--color-list-text', '--color-diff-added', 'Compare, added lines', TEXT, LIST),
+  p('--color-list-text', '--color-diff-removed', 'Compare, removed lines', TEXT, LIST),
+  p('--color-list-text', '--color-diff-changed', 'Compare, changed lines', TEXT, LIST),
   p(
     '--color-active-list-text',
     '--color-group-alt-bg',

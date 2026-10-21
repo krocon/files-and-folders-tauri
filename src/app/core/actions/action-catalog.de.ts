@@ -90,6 +90,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_GROUPFILES_DLG: 'Dateien gruppieren…',
   OPEN_DELETE_EMPTY_FOLDERS_DLG: 'Ordner aufräumen (leere Ordner löschen)…',
   OPEN_FIND_DUPLICATES_DLG: 'Duplikate finden…',
+  COMPARE_FILES: 'Dateien vergleichen…',
   OPEN_CHECKSUM_CREATE_DLG: 'Prüfsummen erzeugen…',
   CHECKSUM_VERIFY: 'Prüfsummen prüfen',
   COPY_CHECKSUM: 'SHA-256 in die Zwischenablage',
