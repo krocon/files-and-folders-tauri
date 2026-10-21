@@ -194,7 +194,7 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
-- **Starter menu** – menu *Start* or `Alt+S`: your own quick launch entries (programs, scripts, folders,
+- **Starter menu** – menu *Start*, the *Start ▴* button next to *Actions ▴* or `Alt+S`: your own quick launch entries (programs, scripts, folders,
   submenus), edited with *Change starter menu…* and kept in `starter.json`. Parameters as in Total Commander –
   `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the
   active/other side, `%S` all marked entries; every word is one argument, nothing runs through a shell. Each entry

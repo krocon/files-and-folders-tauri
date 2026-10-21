@@ -18,6 +18,7 @@ import {
   nativeStructureKey,
   resolveMenuBar,
   resolveMenu,
+  STARTER_POPUP,
   toNativeSpec,
 } from './menu-model';
 import { MENU_TEXTS } from './menu-texts';
@@ -35,9 +36,6 @@ interface OpenContext {
   /** Accessible name of the popup (default: context menu). */
   readonly label?: string;
 }
-
-/** The starter menu as a popup (OPEN_STARTER_MENU, design 032). */
-const STARTER_POPUP: readonly MenuDef[] = ['@starter', '-', 'OPEN_STARTER_CONFIG_DLG'];
 
 /**
  * Root service of the menus (design 014): the file-list context menu (one at a

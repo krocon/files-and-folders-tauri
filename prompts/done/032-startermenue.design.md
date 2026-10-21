@@ -44,6 +44,10 @@
 - **E5 Menüs.** Top-Menü „Start“ zwischen „Werkzeuge“ und „Fenster“: `['@starter', '-', OPEN_STARTER_CONFIG_DLG]`;
   dieselben Defs für das Popup. Leeres Menü zeigt „Noch keine Einträge“ (gedimmt), leere Untermenüs ebenso.
   „Mit Tool öffnen“ (Palette und Menüs) zeigt weiter nur Tools.
+- **E7 Knopf „Start ▴“** (Marc, 21.10.): in der Button-Leiste links neben „Actions ▴“, mit Kürzel-Badge des Menüs
+  (`Alt+S` aus der Keymap) und Tooltip; öffnet dasselbe Menü (`STARTER_POPUP`) über dem Knopf wie das 🎨-Menü
+  (`ContextMenu` mit `anchor`). Die Kürzel der Einträge stehen in allen drei Menüformen rechts am Eintrag (HTML-Badge,
+  nativ als Accelerator).
 - **E6 Editor** (Dialog `starter-config`): links ein APG-Baum (flach, `aria-level`, Einrückung), rechts die Felder
   des gewählten Eintrags; Knöpfe Hinzufügen (Programm, Ordner, Untermenü, Trennlinie, aktueller Ordner, Datei unter
   dem Cursor) und Anordnen (Hoch/Runter, ins Untermenü darüber, heraus, Entfernen), Tastatur Alt+↑/↓/→/←, Entf.

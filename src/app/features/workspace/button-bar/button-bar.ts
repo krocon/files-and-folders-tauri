@@ -16,6 +16,8 @@ import { JobsStore } from '../../../core/jobs/jobs.store';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ActionsMenu } from '../../actions/actions-menu';
 import { THEME_TEXTS } from '../../themes/theme-texts';
+import { resolveMenu, STARTER_POPUP } from '../../menus/menu-model';
+import { MENU_TEXTS } from '../../menus/menu-texts';
 import { ContextMenu, MenuCloseReason, MenuItem } from '../context-menu';
 import { TEXTS } from '../texts';
 import { modifierSet } from './button-config';
@@ -57,6 +59,20 @@ interface ToolButton {
     <div class="tools" role="toolbar" [attr.aria-label]="t.tools">
       <button
         type="button"
+        class="fbtn start-toggle"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="startMenu() !== null"
+        [attr.aria-keyshortcuts]="startShortcut() || null"
+        [attr.title]="startTitle()"
+        (click)="toggleStartMenu($event)"
+      >
+        @if (startShortcut(); as k) {
+          <kbd class="badge">{{ k }}</kbd>
+        }
+        <span>{{ t.start }}</span> <i class="fa fa-caret-up" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
         class="fbtn actions-toggle"
         aria-haspopup="menu"
         [attr.aria-expanded]="menuOpen()"
@@ -92,6 +108,17 @@ interface ToolButton {
     @if (menuOpen()) {
       <app-actions-menu (closed)="onMenuClosed($event)" />
     }
+    @if (startMenu(); as pos) {
+      <app-context-menu
+        [items]="startItems()"
+        [x]="pos.x"
+        [y]="pos.y"
+        [label]="menuTexts.starterMenu"
+        [anchor]="pos.anchor"
+        (chosen)="onStartChosen($event)"
+        (closed)="onStartMenuClosed($event)"
+      />
+    }
     @if (themeMenu(); as pos) {
       <app-context-menu
         [items]="themeItems()"
@@ -122,6 +149,23 @@ export class ButtonBar {
       this.actions.register({ OPEN_ACTIONS_MENU: { run: () => this.menuOpen.set(true) } }),
     );
   }
+  /** Start ▴ (design 032): the starter menu above its button – position or closed. */
+  protected readonly startMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
+  protected readonly menuTexts = MENU_TEXTS;
+  /** Live entries (states, shortcuts, the tree may change while it is open). */
+  protected readonly startItems = computed(() =>
+    resolveMenu(STARTER_POPUP, this.actions, this.actions.platform()),
+  );
+  /** Badge of the menu's own shortcut (Alt+S, keymap). */
+  protected readonly startShortcut = computed(() => {
+    this.actions.keymap();
+    return this.actions.shortcutLabel('OPEN_STARTER_MENU');
+  });
+  protected readonly startTitle = computed(() => {
+    const k = this.startShortcut();
+    return k ? `${MENU_TEXTS.starterMenu} (${k})` : MENU_TEXTS.starterMenu;
+  });
+
   /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
   protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
   protected readonly themeTexts = THEME_TEXTS;
@@ -200,6 +244,29 @@ export class ButtonBar {
   protected run(id: ActionId, ready: boolean): void {
     if (ready) {
       void this.actions.run(id);
+    }
+  }
+
+  protected toggleStartMenu(evt: MouseEvent): void {
+    if (this.startMenu()) {
+      this.startMenu.set(null);
+      return;
+    }
+    const anchor = evt.currentTarget as HTMLElement;
+    const rect = anchor.getBoundingClientRect();
+    this.startMenu.set({ x: rect.left, y: rect.top, anchor });
+  }
+
+  protected onStartChosen(id: string): void {
+    this.startMenu.set(null);
+    // like every menu: the action runs after the menu is gone (a dialog gets the focus)
+    setTimeout(() => void this.actions.runAny(id));
+  }
+
+  protected onStartMenuClosed(reason: MenuCloseReason): void {
+    this.startMenu.set(null);
+    if (reason !== 'outside') {
+      setTimeout(() => document.querySelector<HTMLElement>('.start-toggle')?.focus());
     }
   }
 
