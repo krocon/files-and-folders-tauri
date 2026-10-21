@@ -286,6 +286,9 @@ export const MENU_BAR: readonly TopMenu[] = [
   },
 ];
 
+/** The starter menu as a popup – Alt+S at the list, Start ▴ in the button bar (design 032). */
+export const STARTER_POPUP: readonly MenuDef[] = ['@starter', '-', 'OPEN_STARTER_CONFIG_DLG'];
+
 /** Where a context menu was opened (design 014 E2). */
 export type ContextKind =
   'file' | 'archiveFile' | 'folder' | 'marked' | 'empty' | 'result' | 'archive';
