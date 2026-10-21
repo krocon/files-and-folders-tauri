@@ -204,6 +204,8 @@ pub fn defaults() -> Vec<Tool> {
                 false,
                 20,
             ),
+            // design 037: two files side by side (FileMerge, part of the Xcode tools)
+            tool("diff", "Compare (FileMerge)", "opendiff", &["{files}"], false, 2),
         ]
     }
     #[cfg(windows)]
@@ -232,6 +234,13 @@ pub fn defaults() -> Vec<Tool> {
                 &["{file}"],
                 true,
                 1,
+            ),            tool(
+                "diff",
+                "Compare (WinMerge)",
+                "C:\\Program Files\\WinMerge\\WinMergeU.exe",
+                &["{files}"],
+                false,
+                2,
             ),
         ]
     }
@@ -247,6 +256,7 @@ pub fn defaults() -> Vec<Tool> {
                 5,
             ),
             tool("vscode", "Open in VS Code", "code", &["{files}"], false, 20),
+            tool("diff", "Compare (Meld)", "meld", &["{files}"], false, 2),
         ]
     }
 }

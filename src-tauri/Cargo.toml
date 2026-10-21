@@ -32,6 +32,7 @@ sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["aes2
 md-5 = "0.10"
 sha1 = "0.10"
 sha2 = "0.10"
+similar = { version = "2", default-features = false }
 tar = { version = "0.4.46", default-features = false }
 tauri = { version = "2.12.4", features = [] }
 trash = { version = "5.2.9", default-features = false, features = ["coinit_apartmentthreaded"] }

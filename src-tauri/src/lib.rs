@@ -29,6 +29,7 @@
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`buttons`], [`filetypes`] user files of the button bar and the file type categories (design 022)
 //! - [`checksum`] checksums: hashing, GNU/BSD checksum files, hostile names (design 039)
+//! - [`diff`] comparing two files: text side by side, binary byte by byte (design 037)
 //! - [`folder_memory`] cursor, marks and scroll of the last folders per tab (design 027)
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
@@ -44,6 +45,7 @@ pub mod checksum;
 pub mod clean;
 pub mod commands;
 pub mod config_file;
+pub mod diff;
 pub mod dirsize;
 pub mod disk_usage;
 pub mod duplicates;
@@ -258,6 +260,7 @@ pub fn run() {
             commands::run_tool,
             commands::open_tools_config,
             commands::read_preview,
+            commands::diff_files,
             commands::get_properties,
             commands::load_themes,
             commands::save_themes,
