@@ -106,6 +106,12 @@ describe('old designs (prompt 019)', () => {
     expect(norton.tokens['--color-active-marked']).toBe('#fcfc54');
     expect(norton.tokens['--color-marked']).toBe(norton.tokens['--color-list-text']);
     expect(norton.tokens['--color-tooltip-text']).toBe('#f8fcf8');
+    // Norton: Actions menu and folder menu in teal (Marc 2026-10-21) – only Norton
+    expect(norton.tokens['--color-menu-bg']).toBe('#028383');
+    expect(norton.tokens['--color-menu-text']).toBe('#ffffff');
+    for (const other of CLASSIC_THEMES.filter((t) => t !== norton)) {
+      expect(other.tokens['--color-menu-bg']).not.toBe('#028383');
+    }
     const coffee = convertLegacy(docs('coffee').colors, LIGHT, DARK);
     expect(coffee.filled).toEqual([
       '--fnf-tooltip-bg-color',

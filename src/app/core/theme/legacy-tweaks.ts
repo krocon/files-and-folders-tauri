@@ -31,9 +31,11 @@ export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, stri
     '--fnf-activepanel-table-selected-row-fg-color': '#f00032',
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
   },
-  // Norton: marked yellow in the active panel only
+  // Norton: marked yellow in the active panel only; Actions menu and folder menu in teal (2026-10-21)
   norton: {
     '--color-status-marked': 'var(--color-active-marked)',
+    '--color-menu-bg': '#028383',
+    '--color-menu-text': '#ffffff',
     '--fnf-activepanel-table-selected-row-fg-color': '#fcfc54',
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
   },

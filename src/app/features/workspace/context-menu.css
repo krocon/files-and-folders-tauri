@@ -9,8 +9,9 @@
   padding: var(--spacing-1) 0;
   list-style: none;
   font-size: var(--font-size-sm);
-  color: var(--color-text);
-  background: var(--color-surface);
+  /* the folder menu of the tab row sets --context-menu-* (tab-bar.css) */
+  color: var(--context-menu-text, var(--color-text));
+  background: var(--context-menu-bg, var(--color-surface));
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popup);
@@ -32,8 +33,8 @@
   /* hover moves the focus (onHover) – one highlight for mouse and keyboard */
   &:focus,
   &[aria-expanded='true'] {
-    color: var(--color-selection-text);
-    background: var(--color-selection);
+    color: var(--context-menu-focus-text, var(--color-selection-text));
+    background: var(--context-menu-focus-bg, var(--color-selection));
     outline: none;
   }
 
@@ -66,7 +67,7 @@ kbd,
   padding: var(--spacing-1) var(--spacing-3) 0;
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: var(--color-muted);
+  color: var(--context-menu-heading, var(--color-muted));
 }
 
 .radio {

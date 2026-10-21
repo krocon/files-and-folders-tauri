@@ -88,6 +88,8 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-splitter-active', 'general', 'Splitter (dragging)'),
   t('--color-backdrop', 'general', 'Dialog backdrop'),
   t('--shadow-popup', 'general', 'Popup shadow', 'shadow'),
+  t('--color-menu-bg', 'general', 'Menu background (Actions menu, folder menu)'),
+  t('--color-menu-text', 'general', 'Menu text (Actions menu, folder menu)'),
 
   t('--color-list-bg', 'list', 'Background'),
   t('--color-list-text', 'list', 'Text'),
