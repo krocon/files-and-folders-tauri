@@ -35,7 +35,9 @@ export type DialogKind =
   | 'mr-import'
   | 'starter-config'
   | 'connections'
-  | 'remote-prompt';
+  | 'remote-prompt'
+  | 'checksum'
+  | 'checksum-result';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

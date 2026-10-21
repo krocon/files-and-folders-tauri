@@ -33,6 +33,10 @@ import { registerGroupFilesActions } from '../groupfiles/groupfiles-actions';
 import { GroupFilesStore } from '../groupfiles/groupfiles.store';
 import { CleanFoldersDialog } from '../cleanfolders/clean-dialog';
 import { registerCleanFoldersActions } from '../cleanfolders/clean-actions';
+import { ChecksumDialog } from '../checksum/checksum-dialog';
+import { ChecksumResultDialog } from '../checksum/checksum-result-dialog';
+import { registerChecksumActions } from '../checksum/checksum-actions';
+import { ChecksumStore } from '../checksum/checksum.store';
 import { CleanFoldersStore } from '../cleanfolders/clean.store';
 import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
@@ -132,6 +136,8 @@ import { RemoteStore } from '../remote/remote.store';
     MultiRenameDialog,
     GroupFilesDialog,
     CleanFoldersDialog,
+    ChecksumDialog,
+    ChecksumResultDialog,
     MultiMkdirDialog,
     ToolConfigDialog,
     StarterDialog,
@@ -179,6 +185,7 @@ export class Workspace implements OnInit {
   private readonly mr = inject(MultiRenameStore);
   private readonly gf = inject(GroupFilesStore);
   private readonly cl = inject(CleanFoldersStore);
+  private readonly cs = inject(ChecksumStore);
   private readonly mm = inject(MultiMkdirStore);
   private readonly os = inject(OsStore);
   protected readonly shell = inject(ShellStore);
@@ -318,6 +325,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerMultiRenameActions(this.actions, this.mr, this.jobs));
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
+    this.destroyRef.onDestroy(registerChecksumActions(this.actions, this.cs));
     this.destroyRef.onDestroy(registerMultiMkdirActions(this.actions, this.mm));
     this.destroyRef.onDestroy(registerOsActions(this.actions, this.os, this.dialogs));
     this.destroyRef.onDestroy(registerShellActions(this.actions, this.shell));

@@ -8,6 +8,7 @@ import { CleanItem, CleanOptions } from '../folders/folders.models';
 import { RenameItem } from '../rename/rename.models';
 import { ApplyTo, AttrChange } from '../attributes/attributes.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
+import { ChecksumAlgo, ChecksumOutput, ChecksumSummary } from '../checksum/checksum.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -129,6 +130,16 @@ export type JobSpec =
     }
   /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
+  /** Checksums of files (design 039); folders recursively, links never followed. */
+  | {
+      readonly kind: 'checksum';
+      readonly paths: readonly string[];
+      readonly baseDir: string;
+      readonly algo: ChecksumAlgo;
+      readonly output: ChecksumOutput;
+    }
+  /** Checks the files named in a checksum file (design 039). */
+  | { readonly kind: 'verifyChecksums'; readonly file: string }
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }
@@ -245,6 +256,8 @@ export interface Summary {
   readonly viewPath?: string | null;
   /** Job `diskUsage` (design 033). */
   readonly diskUsage?: DiskUsageSummary | null;
+  /** Jobs `checksum` / `verifyChecksums` (design 039). */
+  readonly checksums?: ChecksumSummary | null;
 }
 
 export interface JobInfo {

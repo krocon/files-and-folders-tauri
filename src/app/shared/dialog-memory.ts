@@ -2,7 +2,7 @@ import { acceptsValue, SCHEMA } from '../core/settings/settings.models';
 import { SettingsStore } from '../core/settings/settings.store';
 
 /** Tool dialogs that open with the values of their last run (design 027 E5). */
-export type RememberedDialog = 'groupFiles' | 'clean' | 'multiMkdir';
+export type RememberedDialog = 'groupFiles' | 'clean' | 'multiMkdir' | 'checksum';
 
 interface Entry {
   readonly dialog: RememberedDialog;

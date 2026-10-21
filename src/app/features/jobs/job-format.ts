@@ -108,6 +108,8 @@ export const JOB_EN = {
     link: (what: string, target: string, renameTo: string | null) =>
       `Link ${what} → ${target}${renameTo ? ` as ${renameTo}` : ''}`,
     duplicates: (where: string) => `Find duplicates in ${where}`,
+    checksum: (what: string, algo: string) => `${algo} checksums of ${what}`,
+    verifyChecksums: (file: string) => `Verify checksums of ${file}`,
     count: (what: string) => `Count ${what}`,
     dirSize: (path: string) => `Folder size of ${path}`,
     diskUsage: (what: string, rescan: boolean) =>
@@ -178,6 +180,12 @@ export function jobTitle(job: JobInfo): string {
       const c = spec.criteria;
       return t.duplicates(c.roots.length === 1 ? c.roots[0] : t.folders(c.roots.length));
     }
+    case 'checksum': {
+      const n = spec.paths.length;
+      return t.checksum(n === 1 ? spec.paths[0] : t.entries(n), spec.algo.toUpperCase());
+    }
+    case 'verifyChecksums':
+      return t.verifyChecksums(spec.file);
     case 'count':
       return t.count(spec.paths.length === 1 ? spec.paths[0] : t.entries(spec.paths.length));
     case 'dirSize':
