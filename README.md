@@ -45,6 +45,9 @@ without stutter.
   button bar that changes with `Shift` / `Alt` / `Ctrl` (`⌘`)
 - **Tabs** on both sides – clone, drag to reorder or onto the other side (`Ctrl`/`⌥` copies), each tab keeps path,
   sort order, column widths and cursor
+- **Panel actions** like Total Commander – swap the panels (`Ctrl+U` / `⌘U`, with all tabs `Ctrl+Shift+U`),
+  *target = source* (`Ctrl+Alt+O` / `⌘⌥O`), open the folder under the cursor in the left/right panel
+  (`Ctrl+←/→` / `⌘⌥←/→`)
 - **Session restore** – tabs, active side, splitter, favourites and window position survive a restart
 - **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
   (*Go to anything*) finds every action
@@ -176,6 +179,8 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Mark / unmark | `Space`, `Insert` | `Space` |
 | Switch panel | `Tab` | `Tab` |
 | New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |
+| Swap panels (with all tabs) | `Ctrl+U` (`Ctrl+Shift+U`) | `⌘U` (`⌘⇧U`) |
+| Target = source / open in other panel | `Ctrl+Alt+O` / `Ctrl+←`, `Ctrl+→` | `⌘⌥O` / `⌘⌥←`, `⌘⌥→` |
 | Move tab left / right | `Ctrl+Shift+PgUp` / `Ctrl+Shift+PgDn` | `⌃⇧PgUp` / `⌃⇧PgDn` |
 | Create link | `Ctrl+Shift+F5` | `⌘⇧F5` |
 | Go to path | `Ctrl+L` | `⌘L` |

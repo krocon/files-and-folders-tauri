@@ -129,6 +129,53 @@ describe('workspace actions', () => {
     expect(ws.isFavorite('/h')).toBe(true);
   });
 
+  it('swaps the selected tabs of both sides, the active side keeps the focus (design 040)', async () => {
+    const [h, x] = ws.panels().left.tabs;
+    const r = ws.panels().right.tabs[0];
+    await actions.run('SWAP_PANELS');
+    expect(ws.panels().left.tabs).toEqual([r, x]);
+    expect(ws.panels().right.tabs).toEqual([h]);
+    expect(ws.activeSide()).toBe('left');
+    expect(ws.focusRequest()?.side).toBe('left');
+    await actions.run('SWAP_PANELS');
+    expect(ws.panels().left.tabs).toEqual([h, x]);
+    expect(ws.panels().right.tabs).toEqual([r]);
+  });
+
+  it('swaps both tab bars as a whole (design 040)', async () => {
+    await actions.run('NEXT_TAB');
+    const left = ws.panels().left;
+    const right = ws.panels().right;
+    await actions.run('SWAP_PANELS_WITH_TABS');
+    expect(ws.panels()).toEqual({ left: right, right: left });
+    expect(ws.panels().right.activeTab).toBe(1);
+    expect(ws.activeSide()).toBe('left');
+  });
+
+  it('target = source: the other side opens the folder of the active one (design 040)', async () => {
+    await actions.run('TARGET_EQUALS_SOURCE');
+    expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/h' });
+    expect(ws.activeSide()).toBe('left');
+  });
+
+  it('Ctrl+←/→ opens the cursor folder in the named side, a file its folder (design 040)', async () => {
+    ctrl.moveCursorTo('/h/Sub');
+    await actions.run('OPEN_CURSOR_IN_RIGHT');
+    expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/h/Sub' });
+    expect(ws.activeSide()).toBe('left');
+    ctrl.moveCursorTo('/h/a.txt');
+    await actions.run('OPEN_CURSOR_IN_RIGHT');
+    expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/h' });
+    // the named side is the active one: a file does nothing, a folder opens like Enter
+    const before = ws.navigateRequest();
+    await actions.run('OPEN_CURSOR_IN_LEFT');
+    expect(ws.navigateRequest()).toBe(before);
+    expect(store.path()).toBe('/h');
+    ctrl.moveCursorTo('/h/Sub');
+    await actions.run('OPEN_CURSOR_IN_LEFT');
+    await vi.waitFor(() => expect(store.path()).toBe('/h/Sub'));
+  });
+
   it('opens the dialogs', async () => {
     await actions.run('OPEN_COMMAND_PALETTE');
     expect(dialogs.open()).toBe('palette');

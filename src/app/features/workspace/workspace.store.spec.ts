@@ -119,6 +119,29 @@ describe('WorkspaceStore', () => {
     expect(paths('right')).toEqual(['/b']);
   });
 
+  it('swaps the selected tabs of both sides by id, the other tabs stay (design 040)', () => {
+    ws.selectTab('left', 1);
+    const b = ws.activeTab('left');
+    const r = ws.activeTab('right');
+    ws.swapActiveTabs();
+    expect(paths('left')).toEqual(['/a', '/r', '/c']);
+    expect(paths('right')).toEqual(['/b']);
+    expect(ws.activeTab('left')).toBe(r);
+    expect(ws.activeTab('right')).toBe(b);
+    expect(ws.panels().left.activeTab).toBe(1);
+    // the session keeps the swap
+    expect(ws.snapshot().panels.right.tabs[0].id).toBe(b.id);
+  });
+
+  it('swaps both tab bars with their selected tabs (design 040)', () => {
+    ws.selectTab('left', 2);
+    ws.swapSides();
+    expect(paths('left')).toEqual(['/r']);
+    expect(paths('right')).toEqual(['/a', '/b', '/c']);
+    expect(ws.activeTab('right').path).toBe('/c');
+    expect(ws.activeSide()).toBe('left');
+  });
+
   it('clones a tab into the other side', () => {
     ws.cloneTabToOther('left', 0);
     expect(paths('left')).toEqual(['/a', '/b', '/c']);

@@ -7,7 +7,7 @@ Phasen vom Design über Rust- und Frontend-Tests bis zur Ende-zu-Ende-Prüfung u
 **So startet man einen Prompt:** neue Sitzung im Repo, dann z. B.
 „Lies `prompts/000-arbeitsweise.md` und führe `prompts/031-apple.md` aus.“
 
-**Erledigte Prompts** (001–022, 024–026, 028–034, je Auftrag + `*.design.md`) liegen unter [`done/`](done/). Die Design-Dokumente
+**Erledigte Prompts** (001–022, 024–026, 028–034, 040, je Auftrag + `*.design.md`) liegen unter [`done/`](done/). Die Design-Dokumente
 bleiben Referenz: Kürzel wie „029 E11“ oder „G1–G14“ in Code und Doku verweisen auf ihre Entscheidungen.
 
 Herkunft: Analyse der alten Versionen – `docs/legacy-analysis.md` (AngularJS/Node 2016, `node-files-and-folders-*`)
@@ -62,14 +62,14 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 037 | [037-dateien-vergleichen.md](037-dateien-vergleichen.md) | Dateien vergleichen: Text-Diff nebeneinander (nur lesend), Binär als Hex mit Abweichungen, alternativ externes Tool `diff` mit zwei Pfaden | 010, 011 | M |
 | 038 | [038-flache-ansicht.md](038-flache-ansicht.md) | Flache Ansicht (TC Strg+B): alle Dateien unterhalb des Ordners in einer Liste mit Pfad-Spalte, alle Operationen darauf | 001, 003, 005/006, 009 | M |
 | 039 | [039-pruefsummen.md](039-pruefsummen.md) | Prüfsummen erzeugen/prüfen (SHA-256/512, SHA-1, MD5; GNU/BSD-Format) als Jobs, Prüfsumme in die Zwischenablage | 005, 010, 016 | S–M |
-| 040 | [040-panel-aktionen.md](040-panel-aktionen.md) | Panel-Aktionen: Seiten tauschen (auch mit allen Tabs), Ziel = Quelle, Ordner unter dem Cursor in der linken/rechten Seite öffnen (TC Strg+U, Strg+←/→) | 002, 004, 014, 031 | S |
+| 040 | [040-panel-aktionen.md](done/040-panel-aktionen.md) | Panel-Aktionen: Seiten tauschen (auch mit allen Tabs), Ziel = Quelle, Ordner unter dem Cursor in der linken/rechten Seite öffnen (TC Strg+U, Strg+←/→) | 002, 004, 014, 031 | S |
 | 041 | [041-spalten-ansichten.md](041-spalten-ansichten.md) | Spaltenauswahl (ein-/ausblenden, Reihenfolge, Breiten bleiben), Datumsspalte für US-Format, Kurzansicht und Miniaturen – soweit die GuiExpert Table es trägt | 001, 010, 015 | M–L |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
 ## Nächste Prompts (Stand 21.10.2026)
 
-Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: **040** (Panel-Aktionen, S) → **027** (Persistenz,
+Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: ~~040~~ (Panel-Aktionen, erledigt) → **027** (Persistenz,
 S–M) → **039** (Prüfsummen, S–M) → **037** (Dateien vergleichen, M) → **038** (Flache Ansicht, M) → **036** (Ordner
 synchronisieren, L) → **035** (Archive bearbeiten, L) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
 Table). Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.
@@ -110,4 +110,4 @@ Erledigte Prompts hier abhaken; das Design-Dokument bleibt als Entscheidungsprot
 
 - [x] Phase 1 – Walking Skeleton (vor den Prompts, `docs/roadmap.md`)
 - [x] 001 (Performance auf dem Mac nachmessen; Lücken G1–G14 an `mono/TODO.md` melden) · [x] 002 · [x] 003 · [x] 004 · [x] 005 · [x] 006 · [x] 007 · [x] 008 · [x] 009 · [x] 010 · [x] 011 ·
-  [x] 012 (Ziehen ins System → 028) · [x] 013 · [x] 014 · [x] 015 (Button-Editor, Spaltenauswahl, weitere Sprachen offen) · [x] 016 (7z, Passwörter, in Archive schreiben offen) · [x] 017 (Workflows als Vorlage in `docs/ci/`, Signierung nur vorbereitet, Lizenz offen) · [x] 018 (Matrix + kleine Lücken; Folge-Prompts 021–028 vorgeschlagen; macOS/Windows-Durchlauf bei Marc) · [x] 019 · [x] 020 · [x] 021 (Pipes statt PTY; Dateinamen-Vervollständigung, Windows-Ausführung in der CI und macOS-`PATH` bei Marc offen) · [x] 029 (Branch `feat/reaktionsfaehig-bei-jobs`; macOS-Test am echten langsamen Laufwerk bei Marc offen) · [x] 030 (`getattrlistbulk` auf SMB ohne Gewinn – ausgebaut) · [x] 028 (Ziehen ins System; macOS/Windows bei Marc bzw. in der CI offen) · [x] 022 (Vollbild unter macOS/Windows nur per CI/Marc prüfbar) · ~~023~~ verworfen · [x] 024 (Eigentümer/Gruppe offen; macOS/Windows-Code erst in der CI) · [x] 025 (in Archive schreiben → Folge-Prompt; RAR-/7z-Code auf macOS/Windows erst in der CI) · [x] 026 · [x] 031 (Verschieben ins System bewusst nicht) · [x] 032 (Starter-Menü; macOS/Windows bei Marc) · [x] 033 (Speicherbelegung; macOS-Firmlinks/Windows bei Marc, externes Review eingearbeitet) · [x] 034 (Server-Verbindungen; Schlüsselbund macOS/Windows und Herkunftsmarke bei Marc, externes Review eingearbeitet) – 022–031 mit externem Review und behobenen Befunden (Abschnitte „Externes Review“ in den Designs)
+  [x] 012 (Ziehen ins System → 028) · [x] 013 · [x] 014 · [x] 015 (Button-Editor, Spaltenauswahl, weitere Sprachen offen) · [x] 016 (7z, Passwörter, in Archive schreiben offen) · [x] 017 (Workflows als Vorlage in `docs/ci/`, Signierung nur vorbereitet, Lizenz offen) · [x] 018 (Matrix + kleine Lücken; Folge-Prompts 021–028 vorgeschlagen; macOS/Windows-Durchlauf bei Marc) · [x] 019 · [x] 020 · [x] 021 (Pipes statt PTY; Dateinamen-Vervollständigung, Windows-Ausführung in der CI und macOS-`PATH` bei Marc offen) · [x] 029 (Branch `feat/reaktionsfaehig-bei-jobs`; macOS-Test am echten langsamen Laufwerk bei Marc offen) · [x] 030 (`getattrlistbulk` auf SMB ohne Gewinn – ausgebaut) · [x] 028 (Ziehen ins System; macOS/Windows bei Marc bzw. in der CI offen) · [x] 022 (Vollbild unter macOS/Windows nur per CI/Marc prüfbar) · ~~023~~ verworfen · [x] 024 (Eigentümer/Gruppe offen; macOS/Windows-Code erst in der CI) · [x] 025 (in Archive schreiben → Folge-Prompt; RAR-/7z-Code auf macOS/Windows erst in der CI) · [x] 026 · [x] 031 (Verschieben ins System bewusst nicht) · [x] 032 (Starter-Menü; macOS/Windows bei Marc) · [x] 033 (Speicherbelegung; macOS-Firmlinks/Windows bei Marc, externes Review eingearbeitet) · [x] 040 (Panel-Aktionen; macOS/Windows bei Marc) · [x] 034 (Server-Verbindungen; Schlüsselbund macOS/Windows und Herkunftsmarke bei Marc, externes Review eingearbeitet) – 022–031 mit externem Review und behobenen Befunden (Abschnitte „Externes Review“ in den Designs)

@@ -9,7 +9,8 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * Download (HTTP transport), Server Shell (the terminal is a tool), Theme
  * Configuration (same dialog as the theme editor), File Type and Prompt
  * Configuration (no such configuration yet). Added: Find Duplicates, Shortcuts,
- * Connect to Server (034, next to Change Dir – it is a way to go somewhere).
+ * Connect to Server (034, next to Change Dir – it is a way to go somewhere), Swap Panels and
+ * Target = Source (040, next to the panel entries).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
@@ -42,6 +43,8 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'SELECT_LEFT_PANEL',
     'SELECT_RIGHT_PANEL',
     'TOGGLE_PANEL',
+    'SWAP_PANELS',
+    'TARGET_EQUALS_SOURCE',
     '-',
     'CLONE_TAB',
     'CLOSE_TAB',

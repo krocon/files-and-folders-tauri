@@ -4,6 +4,8 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { MAX_TABS, otherSide, WorkspaceStore } from '../workspace/workspace.store';
 import { TEXTS } from '../workspace/texts';
+import { transferPath } from '../workspace/panel-transfer-logic';
+import { Side } from '../../core/session/session.models';
 
 /**
  * Handlers of everything that exists after prompts 001/004/002. Later prompts
@@ -39,6 +41,33 @@ export function registerWorkspaceActions(
     if (ws.placeTab(id, to, ws.panels()[to].tabs.length, copy) !== null) {
       ws.setActive(to);
       ws.requestFocus(to);
+    }
+  };
+
+  /** Folder for the other side (design 040): the entry under the cursor or the shown folder. */
+  const transferTarget = () => {
+    const store = panel()?.store;
+    if (!store) {
+      return null;
+    }
+    return transferPath(list()?.cursorEntry(), {
+      folder: ws.actionDir(),
+      inArchive: store.archive() !== null,
+      onServer: store.remote() !== null,
+    });
+  };
+  /** Ctrl+←/→: the named side opens it; the named side being the active one is Enter. */
+  const transferTo = (to: Side) => {
+    if (to === ws.activeSide()) {
+      const path = transferTarget();
+      if (path !== null && path === list()?.cursorEntry()?.path) {
+        list()?.openCursor();
+      }
+      return;
+    }
+    const path = transferTarget();
+    if (path !== null) {
+      ws.requestNavigate(to, path);
     }
   };
 
@@ -186,6 +215,36 @@ export function registerWorkspaceActions(
       enabled: () => (panel()?.store.path() ?? null) !== null,
     },
     SPLITTER_RESET: { run: () => ws.setSplitter(0.5) },
+    // design 040: Total Commander Ctrl+U, Ctrl+Shift+U, "Target = Source", Ctrl+←/→
+    SWAP_PANELS: {
+      run: () => {
+        ws.swapActiveTabs();
+        focusActive();
+      },
+    },
+    SWAP_PANELS_WITH_TABS: {
+      run: () => {
+        ws.swapSides();
+        focusActive();
+      },
+    },
+    TARGET_EQUALS_SOURCE: {
+      run: () => {
+        const path = ws.actionDir();
+        if (path !== null) {
+          ws.requestNavigate(otherSide(ws.activeSide()), path);
+        }
+      },
+      enabled: () => ws.actionDir() !== null,
+    },
+    OPEN_CURSOR_IN_LEFT: {
+      run: () => transferTo('left'),
+      enabled: () => transferTarget() !== null,
+    },
+    OPEN_CURSOR_IN_RIGHT: {
+      run: () => transferTo('right'),
+      enabled: () => transferTarget() !== null,
+    },
     OPEN_COMMAND_PALETTE: { run: () => dialogs.show('palette') },
     OPEN_CALL_ACTION_DLG: { run: () => dialogs.show('call-action') },
     OPEN_SHORTCUT_DLG: { run: () => dialogs.show('shortcuts') },

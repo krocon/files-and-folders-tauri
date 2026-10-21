@@ -36,13 +36,13 @@
   Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) und
   Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) und Prompt 033
   (Speicherbelegung: Scan als Job `diskUsage`, Tab „Belegung“, Ringe/Kacheln, Sammelkorb, `Mod+Shift+D`) und Prompt 034
-  (Server-Verbindungen FTP/FTPS/SFTP: Pfade `remote://<profil>/…`, Passwörter nur im Schlüsselbund, `Mod+K`) sind
-  fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: 027 (Persistenz je
-  Ordner) und „Archive bearbeiten“ (noch zu schreiben), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
+  (Server-Verbindungen FTP/FTPS/SFTP: Pfade `remote://<profil>/…`, Passwörter nur im Schlüsselbund, `Mod+K`) und Prompt
+  040 (Panel-Aktionen: Seiten tauschen, Ziel = Quelle, Strg+←/→) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 027, 035–039, 041
+  (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034 und 040 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und

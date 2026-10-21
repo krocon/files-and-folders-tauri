@@ -369,6 +369,29 @@ export class WorkspaceStore {
     }
   }
 
+  /**
+   * Total Commander Ctrl+U (design 040): the selected tabs of both sides change
+   * places – with id, history, cursor, filter and result – so each panel shows the
+   * other's folder. The active side stays the active one.
+   */
+  swapActiveTabs(): void {
+    this.panels.update(({ left, right }) => {
+      const l = activeTabOf(left);
+      const r = activeTabOf(right);
+      const replace = (p: PanelTabs, tab: TabState): PanelTabs => {
+        const tabs = [...p.tabs];
+        tabs[Math.min(p.activeTab, p.tabs.length - 1)] = tab;
+        return { ...p, tabs };
+      };
+      return { left: replace(left, r), right: replace(right, l) };
+    });
+  }
+
+  /** Total Commander Ctrl+Shift+U (design 040): both tab bars change sides as a whole. */
+  swapSides(): void {
+    this.panels.update(({ left, right }) => ({ left: right, right: left }));
+  }
+
   /** Moves a tab one place to the left (`-1`) or right (`+1`) within its side. */
   moveTab(side: Side, index: number, delta: -1 | 1): void {
     this.updatePanel(side, (p) => {
