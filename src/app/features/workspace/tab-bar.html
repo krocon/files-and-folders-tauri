@@ -111,6 +111,7 @@
 
 @if (folderMenuOpen(); as fm) {
   <app-context-menu
+    class="folder-dropdown"
     [items]="folderMenuItems()"
     [x]="fm.x"
     [y]="fm.y"

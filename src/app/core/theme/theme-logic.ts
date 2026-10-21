@@ -442,6 +442,7 @@ const ICON_GROUPS: readonly (readonly [string, string])[] = [
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-text', '--color-bg', 'Text on the window'),
   p('--color-text', '--color-surface', 'Text on surfaces'),
+  p('--color-menu-text', '--color-menu-bg', 'Menus (Actions menu, folder menu)'),
   p('--color-muted', '--color-surface', 'Muted text'),
   p('--color-muted', '--color-bg', 'Muted text on the window'),
   p('--color-accent', '--color-surface', 'Accent as text'),

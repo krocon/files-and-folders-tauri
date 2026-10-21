@@ -24,6 +24,8 @@
     "--color-splitter-active": "#7fb2ff",
     "--color-backdrop": "rgb(0 0 0 / 25%)",
     "--shadow-popup": "0 4px 16px rgb(0 0 0 / 18%)",
+    "--color-menu-bg": "var(--color-surface)",
+    "--color-menu-text": "var(--color-text)",
     "--color-list-bg": "var(--color-surface)",
     "--color-list-text": "var(--color-text)",
     "--color-list-border": "var(--color-border)",

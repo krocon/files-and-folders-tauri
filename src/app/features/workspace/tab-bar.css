@@ -199,3 +199,14 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/* folder menu: colours of the Actions menu (--color-menu-*), not of the context menus */
+.folder-dropdown {
+  --context-menu-bg: var(--color-menu-bg);
+  --context-menu-text: var(--color-menu-text);
+  /* headings in menu text: --color-muted is checked only against the surface */
+  --context-menu-heading: var(--color-menu-text);
+  /* highlight as in the Actions menu: --color-selection may equal the menu colour (Norton) */
+  --context-menu-focus-bg: var(--color-row-hover);
+  --context-menu-focus-text: var(--color-menu-text);
+}
