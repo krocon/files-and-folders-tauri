@@ -121,6 +121,47 @@ describe('ButtonBar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('Start ▴ left of Actions: badge Alt+S, starter entries above the button (design 032)', async () => {
+    const { fixture, el, actions } = await render();
+    const ran: string[] = [];
+    actions.setExtras(
+      [
+        {
+          id: 'starter:code',
+          label: 'VS Code',
+          shortcut: 'Alt+Shift+1',
+          enabled: () => true,
+          run: () => void ran.push('code'),
+        },
+      ],
+      'starter',
+    );
+    actions.starterTree.set([{ kind: 'item', id: 'starter:code' }]);
+    const tools = [...el.querySelectorAll<HTMLButtonElement>('.tools .fbtn')];
+    expect(tools[0].classList.contains('start-toggle')).toBe(true);
+    expect(tools[1].classList.contains('actions-toggle')).toBe(true);
+    const start = tools[0];
+    expect([...start.children].map((c) => c.textContent?.trim())).toEqual(['Alt+S', 'Start', '']);
+    expect(start.title).toBe('Starter menu (Alt+S)');
+    start.click();
+    fixture.detectChanges();
+    expect(start.getAttribute('aria-expanded')).toBe('true');
+    const menu = el.querySelector('[role="menu"]')!;
+    expect(menu.getAttribute('aria-label')).toBe('Starter menu');
+    const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.map((i) => i.querySelector('.label, span')?.textContent?.trim())).toEqual([
+      'VS Code',
+      'Change starter menu…',
+    ]);
+    expect(items[0].textContent).toContain('Alt+Shift+1');
+    items[0].click();
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    expect(ran).toEqual(['code']);
+    expect(el.querySelector('[role="menu"]')).toBeNull();
+    expect(start.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('opens the Actions menu with four columns', async () => {
     const { fixture, el } = await render();
     el.querySelector<HTMLButtonElement>('.actions-toggle')!.click();
