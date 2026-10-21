@@ -36,6 +36,15 @@ trash = { version = "5.2.9", default-features = false, features = ["coinit_apart
 unrar-ng-sys = { version = "=0.7.7", optional = true }
 zeroize = "1.9"
 zip = { version = "9.0.5", default-features = false, features = ["aes-crypto", "deflate-flate2"] }
+# design 034 E2: server connections – FTP/FTPS (sync, rustls with ring: no OpenSSL), SFTP in pure Rust,
+# certificates checked by the OS, secrets only in the system keychain
+suppaftp = { version = "12.2", default-features = false, features = ["rustls-ring", "deprecated"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.7"
+russh = { version = "0.64", default-features = false, features = ["ring", "flate2", "rsa"] }
+russh-sftp = "3"
+keyring-core = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "time", "net", "sync", "io-util", "macros"] }
 
 [features]
 default = ["rar"]
@@ -44,6 +53,11 @@ rar = ["dep:unrar-ng-sys"]
 
 [dev-dependencies]
 tempfile = "3"
+# design 034: in-process FTP(S) server for the tests
+libunftp = "0.23"
+unftp-sbe-fs = "0.4"
+unftp-core = "0.1"
+async-trait = "0.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -52,11 +66,19 @@ libc = "0.2"
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 
+# design 034 E3: keychain of the OS (Secret Service over the dbus crate that is already in the tree)
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+dbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain"] }
+
 # design 028 E4: native drag source on macOS/Windows
 [target.'cfg(any(target_os = "macos", windows))'.dependencies]
 drag = "2.1.1"
 
 [target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = { version = "1.1", default-features = false }
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Globalization",

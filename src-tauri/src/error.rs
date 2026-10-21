@@ -80,6 +80,30 @@ pub enum FsErrorCode {
     ScanNotFound,
     /// A part of the disk-usage scan is being scanned again (design 033 E4).
     ScanBusy,
+    /// Server connections (design 034): the profile is not connected (or the connection was closed).
+    RemoteNotConnected,
+    /// The server refused the login (user, password, key).
+    RemoteAuthFailed,
+    /// The server could not be reached (name, refused, network).
+    RemoteUnreachable,
+    /// The server did not answer in time.
+    RemoteTimeout,
+    /// The connection broke during an operation.
+    RemoteConnectionLost,
+    /// The SSH host key differs from the one recorded (possible attack) – refused.
+    RemoteHostKeyChanged,
+    /// The server answered with an error (code in the message).
+    RemoteProtocol,
+    /// The operation is not possible on a server (e.g. trash).
+    RemoteUnsupported,
+    /// The system keychain is not available (no Secret Service, locked, error).
+    KeychainUnavailable,
+    /// A connection profile is invalid.
+    InvalidProfile,
+    /// A server address (`sftp://…`) could not be read.
+    InvalidUrl,
+    /// The connection profile does not exist (any more).
+    UnknownProfile,
     Io,
 }
 
@@ -98,6 +122,15 @@ impl FsError {
             code,
             message: message.into(),
             path: path.map(|p| p.to_string_lossy().into_owned()),
+        }
+    }
+
+    /// An error for a path given as text (server paths `remote://…`, design 034).
+    pub fn at(code: FsErrorCode, message: impl Into<String>, path: &str) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            path: Some(path.to_string()),
         }
     }
 

@@ -65,4 +65,23 @@ pub struct DirectoryListing {
     /// The folder is on a network drive (design 030 E6): the frontend caches its listing.
     #[serde(default)]
     pub network: bool,
+    /// Set when the listing is a folder on a server (design 034 E1): `path` and the
+    /// entry paths are `remote://<profile>/…` then.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote: Option<RemoteInfo>,
+}
+
+/// The server of a listing (design 034): shown in the panel header.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteInfo {
+    pub profile_id: String,
+    /// The profile's name.
+    pub name: String,
+    /// `ftp` | `ftpsExplicit` | `ftpsImplicit` | `sftp`
+    pub kind: crate::remote::profiles::RemoteKind,
+    /// Password and data travel encrypted (not plain FTP).
+    pub encrypted: bool,
+    /// `Name: /server/path` for the header.
+    pub display: String,
 }

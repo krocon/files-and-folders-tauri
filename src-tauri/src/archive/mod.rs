@@ -973,6 +973,7 @@ pub fn list_index(
             password_known: secrets::known(archive),
         }),
         network: false,
+        remote: None,
     })
 }
 

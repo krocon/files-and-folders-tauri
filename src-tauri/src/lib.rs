@@ -29,6 +29,8 @@
 //! - [`app_menu`]     native menu bar from the frontend's menu model (design 014)
 //! - [`buttons`], [`filetypes`] user files of the button bar and the file type categories (design 022)
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
+//! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
+//! - [`secret`]       secret texts (passwords) – never printed or serialised
 //! - [`commands`]     thin Tauri command layer
 
 pub mod about;
@@ -58,8 +60,10 @@ pub mod paths;
 pub mod platform;
 pub mod preview;
 pub mod properties;
+pub mod remote;
 pub mod rename_presets;
 pub mod search;
+pub mod secret;
 pub mod session;
 pub mod settings;
 pub mod shell;
