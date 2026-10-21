@@ -31,7 +31,8 @@ export const USAGE_DE: Translation<typeof USAGE_EN> = {
   up: 'Eine Ebene hinauf',
   tipSize: (allocated, logical) => `${allocated} belegt · ${logical} Größe`,
   tipShare: (pct) => `${pct} des gezeigten Ordners`,
-  tipObjects: (files, dirs) => `${formatCount(files)} Dateien, ${formatCount(dirs)} Ordner`,
+  tipObjects: (files, dirs) =>
+    `${files === 1 ? '1 Datei' : `${formatCount(files)} Dateien`}, ${formatCount(dirs)} Ordner`,
   mountNote: 'anderes Laufwerk – nicht gescannt',
   unreadableNote: 'nicht lesbar',
   basketTitle: 'Zum Entfernen markiert',

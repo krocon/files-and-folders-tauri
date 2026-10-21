@@ -1,6 +1,6 @@
 # Design 033: Speicherbelegung
 
-> **Status:** freigegeben (Marc, 21.10.2026) – in Arbeit · **Datum:** 21.10.2026 · **Branch:** `feat/speicherbelegung`
+> **Status:** umgesetzt (21.10.2026) – freigegeben von Marc, externes Review eingearbeitet · **Datum:** 21.10.2026 · **Branch:** `feat/speicherbelegung`
 > Auftrag: `prompts/033-speicherbelegung.md`. Neu (kein Gegenstück in legacy/mr) → `docs/feature-parity.md` A.4.
 
 ## Entscheidungen auf einen Blick
@@ -306,3 +306,30 @@ Korb, Windows-Hardlink-Erkennung.
   Windows-Attribut dort nicht); die Umschalter Ringe/Kacheln und „Größte Dateien“ stehen im Menü *Ansicht*; Rename,
   Anlegen, Attribute, Multi-Rename usw. sind im Belegungs-Tab gesperrt (Veto `OFF_IN_USAGE`), Kopieren/Verschieben
   gehen (Verschieben prunt danach wie Löschen).
+- Phase 4 (E2E, Xvfb, Debug-Build): Ordner, Auswahl aus zwei Ordnern (virtuelle Wurzel „Auswahl“) und das ganze
+  Laufwerk `/` des Containers (433 000 Objekte, 21 GB, ≈ 13 s, wächst sichtbar, Laufwerksbalken) gescannt;
+  hinein/hinaus per Enter/Backspace/Brotkrume, Markieren auf zwei Ebenen → Korb → `F8` → Papierkorb, Summen ohne
+  neuen Scan korrekt; eine nach dem Scan geänderte Datei bleibt liegen (Fehler in Tasks); Sparse-Datei 0 B belegt,
+  Hardlink einmal, Symlink 0 B, „Größte Dateien“ mit Ordnerspalte, Ringe und Kacheln mit Tooltip. Dabei behoben:
+  Klick ins Diagramm aktivierte die andere Seite (Diagramm verschwand), Spalten *Ext*/*Geändert* im Belegungs-Tab
+  ausgeblendet (Name hatte keinen Platz), Beschriftungen bleiben im Ring, Köpfe der Ordner-Kacheln, Cursor nach
+  „hinauf“ kommt mit den Zeilen. Dunkles Design per `GTK_THEME` nicht sichtbar geworden (Schema in der Sitzung fest
+  hell) – Tokens für dark/crimson geprüft nur per Test.
+
+## Externes Review (separater Agent, 21.10.2026) – alle Befunde behoben
+
+| # | Befund | Behebung |
+|---|---|---|
+| 1 hoch | F8 in einem Ordner-Tab, der im selben Panel noch lädt, löschte den Korb des Belegungs-Tabs | `isUsage()` verlangt die Zeilen des Scans im Listing; `leaveResult()` beim Tab-Wechsel; Test |
+| 2 | Nach „Neu scannen“ alte Ids im Korb → verdeckte Einträge gelöscht | Markierungen unterhalb des neu gescannten Ordners fallen weg; Test |
+| 3 | Rescan neben dem ersten Walk, Batches entfernter Ordner zählten weiter | Rust: Rescan nur nach dem Walk (`scan_busy`), `add_entries`/`set_dir_self`/… ignorieren entfernte Ordner; Tests |
+| 4 | Windows: jeder Reparse-Point als Link | nur `is_symlink()` (Symlink, Junction); bei Marc/CI prüfen |
+| 5 | Graft vergrößert die Arena unbegrenzt | Graft verweigert über `MAX_NODES` (Fehler „neu als Ganzes scannen“); Test |
+| 6 | Verdrängter Scan: Tab mit Korb, Prune scheitert | `scan_not_found` leert Zeilen und Korb; Test |
+| 7 | Pfade unter nicht-UTF-8-Ordnern verlustbehaftet | Rust markiert sie `lossyName`, Frontend schickt sie nie an Rust (virtueller Pfad, nur per Id navigierbar); Tests |
+| 8 | Markierung bei gleichzeitiger Abfrage verloren | Effekt Markierungen → Korb läuft vor dem Anzeigen |
+| 9 | „Größte Dateien“ ohne vollständige Ahnen | `UsageFile.ancestors` aus Rust; Test |
+| 10 | Abgebrochener Job nahm Einträge aus dem Korb | `prune` liefert die wirklich entfernten Pfade, nur die gehen; Test |
+| 11 | Fremdes Laufwerk (0 B) markier- und löschbar | Zeilen `mount` haben einen virtuellen Pfad (nicht markierbar, nie an Rust) |
+| 12 | Doku zu `MAX_NODES` falsch | Kommentar korrigiert (Ordner über dem Limit werden gezählt, ihr Inhalt fehlt) |
+| 13 | Synthetische Zeile ziehbar | `dragSources` filtert virtuelle Pfade; Test |

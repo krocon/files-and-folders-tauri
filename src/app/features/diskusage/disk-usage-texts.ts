@@ -33,7 +33,7 @@ export const USAGE_EN = {
   tipSize: (allocated: string, logical: string) => `${allocated} on disk · ${logical} size`,
   tipShare: (pct: string) => `${pct} of the shown folder`,
   tipObjects: (files: number, dirs: number) =>
-    `${formatCount(files)} files, ${formatCount(dirs)} folders`,
+    `${files === 1 ? '1 file' : `${formatCount(files)} files`}, ${dirs === 1 ? '1 folder' : `${formatCount(dirs)} folders`}`,
   mountNote: 'other drive – not scanned',
   unreadableNote: 'could not be read',
   // basket
