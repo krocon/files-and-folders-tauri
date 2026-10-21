@@ -17,6 +17,7 @@
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
 //! - [`themes`]       colour schemes file, import/export of scheme files
+//! - [`starter`]      starter menu (`starter.json`, TC placeholders, design 032)
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
 //! - [`watch`]        watching the shown folders (debounced, incremental, polling fallback)
@@ -61,6 +62,7 @@ pub mod search;
 pub mod session;
 pub mod settings;
 pub mod shell;
+pub mod starter;
 pub mod test_slow;
 pub mod themes;
 pub mod tools;
@@ -87,6 +89,7 @@ pub fn run() {
         .manage(commands::shell::ShellState::default())
         .manage(commands::config::ButtonsState::default())
         .manage(commands::config::FileTypesState::default())
+        .manage(commands::starter::StarterState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -255,6 +258,9 @@ pub fn run() {
             commands::config::load_file_types,
             commands::config::save_file_types,
             commands::config::toggle_fullscreen,
+            commands::starter::load_starter,
+            commands::starter::save_starter,
+            commands::starter::run_starter,
             commands::mr_import::scan_old_config,
             commands::mr_import::apply_old_config
         ])
