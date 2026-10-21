@@ -367,6 +367,26 @@ prompts/                     Feature-Prompts (s. o.)
   `export CARGO_INCREMENTAL=0`, `target/release` nach Messungen löschen, `df -h /` im Blick. Eigene Xvfb-Displays je
   Worktree, Prozesse nur per PID beenden. Offene Punkte für die nächste Sitzung: `TODO.md`.
 
+**Farbschemata ändern (Rezept, `src/app/core/theme/`)**
+- Drei Arten: eingebaute `themes/{light,dark,crimson}.json` (light/dark = `src/styles.css`, Test prüft Gleichheit);
+  die acht alten Designs `legacy/<name>.json` (= `docs/legacy-themes/`, **nie ändern**) → Ids `classic-<name>`.
+- **Ein altes Design anpassen** (z. B. „Norton“ ≠ `crimson`!): nur `legacy-tweaks.ts`, Eintrag `<name>` –
+  `--color-*` setzt App-Tokens nach der Umrechnung, `--fnf-*` ersetzt alte Variablen davor; gilt auch für Importe
+  gleichen Namens. Test in `legacy-theme.spec.ts` („fill the gaps of the old files“) ergänzen.
+- **Neues Token** (eigene Farbe für ein UI-Teil): `tokens.ts` (`t(name, group, label)`), Default in `styles.css`
+  (`:root`, meist `var(--color-surface)`/`var(--color-text)`), dieselbe Zeile in allen drei `themes/*.json`,
+  deutsches Label in `theme-labels.de.ts`, bei Text/Hintergrund ein Kontrastpaar `p(...)` in `theme-logic.ts`
+  (`CONTRAST_PAIRS`). Alte Designs bekommen Defaults automatisch.
+- Neues Paar/Token ändert `docs/legacy-themes-contrast.md`: neu schreiben mit
+  `UPDATE_LEGACY_REPORT=1 pnpm test`.
+- Komponenten-CSS ist gekapselt: geteilte Komponenten (z. B. `context-menu.css`) über lokale Variablen mit
+  Fallback öffnen (`var(--context-menu-bg, var(--color-surface))`), gesetzt per Klasse am Host (`tab-bar.css`
+  `.folder-dropdown`). Hover/Fokus-Farbe gegen den neuen Hintergrund prüfen (Norton: `--color-selection` ≈ Türkis).
+- Werte eines Designs nachsehen: Wegwerf-Spec mit `expect(keys.map(k => theme.tokens[k])).toEqual([])` und
+  `pnpm exec ng test --watch=false --include <spec>`. Sichtprüfung ohne Tauri:
+  `pnpm screenshots --theme classic-norton,crimson --scene actions-menu,folder-menu,context-menu --out <dir>`
+  (~15 s, Szenen in `scripts/screenshots/scenes.json`).
+
 **Referenzquellen (lesbar ohne Marcs Mac)**
 - Alte Version (AngularJS): `git clone --depth 1 https://github.com/krocon/node-files-and-folders-client` – z. B.
   `src/fnf/commands/multirename/` (Makros, Umlaut-Tabelle, `titleCaps`).
