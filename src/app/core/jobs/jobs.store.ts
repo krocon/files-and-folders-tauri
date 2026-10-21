@@ -71,6 +71,40 @@ export class JobsStore {
   readonly active = computed(() =>
     this.jobs().filter((j) => !isFinished(j.state) && !isHelperJob(j)),
   );
+  /**
+   * Entries a running job takes away (delete, move, clean) with the job's progress
+   * (0–1; `null` while it plans or for a single entry going to the trash) – the lists
+   * show them as "being removed" (design 033, follow-up).
+   */
+  readonly removing = computed<ReadonlyMap<string, number | null>>(() => {
+    const out = new Map<string, number | null>();
+    for (const j of this.jobs()) {
+      if (isFinished(j.state)) {
+        continue;
+      }
+      const s = j.spec;
+      const paths =
+        s.kind === 'delete'
+          ? s.paths
+          : s.kind === 'move'
+            ? s.sources
+            : s.kind === 'clean'
+              ? s.items.map((i) => i.path)
+              : null;
+      if (!paths) {
+        continue;
+      }
+      const p = j.progress;
+      const share =
+        j.state === 'planning' || j.state === 'queued' || p.itemsTotal <= 1
+          ? null
+          : Math.min(1, p.itemsDone / p.itemsTotal);
+      for (const path of paths) {
+        out.set(path, share);
+      }
+    }
+    return out;
+  });
   /** Jobs of the current "batch" for the Tasks button: all not cleared, except helper jobs. */
   readonly visible = computed(() => this.jobs().filter((j) => !isHelperJob(j)));
   /** Jobs waiting for an answer, in start order. */
@@ -364,8 +398,18 @@ export class JobsStore {
   }
 }
 
-/** Folder sizes, the copy dialog's count, searches, duplicate searches and shell commands are not tasks of the user. */
+/**
+ * Folder sizes, the copy dialog's count, searches, duplicate searches, disk-usage scans
+ * and shell commands are not tasks of the user.
+ */
 export function isHelperJob(job: JobInfo): boolean {
   const k = job.spec.kind;
-  return k === 'dirSize' || k === 'count' || k === 'search' || k === 'duplicates' || k === 'shell';
+  return (
+    k === 'dirSize' ||
+    k === 'count' ||
+    k === 'search' ||
+    k === 'duplicates' ||
+    k === 'diskUsage' ||
+    k === 'shell'
+  );
 }

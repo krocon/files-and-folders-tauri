@@ -1,5 +1,11 @@
 import { describeFsError } from '../../core/fs/fs-error';
-import { DirEntry, FsError, FsErrorCode, isParentRow } from '../../core/fs/fs.models';
+import {
+  DirEntry,
+  FsError,
+  FsErrorCode,
+  isParentRow,
+  isVirtualPath,
+} from '../../core/fs/fs.models';
 import type { ExpectedEntry } from '../../core/jobs/jobs.models';
 
 /** What an operation needs to know about a panel. */
@@ -16,12 +22,14 @@ export function selectionForAction(panel: SelectionSource | undefined): readonly
   if (!panel) {
     return [];
   }
-  const marked = panel.markedEntries().filter((e) => !isParentRow(e));
+  // neither ".." nor a synthetic row (disk usage aggregates, design 033)
+  const real = (e: DirEntry) => !isParentRow(e) && !isVirtualPath(e.path);
+  const marked = panel.markedEntries().filter(real);
   if (marked.length > 0) {
     return marked;
   }
   const cursor = panel.cursorEntry();
-  return cursor && !isParentRow(cursor) ? [cursor] : [];
+  return cursor && real(cursor) ? [cursor] : [];
 }
 
 const SERIES = /^([A-Za-z]{1,10})(\d{2,})$/;

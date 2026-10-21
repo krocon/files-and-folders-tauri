@@ -34,13 +34,14 @@
   offen), Prompt 025 (Archive: 7z lesen/packen, RAR lesen, Passwörter nur im Speicher, Einträge ansehen/öffnen über
   einen App-Cache; in Archive schreiben offen), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
   Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) und
-  Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) sind
+  Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) und Prompt 033
+  (Speicherbelegung: Scan als Job `diskUsage`, Tab „Belegung“, Ringe/Kacheln, Sammelkorb, `Mod+Shift+D`) sind
   fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: 027 (Persistenz je
   Ordner) und „Archive bearbeiten“ (noch zu schreiben), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–032 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–033 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -119,6 +120,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              starter-logic.ts (rein: Baum, Einfügen/Anordnen), Editor „Startermenü ändern“, Aktionen
                              OPEN_STARTER_MENU (Alt+S, Popup über `MenuService.openStarter`)/OPEN_STARTER_CONFIG_DLG
   app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
+  app/core/diskusage/        DiskUsageApi (`disk_usage_*`), DTOs (033)
+  app/features/diskusage/    DiskUsageStore (Root: Scans, Ebene/Verlauf/Korb je Scan, Tab `usage:<scanId>`), usage-rows.ts,
+                             basket-logic.ts, chart-layout.ts (Ringe/Kacheln, rein), usage-colors.ts, DiskUsageChart
+                             (andere Seite), Spalten-Renderer, Aktionen OPEN_DISK_USAGE(_VOLUME) + Veto im Tab
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen),
                              OsDragApi (`start_os_drag`: aus dem Fenster in andere Programme, 028)
@@ -187,6 +192,10 @@ src-tauri/                   Rust (Tauri 2)
                              (Passwörter), `view.rs` (App-Cache zum Ansehen), testdata/ (+ Generatoren), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
                              `list_directory_or_archive` (virtuelle Pfade); Jobs `jobs/extract.rs`, `jobs/pack.rs`,
                              `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`
+  src/disk_usage/            Speicherbelegung (033): tree.rs (Arena, Summen, view/largest/locate/remove/graft), walk.rs
+                             (Worker, Gerät+Inode, Gerätemenge), mod.rs (Hub ≤ 3 Scans, Plan, DTOs), tests.rs; Job
+                             `jobs/disk_usage.rs`, Commands `commands/disk_usage.rs`, `platform/disk_usage.rs` (Blöcke,
+                             Volume-Wurzel, macOS-Data-Volume)
   src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt

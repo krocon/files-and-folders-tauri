@@ -2,6 +2,7 @@
 //! blocking file-system work off the async runtime threads.
 
 pub mod config;
+pub mod disk_usage;
 pub mod mr_import;
 pub mod os_drag;
 pub mod shell;
@@ -1485,8 +1486,12 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 7] = [
+    const SOURCES: [(&str, &str); 8] = [
         ("commands.rs", include_str!("commands.rs")),
+        (
+            "commands/disk_usage.rs",
+            include_str!("commands/disk_usage.rs"),
+        ),
         ("commands/config.rs", include_str!("commands/config.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),

@@ -1,4 +1,10 @@
-import { DirEntry, DirectoryListing, isNavigableDir, isParentRow } from '../../core/fs/fs.models';
+import {
+  DirEntry,
+  DirectoryListing,
+  isNavigableDir,
+  isParentRow,
+  isVirtualPath,
+} from '../../core/fs/fs.models';
 import { Side } from '../../core/session/session.models';
 import { translatable } from '../../core/i18n/i18n';
 import { DND_DE } from './dnd-texts.de';
@@ -52,11 +58,12 @@ export function dragSources(
   isMarked: (path: string) => boolean,
   markedEntries: readonly DirEntry[],
 ): readonly DirEntry[] | null {
-  if (!row || isParentRow(row)) {
+  // neither ".." nor a synthetic row of the disk-usage view (review 033 #13)
+  if (!row || isParentRow(row) || isVirtualPath(row.path)) {
     return null;
   }
   if (isMarked(row.path)) {
-    const marked = markedEntries.filter((e) => !isParentRow(e));
+    const marked = markedEntries.filter((e) => !isParentRow(e) && !isVirtualPath(e.path));
     return marked.length > 0 ? marked : [row];
   }
   return [row];

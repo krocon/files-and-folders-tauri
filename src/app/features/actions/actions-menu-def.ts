@@ -61,6 +61,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_GROUPFILES_DLG',
     'OPEN_DELETE_EMPTY_FOLDERS_DLG',
     'OPEN_FIND_DUPLICATES_DLG',
+    'OPEN_DISK_USAGE',
   ],
   [
     'OPEN_SETUP_DLG',

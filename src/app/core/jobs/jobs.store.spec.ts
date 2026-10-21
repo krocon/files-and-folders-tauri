@@ -4,7 +4,7 @@ import { JobsApi } from './jobs-api';
 import { HIT_BUFFER_GRACE_MS, JobsStore } from './jobs.store';
 import { EMPTY_STATS } from '../search/search.models';
 import { entry } from '../../../testing/fs-fixtures';
-import { Summary } from './jobs.models';
+import { EMPTY_PROGRESS, Summary } from './jobs.models';
 
 const copy = { kind: 'copy' as const, sources: ['/a'], targetDir: '/b' };
 const summary = (patch: Partial<Summary> = {}): Summary => ({
@@ -100,6 +100,29 @@ describe('JobsStore', () => {
     expect(store.quitRequest()?.running).toBe(2);
     api.emit({ type: 'removed', ids: ['j0'] });
     expect(store.jobs()).toEqual([]);
+  });
+
+  it('knows the entries running jobs take away, with their progress (design 033 follow-up)', () => {
+    const del = { kind: 'delete' as const, paths: ['/r/a', '/r/b'], mode: 'trash' as const };
+    const mv = { kind: 'move' as const, sources: ['/r/m'], targetDir: '/t' };
+    store.apply({ type: 'added', job: job('j1', del, { state: 'planning' }) });
+    store.apply({ type: 'added', job: job('j2', mv, { state: 'running' }) });
+    store.apply({ type: 'added', job: job('j3', copy, { state: 'running' }) });
+    expect([...store.removing()]).toEqual([
+      ['/r/a', null],
+      ['/r/b', null],
+      ['/r/m', null],
+    ]);
+    store.apply({ type: 'state', id: 'j1', state: 'running' });
+    store.apply({
+      type: 'progress',
+      id: 'j1',
+      progress: { ...EMPTY_PROGRESS, itemsDone: 250, itemsTotal: 1000 },
+    });
+    expect(store.removing().get('/r/a')).toBe(0.25);
+    store.apply({ type: 'finished', id: 'j1', state: 'done', summary: summary() });
+    expect(store.removing().has('/r/a')).toBe(false);
+    expect(store.removing().has('/r/m')).toBe(true);
   });
 
   it('does not count folder sizes as tasks', async () => {

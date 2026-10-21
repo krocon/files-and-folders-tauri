@@ -40,6 +40,7 @@ pub mod clean;
 pub mod commands;
 pub mod config_file;
 pub mod dirsize;
+pub mod disk_usage;
 pub mod duplicates;
 pub mod error;
 pub mod fileops;
@@ -196,6 +197,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_directory,
+            commands::disk_usage::disk_usage_view,
+            commands::disk_usage::disk_usage_largest,
+            commands::disk_usage::disk_usage_locate,
+            commands::disk_usage::disk_usage_prune,
+            commands::disk_usage::disk_usage_release,
             commands::shell::run_shell,
             commands::shell::shell_quote,
             commands::shell::load_shell_history,

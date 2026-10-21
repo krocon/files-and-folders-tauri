@@ -247,3 +247,70 @@
   background-color: var(--color-cursor-bg);
   color: var(--color-cursor-text);
 }
+
+/* disk usage (design 033): share bar + percentage */
+.ge-table .fnf-share {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.ge-table .fnf-share-track {
+  flex: 1;
+  min-width: 2em;
+  height: 0.6em;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-usage-bar) 15%, transparent);
+}
+
+.ge-table .fnf-share-bar {
+  display: block;
+  height: 100%;
+  background: var(--color-usage-bar);
+}
+
+.ge-table .fnf-share-bar.fnf-share-virtual {
+  background: var(--color-usage-rest);
+}
+
+.ge-table .fnf-share-text {
+  flex: none;
+  min-width: 3.5em;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.ge-table .fnf-share-unreadable .fnf-share-text {
+  color: var(--color-usage-unreadable);
+}
+
+/* being removed by a running delete / move / clean (design 033 follow-up): struck through,
+   italic, muted, hatched – the size column shows a spinner and the job's progress */
+.ge-table .fnf-removing {
+  color: var(--color-muted);
+  font-style: italic;
+  text-decoration: line-through;
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-danger) 16%, transparent) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.ge-table .fnf-removing .fnf-size-spinner {
+  margin-right: var(--spacing-1);
+  border-top-color: var(--color-danger);
+  border-right-color: var(--color-danger);
+}
+
+.ge-table .fnf-removing-progress {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ge-table .fnf-removing .fnf-size-spinner {
+    animation: none;
+  }
+}

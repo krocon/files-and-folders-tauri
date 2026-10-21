@@ -59,6 +59,8 @@ pub struct JobManager {
     fs_guard: Mutex<Option<FsGuard>>,
     /// Marks the folders a job writes into (the watcher holds their reloads; design 029 E8).
     target_guard: Mutex<Option<FsGuard>>,
+    /// Trees of the disk-usage scans (design 033).
+    disk_usage: Arc<crate::disk_usage::DiskUsageHub>,
 }
 
 /// Rename jobs that can be undone (design 007 E7).
@@ -75,7 +77,13 @@ impl JobManager {
             undo_log: Mutex::new(VecDeque::new()),
             fs_guard: Mutex::new(None),
             target_guard: Mutex::new(None),
+            disk_usage: Arc::default(),
         })
+    }
+
+    /// The disk-usage scans (design 033).
+    pub fn disk_usage(&self) -> &Arc<crate::disk_usage::DiskUsageHub> {
+        &self.disk_usage
     }
 
     pub fn set_home(&self, home: Option<PathBuf>) {
@@ -337,6 +345,21 @@ impl JobManager {
                     JobSpec::DirSize { path } => {
                         run_dir_size(id, &PathBuf::from(path), &control, &emit)
                     }
+                    JobSpec::DiskUsage {
+                        roots,
+                        volume,
+                        rescan,
+                        options,
+                    } => super::disk_usage::run(
+                        id,
+                        roots,
+                        *volume,
+                        rescan.as_ref(),
+                        options,
+                        &self.disk_usage,
+                        &control,
+                        &emit,
+                    ),
                     JobSpec::Simulate { items, item_ms } => {
                         run_simulate(id, *items, *item_ms, &control, &emit)
                     }
@@ -878,6 +901,7 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             one(target_dir)
         }
         JobSpec::Count { paths } | JobSpec::Attributes { paths, .. } => all(paths.iter_mut()),
+        JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
         JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => one(path),
         JobSpec::Search { .. }
         | JobSpec::Duplicates { .. }
@@ -1076,6 +1100,26 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::DirSize { path } => {
             validate_input_path(path)?;
+        }
+        JobSpec::DiskUsage {
+            roots,
+            volume,
+            rescan,
+            ..
+        } => {
+            if rescan.is_none() && roots.is_empty() {
+                return Err(nothing());
+            }
+            if roots.len() > crate::disk_usage::MAX_ROOTS || (*volume && roots.len() != 1) {
+                return Err(FsError::new(
+                    FsErrorCode::TooMany,
+                    format!("Too many folders (max. {})", crate::disk_usage::MAX_ROOTS),
+                    None,
+                ));
+            }
+            for r in roots {
+                crate::disk_usage::check_root(&validate_input_path(r)?)?;
+            }
         }
         JobSpec::Attributes {
             paths,

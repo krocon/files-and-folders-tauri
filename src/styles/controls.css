@@ -215,3 +215,9 @@
   margin-top: 0;
   min-height: var(--control-height);
 }
+
+/* a toggle button that is on (disk usage: rings/tiles, everything/largest – design 033) */
+.btn[aria-pressed='true'] {
+  color: var(--color-selection-text);
+  background: var(--color-selection);
+}

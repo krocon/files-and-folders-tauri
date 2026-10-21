@@ -1,6 +1,7 @@
 /**
  * Job DTOs. Keep in sync with `src-tauri/src/jobs/mod.rs`.
  */
+import { DiskUsageOptions, DiskUsageSummary } from '../diskusage/disk-usage.models';
 import type { ShellChunk, ShellSummary } from '../shell/shell.models';
 import { ArchiveFormat, DirSize, EntryKind, FsError } from '../fs/fs.models';
 import { CleanItem, CleanOptions } from '../folders/folders.models';
@@ -131,6 +132,17 @@ export type JobSpec =
   /** Counts files, folders and bytes of a selection (copy dialog). */
   | { readonly kind: 'count'; readonly paths: readonly string[] }
   | { readonly kind: 'dirSize'; readonly path: string }
+  /**
+   * Disk usage (design 033): scans `roots` (`volume`: the volume of the first one;
+   * `rescan`: a folder of scan `scanId` again) – the job id is the scan id.
+   */
+  | {
+      readonly kind: 'diskUsage';
+      readonly roots: readonly string[];
+      readonly volume?: boolean;
+      readonly rescan?: { readonly scanId: string; readonly nodeId: number } | null;
+      readonly options?: DiskUsageOptions;
+    }
   /** Debug builds only (load tests). */
   | { readonly kind: 'simulate'; readonly items: number; readonly itemMs: number }
   /**
@@ -231,6 +243,8 @@ export interface Summary {
   readonly destBytes?: Readonly<Record<string, number>>;
   /** Job `viewEntry`: the read-only copy of the entry (design 025 E5). */
   readonly viewPath?: string | null;
+  /** Job `diskUsage` (design 033). */
+  readonly diskUsage?: DiskUsageSummary | null;
 }
 
 export interface JobInfo {

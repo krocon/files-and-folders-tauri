@@ -47,6 +47,8 @@ import { QuickViewStore } from '../preview/quick-view.store';
 import { ViewerDialog } from '../preview/viewer-dialog';
 import { ViewerStore } from '../preview/viewer.store';
 import { registerArchiveActions } from '../archive/archive-actions';
+import { registerDiskUsageActions } from '../diskusage/disk-usage-actions';
+import { DiskUsageStore } from '../diskusage/disk-usage.store';
 import { ArchiveStore } from '../archive/archive.store';
 import { PackDialog } from '../archive/pack-dialog';
 import { UnpackDialog } from '../archive/unpack-dialog';
@@ -161,6 +163,7 @@ import { MenuApi } from '../../core/menu/menu-api';
 export class Workspace implements OnInit {
   protected readonly act = ACT_TEXTS;
   private readonly settings = inject(SettingsStore);
+  private readonly diskUsage = inject(DiskUsageStore);
   protected readonly ws = inject(WorkspaceStore);
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
@@ -311,6 +314,9 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
+    this.destroyRef.onDestroy(
+      registerDiskUsageActions(this.actions, this.ws, this.diskUsage, this.jobs, this.settings),
+    );
     this.destroyRef.onDestroy(registerAttributesActions(this.actions, this.attrs));
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));

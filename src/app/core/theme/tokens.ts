@@ -16,7 +16,8 @@ export type TokenGroup =
   | 'shell'
   | 'dialog'
   | 'scrollbar'
-  | 'tooltip';
+  | 'tooltip'
+  | 'usage';
 
 /** `color` gets a colour picker; the others only a text field. */
 export type TokenKind = 'color' | 'length' | 'font' | 'shadow';
@@ -42,6 +43,7 @@ const GROUP_LABELS_EN: Readonly<Record<TokenGroup, string>> = {
   dialog: 'Dialogs',
   scrollbar: 'Scrollbar',
   tooltip: 'Tooltip',
+  usage: 'Disk usage',
 };
 
 /** Group labels in the current language. */
@@ -184,6 +186,20 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-tooltip-text', 'tooltip', 'Text'),
   t('--color-tooltip-input-bg', 'tooltip', 'Input background'),
   t('--color-tooltip-input-text', 'tooltip', 'Input text'),
+  t('--color-usage-1', 'usage', 'Chart colour 1'),
+  t('--color-usage-2', 'usage', 'Chart colour 2'),
+  t('--color-usage-3', 'usage', 'Chart colour 3'),
+  t('--color-usage-4', 'usage', 'Chart colour 4'),
+  t('--color-usage-5', 'usage', 'Chart colour 5'),
+  t('--color-usage-6', 'usage', 'Chart colour 6'),
+  t('--color-usage-7', 'usage', 'Chart colour 7'),
+  t('--color-usage-8', 'usage', 'Chart colour 8'),
+  t('--color-usage-files', 'usage', 'Small files (together)'),
+  t('--color-usage-rest', 'usage', 'Small entries (rest)'),
+  t('--color-usage-unreadable', 'usage', 'Unreadable folders'),
+  t('--color-usage-free', 'usage', 'Free space'),
+  t('--color-usage-uncounted', 'usage', 'Not counted'),
+  t('--color-usage-bar', 'usage', 'Share bar in the list'),
 ];
 
 export const TOKEN_NAMES: ReadonlySet<string> = new Set(TOKENS.map((d) => d.name));

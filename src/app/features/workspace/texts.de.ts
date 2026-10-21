@@ -62,6 +62,7 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   watchHint: 'Mit der Aktion „Neu laden“ aktualisieren (Strg+R / ⌘R)',
   calculating: (n) => (n === 1 ? 'Berechne Ordnergröße…' : `Berechne ${n} Ordnergrößen…`),
   hiddenMarked: (n) => `+${n} markiert, aber ausgefiltert`,
+  removing: 'Wird entfernt…',
   runProgramTitle: 'Programm ausführen?',
   runProgramMessage: 'Diese Datei ist ein Programm. Nur ausführen, wenn Sie ihm vertrauen.',
   runProgramConfirm: 'Ausführen',

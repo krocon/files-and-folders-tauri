@@ -62,6 +62,7 @@
   "RENAME_INLINE": ["F2"],
   "OPEN_PACK_DLG": ["Alt+F5"],
   "OPEN_UNPACK_DLG": ["Alt+F9"],
+  "OPEN_DISK_USAGE": ["Mod+Shift+D"],
   "OPEN_FIND_DUPLICATES_DLG": ["Alt+Shift+F7", "Ctrl+Alt+Shift+F"],
   "OPEN_ATTRIBUTE_DLG": ["Alt+Enter", "Mod+I"],
   "OPEN_CHANGE_ATTRIBUTES_DLG": ["Mod+Shift+F2"],

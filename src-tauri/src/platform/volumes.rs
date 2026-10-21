@@ -156,6 +156,12 @@ fn to_volume(c: Candidate, p: Option<Probe>) -> Volume {
     }
 }
 
+/// Total and free bytes of the volume holding `path` (design 033: disk usage).
+pub fn space_of(path: &Path) -> Option<(u64, u64)> {
+    let p = probe(path)?;
+    Some((p.total?, p.free?))
+}
+
 // ---- Unix: space via statvfs (macOS reads /Volumes without it) ----
 
 #[cfg(all(unix, not(target_os = "macos")))]

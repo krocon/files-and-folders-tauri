@@ -9,6 +9,7 @@ pub mod clean;
 pub mod control;
 pub mod copy;
 pub mod delete;
+pub mod disk_usage;
 pub mod duplicates;
 pub mod expect;
 pub mod extract;
@@ -24,6 +25,8 @@ pub mod shell;
 mod tests_archive;
 #[cfg(test)]
 mod tests_attributes;
+#[cfg(test)]
+mod tests_disk_usage;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
@@ -41,6 +44,7 @@ use crate::archive::ArchiveFormat;
 use crate::attributes::{ApplyTo, AttrChange};
 use crate::clean::{CleanItem, CleanOptions};
 use crate::dirsize::DirSize;
+use crate::disk_usage::{DiskUsageOptions, DiskUsageSummary, Rescan};
 use crate::duplicates::DuplicateCriteria;
 use crate::error::FsError;
 use crate::search::{SearchCriteria, SearchHit, SearchStats};
@@ -192,6 +196,18 @@ pub enum JobSpec {
     Count { paths: Vec<String> },
     /// Recursive size of a folder (always runs in parallel).
     DirSize { path: String },
+    /// Disk usage (design 033): scans `roots` (or, `volume`, the volume of the first
+    /// one; or, `rescan`, a folder of an earlier scan) into a tree; scan id = job id.
+    DiskUsage {
+        #[serde(default)]
+        roots: Vec<String>,
+        #[serde(default)]
+        volume: bool,
+        #[serde(default)]
+        rescan: Option<Rescan>,
+        #[serde(default)]
+        options: DiskUsageOptions,
+    },
     /// Test job for load and throttling tests – rejected in release builds.
     Simulate { items: u32, item_ms: u32 },
     /// Change permissions, attributes and times (design 024): the selected entries
@@ -232,6 +248,7 @@ impl JobSpec {
             JobSpec::ViewEntry { .. }
             | JobSpec::Duplicates { .. }
             | JobSpec::DirSize { .. }
+            | JobSpec::DiskUsage { .. }
             | JobSpec::Count { .. }
             | JobSpec::Search { .. }
             | JobSpec::Shell { .. }
@@ -289,6 +306,7 @@ impl JobSpec {
         matches!(
             self,
             JobSpec::DirSize { .. }
+                | JobSpec::DiskUsage { .. }
                 | JobSpec::Count { .. }
                 | JobSpec::Search { .. }
                 | JobSpec::Duplicates { .. }
@@ -312,6 +330,7 @@ impl JobSpec {
             JobSpec::Duplicates { .. } => "duplicates",
             JobSpec::Count { .. } => "count",
             JobSpec::DirSize { .. } => "dirSize",
+            JobSpec::DiskUsage { .. } => "diskUsage",
             JobSpec::Simulate { .. } => "simulate",
             JobSpec::Shell { .. } => "shell",
             JobSpec::Attributes { .. } => "attributes",
@@ -478,6 +497,9 @@ pub struct Summary {
     /// Final bytes copied/moved into each top-level target destination.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub dest_bytes: HashMap<String, u64>,
+    /// Job `diskUsage` (design 033).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_usage: Option<DiskUsageSummary>,
     /// Job `viewEntry`: the copy of the entry in the view cache (design 025 E5).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub view_path: Option<String>,

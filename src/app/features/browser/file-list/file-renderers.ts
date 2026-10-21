@@ -141,8 +141,33 @@ export class SizeCellRenderer implements CellRendererIf {
   ): RendererCleanupFnType | undefined {
     const entry = rowOf(areaModel, rowIndex);
     if (entry) {
-      const model = areaModel as AreaModelIf & { isCalculatingSize?: (path: string) => boolean };
-      if (isNavigableDir(entry) && entry.size === null && model.isCalculatingSize?.(entry.path)) {
+      const model = areaModel as AreaModelIf & {
+        isCalculatingSize?: (path: string) => boolean;
+        removingOf?: (path: string) => number | null | undefined;
+      };
+      const removing = model.removingOf?.(entry.path);
+      if (removing !== undefined) {
+        // being removed (design 033 follow-up): the job's progress instead of the size
+        domService.addClass(cellDiv, 'fnf-cell');
+        domService.setAttribute(cellDiv, 'title', TEXTS.removing);
+        const spinner = domService.createElement<HTMLSpanElement>('span');
+        domService.addClass(spinner, 'fnf-size-spinner');
+        domService.setAttribute(spinner, 'aria-hidden', 'true');
+        // cells are drawn anew on every repaint: keep the turn in phase with the clock
+        domService.setStyle(spinner, 'animation-delay', `-${Date.now() % 750}ms`);
+        domService.appendChild(cellDiv, spinner);
+        const span = domService.createElement<HTMLSpanElement>('span');
+        domService.addClass(span, 'fnf-removing-progress');
+        domService.appendChild(
+          span,
+          domService.createText(removing === null ? '…' : `${Math.floor(removing * 100)} %`),
+        );
+        domService.appendChild(cellDiv, span);
+      } else if (
+        isNavigableDir(entry) &&
+        entry.size === null &&
+        model.isCalculatingSize?.(entry.path)
+      ) {
         renderSizeSpinner(cellDiv, domService);
       } else {
         setText(cellDiv, domService, sizeText(entry));

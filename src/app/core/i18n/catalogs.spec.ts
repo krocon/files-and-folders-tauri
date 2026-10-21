@@ -14,6 +14,7 @@ import '../../features/attributes/attributes-texts';
 import '../../features/cleanfolders/clean-texts';
 import '../../features/config/config-texts';
 import '../../features/dnd/dnd-logic';
+import '../../features/diskusage/disk-usage-texts';
 import '../../features/duplicates/duplicates-texts';
 import '../../features/groupfiles/groupfiles-texts';
 import '../../features/jobs/job-format';

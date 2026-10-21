@@ -1,3 +1,5 @@
+import { DiskUsageStore } from '../diskusage/disk-usage.store';
+import { isUsageKey, scanIdOf } from '../diskusage/usage-rows';
 import { inject, Injectable, signal } from '@angular/core';
 import { FsApi } from '../../core/fs/fs-api';
 import { errorText, toFsError } from '../../core/fs/fs-error';
@@ -72,6 +74,8 @@ export interface DeleteRequest {
   readonly sizeOnly?: boolean;
   /** What the panel showed when the request was made (design 030 E5, review #1). */
   readonly expected?: readonly ExpectedEntry[];
+  /** Disk-usage tab (design 033 E3): minutes since the scan – the entries may have changed. */
+  readonly scanAgeMin?: number;
 }
 
 export interface NameRequest {
@@ -108,6 +112,7 @@ export class OpsStore {
   private readonly search = inject(SearchStore);
   private readonly settings = inject(SettingsStore);
   private readonly archive = inject(ArchiveStore);
+  private readonly usage = inject(DiskUsageStore);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -254,8 +259,13 @@ export class OpsStore {
     );
     const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
     // fixed now: the listing may be checked (and look fresh) before the dialog is confirmed
+    const usageKey = this.ws.panel(args.side)?.store.searchKey();
     const expected =
-      args.kind === 'move' ? expectedFor(args.sources, this.listingState(args.side)) : undefined;
+      args.kind !== 'move'
+        ? undefined
+        : isUsageKey(usageKey)
+          ? this.usage.expected(args.sources)
+          : expectedFor(args.sources, this.listingState(args.side));
     this.copyMove.set({ ...args, targets, dangers, ...(expected ? { expected } : {}) });
     this.dialogs.show('copy-move');
   }
@@ -290,6 +300,7 @@ export class OpsStore {
       wholeGroups: whole,
       sizeOnly: store?.searchKind() === 'duplicates' && this.search.sizeOnly(store.searchKey()),
       ...this.expectedOf(entries),
+      ...this.usageExtras(entries),
     };
     // without confirmation only a plain trash delete (no dangers, no whole duplicate groups)
     if (
@@ -487,6 +498,25 @@ export class OpsStore {
     return null;
   }
 
+  /**
+   * Disk-usage tab (design 033 E3): the scan is an old state – always compare what the
+   * job deletes with it (sizes the files report), and say how old it is.
+   */
+  private usageExtras(entries: readonly DirEntry[]): {
+    expected?: readonly ExpectedEntry[];
+    scanAgeMin?: number;
+  } {
+    const key = this.ws.panel()?.store.searchKey();
+    if (!isUsageKey(key)) {
+      return {};
+    }
+    const scanId = scanIdOf(key);
+    return {
+      expected: this.usage.expected(entries),
+      scanAgeMin: this.usage.ageMinutes(scanId),
+    };
+  }
+
   private expectedOf(entries: readonly DirEntry[]): { expected?: readonly ExpectedEntry[] } {
     const expected = expectedFor(entries, this.listingState(this.ws.source()));
     return expected ? { expected } : {};
@@ -624,7 +654,12 @@ export class OpsStore {
       const done = paths.filter((p) => !failed.has(p));
       // deleted or moved away from a result tab: they leave the result (design 009 E4) – only
       // if every entry went (errors/skips may concern entries inside a source folder)
-      if (
+      if (isUsageKey(searchKey)) {
+        // disk usage (design 033 E3): Rust drops what is really gone and corrects the sums
+        if (removes && job.state !== 'failed') {
+          void this.usage.afterRemoval(scanIdOf(searchKey), done);
+        }
+      } else if (
         job.state === 'done' &&
         removes &&
         searchKey !== null &&

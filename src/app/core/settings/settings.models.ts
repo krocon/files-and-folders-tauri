@@ -19,6 +19,9 @@ export interface SettingsValues {
   'behavior.doubleClick': 'open' | 'view';
   'behavior.spaceCalcSize': boolean;
   'watch.pollNetwork': boolean;
+  'diskUsage.sizeMode': 'allocated' | 'logical';
+  'diskUsage.crossFilesystems': boolean;
+  'diskUsage.chart': 'sunburst' | 'treemap';
   'shell.enabled': boolean;
   'shell.loginPath': boolean;
   'shell.windowsShell': 'cmd' | 'powershell';

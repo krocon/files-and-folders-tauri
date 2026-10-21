@@ -4,7 +4,90 @@
   [class.unconfirmed]="store.cachedAt() !== null"
   [attr.aria-label]="texts.pathLabel(side())"
 >
-  @if (tab().search; as ref) {
+  @if (usageScan() !== null) {
+    @let st = usageState();
+    <span
+      class="crumbs search-head usage-head"
+      [id]="pathId"
+      [attr.title]="usageTexts.headerTitle"
+      [attr.aria-busy]="st?.view?.running ? 'true' : null"
+    >
+      @if (st?.view; as v) {
+        @for (c of v.crumbs; track c.id; let i = $index, last = $last) {
+          @if (i > 0) {
+            <span class="sep" aria-hidden="true">›</span>
+          }
+          <button
+            type="button"
+            class="crumb"
+            [class.current]="last"
+            [attr.aria-current]="last ? 'location' : null"
+            (click)="usageCrumb(c.id)"
+          >
+            {{ c.name || usageTexts.selection }}
+          </button>
+        }
+        <span class="search-count"
+          >· {{ formatSize(v.sizeMode === 'allocated' ? v.node.allocated : v.node.logical) }} ·
+          {{ usageObjects(st!) }}</span
+        >
+        @if (v.running) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="search-roots">{{ usageProgress() }}</span>
+        } @else {
+          <span class="search-roots">· {{ usageAsOf(st!) }}</span>
+          @if (!v.complete) {
+            <span class="warn">· {{ usageTexts.incomplete }}</span>
+          }
+        }
+        @if (v.node.unreadable > 0) {
+          <span class="warn">· {{ usageTexts.unreadable(v.node.unreadable) }}</span>
+        }
+        @if (v.simplified) {
+          <span class="warn">· {{ usageTexts.simplified }}</span>
+        }
+      }
+      @if (st?.error; as e) {
+        <span class="warn" role="alert">· {{ fsErrorText(e) }}</span>
+      }
+    </span>
+    <span class="sr-only" role="status">{{
+      st?.view?.running ? usageTexts.header + '…' : st ? usageObjects(st) : ''
+    }}</span>
+    <span class="usage-modes" role="group" [attr.aria-label]="usageTexts.header">
+      <button
+        type="button"
+        class="btn small"
+        [attr.aria-pressed]="st?.mode !== 'largest'"
+        (click)="usageMode('all')"
+      >
+        {{ usageTexts.everything }}
+      </button>
+      <button
+        type="button"
+        class="btn small"
+        [attr.aria-pressed]="st?.mode === 'largest'"
+        (click)="usageMode('largest')"
+      >
+        {{ usageTexts.largest }}
+      </button>
+    </span>
+    @if (st?.view?.running) {
+      <button type="button" class="btn small" (click)="usageStop()">
+        {{ usageTexts.stop }}
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="btn small"
+        [disabled]="!st?.view || st.view.node.path === null"
+        [attr.title]="usageTexts.rescanTitle"
+        (click)="usageRescan()"
+      >
+        {{ usageTexts.rescan }}
+      </button>
+    }
+  } @else if (tab().search; as ref) {
     @let r = searchResult();
     @if (r?.kind === 'duplicates') {
       <span
@@ -210,9 +293,11 @@
   [id]="'fnf-pane-' + side()"
   [attr.aria-labelledby]="'fnf-tab-' + tab().id"
   [class.fnf-active-panel]="active()"
-  [class.quick-on]="quickView()"
+  [class.quick-on]="quickView() || chartScan() !== null"
 >
-  @if (quickView()) {
+  @if (chartScan(); as cid) {
+    <app-disk-usage-chart class="quick" [scanId]="cid" [side]="otherSide()" />
+  } @else if (quickView()) {
     <app-quick-view class="quick" />
   }
   @if (errorText(); as text) {

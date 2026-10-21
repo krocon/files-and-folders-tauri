@@ -151,12 +151,15 @@ describe('createFileColumns', () => {
       'size',
       'modifiedMs',
       'group',
+      'share',
+      'items',
       'dir',
     ]);
-    // the group column belongs to duplicate tabs (design 016), the folder column to
-    // search result tabs (design 009) – both start hidden
-    expect(cols[4].isVisible?.()).toBe(false);
-    expect(cols[5].isVisible?.()).toBe(false);
+    // the group column belongs to duplicate tabs (design 016), share/objects to disk-usage
+    // tabs (design 033), the folder column to search result tabs (design 009) – all hidden
+    for (const i of [4, 5, 6, 7]) {
+      expect(cols[i].isVisible?.()).toBe(false);
+    }
     expect(cols.every((c) => c.sortable?.())).toBe(true);
     expect(cols[0].sortState).toBe('asc');
     expect(cols[1].valueGetter?.(entry('x.json'), {} as never)).toBe('json');

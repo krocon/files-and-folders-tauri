@@ -65,6 +65,10 @@ without stutter.
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
   access / creation time; for many entries at once (only what you touch changes) and optionally for folder contents
 - **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
+- **Disk usage** (`Ctrl+Shift+D` / `⌘⇧D`, or *Disk usage of the drive…*) – scans the marked folders, the folder
+  under the cursor or the whole drive: a list by size with share bars next to rings or tiles in the other panel,
+  Enter goes into a folder, *Largest files* lists the big ones of the subtree, marks collect across all folders and
+  `F8` removes them (trash; anything changed since the scan is left alone)
 - **Drag & drop** between panels, from Finder / Explorer / your file manager, and out of the window into other
   programs (copy); with `Ctrl+Shift` (`⌘⌥`) it creates **symbolic links** (also *Create link…*, `Ctrl+Shift+F5`)
 - **External tools** and *Open terminal here* / *Show in Finder/Explorer* – tools are started **without a

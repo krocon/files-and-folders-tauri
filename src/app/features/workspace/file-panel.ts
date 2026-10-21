@@ -36,8 +36,13 @@ import { QuickViewStore } from '../preview/quick-view.store';
 import { summarize } from './status';
 import { TabBar } from './tab-bar';
 import { TEXTS } from './texts';
-import { WorkspaceStore } from './workspace.store';
+import { otherSide, WorkspaceStore } from './workspace.store';
 import { MenuService } from '../menus/menu.service';
+import { DiskUsageStore, UsageState } from '../diskusage/disk-usage.store';
+import { DiskUsageChart } from '../diskusage/disk-usage-chart';
+import { USAGE_TEXTS } from '../diskusage/disk-usage-texts';
+import { isUsageKey, scanIdOf, usageKey } from '../diskusage/usage-rows';
+import { formatCount } from '../../shared/format';
 
 let panelSeq = 0;
 
@@ -49,7 +54,7 @@ let panelSeq = 0;
  */
 @Component({
   selector: 'app-file-panel',
-  imports: [FileList, TabBar, QuickView],
+  imports: [FileList, TabBar, QuickView, DiskUsageChart],
   providers: [FileBrowserStore],
   templateUrl: './file-panel.html',
   styleUrl: './file-panel.css',
@@ -57,8 +62,8 @@ let panelSeq = 0;
   host: {
     '[class.side-left]': "side() === 'left'",
     '[class.side-right]': "side() === 'right'",
-    '(pointerdown)': 'activate()',
-    '(focusin)': 'activate()',
+    '(pointerdown)': 'activate($event)',
+    '(focusin)': 'activate($event)',
     '(click)': 'onHeaderClick($event)',
   },
 })
@@ -74,8 +79,30 @@ export class FilePanel implements OnInit {
 
   protected readonly active = computed(() => this.ws.activeSide() === this.side());
   private readonly quick = inject(QuickViewStore);
+  protected readonly usage = inject(DiskUsageStore);
+  protected readonly usageTexts = USAGE_TEXTS;
+  /** Scan id when the active tab is a disk-usage tab (design 033). */
+  protected readonly usageScan = computed(() => {
+    const key = this.ws.activeTab(this.side()).search?.key;
+    return isUsageKey(key) ? scanIdOf(key) : null;
+  });
+  protected readonly usageState = computed<UsageState | null>(() => {
+    const id = this.usageScan();
+    return id ? (this.usage.state(id) ?? null) : null;
+  });
+  /** This side shows the chart of the other side's disk-usage tab while that side is active. */
+  protected readonly chartScan = computed(() => {
+    const other = otherSide(this.side());
+    if (this.ws.activeSide() !== other) {
+      return null;
+    }
+    return this.usage.stateOn(other)?.scanId ?? null;
+  });
+  protected readonly otherSide = computed(() => otherSide(this.side()));
   /** This side shows the quick view of the other side's cursor (design 010 E4). */
-  protected readonly quickView = computed(() => this.quick.shownOn() === this.side());
+  protected readonly quickView = computed(
+    () => this.quick.shownOn() === this.side() && this.chartScan() === null,
+  );
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
   private readonly tabId = computed(() => this.tab().id);
   protected readonly search = inject(SearchStore);
@@ -194,8 +221,30 @@ export class FilePanel implements OnInit {
       const key = tab.search?.key ?? null;
       const result = this.searchResult();
       untracked(() => {
-        if (key !== null && this.shownTabId === tab.id) {
+        if (key !== null && !isUsageKey(key) && this.shownTabId === tab.id) {
           this.store.showSearch(key, result?.hits ?? [], result?.kind ?? 'search');
+        }
+      });
+    });
+    // marks of the shown level → the scan's basket (registered first: a Space press and a
+    // poll result in the same flush must not lose the mark, review 033 #8)
+    effect(() => {
+      const marked = this.store.marked();
+      untracked(() => {
+        const id = this.usageScan();
+        if (id !== null && this.store.isUsage()) {
+          this.usage.setLevelMarks(id, marked);
+        }
+      });
+    });
+    // disk-usage tab (design 033): the shown level of its scan
+    effect(() => {
+      const tab = this.tab();
+      const id = this.usageScan();
+      const st = this.usageState();
+      untracked(() => {
+        if (id !== null && st && this.shownTabId === tab.id) {
+          this.showUsage(id, st);
         }
       });
     });
@@ -286,8 +335,12 @@ export class FilePanel implements OnInit {
       untracked(() => {
         if (req?.side === this.side()) {
           const key = this.tab().search?.key;
-          // a result tab "reloads" by searching again
-          void (key ? this.search.rerun(key) : this.store.refresh());
+          // a result tab "reloads" by searching again, a disk-usage tab scans the folder again
+          void (isUsageKey(key)
+            ? this.usage.rescan(scanIdOf(key))
+            : key
+              ? this.search.rerun(key)
+              : this.store.refresh());
         }
       });
     });
@@ -336,7 +389,13 @@ export class FilePanel implements OnInit {
     }
   }
 
-  protected activate(): void {
+  protected activate(evt?: Event): void {
+    // the chart of the other side's disk-usage tab works for that side (design 033 E1):
+    // clicking it must not make this side active (the chart would vanish under the pointer)
+    const target = evt?.target;
+    if (target instanceof Element && target.closest('app-disk-usage-chart')) {
+      return;
+    }
     this.ws.setActive(this.side());
   }
 
@@ -500,6 +559,22 @@ export class FilePanel implements OnInit {
     this.store.setMemory(this.ws.memory(id));
     this.store.setFilter(tab);
     this.store.setPendingTableState(tab.table);
+    if (tab.search && isUsageKey(tab.search.key)) {
+      this.store.navigationLocked.set(false);
+      this.store.setCursor(tab.cursor);
+      const id = scanIdOf(tab.search.key);
+      const st = this.usage.state(id);
+      this.usageCursorSeq = st?.cursorSeq ?? -1;
+      if (st) {
+        this.showUsage(id, st);
+      } else {
+        // the scan is gone (released): an empty result with a hint
+        this.store.leaveResult();
+        this.store.showSearch(tab.search.key, [], 'usage', { parent: null, marked: new Set() });
+      }
+      return;
+    }
+    this.store.leaveResult();
     if (tab.search) {
       this.store.navigationLocked.set(false);
       this.store.setCursor(tab.cursor);
@@ -541,6 +616,72 @@ export class FilePanel implements OnInit {
       this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
     }
   }
+
+  /** Cursor request of the disk-usage store already applied (after a navigation). */
+  private usageCursorSeq = -1;
+
+  /** Shows the level of scan `id` in the list; marks come from its basket (design 033 E3). */
+  private showUsage(id: string, st: UsageState): void {
+    this.store.usageNav = this.usage.navigator(id);
+    this.store.showSearch(usageKey(id), st.rows, 'usage', {
+      parent: this.usage.parentPath(id),
+      marked: this.usage.levelMarks(id),
+    });
+    this.store.markedOverride.set(this.usage.basket(id).effective);
+    if (st.cursorSeq !== this.usageCursorSeq) {
+      this.usageCursorSeq = st.cursorSeq;
+      this.store.setCursor(st.cursor);
+    }
+  }
+
+  protected usageObjects(st: UsageState): string {
+    const n = st.view?.node;
+    return n ? USAGE_TEXTS.objects(n.files + n.dirs) : '';
+  }
+
+  protected usageProgress(): string {
+    const id = this.usageScan();
+    const job = id ? this.jobs.find(id) : undefined;
+    const p = job?.progress;
+    return p ? USAGE_TEXTS.scanning(p.itemsDone, formatSize(p.bytesDone)) : '';
+  }
+
+  protected usageAsOf(st: UsageState): string {
+    const at = st.view?.scannedAtMs;
+    return at ? USAGE_TEXTS.asOf(new Date(at).toLocaleTimeString()) : '';
+  }
+
+  protected usageCrumb(id: number): void {
+    const scan = this.usageScan();
+    if (scan) {
+      void this.usage.goTo(scan, id);
+    }
+  }
+
+  protected usageStop(): void {
+    const scan = this.usageScan();
+    if (scan) {
+      this.usage.stop(scan);
+    }
+  }
+
+  protected usageRescan(): void {
+    const scan = this.usageScan();
+    if (scan) {
+      void this.usage.rescan(scan);
+    }
+  }
+
+  protected usageMode(mode: 'all' | 'largest'): void {
+    const scan = this.usageScan();
+    if (scan) {
+      void this.usage.setMode(scan, mode);
+      this.ws.requestFocus(this.side());
+    }
+  }
+
+  protected readonly formatCount = formatCount;
+  protected readonly fsErrorText = describeError;
 
   /**
    * Esc / "Cancel" while a folder opens (design 029 E4/E5): a navigation is given
