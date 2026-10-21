@@ -104,7 +104,14 @@ export interface LoadedSettings {
 }
 
 export type SettingsPart =
-  'settings' | 'keymap' | 'themes' | 'renamePresets' | 'tools' | 'buttons' | 'fileTypes';
+  | 'settings'
+  | 'keymap'
+  | 'themes'
+  | 'renamePresets'
+  | 'tools'
+  | 'buttons'
+  | 'fileTypes'
+  | 'starter';
 export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'settings',
   'keymap',
@@ -113,6 +120,7 @@ export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'tools',
   'buttons',
   'fileTypes',
+  'starter',
 ];
 
 export interface ImportReport {

@@ -1,5 +1,5 @@
 import { ACTIONS, ActionId } from '../../core/actions/action-catalog';
-import { ActionState, ExtraAction } from '../../core/actions/action.service';
+import { ActionState, ExtraAction, ExtraMenuNode } from '../../core/actions/action.service';
 import { Platform } from '../../core/actions/platform';
 import { canonicalShortcut } from '../../core/actions/shortcut';
 import {
@@ -14,12 +14,14 @@ import { MENU_TEXTS } from './menu-texts';
 /**
  * Menu definitions (design 014): every entry is an action id of the catalog – the
  * menus only arrange them. `'-'` = separator, `'@tools'` = the tools of
- * `tools.json` (extra actions, design 011 E4).
+ * `tools.json` (extra actions, design 011 E4), `'@starter'` = the user's starter menu
+ * (`starter.json`, design 032).
  */
 export type MenuDef =
   | ActionId
   | '-'
   | '@tools'
+  | '@starter'
   | { readonly sub: string; readonly items: readonly MenuDef[] }
   | { readonly native: PredefinedItem }
   | { readonly heading: string }
@@ -42,6 +44,15 @@ export interface MenuSource {
   extraShortcutLabel(id: string): string;
   /** Enabled and not vetoed (e.g. no tools inside an archive, design 016). */
   extraReady(id: string): boolean;
+  /** The starter menu (design 032); absent = empty. */
+  starterTree?(): readonly ExtraMenuNode[];
+}
+
+/** Extra actions of the tools (`tool:<id>`), not those of the starter menu. */
+export const TOOL_ID_PREFIX = 'tool:';
+
+function toolExtras(src: MenuSource): readonly ExtraAction[] {
+  return src.extras().filter((x) => x.id.startsWith(TOOL_ID_PREFIX));
 }
 
 /** Labels are getters: they follow the language (design 015) instead of being read at load. */
@@ -228,6 +239,13 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_CALL_ACTION_DLG',
       { when: 'notMacos', items: ['OPEN_SETUP_DLG'] },
     ],
+  },
+  {
+    id: 'start',
+    get label() {
+      return T.start;
+    },
+    items: ['@starter', '-', 'OPEN_STARTER_CONFIG_DLG'],
   },
   {
     id: 'window',
@@ -468,14 +486,11 @@ export function resolveMenu(
     if (d === '-') {
       items.push({ id: `-${++separatorSeq}`, label: '', separator: true });
     } else if (d === '@tools') {
-      for (const x of src.extras()) {
-        items.push({
-          id: x.id,
-          label: x.label,
-          shortcut: src.extraShortcutLabel(x.id),
-          disabled: !src.extraReady(x.id),
-        });
+      for (const x of toolExtras(src)) {
+        items.push(extraItem(x, src));
       }
+    } else if (d === '@starter') {
+      items.push(...starterItems(src.starterTree?.() ?? [], src));
     } else if (typeof d === 'string') {
       const state = src.state(d);
       items.push({
@@ -498,6 +513,44 @@ export function resolveMenu(
     }
   }
   return tidy(items, (i) => i.separator === true);
+}
+
+function extraItem(x: ExtraAction, src: MenuSource): MenuItem {
+  return {
+    id: x.id,
+    label: x.label,
+    shortcut: src.extraShortcutLabel(x.id),
+    disabled: !src.extraReady(x.id),
+    hint: x.hint,
+  };
+}
+
+/** The starter tree → HTML menu items (an empty starter menu says so, dimmed). */
+function starterItems(nodes: readonly ExtraMenuNode[], src: MenuSource, top = true): MenuItem[] {
+  const out: MenuItem[] = [];
+  for (const n of nodes) {
+    if (n.kind === 'separator') {
+      out.push({ id: `-${++separatorSeq}`, label: '', separator: true });
+    } else if (n.kind === 'sub') {
+      const children = starterItems(n.items, src, false);
+      out.push({
+        id: `sub:starter:${++separatorSeq}`,
+        label: n.label,
+        children: children.length > 0 ? children : [emptyStarter()],
+        disabled: children.every((c) => c.disabled || c.separator),
+      });
+    } else {
+      const x = src.extras().find((e) => e.id === n.id);
+      if (x) {
+        out.push(extraItem(x, src));
+      }
+    }
+  }
+  return top && out.length === 0 ? [emptyStarter()] : tidy(out, (i) => i.separator === true);
+}
+
+function emptyStarter(): MenuItem {
+  return { id: `starter-empty:${++separatorSeq}`, label: T.starterEmpty, disabled: true };
 }
 
 /** The menu bar for the HTML menus of Windows/Linux. */
@@ -528,16 +581,11 @@ export function toNativeSpec(
       if (d === '-') {
         out.push({ kind: 'separator' });
       } else if (d === '@tools') {
-        for (const x of src.extras()) {
-          const shown = src.extraShortcutLabel(x.id) !== '' && x.shortcut;
-          out.push({
-            kind: 'item',
-            id: x.id,
-            label: nativeLabel(x.label),
-            accelerator: shown ? canonicalShortcut(x.shortcut!, platform) : null,
-            enabled: !blocked && src.extraReady(x.id),
-          });
+        for (const x of toolExtras(src)) {
+          out.push(extraNode(x));
         }
+      } else if (d === '@starter') {
+        out.push(...starterNodes(src.starterTree?.() ?? []));
       } else if (typeof d === 'string') {
         out.push({
           kind: 'item',
@@ -553,6 +601,46 @@ export function toNativeSpec(
       }
     }
     return tidy(out, (n) => n.kind === 'separator');
+  };
+  const extraNode = (x: ExtraAction): NativeMenuNode => {
+    const shown = src.extraShortcutLabel(x.id) !== '' && x.shortcut;
+    return {
+      kind: 'item',
+      id: x.id,
+      label: nativeLabel(x.label),
+      accelerator: shown ? canonicalShortcut(x.shortcut!, platform) : null,
+      enabled: !blocked && src.extraReady(x.id),
+    };
+  };
+  // ids of the dimmed "no entries" item – unique per spec, stable for the structure key
+  let empty = 0;
+  const emptyNode = (): NativeMenuNode => ({
+    kind: 'item',
+    id: `starter-empty:${++empty}`,
+    label: nativeLabel(T.starterEmpty),
+    accelerator: null,
+    enabled: false,
+  });
+  const starterNodes = (tree: readonly ExtraMenuNode[], top = true): NativeMenuNode[] => {
+    const out: NativeMenuNode[] = [];
+    for (const n of tree) {
+      if (n.kind === 'separator') {
+        out.push({ kind: 'separator' });
+      } else if (n.kind === 'sub') {
+        const items = starterNodes(n.items, false);
+        out.push({
+          kind: 'submenu',
+          label: nativeLabel(n.label),
+          items: items.length > 0 ? items : [emptyNode()],
+        });
+      } else {
+        const x = src.extras().find((e) => e.id === n.id);
+        if (x) {
+          out.push(extraNode(x));
+        }
+      }
+    }
+    return top && out.length === 0 ? [emptyNode()] : tidy(out, (o) => o.kind === 'separator');
   };
   return {
     menus: MENU_BAR.filter((m) => !m.macosOnly || platform === 'macos').map((m) => ({

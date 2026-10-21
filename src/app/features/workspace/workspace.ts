@@ -69,6 +69,9 @@ import { registerShellActions } from '../shell/shell-actions';
 import { ShellStore } from '../shell/shell.store';
 import { OsStore } from '../osintegration/os.store';
 import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
+import { StarterDialog } from '../starter/starter-dialog';
+import { registerStarterActions } from '../starter/starter-actions';
+import { StarterStore } from '../starter/starter.store';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
@@ -125,6 +128,7 @@ import { MenuApi } from '../../core/menu/menu-api';
     CleanFoldersDialog,
     MultiMkdirDialog,
     ToolConfigDialog,
+    StarterDialog,
     ViewerDialog,
     PropertiesDialog,
     AttributesDialog,
@@ -182,6 +186,7 @@ export class Workspace implements OnInit {
   private readonly buttonConfig = inject(ButtonConfigStore);
   private readonly fileTypes = inject(FileTypesStore);
   private readonly mrImport = inject(MrImportStore);
+  private readonly starter = inject(StarterStore);
   private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -238,6 +243,13 @@ export class Workspace implements OnInit {
     // success messages of design 011 (copied, tool started) for screen readers
     effect(() => {
       const text = this.os.status();
+      if (text) {
+        untracked(() => this.announcement.set(text));
+      }
+    });
+    // starter entry started (design 032)
+    effect(() => {
+      const text = this.starter.status();
       if (text) {
         untracked(() => this.announcement.set(text));
       }
@@ -305,12 +317,13 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
     this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));
+    this.destroyRef.onDestroy(registerStarterActions(this.actions, this.starter, this.menus));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();
     void this.jobs.init();
     void this.ws.init();
-    void this.actions.init().then(() => this.os.init());
+    void this.actions.init().then(() => Promise.all([this.os.init(), this.starter.init()]));
     void this.theme.init();
     void this.buttonConfig.init();
     void this.fileTypes.init();

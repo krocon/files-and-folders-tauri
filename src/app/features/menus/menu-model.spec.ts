@@ -67,6 +67,8 @@ describe('menu model', () => {
       'TOGGLE_MARK_AND_RETREAT',
       'TOGGLE_MARK',
       'OPEN_ACTIONS_MENU',
+      // the starter menu itself (Alt+S) is the menu "Start" (design 032)
+      'OPEN_STARTER_MENU',
     ];
     const missing = ACTION_IDS.filter((id) => !inBar.has(id) && !keysOnly.includes(id));
     expect(missing).toEqual([]);
@@ -174,12 +176,13 @@ describe('menu model', () => {
       'View',
       'Go',
       'Tools',
+      'Start',
       'Window',
       'Help',
     ]);
     expect(linux[0].items.some((i) => i.id === 'QUIT_APP')).toBe(true);
     const mac = toNativeSpec(source(), 'macos', false);
-    expect(mac.menus.length).toBe(8);
+    expect(mac.menus.length).toBe(9);
     const flat = (nodes: readonly NativeMenuNode[]): NativeMenuNode[] =>
       nodes.flatMap((n) => (n.kind === 'submenu' ? flat(n.items) : [n]));
     const all = flat(mac.menus);

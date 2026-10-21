@@ -144,6 +144,7 @@ describe('menus', () => {
       'View',
       'Go',
       'Tools',
+      'Start',
       'Window',
       'Help',
     ]);
@@ -170,14 +171,16 @@ describe('menus', () => {
     expect(document.activeElement).toBe(tops[1]);
     // typeahead on the bar (review 014 #5)
     await key('w');
-    expect(document.activeElement).toBe(tops[5]);
-    await key('h');
     expect(document.activeElement).toBe(tops[6]);
+    await key('h');
+    expect(document.activeElement).toBe(tops[7]);
+    await key('s');
+    expect(document.activeElement).toBe(tops[5]);
     // Tab in an open drop-down leaves the bar (review 014 #5)
     await key('ArrowDown');
-    expect(tops[6].getAttribute('aria-expanded')).toBe('true');
+    expect(tops[5].getAttribute('aria-expanded')).toBe('true');
     await key('Tab');
-    expect(tops[6].getAttribute('aria-expanded')).toBe('false');
+    expect(tops[5].getAttribute('aria-expanded')).toBe('false');
     expect(el.contains(document.activeElement)).toBe(false);
     el.remove();
   });

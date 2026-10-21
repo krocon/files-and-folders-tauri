@@ -194,8 +194,10 @@ export const SETTINGS_EN = {
     tools: 'Tools',
     buttons: 'Buttons',
     fileTypes: 'File types',
+    starter: 'Starter menu',
   },
-  toolsWarning: 'Tools start programs – import them only from a file you trust.',
+  toolsWarning:
+    'Tools and starter entries start programs – import them only from a file you trust.',
   imported: (parts: string) => `Imported: ${parts}.`,
   importedNothing: 'Nothing was imported.',
   skipped: (part: string) => `${part}: missing or invalid in the file – skipped.`,
@@ -411,8 +413,10 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     tools: 'Tools',
     buttons: 'Buttons',
     fileTypes: 'Dateitypen',
+    starter: 'Startermenü',
   },
-  toolsWarning: 'Tools starten Programme – nur aus einer Datei importieren, der Sie vertrauen.',
+  toolsWarning:
+    'Tools und Startermenü starten Programme – nur aus einer Datei importieren, der Sie vertrauen.',
   imported: (parts) => `Importiert: ${parts}.`,
   importedNothing: 'Es wurde nichts importiert.',
   skipped: (part) => `${part}: fehlt in der Datei oder ist ungültig – übersprungen.`,

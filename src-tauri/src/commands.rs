@@ -5,6 +5,7 @@ pub mod config;
 pub mod mr_import;
 pub mod os_drag;
 pub mod shell;
+pub mod starter;
 pub mod watch;
 
 use crate::error::{FsError, FsErrorCode};
@@ -881,7 +882,6 @@ pub async fn run_tool<R: Runtime>(
     context: ToolContextInput,
     allow_executable: Option<bool>,
 ) -> Result<usize, FsError> {
-    let allow_executable = allow_executable.unwrap_or(false);
     let config = tools_config(&app).await;
     let tool = config.find(&tool_id).cloned().ok_or_else(|| {
         FsError::new(
@@ -890,6 +890,18 @@ pub async fn run_tool<R: Runtime>(
             None,
         )
     })?;
+    launch_tool(&app, tool, context, allow_executable.unwrap_or(false)).await
+}
+
+/// Checks the context paths and starts `tool` (shared by the tools and the starter
+/// menu, design 032); returns the number of started processes.
+pub(crate) async fn launch_tool<R: Runtime>(
+    app: &AppHandle<R>,
+    tool: crate::tools::Tool,
+    context: ToolContextInput,
+    allow_executable: bool,
+) -> Result<usize, FsError> {
+    let app = app.clone();
     if context.files.len() > crate::tools::MAX_FILE_LIMIT as usize {
         return Err(FsError::new(
             FsErrorCode::TooManyFiles,
@@ -1173,6 +1185,12 @@ pub(crate) fn unblock_imported<R: Runtime>(app: &AppHandle<R>, imported: &[Strin
             "renamePresets" => unblock(&app.state::<PresetsState>().write_blocked),
             "buttons" => unblock(&app.state::<config::ButtonsState>().write_blocked),
             "fileTypes" => unblock(&app.state::<config::FileTypesState>().write_blocked),
+            "starter" => {
+                let state = app.state::<starter::StarterState>();
+                unblock(&state.write_blocked);
+                // the next run reads the imported file
+                *state.items.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            }
             _ => {}
         }
     }
@@ -1467,12 +1485,13 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 6] = [
+    const SOURCES: [(&str, &str); 7] = [
         ("commands.rs", include_str!("commands.rs")),
         ("commands/config.rs", include_str!("commands/config.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
+        ("commands/starter.rs", include_str!("commands/starter.rs")),
         (
             "commands/mr_import.rs",
             include_str!("commands/mr_import.rs"),

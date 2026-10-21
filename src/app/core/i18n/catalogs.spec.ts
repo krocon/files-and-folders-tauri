@@ -27,6 +27,7 @@ import '../../features/preview/preview-texts';
 import '../../features/search/search-texts';
 import '../../features/settings/settings-texts';
 import '../../features/shell/shell-texts';
+import '../../features/starter/starter-texts';
 import '../../features/themes/theme-texts';
 import '../../features/workspace/texts';
 
@@ -45,6 +46,7 @@ const SAME = new Set([
   'Home',
   'Tasks',
   'Tools',
+  'Start',
   'Links',
   'Nr.',
   'In',

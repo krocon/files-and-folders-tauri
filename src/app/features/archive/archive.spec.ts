@@ -182,7 +182,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
   });
 
   it('the veto also dims menu and context-menu entries, tools included (merge 014)', async () => {
-    actions.extras.set([
+    actions.setExtras([
       { id: 'tool:edit', label: 'Edit', shortcut: null, enabled: () => true, run: () => undefined },
     ]);
     const states = () => {

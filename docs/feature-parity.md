@@ -434,4 +434,5 @@ eine Leerzeile).
 | 027 Persistenz je Ordner | Cursor/Markierung je Ordner über einen Neustart, Dialogeingaben von Gruppieren/Aufräumen/Multi-MkDir. |
 | 028 Drag & Drop erweitert | ✅ Ziehen aus der App ins System (Design `prompts/done/028-drag-ins-system.design.md`). |
 | 031 Drag & Drop, Teil 2 | ✅ Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen (Job `link`, Drag mit Strg+Umschalt/⌘⌥, `OPEN_LINK_DLG`); Verschieben ins System bewusst nicht (Design `prompts/done/031-drag-tabs-links.design.md` E11). |
+| 032 Starter-Menü | ✅ (neu, Vorbild Total Commander „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern…“, Programme/Skripte/Ordner/Untermenüs, TC-Parameter `%P%N` …, Kürzel je Eintrag (Design `prompts/done/032-startermenue.design.md`). |
 | später | KI-Funktionen (Namen normalisieren, Gruppieren; Schlüssel im OS-Schlüsselbund), Dateien teilen/zusammenfügen. |

@@ -24,6 +24,7 @@ import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { MultiRenameStore } from '../multirename/multirename.store';
+import { StarterStore } from '../starter/starter.store';
 import { OsStore } from '../osintegration/os.store';
 import { ShellStore } from '../shell/shell.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
@@ -302,7 +303,7 @@ import { SETTINGS_TEXTS } from './settings-texts';
                 </label>
               }
             </fieldset>
-            @if (parts().has('tools')) {
+            @if (parts().has('tools') || parts().has('starter')) {
               <p class="warn" role="note">{{ t.toolsWarning }}</p>
             }
             <div class="row">
@@ -342,6 +343,7 @@ export class SettingsDialog {
   protected readonly actions = inject(ActionService);
   protected readonly theme = inject(ThemeService);
   protected readonly os = inject(OsStore);
+  private readonly starter = inject(StarterStore);
   private readonly api = inject(SettingsApi);
   private readonly ws = inject(WorkspaceStore);
   private readonly confirm = inject(ConfirmService);
@@ -386,7 +388,8 @@ export class SettingsDialog {
   protected readonly exportDir = signal(this.panel?.store.path() ?? '');
   protected readonly importPath = signal(suggestedImport(this.panel?.store.cursorEntry() ?? null));
   protected readonly parts = signal<ReadonlySet<SettingsPart>>(
-    new Set(SETTINGS_PARTS.filter((p) => p !== 'tools')),
+    // tools and starter entries start programs: only on purpose (design 032)
+    new Set(SETTINGS_PARTS.filter((p) => p !== 'tools' && p !== 'starter')),
   );
 
   protected async clearShellHistory(): Promise<void> {
@@ -568,6 +571,9 @@ export class SettingsDialog {
           break;
         case 'fileTypes':
           tasks.push(this.fileTypes.init());
+          break;
+        case 'starter':
+          tasks.push(this.starter.init());
           break;
       }
     }

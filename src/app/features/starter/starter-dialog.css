@@ -1,0 +1,80 @@
+/* Starter menu editor (design 032); list and fields: config-dialog.css + tool-dialog.css */
+.editor.starter {
+  grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1.2fr);
+}
+
+@media (max-width: 40rem) {
+  .editor.starter {
+    grid-template-columns: 1fr;
+  }
+}
+
+.entries {
+  min-height: 14rem;
+  max-height: 22rem;
+
+  [role='treeitem'] {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: 3px var(--spacing-2);
+    color: var(--color-input-text);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+
+    &[aria-selected='true'] {
+      color: var(--color-selection-text);
+      background: var(--color-selection);
+
+      .muted {
+        color: inherit;
+      }
+    }
+
+    &.invalid {
+      outline: 1px dashed var(--color-danger);
+    }
+
+    .fa {
+      width: 1.1em;
+      text-align: center;
+    }
+
+    .grow {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sep {
+      height: 0;
+      border-top: var(--border-width) solid currentColor;
+      opacity: 0.5;
+    }
+  }
+}
+
+.details {
+  .kind {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .field input {
+    width: 100%;
+  }
+
+  /* a title is no path: the dialog font, not the mono font of path fields */
+  .field.title input {
+    font-family: inherit;
+  }
+}
+
+.foot .path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

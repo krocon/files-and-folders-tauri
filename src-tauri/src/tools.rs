@@ -657,7 +657,7 @@ pub struct Invocation {
     pub cwd: Option<PathBuf>,
 }
 
-const FILE_PLACEHOLDERS: [&str; 3] = ["{file}", "{files}", "{name}"];
+const FILE_PLACEHOLDERS: [&str; 5] = ["{file}", "{files}", "{name}", "{stem}", "{ext}"];
 
 pub fn needs_files(t: &Tool) -> bool {
     t.args
@@ -674,7 +674,7 @@ fn missing(what: &str) -> FsError {
     )
 }
 
-/// Replaces `{file}`, `{name}`, `{dir}`, `{targetDir}` inside one argument (it stays
+/// Replaces `{file}`, `{name}`, `{stem}`, `{ext}`, `{dir}`, `{targetDir}` inside one argument (it stays
 /// one argument); unknown `{…}` stay as they are.
 pub fn expand(
     template: &str,
@@ -703,6 +703,21 @@ pub fn expand(
                     out.push(std::path::MAIN_SEPARATOR_STR);
                 }
                 out.push(name);
+            }
+            "{stem}" => {
+                // the name without its last extension (`.bashrc` stays `.bashrc`, starter 032)
+                let stem = file
+                    .and_then(|f| f.file_stem())
+                    .ok_or_else(|| missing("a file"))?;
+                if out.is_empty() && stem.as_encoded_bytes().first() == Some(&b'-') {
+                    out.push(".");
+                    out.push(std::path::MAIN_SEPARATOR_STR);
+                }
+                out.push(stem);
+            }
+            "{ext}" => {
+                let f = file.ok_or_else(|| missing("a file"))?;
+                out.push(f.extension().unwrap_or_default());
             }
             "{dir}" => out.push(ctx.dir.as_deref().ok_or_else(|| missing("a folder"))?),
             "{targetDir}" => out.push(

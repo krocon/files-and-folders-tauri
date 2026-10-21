@@ -9,7 +9,7 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::fs_atomic::{keep_broken_file, write_atomic};
-use crate::{buttons, filetypes, keymap, rename_presets, themes, tools};
+use crate::{buttons, filetypes, keymap, rename_presets, starter, themes, tools};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -33,7 +33,7 @@ pub const BUNDLE_FORMAT: &str = "files-and-folders-settings";
 pub const BUNDLE_VERSION: u32 = 1;
 pub const BUNDLE_FILE_STEM: &str = "files-and-folders-settings";
 /// Parts of a bundle (`import_settings` takes a subset).
-pub const PARTS: [&str; 7] = [
+pub const PARTS: [&str; 8] = [
     "settings",
     "keymap",
     "themes",
@@ -41,6 +41,7 @@ pub const PARTS: [&str; 7] = [
     "tools",
     "buttons",
     "fileTypes",
+    "starter",
 ];
 
 const SCHEMA_JSON: &str = include_str!("../../src/app/core/settings/settings-schema.json");
@@ -270,6 +271,7 @@ pub struct ConfigFiles {
     pub tools: PathBuf,
     pub buttons: PathBuf,
     pub file_types: PathBuf,
+    pub starter: PathBuf,
 }
 
 impl ConfigFiles {
@@ -282,6 +284,7 @@ impl ConfigFiles {
             "tools" => &self.tools,
             "buttons" => &self.buttons,
             "fileTypes" => &self.file_types,
+            "starter" => &self.starter,
             _ => &self.settings,
         }
     }
@@ -295,6 +298,7 @@ impl ConfigFiles {
             tools: dir.join(tools::FILE_NAME),
             buttons: dir.join(buttons::FILE_NAME),
             file_types: dir.join(filetypes::FILE_NAME),
+            starter: dir.join(starter::FILE_NAME),
         }
     }
 }
@@ -352,6 +356,15 @@ pub fn bundle(files: &ConfigFiles) -> Value {
     out.insert(
         "fileTypes".into(),
         serde_json::to_value(filetypes::load(&files.file_types).value).unwrap_or(Value::Null),
+    );
+    // design 032: the starter menu, null without a user file
+    out.insert(
+        "starter".into(),
+        if files.starter.exists() {
+            serde_json::to_value(starter::load(&files.starter).value).unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
     );
     Value::Object(out)
 }
@@ -493,6 +506,10 @@ pub fn import(
             },
             "fileTypes" => match serde_json::from_value::<Vec<filetypes::FileType>>(value) {
                 Ok(c) => filetypes::save(&files.file_types, Some(c)).map(|_| true),
+                Err(_) => Ok(false),
+            },
+            "starter" => match serde_json::from_value::<Vec<starter::StarterItem>>(value) {
+                Ok(items) => starter::save(&files.starter, items).map(|_| true),
                 Err(_) => Ok(false),
             },
             _ => Ok(false),
@@ -827,7 +844,8 @@ mod tests {
                 "renamePresets",
                 "tools",
                 "buttons",
-                "fileTypes"
+                "fileTypes",
+                "starter"
             ]
         );
         assert!(report.warnings.iter().any(|w| w.code == "invalid_value"));
@@ -835,6 +853,28 @@ mod tests {
             Value::Object(load(&dst.settings).settings),
             json!({"view.menuBar": false})
         );
+    }
+
+    /// Design 032: the starter menu travels with the bundle (null without a user file).
+    #[test]
+    fn the_starter_menu_is_exported_and_imported() {
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("src"));
+        let dst = config(&dir.path().join("dst"));
+        assert_eq!(bundle(&src)["starter"], Value::Null);
+        let item = starter::StarterItem {
+            id: "code".into(),
+            label: "VS Code".into(),
+            program: "code".into(),
+            params: "%P%N".into(),
+            ..starter::StarterItem::default()
+        };
+        starter::save(&src.starter, vec![item.clone()]).unwrap();
+        let b = bundle(&src);
+        assert_eq!(b["starter"][0]["params"], "%P%N");
+        let report = import(&dst, b.as_object().unwrap(), &["starter".into()]).unwrap();
+        assert_eq!(report.imported, ["starter"]);
+        assert_eq!(starter::load(&dst.starter).value, vec![item]);
     }
 
     /// Design 022 E10: buttons and file types travel with the bundle.

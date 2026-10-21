@@ -24,7 +24,7 @@ export interface ToolInfo {
   readonly shortcut: string | null;
   readonly perFile: boolean;
   readonly fileLimit: number;
-  /** Uses `{file}`, `{files}` or `{name}`. */
+  /** Uses `{file}`, `{files}`, `{name}`, `{stem}` or `{ext}`. */
   readonly needsFiles: boolean;
   /** For display only. */
   readonly program: string;
