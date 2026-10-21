@@ -146,6 +146,19 @@ describe('folder memory across restarts (design 027)', () => {
     expect(ws.memory('L2').folders.size).toBe(0);
   });
 
+  it('a load that fails or answers nonsense never breaks the session start', async () => {
+    memoryApi.loaded = null as never; // e.g. an old mock backend answering null
+    let ws = await start();
+    expect(ws.activeTab('left').id).toBe('L');
+    expect(ws.memory('L').folders.size).toBe(0);
+    TestBed.resetTestingModule();
+    memoryApi = new FakeFolderMemoryApi();
+    memoryApi.failLoad = true;
+    ws = await start();
+    expect(ws.activeTab('left').id).toBe('L');
+    expect(ws.notices().some((n) => n.includes('could not be read'))).toBe(true);
+  });
+
   it('a broken file is reported and replaced; an unreadable one is never written', async () => {
     memoryApi.loaded = {
       value: { version: 1, tabs: [] },

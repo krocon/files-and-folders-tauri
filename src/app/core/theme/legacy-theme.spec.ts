@@ -109,6 +109,8 @@ describe('old designs (prompt 019)', () => {
     // Norton: Actions menu and folder menu in teal (Marc 2026-10-21) – only Norton
     expect(norton.tokens['--color-menu-bg']).toBe('#028383');
     expect(norton.tokens['--color-menu-text']).toBe('#ffffff');
+    // Marc 21.10.2026: the splitter is black in Norton
+    expect(norton.tokens['--color-splitter']).toBe('#000000');
     for (const other of CLASSIC_THEMES.filter((t) => t !== norton)) {
       expect(other.tokens['--color-menu-bg']).not.toBe('#028383');
     }

@@ -331,6 +331,10 @@ export class WorkspaceStore {
     } catch {
       return TEXTS.folderMemoryUnreadable;
     }
+    // never let this file stop the session from starting: an odd answer counts as unreadable
+    if (!Array.isArray(loaded?.value?.tabs)) {
+      return TEXTS.folderMemoryUnreadable;
+    }
     this.savedFolders = new Map(loaded.value.tabs.map((t) => [t.tabId, t]));
     this.memoryWritten = JSON.stringify(loaded.value);
     const w = loaded.warning;

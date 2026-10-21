@@ -533,6 +533,8 @@
     // configuration files of 022/032: none changed by the user
     load_buttons: () => ({ value: { sets: {} }, warning: null }),
     load_file_types: () => ({ value: null, warning: null }),
+    // folder memory of 027: nothing kept yet
+    load_folder_memory: () => ({ value: { version: 1, tabs: [] }, warning: null }),
     load_starter: () => ({
       items: [],
       warning: null,
