@@ -1,3 +1,4 @@
+import { expireNotices } from '../../shared/expire-notices';
 import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { describeFsError, errorText, toFsError } from '../../core/fs/fs-error';
 import { SessionApi } from '../../core/session/session-api';
@@ -115,6 +116,8 @@ export class WorkspaceStore {
   readonly panels = signal<Panels>(EMPTY_PANELS);
   /** Messages for the user (session warnings, replaced folders, save errors). */
   readonly notices = signal<readonly string[]>([]);
+  // notices go by themselves after a minute (or are dismissed before)
+  private readonly expiring = expireNotices(this.notices);
   /** Asks a panel to focus its list (`seq` makes repeated requests distinct). */
   readonly focusRequest = signal<{ side: Side; seq: number } | null>(null);
   /** Asks a panel to reload its folder. */

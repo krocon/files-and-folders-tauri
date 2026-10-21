@@ -177,7 +177,7 @@ interface Drawn {
         <button
           type="button"
           class="btn small danger"
-          [disabled]="basket().effective.length === 0"
+          [disabled]="pending().length === 0"
           [attr.title]="t.removeTitle"
           (click)="remove()"
         >
@@ -355,9 +355,15 @@ interface Drawn {
       border-top: var(--border-width) solid var(--color-border);
     }
     .basket-head strong {
-      flex: 1;
+      flex: none;
+      white-space: nowrap;
     }
     .sum {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: end;
       color: var(--color-muted);
       white-space: nowrap;
     }
@@ -566,9 +572,20 @@ export class DiskUsageChart {
     }));
   });
 
+  /** Basket entries not being removed yet – what "Remove…" would delete. */
+  protected readonly pending = computed(() => {
+    const removing = this.removing();
+    return this.basket().effective.filter((r) => !removing.has(r.path));
+  });
+
   protected readonly basketSum = computed(() => {
     const b = this.basket();
-    return b.effective.length > 0 ? this.t.basketSum(b.effective.length, formatSize(b.size)) : '';
+    if (b.effective.length === 0) {
+      return '';
+    }
+    const busy = b.effective.length - this.pending().length;
+    const sum = this.t.basketSum(b.effective.length, formatSize(b.size));
+    return busy > 0 ? `${sum} · ${this.t.basketRemoving(busy)}` : sum;
   });
 
   constructor() {

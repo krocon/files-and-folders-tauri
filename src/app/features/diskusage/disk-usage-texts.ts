@@ -42,6 +42,7 @@ export const USAGE_EN = {
   basketSum: (n: number, size: string) =>
     `${n === 1 ? '1 entry' : `${formatCount(n)} entries`} · ${size}`,
   remove: 'Remove…',
+  basketRemoving: (n: number) => (n === 1 ? '1 being removed' : `${formatCount(n)} being removed`),
   removeTitle: 'Moves the marked entries to the trash (F8; Shift+F8 deletes permanently)',
   clear: 'Unmark all',
   unmark: (name: string) => `Unmark ${name}`,

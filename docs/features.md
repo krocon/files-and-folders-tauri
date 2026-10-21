@@ -90,6 +90,7 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Fortschritt des Jobs (`…` solange er plant bzw. beim Papierkorb für einen einzelnen Eintrag). Im Diagramm der
   Speicherbelegung pulsieren die betroffenen Segmente samt Inhalt, im Sammelkorb sind sie durchgestrichen.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
+- Meldungen unten rechts verschwinden nach 60 Sekunden von selbst (oder vorher mit *Dismiss*).
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
   Netzlaufwerk erscheint nach 1,5 s als „not reachable“, die Oberfläche blockiert nicht.

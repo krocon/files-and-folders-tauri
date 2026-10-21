@@ -344,6 +344,45 @@
           "action": "OPEN_ABOUT_DLG"
         }
       ]
+    },
+    {
+      "name": "disk-usage",
+      "prelude": false,
+      "mock": {
+        "bigFiles": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "action": "NAVIGATE_PARENT"
+        },
+        {
+          "action": "NAVIGATE_PARENT"
+        },
+        {
+          "key": "Home"
+        },
+        {
+          "action": "OPEN_DISK_USAGE"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "ArrowDown"
+        },
+        {
+          "action": "TOGGLE_MARK_AND_ADVANCE"
+        },
+        {
+          "action": "TOGGLE_MARK_AND_ADVANCE"
+        },
+        {
+          "wait": 300
+        }
+      ]
     }
   ],
   "docs": {
@@ -388,6 +427,11 @@
         "file": "colour-schemes.png",
         "theme": "classic-coffee",
         "scene": "colour-schemes-dialog"
+      },
+      {
+        "file": "disk-usage.png",
+        "theme": "classic-norton",
+        "scene": "disk-usage"
       }
     ],
     "overview": {

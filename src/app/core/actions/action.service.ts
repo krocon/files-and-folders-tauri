@@ -1,3 +1,4 @@
+import { expireNotices } from '../../shared/expire-notices';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../fs/fs-error';
 import { ACTIONS, ActionId, isActionId } from './action-catalog';
@@ -55,6 +56,8 @@ export class ActionService {
   readonly override = signal<RawBindings>({});
   /** Messages for the user (problems in keymaps, failed actions). */
   readonly messages = signal<readonly string[]>([]);
+  // messages go by themselves after a minute (or are dismissed before)
+  private readonly expiring = expireNotices(this.messages);
 
   readonly keymap = computed(() =>
     resolveKeymap(this.platform(), this.override(), DEFAULT_KEYMAPS[this.platform()]),
