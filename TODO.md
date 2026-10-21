@@ -78,6 +78,8 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       (Pure-FTPd, IIS) – Link-Erkennung über FTP ist unzuverlässig; Idee: auf MLSD-Servern vor dem Absteigen `LIST -ld`
       prüfen oder rekursives Löschen dort nur nach Rückfrage. Zwei Profile für denselben Server (SFTP + FTP): Move mit
       „Überschreiben“ kann Quelle = Ziel treffen. `Pool.killers` wächst bis zum Trennen.
+- [ ] Panel-Aktionen (040): `⌘U`/`⌘⇧U` tauschen, `⌘⌥O` Ziel = Quelle, `⌘⌥←/→` öffnet den Cursor-Ordner links/rechts;
+      im Pfad-/Filterfeld bleiben `⌘←/→` Zeilenanfang/-ende; Einträge im nativen Fenster-Menü.
 - [ ] Startermenü (032): natives Menü „Start“ (macOS), `⌥S` in der Liste öffnet das Popup (in Textfeldern tippt es
       weiter „ß“), Eintrag mit einer `.app` (`/Applications/Preview.app`, Parameter `%P%N`), Ordner-Eintrag `~/…`;
       Windows: `.bat`/`.cmd` als Kommando, `notepad.exe "%P%N"`.

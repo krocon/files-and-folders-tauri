@@ -16,6 +16,10 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (noch
   fehlende Funktionen gedimmt, „kommt in Prompt …“).
 - **Aktive Seite** = Quelle, andere = Ziel; Klick in eine Seite oder `Tab` wechselt, Ansage für Screenreader.
+- **Panel-Aktionen** (Prompt 040, wie Total Commander): *Seiten tauschen* (`Strg+U` / `⌘U`; der gewählte Tab wandert
+  mit Verlauf, Cursor und Filter), *mit allen Tabs* (`Strg+Shift+U` / `⌘⇧U`), *Ziel = Quelle* (`Strg+Alt+O` / `⌘⌥O`)
+  und *in der linken/rechten Seite öffnen* (`Strg+←/→` / `⌘⌥←/→`): Ordner, „..“ oder Archiv unter dem Cursor öffnet
+  sich dort, bei einer Datei der aktuelle Ordner; der Fokus bleibt auf der aktiven Seite.
 - **Tabs je Seite**: klonen (`+`), schließen (`−`, der letzte bleibt), Kontextmenü (Neu laden, Schließen, ins andere
   Panel verschieben/klonen, nach links/rechts), Doppelklick lädt neu, Mittelklick schließt; jeder Tab behält Pfad,
   Sortierung, Spaltenbreiten, Cursor und Scrollposition.
@@ -244,6 +248,9 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Switch panel | `Tab` | `Tab` |
 | Left panel | `Alt+1` | `⌥1` |
 | Right panel | `Alt+2` | `⌥2` |
+| Swap panels / with all tabs (040) | `Ctrl+U` / `Ctrl+Shift+U` | `⌘U` / `⌘⇧U` |
+| Target = source (040) | `Ctrl+Alt+O` | `⌘⌥O` |
+| Open in the left / right panel (040) | `Ctrl+←` / `Ctrl+→` | `⌘⌥←` / `⌘⌥→` |
 | Next tab | `Ctrl+Tab` | `⌃Tab` |
 | Previous tab | `Ctrl+Shift+Tab` | `⌃⇧Tab` |
 | Clone tab | `Ctrl+T` | `⌘⌥T` |

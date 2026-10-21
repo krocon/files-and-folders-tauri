@@ -33,9 +33,10 @@ Drei Handgriffe, die man in einem Dual-Pane-Manager ständig braucht und die im 
 | `SWAP_PANELS` | `Ctrl+U` | `⌘U` |
 | `SWAP_PANELS_WITH_TABS` | `Ctrl+Shift+U` | `⌘⇧U` |
 | `TARGET_EQUALS_SOURCE` | `Ctrl+Alt+O` | `⌘⌥O` |
-| `OPEN_CURSOR_IN_LEFT` / `_RIGHT` | `Ctrl+←` / `Ctrl+→` | `⌘←` / `⌘→` |
+| `OPEN_CURSOR_IN_LEFT` / `_RIGHT` | `Ctrl+←` / `Ctrl+→` | `⌘⌥←` / `⌘⌥→` |
 
-In Textfeldern behalten die Pfeile ihre Bedeutung (der Dispatcher lässt Textfeldern die Tasten, 014 #1).
+In Textfeldern behalten die Pfeile ihre Bedeutung (der Dispatcher lässt Textfeldern die Tasten, 014 #1). Auf macOS
+nicht `⌘←/→`: das native Menü bekäme den Accelerator und könnte Textfeldern „Zeilenanfang/-ende“ wegnehmen (Design E3).
 
 ## Akzeptanzkriterien
 
