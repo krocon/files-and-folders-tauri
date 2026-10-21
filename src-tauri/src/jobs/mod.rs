@@ -17,6 +17,7 @@ pub mod group;
 pub mod link;
 pub mod manager;
 pub mod pack;
+pub mod remote_delete;
 pub mod rename;
 pub mod report;
 pub mod search;
@@ -35,10 +36,13 @@ mod tests_formats;
 mod tests_link;
 #[cfg(test)]
 mod tests_ops;
+#[cfg(test)]
+mod tests_remote;
 #[cfg(all(test, unix))]
 mod tests_shell;
 #[cfg(test)]
 mod tests_tools;
+pub mod transfer;
 
 use crate::archive::ArchiveFormat;
 use crate::attributes::{ApplyTo, AttrChange};

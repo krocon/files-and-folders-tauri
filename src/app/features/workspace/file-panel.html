@@ -266,6 +266,33 @@
         }
       </span>
     }
+    @if (store.remote(); as rm) {
+      <span
+        class="archive-badge remote-badge"
+        [class.plain]="!rm.encrypted"
+        [attr.title]="rm.encrypted ? remoteTexts.encrypted : remoteTexts.unencrypted"
+      >
+        <i
+          class="fa"
+          [class.fa-lock]="rm.encrypted"
+          [class.fa-unlock-alt]="!rm.encrypted"
+          aria-hidden="true"
+        ></i>
+        {{ remoteTexts.shortKinds[rm.kind] }}
+        <span class="sr-only">{{
+          rm.encrypted ? remoteTexts.encrypted : remoteTexts.unencrypted
+        }}</span>
+      </span>
+      <button
+        type="button"
+        class="btn small"
+        [attr.title]="remoteTexts.disconnect"
+        (click)="disconnectServer(rm.profileId)"
+      >
+        <i class="fa fa-plug" aria-hidden="true"></i>
+        <span class="sr-only">{{ remoteTexts.disconnect }}</span>
+      </button>
+    }
   }
   <button
     type="button"
@@ -309,6 +336,11 @@
         }
         <div class="error-detail">{{ store.error()?.message }}</div>
       </div>
+      @if (offline()) {
+        <button type="button" class="btn primary" (click)="connectServer()">
+          <i class="fa fa-plug" aria-hidden="true"></i> {{ remoteTexts.reconnect }}
+        </button>
+      }
       <button type="button" class="btn" (click)="store.dismissError()">{{ texts.dismiss }}</button>
     </div>
   }

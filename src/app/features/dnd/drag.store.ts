@@ -1,6 +1,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DragDropApi, OsDragEvent } from '../../core/dnd/drag-drop-api';
 import { OsDragApi } from '../../core/dnd/os-drag-api';
+import { isRemotePath } from '../../core/remote/remote-path';
+import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DirEntry } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -146,6 +148,11 @@ export class DragStore {
     }
     if (d.inArchive) {
       this.jobs.report(DND_TEXTS.notFromArchive);
+      return;
+    }
+    // server entries are no local files (design 034 §4.6): copy them first
+    if (d.sources.some((e) => isRemotePath(e.path))) {
+      this.jobs.report(REMOTE_TEXTS.offOnServer);
       return;
     }
     try {

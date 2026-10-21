@@ -1,4 +1,5 @@
 import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { isRemotePath } from '../remote/remote-path';
 import { SettingsStore } from '../settings/settings.store';
 import { Side } from '../session/session.models';
 import { WatchApi } from './watch-api';
@@ -52,7 +53,9 @@ export class WatchService {
    * The folder a panel shows now (`null`: none / panel gone); `listedAt`: when
    * its listing was requested – a change between listing and watch triggers one reload.
    */
-  setPanelDir(side: Side, dir: string | null, listedAt?: number): void {
+  setPanelDir(side: Side, folder: string | null, listedAt?: number): void {
+    // server folders are not watched (design 034 §4.3): Ctrl+R reloads them
+    const dir = isRemotePath(folder) ? null : folder;
     if (this.dirs.get(side) === dir) {
       return;
     }

@@ -1,4 +1,8 @@
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
+import { isNotConnected, profileOf } from '../../core/remote/remote-connect-prompt';
+import { isRemotePath, isServerUrl } from '../../core/remote/remote-path';
+import { REMOTE_TEXTS } from '../remote/remote-texts';
+import { RemoteStore } from '../remote/remote.store';
 import { duplicateSummary, KeepRule } from '../duplicates/duplicates-logic';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
@@ -173,6 +177,13 @@ export class FilePanel implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly jobs = inject(JobsStore);
   private readonly watch = inject(WatchService);
+  protected readonly remote = inject(RemoteStore);
+  protected readonly remoteTexts = REMOTE_TEXTS;
+  /** The tab shows a server folder that is not connected (design 034 §4.4). */
+  protected readonly offline = computed(() => {
+    const path = this.tab().path;
+    return isRemotePath(path) && isNotConnected(this.store.error()) ? path : null;
+  });
   protected readonly formatSize = formatSize;
   /** Shown when the folder is not watched natively (design 012 E2). */
   protected readonly watchHint = computed(() => {
@@ -429,6 +440,19 @@ export class FilePanel implements OnInit {
 
   protected async submitPath(evt: Event, value: string): Promise<void> {
     evt.preventDefault();
+    // a server address opens the connection dialog with it (design 034 E8)
+    if (isServerUrl(value)) {
+      this.editingPath.set(false);
+      this.pathError.set(null);
+      void this.remote.openUrl(value.trim());
+      return;
+    }
+    if (isRemotePath(value.trim())) {
+      await this.store.load(value.trim());
+      this.editingPath.set(false);
+      this.pathError.set(null);
+      return;
+    }
     try {
       const loc = await this.fsApi.resolveLocation(value);
       await this.store.load(loc.dir, loc.select !== null ? { cursor: loc.select } : {});
@@ -443,6 +467,19 @@ export class FilePanel implements OnInit {
     } catch (err) {
       this.pathError.set(describeFsError(toFsError(err)));
     }
+  }
+
+  /** "Connect" in the panel of a server tab that is not connected (design 034 §4.3). */
+  protected connectServer(): void {
+    const path = this.offline() ?? this.tab().path;
+    const id = path ? profileOf(path) : null;
+    if (path && id) {
+      void this.remote.connect(id, { then: () => this.store.load(path) });
+    }
+  }
+
+  protected disconnectServer(id: string): void {
+    void this.remote.disconnect(id);
   }
 
   protected onPathKeydown(evt: KeyboardEvent): void {

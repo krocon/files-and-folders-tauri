@@ -28,7 +28,7 @@ const MAX_FILES: usize = 256;
 pub const STALE: Duration = Duration::from_secs(3 * 24 * 3600);
 const RUN_PREFIX: &str = "run-";
 
-type Key = (PathBuf, u64, Option<SystemTime>, Vec<String>);
+pub(crate) type Key = (PathBuf, u64, Option<SystemTime>, Vec<String>);
 
 struct Copy {
     key: Key,
@@ -176,6 +176,52 @@ fn evict(c: &mut Cache) {
     }
 }
 
+/// A copy made before for `key` (moved to the end of the LRU), or a fresh folder for
+/// a new one – shared with server files (design 034 §4.5).
+pub(crate) enum Slot {
+    Hit(PathBuf),
+    Fresh(PathBuf),
+}
+
+pub(crate) fn slot_for(key: &Key) -> Result<Slot, FsError> {
+    let mut c = lock();
+    if let Some(i) = c.copies.iter().position(|x| x.key == *key) {
+        let hit = c.copies.remove(i).expect("position is valid");
+        let fresh =
+            fs::symlink_metadata(&hit.file).is_ok_and(|m| m.is_file() && m.len() == hit.size);
+        if fresh {
+            let file = hit.file.clone();
+            c.copies.push_back(hit);
+            return Ok(Slot::Hit(file));
+        }
+        c.bytes = c.bytes.saturating_sub(hit.size);
+        let _ = remove_tree(&hit.dir);
+    }
+    let run = run_dir(&mut c)?;
+    c.next += 1;
+    let dir = run.join(c.next.to_string());
+    create_private_dir(&dir).map_err(|e| FsError::from_io(&e, &dir))?;
+    Ok(Slot::Fresh(dir))
+}
+
+/// Keeps a finished copy (read-only) in the cache.
+pub(crate) fn keep(key: Key, dir: PathBuf, file: &Path, size: u64) {
+    if let Ok(m) = fs::metadata(file) {
+        let mut perm = m.permissions();
+        perm.set_readonly(true);
+        let _ = fs::set_permissions(file, perm);
+    }
+    let mut c = lock();
+    c.bytes += size;
+    c.copies.push_back(Copy {
+        key,
+        dir,
+        file: file.to_path_buf(),
+        size,
+    });
+    evict(&mut c);
+}
+
 /// How a view extraction ended.
 pub enum Outcome {
     Done(PathBuf, Summary),
@@ -305,7 +351,7 @@ pub fn materialize(
 
 /// The running preview extraction per slot (`viewer`, `quick`): a new request
 /// cancels the previous one of its slot (external review 025 #5).
-fn preview_control(slot: &str) -> Arc<Control> {
+pub(crate) fn preview_control(slot: &str) -> Arc<Control> {
     static RUNNING: OnceLock<Mutex<HashMap<String, Arc<Control>>>> = OnceLock::new();
     let mut m = RUNNING
         .get_or_init(|| Mutex::new(HashMap::new()))

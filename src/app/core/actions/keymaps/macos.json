@@ -17,6 +17,7 @@
   "COPY_2_CLIPBOARD_NAMES": ["Mod+Alt+N"],
   "COPY_2_CLIPBOARD_FULLNAMES": ["Mod+Alt+C"],
   "REVEAL_IN_FILE_MANAGER": ["Mod+Shift+F"],
+  "OPEN_CONNECTIONS_DLG": ["Mod+K", "Mod+N"],
   "OPEN_TERMINAL_HERE": ["Mod+Shift+C"],
   "OPEN_COMMAND_PALETTE": ["Mod+Shift+P", "Mod+Ctrl+G"],
   "OPEN_ACTIONS_MENU": ["Ctrl+K Ctrl+M"],

@@ -51,6 +51,19 @@ export interface DirectoryListing {
   readonly archive?: ArchiveInfo | null;
   /** On a network drive (design 030 E6): the listing is kept in the `ListingCache`. */
   readonly network?: boolean;
+  /** A folder on a server (design 034 E1): `path` and entry paths are `remote://…`. */
+  readonly remote?: RemoteInfo | null;
+}
+
+/** The server of a listing (Rust `model::RemoteInfo`, design 034). */
+export interface RemoteInfo {
+  readonly profileId: string;
+  readonly name: string;
+  readonly kind: 'ftp' | 'ftpsExplicit' | 'ftpsImplicit' | 'sftp';
+  /** Password and data travel encrypted (not plain FTP). */
+  readonly encrypted: boolean;
+  /** `Name: /server/path` for the header. */
+  readonly display: string;
 }
 
 export type FsErrorCode =
@@ -108,6 +121,19 @@ export type FsErrorCode =
   | 'symlink_skipped'
   | 'scan_not_found'
   | 'scan_busy'
+  /** Server connections (design 034). */
+  | 'remote_not_connected'
+  | 'remote_auth_failed'
+  | 'remote_unreachable'
+  | 'remote_timeout'
+  | 'remote_connection_lost'
+  | 'remote_host_key_changed'
+  | 'remote_protocol'
+  | 'remote_unsupported'
+  | 'keychain_unavailable'
+  | 'invalid_profile'
+  | 'invalid_url'
+  | 'unknown_profile'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

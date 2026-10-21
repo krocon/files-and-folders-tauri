@@ -67,6 +67,7 @@ pub(crate) fn assemble(
         unreadable_entries: unreadable,
         archive: None,
         network: false,
+        remote: None,
     }
 }
 

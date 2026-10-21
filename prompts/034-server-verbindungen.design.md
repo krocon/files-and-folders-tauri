@@ -1,6 +1,6 @@
 # Design 034: Server-Verbindungen (FTP, FTPS, SFTP)
 
-> **Status:** Entwurf – 🛑 wartet auf Freigabe · **Datum:** 21.10.2026 · **Branch:** `feat/server-verbindungen`
+> **Status:** freigegeben (Marc, 21.10.2026: „entscheide du, was sicherer ist … Go!“ → E3 = nur Schlüsselbund) · **Datum:** 21.10.2026 · **Branch:** `feat/server-verbindungen`
 > **Prompt:** `prompts/034-server-verbindungen.md` · Vorlagen: `prompts/034-vorlage-*.png`
 
 ## Entscheidungen auf einen Blick
@@ -475,7 +475,10 @@ Kürzel `Mod+K` statt Strg+F (bei uns Suche).
 
 ## Fortschritt
 
-- [x] Phase 1: Bestand gelesen, Crates geprüft (crates.io, 21.10.2026), Design geschrieben – **wartet auf Freigabe**
+- [x] Phase 1: Bestand gelesen, Crates geprüft (crates.io, 21.10.2026), Design geschrieben, freigegeben 21.10.2026.
+  E3 entschieden: nur Schlüsselbund – sicherer als eine eigene Datei mit Master-Passwort (keine eigene
+  Kryptografie-Bedienung, kein Master-Passwort-Dialog/Leerlauf-Vergessen als Fehlerquelle, das OS härtet den Speicher);
+  ohne Schlüsselbund nur „für diese Sitzung“.
 - [ ] Phase 2: Rust
 - [ ] Phase 3: Frontend
 - [ ] Phase 4: E2E

@@ -33,7 +33,9 @@ export type DialogKind =
   | 'button-config'
   | 'file-types'
   | 'mr-import'
-  | 'starter-config';
+  | 'starter-config'
+  | 'connections'
+  | 'remote-prompt';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

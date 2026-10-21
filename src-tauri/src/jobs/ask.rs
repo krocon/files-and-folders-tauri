@@ -42,6 +42,31 @@ impl Asker {
         target: &Path,
         target_meta: &Metadata,
     ) -> Option<Decision> {
+        self.ask_meta(
+            id,
+            control,
+            rep,
+            source,
+            source_meta,
+            &target.to_string_lossy(),
+            meta_of(target_meta),
+            || super::copy::suggest_name(target),
+        )
+    }
+
+    /// [`Self::ask`] for targets that are no local files (servers, design 034).
+    #[allow(clippy::too_many_arguments)]
+    pub fn ask_meta(
+        &mut self,
+        id: &str,
+        control: &Control,
+        rep: &Reporter<'_>,
+        source: &str,
+        source_meta: FileMeta,
+        target: &str,
+        target_meta: FileMeta,
+        suggest: impl FnOnce() -> String,
+    ) -> Option<Decision> {
         if let Some(d) = &self.for_all {
             return Some(d.clone());
         }
@@ -52,10 +77,10 @@ impl Asker {
                 conflict_id: self.seq,
                 kind: ConflictKind::Exists,
                 source: source.to_string(),
-                target: target.to_string_lossy().into_owned(),
+                target: target.to_string(),
                 source_meta,
-                target_meta: meta_of(target_meta),
-                suggested_name: super::copy::suggest_name(target),
+                target_meta,
+                suggested_name: suggest(),
             },
         });
         let state = |s| {
