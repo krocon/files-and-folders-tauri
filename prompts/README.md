@@ -56,6 +56,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 031 | [031-drag-tabs-links.md](done/031-drag-tabs-links.md) | Drag & Drop erweitert, Teil 2: Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen per Drag/Dialog (Job `link`); Verschieben ins System bewusst nicht | 004, 006, 012, 028 | M |
 | 032 | [032-startermenue.md](done/032-startermenue.md) | Starter-Menü (TC „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern“, Programme/Skripte/Ordner/Untermenüs, TC-Parameter `%P%N` …, Kürzel je Eintrag | 002, 011, 014, 015, 022 | S–M |
 | 033 | [033-speicherbelegung.md](done/033-speicherbelegung.md) | Speicherbelegung: Scan als Job (Baum in Rust, Hardlinks einmal, keine Symlinks, Dateisystemgrenzen/macOS-Firmlinks), Liste nach Größe + Sunburst/Treemap, Hineinnavigieren, „Größte Dateien“, Sammelkorb → Löschen (Papierkorb, `expected`) | 003, 005, 006, 009, 010, 011, 013, 015, 030 | L |
+| 034 | [034-server-verbindungen.md](034-server-verbindungen.md) | Server-Verbindungen: Profile (FTP, FTPS, SFTP) mit Dialog nach Vorlage, Passwörter/Passphrasen im Schlüsselbund des OS (nie im Klartext), Host-Key/Zertifikat prüfen, Serverordner im Panel (Tabs, Verlauf, Cache), Kopieren/Verschieben/Löschen/Anlegen/Umbenennen als Jobs, F3 über App-Cache | 003–006, 010, 011, 015, 016/025, 022, 029/030 | L |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
