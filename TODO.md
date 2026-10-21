@@ -15,6 +15,12 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       (`prompts/done/`). Wichtigste Korrekturen: Jobs arbeiten mit dem geprüften Pfad, `..` abgelehnt, Gefahrenprüfung
       physisch (alle Job-Arten); Attribute über Ordner-Deskriptoren ohne Link-Folgen; 7z-Header fail-closed geprüft
       (Bomben-Testdaten, Mutations-Fuzzing ohne Befund); Tools aus dem Import einzeln sichtbar/gewählt + Digest.
+- [x] **034 Server-Verbindungen** (21.10., Branch `feat/server-verbindungen`): FTP/FTPS/SFTP als Ordner, Profile,
+      Passwörter nur im Schlüsselbund, Host-Key/Zertifikat bestätigen, Jobs in beide Richtungen. Getestet gegen
+      In-Process-Server, vsftpd (auch FTPS mit `require_ssl_reuse`) und sshd im Container, Secret Service unter Linux.
+      Folgeideen (Design 034 E0): F4 mit Zurückladen, Fortsetzen abgebrochener Übertragungen (`REST`/Offset),
+      `~/.ssh/config`-Aliasse, Jump-Host/Proxy, chmod auf Servern, Suche auf Servern, WebDAV/S3, parallele
+      Übertragungen je Job, Master-Passwort-Datei für Linux ohne Schlüsselbund (nur auf Wunsch).
 - [ ] **023 eingebauter Editor** – verworfen (Marc, 20.10.).
 - [ ] **027 Persistenz je Ordner** – Prompt noch zu schreiben.
 - [ ] **Neuer Folge-Prompt „Archive bearbeiten“**: in ZIP/TAR (dann 7z) kopieren und darin löschen – Temp-Datei +
@@ -59,6 +65,17 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] Archive (025): 7z/RAR auf macOS/Windows öffnen und entpacken, Passwortdialog; aus einem heruntergeladenen Archiv
       Entpacktes trägt die Quarantäne (macOS) bzw. Zone.Identifier (Windows) – Datei öffnen zeigt die Warnung.
 - [ ] Import (026): echte alte mr-Installation (macOS) importieren, Kürzel/Buttons/Tools prüfen.
+- [ ] Server (034): Profil anlegen, Passwort „im Schlüsselbund speichern“ → Eintrag in der Schlüsselbundverwaltung
+      (Dienst `io.github.krocon.filesandfolders`, Konto `remote:<id>:password`), Neustart → Verbinden ohne Frage.
+      Unsignierter Build: macOS fragt nach jedem neuen Build einmal „Zugriff erlauben“ (erwartet, s. `docs/release.md`).
+      SSH-Agent (1Password/ssh-agent) mit Anmeldung „SSH-Agent“; FTPS gegen einen echten Server mit Zertifikat einer CA.
+      Windows (CI/Marc): Anmeldeinformationsverwaltung, Pageant/OpenSSH-Agent, Build von `ring`/`russh`.
+      Heruntergeladene Server-Datei (F5 oder Enter) trägt Quarantäne (macOS, `xattr -p com.apple.quarantine`) bzw.
+      `Zone.Identifier` (Windows, ZoneId=3) – Öffnen zeigt die Warnung (Review 034).
+- [ ] Server (034, offen aus dem Review): rekursives Löschen auf FTP-Servern, die Links per MLSD als `type=dir` melden
+      (Pure-FTPd, IIS) – Link-Erkennung über FTP ist unzuverlässig; Idee: auf MLSD-Servern vor dem Absteigen `LIST -ld`
+      prüfen oder rekursives Löschen dort nur nach Rückfrage. Zwei Profile für denselben Server (SFTP + FTP): Move mit
+      „Überschreiben“ kann Quelle = Ziel treffen. `Pool.killers` wächst bis zum Trennen.
 - [ ] Startermenü (032): natives Menü „Start“ (macOS), `⌥S` in der Liste öffnet das Popup (in Textfeldern tippt es
       weiter „ß“), Eintrag mit einer `.app` (`/Applications/Preview.app`, Parameter `%P%N`), Ordner-Eintrag `~/…`;
       Windows: `.bat`/`.cmd` als Kommando, `notepad.exe "%P%N"`.

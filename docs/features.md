@@ -85,6 +85,18 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   des Teilbaums. Markierungen gelten über alle Ebenen; `F8` bzw. *Entfernen…* löscht sie (Papierkorb, Gefahrenprüfung
   wie immer, was sich seit dem Scan geändert hat, bleibt liegen), danach stimmen die Summen ohne neuen Scan. Belegte
   Größe (Blöcke) als Standard, Hardlinks einmal, Links nie verfolgt, andere Laufwerke nur gezeigt.
+- **Server-Verbindungen** (Prompt 034, `Strg+K`/`Strg+N` / `⌘K`/`⌘N`, Menü „Gehe zu“, Ordnermenü ▾ Abschnitt
+  „Server“, `sftp://…`/`ftp://…` im Pfadfeld): FTP, FTPS (explizit/implizit) und SFTP als Ordner im Panel – Tabs,
+  Verlauf, Favoriten, Cache wie bei Netzlaufwerken. Dialog „Mit Server verbinden“ mit Profilliste und Formular
+  (Art, Server, Port, Benutzer, anonym, Schlüsseldatei/SSH-Agent, Startordner, Zeitlimit, Verbindungen, Keepalive),
+  *Testen*, *Als Favorit*. Passwörter/Passphrasen werden beim Verbinden abgefragt und **nur im Schlüsselbund des
+  Systems** gespeichert (ohne Schlüsselbund nur für die Sitzung); `connections.json` enthält nie ein Geheimnis.
+  Unbekannte SSH-Host-Keys und nicht vertraute FTPS-Zertifikate zeigen den Fingerabdruck zur Bestätigung; ein
+  geänderter Host-Key wird abgelehnt; Klartext-FTP ist rot markiert. `F5`/`F6` in beide Richtungen und zwischen
+  Servern (als Job, `.part`-Datei, Konflikte), `F7`, `F2`, `F8` (endgültig – Server haben keinen Papierkorb), `F3`
+  und Enter über eine Kopie im App-Cache, Ordnergröße. Nach einem Neustart verbindet nichts von selbst: Server-Tabs
+  zeigen „Verbinden“. Gesperrt auf Servern: Attribute, Shell, Terminal/Finder, Packen/Entpacken, Suche,
+  Speicherbelegung, Multi-Rename, Ziehen ins System.
 - **Wird entfernt**: Solange ein Lösch-, Verschiebe- oder Aufräum-Job läuft, sind seine Einträge in der Liste
   durchgestrichen, kursiv, gedämpft und schraffiert; in der Spalte *Größe* dreht ein kleiner Kreisel mit dem
   Fortschritt des Jobs (`…` solange er plant bzw. beim Papierkorb für einen einzelnen Eintrag). Im Diagramm der

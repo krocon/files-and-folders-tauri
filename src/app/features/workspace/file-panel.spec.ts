@@ -19,6 +19,8 @@ import { FilePanel } from './file-panel';
 import { WatchApi } from '../../core/watch/watch-api';
 import { FakeWatchApi } from '../../../testing/fake-watch-api';
 import { newTab, WorkspaceStore } from './workspace.store';
+import { blankProfile } from '../remote/remote-logic';
+import { RemoteStore } from '../remote/remote.store';
 
 /** jsdom has no layout – the real table is tested end-to-end; here a stand-in. */
 @Component({ selector: 'app-file-list', template: '<div class="stub-list" tabindex="0"></div>' })
@@ -269,6 +271,29 @@ describe('FilePanel', () => {
     });
     const { el } = await render();
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('does not exist');
+  });
+
+  it('shows a server tab after a restart as "not connected" with its name, not the internal path (034)', async () => {
+    TestBed.inject(RemoteStore).profiles.set([
+      { ...blankProfile('Mein Server'), id: 'srv1', host: 'example.org' },
+    ]);
+    fs.handler = () =>
+      Promise.reject({ code: 'remote_not_connected', message: 'Not connected', path: 'srv1' });
+    ws.restore({
+      ...ws.snapshot(),
+      panels: {
+        ...ws.snapshot().panels,
+        left: { activeTab: 0, tabs: [newTab('remote://srv1/home/fnf')] },
+      },
+    });
+    const { el } = await render();
+    const banner = el.querySelector('.error.offline')!;
+    expect(banner.getAttribute('role')).toBe('status');
+    expect(banner.textContent).toContain('Not connected to Mein Server');
+    expect(banner.querySelector('.btn.primary')?.textContent).toContain('Connect');
+    expect(el.textContent).not.toContain('remote://');
+    expect(el.textContent).not.toContain('srv1');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
   });
 
   it('marks its parts as the active panel', async () => {

@@ -16,7 +16,7 @@
 > Bau bitte eine Möglichkeit ein, sich mit anderen Servern zu binden: ftp, usw. bei ftp sollte es die Möglichkeit
 > geben, dass Passwort zu speichern (verschlüsselt!, falls man das sicher machen kann).
 
-Vorlagen (Screenshots von Marc, `prompts/034-vorlage-ftp-explorer.png`, `prompts/034-vorlage-cloudmounter.png`):
+Vorlagen (Screenshots von Marc, `prompts/done/034-vorlage-ftp-explorer.png`, `prompts/done/034-vorlage-cloudmounter.png`):
 
 - **FTP Explorer „Connect“** (klassisch): links Profilliste, rechts Formular *Profile Name · Host Address · Port ·
   Use PASV Mode · Use Firewall · Login · Anonymous · Password · Initial Path · Attempts · Retry Delay · Download Path ·

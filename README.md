@@ -60,6 +60,11 @@ without stutter.
 - **Archives** – open ZIP / TAR / TAR.GZ / 7z / RAR like a folder, view (F3) and open (Enter) files inside,
   pack (ZIP, 7z, TAR, TAR.GZ) and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR; kept in memory only)
   – zip-slip and zip-bomb safe
+- **Server connections** (`Ctrl+K` / `⌘K`) – FTP, FTPS and SFTP servers as folders in the panels: browse with
+  tabs and history, copy and move in both directions as jobs, delete, create, rename, view (`F3`) and open files.
+  Passwords and key passphrases are kept **only in the system keychain** (macOS Keychain, Windows Credential
+  Manager, Secret Service) – never in a file of the app; SSH host keys and FTPS certificates are checked, plain FTP
+  is marked as unencrypted
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
@@ -179,6 +184,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
 | Properties / change attributes | `Alt+Enter` / `Ctrl+Shift+F2` | `⌘I` / `⌘⇧F2` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
+| Connect to server | `Ctrl+K`, `Ctrl+N` | `⌘K`, `⌘N` |
 | Shell line | `Shift+F11` | `⇧F11` |
 | Full screen | `F11` | `⌃⌘F` (menu *Window*) |
 | Settings | `Ctrl+,` | `⌘,` |

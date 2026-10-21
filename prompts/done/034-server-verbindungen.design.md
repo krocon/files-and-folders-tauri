@@ -1,7 +1,7 @@
 # Design 034: Server-Verbindungen (FTP, FTPS, SFTP)
 
 > **Status:** freigegeben (Marc, 21.10.2026: „entscheide du, was sicherer ist … Go!“ → E3 = nur Schlüsselbund) · **Datum:** 21.10.2026 · **Branch:** `feat/server-verbindungen`
-> **Prompt:** `prompts/034-server-verbindungen.md` · Vorlagen: `prompts/034-vorlage-*.png`
+> **Prompt:** `prompts/done/034-server-verbindungen.md` · Vorlagen: `prompts/done/034-vorlage-*.png`
 
 ## Entscheidungen auf einen Blick
 
@@ -473,14 +473,81 @@ Neu – weder die alte Version noch mr hatten Server-Verbindungen. `docs/feature
 „Server-Verbindungen (FTP/FTPS/SFTP), 034“. Abweichung von TC: kein Aktivmodus-FTP, kein Papierkorb am Server,
 Kürzel `Mod+K` statt Strg+F (bei uns Suche).
 
+## Umsetzung – Abweichungen vom Entwurf
+
+| Punkt | Entwurf | Umgesetzt | Grund |
+|---|---|---|---|
+| Testen im Dialog | Command `remote_test` mit ungespeichertem Entwurf | „Testen“ speichert und verbindet (ohne Navigation) | Host-Key/Pin brauchen ein gespeichertes Profil; ein zweiter Ablauf hätte nichts gebracht |
+| Vertrauensfrage + Passwort | Frontend schickt nach „Vertrauen“ erneut | Rust hält das getippte Passwort bis zum nächsten Verbinden (`pending_secrets`, `Zeroizing`), Trennen/Abbrechen verwirft es | das Frontend schickt ein Passwort genau einmal |
+| Zertifikatsdialog | Antragsteller, Aussteller, Gültigkeit | SHA-256 (in Vierergruppen), Grund, „anderer Servername“ | ohne X.509-Parser keine weiteren Felder; der Fingerabdruck ist das Entscheidende (kein neues Crate) |
+| Pool | eine Verbindung fürs Browsen reserviert | gemeinsamer Pool bis `maxConnections`, Warten mit Zeitlimit | einfacher, bei Standard 2 genügt es; Server → Server läuft über eine lokale Temp-Datei |
+| Einstellungen §3.5 | `remote.*` im Einstellungsdialog | Werte je Profil (Zeitlimit, Verbindungen, Keepalive) | globale Defaults hätten nur die Profilwerte vorbelegt |
+| Server-Links beim Kopieren | Link-Ziele per `stat` | übersprungen (`symlink_skipped`) | kein Kopieren von Link-Zielen, keine Zyklen |
+| F4 / Ziehen ins System / Archive auf Servern | Veto | Veto, Hinweis | Folgeideen (TODO.md) |
+| Frontend-Pfade | nur `isRemotePath` | zusätzlich `profileOf` (Id für „Verbinden“), `serverPath` (Favorit vor dem ersten Verbinden), `displayPath` (Menüs) | Lesen/Erzeugen des Präfixes, kein Zerlegen von Serverpfaden; Rust prüft jeden Pfad |
+| Größe des Binarys (R4) | messen | nicht gemessen | ein Release-Build im Container ist zu teuer; neue Crates: rustls, ring (schon über Tauri? nein), russh, suppaftp – bei Marc/CI messen |
+
 ## Fortschritt
 
 - [x] Phase 1: Bestand gelesen, Crates geprüft (crates.io, 21.10.2026), Design geschrieben, freigegeben 21.10.2026.
   E3 entschieden: nur Schlüsselbund – sicherer als eine eigene Datei mit Master-Passwort (keine eigene
   Kryptografie-Bedienung, kein Master-Passwort-Dialog/Leerlauf-Vergessen als Fehlerquelle, das OS härtet den Speicher);
   ohne Schlüsselbund nur „für diese Sitzung“.
-- [ ] Phase 2: Rust
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: E2E
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschlussprüfung, Review
+- [x] Phase 2: Rust – `remote/` (Pfade, Profile, Schlüsselbund, Vertrauen, FTP/FTPS, SFTP, Hub, View-Cache),
+  `jobs/transfer.rs`, `jobs/remote_delete.rs`, Commands; 45 Tests gegen In-Process-Server (libunftp, russh-Server);
+  R1 (FTPS-Datenkanal mit Session-Reuse) gegen vsftpd `require_ssl_reuse=YES` grün, R2 (Hänger) mit stummem Server
+  getestet (Zeitlimit greift für FTP und SFTP).
+- [x] Phase 3: Frontend – Store, Dialoge, Aktionen/Kürzel, Ordnermenü, Panel-Badge/„Verbinden“, Vetos, Löschen
+  endgültig, Einstellungs-Export; 14 Specs.
+- [x] Phase 4: E2E – siehe unten.
+- [x] Phase 5: Doku (architecture, roadmap, feature-parity, features, README, release, CLAUDE.md, TODO.md).
+- [x] Phase 6: Abschlussprüfung (`pnpm check` grün: 918 Frontend-, 631 Rust-Tests), externes Review – siehe unten.
+
+### E2E (Phase 4, Container, Xvfb, 21.10.2026)
+
+Echte App (`pnpm tauri build --debug --no-bundle`) unter Xvfb, Secret Service über `gnome-keyring-daemon` in
+`dbus-run-session`, Server im Container: `sshd` (2222), `vsftpd` plain (2121) und FTPS explizit mit
+`require_ssl_reuse=YES` (2990), Benutzer `fnf`.
+
+- `Ctrl+K` öffnet „Mit Server verbinden“; Adresse `sftp://fnf@127.0.0.1:2222/home/fnf` + „Öffnen“ legt das Profil an
+  (Name, Art, Server, Port, Benutzer aus der URL).
+- „Verbinden“ → Passwortdialog (Haken „Im Schlüsselbund speichern“ gesetzt) → Host-Key-Frage mit Fingerabdruck →
+  „Vertrauen und verbinden“ → linkes Panel zeigt `/home/fnf` mit Badge „🔒 SFTP“ und Trennen-Knopf.
+- F5 einer lokalen Datei `hoch ä.txt` ins Server-Panel: Datei liegt mit Umlaut, Größe und Änderungszeit auf dem Server,
+  Panel frischt auf.
+- F8 im Server-Panel: Dialog „Endgültig löschen“ mit Hinweis „Server haben keinen Papierkorb“; Datei ist weg.
+- Kein Passwort in `connections.json`, `known_hosts`, `session.json` (grep).
+- Neustart: Server-Tab bleibt, zeigt „Verbinden“; Verbinden ohne Passwortfrage (Schlüsselbund), Host bekannt.
+- Gefunden und behoben: Schlüsseltyp im Host-Key-Dialog leer (`ConnectOutcome` serialisierte Felder in snake_case –
+  auch `hostnameMismatch`/`pinnedChanged` kamen nie an; jetzt `rename_all_fields` + Vertragstest); Trennen-Knopf machte
+  den Panelkopf höher (`btn small` gibt es nicht → Icon-Stil wie der Stern); FTPS: das vor der Zertifikatsfrage getippte
+  Passwort ging durch das Trennen in `trust_certificate` verloren (Test `the_password_survives_the_certificate_question`).
+- Rust gegen echte Server: `FNF_E2E_SERVERS=1 cargo test -- --ignored real_servers` (Ordner mit Umlaut anlegen, Datei
+  über den Datenkanal, Umbenennen, Listen; alle drei Server grün); echter Schlüsselbund:
+  `FNF_E2E_KEYRING=1 cargo test -- --ignored real_keychain` (grün unter Secret Service).
+- Nicht prüfbar im Container: macOS-Schlüsselbund, Windows Credential Manager, Herkunftsmarke auf macOS/Windows
+  (`TODO.md`).
+
+### Externes Review (Phase 6, separater Agent ohne Kenntnis der Umsetzung)
+
+Schwerpunkte: Geheimnisse, Vertrauen, Injektion, destruktive Operationen, Hänger. Alle bestätigten Befunde mit rotem
+Test zuerst behoben:
+
+| # | Befund | Behebung | Test |
+|---|---|---|---|
+| 1 | HOCH: `Hub::with` wiederholte nach Verbindungsabbruch auch Uploads/Downloads – Rest-Bytes als „fertige“ Datei, Move löschte danach die Quelle | `with_stream`: wiederverwendete Verbindung vorher per NOOP prüfen, Strom nie zweimal; Bytezahl geprüft (Upload: geschrieben = gelesen; Download: ≠ Plan nur, wenn der Server jetzt genau so groß ist) | `a_broken_stream_is_not_resent`, `a_dead_idle_connection_is_replaced_before_streaming` |
+| 2 | HOCH: gespeichertes Passwort folgte einer Änderung von Host/Port/Art (auch an Klartext-FTP) | Login-Änderung (Host, Port, Art, Benutzer, Anmeldeart) löscht Schlüsselbund-Eintrag und Sitzungsgeheimnis | `the_password_does_not_follow_a_new_server` |
+| 3 | MITTEL: anderer Schlüsseltyp als in known_hosts = „unbekannt“ statt „geändert“ | bekannte Typen zuerst aushandeln (wie OpenSSH), anderer Typ trotz Eintrag = geändert; Zeilennummer mit Kommentaren korrigiert | `another_key_type_than_recorded_is_a_change` |
+| 4 | MITTEL: Umbenennen nur in Groß/Klein überschrieb auf case-sensitiven Servern | bei reiner Schreibweisen-Änderung entscheidet ein exakter Treffer im Listing | `a_case_change_never_replaces_another_entry` |
+| 5 | MITTEL: SFTP-Trennen zwischen zwei Aufrufen ging verloren (`watch::send` ohne Empfänger) | `send_replace` | `an_sftp_kill_between_calls_sticks` |
+| 6 | MITTEL: implizites FTPS ohne Zeitlimit beim Verbindungsaufbau | eigener `TlsConnector` setzt Zeitlimits und registriert den Socket vor dem Handshake | `implicit_ftps_gives_up_on_a_silent_server` |
+| 7 | NIEDRIG: Ansicht-Download ohne Obergrenze | höchstens gemeldete Größe/Limit, sonst Abbruch | (über `materialize`) |
+| 8 | NIEDRIG: Vertrauensantwort nicht an den gezeigten Server gebunden | Trennen/Profiländerung verwirft offene Fragen; getipptes Passwort verfällt nach 5 min | `a_trust_answer_does_not_survive_an_edit` |
+| 9 | NIEDRIG: rekursives Server-Löschen mit unlesbaren Namen | übersprungen und gemeldet | – (Ergebnis sonst gleich) |
+| 10 | Vertrag `ConnectOutcome` snake_case | s. E2E | `connect_outcome_fields_are_camel_case` |
+| P | FTP 550 als „existiert nicht“ geraten | nur mit „not found“-Text, sonst entscheidet das Listing; unvollständiges Listing beweist kein Fehlen | `not_found_only_when_the_reply_says_so` |
+| P | Downloads ohne Herkunftsmarke | Marke wie bei 025 (Windows `Zone.Identifier` ZoneId=3, macOS Quarantäne) | auf macOS/Windows offen (TODO) |
+
+Offen (in `TODO.md`): Löschen auf MLSD-Servern, die Links als `type=dir` melden (Pure-FTPd, IIS) – keine verlässliche
+Link-Erkennung über FTP; zwei Profile für denselben Server (Move mit Überschreiben auf sich selbst); `Pool.killers`
+wächst bei jedem Neuaufbau (klein, wird beim Trennen geleert).

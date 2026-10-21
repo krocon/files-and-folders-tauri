@@ -119,6 +119,29 @@ pub fn apply(_file: &Path, _mark: &OriginMark) {}
 #[cfg(not(any(windows, target_os = "macos")))]
 pub fn apply_open(_file: &std::fs::File, _path: &Path, _mark: &OriginMark) {}
 
+/// A fresh mark for a file downloaded from a server (review 034): `url` names only
+/// scheme and host (`sftp://example.org/`) – no user, no path.
+pub fn downloaded(url: &str) -> OriginMark {
+    #[cfg(windows)]
+    {
+        OriginMark(format!("[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n").into_bytes())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = url;
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        OriginMark(format!("0081;{secs:08x};Files and Folders;").into_bytes())
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let _ = url;
+        OriginMark(Vec::new())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

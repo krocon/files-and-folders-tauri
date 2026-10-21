@@ -57,7 +57,7 @@ pub fn check_host_key(
             Err(russh::keys::Error::KeyChanged { line }) => {
                 return HostKeyCheck::Changed {
                     file: file.to_path_buf(),
-                    line,
+                    line: real_line(file, line),
                 };
             }
             // an unreadable or odd file is no trust and no veto
@@ -65,10 +65,76 @@ pub fn check_host_key(
         }
     }
     if known {
-        HostKeyCheck::Known
-    } else {
-        HostKeyCheck::Unknown
+        return HostKeyCheck::Known;
     }
+    // keys of another type are recorded for this host: not a first contact (review 034 #3)
+    match recorded(host, port, user_file, app_file).into_iter().next() {
+        Some((file, line, _)) => HostKeyCheck::Changed { file, line },
+        None => HostKeyCheck::Unknown,
+    }
+}
+
+/// The keys recorded for `host:port` in both files (file, line, key).
+fn recorded(
+    host: &str,
+    port: u16,
+    user_file: Option<&Path>,
+    app_file: &Path,
+) -> Vec<(PathBuf, usize, russh::keys::PublicKey)> {
+    user_file
+        .into_iter()
+        .chain(std::iter::once(app_file))
+        .filter(|f| f.is_file())
+        .flat_map(|f| {
+            russh::keys::known_hosts::known_host_keys_path(host, port, f)
+                .unwrap_or_default()
+                .into_iter()
+                .map(move |(line, key)| (f.to_path_buf(), real_line(f, line), key))
+        })
+        .collect()
+}
+
+/// russh counts only lines that are not comments; the user needs the line in the file.
+fn real_line(file: &Path, counted: usize) -> usize {
+    let Ok(text) = std::fs::read_to_string(file) else {
+        return counted;
+    };
+    let mut seen = 0;
+    for (i, l) in text.lines().enumerate() {
+        if !l.starts_with('#') {
+            seen += 1;
+            if seen == counted {
+                return i + 1;
+            }
+        }
+    }
+    counted
+}
+
+fn same_type(a: &russh::keys::Algorithm, b: &russh::keys::Algorithm) -> bool {
+    use russh::keys::Algorithm::Rsa;
+    matches!((a, b), (Rsa { .. }, Rsa { .. })) || a == b
+}
+
+/// The host-key algorithms to offer, those recorded for this host first (like OpenSSH):
+/// a real server then shows the key the user already trusts.
+pub fn preferred_host_key_algorithms(
+    host: &str,
+    port: u16,
+    user_file: Option<&Path>,
+    app_file: &Path,
+) -> Vec<russh::keys::Algorithm> {
+    let types: Vec<_> = recorded(host, port, user_file, app_file)
+        .into_iter()
+        .map(|(_, _, k)| k.algorithm())
+        .collect();
+    let (mut first, rest): (Vec<_>, Vec<_>) = russh::Preferred::DEFAULT
+        .key
+        .iter()
+        .cloned()
+        .partition(|a| types.iter().any(|t| same_type(a, t)));
+    first.extend(rest);
+    first
 }
 
 /// Records a confirmed key in the app's known_hosts.
@@ -275,6 +341,40 @@ mod tests {
         }
         assert_eq!(std::fs::read(&user).unwrap(), before);
         assert!(fingerprint(&k1).starts_with("SHA256:"));
+    }
+
+    const ECDSA: &str = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDn1mtNhxd8S4u+/ll3B1QPZhGeMs0f0Bw0nMP3cfH0L+XTKV1rhVRzmx2NZI1lo8FUCAsPfe4TwO/pbABtsfNY=";
+
+    /// Review 034 #3: a host with a recorded ECDSA key that suddenly shows an ed25519
+    /// key is not a "new server" – OpenSSH warns, we refuse (after preferring the known
+    /// type in the negotiation, a real server shows the recorded key).
+    #[test]
+    fn another_key_type_than_recorded_is_a_change() {
+        let dir = tempdir().unwrap();
+        let app = dir.path().join("app_known_hosts");
+        let user = dir.path().join("user_known_hosts");
+        std::fs::write(&user, format!("# comment\n[h]:2222 {ECDSA}\n")).unwrap();
+        assert_eq!(
+            check_host_key("h", 2222, &key(1), Some(&user), &app),
+            HostKeyCheck::Changed {
+                file: user.clone(),
+                line: 2
+            }
+        );
+        // other hosts are not affected
+        assert_eq!(
+            check_host_key("other", 2222, &key(1), Some(&user), &app),
+            HostKeyCheck::Unknown
+        );
+        // the recorded type comes first in the negotiation, the rest keeps its order
+        let order = preferred_host_key_algorithms("h", 2222, Some(&user), &app);
+        assert_eq!(order[0].as_str(), "ecdsa-sha2-nistp256");
+        assert_eq!(order[1], russh::keys::Algorithm::Ed25519);
+        assert_eq!(order.len(), russh::Preferred::DEFAULT.key.len());
+        assert_eq!(
+            preferred_host_key_algorithms("other", 2222, Some(&user), &app),
+            russh::Preferred::DEFAULT.key.to_vec()
+        );
     }
 
     #[test]

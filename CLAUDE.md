@@ -35,13 +35,14 @@
   einen App-Cache; in Archive schreiben offen), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
   Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) und
   Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) und Prompt 033
-  (Speicherbelegung: Scan als Job `diskUsage`, Tab „Belegung“, Ringe/Kacheln, Sammelkorb, `Mod+Shift+D`) sind
+  (Speicherbelegung: Scan als Job `diskUsage`, Tab „Belegung“, Ringe/Kacheln, Sammelkorb, `Mod+Shift+D`) und Prompt 034
+  (Server-Verbindungen FTP/FTPS/SFTP: Pfade `remote://<profil>/…`, Passwörter nur im Schlüsselbund, `Mod+K`) sind
   fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: 027 (Persistenz je
   Ordner) und „Archive bearbeiten“ (noch zu schreiben), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–033 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034 ohne 023/027 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -124,6 +125,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/diskusage/    DiskUsageStore (Root: Scans, Ebene/Verlauf/Korb je Scan, Tab `usage:<scanId>`), usage-rows.ts,
                              basket-logic.ts, chart-layout.ts (Ringe/Kacheln, rein), usage-colors.ts, DiskUsageChart
                              (andere Seite), Spalten-Renderer, Aktionen OPEN_DISK_USAGE(_VOLUME) + Veto im Tab
+  app/core/remote/           Server-Verbindungen (034): RemoteApi, DTOs, remote-path.ts (Präfix-Test, Anzeige),
+                             RemoteConnectPrompt (Brücke Panel → Verbinden)
+  app/features/remote/       RemoteStore (Root: Profile, Zustände, Ablauf Passwort/Host-Key/Zertifikat), Dialog
+                             „Mit Server verbinden“, Prompt-Dialog, remote-logic.ts (rein), Aktionen + OFF_ON_SERVER
   app/core/watch/            WatchApi (subscribe_watch, watch_dirs, describe_paths), WatchService (Root: Ordner beider
                              Panels → Rust, Ereignisse an die Panels); app/core/dnd/ DragDropApi (Tauri-Drop von außen),
                              OsDragApi (`start_os_drag`: aus dem Fenster in andere Programme, 028)
@@ -196,6 +201,13 @@ src-tauri/                   Rust (Tauri 2)
                              (Worker, Gerät+Inode, Gerätemenge), mod.rs (Hub ≤ 3 Scans, Plan, DTOs), tests.rs; Job
                              `jobs/disk_usage.rs`, Commands `commands/disk_usage.rs`, `platform/disk_usage.rs` (Blöcke,
                              Volume-Wurzel, macOS-Data-Volume)
+  src/remote/                Server-Verbindungen (034): path.rs (RemotePath), profiles.rs (connections.json, URL),
+                             credentials.rs (Schlüsselbund über keyring-core, Sitzungs-Geheimnisse), trust.rs
+                             (known_hosts, FTPS-Pin), fs.rs (Trait RemoteFs), ftp.rs (suppaftp), sftp.rs (russh,
+                             eigene Tokio-Laufzeit), mod.rs (Hub: Pool, Verbinden, Listing), view.rs, danger.rs;
+                             testserver.rs (libunftp + russh-Server im Test), testdata/; Jobs `jobs/transfer.rs`,
+                             `jobs/remote_delete.rs`; Commands `commands/remote.rs`
+  src/secret.rs              `Secret` (Zeroizing, kein Serialize) für Archiv- und Server-Passwörter
   src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
@@ -258,6 +270,10 @@ prompts/                     Feature-Prompts (s. o.)
 - **Job-Pfade** (Review 024/031): `JobManager::start` normalisiert jeden Pfad jeder Job-Art (`paths::validate_job_path`,
   ohne `.`/abschließenden Separator), `..` wird abgelehnt; der Job arbeitet genau mit dem geprüften Pfad. Die
   Gefahrenprüfung (`paths::DangerCheck`) prüft zusätzlich den physischen Ort (Elternordner kanonisch).
+- **Server-Verbindungen** (034): Serverpfade `remote://<profil-id>/<serverpfad>` sind opak wie alle Pfade (Rust
+  `remote::RemotePath`); Geheimnisse nur im Schlüsselbund des OS (`remote::credentials`), nie in Dateien, Events,
+  Logs oder im Frontend nach dem Senden; nichts verbindet ohne Zutun des Nutzers; neue Commands mit Pfaden prüfen
+  `remote::is_remote` zuerst (lokale Commands lehnen Serverpfade über `validate_input_path` ab).
 - **Fremde Archive sind feindlich** (025): Vorabprüfungen fail-closed (was nicht sicher beurteilt wird, wird abgelehnt),
   jede Anzahl/Größe vor der Allokation begrenzen; Passwörter nur im Speicher (`archive::secrets`, `Zeroizing`), nie
   serialisiert, geloggt oder in Events; Entpacktes erbt die Herkunftsmarke des Archivs.

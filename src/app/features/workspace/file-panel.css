@@ -89,7 +89,8 @@
   color: var(--color-muted);
 }
 
-.star {
+.star,
+.header-icon {
   flex: none;
   padding: 0 var(--spacing-1);
   font-size: 1.1rem;
@@ -152,6 +153,12 @@
   border: var(--border-width) solid var(--color-danger);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
+}
+
+.error.offline {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .error-path {

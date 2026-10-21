@@ -65,6 +65,14 @@
     return out;
   }
 
+  function remoteProfile(id, name, kind, host, port, user, secret, startPath) {
+    return {
+      id, name, kind, host, port, user, anonymous: false, auth: 'password', keyFile: null,
+      startPath, passive: true, encoding: 'auto', timeoutSecs: 20, maxConnections: 2,
+      keepaliveSecs: 60, description: '', pinnedCert: null, acceptHostnameMismatch: false, secret,
+    };
+  }
+
   function listDirectory(args) {
     const path = expand(args?.path ?? home);
     if (!(path in dirs)) {
@@ -531,6 +539,19 @@
       problems: [],
       file: `${home}/.config/files-and-folders/starter.json`,
     }),
+    // design 034: three server profiles (no passwords – Rust keeps them in the keychain)
+    load_connections: () => ({
+      profiles: [
+        remoteProfile('k3x9a2', 'Mein Server', 'sftp', 'example.org', 22, 'marc', 'keychain', '/home/marc'),
+        remoteProfile('n4s7b1', 'NAS im Keller', 'ftp', 'nas.local', 21, 'marc', 'none', null),
+        remoteProfile('c8w2d5', 'Kunde Webspace', 'ftpsExplicit', 'ftp.kunde.de', 21, 'web42', 'none', '/htdocs'),
+      ],
+      states: { k3x9a2: 'connected' },
+      keychain: true,
+      sessionSecrets: [],
+      warning: null,
+    }),
+    subscribe_remote: () => null,
     load_rename_presets: () => ({ presets: { version: 1, last: null, presets: [] }, warning: null }),
     plan_rename: (a) => {
       const rows = (a?.items ?? []).map((it) => ({

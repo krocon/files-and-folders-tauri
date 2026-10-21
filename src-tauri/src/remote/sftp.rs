@@ -431,7 +431,7 @@ impl RemoteFs for SftpConn {
     fn killer(&self) -> Killer {
         let kill = self.kill.clone();
         Arc::new(move || {
-            let _ = kill.send(true);
+            kill.send_replace(true);
         })
     }
 
@@ -442,7 +442,7 @@ impl RemoteFs for SftpConn {
 
 impl Drop for SftpConn {
     fn drop(&mut self) {
-        let _ = self.kill.send(true);
+        self.kill.send_replace(true);
     }
 }
 
@@ -533,6 +533,15 @@ pub fn connect(
         keepalive_interval: (p.keepalive_secs > 0)
             .then(|| Duration::from_secs(u64::from(p.keepalive_secs))),
         keepalive_max: 3,
+        preferred: russh::Preferred {
+            key: std::borrow::Cow::Owned(super::trust::preferred_host_key_algorithms(
+                &p.host,
+                p.port,
+                known.user.as_deref(),
+                &known.app,
+            )),
+            ..Default::default()
+        },
         ..Default::default()
     };
     // a key file is read before connecting: a wrong passphrase needs no network round trip

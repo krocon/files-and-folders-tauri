@@ -118,6 +118,7 @@ export const REMOTE_DE: Translation<typeof REMOTE_EN> = {
   acceptHostname: 'Den anderen Servernamen für dieses Zertifikat akzeptieren',
   reason: 'Grund',
   notConnected: 'Nicht verbunden',
+  offlineTitle: (name: string) => (name ? `Nicht mit ${name} verbunden` : 'Nicht verbunden'),
   disconnect: 'Trennen',
   reconnect: 'Verbinden',
   encrypted: 'Verschlüsselte Verbindung',

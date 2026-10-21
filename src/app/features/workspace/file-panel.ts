@@ -1,6 +1,6 @@
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { isNotConnected, profileOf } from '../../core/remote/remote-connect-prompt';
-import { isRemotePath, isServerUrl } from '../../core/remote/remote-path';
+import { displayPath, isRemotePath, isServerUrl } from '../../core/remote/remote-path';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { RemoteStore } from '../remote/remote.store';
 import { duplicateSummary, KeepRule } from '../duplicates/duplicates-logic';
@@ -217,9 +217,21 @@ export class FilePanel implements OnInit {
   /** Opening this tab's folder was cancelled and nothing else could be shown. */
   protected readonly cancelledTab = signal<string | null>(null);
   /** The tab's own path while its folder opens (the list is empty then). */
-  protected readonly openingPath = computed(() =>
-    this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null,
+  protected readonly openingPath = computed(() => {
+    const path =
+      this.store.listing() === null && !this.tab().search ? (this.tab().path ?? null) : null;
+    // a server tab before connecting: `Name: /path`, never the internal `remote://id/…`
+    return path && isRemotePath(path) ? displayPath(path, this.profileNames()) : path;
+  });
+  private readonly profileNames = computed(
+    () => new Map(this.remote.profiles().map((p) => [p.id, p.name])),
   );
+  /** The name of the server of an offline tab (banner). */
+  protected readonly offlineName = computed(() => {
+    const path = this.offline();
+    const id = path ? profileOf(path) : null;
+    return (id && this.profileNames().get(id)) ?? '';
+  });
 
   constructor() {
     effect(() => {

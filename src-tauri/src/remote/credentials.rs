@@ -246,3 +246,30 @@ mod tests {
         );
     }
 }
+
+/// The real keychain (E2E): `FNF_E2E_KEYRING=1 cargo test -- --ignored real_keychain`
+/// inside a D-Bus session with an unlocked Secret Service (Linux) or on macOS/Windows.
+#[cfg(test)]
+mod real {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn real_keychain() {
+        if std::env::var("FNF_E2E_KEYRING").is_err() {
+            return;
+        }
+        let s = KeyringStore::new();
+        assert!(s.available(), "{:?}", s.ready);
+        let id = format!("e2e-{}", std::process::id());
+        assert_eq!(s.get(&id, SecretKind::Password).unwrap(), None);
+        s.set(&id, SecretKind::Password, &Secret::new("pässwört 🔑"))
+            .unwrap();
+        assert_eq!(
+            s.get(&id, SecretKind::Password).unwrap().unwrap().expose(),
+            "pässwört 🔑"
+        );
+        s.delete(&id, SecretKind::Password).unwrap();
+        assert_eq!(s.get(&id, SecretKind::Password).unwrap(), None);
+    }
+}
