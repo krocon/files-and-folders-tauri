@@ -310,9 +310,13 @@ prompts/                     Feature-Prompts (s. o.)
 ## 5. GuiExpert Table als Dateiliste
 
 - Pakete: `@guiexpert/table` (Core, 0 Runtime-Deps) + `@guiexpert/angular-table` mit **gleicher Major wie Angular**
-  (Angular 22 → `@guiexpert/angular-table@^22.1.99`, Core `^1.1.99`, Stand Okt. 2026). Komponente `TableComponent`,
-  Selektor `guiexpert-table`, Inputs `tableModel`, `tableOptions`, `loading`, Outputs u. a. `tableReady` (`TableApi`),
-  `mouseClicked` (`GeMouseEvent` mit `clickCount`), `contextmenu`, `selectionChanged`, `focusChanged`.
+  (Angular 22 → `@guiexpert/angular-table@22.1.100`, Core `1.1.100`, Stand Okt. 2026). Wir nutzen die
+  signal-native Komponente **`TableSignalComponent`**, Selektor `guiexpert-table-signal` (erst ab 22.1.100):
+  Signal-Inputs `tableModel`, `tableOptions`, `loading`, die API als Signal per **`[(tableApi)]="api"`** mit
+  `api = signal<TableApi | undefined>(undefined)` – **kein `tableReady`**, verdrahtet wird in einem `effect()` auf
+  `api()` (Listener über `api.subscribe` mit `onCleanup` lösen; neue Tabelle = neue API). Outputs u. a. `mouseClicked`,
+  `contextMenu` (nicht `contextmenu`), `selectionChanged`, `focusChanged`. Die klassische `TableComponent`
+  (`<guiexpert-table>`, `tableReady`) nicht mehr verwenden. Vorbild: `mono/apps/angular-signal-demo/src/orders.component.ts`.
 - **Referenz für jede API-Aussage**: das Mono-Repo. Lokal unter
   `/Users/marckronberg/WebstormProjects/video/2026/guiexpert-table/mono`, sonst
   https://github.com/guiexperttable/mono. Dort: `CLAUDE.md` (§3 Architektur, §3.6 Interaktion, §3.7 Options),

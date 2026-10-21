@@ -10,7 +10,7 @@ sind als solche markiert.
 │  Workspace (Grid, Splitter) ── WorkspaceStore (Root: Tabs beider│
 │   │                             Seiten, aktive Seite, Favoriten)│
 │   ├ FilePanel ×2 (Header, TabBar, FileList, Statuszeile)        │
-│   │   └ FileList ─ <guiexpert-table> ─ FileListController       │
+│   │   └ FileList ─ <guiexpert-table-signal> ─ FileListController│
 │   │                 └ TableBridge (Fassade, State je Tab)       │
 │   │   FileBrowserStore (Signals, pro Panel bereitgestellt)      │
 │   └ ButtonBar (Gerüst, buttons.json)                           │
