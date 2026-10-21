@@ -86,6 +86,8 @@ Frontend-Features lassen Phase 2 aus.
   `docs/feature-parity.md` (Matrix-Zeilen auf ✅/🟡 mit Testverweis), README („Was funktioniert“, Tastenkürzel).
 - `CLAUDE.md`, wenn sich Regeln, Befehle oder Layout geändert haben.
 - Im Prompt-Index `prompts/README.md` den Status abhaken; Design-Dokument „Fortschritt“ abschließen.
+- **Fertige Prompts nach `prompts/done/` verschieben** (Auftrag, `*.design.md` und zugehörige Bilder; `git mv`, Links im
+  Index auf `done/` umstellen) – in `prompts/` liegen nur offene Prompts (Marc, 21.10.2026).
 
 ### Phase 6 – Abschlussprüfung
 
