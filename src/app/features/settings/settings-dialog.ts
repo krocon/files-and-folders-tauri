@@ -25,6 +25,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { StarterStore } from '../starter/starter.store';
+import { RemoteStore } from '../remote/remote.store';
 import { OsStore } from '../osintegration/os.store';
 import { ShellStore } from '../shell/shell.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
@@ -344,6 +345,7 @@ export class SettingsDialog {
   protected readonly theme = inject(ThemeService);
   protected readonly os = inject(OsStore);
   private readonly starter = inject(StarterStore);
+  private readonly remote = inject(RemoteStore);
   private readonly api = inject(SettingsApi);
   private readonly ws = inject(WorkspaceStore);
   private readonly confirm = inject(ConfirmService);
@@ -574,6 +576,9 @@ export class SettingsDialog {
           break;
         case 'starter':
           tasks.push(this.starter.init());
+          break;
+        case 'connections':
+          tasks.push(this.remote.reload());
           break;
       }
     }

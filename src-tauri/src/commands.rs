@@ -110,6 +110,13 @@ pub async fn resolve_location<R: Runtime>(
     app: AppHandle<R>,
     input: String,
 ) -> Result<Location, FsError> {
+    // a server folder (design 034): checked by form; the job checks that it exists
+    if crate::remote::is_remote(input.trim()) {
+        return Ok(Location {
+            dir: crate::remote::RemotePath::parse(input.trim())?.to_string(),
+            select: None,
+        });
+    }
     let path = resolve_input(&app, &input)?;
     tauri::async_runtime::spawn_blocking(move || location_of(&path))
         .await

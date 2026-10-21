@@ -109,7 +109,8 @@ fn sftp_password_host_key_keychain_and_files() {
         ConnectOutcome::HostKeyUnknown { .. }
     ));
     e.hub.trust_host_key(&p.id, &fp).unwrap();
-    let out = e.hub.connect(&p.id, pw(), Remember::Keychain).unwrap();
+    // the password typed before the question is used once more – not sent again
+    let out = e.hub.connect(&p.id, None, Remember::None).unwrap();
     let ConnectOutcome::Connected {
         home,
         encrypted,

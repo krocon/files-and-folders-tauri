@@ -220,6 +220,10 @@ export class FileBrowserStore implements OnDestroy {
   readonly archive = computed(() =>
     this.searchKey() !== null ? null : (this.listing()?.archive ?? null),
   );
+  /** Set while the panel shows a folder on a server (design 034 E1). */
+  readonly remote = computed(() =>
+    this.searchKey() !== null ? null : (this.listing()?.remote ?? null),
+  );
   /** Opens a folder in a new tab (result tab: Enter on a folder, "go to file"; set by the panel). */
   openInNewTab: (path: string, cursor: string | null) => void = () => undefined;
 
@@ -575,7 +579,9 @@ export class FileBrowserStore implements OnDestroy {
     this.setCursor(entry.path);
     // an archive opens like a folder (design 016 E1); an archive inside an archive is not opened (E3.4)
     const inArchive = this.archive() !== null;
-    if (isNavigableDir(entry) || (isArchiveEntry(entry) && !inArchive)) {
+    // archives on a server are files: copy them first (design 034 §4.6)
+    const onServer = this.remote() !== null;
+    if (isNavigableDir(entry) || (isArchiveEntry(entry) && !inArchive && !onServer)) {
       if (!entry.lossyName) {
         await this.load(entry.path);
       }
@@ -583,6 +589,9 @@ export class FileBrowserStore implements OnDestroy {
     }
     if (inArchive) {
       return this.openInArchive(entry);
+    }
+    if (onServer) {
+      return this.openOnServer(entry);
     }
     await this.openFile(entry);
   }
@@ -611,6 +620,30 @@ export class FileBrowserStore implements OnDestroy {
       !this.passwordPrompt.askFor(error, archive, () => this.openInArchive(entry))
     ) {
       this.error.set(error);
+    }
+  }
+
+  /**
+   * Enter on a file on a server (design 034 §4.5): job `viewEntry` downloads it into the
+   * app's cache (progress in Tasks), then it opens with its program from there.
+   */
+  async openOnServer(entry: DirEntry): Promise<void> {
+    if (entry.lossyName) {
+      return;
+    }
+    let id: string;
+    try {
+      id = await this.jobs.start({ kind: 'viewEntry', path: entry.path });
+    } catch (err) {
+      this.error.set(toFsError(err));
+      return;
+    }
+    const job = await this.jobs.whenFinished(id);
+    const viewPath = job.summary?.viewPath ?? null;
+    if (job.state === 'done' && viewPath) {
+      await this.openFile({ ...entry, path: viewPath });
+    } else if (job.summary?.error) {
+      this.error.set(job.summary.error);
     }
   }
 

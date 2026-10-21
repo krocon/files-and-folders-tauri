@@ -18,6 +18,7 @@ import { isSameOrBelow, SearchStore } from '../search/search.store';
 import { SearchHit } from '../../core/search/search.models';
 import { ArchiveStore } from '../archive/archive.store';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
+import { isRemotePath } from '../../core/remote/remote-path';
 import { wholeGroups } from '../duplicates/duplicates-logic';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
@@ -284,8 +285,11 @@ export class OpsStore {
     }
     const dangers = await this.dangers(entries);
     // settings (design 015): F8 deletes permanently when the trash is switched off
+    // servers have no trash (design 034 E4): always permanent there
     const effective: DeleteMode =
-      mode === 'trash' && !this.settings.get('behavior.deleteToTrash') ? 'permanent' : mode;
+      isRemotePath(sourceDir) || (mode === 'trash' && !this.settings.get('behavior.deleteToTrash'))
+        ? 'permanent'
+        : mode;
     const store = this.ws.panel()?.store;
     const whole =
       store?.searchKey() != null && store.searchKind() === 'duplicates'

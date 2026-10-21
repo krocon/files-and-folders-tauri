@@ -214,6 +214,7 @@ export const SETTINGS_EN = {
     buttons: 'Buttons',
     fileTypes: 'File types',
     starter: 'Starter menu',
+    connections: 'Server connections (without passwords)',
   },
   toolsWarning:
     'Tools and starter entries start programs – import them only from a file you trust.',
@@ -452,6 +453,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     buttons: 'Buttons',
     fileTypes: 'Dateitypen',
     starter: 'Startermenü',
+    connections: 'Server-Verbindungen (ohne Passwörter)',
   },
   toolsWarning:
     'Tools und Startermenü starten Programme – nur aus einer Datei importieren, der Sie vertrauen.',

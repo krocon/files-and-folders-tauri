@@ -114,7 +114,8 @@ export type SettingsPart =
   | 'tools'
   | 'buttons'
   | 'fileTypes'
-  | 'starter';
+  | 'starter'
+  | 'connections';
 export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'settings',
   'keymap',
@@ -124,6 +125,7 @@ export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'buttons',
   'fileTypes',
   'starter',
+  'connections',
 ];
 
 export interface ImportReport {

@@ -1,0 +1,123 @@
+/* Server connections (design 034): list + form like the starter editor; prompts */
+.editor.connections {
+  grid-template-columns: minmax(15rem, 0.9fr) minmax(20rem, 1.3fr);
+}
+
+@media (max-width: 44rem) {
+  .editor.connections {
+    grid-template-columns: 1fr;
+  }
+}
+
+.connections .entries [role='option'] {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: 3px var(--spacing-2);
+  color: var(--color-input-text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &[aria-selected='true'] {
+    color: var(--color-selection-text);
+    background: var(--color-selection);
+
+    .muted,
+    .warn {
+      color: inherit;
+    }
+  }
+
+  .grow {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .warn {
+    color: var(--color-danger);
+  }
+}
+
+.details {
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+  }
+
+  .field input.plain {
+    font-family: inherit;
+  }
+
+  .field.num input {
+    width: 7rem;
+  }
+
+  .secret {
+    align-items: center;
+
+    .label {
+      color: var(--color-muted);
+    }
+
+    .grow {
+      flex: 1;
+    }
+  }
+
+  textarea {
+    font: inherit;
+    resize: vertical;
+  }
+}
+
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+
+  summary {
+    cursor: pointer;
+    color: var(--color-muted);
+  }
+
+  > :not(summary) {
+    margin-top: var(--spacing-2);
+  }
+}
+
+.wide {
+  flex-basis: 100%;
+}
+
+.danger-text {
+  margin: 0;
+  padding: 2px var(--spacing-1);
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-sm);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--spacing-1) var(--spacing-3);
+  margin: 0;
+
+  dt {
+    color: var(--color-muted);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.btn.danger {
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+}

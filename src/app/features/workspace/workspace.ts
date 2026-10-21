@@ -103,6 +103,10 @@ import { MrImportDialog } from '../mrimport/mr-import-dialog';
 import { registerMrImportActions } from '../mrimport/mr-import-actions';
 import { MrImportStore } from '../mrimport/mr-import.store';
 import { MenuApi } from '../../core/menu/menu-api';
+import { ConnectionsDialog } from '../remote/connections-dialog';
+import { RemotePromptDialog } from '../remote/remote-prompt-dialog';
+import { registerRemoteActions } from '../remote/remote-actions';
+import { RemoteStore } from '../remote/remote.store';
 
 /**
  * The main window (`docs/ui-layout.md`): a CSS grid with the rows header · tabs ·
@@ -148,6 +152,8 @@ import { MenuApi } from '../../core/menu/menu-api';
     ButtonConfigDialog,
     FileTypesDialog,
     MrImportDialog,
+    ConnectionsDialog,
+    RemotePromptDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -190,6 +196,7 @@ export class Workspace implements OnInit {
   private readonly fileTypes = inject(FileTypesStore);
   private readonly mrImport = inject(MrImportStore);
   private readonly starter = inject(StarterStore);
+  private readonly remote = inject(RemoteStore);
   private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -246,6 +253,13 @@ export class Workspace implements OnInit {
     // success messages of design 011 (copied, tool started) for screen readers
     effect(() => {
       const text = this.os.status();
+      if (text) {
+        untracked(() => this.announcement.set(text));
+      }
+    });
+    // connected / disconnected (design 034)
+    effect(() => {
+      const text = this.remote.status();
       if (text) {
         untracked(() => this.announcement.set(text));
       }
@@ -324,6 +338,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
     this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));
     this.destroyRef.onDestroy(registerStarterActions(this.actions, this.starter, this.menus));
+    this.destroyRef.onDestroy(registerRemoteActions(this.actions, this.ws, this.remote));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();

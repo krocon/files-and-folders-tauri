@@ -25,6 +25,7 @@ import '../../features/mrimport/mr-import-texts';
 import '../../features/ops/ops-texts';
 import '../../features/osintegration/os-texts';
 import '../../features/preview/preview-texts';
+import '../../features/remote/remote-texts';
 import '../../features/search/search-texts';
 import '../../features/settings/settings-texts';
 import '../../features/shell/shell-texts';
@@ -35,6 +36,13 @@ import '../../features/workspace/texts';
 /** Same in both languages on purpose (names, symbols, technical terms). */
 const SAME = new Set([
   'OK',
+  'UTF-8',
+  'Server',
+  'Port',
+  'Port 1–65535.',
+  'FTP',
+  'FTPS',
+  'SFTP',
   'Esc',
   'Name',
   'Tabs',

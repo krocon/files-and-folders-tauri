@@ -2,6 +2,8 @@ import { USAGE_TEXTS } from '../diskusage/disk-usage-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { DeleteMode } from '../../core/jobs/jobs.models';
+import { isRemotePath } from '../../core/remote/remote-path';
+import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
@@ -46,6 +48,11 @@ const SHOWN = 5;
             }
           </ul>
 
+          @if (onServer()) {
+            <p class="muted strong" role="note">
+              <i class="fa fa-server" aria-hidden="true"></i> {{ remoteTexts.noTrash }}
+            </p>
+          }
           @if (r.scanAgeMin !== undefined) {
             <p class="muted" role="note" [class.strong]="r.mode === 'permanent'">
               {{ usage.scanAge(r.scanAgeMin) }}
@@ -138,6 +145,9 @@ export class DeleteDialog {
   protected readonly ops = inject(OpsStore);
   protected readonly req = this.ops.del;
   protected readonly permanent = computed(() => this.req()?.mode === 'permanent');
+  protected readonly remoteTexts = REMOTE_TEXTS;
+  /** Deleting on a server (design 034): permanent, there is no trash. */
+  protected readonly onServer = computed(() => isRemotePath(this.req()?.sourceDir));
   /** The trash dialog's "Delete permanently" button is hovered or focused. */
   protected readonly armed = signal(false);
   /** The message warns "cannot be undone": permanent mode or the armed second button. */

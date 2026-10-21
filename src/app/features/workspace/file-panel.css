@@ -357,3 +357,15 @@
   flex: none;
   gap: 2px;
 }
+
+/* server folder (design 034): encrypted or plain */
+.remote-badge {
+  .fa {
+    margin-right: 2px;
+  }
+
+  &.plain {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+}

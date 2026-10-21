@@ -17,6 +17,9 @@ import { tabZoneHit } from '../dnd/dnd-logic';
 import { DragStore } from '../dnd/drag.store';
 import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
 import { VolumesStore } from '../osintegration/volumes.store';
+import { displayPath } from '../../core/remote/remote-path';
+import { REMOTE_TEXTS } from '../remote/remote-texts';
+import { RemoteStore } from '../remote/remote.store';
 import { SearchStore } from '../search/search.store';
 import { modifiersAfter } from '../../core/actions/shortcut';
 import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
@@ -61,16 +64,31 @@ export class TabBar {
   /** The panel's store (TabBar lives inside the FilePanel). */
   protected readonly store = inject(FileBrowserStore, { optional: true });
   private readonly drives = inject(VolumesStore);
+  private readonly remote = inject(RemoteStore);
   protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
   protected readonly folderMenuItems = computed<MenuItem[]>(() => {
     const t = TEXTS;
     const favorites = [...this.ws.favorites()];
     const recent = this.ws.recent().filter((p) => !this.ws.favorites().has(p));
+    const names = new Map(this.remote.profiles().map((p) => [p.id, p.name]));
     const group = (prefix: string, label: string, paths: string[]): MenuItem[] => [
       { id: `${prefix}-h`, label, heading: true },
       ...(paths.length === 0
         ? [{ id: `${prefix}-none`, label: t.menuEmpty, disabled: true }]
-        : paths.map((p, i) => ({ id: `${prefix}:${i}`, label: p }))),
+        : paths.map((p, i) => ({ id: `${prefix}:${i}`, label: displayPath(p, names) }))),
+    ];
+    // servers (design 034 E8): connected ones first
+    const connected = this.remote.connectedIds();
+    const profiles = [...this.remote.profiles()]
+      .sort((a, b) => Number(connected.has(b.id)) - Number(connected.has(a.id)))
+      .slice(0, 10);
+    const servers: MenuItem[] = [
+      { id: 'srv-h', label: REMOTE_TEXTS.serversSection, heading: true },
+      ...profiles.map((p) => ({
+        id: `srv:${p.id}`,
+        label: `${connected.has(p.id) ? '● ' : ''}${p.name}`,
+      })),
+      { id: 'srv-all', label: REMOTE_TEXTS.allConnections },
     ];
     const volumes = this.drives.volumes();
     const drives: MenuItem[] = [
@@ -84,6 +102,7 @@ export class TabBar {
     return [
       { id: 'home', label: t.menuHome },
       ...drives,
+      ...servers,
       ...group('fav', t.menuFavorites, favorites),
       ...group('recent', t.menuRecent, recent),
     ];
@@ -240,6 +259,14 @@ export class TabBar {
       path = recent[Number(id.slice(7))];
     } else if (id.startsWith('vol:')) {
       path = this.drives.volumes()?.[Number(id.slice(4))]?.path;
+    } else if (id === 'srv-all') {
+      this.remote.openDialog();
+      return;
+    } else if (id.startsWith('srv:')) {
+      const side = this.side();
+      this.ws.setActive(side);
+      void this.remote.connect(id.slice(4), { navigate: true });
+      return;
     }
     if (path !== undefined) {
       this.ws.requestNavigate(this.side(), path);

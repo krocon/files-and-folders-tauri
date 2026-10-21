@@ -139,6 +139,7 @@ describe('SettingsDialog', () => {
       'renamePresets',
       'buttons',
       'fileTypes',
+      'connections',
     ]);
     fixture.detectChanges();
     expect(el.querySelector('.message')?.textContent).toContain('Imported: Settings.');

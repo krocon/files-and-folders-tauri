@@ -124,6 +124,9 @@ pub struct Hub {
     /// Profiles whose secret was typed without "remember": forgotten on disconnect.
     ephemeral: Mutex<HashSet<String>>,
     pending_keys: Mutex<HashMap<String, sftp::HostKeySeen>>,
+    /// A secret typed for a connect that stopped at a trust question: used by the next
+    /// connect of that profile (after "trust"), so the frontend sends it only once.
+    pending_secrets: Mutex<HashMap<String, (Secret, Remember)>>,
     pending_certs: Mutex<HashMap<String, trust::CertSeen>>,
     listeners: Mutex<Vec<Listener>>,
     /// Tests: trust this root instead of the system store (FTPS).
@@ -166,6 +169,7 @@ impl Hub {
             secrets: SessionSecrets::default(),
             ephemeral: Mutex::new(HashSet::new()),
             pending_keys: Mutex::new(HashMap::new()),
+            pending_secrets: Mutex::new(HashMap::new()),
             pending_certs: Mutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
             test_root: None,
@@ -376,6 +380,7 @@ impl Hub {
 
     /// Closes all connections of a profile (busy ones are shut down).
     pub fn disconnect(&self, id: &str) {
+        lock(&self.pending_secrets).remove(id);
         if lock(&self.ephemeral).remove(id) {
             self.secrets.forget(id);
         }
@@ -495,7 +500,32 @@ impl Hub {
             SecretKind::Password => "password",
             SecretKind::Passphrase => "passphrase",
         };
-        let typed = typed.filter(|s| !s.is_empty());
+        let mut remember = remember;
+        let mut typed = typed.filter(|s| !s.is_empty());
+        let pending = lock(&self.pending_secrets).remove(&p.id);
+        if typed.is_none()
+            && let Some((s, r)) = pending
+        {
+            typed = Some(s);
+            remember = r;
+        }
+        // connected already (and nothing typed): no new connection, just where to go
+        if typed.is_none()
+            && let Some((home, info)) = lock(&self.pools)
+                .get(&p.id)
+                .filter(|pool| pool.state == ConnState::Connected)
+                .map(|pool| (pool.home.clone(), pool.info.clone()))
+        {
+            let start = p.start_path.clone().unwrap_or(home);
+            return Ok(ConnectOutcome::Connected {
+                home: RemotePath::new(&p.id, &start)
+                    .unwrap_or_else(|_| RemotePath::root(&p.id))
+                    .to_string(),
+                encrypted: p.kind.encrypted(),
+                server_info: info,
+                keychain_failed: false,
+            });
+        }
         let stored = if typed.is_none() {
             self.known_secret(p)
         } else {
@@ -547,6 +577,9 @@ impl Hub {
                             fingerprint: fingerprint.clone(),
                         };
                         lock(&self.pending_keys).insert(p.id.clone(), seen);
+                        if let Some(s) = typed {
+                            lock(&self.pending_secrets).insert(p.id.clone(), (s, remember));
+                        }
                         Ok(out)
                     }
                     sftp::HostKeySeen::Changed {
@@ -573,6 +606,9 @@ impl Hub {
                     pinned_changed: seen.pinned_changed,
                 };
                 lock(&self.pending_certs).insert(p.id.clone(), seen);
+                if let Some(s) = typed {
+                    lock(&self.pending_secrets).insert(p.id.clone(), (s, remember));
+                }
                 return Ok(out);
             }
         };
