@@ -3,7 +3,9 @@
 //! command layer. Programs get argument arrays – nothing goes to a shell.
 
 use crate::error::{FsError, FsErrorCode};
-use crate::tools::{ProgramSpec, ResolvedContext, expand, spawn_detached, spawn_error};
+#[cfg(unix)]
+use crate::tools::spawn_error;
+use crate::tools::{ProgramSpec, ResolvedContext, expand, spawn_detached};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;

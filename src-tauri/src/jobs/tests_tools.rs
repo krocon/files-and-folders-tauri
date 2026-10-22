@@ -147,6 +147,7 @@ fn group_errors_per_group_invalid_names_files_links_and_into_itself() {
     let (_d, src, dst) = music();
     fs::write(dst.join("Datei"), "x").unwrap(); // a file with the group's name
     fs::create_dir(src.join("Band")).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))] // a link is added on Unix only
     let mut list = items(
         &src,
         &[

@@ -88,14 +88,18 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 
 ## 3. CI und Plattformen
 
-- [ ] Workflow-Vorlagen aus `docs/ci/` übernehmen (`docs/ci/README.md`) – erster Windows-/macOS-Lauf deckt
-      `#[cfg]`-Code aus 006–016 auf, der im Container nie kompiliert wurde (Fehler wahrscheinlich).
+- [ ] **Actions auf GitHub einschalten**: Stand 22.10.2026 gibt es trotz `.github/workflows/ci.yml` auf `main` keinen
+      einzigen Lauf und keinen registrierten Workflow (Settings → Actions → General → „Allow all actions“). Danach die
+      Vorlagen aus `docs/ci/` übernehmen (`docs/ci/README.md`).
+- [x] `#[cfg]`-Code für Windows/macOS kompiliert: Cross-Check `pnpm rust:cross` (clippy, Lib + Tests) für
+      x86_64-pc-windows-msvc, aarch64-apple-darwin, x86_64-apple-darwin grün (22.10.2026). Offen bleibt das
+      **Verhalten** auf echten Systemen (Tests laufen nur in der CI bzw. auf Marcs Mac).
 - [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
       007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
 - [ ] `THIRD-PARTY-NOTICES` erzeugen (Lizenz MIT ist festgelegt); UnRAR-Lizenzabsatz ist Pflicht (`docs/licenses.md`).
-- [ ] CI muss neu den Code aus 022–031 für macOS/Windows kompilieren: `platform/attributes.rs` (`Dir`, `setattrlistat`,
-      `SetFileInformationByHandle`), `entry_id`, `make_symlink`, `platform/origin_mark.rs`, UnRAR-C++-Build
-      (Xcode/MSVC, Feature `rar`). Rust ≥ 1.93 in den Workflow-Vorlagen (`docs/ci/`) prüfen.
+- [ ] CI: Tests von `platform/attributes.rs` (`setattrlistat`, `SetFileInformationByHandle`), `entry_id`,
+      `make_symlink`, `platform/origin_mark.rs`, Papierkorb/Hardlinks (042) auf macOS/Windows **ausführen**; der
+      UnRAR-C++-Build (Xcode/MSVC, Feature `rar`) wird vom Cross-Check nicht gebaut (Platzhalter-Compiler).
 
 ## 4. Kleinere offene Punkte
 

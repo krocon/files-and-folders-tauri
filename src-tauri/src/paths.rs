@@ -266,7 +266,7 @@ const SYSTEM_DIRS: &[&str] = &[
 fn windows_folders(vars: &[&str], fallback: &[&str]) -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = vars
         .iter()
-        .filter_map(|v| std::env::var_os(v))
+        .filter_map(std::env::var_os)
         .map(PathBuf::from)
         .collect();
     out.extend(fallback.iter().map(PathBuf::from));

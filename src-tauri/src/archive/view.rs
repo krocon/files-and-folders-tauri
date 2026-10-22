@@ -59,6 +59,7 @@ fn lock() -> std::sync::MutexGuard<'static, Cache> {
 
 /// A folder only we may enter (0700 on Unix); fails if it exists already.
 fn create_private_dir(dir: &Path) -> io::Result<()> {
+    #[cfg_attr(not(unix), allow(unused_mut))] // the mode is set on Unix only
     let mut b = fs::DirBuilder::new();
     #[cfg(unix)]
     {

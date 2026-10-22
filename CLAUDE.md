@@ -62,7 +62,7 @@
 | Frontend-Tests | `pnpm test` (Vitest + jsdom, über `ng test`), `pnpm test:watch` |
 | Lint / Format | `pnpm lint`, `pnpm format`, `pnpm format:check` |
 | Frontend-Build | `pnpm build` |
-| Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
+| Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test`; `pnpm rust:cross` = clippy für Windows/macOS vom Linux-Container aus (nur Typprüfung, `scripts/cross-check.sh`, ~4 min je Ziel beim ersten Mal) |
 | Alles prüfen | `pnpm check` |
 | Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), `pnpm screenshots:docs` (eingecheckte Bilder der README in `docs/screenshots/`), einmalig `pnpm screenshots:install` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |

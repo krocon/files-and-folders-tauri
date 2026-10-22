@@ -35,6 +35,14 @@ Danach in GitHub:
 - keinen Updater (bewertet in `docs/release.md`, nicht aktiviert)
 - keine Release-Builds in der normalen CI (zu langsam; Pakete baut nur `release.yml`)
 
+## Vor dem ersten Lauf: Cross-Check aus Linux
+
+`pnpm rust:cross` (`scripts/cross-check.sh`) prüft den Rust-Code für **Windows x64, macOS arm64 und x64** mit
+`clippy -D warnings` (Bibliothek + Tests), ohne Windows/macOS: die Standardbibliothek wird aus den Rust-Quellen
+gebaut (`-Zbuild-std`), C/C++-Build-Skripte bekommen einen Platzhalter-Compiler. Es wird nichts gelinkt und nichts
+ausgeführt – der Check findet Kompilierfehler und Lints im `#[cfg]`-Code, kein Verhalten. Stand 22.10.2026: alle drei
+Ziele grün (vorher 8 Lints unter Windows, 2 Kompilierfehler in einem Linux-Test unter macOS).
+
 ## Lokal nachstellen
 
 ```bash

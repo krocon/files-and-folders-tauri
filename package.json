@@ -24,6 +24,7 @@
     "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --check",
     "rust:lint": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "rust:cross": "bash scripts/cross-check.sh",
     "version:check": "node scripts/version.mjs check",
     "version:set": "node scripts/version.mjs set",
     "release:notes": "node scripts/release-notes.mjs",

@@ -36,6 +36,7 @@ fn setup() -> (tempfile::TempDir, PathBuf, PathBuf) {
     (d, src, dst)
 }
 
+#[cfg(unix)]
 fn rel() -> LinkOptions {
     LinkOptions {
         relative: true,
