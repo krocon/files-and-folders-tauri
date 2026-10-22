@@ -7,6 +7,7 @@ use crate::clean::{CleanKind, find_empty_dirs};
 use crate::error::FsErrorCode;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 
 fn s(p: &Path) -> String {
@@ -546,9 +547,28 @@ fn search_cancel_reacts_fast() {
 /// every search. Waiting for them still works.
 #[test]
 fn finished_helper_jobs_are_removed_after_their_end() {
+    helper_jobs_removed(Harness::new());
+}
+
+/// CI Windows 22.10.2026: the job leaves `list()` under the lock, `Removed` is sent
+/// after it – a test that waited for an empty list and then read the events missed
+/// the event now and then. A slow sink makes that gap wide on every system.
+#[test]
+fn removed_event_may_come_after_the_list_is_empty() {
+    let events: Arc<Mutex<Vec<JobEvent>>> = Arc::default();
+    let sink_events = events.clone();
+    let mgr = JobManager::new(Arc::new(move |e: &JobEvent| {
+        if matches!(e, JobEvent::Removed { .. }) {
+            std::thread::sleep(std::time::Duration::from_millis(80));
+        }
+        sink_events.lock().unwrap().push(e.clone())
+    }));
+    helper_jobs_removed(Harness { mgr, events });
+}
+
+fn helper_jobs_removed(h: Harness) {
     let d = tempdir().unwrap();
     fs::write(d.path().join("a.txt"), b"").unwrap();
-    let h = Harness::new();
     let search = h.mgr.start(search_spec(d.path(), "*.txt")).unwrap();
     let count = h
         .mgr
@@ -560,24 +580,37 @@ fn finished_helper_jobs_are_removed_after_their_end() {
     for id in [&search, &count, &size] {
         assert!(h.finish(id).state.is_finished());
     }
-    // `finish` may return before the removal: wait for it
+    // `finish` may return before the removal, and the list may be empty before the
+    // `Removed` event was sent: wait for the events, never hold their lock while waiting
+    let ids = [&search, &count, &size];
+    let removed_at = |events: &[JobEvent], id: &str| {
+        events
+            .iter()
+            .position(|e| matches!(e, JobEvent::Removed { ids } if ids.iter().any(|i| i == id)))
+    };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while !h.mgr.list().is_empty() {
-        assert!(std::time::Instant::now() < deadline, "{:?}", h.mgr.list());
+    loop {
+        let all = {
+            let events = h.events.lock().unwrap();
+            ids.iter().all(|id| removed_at(&events, id).is_some())
+        };
+        if all {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "no removed event");
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
-    let events = h.events.lock().unwrap();
-    for id in [&search, &count, &size] {
+    assert!(h.mgr.list().is_empty(), "{:?}", h.mgr.list());
+    let events = h.events.lock().unwrap().clone();
+    for id in ids {
         let finished = events
             .iter()
             .position(|e| matches!(e, JobEvent::Finished { id: i, .. } if i == id))
             .unwrap();
-        let removed = events
-            .iter()
-            .position(|e| matches!(e, JobEvent::Removed { ids } if ids.contains(id)))
-            .expect("removed event");
-        assert!(finished < removed, "the end is reported first");
+        assert!(
+            finished < removed_at(&events, id).unwrap(),
+            "the end is reported first"
+        );
     }
-    drop(events);
     assert_eq!(h.finish(&search).summary.unwrap().items_done, 1);
 }
