@@ -396,3 +396,21 @@ fn a_busy_polled_folder_pauses_and_reloads_after() {
     });
     assert!(got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. })));
 }
+
+/// Windows (CI 22.10.2026): the self-check reports a folder that went or was replaced,
+/// never one that stays, and a folder it never saw only when it is missing.
+#[test]
+fn self_check_tells_gone_and_replaced_from_unchanged() {
+    let a = Some((1, 10));
+    let b = Some((1, 11));
+    assert!(!self_replaced(Some(a), a), "unchanged");
+    assert!(self_replaced(Some(a), None), "deleted");
+    assert!(self_replaced(Some(a), b), "deleted and created again");
+    assert!(self_replaced(Some(None), b), "back after it was gone");
+    assert!(
+        !self_replaced(Some(None), None),
+        "still gone: reported once"
+    );
+    assert!(self_replaced(None, None), "missing before the first look");
+    assert!(!self_replaced(None, a), "first look");
+}

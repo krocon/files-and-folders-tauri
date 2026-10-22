@@ -513,7 +513,8 @@ mod tests {
 
     #[test]
     fn problems_name_the_entry() {
-        let home = Path::new("/home/u");
+        let home_buf = crate::test_paths::abs("/home/u");
+        let home = home_buf.as_path();
         let mut no_label = prog("a", "prog", "");
         no_label.label = " ".into();
         let mut folder_rel = StarterItem {

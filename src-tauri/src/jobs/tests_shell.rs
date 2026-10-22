@@ -101,7 +101,13 @@ fn runs_in_the_folder_with_separate_streams_and_exit_code() {
     let shell = info.summary.unwrap().shell.unwrap();
     assert_eq!(shell.exit_code, Some(3));
     let (out, err, dropped) = output(&h, &id);
-    assert_eq!(out, format!("{}\nGrüße\n", dir.display()));
+    // `pwd` may print the physical path (macOS: /private/var/… for /var/…)
+    let real = fs::canonicalize(&dir).unwrap();
+    assert!(
+        out == format!("{}\nGrüße\n", dir.display())
+            || out == format!("{}\nGrüße\n", real.display()),
+        "{out}"
+    );
     assert_eq!(err, "fehler\n");
     assert_eq!(dropped, 0);
     // the folder is reported as changed (panels reload)

@@ -425,8 +425,21 @@ impl russh_sftp::server::Handler for Sftp {
         newpath: String,
     ) -> Result<Status, StatusCode> {
         let to = self.real(&newpath)?;
-        // SFTP v3: renaming onto an existing name fails
-        if std::fs::symlink_metadata(&to).is_ok() {
+        // SFTP v3: renaming onto an existing name fails – and, like a server on macOS or
+        // Windows, a name in another case counts as existing (on every test system, so
+        // the case change in two steps is tested everywhere)
+        let taken_in_any_case = |to: &Path| {
+            let (Some(dir), Some(name)) = (to.parent(), to.file_name()) else {
+                return false;
+            };
+            let name = name.to_string_lossy().to_lowercase();
+            std::fs::read_dir(dir).is_ok_and(|entries| {
+                entries
+                    .flatten()
+                    .any(|e| e.file_name().to_string_lossy().to_lowercase() == name)
+            })
+        };
+        if std::fs::symlink_metadata(&to).is_ok() || taken_in_any_case(&to) {
             return Err(StatusCode::Failure);
         }
         std::fs::rename(self.real(&oldpath)?, to).map_err(|e| code_of(&e))?;

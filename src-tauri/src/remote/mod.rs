@@ -1215,7 +1215,25 @@ impl Hub {
                     &target.to_string(),
                 ));
             }
-            c.rename(path.server_path(), target.server_path())
+            match c.rename(path.server_path(), target.server_path()) {
+                Err(first) if same_entry && path.name() != Some(new_name) => {
+                    // a case-insensitive server refuses a rename onto the "existing" name
+                    // (SFTP v3 never renames onto a name; CI macOS 22.10.2026): via a
+                    // temporary name, back again if the second step fails
+                    let tmp = parent.join(&case_temp_name())?;
+                    if c.stat(tmp.server_path())?.is_some() {
+                        return Err(first);
+                    }
+                    if c.rename(path.server_path(), tmp.server_path()).is_err() {
+                        return Err(first);
+                    }
+                    c.rename(tmp.server_path(), target.server_path())
+                        .inspect_err(|_| {
+                            let _ = c.rename(tmp.server_path(), path.server_path());
+                        })
+                }
+                other => other,
+            }
         })?;
         Ok(target.to_string())
     }
@@ -1253,4 +1271,13 @@ impl Hub {
             windows: None,
         })
     }
+}
+
+/// A name no one uses, for a case change in two steps (`rename_entry`).
+fn case_temp_name() -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    format!(".fnf-case-{}-{nanos}", std::process::id())
 }
