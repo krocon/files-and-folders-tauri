@@ -20,6 +20,7 @@ import { ArchiveStore } from '../archive/archive.store';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { isRemotePath } from '../../core/remote/remote-path';
 import { wholeGroups } from '../duplicates/duplicates-logic';
+import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
 import { WorkspaceStore } from '../workspace/workspace.store';
@@ -114,6 +115,7 @@ export class OpsStore {
   private readonly settings = inject(SettingsStore);
   private readonly archive = inject(ArchiveStore);
   private readonly usage = inject(DiskUsageStore);
+  private readonly dup = inject(DuplicatesStore);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -272,6 +274,11 @@ export class OpsStore {
   }
 
   async openDelete(mode: DeleteMode): Promise<void> {
+    // a duplicate tab (design 042 E5): the copies are checked against the kept file of
+    // their group right before – its own confirmation, not the plain delete
+    if (this.dup.openDedupe(mode === 'permanent' ? 'permanent' : 'trash', this.ws.source())) {
+      return;
+    }
     if (this.inArchive()) {
       throw err('unknown', ARCHIVE_TEXTS.readOnly);
     }

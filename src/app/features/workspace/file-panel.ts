@@ -3,7 +3,11 @@ import { isNotConnected, profileOf } from '../../core/remote/remote-connect-prom
 import { displayPath, isRemotePath, isServerUrl } from '../../core/remote/remote-path';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { RemoteStore } from '../remote/remote.store';
-import { duplicateSummary, KeepRule } from '../duplicates/duplicates-logic';
+import { duplicateSummary } from '../duplicates/duplicates-logic';
+import { dedupePlan } from '../duplicates/duplicates-rules';
+import { SetId } from '../duplicates/duplicates-presets';
+import { DuplicateGroupView } from '../duplicates/duplicate-group-view';
+import { SearchHit } from '../../core/search/search.models';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
 import {
@@ -61,7 +65,7 @@ let panelSeq = 0;
  */
 @Component({
   selector: 'app-file-panel',
-  imports: [FileList, TabBar, QuickView, DiskUsageChart],
+  imports: [FileList, TabBar, QuickView, DiskUsageChart, DuplicateGroupView],
   providers: [FileBrowserStore],
   templateUrl: './file-panel.html',
   styleUrl: './file-panel.css',
@@ -106,9 +110,30 @@ export class FilePanel implements OnInit {
     return this.usage.stateOn(other)?.scanId ?? null;
   });
   protected readonly otherSide = computed(() => otherSide(this.side()));
+  /**
+   * This side shows the group under the cursor of the other side's duplicate tab while
+   * that side is active (design 042 E1) – like the disk-usage chart.
+   */
+  protected readonly dupGroupOf = computed(() => {
+    const other = otherSide(this.side());
+    if (this.ws.activeSide() !== other || this.chartScan() !== null) {
+      return null;
+    }
+    const store = this.ws.panel(other)?.store;
+    const key = store?.searchKey() ?? null;
+    return store &&
+      key !== null &&
+      store.searchKind() === 'duplicates' &&
+      !this.search.sizeOnly(key)
+      ? other
+      : null;
+  });
   /** This side shows the quick view of the other side's cursor (design 010 E4). */
   protected readonly quickView = computed(
-    () => this.quick.shownOn() === this.side() && this.chartScan() === null,
+    () =>
+      this.quick.shownOn() === this.side() &&
+      this.chartScan() === null &&
+      this.dupGroupOf() === null,
   );
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
   private readonly tabId = computed(() => this.tab().id);
@@ -124,11 +149,41 @@ export class FilePanel implements OnInit {
     const s = duplicateSummary(this.searchResult()?.hits ?? []);
     return DUP_TEXTS.summary(s.groups, s.files, formatSize(s.redundant));
   });
-  /** While a duplicate search runs: scanning, then comparing contents. */
+  /** "delete 56 files, 1.8 GB free · 2 groups undecided" – from the marks (design 042 E1). */
+  protected readonly dupDecided = computed(() => {
+    const r = this.searchResult();
+    if (!r || r.kind !== 'duplicates' || r.running || r.duplicates?.compare === 'size') {
+      return null;
+    }
+    const decided = this.dup.decided().get(r.key);
+    const plan = dedupePlan(
+      r.hits as readonly SearchHit[],
+      this.store.marked(),
+      decided?.decisions,
+    );
+    return {
+      toDelete: DUP_TEXTS.toDelete(plan.files, formatSize(plan.bytes)),
+      undecided: decided?.undecided.length ? DUP_TEXTS.undecided(decided.undecided.length) : null,
+      withoutKeep: plan.withoutKeep.length ? DUP_TEXTS.withoutKeep(plan.withoutKeep.length) : null,
+      error: this.dup.ruleError().get(r.key) ?? null,
+      mode: r.duplicates?.mode ?? 'exact',
+      unsupported: r.stats.skippedUnsupported ?? 0,
+    };
+  });
+  /** The rule set offered in the header. */
+  protected readonly dupSet = computed(() => {
+    this.dup.decided();
+    this.dup.chosen();
+    return this.dup.setOn(this.side());
+  });
+  /** While a duplicate search runs: scanning, then comparing contents or reading images. */
   protected readonly dupProgress = computed(() => {
     const st = this.searchResult()?.stats;
     if (!st) {
       return '';
+    }
+    if (st.imagesTotal) {
+      return DUP_TEXTS.imaging(st.imagesDone ?? 0, st.imagesTotal);
     }
     return st.bytesToHash
       ? DUP_TEXTS.hashing(formatSize(st.bytesHashed ?? 0), formatSize(st.bytesToHash))
@@ -468,7 +523,10 @@ export class FilePanel implements OnInit {
     // the chart of the other side's disk-usage tab works for that side (design 033 E1):
     // clicking it must not make this side active (the chart would vanish under the pointer)
     const target = evt?.target;
-    if (target instanceof Element && target.closest('app-disk-usage-chart')) {
+    if (
+      target instanceof Element &&
+      target.closest('app-disk-usage-chart, app-duplicate-group-view')
+    ) {
       return;
     }
     this.ws.setActive(this.side());
@@ -584,10 +642,35 @@ export class FilePanel implements OnInit {
     }
   }
 
-  /** Selection helpers of a duplicate tab (design 016 E6). */
-  protected keep(rule: KeepRule): void {
+  /** Rule set chosen in the header of a duplicate tab (design 042 E2). */
+  protected chooseSet(evt: Event): void {
+    const id = this.dup.parseSet((evt.target as HTMLSelectElement).value);
+    if (id) {
+      this.dup.choose(id);
+    }
+  }
+
+  protected dupApply(): void {
     this.ws.setActive(this.side());
-    this.dup.markAllBut(rule);
+    void this.dup.applyChosen(this.side(), this.dupSet());
+  }
+
+  protected dupRules(): void {
+    this.ws.setActive(this.side());
+    this.dup.openRules(this.side());
+  }
+
+  protected dupDelete(): void {
+    this.ws.setActive(this.side());
+    this.dup.openDedupe('trash', this.side());
+  }
+
+  protected dupSetIds(): SetId[] {
+    return this.dup.setIds();
+  }
+
+  protected dupSetLabel(id: SetId): string {
+    return this.dup.setLabel(id);
   }
 
   protected rerunSearch(): void {
@@ -687,6 +770,10 @@ export class FilePanel implements OnInit {
         }
       }
       const result = this.search.result(tab.search.key);
+      if ((result?.kind ?? kindOf(tab)) === 'duplicates') {
+        this.store.dupNav = this.dup.navigator(this.side()); // Enter = keep this (design 042)
+        void this.dup.ensureRules();
+      }
       this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? kindOf(tab));
       return;
     }

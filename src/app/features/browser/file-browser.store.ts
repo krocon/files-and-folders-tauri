@@ -111,6 +111,12 @@ export interface FlatNavigator {
   refresh(): void;
 }
 
+/** Enter/double-click in a duplicate tab (design 042 E1): "keep this one" (the `DuplicatesStore`). */
+export interface DuplicateNavigator {
+  /** False: not handled there – opened like everywhere. */
+  open(entry: DirEntry): boolean;
+}
+
 /** Navigation of a disk-usage tab (implemented by the `DiskUsageStore`). */
 export interface ResultNavigator {
   /** False: not handled there (a file – opened like everywhere). */
@@ -226,6 +232,12 @@ export class FileBrowserStore implements OnDestroy {
   usageNav: ResultNavigator | null = null;
   /** Flat view: leaving it and refreshing (set by the panel, design 038 E6). */
   flatNav: FlatNavigator | null = null;
+  dupNav: DuplicateNavigator | null = null;
+  /**
+   * Duplicate tab (design 042 E4): hard links and files with other names – marking them
+   * would delete nothing that frees space (or the kept file itself), so they are never marked.
+   */
+  private noMark: ReadonlySet<string> = new Set();
   /** A search or a flat listing of the shown result tab runs – Esc stops it (set by the panel). */
   readonly resultBusy = signal(false);
   /** Stops the running search of the shown result tab (set by the panel). */
@@ -544,6 +556,17 @@ export class FileBrowserStore implements OnDestroy {
       }
     }
     this.searchKind.set(kind);
+    this.noMark =
+      kind === 'duplicates'
+        ? new Set(
+            hits
+              .filter((h) => {
+                const d = h as DirEntry & { sameAs?: string; links?: number };
+                return d.sameAs !== undefined || (d.links ?? 1) > 1;
+              })
+              .map((h) => h.path),
+          )
+        : new Set();
     this.endLoad();
     this.cachedAt.set(null);
     const paths = new Set(hits.map((h) => h.path));
@@ -599,6 +622,14 @@ export class FileBrowserStore implements OnDestroy {
         return;
       }
       return this.openFile(entry);
+    }
+    if (
+      this.searchKey() !== null &&
+      this.searchKind() === 'duplicates' &&
+      this.dupNav?.open(entry)
+    ) {
+      this.setCursor(entry.path);
+      return;
     }
     if (this.searchKey() !== null) {
       // result tab: a folder opens in a new tab, the result stays
@@ -1225,8 +1256,14 @@ export class FileBrowserStore implements OnDestroy {
   }
 
   /** ".." and the synthetic rows of the disk-usage view are never marked. */
+  /** Rows that cannot be marked: "..", virtual rows, hard links in a duplicate tab. */
   private isParentPath(path: string): boolean {
-    return path === this.parent() || isVirtualPath(path);
+    return path === this.parent() || isVirtualPath(path) || this.noMark.has(path);
+  }
+
+  /** A duplicate row that is never marked (hard link, design 042 E4). */
+  isUnmarkable(path: string): boolean {
+    return this.noMark.has(path);
   }
 
   /**
@@ -1274,6 +1311,7 @@ export class FileBrowserStore implements OnDestroy {
   leaveResult(): void {
     this.usageNav = null;
     this.flatNav = null;
+    this.dupNav = null;
     this.markedOverride.set(null);
   }
 }

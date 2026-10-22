@@ -27,6 +27,8 @@ export type DialogKind =
   | 'unpack'
   | 'archive-password'
   | 'duplicates'
+  | 'duplicate-rules'
+  | 'dedupe'
   | 'themes'
   | 'settings'
   | 'about'

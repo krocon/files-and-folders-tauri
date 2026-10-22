@@ -380,17 +380,29 @@ describe('archives and duplicates in the frontend (design 016)', () => {
       sort: [{ property: 'group', sortState: 'asc' }],
     });
 
+    // design 042: the search ended – the default rule set marked the copies (oldest stays)
+    await wait();
+    expect([...left.marked()].sort()).toEqual(['/data/1/b.jpg', '/data/2/c.mp3']);
+
     expect(actions.state('DUP_MARK_KEEP_NEWEST') === 'ready').toBe(true);
     await actions.run('DUP_MARK_KEEP_NEWEST');
     expect([...left.marked()].sort()).toEqual(['/data/1/a.jpg', '/data/2/d.mp3']);
 
+    // F8 in a duplicate tab: the own confirmation with the kept file of each group (042 E5)
     await ops.openDelete('trash');
-    expect(ops.del()?.wholeGroups).toBe(0);
-    ops.close();
-    left.setMarked(['/data/1/b.jpg'], true); // group 1 complete now
-    await ops.openDelete('trash');
-    expect(ops.del()?.wholeGroups).toBe(1);
-    expect(ops.del()?.mode).toBe('trash');
+    expect(ops.del()).toBeNull();
+    const plan = dup.dedupe()!.plan;
+    expect(plan.groups.map((g) => [g.keep.path, g.remove.map((x) => x.path)])).toEqual([
+      ['/data/1/b.jpg', ['/data/1/a.jpg']],
+      ['/data/2/c.mp3', ['/data/2/d.mp3']],
+    ]);
+    expect(dup.dedupe()!.action).toBe('trash');
+    dup.closeDedupe();
+    left.setMarked(['/data/1/b.jpg'], true); // group 1 complete now: nothing of it goes
+    await ops.openDelete('permanent');
+    expect(dup.dedupe()!.plan.withoutKeep).toEqual([1]);
+    expect(dup.dedupe()!.plan.files).toBe(1);
+    expect(dup.dedupe()!.action).toBe('permanent');
   });
 });
 

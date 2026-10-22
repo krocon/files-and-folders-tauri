@@ -74,7 +74,19 @@ const DUP_MARK: MenuDef = {
   get sub() {
     return T.duplicates;
   },
-  items: ['DUP_MARK_KEEP_NEWEST', 'DUP_MARK_KEEP_OLDEST', 'DUP_MARK_KEEP_FIRST'],
+  items: [
+    'DUP_APPLY_RULES',
+    'DUP_RULES_DLG',
+    'DUP_DELETE_MARKED',
+    'DUP_KEEP_THIS',
+    '-',
+    'DUP_NEXT_GROUP',
+    'DUP_PREV_GROUP',
+    '-',
+    'DUP_MARK_KEEP_NEWEST',
+    'DUP_MARK_KEEP_OLDEST',
+    'DUP_MARK_KEEP_FIRST',
+  ],
 };
 const WITH_TOOL: MenuDef = {
   get sub() {

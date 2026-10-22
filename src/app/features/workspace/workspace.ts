@@ -61,6 +61,8 @@ import { PackDialog } from '../archive/pack-dialog';
 import { UnpackDialog } from '../archive/unpack-dialog';
 import { ArchivePasswordDialog } from '../archive/password-dialog';
 import { DuplicatesDialog } from '../duplicates/duplicates-dialog';
+import { DuplicateRulesDialog } from '../duplicates/duplicate-rules-dialog';
+import { DedupeDialog } from '../duplicates/dedupe-dialog';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { FindDialog } from '../search/find-dialog';
 import { FindStore } from '../search/find.store';
@@ -155,6 +157,8 @@ import { RemoteStore } from '../remote/remote.store';
     UnpackDialog,
     ArchivePasswordDialog,
     DuplicatesDialog,
+    DuplicateRulesDialog,
+    DedupeDialog,
     ThemeDialog,
     SettingsDialog,
     AboutDialog,

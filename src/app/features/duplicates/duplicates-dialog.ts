@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { MAX_DUP_THRESHOLD } from '../../core/search/search.models';
 import { Modal } from '../../shared/dialog/modal';
 import { DupField, DuplicatesForm, DupUnit } from './duplicates-form';
 import { DUP_TEXTS } from './duplicates-texts';
@@ -41,35 +42,110 @@ const ERR = 'fnf-dup-error';
             }
           </fieldset>
           <fieldset class="group col">
-            <legend>{{ t.compare }}</legend>
+            <legend>{{ t.mode }}</legend>
             <label class="check">
               <input
                 type="radio"
-                name="fnf-dup-compare"
+                name="fnf-dup-mode"
                 data-autofocus
-                [checked]="f().compare === 'content'"
-                (change)="set({ compare: 'content' })"
+                [checked]="f().mode === 'exact'"
+                (change)="set({ mode: 'exact' })"
               />
-              {{ t.compareContent }}
+              {{ t.modeExact }}
             </label>
             <label class="check">
               <input
                 type="radio"
-                name="fnf-dup-compare"
-                [checked]="f().compare === 'size'"
-                (change)="set({ compare: 'size' })"
+                name="fnf-dup-mode"
+                [checked]="f().mode === 'similarImages'"
+                (change)="set({ mode: 'similarImages' })"
               />
-              {{ t.compareSize }}
+              {{ t.modeImages }}
             </label>
             <label class="check">
               <input
-                type="checkbox"
-                [checked]="f().sameName"
-                (change)="set({ sameName: checked($event) })"
+                type="radio"
+                name="fnf-dup-mode"
+                [checked]="f().mode === 'comics'"
+                (change)="set({ mode: 'comics' })"
               />
-              {{ t.sameName }}
+              {{ t.modeComics }}
             </label>
           </fieldset>
+          @if (f().mode === 'exact') {
+            <fieldset class="group col">
+              <legend>{{ t.compare }}</legend>
+              <label class="check">
+                <input
+                  type="radio"
+                  name="fnf-dup-compare"
+                  [checked]="f().compare === 'content'"
+                  (change)="set({ compare: 'content' })"
+                />
+                {{ t.compareContent }}
+              </label>
+              <label class="check">
+                <input
+                  type="radio"
+                  name="fnf-dup-compare"
+                  [checked]="f().compare === 'size'"
+                  (change)="set({ compare: 'size' })"
+                />
+                {{ t.compareSize }}
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="f().sameName"
+                  (change)="set({ sameName: checked($event) })"
+                />
+                {{ t.sameName }}
+              </label>
+              @if (f().compare === 'content') {
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="f().paranoid"
+                    (change)="set({ paranoid: checked($event) })"
+                  />
+                  {{ t.paranoid }}
+                </label>
+              }
+            </fieldset>
+          } @else {
+            <div class="row">
+              <label class="field grow">
+                <span>{{ t.similarity }}</span>
+                <span class="inline slider">
+                  <span aria-hidden="true">{{ t.strict }}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    [max]="maxThreshold"
+                    step="1"
+                    [value]="f().threshold"
+                    [attr.aria-valuetext]="t.thresholdValue(f().threshold)"
+                    (input)="set({ threshold: +text($event) })"
+                  />
+                  <span aria-hidden="true">{{ t.loose }}</span>
+                  <span class="value">{{ f().threshold }}</span>
+                </span>
+              </label>
+            </div>
+            <p class="hint">{{ t.formats }}</p>
+          }
+          <div class="row">
+            <label class="field grow">
+              <span>{{ t.names }}</span>
+              <input
+                type="text"
+                spellcheck="false"
+                [placeholder]="t.namesHint"
+                [value]="f().names"
+                (input)="set({ names: text($event) })"
+              />
+            </label>
+          </div>
           <div class="row">
             <label class="field">
               <span>{{ t.minSize }}</span>
@@ -125,6 +201,20 @@ const ERR = 'fnf-dup-error';
               {{ t.hidden }}
             </label>
           </div>
+          @if (f().compare === 'content' || f().mode !== 'exact') {
+            <div class="row">
+              <label class="field grow">
+                <span>{{ t.ruleSet }}</span>
+                <select (change)="chooseSet($event)" [attr.aria-describedby]="'fnf-dup-rules-hint'">
+                  <option value="none" [selected]="setId() === 'none'">{{ t.noRules }}</option>
+                  @for (id of dup.setIds(); track id) {
+                    <option [value]="id" [selected]="id === setId()">{{ dup.setLabel(id) }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            <p class="hint" id="fnf-dup-rules-hint">{{ t.ruleSetHint }}</p>
+          }
           <p class="error" role="alert" [id]="errId">{{ dup.error()?.message ?? '' }}</p>
           <div class="buttons">
             <button type="button" class="btn" (click)="dup.close()">{{ t.cancel }}</button>
@@ -145,6 +235,23 @@ const ERR = 'fnf-dup-error';
       .col legend {
         float: none;
       }
+      .slider {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+      }
+      .slider input {
+        flex: 1;
+      }
+      .value {
+        min-width: 2ch;
+        text-align: end;
+      }
+      .hint {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: var(--font-size-sm);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -155,6 +262,16 @@ export class DuplicatesDialog {
   protected readonly f = this.dup.form;
   protected readonly units = UNITS;
   protected readonly errId = ERR;
+  protected readonly maxThreshold = MAX_DUP_THRESHOLD;
+  /** The rule set applied after the search (design 042 E2, the one chosen last). */
+  protected readonly setId = computed(() => this.dup.setFor(this.f().mode));
+
+  protected chooseSet(evt: Event): void {
+    const id = this.dup.parseSet(this.text(evt));
+    if (id) {
+      this.dup.choose(id);
+    }
+  }
 
   protected invalid(field: DupField): 'true' | null {
     return this.dup.error()?.field === field ? 'true' : null;

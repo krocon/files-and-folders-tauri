@@ -155,6 +155,19 @@
   background-color: var(--color-group-alt-bg);
 }
 
+/* "Decision" column of a duplicate tab (design 042 E1): symbol + word, never colour alone */
+.ge-table .fnf-dup-delete {
+  font-weight: 600;
+}
+
+.ge-table .fnf-dup-undecided {
+  font-style: italic;
+}
+
+.ge-table .fnf-dup-reason {
+  font-size: 0.9em;
+}
+
 .ge-table .fnf-marked {
   color: var(--color-marked);
   background-color: var(--color-marked-bg);
