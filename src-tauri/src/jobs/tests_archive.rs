@@ -510,8 +510,8 @@ fn duplicates_job_streams_groups() {
     let json = serde_json::to_value(&hits[0]).unwrap();
     assert_eq!(json["group"], 1);
     let spec: JobSpec = serde_json::from_str(&format!(
-        r#"{{"kind":"duplicates","criteria":{{"roots":["{}"],"compare":"size"}}}}"#,
-        s(d.path())
+        r#"{{"kind":"duplicates","criteria":{{"roots":[{}],"compare":"size"}}}}"#,
+        serde_json::to_string(&s(d.path())).unwrap()
     ))
     .unwrap();
     assert!(spec.is_parallel() && spec.is_helper());

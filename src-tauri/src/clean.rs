@@ -363,11 +363,14 @@ mod tests {
             .iter()
             .map(|i| {
                 let p = PathBuf::from(&i.path);
+                // "/" between the parts on every system (Windows: `\`)
                 let rel = p
                     .strip_prefix(base)
                     .unwrap_or(&p)
-                    .to_string_lossy()
-                    .into_owned();
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join("/");
                 match i.kind {
                     CleanKind::Dir => format!("{}/", rel),
                     CleanKind::File => rel,

@@ -280,6 +280,11 @@ mod unix {
         /// Changes the entry `name` (no link: `seen` says so, the calls do not follow one).
         /// Order: flags, permissions, times – setting the times last keeps them.
         pub fn apply(&self, name: &OsStr, seen: &Stat, a: &Apply) -> io::Result<()> {
+            // a link is never changed – also where the system could (macOS: lchmod,
+            // CI 22.10.2026); the job skips links before, this keeps the layer honest
+            if seen.kind == Kind::Link {
+                return Err(is_link());
+            }
             let c = c_name(name)?;
             if !a.flags.is_empty() {
                 self.set_flags(&c, seen, &a.flags)?;
@@ -677,8 +682,15 @@ mod tests {
             filetime(SystemTime::UNIX_EPOCH + Duration::from_millis(1)),
             116_444_736_000_010_000
         );
+        // 1 ns before an interval belongs to the interval before (Windows' SystemTime has
+        // 100-ns steps itself, so the check needs finer times – Unix only)
+        #[cfg(unix)]
         assert_eq!(
             filetime(SystemTime::UNIX_EPOCH - Duration::from_nanos(150)),
+            116_444_735_999_999_998
+        );
+        assert_eq!(
+            filetime(SystemTime::UNIX_EPOCH - Duration::from_nanos(200)),
             116_444_735_999_999_998
         );
         // the earliest time the dialog accepts is no "leave unchanged" (0)

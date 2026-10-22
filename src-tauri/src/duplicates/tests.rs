@@ -198,7 +198,12 @@ fn max_files_is_checked() {
     c.max_files = Some(MAX_FILES + 1);
     assert!(find(&c, &Control::default(), &mut |_| {}).is_err());
     c.max_files = None;
-    c.roots = vec!["/does/not/exist/fnf".into()];
+    c.roots = vec![
+        d.path()
+            .join("does not exist")
+            .to_string_lossy()
+            .into_owned(),
+    ];
     assert_eq!(
         find(&c, &Control::default(), &mut |_| {})
             .err()

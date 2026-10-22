@@ -74,6 +74,8 @@ pub mod session;
 pub mod settings;
 pub mod shell;
 pub mod starter;
+#[cfg(test)]
+pub mod test_paths;
 pub mod test_slow;
 pub mod themes;
 pub mod tools;

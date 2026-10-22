@@ -160,9 +160,14 @@ fn validation_rejects_bad_roots() {
     // an archive path is no folder
     let zip = src.join("x.zip");
     fs::write(&zip, "PK").unwrap();
+    // Windows answers ERROR_PATH_NOT_FOUND for a path below a file
     assert_eq!(
         code(h.mgr.start(spec(vec![s(&zip.join("inner"))], false))),
-        C::NotADirectory
+        if cfg!(windows) {
+            C::NotFound
+        } else {
+            C::NotADirectory
+        }
     );
 }
 

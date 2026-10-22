@@ -94,6 +94,13 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [x] `#[cfg]`-Code für Windows/macOS kompiliert: Cross-Check `pnpm rust:cross` (clippy, Lib + Tests) für
       x86_64-pc-windows-msvc, aarch64-apple-darwin, x86_64-apple-darwin grün (22.10.2026). Offen bleibt das
       **Verhalten** auf echten Systemen (Tests laufen nur in der CI bzw. auf Marcs Mac).
+- [x] Erster CI-Lauf auf macOS/Windows (22.10.2026, nach Merge von #30): Frontend und Linux grün; macOS 3, Windows 17
+      rote Tests. Behoben auf `fix/ci-macos-windows`: Testannahmen aus Linux (`/`-Pfade, JSON ohne Escaping, `pwd` mit
+      `/private/var`, `choose_posix`, FILETIME-Raster), dazu echt: Windows-Watcher meldete gelöschte Ordner nicht
+      (`watch::self_check`), Umbenennen nur der Schreibweise auf Servern ohne Groß/klein-Unterscheidung, Attribute nie
+      an einem Link (macOS kann `lchmod`).
+- [ ] 7-Zip für Windows öffnet unsere AES-ZIPs mit Nicht-ASCII-Passwort nicht (Schlüssel aus anderer Kodierung als
+      UTF-8; 7z-Archive gehen). Prüfen: WinZip/Explorer, ggf. Hinweis im Pack-Dialog bei Nicht-ASCII + ZIP.
 - [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
       007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
 - [x] `THIRD-PARTY-NOTICES.txt` (22.10.2026): `pnpm notices`, in jedem Paket, geprüft in `pnpm check` (`docs/release.md`).

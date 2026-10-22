@@ -1001,17 +1001,21 @@ mod tests {
             plan(&t(&["{targetDir}"], false), &c).unwrap_err().code,
             FsErrorCode::InvalidPath
         );
-        // no folder: working dir falls back to home
+        // no folder: working dir falls back to home (absolute on this system)
+        use crate::test_paths::abs;
         c.dir = None;
+        c.home = Some(abs("/home/u"));
         assert_eq!(
             plan(&t(&["x"], false), &c).unwrap()[0].cwd.as_deref(),
-            Some(Path::new("/home/u"))
+            Some(abs("/home/u").as_path())
         );
         let mut w = t(&[], false);
         w.working_dir = Some("{targetDir}".into());
+        let mut c = ctx(&[]);
+        c.target_dir = Some(abs("/target"));
         assert_eq!(
-            plan(&w, &ctx(&[])).unwrap()[0].cwd.as_deref(),
-            Some(Path::new("/target"))
+            plan(&w, &c).unwrap()[0].cwd.as_deref(),
+            Some(abs("/target").as_path())
         );
     }
 
@@ -1197,7 +1201,8 @@ mod tests {
             &ctx(&["/a/-rf"]),
         )
         .unwrap();
-        assert_eq!(args(&p[0]), ["./-rf", "--title=-rf", "/a/-rf"]);
+        let dash = format!(".{}-rf", std::path::MAIN_SEPARATOR);
+        assert_eq!(args(&p[0]), [dash.as_str(), "--title=-rf", "/a/-rf"]);
         let p = plan(&t(&["{name}"], false), &ctx(&["/a/x-y"])).unwrap();
         assert_eq!(args(&p[0]), ["x-y"]);
     }

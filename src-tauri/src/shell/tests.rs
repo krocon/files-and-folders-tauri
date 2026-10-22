@@ -2,6 +2,7 @@ use super::quote::{quote, quote_one};
 use super::text::{Decoder, strip_ansi};
 use super::*;
 use crate::error::FsErrorCode;
+#[cfg(unix)]
 use std::ffi::OsStr;
 use tempfile::tempdir;
 
@@ -33,6 +34,7 @@ fn cd(t: Option<&str>) -> Option<Builtin> {
     })
 }
 
+#[cfg(unix)]
 #[test]
 fn known_posix_shells_only() {
     let ok = |_: &Path| true;

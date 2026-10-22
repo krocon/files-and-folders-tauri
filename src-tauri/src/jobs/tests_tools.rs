@@ -209,12 +209,14 @@ fn group_refuses_dangerous_moves_and_empty_requests() {
         })
         .unwrap_err();
     assert_eq!(e.code, FsErrorCode::InvalidPath);
+    // the root of the system drive (`/`, Windows `C:\`) is never moved
+    let d = tempdir().unwrap();
     let e = h
         .mgr
         .start(JobSpec::Group {
-            root: "/tmp".into(),
+            root: s(d.path()),
             items: vec![GroupItem {
-                path: "/".into(),
+                path: s(&crate::test_paths::abs("/")),
                 group: "x".into(),
             }],
             transfer: Transfer::Move,

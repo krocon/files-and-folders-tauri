@@ -1085,8 +1085,10 @@ fn expected_is_optional_in_the_spec() {
 fn every_job_refuses_dotdot_in_its_paths() {
     let h = Harness::new();
     let d = tempdir().unwrap();
-    let a = s(d.path());
-    let up = s(&d.path().join("x").join(".."));
+    // inside hand-written JSON: `\` of Windows paths escaped
+    let json = |p: &Path| s(p).replace('\\', "\\\\");
+    let a = json(d.path());
+    let up = json(&d.path().join("x").join(".."));
     let specs = [
         format!(r#"{{"kind":"copy","sources":["{up}"],"targetDir":"{a}"}}"#),
         format!(r#"{{"kind":"copy","sources":["{a}"],"targetDir":"{up}"}}"#),

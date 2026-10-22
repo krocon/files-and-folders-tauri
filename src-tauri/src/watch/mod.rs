@@ -26,6 +26,10 @@ use std::time::{Duration, Instant};
 pub const MAX_WATCHED: usize = 8;
 /// Interval of the polling fallback.
 pub const POLL_INTERVAL: Duration = Duration::from_secs(2);
+/// Windows: how often the identity of each natively watched folder is compared
+/// ([`self_check`]) – ReadDirectoryChangesW reports nothing when the folder itself goes.
+#[cfg(windows)]
+const SELF_CHECK: Duration = Duration::from_secs(1);
 /// Folders with more entries are not polled (every poll stats all of them; review 012 #7).
 pub const MAX_POLLED_ENTRIES: usize = 20_000;
 
@@ -92,6 +96,9 @@ enum Msg {
     Dirs(Vec<Watched>),
     /// Reload this folder (events were missed while it was paused).
     Rescan(PathBuf),
+    /// Windows: the folder itself went or was replaced ([`self_check`]).
+    #[cfg_attr(not(windows), allow(dead_code))]
+    SelfRemoved(PathBuf),
     /// Targets of running jobs (design 029 E8): reloads below them wait.
     Busy(Vec<PathBuf>),
     /// A batch of `dir` was resolved off the thread (design 029 E9); `replaced`:
@@ -117,6 +124,10 @@ struct Watchers {
     /// Targets of running jobs that write into them (count of jobs; design 029 E8).
     busy: HashMap<PathBuf, usize>,
     poll_network: bool,
+    /// Windows: identity of each natively watched folder when it was last seen
+    /// ([`self_check`]); `None` inside: missing (or no identity).
+    #[cfg(windows)]
+    known: HashMap<PathBuf, Identity>,
 }
 
 impl Watchers {
@@ -147,6 +158,14 @@ impl WatchHub {
             .name("fnf-watch".into())
             .spawn(move || run(rx, thread_tx, thread_watchers, thread_sink))
             .expect("watch thread");
+        #[cfg(windows)]
+        {
+            let (check_tx, check_watchers) = (tx.clone(), Arc::downgrade(&watchers));
+            // without it a deleted folder stays on screen – but the hub works on
+            let _ = std::thread::Builder::new()
+                .name("fnf-watch-self".into())
+                .spawn(move || self_check(check_tx, check_watchers));
+        }
         Self { tx, watchers, sink }
     }
 
@@ -358,7 +377,11 @@ fn watch_dir(tx: &Sender<Msg>, w: &mut Watchers, dir: &Path, poll_network: bool)
     let mut native_error = None;
     if !network {
         match native(tx, w).and_then(|n| n.watch(dir, RecursiveMode::NonRecursive)) {
-            Ok(()) => return status(WatchMode::Native, None),
+            Ok(()) => {
+                #[cfg(windows)]
+                w.known.insert(dir.to_path_buf(), identity_of(dir));
+                return status(WatchMode::Native, None);
+            }
             Err(e) => native_error = Some(e.to_string()),
         }
     }
@@ -447,9 +470,68 @@ fn identity_of(dir: &Path) -> Option<(u64, u64)> {
     std::fs::metadata(dir).ok().map(|m| (m.dev(), m.ino()))
 }
 
-#[cfg(not(unix))]
+/// Windows: volume serial number and file index (`None` on servers that answer 0).
+#[cfg(windows)]
+fn identity_of(dir: &Path) -> Option<(u64, u64)> {
+    crate::platform::file_identity(dir).map(|i| i.id)
+}
+
+#[cfg(not(any(unix, windows)))]
 fn identity_of(_dir: &Path) -> Option<(u64, u64)> {
     None
+}
+
+/// Volume/device and file number of a folder; `None`: missing or unknown.
+type Identity = Option<(u64, u64)>;
+
+/// Has a watched folder gone or been replaced since it was last seen? `known`: the
+/// identity recorded then (`None`: never recorded), `now`: the identity now (`None`:
+/// missing or unknown). A folder never recorded counts only when it is missing.
+pub fn self_replaced(known: Option<Identity>, now: Identity) -> bool {
+    match known {
+        None => now.is_none(),
+        Some(before) => before != now,
+    }
+}
+
+/// Windows only: ReadDirectoryChangesW reports nothing when the watched folder itself
+/// is deleted or replaced – `notify` drops the watch silently (CI 22.10.2026). Once a
+/// second the identity of every natively watched folder is compared; a change goes to
+/// the hub as "removed", which then reports `Gone` or watches the new folder and
+/// reloads (as inotify/FSEvents do on their own). Its own thread: opening a folder may
+/// hang, the hub must not.
+#[cfg(windows)]
+fn self_check(tx: Sender<Msg>, watchers: std::sync::Weak<Mutex<Watchers>>) {
+    loop {
+        std::thread::sleep(SELF_CHECK);
+        let Some(strong) = watchers.upgrade() else {
+            return;
+        };
+        let dirs: Vec<(PathBuf, Option<Identity>)> = {
+            let w = strong.lock().unwrap_or_else(|e| e.into_inner());
+            w.current
+                .iter()
+                .filter(|(d, m)| *m == WatchMode::Native && !w.paused.contains_key(d))
+                .map(|(d, _)| (d.clone(), w.known.get(d).copied()))
+                .collect()
+        };
+        drop(strong);
+        for (dir, known) in dirs {
+            let now = identity_of(&dir);
+            if self_replaced(known, now) && tx.send(Msg::SelfRemoved(dir.clone())).is_err() {
+                return; // the hub is gone
+            }
+            let Some(strong) = watchers.upgrade() else {
+                return;
+            };
+            let mut guard = strong.lock().unwrap_or_else(|e| e.into_inner());
+            let Watchers { current, known, .. } = &mut *guard;
+            known.retain(|d, _| current.iter().any(|(c, _)| c == d));
+            if current.iter().any(|(c, _)| c == &dir) {
+                known.insert(dir, now);
+            }
+        }
+    }
 }
 
 /// The debounce thread: raw events → batches → [`WatchEvent`]s.
@@ -474,6 +556,7 @@ fn run(rx: Receiver<Msg>, tx: Sender<Msg>, watchers: Arc<Mutex<Watchers>>, sink:
                 watched = dirs;
             }
             Ok(Msg::Rescan(dir)) => batcher.touch(&dir, Touch::Rescan, Instant::now()),
+            Ok(Msg::SelfRemoved(dir)) => batcher.touch(&dir, Touch::SelfRemoved, Instant::now()),
             Ok(Msg::Busy(roots)) => batcher.set_busy_roots(roots),
             Ok(Msg::Fs(res)) => feed(&mut batcher, &watched, res, Instant::now()),
             Ok(Msg::Resolved {

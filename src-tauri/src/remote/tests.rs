@@ -843,6 +843,26 @@ fn a_case_change_never_replaces_another_entry() {
         .save_profile(profile(RemoteKind::Sftp, srv.port))
         .unwrap();
     connect_sftp(&e, &p.id, Remember::None);
+    let listed = || -> Vec<String> {
+        let mut v: Vec<String> = std::fs::read_dir(srv.root.path())
+            .unwrap()
+            .map(|d| d.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    };
+    // the test server serves a local folder: on macOS/Windows "readme" and "README" are
+    // one file there – then only the case change itself can be checked (CI 22.10.2026)
+    if listed().len() == 2 {
+        e.hub
+            .rename_entry(&format!("remote://{}/readme", p.id), "README", false)
+            .unwrap();
+        e.hub
+            .rename_entry(&format!("remote://{}/einzeln", p.id), "EINZELN", false)
+            .unwrap();
+        assert_eq!(listed(), ["EINZELN", "README"]);
+        return;
+    }
     let err = e
         .hub
         .rename_entry(&format!("remote://{}/readme", p.id), "README", false)
@@ -859,7 +879,9 @@ fn a_case_change_never_replaces_another_entry() {
     e.hub
         .rename_entry(&format!("remote://{}/einzeln", p.id), "EINZELN", false)
         .unwrap();
-    assert!(srv.root.path().join("EINZELN").is_file());
+    // the server refuses the direct rename (a name in another case exists): two steps,
+    // no temporary name is left over
+    assert_eq!(listed(), ["EINZELN", "README", "readme"]);
 }
 
 /// Review 034 #5: a disconnect between two calls is not lost – the next call of that
