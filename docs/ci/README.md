@@ -35,6 +35,11 @@ Danach in GitHub:
 - keinen Updater (bewertet in `docs/release.md`, nicht aktiviert)
 - keine Release-Builds in der normalen CI (zu langsam; Pakete baut nur `release.yml`)
 
+## Stand 22.10.2026
+
+Die CI läuft seit #30/#31 auf ubuntu, macOS und Windows (noch mit der alten `.github/workflows/ci.yml`). Die
+Vorlagen hier nutzen `actions/checkout@v5` und `actions/setup-node@v5` (Node 24 – GitHub warnt bei v4 vor Node 20).
+
 ## Vor dem ersten Lauf: Cross-Check aus Linux
 
 `pnpm rust:cross` (`scripts/cross-check.sh`) prüft den Rust-Code für **Windows x64, macOS arm64 und x64** mit

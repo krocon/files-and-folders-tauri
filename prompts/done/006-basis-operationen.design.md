@@ -211,7 +211,7 @@ Schreibschutz-Attribut).
 | 2 kritisch | Löschen/Verschieben konnte durch einen zwischenzeitlich gegen einen Link getauschten Ordner löschen | ✅ Geräte-+Inode-Prüfung je Schritt (Unix), Ordner werden nicht betreten, wenn sie sich geändert haben; Tests |
 | 3 | „Trotzdem löschen“ machte Ordner world-writable | ✅ nur `u+w` (`platform::make_writable`); Test |
 | 4 | Panik in einem Job blockierte die Warteschlange | ✅ `catch_unwind` → „Failed“; Test |
-| 5 | Windows: Laufwerk ohne Papierkorb | ⏳ offen: `trash` setzt `FOF_WANTNUKEWARNING` (Windows warnt selbst); eigene Prüfung mit `SHQueryRecycleBinW` braucht `windows-sys` und einen Windows-Test – auf Windows nachziehen |
+| 5 | Windows: Laufwerk ohne Papierkorb | ✅ 22.10.2026: nur feste Laufwerke (`GetDriveTypeW` = `DRIVE_FIXED`) gehen in den Papierkorb, sonst Fehler `no_trash` (nichts gelöscht, kein Dialog von Windows) – `platform::has_trash`, für Löschen, Aufräumen und Dubletten. Früher: `trash` setzt `FOF_WANTNUKEWARNING` (Windows warnt selbst); eigene Prüfung mit `SHQueryRecycleBinW` braucht `windows-sys` und einen Windows-Test – auf Windows nachziehen |
 | 6 | Umbenennen per „prüfen + rename“ konnte überschreiben | ✅ `platform::rename_noreplace` überall; nur Groß/klein zuerst direkt, sonst eindeutiger Zwischenname; Tests |
 | 7 | F2 brach bei jedem Neuladen ab | ✅ Editor wird mit Entwurf wieder geöffnet |
 | 8 | Zählung lief weiter, wenn der Dialog vor ihrem Start schloss | ✅ Test |

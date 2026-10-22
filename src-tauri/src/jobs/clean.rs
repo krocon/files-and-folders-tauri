@@ -105,7 +105,7 @@ fn remove(
 ) -> Result<(), FsError> {
     if mode == DeleteMode::Trash {
         // by path: the check right before is the guard (design 008, residual risk)
-        return trash_one(path).map_err(|e| FsError::new(FsErrorCode::Io, e, Some(path)));
+        return trash_one(path);
     }
     // relative to the start folder, never through a link on the way (review 008 #3);
     // never remove_dir_all: something new inside makes this fail

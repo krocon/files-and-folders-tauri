@@ -30,6 +30,9 @@ pub enum FsErrorCode {
     DangerousPath,
     /// The item could not be moved to the trash (no trash on this volume …).
     TrashFailed,
+    /// The drive has no trash at all (Windows: network, removable, optical drives) –
+    /// nothing was deleted; the user may delete permanently instead (006 review #5).
+    NoTrash,
     /// Two entries of a multi-rename would get the same name (design 007 E5).
     DuplicateTarget,
     /// Nothing to undo (no rename log for this task, or it was undone already).

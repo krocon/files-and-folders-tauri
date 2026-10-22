@@ -14,6 +14,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'invalid_name',
   'dangerous_path',
   'trash_failed',
+  'no_trash',
   'duplicate_target',
   'undo_unavailable',
   'program_not_found',

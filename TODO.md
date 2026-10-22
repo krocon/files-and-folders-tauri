@@ -101,8 +101,10 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       an einem Link (macOS kann `lchmod`).
 - [ ] 7-Zip für Windows öffnet unsere AES-ZIPs mit Nicht-ASCII-Passwort nicht (Schlüssel aus anderer Kodierung als
       UTF-8; 7z-Archive gehen). Prüfen: WinZip/Explorer, ggf. Hinweis im Pack-Dialog bei Nicht-ASCII + ZIP.
-- [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
-      007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
+- [x] Windows (22.10.2026, `fix/windows-details`): Papierkorb nur auf festen Laufwerken (`platform::has_trash`, Code
+      `no_trash` statt Windows-Dialog/endgültig, 006 #5); `rename_noreplace` atomar über `MoveFileExW` ohne REPLACE
+      auch für Ordner/Links (007 #6); Pause der Watcher beim Verschieben des Elternordners Ende-zu-Ende getestet
+      (`moving_the_parent_of_a_watched_folder_works_with_the_guard`, 012 #3) – alles in der CI auf Windows.
 - [x] `THIRD-PARTY-NOTICES.txt` (22.10.2026): `pnpm notices`, in jedem Paket, geprüft in `pnpm check` (`docs/release.md`).
 - [ ] About-Dialog: Link „Drittlizenzen“ auf die mitgelieferte `THIRD-PARTY-NOTICES.txt` (Ressourcenpfad über Tauri).
 - [ ] CI: Tests von `platform/attributes.rs` (`setattrlistat`, `SetFileInformationByHandle`), `entry_id`,

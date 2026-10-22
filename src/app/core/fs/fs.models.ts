@@ -79,6 +79,8 @@ export type FsErrorCode =
   | 'invalid_name'
   | 'dangerous_path'
   | 'trash_failed'
+  /** The drive has no trash (Windows: network/removable drive); nothing was deleted. */
+  | 'no_trash'
   /** Two entries of a multi-rename would get the same name. */
   | 'duplicate_target'
   /** Nothing to undo (anymore). */
