@@ -94,6 +94,15 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   relativ) oder je Datei (`x.iso.sha256`); *Prüfsummen prüfen* auf einer `.md5/.sha1/.sha256/.sha512`- oder
   `*SUMS`-Datei (auch BSD-Format) zeigt OK/geändert/fehlt/nicht lesbar, Namen außerhalb des Ordners werden nicht
   gelesen, „Geänderte Dateien markieren“; *SHA-256 in die Zwischenablage* für die Datei unter dem Cursor.
+- **Flache Ansicht** (Prompt 038, `Strg+B` / `⌘B`, Menü *Ansicht*): zeigt im selben Tab alle Dateien unterhalb des
+  Ordners mit Spalte „Pfad“ (relativ, „.“ = der Ordner selbst, sortiert Ordner für Ordner), *Ordner zeigen* nimmt
+  die Ordner dazu, *Hidden* betritt auch versteckte Ordner. Verknüpfungen werden gezeigt, nie betreten (kein Zyklus);
+  Obergrenze 100 000 Einträge mit Hinweis, `Esc` hält die Auflistung an. Markieren, Kopieren/Verschieben (gleiche
+  Namen aus verschiedenen Unterordnern fragt die Konfliktfrage), Löschen, Umbenennen, Multi-Rename (im jeweiligen
+  Unterordner), F3, Packen, Prüfsummen usw. wie im Ordner; Ordner anlegen ist aus. Nach eigenen Operationen, bei
+  Änderungen im Wurzelordner und mit `Strg+R` wird im Hintergrund neu aufgelistet (Cursor und Marken bleiben);
+  Änderungen anderer Programme in Unterordnern erst nach `Strg+R`. Nochmals `Strg+B`, *Normale Ansicht* oder
+  `Alt+←` kehrt zurück (Cursor wie vorher); `Enter` auf einem Ordner geht hinein, `Backspace` in den Elternordner.
 - **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
   Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
   eine Datei je Gruppe, `F8` löscht in den Papierkorb (Warnung, wenn von einer Gruppe nichts übrig bliebe).
@@ -232,6 +241,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Go to path… | `Ctrl+L`, `Ctrl+Alt+D` | `⌘L`, `⌃⌥D` |
 | Find folder (change dir)… | `Alt+F10` | `⌥F10` |
 | Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
+| Flat view (all files below) | `Ctrl+B` | `⌘B` |
 | Folder menu, left panel | `Alt+F1` | `⌥F1` |
 | Folder menu, right panel | `Alt+F2` | `⌥F2` |
 | Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |

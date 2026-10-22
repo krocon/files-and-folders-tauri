@@ -100,6 +100,7 @@ export const TEXTS_EN = {
     size: 'Size',
     modified: 'Modified',
     folder: 'Folder',
+    path: 'Path',
     group: 'Group',
   },
   bytesTitle: (marked: number, total: number) =>

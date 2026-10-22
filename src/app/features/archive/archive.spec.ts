@@ -307,6 +307,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     const hit = (name: string): SearchHit => ({
       ...entry(name, { path: `/data/1/${name}`, size: 100 }),
       dir: '/data/1',
+      relDir: '',
       parentNames: ['1', 'data', ''],
       group: 1,
     });
@@ -344,6 +345,7 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     const h = (name: string, group: number, modifiedMs: number): SearchHit => ({
       ...entry(name, { path: `/data/${group}/${name}`, modifiedMs, size: 100 }),
       dir: `/data/${group}`,
+      relDir: '',
       parentNames: [`${group}`, 'data', ''],
       group,
     });

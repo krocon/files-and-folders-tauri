@@ -165,6 +165,7 @@ describe('JobsStore', () => {
     const h = (name: string) => ({
       ...entry(name, { path: `/r/${name}` }),
       dir: '/r',
+      relDir: '',
       parentNames: ['r', '', ''] as const,
     });
     // the hits overtake the id: Rust streams them before `start` resolved

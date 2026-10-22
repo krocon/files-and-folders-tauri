@@ -68,6 +68,8 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_FOLDER_FINDER_DLG: 'Ordner finden (wechseln)…',
   RERUN_SEARCH: 'Erneut suchen',
   GOTO_FILE: 'Gehe zur Datei (Suchtreffer)',
+  TOGGLE_FLAT_VIEW: 'Flache Ansicht (alle Dateien darunter)',
+  TOGGLE_FLAT_VIEW_DIRS: 'Flache Ansicht: Ordner zeigen',
   OPEN_VIEW_DLG: 'Ansehen',
   QUICK_VIEW: 'Schnellvorschau in der anderen Seite',
   OPEN_EDIT_DLG: 'Bearbeiten',

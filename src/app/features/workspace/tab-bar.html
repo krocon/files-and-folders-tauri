@@ -26,7 +26,7 @@
       [attr.data-tab-id]="tab.id"
       [attr.aria-selected]="selected"
       [attr.tabindex]="selected ? 0 : -1"
-      [attr.title]="tab.search ? tab.search.label : (tab.path ?? texts.homeFolder)"
+      [attr.title]="tabTooltip(tab)"
       [attr.aria-busy]="isSearching(tab) ? 'true' : null"
       (click)="onTabClick($event, i)"
       (dblclick)="reload(i)"
@@ -35,7 +35,9 @@
       (keydown)="onTabKeydown($event, i)"
       (pointerdown)="onTabPointerDown($event, tab)"
     >
-      @if (tab.search) {
+      @if (tab.search?.flat) {
+        <i class="fa fa-list search-icon" aria-hidden="true"></i>
+      } @else if (tab.search) {
         <i class="fa fa-search search-icon" aria-hidden="true"></i>
       }
       {{ title(tab) }}

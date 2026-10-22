@@ -329,10 +329,16 @@ export class MultiRenameStore {
     }
     if (req.searchKey) {
       // the hits carry the old names: search again (renamed entries may no longer match)
+      let focus: { dir: string; name: string } | undefined;
       if (store.searchKey() === req.searchKey) {
         store.setMarked([...renamed.keys()], false);
+        // a flat view keeps the cursor on the renamed entry (review 038 B7): its folder
+        // and new name – the new path comes from the listing, never from joining strings
+        const hit = store.cursorEntry() as SearchHit | null;
+        const name = hit ? renamed.get(hit.path) : undefined;
+        focus = hit && name !== undefined && hit.dir ? { dir: hit.dir, name } : undefined;
       }
-      void this.search.rerun(req.searchKey);
+      void this.search.rerun(req.searchKey, focus);
       return;
     }
     if (store.path() !== req.folder) {

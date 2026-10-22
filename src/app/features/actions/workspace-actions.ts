@@ -83,11 +83,15 @@ export function registerWorkspaceActions(
     CANCEL_LOADING: {
       run: () => {
         const p = panel();
+        if (p?.store.resultBusy() && !p.store.loading()) {
+          p.store.stopResult(); // a running search or flat listing (design 038 E6)
+          return;
+        }
         if (p && !p.cancelLoading?.()) {
           p.store.cancelLoad();
         }
       },
-      enabled: () => panel()?.store.loading() ?? false,
+      enabled: () => (panel()?.store.loading() || panel()?.store.resultBusy()) ?? false,
     },
     TOGGLE_MARK_AND_ADVANCE: {
       // Space on a folder also calculates its size (design 002 D3 / 003 E7)

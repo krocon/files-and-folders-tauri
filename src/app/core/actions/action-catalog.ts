@@ -76,6 +76,8 @@ export const ACTION_IDS = [
   'OPEN_FOLDER_FINDER_DLG',
   'RERUN_SEARCH',
   'GOTO_FILE',
+  'TOGGLE_FLAT_VIEW',
+  'TOGGLE_FLAT_VIEW_DIRS',
   // files
   'OPEN_VIEW_DLG',
   'QUICK_VIEW',
@@ -228,6 +230,8 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_FOLDER_FINDER_DLG: m('Find folder (change dir)…', 'navigation', '009'),
   RERUN_SEARCH: m('Search again', 'selection', '009'),
   GOTO_FILE: m('Go to file (search result)', 'navigation', '009'),
+  TOGGLE_FLAT_VIEW: m('Flat view (all files below)', 'navigation', '038'),
+  TOGGLE_FLAT_VIEW_DIRS: m('Flat view: show folders', 'navigation', '038'),
   OPEN_VIEW_DLG: m('View', 'files', '010'),
   QUICK_VIEW: m('Quick view in the other panel', 'files', '010'),
   OPEN_EDIT_DLG: m('Edit', 'files', '011'),

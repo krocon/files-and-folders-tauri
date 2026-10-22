@@ -95,8 +95,21 @@ export function refreshGapMs(lastMs: number): number {
  * - `hiddenVisible` / `filterText`: row filter of the shown tab (design 003 E5).
  * - folder sizes are written into the listing (`size` of directories).
  */
-/** What a result tab shows (design 009 E4, 016 E6, 033). */
-export type ResultKind = 'search' | 'duplicates' | 'usage';
+/** What a result tab shows (design 009 E4, 016 E6, 033, flat view 038). */
+export type ResultKind = 'search' | 'duplicates' | 'usage' | 'flat';
+
+/**
+ * Navigation out of a flat view (design 038 E6, implemented by the panel): Back,
+ * "up" and Enter on a folder turn the flat view off in the same tab.
+ */
+export interface FlatNavigator {
+  /** Back to the normal view of the root; then into `navigate` (cursor on `cursor`) if given. */
+  leave(then?: { readonly navigate: string; readonly cursor: string | null }): Promise<void>;
+  /** "Up": the normal view, then the root's parent with the cursor on the root. */
+  up(): Promise<void>;
+  /** Ctrl+R: listed again in the background. */
+  refresh(): void;
+}
 
 /** Navigation of a disk-usage tab (implemented by the `DiskUsageStore`). */
 export interface ResultNavigator {
@@ -211,6 +224,12 @@ export class FileBrowserStore implements OnDestroy {
   readonly searchKind = signal<ResultKind>('search');
   /** Disk-usage tab: navigation happens inside the scan (set by the panel). */
   usageNav: ResultNavigator | null = null;
+  /** Flat view: leaving it and refreshing (set by the panel, design 038 E6). */
+  flatNav: FlatNavigator | null = null;
+  /** A search or a flat listing of the shown result tab runs – Esc stops it (set by the panel). */
+  readonly resultBusy = signal(false);
+  /** Stops the running search of the shown result tab (set by the panel). */
+  stopResult: () => void = () => undefined;
   /**
    * Disk-usage tab: the marked entries of all levels (the basket, design 033 E3) –
    * what operations work on instead of the marks of the shown level.
@@ -237,11 +256,15 @@ export class FileBrowserStore implements OnDestroy {
   });
   readonly entries = computed<readonly DirEntry[]>(() => this.listing()?.entries ?? []);
   readonly parent = computed(() => this.listing()?.parent ?? null);
-  readonly canGoUp = computed(() => this.parent() !== null);
+  /** The panel shows a flat view (design 038): "up" and Back leave it. */
+  readonly flat = computed(() => this.searchKind() === 'flat' && this.searchKey() !== null);
+  readonly canGoUp = computed(() => this.flat() || this.parent() !== null);
   readonly canGoBack = computed(() =>
-    this.searchKind() === 'usage' && this.searchKey() !== null
-      ? (this.usageNav?.canBack() ?? false)
-      : (this.historyVersion(), this.memoryRef.back.length > 0),
+    this.flat()
+      ? true
+      : this.searchKind() === 'usage' && this.searchKey() !== null
+        ? (this.usageNav?.canBack() ?? false)
+        : (this.historyVersion(), this.memoryRef.back.length > 0),
   );
   readonly canGoForward = computed(() =>
     this.searchKind() === 'usage' && this.searchKey() !== null
@@ -515,6 +538,10 @@ export class FileBrowserStore implements OnDestroy {
       if (kind === 'usage' && this.pendingTableState === null) {
         this.pendingTableState = { sort: [{ property: 'share', sortState: 'desc' }] };
       }
+      // flat view: by folder, the root first (design 038 E3)
+      if (kind === 'flat' && this.pendingTableState === null) {
+        this.pendingTableState = { sort: [{ property: 'relDir', sortState: 'asc' }] };
+      }
     }
     this.searchKind.set(kind);
     this.endLoad();
@@ -558,6 +585,17 @@ export class FileBrowserStore implements OnDestroy {
         this.setCursor(entry.path);
       }
       if (await this.usageNav?.open(entry)) {
+        return;
+      }
+      return this.openFile(entry);
+    }
+    if (this.flat()) {
+      // flat view: a folder (or archive) opens in the same tab, the flat view ends (design 038 E6)
+      this.setCursor(entry.path);
+      if (isNavigableDir(entry) || isArchiveEntry(entry)) {
+        if (!entry.lossyName) {
+          await this.flatNav?.leave({ navigate: entry.path, cursor: null });
+        }
         return;
       }
       return this.openFile(entry);
@@ -652,6 +690,9 @@ export class FileBrowserStore implements OnDestroy {
     if (this.isUsage()) {
       return this.usageNav?.up() ?? Promise.resolve();
     }
+    if (this.flat()) {
+      return this.flatNav?.up() ?? Promise.resolve();
+    }
     const parent = this.parent();
     if (parent === null || this.navigationLocked()) {
       return Promise.resolve();
@@ -662,6 +703,9 @@ export class FileBrowserStore implements OnDestroy {
   back(): Promise<void> {
     if (this.isUsage()) {
       return this.usageNav?.back() ?? Promise.resolve();
+    }
+    if (this.flat()) {
+      return this.flatNav?.leave() ?? Promise.resolve();
     }
     const entry = this.memoryRef.back.at(-1);
     if (!entry || this.navigationLocked() || this.searchKey() !== null) {
@@ -694,6 +738,10 @@ export class FileBrowserStore implements OnDestroy {
    * (still existing) marks. Not while a navigation replaces the folder anyway.
    */
   refresh(): Promise<void> {
+    if (this.flat()) {
+      this.flatNav?.refresh();
+      return Promise.resolve();
+    }
     if (this.navigationLocked() || this.searchKey() !== null || this.loading()) {
       return Promise.resolve();
     }
@@ -1225,6 +1273,7 @@ export class FileBrowserStore implements OnDestroy {
   /** The panel leaves a disk-usage tab: no navigation into the scan, no basket (review 033 #1). */
   leaveResult(): void {
     this.usageNav = null;
+    this.flatNav = null;
     this.markedOverride.set(null);
   }
 }

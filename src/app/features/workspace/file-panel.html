@@ -89,7 +89,56 @@
     }
   } @else if (tab().search; as ref) {
     @let r = searchResult();
-    @if (r?.kind === 'duplicates') {
+    @if (ref.flat; as flat) {
+      <span
+        class="crumbs search-head flat-head"
+        [id]="pathId"
+        [attr.title]="flatTexts.headerTitle(flat.root)"
+        [attr.aria-busy]="r?.running || r?.refreshing ? 'true' : null"
+      >
+        <i class="fa fa-list" aria-hidden="true"></i>
+        <b class="search-label">{{ flatTexts.header(ref.label) }}</b>
+        @if (r) {
+          <span class="search-count"
+            >· {{ flatTexts.entries(r.running ? r.stats.hits : r.hits.length) }}</span
+          >
+          @if (r.running || r.refreshing) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="search-roots">{{
+              r.running ? flatTexts.listing : flatTexts.refreshing
+            }}</span>
+          } @else if (r.cancelled) {
+            <span class="warn">· {{ flatTexts.cancelled }}</span>
+          }
+          @if (r.stats.truncated) {
+            <span class="warn" role="note">· {{ flatTexts.truncated(r.stats.hits) }}</span>
+          }
+          @if (r.error) {
+            <span class="warn" role="alert">· {{ fsErrorText(r.error) }}</span>
+          }
+          @if (r.stats.unreadable > 0) {
+            <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
+          }
+        }
+      </span>
+      <span class="sr-only" role="status">{{ searchStatus() }}</span>
+      @if (r?.running || r?.refreshing) {
+        <button type="button" class="btn small" (click)="stopSearch()">
+          {{ searchTexts.stop }}
+        </button>
+      }
+      <label class="flat-dirs">
+        <input
+          type="checkbox"
+          [checked]="r ? r.criteria.kinds.dirs : flat.showDirs"
+          (change)="onFlatDirs($event)"
+        />
+        {{ flatTexts.showDirs }}
+      </label>
+      <button type="button" class="btn small" (click)="normalView()">
+        {{ flatTexts.normalView }}
+      </button>
+    } @else if (r?.kind === 'duplicates') {
       <span
         class="crumbs search-head"
         [id]="pathId"

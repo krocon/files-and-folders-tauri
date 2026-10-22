@@ -589,7 +589,8 @@ export class OpsStore {
     this.close();
     if (req.searchKey) {
       // the hit carries the old name: search again (the new name may no longer match)
-      void this.search.rerun(req.searchKey);
+      // a flat view keeps the cursor on the renamed entry (review 038 B7)
+      void this.search.rerun(req.searchKey, req.kind === 'rename' ? result : undefined);
     }
     this.refreshFolder(req.parent, req.side, result);
     if (req.kind === 'rename' && req.entry) {

@@ -275,6 +275,31 @@
   }
 }
 
+/* flat view (design 038 E3): in a narrow panel the folder and the hints shrink */
+.flat-head {
+  .search-label,
+  .warn {
+    flex: 0 1 auto;
+    min-width: 3em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.flat-dirs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  /* the general `label { margin-top }` is for labels above a field */
+  margin-top: 0;
+  white-space: nowrap;
+
+  input {
+    margin: 0;
+  }
+}
+
 .btn.small {
   flex: none;
   padding: 0 var(--spacing-2);

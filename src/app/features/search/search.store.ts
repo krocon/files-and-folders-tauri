@@ -18,6 +18,8 @@ import { WorkspaceStore } from '../workspace/workspace.store';
 import { FindForm, restoreForm } from './find-form';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
 import { SEARCH_TEXTS } from './search-texts';
+import { isSameOrBelow } from '../../shared/path-prefix';
+import { FlatOptions, flatCriteria, flatOptionsOf } from '../flat/flat-logic';
 
 /** Hits are shown at most this often while a search runs (`setRows` + sort of up to 100 000 rows). */
 export const PUBLISH_MS = 300;
@@ -26,8 +28,13 @@ export const MAX_RECENT_SEARCHES = 10;
 export const MAX_TEMPLATES = 50;
 export const MAX_TEMPLATE_LABEL = 100;
 
-/** What a result tab shows: hits of a search, or groups of duplicate files (design 016 E6). */
-export type ResultKind = 'search' | 'duplicates';
+/**
+ * What a result tab shows: hits of a search, groups of duplicate files (design 016 E6)
+ * or every entry below a folder – the flat view (design 038).
+ */
+export type ResultKind = 'search' | 'duplicates' | 'flat';
+/** A flat view is refreshed at most this often after a watcher event (design 038 E5, 029 E2). */
+export const FLAT_REFRESH_GAP_MS = 1000;
 
 /** The result of one search, shown by one or more result tabs. */
 export interface SearchResult {
@@ -41,6 +48,16 @@ export interface SearchResult {
   /** Hits shown so far (published throttled while running). */
   readonly hits: readonly SearchHit[];
   readonly running: boolean;
+  /**
+   * Flat view (design 038 E5): listed again in the background – the old rows stay
+   * until the new listing is complete (cursor, marks and scrolling are kept).
+   */
+  readonly refreshing: boolean;
+  /**
+   * Flat view: where the cursor goes once a refresh is taken over (a renamed entry's
+   * new path, review 038 B7); `seq` tells a new request from one already applied.
+   */
+  readonly focus: { readonly path: string; readonly seq: number } | null;
   readonly stats: SearchStats;
   /** Unreadable folders (first 1 000; `stats.unreadable` has the count). */
   readonly unreadable: readonly ItemError[];
@@ -58,29 +75,21 @@ export interface SearchTemplate {
 
 interface Run {
   readonly jobId: string;
+  /** Background refresh of a flat view: hits are taken over only at the end. */
+  readonly silent: boolean;
   readonly all: SearchHit[];
   stats: SearchStats;
   timer: ReturnType<typeof setTimeout> | null;
   unsubscribe: () => void;
 }
 
-let keySeq = 0;
+/** Where the cursor goes after a flat refresh: a path from Rust, or a folder and a new name. */
+export type FocusWanted = string | { readonly dir: string; readonly name: string };
 
-/**
- * `path` is `ancestor` or lies below it. Paths stay opaque (CLAUDE.md §4): only a
- * prefix comparison up to a separator, never split or joined.
- */
-export function isSameOrBelow(path: string, ancestor: string): boolean {
-  if (path === ancestor) {
-    return true;
-  }
-  if (!path.startsWith(ancestor)) {
-    return false;
-  }
-  // a root like `/` or `C:\` already ends with its separator
-  const sep = /[/\\]$/.test(ancestor) ? '' : path.charAt(ancestor.length);
-  return sep === '' ? path.length > ancestor.length : sep === '/' || sep === '\\';
-}
+let keySeq = 0;
+let focusSeq = 0;
+
+export { isSameOrBelow };
 
 /** What the result header shows of a duplicate search: only its folders. */
 function rootsOnly(roots: readonly string[]): SearchCriteria {
@@ -99,13 +108,13 @@ function rootsOnly(roots: readonly string[]): SearchCriteria {
 
 /** The job and the result fields of a search or a duplicate search. */
 type Query =
-  | { readonly kind: 'search'; readonly criteria: SearchCriteria }
+  | { readonly kind: 'search' | 'flat'; readonly criteria: SearchCriteria }
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria };
 
 function queryOf(r: SearchResult): Query {
   return r.kind === 'duplicates' && r.duplicates
     ? { kind: 'duplicates', criteria: r.duplicates }
-    : { kind: 'search', criteria: r.criteria };
+    : { kind: r.kind === 'flat' ? 'flat' : 'search', criteria: r.criteria };
 }
 
 export function searchLabel(c: SearchCriteria): string {
@@ -129,8 +138,17 @@ export class SearchStore {
   private readonly starting = new Map<string, { stop: boolean }>();
   /** Results whose tab is about to open – not released meanwhile. */
   private readonly fresh = new Set<string>();
+  /** Flat views to list again once their running listing ends (at most one each, design 038 E5). */
+  private readonly queued = new Map<string, SearchCriteria>();
+  /** Flat views: end of the last listing and the timer of a refresh that waits for the gap. */
+  private readonly lastEnd = new Map<string, number>();
+  private readonly refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Flat views: cursor after the next refresh (review 038 B7). */
+  private readonly focusAfter = new Map<string, FocusWanted>();
 
   readonly results = signal<ReadonlyMap<string, SearchResult>>(new Map());
+  /** "Show folders" of the last flat view – the start value of the next one (design 038 E4). */
+  flatShowDirs = false;
   private readonly settings = inject(SettingsStore);
   /** Last searches (dialog fields), newest first – kept in the settings (design 009 E5 / 015). */
   readonly recent = computed<readonly FindForm[]>(() =>
@@ -236,9 +254,117 @@ export class SearchStore {
     return null;
   }
 
-  /** Runs the search of a result again (same criteria). */
-  async rerun(key: string): Promise<void> {
+  /**
+   * Starts listing everything below `root` for a flat view (design 038 E2). `attach`
+   * runs once the job was accepted and must show the result in a tab (else it is
+   * released at once). Returns the error of a refused start or null.
+   */
+  async startFlat(
+    root: string,
+    options: FlatOptions,
+    attach: (key: string) => boolean,
+  ): Promise<FsError | null> {
+    const key = `f${++keySeq}`;
+    this.fresh.add(key);
+    let shown = false;
+    try {
+      const error = await this.start(
+        key,
+        { kind: 'flat', criteria: flatCriteria(root, options) },
+        null,
+      );
+      shown = !error && attach(key);
+      return error;
+    } finally {
+      this.fresh.delete(key);
+      // nobody shows it (the tab went elsewhere meanwhile): cancel and forget (review 038 B2)
+      if (!shown) {
+        this.release(key);
+      }
+    }
+  }
+
+  /**
+   * Lists a flat view again in the background (design 038 E5), with changed options if
+   * given. The old rows stay until the new listing is complete; a cancelled one keeps
+   * them. While a listing runs, one more is queued (the newest options win). `focus`:
+   * the cursor goes there once the new rows are shown (a renamed entry, review 038 B7).
+   */
+  refresh(key: string, patch?: Partial<FlatOptions>, focus?: FocusWanted): void {
     const r = this.result(key);
+    if (!r || r.kind !== 'flat') {
+      return;
+    }
+    if (focus !== undefined) {
+      this.focusAfter.set(key, focus);
+    }
+    this.clearRefreshTimer(key);
+    const queued = this.queued.get(key);
+    const base = queued ?? r.criteria;
+    const criteria = patch
+      ? flatCriteria(base.roots[0] ?? '', { ...flatOptionsOf(base), ...patch })
+      : base;
+    if (this.runs.has(key) || this.starting.has(key)) {
+      this.queued.set(key, criteria);
+      return;
+    }
+    void this.start(key, { kind: 'flat', criteria }, null, true).then((error) => {
+      if (error) {
+        this.queued.delete(key);
+        this.patch(key, { error, refreshing: false });
+      }
+    });
+  }
+
+  /** The options of a flat view's newest (queued or current) listing. */
+  flatOptions(key: string): FlatOptions | null {
+    const r = this.result(key);
+    if (!r || r.kind !== 'flat') {
+      return null;
+    }
+    return flatOptionsOf(this.queued.get(key) ?? r.criteria);
+  }
+
+  /**
+   * Watcher event in the root of a flat view: refreshed, but not sooner than
+   * {@link FLAT_REFRESH_GAP_MS} after the last listing ended (029 E2).
+   */
+  requestRefresh(key: string): void {
+    if (this.refreshTimers.has(key)) {
+      return;
+    }
+    const wait = (this.lastEnd.get(key) ?? 0) + FLAT_REFRESH_GAP_MS - Date.now();
+    if (wait <= 0 || this.runs.has(key)) {
+      this.refresh(key);
+      return;
+    }
+    this.refreshTimers.set(
+      key,
+      setTimeout(() => {
+        this.refreshTimers.delete(key);
+        this.refresh(key);
+      }, wait),
+    );
+  }
+
+  private clearRefreshTimer(key: string): void {
+    const t = this.refreshTimers.get(key);
+    if (t !== undefined) {
+      clearTimeout(t);
+      this.refreshTimers.delete(key);
+    }
+  }
+
+  /**
+   * Runs the search of a result again (same criteria); a flat view refreshes in the
+   * background, with the cursor on `focus` afterwards if given (review 038 B7).
+   */
+  async rerun(key: string, focus?: FocusWanted): Promise<void> {
+    const r = this.result(key);
+    if (r?.kind === 'flat') {
+      this.refresh(key, undefined, focus);
+      return;
+    }
     if (r) {
       const error = await this.start(key, queryOf(r), r.form);
       if (error) {
@@ -248,8 +374,10 @@ export class SearchStore {
     }
   }
 
-  /** Cancels the running search of a result (the hits so far stay). */
+  /** Cancels the running search of a result (the hits so far stay) – and a queued refresh (review 038 B3). */
   stop(key: string): void {
+    this.queued.delete(key);
+    this.clearRefreshTimer(key);
     const run = this.runs.get(key);
     if (run) {
       void this.jobs.cancel(run.jobId);
@@ -316,14 +444,19 @@ export class SearchStore {
    * Starts a new job for the result; a running one is cancelled only once the
    * new one was accepted (review 009 #2: a refused pattern keeps the old run).
    */
-  private async start(key: string, query: Query, form: FindForm | null): Promise<FsError | null> {
+  private async start(
+    key: string,
+    query: Query,
+    form: FindForm | null,
+    silent = false,
+  ): Promise<FsError | null> {
     const pending = { stop: false };
     this.starting.set(key, pending);
     let jobId: string;
     const spec: JobSpec =
-      query.kind === 'search'
-        ? { kind: 'search', criteria: query.criteria }
-        : { kind: 'duplicates', criteria: query.criteria };
+      query.kind === 'duplicates'
+        ? { kind: 'duplicates', criteria: query.criteria }
+        : { kind: 'search', criteria: query.criteria };
     try {
       jobId = await this.jobs.start(spec);
     } catch (err) {
@@ -333,8 +466,15 @@ export class SearchStore {
         this.starting.delete(key);
       }
     }
+    // released while the job was being started (tab closed, flat view left): it must not
+    // bring the result back (review 038 B1)
+    if (!this.fresh.has(key) && !this.ws.searchKeys().has(key)) {
+      void this.jobs.cancel(jobId);
+      return null;
+    }
     const run: Run = {
       jobId,
+      silent,
       all: [],
       stats: EMPTY_STATS,
       timer: null,
@@ -344,20 +484,35 @@ export class SearchStore {
     this.stopRun(key);
     this.runs.set(key, run);
     const dup = query.kind === 'duplicates';
-    this.setResult({
-      key,
-      kind: query.kind,
-      criteria: dup ? rootsOnly(query.criteria.roots) : query.criteria,
-      duplicates: dup ? query.criteria : null,
-      label: dup ? DUP_TEXTS.header : searchLabel(query.criteria),
-      hits: [],
-      running: true,
-      stats: EMPTY_STATS,
-      unreadable: [],
-      error: null,
-      cancelled: false,
-      form,
-    });
+    const old = this.result(key);
+    if (silent && old) {
+      this.patch(key, {
+        criteria: dup ? rootsOnly(query.criteria.roots) : query.criteria,
+        refreshing: true,
+        error: null,
+      });
+    } else {
+      this.setResult({
+        key,
+        kind: query.kind,
+        criteria: dup ? rootsOnly(query.criteria.roots) : query.criteria,
+        duplicates: dup ? query.criteria : null,
+        label: dup
+          ? DUP_TEXTS.header
+          : query.kind === 'flat'
+            ? (old?.label ?? '')
+            : searchLabel(query.criteria),
+        hits: [],
+        running: true,
+        refreshing: false,
+        focus: null,
+        stats: EMPTY_STATS,
+        unreadable: [],
+        error: null,
+        cancelled: false,
+        form,
+      });
+    }
     // hits that arrived before the id (buffered by JobsStore) come at once
     run.unsubscribe = this.jobs.onSearchHits(jobId, (hits, stats) => {
       if (this.runs.get(key) !== run) {
@@ -365,7 +520,9 @@ export class SearchStore {
       }
       run.all.push(...hits);
       run.stats = stats;
-      this.schedulePublish(key, run);
+      if (!silent) {
+        this.schedulePublish(key, run);
+      }
     });
     if (pending.stop) {
       void this.jobs.cancel(jobId); // Stop was pressed while the job was being started
@@ -374,17 +531,44 @@ export class SearchStore {
       if (this.runs.get(key) !== run) {
         return;
       }
-      this.publish(key, run);
       run.unsubscribe();
       this.runs.delete(key);
+      this.lastEnd.set(key, Date.now());
       const s = job.summary;
-      this.patch(key, {
-        running: false,
-        stats: s?.search ?? run.stats,
-        unreadable: s?.errors ?? [],
-        error: job.state === 'failed' ? (s?.error ?? null) : null,
-        cancelled: job.state === 'cancelled',
-      });
+      if (silent) {
+        // a cancelled or failed refresh keeps the rows it was meant to replace
+        this.patch(
+          key,
+          job.state === 'done'
+            ? {
+                hits: run.all.slice(),
+                focus: this.takeFocus(key, run.all),
+                stats: s?.search ?? run.stats,
+                unreadable: s?.errors ?? [],
+                refreshing: false,
+                cancelled: false,
+                error: null,
+              }
+            : {
+                refreshing: false,
+                error: job.state === 'failed' ? (s?.error ?? null) : null,
+              },
+        );
+      } else {
+        this.publish(key, run);
+        this.patch(key, {
+          running: false,
+          stats: s?.search ?? run.stats,
+          unreadable: s?.errors ?? [],
+          error: job.state === 'failed' ? (s?.error ?? null) : null,
+          cancelled: job.state === 'cancelled',
+        });
+      }
+      const next = this.queued.get(key);
+      if (next) {
+        this.queued.delete(key);
+        void this.start(key, { kind: 'flat', criteria: next }, null, true);
+      }
     });
     return null;
   }
@@ -426,8 +610,31 @@ export class SearchStore {
     void this.jobs.cancel(run.jobId);
   }
 
+  /** The cursor wanted after this refresh, as a path of the new rows (review 038 B7). */
+  private takeFocus(key: string, hits: readonly SearchHit[]): SearchResult['focus'] {
+    const wanted = this.focusAfter.get(key);
+    this.focusAfter.delete(key);
+    const keep = this.result(key)?.focus ?? null;
+    if (wanted === undefined) {
+      return keep;
+    }
+    const path =
+      typeof wanted === 'string'
+        ? wanted
+        : hits.find((h) => h.dir === wanted.dir && h.name === wanted.name)?.path;
+    return path === undefined ? keep : { path, seq: ++focusSeq };
+  }
+
   private release(key: string): void {
+    const pending = this.starting.get(key);
+    if (pending) {
+      pending.stop = true;
+    }
+    this.focusAfter.delete(key);
     this.stopRun(key);
+    this.queued.delete(key);
+    this.lastEnd.delete(key);
+    this.clearRefreshTimer(key);
     this.results.update((m) => {
       const next = new Map(m);
       next.delete(key);

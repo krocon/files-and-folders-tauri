@@ -391,6 +391,7 @@ pub fn find(
                     dir: dir
                         .map(|d| d.to_string_lossy().into_owned())
                         .unwrap_or_default(),
+                    rel_dir: String::new(),
                     parent_names: dir.map(parent_names).unwrap_or_default(),
                     group: Some(n),
                 })

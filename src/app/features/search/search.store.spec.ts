@@ -48,6 +48,7 @@ const SUMMARY: Summary = {
 const hit = (name: string, folder = '/r/a'): SearchHit => ({
   ...entry(name, { path: `${folder}/${name}` }),
   dir: folder,
+  relDir: '',
   parentNames: ['', '', ''],
 });
 
@@ -248,7 +249,12 @@ describe('SearchStore and result tabs (design 009)', () => {
     left.openInNewTab = (p, c) => opened.push([p, c]);
     const list = [
       hit('1.mp3'),
-      { ...dir('sub', { path: '/r/a/sub' }), dir: '/r/a', parentNames: ['a', 'r', ''] as const },
+      {
+        ...dir('sub', { path: '/r/a/sub' }),
+        dir: '/r/a',
+        relDir: '',
+        parentNames: ['a', 'r', ''] as const,
+      },
     ];
     left.showSearch('s9', list);
     expect(left.path()).toBeNull();
@@ -394,6 +400,7 @@ describe('SearchStore and result tabs (design 009)', () => {
     const folder = {
       ...dir('a', { path: '/r/a' }),
       dir: '/r',
+      relDir: '',
       parentNames: ['r', '', ''] as const,
     };
     hits(id, [folder, hit('1.mp3'), hit('2.mp3', '/r/a/deep'), hit('3.mp3', '/r/ab')]);
@@ -417,6 +424,7 @@ describe('SearchStore and result tabs (design 009)', () => {
     const folder = (name: string) => ({
       ...dir(name, { path: `/r/${name}` }),
       dir: '/r',
+      relDir: '',
       parentNames: ['r', '', ''] as const,
     });
     hits(ids[0], [folder('old')]);

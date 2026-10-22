@@ -39,12 +39,13 @@
   (Server-Verbindungen FTP/FTPS/SFTP: Pfade `remote://<profil>/…`, Passwörter nur im Schlüsselbund, `Mod+K`) und Prompt
   040 (Panel-Aktionen: Seiten tauschen, Ziel = Quelle, Strg+←/→) und Prompt 027 (Ordnergedächtnis je Tab über einen
   Neustart in `folder-memory.json`, letzte Dialogeingaben in `dialogs.recent`) und Prompt 039 (Prüfsummen erzeugen/prüfen, Jobs `checksum`/
-  `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 038, 041–044
+  `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) und Prompt 038 (Flache Ansicht: Strg+B im selben
+  Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041–044
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037, 039, 040 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037–040 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -124,6 +125,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/starter/      StarterStore (Root: Einträge → Extra-Aktionen `starter:<id>` + `ActionService.starterTree`),
                              starter-logic.ts (rein: Baum, Einfügen/Anordnen), Editor „Startermenü ändern“, Aktionen
                              OPEN_STARTER_MENU (Alt+S, Popup über `MenuService.openStarter`)/OPEN_STARTER_CONFIG_DLG
+  app/features/flat/         Flache Ansicht (038): flat-logic.ts (rein: Kriterien, `shouldRefresh`), Aktionen
+                             TOGGLE_FLAT_VIEW(_DIRS); Umschalten im FilePanel, Auffrischen im SearchStore (`refresh`)
   app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
   app/core/diskusage/        DiskUsageApi (`disk_usage_*`), DTOs (033)
   app/features/diskusage/    DiskUsageStore (Root: Scans, Ebene/Verlauf/Korb je Scan, Tab `usage:<scanId>`), usage-rows.ts,

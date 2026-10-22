@@ -6,6 +6,7 @@ const hit = (path: string, group: number, modifiedMs: number | null, size = 10):
   name: path.split('/').pop()!,
   path,
   dir: '/',
+  relDir: '',
   parentNames: ['', '', ''],
   kind: 'file',
   targetKind: null,

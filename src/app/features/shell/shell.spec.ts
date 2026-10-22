@@ -399,7 +399,12 @@ describe('shell bar (design 021)', () => {
     await left.load('/src');
     ws.updateTab(ws.activeTab('left').id, { path: '/r', title: 'r' });
     left.showSearch('k1', [
-      { ...entry('x.txt', { path: '/r/a/x.txt' }), dir: '/r/a', parentNames: ['a', 'r', ''] },
+      {
+        ...entry('x.txt', { path: '/r/a/x.txt' }),
+        dir: '/r/a',
+        relDir: '',
+        parentNames: ['a', 'r', ''],
+      },
     ] as never);
     await render();
     expect(shell.cwd()).toBe('/r');

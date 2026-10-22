@@ -60,7 +60,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 035 | [035-archive-bearbeiten.md](035-archive-bearbeiten.md) | Archive bearbeiten: in ZIP/TAR kopieren, darin löschen/Ordner anlegen (Temp-Datei + atomar ersetzen, als Job), danach 7z; RAR nie | 005, 006, 016/025, 029/030 | L |
 | 036 | [036-ordner-synchronisieren.md](036-ordner-synchronisieren.md) | Ordner vergleichen (Shift+F2 markiert Unterschiede) und synchronisieren: Vergleich als Job (Name/Größe/Datum/Inhalt), Vorschau mit Aktion je Zeile, Abgleich in eine oder beide Richtungen; Serverordner als 2. Stufe | 004–006, 009, 016, 029/030, 034 | L |
 | 037 | [037-dateien-vergleichen.md](done/037-dateien-vergleichen.md) | Dateien vergleichen: Text-Diff nebeneinander (nur lesend), Binär als Hex mit Abweichungen, alternativ externes Tool `diff` mit zwei Pfaden | 010, 011 | M |
-| 038 | [038-flache-ansicht.md](038-flache-ansicht.md) | Flache Ansicht (TC Strg+B): alle Dateien unterhalb des Ordners in einer Liste mit Pfad-Spalte, alle Operationen darauf | 001, 003, 005/006, 009 | M |
+| 038 | [038-flache-ansicht.md](done/038-flache-ansicht.md) | Flache Ansicht (TC Strg+B): alle Dateien unterhalb des Ordners in einer Liste mit Pfad-Spalte, alle Operationen darauf | 001, 003, 005/006, 009 | M |
 | 039 | [039-pruefsummen.md](done/039-pruefsummen.md) | Prüfsummen erzeugen/prüfen (SHA-256/512, SHA-1, MD5; GNU/BSD-Format) als Jobs, Prüfsumme in die Zwischenablage | 005, 010, 016 | S–M |
 | 040 | [040-panel-aktionen.md](done/040-panel-aktionen.md) | Panel-Aktionen: Seiten tauschen (auch mit allen Tabs), Ziel = Quelle, Ordner unter dem Cursor in der linken/rechten Seite öffnen (TC Strg+U, Strg+←/→) | 002, 004, 014, 031 | S |
 | 041 | [041-spalten-ansichten.md](041-spalten-ansichten.md) | Spaltenauswahl (ein-/ausblenden, Reihenfolge, Breiten bleiben), Datumsspalte für US-Format, Kurzansicht und Miniaturen – soweit die GuiExpert Table es trägt | 001, 010, 015 | M–L |
@@ -73,7 +73,7 @@ Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Pla
 ## Nächste Prompts (Stand 21.10.2026)
 
 Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: ~~040~~ (Panel-Aktionen, erledigt) → ~~027~~ (Persistenz,
-erledigt) → ~~039~~ (Prüfsummen, erledigt) → ~~037~~ (Dateien vergleichen, erledigt) → **038** (Flache Ansicht, M) → **036** (Ordner
+erledigt) → ~~039~~ (Prüfsummen, erledigt) → ~~037~~ (Dateien vergleichen, erledigt) → ~~038~~ (Flache Ansicht, erledigt) → **036** (Ordner
 synchronisieren, L) → **035** (Archive bearbeiten, L) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
 Table) → **042** (Dubletten nach Inhalt, Regeln, ähnliche Bilder, L) → **043** (Command
 Palette als universeller Einstieg, L). Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.

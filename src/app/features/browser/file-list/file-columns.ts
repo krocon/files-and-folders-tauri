@@ -10,10 +10,11 @@ import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.model
 import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
 import { ItemsCellRenderer, itemsOf, ShareCellRenderer } from '../../diskusage/usage-renderers';
 import { usageOf } from '../../diskusage/usage-rows';
+import { relDirOf } from '../../flat/flat-logic';
 
 /** Column properties of the file list. `ext` is computed from the name. */
 export type FileColumn =
-  'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'group' | 'share' | 'items';
+  'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'relDir' | 'group' | 'share' | 'items';
 
 const COLLATOR_OPTIONS: Intl.CollatorOptions = { numeric: true, sensitivity: 'base' };
 
@@ -115,6 +116,8 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
   ),
   // folder of a search hit (design 009); natural order, then by name
   dir: fileComparator((a, b) => collator.compare(dirOf(a), dirOf(b))),
+  // folder relative to the flat view's root (design 038 E3): the root first, then by name
+  relDir: fileComparator((a, b) => compareRelDirs(relDirOf(a), relDirOf(b))),
   // group of a duplicate (design 016 E6), then by folder (a group stays together)
   group: fileComparator(
     (a, b) =>
@@ -124,6 +127,17 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
   share: usageComparator((e) => usageOf(e)?.share ?? 0),
   items: usageComparator(itemsOf),
 };
+
+/** Relative folders of the flat view: "" (the root) first, then natural order without case. */
+export function compareRelDirs(a: string, b: string): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === '' || b === '') {
+    return a === '' ? -1 : 1;
+  }
+  return collator.compare(a, b) || (a < b ? -1 : 1);
+}
 
 /** Group of a duplicate (`SearchHit.group`), undefined elsewhere. */
 export function groupOf(entry: DirEntry): number | undefined {
@@ -231,6 +245,19 @@ export function createFileColumns(): ColumnDefIf[] {
       sortable: TrueFn,
       sortComparator: fileComparators.dir,
       valueGetter: (row: DirEntry) => dirOf(row),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    // only shown in a flat view (design 038 E3): "." for the root itself
+    ColumnDef.create({
+      property: 'relDir',
+      headerLabel: 'Path',
+      width: new Size(1, 'weight'),
+      minWidth: px(60),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.relDir,
+      valueGetter: (row: DirEntry) => relDirOf(row) || '.',
       headerClasses: ['ge-table-text-align-start'],
       bodyClasses: ['ge-table-text-align-start'],
     }),
