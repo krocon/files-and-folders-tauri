@@ -275,14 +275,24 @@
   }
 }
 
-/* flat view (design 038 E3): in a narrow panel the folder and the hints shrink */
+/* flat view (design 038 E3): as high as the breadcrumbs – switching must not move the
+   panel; the folder and the hints shrink in a narrow panel, all quiet colours */
 .flat-head {
+  .search-label {
+    font-weight: normal;
+  }
+
   .search-label,
-  .warn {
+  .hint {
     flex: 0 1 auto;
     min-width: 3em;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .hint {
+    color: var(--color-muted);
+    font-style: italic;
   }
 }
 
@@ -293,10 +303,37 @@
   gap: var(--spacing-1);
   /* the general `label { margin-top }` is for labels above a field */
   margin-top: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
   white-space: nowrap;
 
   input {
     margin: 0;
+  }
+}
+
+/* a text button inside the header bar: no box of its own, no extra height */
+.head-btn {
+  flex: none;
+  margin: 0;
+  padding: 0 var(--spacing-1);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: inherit;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus);
   }
 }
 

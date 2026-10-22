@@ -16,6 +16,8 @@ import { compareRelDirs, fileComparators } from '../browser/file-list/file-colum
 import { SearchStore } from '../search/search.store';
 import { newTab, WorkspaceStore } from '../workspace/workspace.store';
 import { canShowFlat, registerFlatActions } from './flat-actions';
+import { ACTIONS_MENU_COLUMNS } from '../actions/actions-menu-def';
+import { ACT_TEXTS } from '../actions/actions-texts';
 import { flatCriteria, flatOptionsOf, relDirOf, shouldRefresh } from './flat-logic';
 
 const SUMMARY: Summary = {
@@ -428,6 +430,12 @@ describe('flat view actions and session (design 038 E1/E7)', () => {
     expect(actions.state('TOGGLE_FLAT_VIEW_DIRS')).toBe('ready');
     await actions.run('TOGGLE_FLAT_VIEW_DIRS');
     expect(dirs).toEqual([true]);
+  });
+
+  it('the Actions menu lists Toggle Flat View under Toggle Hidden Files', () => {
+    const first = ACTIONS_MENU_COLUMNS[0];
+    expect(first[first.indexOf('TOGGLE_HIDDEN_FILES') + 1]).toBe('TOGGLE_FLAT_VIEW');
+    expect(ACT_TEXTS.menu['TOGGLE_FLAT_VIEW']).toBe('Toggle Flat View');
   });
 
   it('a flat view is saved as its folder with the cursor of the normal view', () => {

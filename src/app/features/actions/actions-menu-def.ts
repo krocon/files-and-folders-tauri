@@ -10,7 +10,7 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * Configuration (same dialog as the theme editor), File Type and Prompt
  * Configuration (no such configuration yet). Added: Find Duplicates, Shortcuts,
  * Connect to Server (034, next to Change Dir – it is a way to go somewhere), Swap Panels and
- * Target = Source (040, next to the panel entries).
+ * Target = Source (040, next to the panel entries), Toggle Flat View (038, under Toggle Hidden Files).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
@@ -21,6 +21,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_CONNECTIONS_DLG',
     'TOGGLE_FILTER',
     'TOGGLE_HIDDEN_FILES',
+    'TOGGLE_FLAT_VIEW',
     'TOGGLE_SHELL',
     '-',
     'COPY_2_CLIPBOARD_NAMES',
