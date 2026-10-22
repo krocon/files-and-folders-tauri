@@ -10,13 +10,15 @@
 //   pnpm screenshots                                all schemes × all scenes → screenshots/
 //   pnpm screenshots --theme classic-norton --scene main,actions-menu
 //   pnpm screenshots --out docs/screenshots --flat  one scheme, files named <scene>.png
-//   pnpm screenshots:docs                           the README pictures (scenes.json "docs") +
+//   pnpm screenshots:docs                           the doc pictures (scenes.json "docs") +
 //                                                   an overview of all schemes, compressed with pngquant
+//   pnpm screenshots:readme                         one picture per README feature (scenes.json "readme",
+//                                                   Norton) → docs/screenshots/readme, compressed
 //
 // Options: --theme a,b  --scene a,b  --out <dir>  --flat  --platform linux|windows|macos
 //          --lang en|de  --width 1280 --height 760  --scale 1|2  --jobs 4
 //          --no-build (use the existing dist/)  --headed  --chrome (installed Google Chrome)
-//          --list (print schemes and scenes)  --verbose (browser console)  --docs
+//          --list (print schemes and scenes)  --verbose (browser console)  --docs  --readme
 import { spawnSync } from 'node:child_process';
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -74,8 +76,15 @@ const jobs = Math.max(1, Number(args.jobs ?? 4));
 const flat = Boolean(args.flat);
 if (flat && themes.length > 1) fail('--flat needs exactly one --theme');
 const docs = Boolean(args.docs);
-if (docs && (args.theme || args.scene || args.out || flat)) fail('--docs takes its pictures from scenes.json ("docs")');
-const outDir = resolve(ROOT, docs ? config.docs.out : typeof args.out === 'string' ? args.out : 'screenshots');
+const readme = Boolean(args.readme);
+if (docs && readme) fail('--docs and --readme are separate runs');
+if ((docs || readme) && (args.theme || args.scene || args.out || flat)) {
+  fail(`--${docs ? 'docs' : 'readme'} takes its pictures from scenes.json ("${docs ? 'docs' : 'readme'}")`);
+}
+const outDir = resolve(
+  ROOT,
+  docs ? config.docs.out : readme ? config.readme.out : typeof args.out === 'string' ? args.out : 'screenshots',
+);
 
 // ---- frontend build ------------------------------------------------------------------
 if (!args['no-build']) {
@@ -224,11 +233,12 @@ async function capture(browser, theme, scene, target) {
   await page.addInitScript({ content: mockScript });
   try {
     await page.goto(baseUrl, { waitUntil: 'load' });
+    // ready: both lists rendered with a known name (a scene may name another one)
     await page.waitForFunction(
-      () =>
+      (ready) =>
         document.querySelectorAll('guiexpert-table, guiexpert-table-signal').length >= 2 &&
-        document.body.innerText.includes('IMG_4711.jpg'),
-      undefined,
+        document.body.innerText.includes(ready),
+      scene.ready ?? 'IMG_4711.jpg',
       { timeout: 20000 },
     );
     await page.evaluate(() => document.fonts.ready);
@@ -326,13 +336,18 @@ if (docs) {
   ];
   for (const item of queue) if (!item.scene) fail(`scenes.json "docs": unknown scene for ${item.file}`);
 }
+if (readme) {
+  const { theme, images } = config.readme;
+  queue = images.map((img) => ({ theme, scene: sceneByName.get(img.scene), file: join(outDir, img.file) }));
+  for (const item of queue) if (!item.scene) fail(`scenes.json "readme": unknown scene for ${item.file}`);
+}
 const total = queue.length;
 let done = 0;
 let failed = 0;
 const started = Date.now();
 console.log(
-  docs
-    ? `▸ ${total} screenshots for the docs (${platform}, ${lang}) → ${relative(ROOT, outDir)}`
+  docs || readme
+    ? `▸ ${total} screenshots for the ${docs ? 'docs' : 'README'} (${platform}, ${lang}) → ${relative(ROOT, outDir)}`
     : `▸ ${total} screenshots (${themes.length} schemes × ${scenes.length} scenes, ${platform}, ${lang}) → ${relative(ROOT, outDir) || '.'}`,
 );
 
@@ -359,6 +374,7 @@ if (docs && failed === 0) {
   console.log(`  ✓ ${relative(ROOT, file)}`);
   compress([...config.docs.images.map((img) => join(outDir, img.file)), file]);
 }
+if (readme && failed === 0) compress(config.readme.images.map((img) => join(outDir, img.file)));
 if (overviewDir) rmSync(overviewDir, { recursive: true, force: true });
 await browser.close();
 server.close();

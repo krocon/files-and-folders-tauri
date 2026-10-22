@@ -230,7 +230,9 @@ export function demoTexts(repoRoot) {
  * A made-up landscape photo as SVG for the image viewer and quick view; colours vary
  * with the file name so neighbouring files look different.
  */
-export function demoPhotoSvg(name) {
+export function demoPhotoSvg(token) {
+  // `name#v`: the same picture, edited (warmer) – similar images (design 042)
+  const [name, variant] = token.split('#');
   let h = 0;
   for (const c of name) h = (h * 131 + c.charCodeAt(0)) >>> 0;
   const r = rng(h);
@@ -251,5 +253,6 @@ export function demoPhotoSvg(name) {
 ${hill(620, 160, `hsl(${100 + Math.floor(r() * 30)},28%,52%)`)}
 ${hill(760, 140, `hsl(${80 + Math.floor(r() * 30)},35%,40%)`)}
 ${hill(900, 110, `hsl(${60 + Math.floor(r() * 30)},38%,30%)`)}
+${variant ? '<rect width="1600" height="1067" fill="hsl(30,90%,55%)" opacity="0.22"/>' : ''}
 </svg>`;
 }

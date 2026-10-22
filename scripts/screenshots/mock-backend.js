@@ -73,8 +73,153 @@
     };
   }
 
+  // Scene option `mock.archive`: the zip of the photo folder has contents (design 016/025).
+  const archives = {};
+  // Scene option `mock.remote`: one server folder (design 034) – demo names, no real host.
+  const remotes = {};
+
+  function archiveOf(path) {
+    const zip = Object.keys(archives).find((a) => path === a || path.startsWith(`${a}/`));
+    if (!zip) return null;
+    const inner = path === zip ? '' : path.slice(zip.length + 1);
+    return { path: zip, inner, format: 'zip', unsafeEntries: 0, entries: archives[zip], encrypted: false };
+  }
+
+  function remoteOf(path) {
+    const m = /^remote:\/\/([a-z0-9-]+)(\/.*)?$/.exec(path);
+    if (!m) return null;
+    const profile = connections().find((p) => p.id === m[1]);
+    if (!profile) return null;
+    const inner = m[2] && m[2] !== '/' ? m[2] : '/';
+    return {
+      info: {
+        profileId: profile.id,
+        name: profile.name,
+        kind: profile.kind,
+        encrypted: profile.kind !== 'ftp',
+        display: `${profile.name}: ${inner}`,
+      },
+      root: `remote://${profile.id}/`,
+      inner,
+    };
+  }
+
+  function remoteSegments(r) {
+    const out = [{ name: r.info.name, path: r.root }];
+    let current = r.root.slice(0, -1);
+    for (const part of r.inner.split('/').filter(Boolean)) {
+      current += `/${part}`;
+      out.push({ name: part, path: current });
+    }
+    return out;
+  }
+
+  /** Design 034: three server profiles (no passwords – Rust keeps them in the keychain). */
+  function connections() {
+    return [
+      remoteProfile('k3x9a2', 'My server', 'sftp', 'example.org', 22, 'marc', 'keychain', '/var/www'),
+      remoteProfile('n4s7b1', 'NAS', 'ftp', 'nas.local', 21, 'marc', 'none', null),
+      remoteProfile('c8w2d5', 'Customer webspace', 'ftpsExplicit', 'ftp.example.com', 21, 'web42', 'none', '/htdocs'),
+    ];
+  }
+
+  const demoEntry = (name, kind, size, modified) => ({
+    name,
+    kind,
+    targetKind: null,
+    size: kind === 'directory' ? null : size,
+    modifiedMs: Date.parse(`${modified}Z`),
+    hidden: name.startsWith('.'),
+    lossyName: false,
+  });
+  const demoFile = (name, size, modified) => demoEntry(name, 'file', size, modified);
+  const demoDir = (name, modified) => demoEntry(name, 'directory', null, modified);
+  const photoDir = `${home}/Pictures/Italy 2026`;
+
+  // Scene option `mock.photoFolders`: the sub folders of the photo folder have photos too
+  // (flat view, similar images) – only for those scenes, the others stay as they are.
+  if (cfg.mock?.photoFolders) {
+    dirs[`${photoDir}/Edited`] = [
+      demoFile('IMG_4712 edited.jpg', Math.round(2.1 * mb), '2026-09-12T09:40:00'),
+      demoFile('IMG_4738 edited.jpg', Math.round(1.8 * mb), '2026-09-12T09:44:00'),
+      demoFile('IMG_4752 square.jpg', Math.round(1.2 * mb), '2026-09-12T09:51:00'),
+      demoFile('IMG_4760 small.png', Math.round(3.4 * mb), '2026-09-12T09:55:00'),
+    ];
+    dirs[`${photoDir}/Panorama`] = [
+      demoFile('Amalfi coast.jpg', Math.round(14.2 * mb), '2026-09-06T19:02:00'),
+      demoFile('Dolomites at sunrise.jpg', Math.round(11.7 * mb), '2026-09-09T06:31:00'),
+      demoFile('Lake Garda.jpg', Math.round(9.8 * mb), '2026-09-10T17:48:00'),
+    ];
+    dirs[`${photoDir}/Videos`] = [
+      demoFile('Gondola.mp4', 212 * mb, '2026-09-03T16:20:00'),
+      demoFile('Vespa ride.mp4', 148 * mb, '2026-09-07T11:05:00'),
+    ];
+  }
+
+  // Scene option `mock.shellHeight`: a taller output area of the shell line.
+  if (cfg.mock?.shellHeight) cfg.session.shell.outputHeight = cfg.mock.shellHeight;
+
+  if (cfg.mock?.archive) {
+    const zip = `${photoDir}/Italy 2026 best of.zip`;
+    dirs[zip] = [
+      demoDir('Amalfi', '2026-09-15T20:31:00'),
+      demoDir('Dolomites', '2026-09-15T20:32:00'),
+      demoDir('Venice', '2026-09-15T20:33:00'),
+      demoFile('IMG_4711.jpg', Math.round(4.9 * mb), '2026-09-01T13:18:00'),
+      demoFile('IMG_4738.jpg', Math.round(3.2 * mb), '2026-09-03T18:45:00'),
+      demoFile('IMG_4752.jpg', Math.round(2.2 * mb), '2026-09-04T18:04:00'),
+      demoFile('IMG_4790.jpg', Math.round(5.6 * mb), '2026-09-07T10:12:00'),
+      demoFile('README.txt', 1200, '2026-09-15T20:40:00'),
+      demoFile('slideshow.mp4', 24 * mb, '2026-09-15T20:38:00'),
+    ];
+    for (const d of ['Amalfi', 'Dolomites', 'Venice']) dirs[`${zip}/${d}`] = [];
+    archives[zip] = 31;
+    cfg.session.panels.right.tabs[0].cursor = zip;
+  }
+
+  if (cfg.mock?.remote) {
+    const site = 'remote://k3x9a2/var/www/example.org';
+    remotes[site] = [
+      demoDir('assets', '2026-10-18T09:12:00'),
+      demoDir('blog', '2026-10-20T21:40:00'),
+      demoDir('fnf', '2026-10-21T19:02:00'),
+      demoDir('img', '2026-10-11T08:30:00'),
+      demoFile('.htaccess', 812, '2026-06-02T10:00:00'),
+      demoFile('favicon.ico', 15 * 1024, '2026-01-14T12:00:00'),
+      demoFile('impressum.html', 7 * 1024 + 300, '2026-03-21T16:45:00'),
+      demoFile('index.html', 24 * 1024 + 512, '2026-10-21T19:05:00'),
+      demoFile('robots.txt', 68, '2026-01-14T12:00:00'),
+      demoFile('sitemap.xml', 3 * 1024 + 90, '2026-10-21T19:05:00'),
+      demoFile('styles.css', 18 * 1024 + 700, '2026-10-18T09:12:00'),
+    ];
+    for (const d of ['assets', 'blog', 'fnf', 'img']) remotes[`${site}/${d}`] = [];
+    remotes['remote://k3x9a2/var/www'] = [demoDir('example.org', '2026-10-21T19:05:00')];
+    remotes['remote://k3x9a2/var'] = [demoDir('www', '2026-10-21T19:05:00')];
+    remotes['remote://k3x9a2/'] = [demoDir('var', '2026-10-21T19:05:00')];
+    const right = cfg.session.panels.right;
+    right.tabs = [
+      { ...right.tabs[0], id: 'r0', path: site, title: 'example.org', cursor: `${site}/index.html` },
+      ...right.tabs,
+    ];
+  }
+
   function listDirectory(args) {
     const path = expand(args?.path ?? home);
+    const remote = remoteOf(path);
+    if (remote) {
+      if (!(path in remotes)) throw fsError('not_found', 'not found', path);
+      const segs = remoteSegments(remote);
+      return {
+        path,
+        parent: segs.length > 1 ? segs[segs.length - 2].path : null,
+        segments: segs,
+        entries: (remotes[path] ?? []).map((e) => ({ ...e, path: `${path}/${e.name}` })),
+        unreadableEntries: 0,
+        archive: null,
+        network: false,
+        remote: remote.info,
+      };
+    }
     if (!(path in dirs)) {
       throw entryAt(path)
         ? fsError('not_a_directory', 'not a directory', path)
@@ -86,7 +231,7 @@
       segments: segments(path),
       entries: entriesOf(path),
       unreadableEntries: 0,
-      archive: null,
+      archive: archiveOf(path),
       network: false,
     };
   }
@@ -174,7 +319,8 @@
         if (matchers.length && !matchers.some((m) => m.test(e.name))) continue;
         const dir = parentOf(e.path);
         const names = dir.split('/').filter(Boolean).reverse();
-        hits.push({ ...e, dir, parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''] });
+        const relDir = dir === root ? '' : dir.slice(root.length + 1);
+        hits.push({ ...e, dir, relDir, parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''] });
       }
     }
     return hits.slice(0, c.maxHits ?? 10000);
@@ -285,6 +431,7 @@
 
   /** Duplicates of the demo tree: files of the same size (the mock has no contents). */
   function duplicateHits(c) {
+    if (c.mode === 'similarImages') return similarImageHits();
     const bySize = new Map();
     for (const root of c.roots ?? []) {
       for (const e of walk(root, null, c.excludes ?? [], c.includeHidden)) {
@@ -305,6 +452,52 @@
       }),
     );
   }
+
+  /**
+   * Similar images (design 042 E6): each photo of `Edited` next to its original. The mock
+   * has no pixels – groups, sizes and distances are made up, the thumbnails of one group
+   * show the same demo picture (token = original name, `#variant`).
+   */
+  function similarImageHits() {
+    const pairs = [
+      ['IMG_4712.jpg', 'Edited/IMG_4712 edited.jpg', 4],
+      ['IMG_4738.jpg', 'Edited/IMG_4738 edited.jpg', 3],
+      ['IMG_4752.jpg', 'Edited/IMG_4752 square.jpg', 6],
+      ['IMG_4760.jpg', 'Edited/IMG_4760 small.png', 1],
+    ];
+    const sizes = [
+      [4000, 3000],
+      [2400, 1800],
+    ];
+    let order = 0;
+    return pairs.flatMap(([a, b, distance], i) =>
+      [a, b].map((rel, k) => {
+        const path = `${photoDir}/${rel}`;
+        const e = entryAt(path);
+        const dir = parentOf(path);
+        const names = dir.split('/').filter(Boolean).reverse();
+        return {
+          ...e,
+          path,
+          dir,
+          relDir: '',
+          parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''],
+          group: i + 1,
+          order: order++,
+          width: sizes[k][0],
+          height: rel.includes('square') && k ? 1800 : sizes[k][1],
+          distance: k ? distance : 0,
+        };
+      }),
+    );
+  }
+
+  /** Thumbnail token: the original's name, so a group shows the same picture. */
+  const thumbToken = (path) => {
+    const name = nameOf(path);
+    const m = /^(IMG_\d+)/.exec(name);
+    return m ? `${m[1]}.jpg${name.includes(' ') ? '#v' : ''}` : name;
+  };
 
   const scans = {};
 
@@ -527,6 +720,51 @@
     ];
   }
 
+  /** A copy job waiting for the conflict question (scene option `mock.conflict`). */
+  function conflictJob() {
+    const source = `${photoDir}/IMG_4738.jpg`;
+    const target = `/Volumes/Backup/Photos/IMG_4738.jpg`;
+    const src = entryAt(source);
+    return {
+      ...jobInfo(
+        'demo-conflict',
+        { kind: 'copy', sources: [source, `${photoDir}/IMG_4740.jpg`], targetDir: '/Volumes/Backup/Photos' },
+        'waitingForDecision',
+        { itemsDone: 3, itemsTotal: 12, bytesDone: 11 * mb, bytesTotal: 46 * mb, current: source },
+      ),
+      conflict: {
+        conflictId: 1,
+        kind: 'exists',
+        source,
+        target,
+        sourceMeta: { size: src?.size ?? 3 * mb, modifiedMs: src?.modifiedMs ?? null, isDir: false },
+        targetMeta: { size: 2 * mb + 417 * 1024, modifiedMs: Date.parse('2026-08-14T09:20:00Z'), isDir: false },
+        suggestedName: 'IMG_4738 (1).jpg',
+      },
+    };
+  }
+
+  /** `run_shell`: a made-up `git status` – nothing is executed. */
+  function runShell(args) {
+    const id = `job-${++jobNo}`;
+    const command = args?.command ?? '';
+    setTimeout(() => {
+      send({ type: 'added', job: jobInfo(id, { kind: 'shell', cwd: args?.cwd ?? home, command }, 'running') });
+      const text = [
+        'On branch main',
+        'Changes not staged for commit:',
+        '\tmodified:   README.md',
+        '\tmodified:   scripts/screenshots/scenes.json',
+        '',
+        'Untracked files:',
+        '\tsite/',
+      ].join('\n');
+      send({ type: 'shellOutput', id, chunks: [{ stream: 'stdout', text }], dropped: 0 });
+      send({ type: 'finished', id, state: 'done', summary: summary({ shell: { exitCode: 0, signal: null } }) });
+    }, 50);
+    return { type: 'started', jobId: id, notices: [] };
+  }
+
   // ---- command table -----------------------------------------------------------------
   const handlers = {
     list_directory: listDirectory,
@@ -607,19 +845,33 @@
     },
     // folder memory of 027: nothing kept yet
     load_folder_memory: () => ({ value: { version: 1, tabs: [] }, warning: null }),
+    run_shell: runShell,
+    duplicate_thumbnails: (a) => (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
     load_starter: () => ({
-      items: [],
+      items: [
+        { id: 's1', kind: 'program', label: 'VS Code', program: 'code', params: '"%P%N"' },
+        { id: 's2', kind: 'program', label: 'GIMP', program: 'gimp', params: '%S' },
+        { id: 's3', kind: 'program', label: 'Terminal here', program: 'gnome-terminal', workingDir: '%P' },
+        { id: 's4', kind: 'separator' },
+        { id: 's5', kind: 'folder', label: 'Projects', folder: '~/Projects' },
+        { id: 's6', kind: 'folder', label: 'Backup drive', folder: '/Volumes/Backup' },
+        { id: 's7', kind: 'separator' },
+        {
+          id: 's8',
+          kind: 'submenu',
+          label: 'Scripts',
+          items: [
+            { id: 's9', kind: 'program', label: 'Resize photos', program: '~/bin/resize.sh', params: '%S' },
+            { id: 's10', kind: 'program', label: 'Upload to server', program: '~/bin/upload.sh', params: '"%P%N"' },
+          ],
+        },
+      ],
       warning: null,
       problems: [],
       file: `${home}/.config/files-and-folders/starter.json`,
     }),
-    // design 034: three server profiles (no passwords – Rust keeps them in the keychain)
     load_connections: () => ({
-      profiles: [
-        remoteProfile('k3x9a2', 'Mein Server', 'sftp', 'example.org', 22, 'marc', 'keychain', '/home/marc'),
-        remoteProfile('n4s7b1', 'NAS im Keller', 'ftp', 'nas.local', 21, 'marc', 'none', null),
-        remoteProfile('c8w2d5', 'Kunde Webspace', 'ftpsExplicit', 'ftp.kunde.de', 21, 'web42', 'none', '/htdocs'),
-      ],
+      profiles: connections(),
       states: { k3x9a2: 'connected' },
       keychain: true,
       sessionSecrets: [],
@@ -638,6 +890,7 @@
     load_shell_history: () => ['git status', 'pnpm check', 'ls -la'],
     subscribe_jobs: (a) => {
       jobChannel = a?.onEvent ?? null;
+      if (cfg.mock?.conflict) return [conflictJob()];
       return cfg.mock?.jobs ? demoJobs() : [];
     },
     list_jobs: () => [],
