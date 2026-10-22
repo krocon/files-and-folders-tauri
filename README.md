@@ -292,4 +292,4 @@ is still moving fast, please open an issue before starting a larger pull request
 
 [MIT](LICENSE) © Marc Kronberg
 
-Third-party licenses: [docs/licenses.md](docs/licenses.md).
+Third-party licenses: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) (full texts, shipped with the app), overview in [docs/licenses.md](docs/licenses.md).

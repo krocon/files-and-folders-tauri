@@ -120,5 +120,10 @@ abhängigkeiten permissiv (MIT, Apache-2.0, 0BSD); Rust: fast alles MIT/Apache/B
 **MPL-2.0** in 5 Crates (`cssparser`, `cssparser-macros`, `dtoa-short`, `selectors` – über Tauris HTML-Verarbeitung
 zur Build-Zeit; `option-ext` – über `dirs`). MPL-2.0 ist eine Copyleft-Lizenz auf Dateiebene: bei unveränderter
 Nutzung genügt der Hinweis samt Bezugsquelle; sie verträgt sich mit jeder eigenen Lizenz (auch proprietär).
-Für Releases: Drittlizenz-Hinweise (`THIRD-PARTY-NOTICES`) beilegen – Werkzeug-Vorschlag `cargo about`
-(Vorlage) bzw. aus diesem Bericht; offen.
+Drittlizenz-Hinweise: **`THIRD-PARTY-NOTICES.txt`** im Repo-Wurzelordner, erzeugt mit `pnpm notices`
+(`scripts/notices.mjs`, ohne `cargo about`): die Lizenztexte aller ausgelieferten Teile – Rust-Crates über normale
+Abhängigkeiten aller Zielplattformen (`cargo metadata`), npm-Laufzeitpakete, Font Awesome (OFL 1.1 + MIT,
+`scripts/notices/`) und der UnRAR-Lizenztext. Gleiche Texte stehen einmal mit allen Komponenten; Crates ohne
+Lizenzdatei bekommen den Standardtext einer angebotenen Lizenz (MIT/BSD mit den Autoren aus `Cargo.toml`). Die
+Datei liegt in jedem Paket (`bundle.resources` in `tauri.conf.json`); `pnpm check` und die Release-Vorlage prüfen
+mit `pnpm notices:check`, dass sie aktuell ist – nach Änderungen an Abhängigkeiten `pnpm notices` ausführen.

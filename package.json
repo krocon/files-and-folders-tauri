@@ -30,7 +30,9 @@
     "release:notes": "node scripts/release-notes.mjs",
     "scripts:test": "node --test \"scripts/*.test.mjs\"",
     "licenses:report": "node scripts/licenses.mjs",
-    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test",
+    "notices": "node scripts/notices.mjs",
+    "notices:check": "node scripts/notices.mjs --check",
+    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test && pnpm notices:check",
     "screenshots": "node scripts/screenshots/run.mjs",
     "screenshots:docs": "node scripts/screenshots/run.mjs --docs",
     "screenshots:install": "playwright install chromium"

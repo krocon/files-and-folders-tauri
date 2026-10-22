@@ -96,7 +96,8 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       **Verhalten** auf echten Systemen (Tests laufen nur in der CI bzw. auf Marcs Mac).
 - [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
       007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
-- [ ] `THIRD-PARTY-NOTICES` erzeugen (Lizenz MIT ist festgelegt); UnRAR-Lizenzabsatz ist Pflicht (`docs/licenses.md`).
+- [x] `THIRD-PARTY-NOTICES.txt` (22.10.2026): `pnpm notices`, in jedem Paket, geprüft in `pnpm check` (`docs/release.md`).
+- [ ] About-Dialog: Link „Drittlizenzen“ auf die mitgelieferte `THIRD-PARTY-NOTICES.txt` (Ressourcenpfad über Tauri).
 - [ ] CI: Tests von `platform/attributes.rs` (`setattrlistat`, `SetFileInformationByHandle`), `entry_id`,
       `make_symlink`, `platform/origin_mark.rs`, Papierkorb/Hardlinks (042) auf macOS/Windows **ausführen**; der
       UnRAR-C++-Build (Xcode/MSVC, Feature `rar`) wird vom Cross-Check nicht gebaut (Platzhalter-Compiler).

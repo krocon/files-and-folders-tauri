@@ -65,6 +65,7 @@
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test`; `pnpm rust:cross` = clippy für Windows/macOS vom Linux-Container aus (nur Typprüfung, `scripts/cross-check.sh`, ~4 min je Ziel beim ersten Mal) |
 | Alles prüfen | `pnpm check` |
 | Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), `pnpm screenshots:docs` (eingecheckte Bilder der README in `docs/screenshots/`), einmalig `pnpm screenshots:install` |
+| Lizenzen | `pnpm notices` schreibt `THIRD-PARTY-NOTICES.txt` (nach jeder Abhängigkeitsänderung; `pnpm check` prüft per `notices:check`), `pnpm licenses:report` = Übersicht `docs/licenses.md` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
 
