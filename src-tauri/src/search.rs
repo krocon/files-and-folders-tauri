@@ -143,6 +143,9 @@ pub struct SearchHit {
     pub entry: DirEntryDto,
     /// Full path of the folder that contains the entry.
     pub dir: String,
+    /// `dir` relative to the search root it was found under (OS separators), "" for an
+    /// entry directly in the root – the flat view's "Path" column (design 038 E2).
+    pub rel_dir: String,
     /// Names of `dir`, its parent and grandparent (`paths::parent_names`): a result
     /// tab has no breadcrumbs, and the frontend never splits paths (multi-rename P/Q/R).
     pub parent_names: [String; 3],
@@ -493,7 +496,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
     let mut stats = SearchStats::default();
     let mut unreadable: Vec<FsError> = Vec::new();
     let mut visited: HashSet<DirKey> = HashSet::new();
-    let mut stack: Vec<(PathBuf, u32)> = Vec::new();
+    let mut stack: Vec<(PathBuf, u32, usize)> = Vec::new();
     let mut note_unreadable = |stats: &mut SearchStats, e: FsError| {
         stats.unreadable += 1;
         if unreadable.len() < MAX_REPORTED_UNREADABLE {
@@ -507,13 +510,13 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         Some(k) => visited.insert(k),
         None => true,
     };
-    for root in &c.roots {
+    for (ri, root) in c.roots.iter().enumerate() {
         match fs::metadata(root) {
             Ok(meta) if meta.is_dir() => {
                 if c.follow_links && !first_visit(root, &meta) {
                     continue; // the same folder twice (a root inside a linked root …)
                 }
-                stack.push((root.clone(), 0));
+                stack.push((root.clone(), 0, ri));
             }
             Ok(_) => note_unreadable(
                 &mut stats,
@@ -527,7 +530,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
     let skip_dir = |path: &Path| c.skip_virtual_fs && is_virtual_fs(path);
     // the first root is searched first
     stack.reverse();
-    'walk: while let Some((dir, depth)) = stack.pop() {
+    'walk: while let Some((dir, depth, ri)) = stack.pop() {
         if cancel.load(Ordering::Relaxed) {
             break;
         }
@@ -541,6 +544,10 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         stats.dirs_scanned += 1;
         let dir_str = dir.to_string_lossy().into_owned();
         let dir_parents = parent_names(&dir);
+        let rel_dir = dir
+            .strip_prefix(&c.roots[ri])
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let mut children: Vec<PathBuf> = Vec::new();
         let enter = depth + 1 < c.max_depth;
         // in name order: hits and the folder finder come in a stable, readable order
@@ -641,6 +648,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
             let hit = SearchHit {
                 entry: entry_from_metadata(name, &path, &meta, lossy),
                 dir: dir_str.clone(),
+                rel_dir: rel_dir.clone(),
                 parent_names: dir_parents.clone(),
                 group: None,
             };
@@ -650,7 +658,7 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
         }
         // pop in name order (deterministic, like the listing)
         children.sort_by(|a, b| b.cmp(a));
-        stack.extend(children.into_iter().map(|p| (p, depth + 1)));
+        stack.extend(children.into_iter().map(|p| (p, depth + 1, ri)));
         stats.elapsed_ms = start.elapsed().as_millis() as u64;
         sink(None, &stats);
     }
@@ -1111,6 +1119,150 @@ mod tests {
             json["parentNames"],
             serde_json::json!(["Über alles", "Musik", tmp])
         );
+    }
+
+    /// Flat view (design 038 E2): the criteria the frontend builds for it.
+    fn flat_crit(root: &Path) -> SearchCriteria {
+        let mut c = crit(root);
+        c.kinds = Kinds {
+            files: true,
+            dirs: false,
+            links: true,
+        };
+        c.max_hits = Some(MAX_HITS);
+        c
+    }
+
+    fn collect(c: &SearchCriteria) -> (Vec<SearchHit>, WalkResult) {
+        let compiled = compile(c).unwrap();
+        let mut hits = Vec::new();
+        let res = walk(&compiled, &AtomicBool::new(false), &mut |h, _| {
+            hits.extend(h);
+        });
+        (hits, res)
+    }
+
+    #[test]
+    fn rel_dir_is_relative_to_the_root() {
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        fs::create_dir_all(r.join("a b/Ébène 🎉/drei")).unwrap();
+        fs::write(r.join("top.txt"), b"").unwrap();
+        fs::write(r.join("a b/eins.txt"), b"").unwrap();
+        fs::write(r.join("a b/Ébène 🎉/zwei.txt"), b"").unwrap();
+        fs::write(r.join("a b/Ébène 🎉/drei/drei.txt"), b"").unwrap();
+        let (hits, res) = collect(&flat_crit(r));
+        assert!(!res.stats.truncated);
+        let mut got: Vec<(String, PathBuf)> = hits
+            .iter()
+            .map(|h| (h.entry.name.clone(), PathBuf::from(&h.rel_dir)))
+            .collect();
+        got.sort();
+        assert_eq!(
+            got,
+            vec![
+                (
+                    "drei.txt".into(),
+                    Path::new("a b").join("Ébène 🎉").join("drei")
+                ),
+                ("eins.txt".into(), PathBuf::from("a b")),
+                ("top.txt".into(), PathBuf::new()),
+                ("zwei.txt".into(), Path::new("a b").join("Ébène 🎉")),
+            ],
+            "all files of three levels, folders not shown"
+        );
+        let top = hits.iter().find(|h| h.entry.name == "top.txt").unwrap();
+        assert_eq!(top.rel_dir, "", "directly in the root");
+        let json = serde_json::to_value(top).unwrap();
+        assert_eq!(json["relDir"], "");
+    }
+
+    #[test]
+    fn rel_dir_with_two_roots_and_folders_shown() {
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        fs::create_dir_all(r.join("one/sub")).unwrap();
+        fs::create_dir_all(r.join("two/x")).unwrap();
+        fs::write(r.join("one/sub/f"), b"").unwrap();
+        fs::write(r.join("two/x/g"), b"").unwrap();
+        let mut c = flat_crit(&r.join("one"));
+        c.roots.push(r.join("two").to_string_lossy().into_owned());
+        c.kinds.dirs = true;
+        let (hits, _) = collect(&c);
+        let mut got: Vec<(String, String)> = hits
+            .iter()
+            .map(|h| (h.entry.name.clone(), h.rel_dir.clone()))
+            .collect();
+        got.sort();
+        assert_eq!(
+            got,
+            vec![
+                ("f".into(), "sub".into()),
+                ("g".into(), "x".into()),
+                ("sub".into(), "".into()),
+                ("x".into(), "".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn flat_view_skips_hidden_folders_unless_shown() {
+        let t = tree();
+        let r = t.path();
+        let (names, _) = run(&flat_crit(r), r);
+        assert!(!names.iter().any(|n| n.contains("secret")), "{names:?}");
+        assert!(!names.contains(&".dot.mp3".to_string()));
+        assert!(names.contains(&"Musik/Über alles/01 Lied.mp3".to_string()));
+        let mut c = flat_crit(r);
+        c.include_hidden = true;
+        let (names, _) = run(&c, r);
+        assert!(names.contains(&".hidden dir/secret.mp3".to_string()));
+        assert!(names.contains(&".dot.mp3".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn flat_view_survives_a_symlink_cycle() {
+        use std::os::unix::fs::symlink;
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        fs::create_dir_all(r.join("a/b")).unwrap();
+        fs::write(r.join("a/b/f.txt"), b"").unwrap();
+        symlink(r.join("a"), r.join("a/b/loop")).unwrap();
+        symlink(r, r.join("a/up")).unwrap();
+        let (hits, res) = collect(&flat_crit(r));
+        let mut got: Vec<(String, String)> = hits
+            .iter()
+            .map(|h| (h.entry.name.clone(), h.rel_dir.replace('\\', "/")))
+            .collect();
+        got.sort();
+        assert_eq!(
+            got,
+            vec![
+                ("f.txt".into(), "a/b".into()),
+                ("loop".into(), "a/b".into()),
+                ("up".into(), "a".into()),
+            ],
+            "links are entries, never entered"
+        );
+        assert_eq!(res.stats.dirs_scanned, 3);
+    }
+
+    #[test]
+    fn flat_view_limit_marks_the_result_truncated() {
+        let t = TempDir::new().unwrap();
+        let r = t.path();
+        for d in 0..3 {
+            fs::create_dir(r.join(format!("d{d}"))).unwrap();
+            for f in 0..4 {
+                fs::write(r.join(format!("d{d}/f{f}")), b"").unwrap();
+            }
+        }
+        let mut c = flat_crit(r);
+        c.max_hits = Some(10);
+        let (hits, res) = collect(&c);
+        assert_eq!(hits.len(), 10);
+        assert!(res.stats.truncated);
     }
 
     /// 200 000 files: first hit and cancel latency. Release:
