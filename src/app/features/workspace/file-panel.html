@@ -122,13 +122,17 @@
         }
       </span>
       <span class="sr-only" role="status">{{ searchStatus() }}</span>
-      @if (r?.running) {
+      @if (r?.running || r?.refreshing) {
         <button type="button" class="btn small" (click)="stopSearch()">
           {{ searchTexts.stop }}
         </button>
       }
       <label class="flat-dirs">
-        <input type="checkbox" [checked]="flat.showDirs" (change)="onFlatDirs($event)" />
+        <input
+          type="checkbox"
+          [checked]="r ? r.criteria.kinds.dirs : flat.showDirs"
+          (change)="onFlatDirs($event)"
+        />
         {{ flatTexts.showDirs }}
       </label>
       <button type="button" class="btn small" (click)="normalView()">

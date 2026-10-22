@@ -123,6 +123,7 @@ describe('SearchStore: flat results (design 038)', () => {
           flat: { root: '/r', cursorBefore: null, tableBefore: null, showDirs: false },
         },
       });
+      return true;
     });
     expect(error).toBeNull();
     return key;
@@ -234,6 +235,52 @@ describe('SearchStore: flat results (design 038)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('review B1: a result released while its refresh starts does not come back', async () => {
+    const key = await startFlat();
+    finish('j1');
+    await wait();
+    search.refresh(key); // job being started …
+    ws.updateTab(ws.activeTab('left').id, { search: null }); // … the tab leaves the flat view
+    TestBed.tick();
+    await wait();
+    expect(search.result(key)).toBeUndefined();
+    expect(jobsApi.cancelled).toContain('j2');
+  });
+
+  it('review B2: a flat start nobody shows is released and cancelled', async () => {
+    const error = await search.startFlat(
+      '/r',
+      { includeHidden: false, showDirs: false },
+      () => false,
+    );
+    expect(error).toBeNull();
+    expect([...search.results().keys()]).toEqual([]);
+    expect(jobsApi.cancelled).toEqual(['j1']);
+  });
+
+  it('review B3: Esc during a listing also drops a queued refresh', async () => {
+    const key = await startFlat();
+    search.refresh(key);
+    search.stop(key);
+    finish('j1', 'cancelled');
+    await wait();
+    expect(jobsApi.started).toHaveLength(1);
+    expect(search.result(key)!.cancelled).toBe(true);
+  });
+
+  it('review B7: after renaming, the cursor follows the new name', async () => {
+    const key = await startFlat();
+    emitHits('j1', [hit('a.txt', 'x')]);
+    finish('j1');
+    await wait();
+    await search.rerun(key, '/r/x/b.txt');
+    await wait();
+    emitHits('j2', [hit('b.txt', 'x')]);
+    finish('j2');
+    await wait();
+    expect(search.result(key)!.focus?.path).toBe('/r/x/b.txt');
   });
 
   it('removePaths drops deleted rows at once, also from a running refresh', async () => {

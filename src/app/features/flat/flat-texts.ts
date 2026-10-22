@@ -14,9 +14,9 @@ export const FLAT_EN = {
   cancelled: 'stopped – list incomplete',
   showDirs: 'Show folders',
   normalView: 'Normal view',
-  finished: (n: number) => `Flat view: ${n === 1 ? '1 entry' : `${n} entries`}`,
+  finished: (n: number) => `Flat view: ${n === 1 ? '1 entry' : `${formatCount(n)} entries`}`,
   finishedTruncated: (n: number) =>
-    `Flat view: ${n === 1 ? '1 entry' : `${n} entries`} – list incomplete (limit)`,
+    `Flat view: ${n === 1 ? '1 entry' : `${formatCount(n)} entries`} – list incomplete (limit)`,
   pathColumn: 'Path',
   notHere: 'The flat view needs a local folder',
 };

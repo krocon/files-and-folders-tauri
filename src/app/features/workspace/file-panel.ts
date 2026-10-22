@@ -255,21 +255,31 @@ export class FilePanel implements OnInit {
       untracked(() => {
         if (key !== null && !isUsageKey(key) && this.shownTabId === tab.id) {
           this.store.showSearch(key, result?.hits ?? [], result?.kind ?? kindOf(tab));
+          // a flat view after renaming: the cursor follows the new name (review 038 B7)
+          const focus = result?.focus;
+          if (focus && focus.seq !== this.focusSeq) {
+            this.focusSeq = focus.seq;
+            this.store.setCursor(focus.path);
+          }
         }
       });
     });
     // a running search or flat listing: Esc stops it (design 038 E6)
     effect(() => {
-      const busy = this.searchResult()?.running ?? false;
+      // a background refresh too (review 038 B4)
+      const r = this.searchResult();
+      const busy = (r?.running || r?.refreshing) ?? false;
       untracked(() => this.store.resultBusy.set(busy));
     });
     // flat view: Hidden is part of the listing – hidden folders are entered or not (design 038 E4)
+    // only when Hidden changes, with its newest value (review 038 B5/B6)
     effect(() => {
       const hidden = this.store.hiddenVisible();
-      const r = this.searchResult();
       untracked(() => {
-        if (r?.kind === 'flat' && this.tab().search?.flat && r.criteria.includeHidden !== hidden) {
-          this.search.refresh(r.key, { includeHidden: hidden });
+        const key = this.tab().search?.flat ? this.tab().search!.key : null;
+        const now = key !== null ? this.search.flatOptions(key) : null;
+        if (key !== null && now && this.store.flat() && now.includeHidden !== hidden) {
+          this.search.refresh(key, { includeHidden: hidden });
         }
       });
     });
@@ -671,6 +681,10 @@ export class FilePanel implements OnInit {
       this.store.setCursor(tab.cursor);
       if (tab.search.flat) {
         this.store.flatNav = this.flatNavigator();
+        // shown again after another tab: what changed meanwhile was not watched (review 038 B8)
+        if (previous !== id) {
+          this.search.requestRefresh(tab.search.key);
+        }
       }
       const result = this.search.result(tab.search.key);
       this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? kindOf(tab));
@@ -713,6 +727,11 @@ export class FilePanel implements OnInit {
 
   // ---- flat view (design 038) ----
 
+  /** A flat view is being started (Mod+B pressed twice, review 038 B2). */
+  private flatStarting = false;
+  /** Cursor request of a flat result already applied (review 038 B7). */
+  private focusSeq = -1;
+
   /**
    * Mod+B: the active tab shows its folder flat – all entries below it – or, if it
    * does, the normal view again (E1). Same tab: id, path and history stay.
@@ -733,6 +752,10 @@ export class FilePanel implements OnInit {
     ) {
       return;
     }
+    if (this.flatStarting) {
+      return; // Mod+B twice: one flat view (review 038 B2)
+    }
+    this.flatStarting = true;
     const id = tab.id;
     const cursorBefore = this.store.cursorPath();
     const tableBefore = this.list()?.captureTableState() ?? tab.table;
@@ -743,7 +766,7 @@ export class FilePanel implements OnInit {
       (key) => {
         const now = this.ws.findTab(id);
         if (!now || now.search || now.path !== root) {
-          return; // the tab went elsewhere meanwhile – the result is released
+          return false; // the tab went elsewhere meanwhile – the result is released
         }
         if (this.shownTabId === id) {
           this.store.rememberCurrent();
@@ -762,8 +785,10 @@ export class FilePanel implements OnInit {
         if (this.shownTabId === id) {
           void this.showTab(id);
         }
+        return true;
       },
     );
+    this.flatStarting = false;
     if (error) {
       this.store.error.set(error);
     }

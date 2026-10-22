@@ -53,6 +53,11 @@ export interface SearchResult {
    * until the new listing is complete (cursor, marks and scrolling are kept).
    */
   readonly refreshing: boolean;
+  /**
+   * Flat view: where the cursor goes once a refresh is taken over (a renamed entry's
+   * new path, review 038 B7); `seq` tells a new request from one already applied.
+   */
+  readonly focus: { readonly path: string; readonly seq: number } | null;
   readonly stats: SearchStats;
   /** Unreadable folders (first 1 000; `stats.unreadable` has the count). */
   readonly unreadable: readonly ItemError[];
@@ -78,7 +83,11 @@ interface Run {
   unsubscribe: () => void;
 }
 
+/** Where the cursor goes after a flat refresh: a path from Rust, or a folder and a new name. */
+export type FocusWanted = string | { readonly dir: string; readonly name: string };
+
 let keySeq = 0;
+let focusSeq = 0;
 
 export { isSameOrBelow };
 
@@ -134,6 +143,8 @@ export class SearchStore {
   /** Flat views: end of the last listing and the timer of a refresh that waits for the gap. */
   private readonly lastEnd = new Map<string, number>();
   private readonly refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Flat views: cursor after the next refresh (review 038 B7). */
+  private readonly focusAfter = new Map<string, FocusWanted>();
 
   readonly results = signal<ReadonlyMap<string, SearchResult>>(new Map());
   /** "Show folders" of the last flat view – the start value of the next one (design 038 E4). */
@@ -251,34 +262,41 @@ export class SearchStore {
   async startFlat(
     root: string,
     options: FlatOptions,
-    attach: (key: string) => void,
+    attach: (key: string) => boolean,
   ): Promise<FsError | null> {
     const key = `f${++keySeq}`;
     this.fresh.add(key);
+    let shown = false;
     try {
       const error = await this.start(
         key,
         { kind: 'flat', criteria: flatCriteria(root, options) },
         null,
       );
-      if (!error) {
-        attach(key);
-      }
+      shown = !error && attach(key);
       return error;
     } finally {
       this.fresh.delete(key);
+      // nobody shows it (the tab went elsewhere meanwhile): cancel and forget (review 038 B2)
+      if (!shown) {
+        this.release(key);
+      }
     }
   }
 
   /**
    * Lists a flat view again in the background (design 038 E5), with changed options if
    * given. The old rows stay until the new listing is complete; a cancelled one keeps
-   * them. While a listing runs, one more is queued (the newest options win).
+   * them. While a listing runs, one more is queued (the newest options win). `focus`:
+   * the cursor goes there once the new rows are shown (a renamed entry, review 038 B7).
    */
-  refresh(key: string, patch?: Partial<FlatOptions>): void {
+  refresh(key: string, patch?: Partial<FlatOptions>, focus?: FocusWanted): void {
     const r = this.result(key);
     if (!r || r.kind !== 'flat') {
       return;
+    }
+    if (focus !== undefined) {
+      this.focusAfter.set(key, focus);
     }
     this.clearRefreshTimer(key);
     const queued = this.queued.get(key);
@@ -292,9 +310,19 @@ export class SearchStore {
     }
     void this.start(key, { kind: 'flat', criteria }, null, true).then((error) => {
       if (error) {
+        this.queued.delete(key);
         this.patch(key, { error, refreshing: false });
       }
     });
+  }
+
+  /** The options of a flat view's newest (queued or current) listing. */
+  flatOptions(key: string): FlatOptions | null {
+    const r = this.result(key);
+    if (!r || r.kind !== 'flat') {
+      return null;
+    }
+    return flatOptionsOf(this.queued.get(key) ?? r.criteria);
   }
 
   /**
@@ -327,11 +355,14 @@ export class SearchStore {
     }
   }
 
-  /** Runs the search of a result again (same criteria); a flat view refreshes in the background. */
-  async rerun(key: string): Promise<void> {
+  /**
+   * Runs the search of a result again (same criteria); a flat view refreshes in the
+   * background, with the cursor on `focus` afterwards if given (review 038 B7).
+   */
+  async rerun(key: string, focus?: FocusWanted): Promise<void> {
     const r = this.result(key);
     if (r?.kind === 'flat') {
-      this.refresh(key);
+      this.refresh(key, undefined, focus);
       return;
     }
     if (r) {
@@ -343,8 +374,10 @@ export class SearchStore {
     }
   }
 
-  /** Cancels the running search of a result (the hits so far stay). */
+  /** Cancels the running search of a result (the hits so far stay) – and a queued refresh (review 038 B3). */
   stop(key: string): void {
+    this.queued.delete(key);
+    this.clearRefreshTimer(key);
     const run = this.runs.get(key);
     if (run) {
       void this.jobs.cancel(run.jobId);
@@ -433,6 +466,12 @@ export class SearchStore {
         this.starting.delete(key);
       }
     }
+    // released while the job was being started (tab closed, flat view left): it must not
+    // bring the result back (review 038 B1)
+    if (!this.fresh.has(key) && !this.ws.searchKeys().has(key)) {
+      void this.jobs.cancel(jobId);
+      return null;
+    }
     const run: Run = {
       jobId,
       silent,
@@ -466,6 +505,7 @@ export class SearchStore {
         hits: [],
         running: true,
         refreshing: false,
+        focus: null,
         stats: EMPTY_STATS,
         unreadable: [],
         error: null,
@@ -502,6 +542,7 @@ export class SearchStore {
           job.state === 'done'
             ? {
                 hits: run.all.slice(),
+                focus: this.takeFocus(key, run.all),
                 stats: s?.search ?? run.stats,
                 unreadable: s?.errors ?? [],
                 refreshing: false,
@@ -569,7 +610,27 @@ export class SearchStore {
     void this.jobs.cancel(run.jobId);
   }
 
+  /** The cursor wanted after this refresh, as a path of the new rows (review 038 B7). */
+  private takeFocus(key: string, hits: readonly SearchHit[]): SearchResult['focus'] {
+    const wanted = this.focusAfter.get(key);
+    this.focusAfter.delete(key);
+    const keep = this.result(key)?.focus ?? null;
+    if (wanted === undefined) {
+      return keep;
+    }
+    const path =
+      typeof wanted === 'string'
+        ? wanted
+        : hits.find((h) => h.dir === wanted.dir && h.name === wanted.name)?.path;
+    return path === undefined ? keep : { path, seq: ++focusSeq };
+  }
+
   private release(key: string): void {
+    const pending = this.starting.get(key);
+    if (pending) {
+      pending.stop = true;
+    }
+    this.focusAfter.delete(key);
     this.stopRun(key);
     this.queued.delete(key);
     this.lastEnd.delete(key);
