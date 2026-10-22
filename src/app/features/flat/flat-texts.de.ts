@@ -16,6 +16,7 @@ export const FLAT_DE: Translation<typeof FLAT_EN> = {
   cancelled: 'angehalten – unvollständig',
   showDirs: 'Ordner zeigen',
   normalView: 'Normale Ansicht',
+  normalViewTitle: 'Zurück zur normalen Ansicht (Mod+B)',
   finished: (n) => `Flache Ansicht: ${entries(n)}`,
   finishedTruncated: (n) => `Flache Ansicht: ${entries(n)} – Liste unvollständig (Obergrenze)`,
   pathColumn: 'Pfad',

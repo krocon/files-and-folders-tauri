@@ -254,6 +254,10 @@ shouldRefresh(root: string, changed: readonly string[]): boolean;
 - **Wieder zeigen:** ein Tab mit flacher Ansicht, der nach einem anderen Tab wieder gezeigt wird, frischt auf (Review
   B8) – im Hintergrund war er nicht überwacht.
 - **Esc/Stop** wirken auch während des stillen Auffrischens (Review B4) und verwerfen ein nachgeholtes (B3).
+- **Nacharbeit (Marc, 22.10.2026):** Der Kopf nutzt statt `.btn` (36 px) flache Text-Knöpfe (`.head-btn`) und
+  gedämpfte Farben (Hinweise kursiv in `--color-muted` statt rot, nur Fehler bleiben `role="alert"`) – die Kopfzeile
+  behält beim Umschalten, Auflisten und Anhalten genau ihre Höhe. „Toggle Flat View“ steht im Actions-Menü (Spalte 1)
+  unter „Toggle Hidden Files“.
 
 ## 8. Review
 

@@ -108,22 +108,22 @@
               r.running ? flatTexts.listing : flatTexts.refreshing
             }}</span>
           } @else if (r.cancelled) {
-            <span class="warn">· {{ flatTexts.cancelled }}</span>
+            <span class="hint">· {{ flatTexts.cancelled }}</span>
           }
           @if (r.stats.truncated) {
-            <span class="warn" role="note">· {{ flatTexts.truncated(r.stats.hits) }}</span>
+            <span class="hint" role="note">· {{ flatTexts.truncated(r.stats.hits) }}</span>
           }
           @if (r.error) {
             <span class="warn" role="alert">· {{ fsErrorText(r.error) }}</span>
           }
           @if (r.stats.unreadable > 0) {
-            <span class="warn">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
+            <span class="hint">· {{ searchTexts.unreadable(r.stats.unreadable) }}</span>
           }
         }
       </span>
       <span class="sr-only" role="status">{{ searchStatus() }}</span>
       @if (r?.running || r?.refreshing) {
-        <button type="button" class="btn small" (click)="stopSearch()">
+        <button type="button" class="head-btn" (click)="stopSearch()">
           {{ searchTexts.stop }}
         </button>
       }
@@ -135,7 +135,12 @@
         />
         {{ flatTexts.showDirs }}
       </label>
-      <button type="button" class="btn small" (click)="normalView()">
+      <button
+        type="button"
+        class="head-btn"
+        (click)="normalView()"
+        [attr.title]="flatTexts.normalViewTitle"
+      >
         {{ flatTexts.normalView }}
       </button>
     } @else if (r?.kind === 'duplicates') {

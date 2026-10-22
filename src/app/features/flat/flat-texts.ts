@@ -14,6 +14,7 @@ export const FLAT_EN = {
   cancelled: 'stopped – incomplete',
   showDirs: 'Show folders',
   normalView: 'Normal view',
+  normalViewTitle: 'Back to the normal view (Mod+B)',
   finished: (n: number) => `Flat view: ${n === 1 ? '1 entry' : `${formatCount(n)} entries`}`,
   finishedTruncated: (n: number) =>
     `Flat view: ${n === 1 ? '1 entry' : `${formatCount(n)} entries`} – list incomplete (limit)`,
