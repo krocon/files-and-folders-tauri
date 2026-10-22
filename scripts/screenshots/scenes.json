@@ -447,6 +447,145 @@
           "wait": 300
         }
       ]
+    },
+    {
+      "name": "conflict-dialog",
+      "mock": {
+        "conflict": true
+      },
+      "steps": [
+        {
+          "wait": 500
+        }
+      ],
+      "prelude": false
+    },
+    {
+      "name": "flat-view",
+      "mock": {
+        "photoFolders": true
+      },
+      "steps": [
+        {
+          "action": "TOGGLE_FLAT_VIEW"
+        },
+        {
+          "wait": 500
+        },
+        {
+          "key": "End"
+        },
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
+      "name": "archive-folder",
+      "prelude": false,
+      "mock": {
+        "archive": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_RIGHT_PANEL"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 500
+        }
+      ],
+      "ready": "Italy 2026 best of.zip"
+    },
+    {
+      "name": "remote-panel",
+      "prelude": false,
+      "mock": {
+        "remote": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_RIGHT_PANEL"
+        },
+        {
+          "wait": 400
+        }
+      ],
+      "ready": "impressum.html"
+    },
+    {
+      "name": "shell-output",
+      "steps": [
+        {
+          "action": "TOGGLE_SHELL"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "type": "git status"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 600
+        }
+      ],
+      "mock": {
+        "shellHeight": 200
+      }
+    },
+    {
+      "name": "starter-menu",
+      "steps": [
+        {
+          "action": "OPEN_STARTER_MENU"
+        },
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
+      "name": "attributes-dialog",
+      "steps": [
+        {
+          "action": "OPEN_CHANGE_ATTRIBUTES_DLG"
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
+      "name": "similar-images",
+      "prelude": false,
+      "mock": {
+        "photoFolders": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_RIGHT_PANEL"
+        },
+        {
+          "action": "OPEN_FIND_DUPLICATES_DLG"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": "input[name=\"fnf-dup-mode\"] >> nth=1"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 800
+        }
+      ]
     }
   ],
   "docs": {
@@ -517,5 +656,83 @@
     "light": "Modern light",
     "dark": "Modern dark",
     "crimson": "Crimson"
+  },
+  "readme": {
+    "out": "docs/screenshots/readme",
+    "theme": "classic-norton",
+    "images": [
+      {
+        "file": "two-panels.png",
+        "scene": "main"
+      },
+      {
+        "file": "keyboard.png",
+        "scene": "command-palette"
+      },
+      {
+        "file": "actions-menu.png",
+        "scene": "actions-menu"
+      },
+      {
+        "file": "jobs.png",
+        "scene": "task-list"
+      },
+      {
+        "file": "safety.png",
+        "scene": "conflict-dialog"
+      },
+      {
+        "file": "multi-rename.png",
+        "scene": "multi-rename-dialog"
+      },
+      {
+        "file": "search.png",
+        "scene": "search-results"
+      },
+      {
+        "file": "flat-view.png",
+        "scene": "flat-view"
+      },
+      {
+        "file": "duplicates.png",
+        "scene": "similar-images"
+      },
+      {
+        "file": "disk-usage.png",
+        "scene": "disk-usage"
+      },
+      {
+        "file": "archives.png",
+        "scene": "archive-folder"
+      },
+      {
+        "file": "servers.png",
+        "scene": "remote-panel"
+      },
+      {
+        "file": "viewer.png",
+        "scene": "quick-view"
+      },
+      {
+        "file": "compare.png",
+        "scene": "compare-files"
+      },
+      {
+        "file": "organize.png",
+        "scene": "group-files-dialog"
+      },
+      {
+        "file": "shell.png",
+        "scene": "shell-output"
+      },
+      {
+        "file": "starter.png",
+        "scene": "starter-menu"
+      },
+      {
+        "file": "themes.png",
+        "scene": "colour-schemes-dialog"
+      }
+    ]
   }
 }

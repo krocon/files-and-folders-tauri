@@ -1,7 +1,7 @@
 # Design 044: README mit Feature-Screenshots (Norton) und Werbeseite
 
-> **Status:** Entwurf, wartet auf Freigabe 🛑 · **Datum:** 22.10.2026 · **Branch:** `feat/readme-werbeseite`
-> Auftrag: [044-readme-werbeseite.md](044-readme-werbeseite.md) · Regeln: [000-arbeitsweise.md](000-arbeitsweise.md)
+> **Status:** fertig · freigegeben von Marc am 22.10.2026 (F1 `img/`-Ordner, F2–F4 ja) · **Datum:** 22.10.2026 · **Branch:** `feat/readme-werbeseite`
+> Auftrag: [044-readme-werbeseite.md](044-readme-werbeseite.md) · Regeln: [000-arbeitsweise.md](../000-arbeitsweise.md)
 
 ## Entscheidungen (Kurzfassung)
 
@@ -11,10 +11,10 @@
 | E2 | Wie viele neue Szenen? | **7 neue Szenen** (Konflikt, flache Ansicht, Archiv als Ordner, Server im Panel, Shell mit Ausgabe, Startermenü, Attribute), 2 vorhandene verbessert (Duplikate mit Vorschaubildern, Server-Profile auf Englisch) |
 | E3 | Wie entstehen die Bilder? | neuer Block `"readme"` in `scenes.json` + `pnpm screenshots:readme` (= `run.mjs --readme`), Norton, Linux, Englisch, 1280 × 760 @1x, pngquant |
 | E4 | @2x für die Webseite? | **nein** – die Seite zeigt die Bilder höchstens ~640–1100 CSS-px breit; 1280 px ist dort schon (fast) Retina. Spart ~3 MB im Repo |
-| E5 | „Konstante“ für die Bild-URL ohne JavaScript? | absolute URLs in `<img src>`, Basis **einmal** im Kopfkommentar der Datei; der Node-Test erzwingt, dass jedes Bild genau diese Basis nutzt. Umstellen = ein Suchen/Ersetzen (`pnpm site:base <ref>`, kleines Skript) |
-| E6 | Bilder von GitHub vs. DSGVO | wie beauftragt `raw.githubusercontent.com` – **aber** dabei geht die IP jedes Besuchers an GitHub (USA). ➜ Frage an Marc (s. „Offene Fragen“ F1) |
+| E5 | „Konstante“ für die Bild-URL ohne JavaScript? | **umgesetzt:** relative `img/…`, Basis im Kopfkommentar (`IMG_BASE: img/`), der Test erzwingt sie. `pnpm site` legt `site/dist/` an (Seite + `img/` + Favicon) |
+| E6 | Bilder von GitHub vs. DSGVO | **Marc (F1): `img/`-Ordner** – die Seite lädt nichts von fremden Servern; weicht bewusst vom Auftrag (raw-GitHub) ab |
 | E7 | Download-Knopf ohne Release | Knopf „Releases on GitHub“ + Hinweis „first public release coming soon – build from source today“; keine Versprechen |
-| E8 | Alte Doku-Bilder `docs/screenshots/*.png` | bleiben (Galerie „other colour schemes“ in der README zeigt weiter fremde Designs); `colour-schemes-overview.png` bleibt das Übersichtsbild |
+| E8 | Alte Doku-Bilder `docs/screenshots/*.png` | bleiben (`pnpm screenshots:docs`, Galerie für andere Doku); die README nutzt nur noch `colour-schemes-overview.png` daraus |
 | E9 | Phasen | klein: Phase 2 (Rust) entfällt; Phase 3 = Szenen/Mock + README + Seite + Tests; Phase 4 = Sichtprüfung der Bilder und der Seite (375/1440 px, axe) |
 
 ## 1. Bestand
@@ -153,11 +153,32 @@ Geheimnisse.
 - **F4:** Ton „persönlich“: darf die README in der Ich-Form von dir sprechen („I've been building file managers
   since 2016 …“)?
 
+## Antworten (22.10.2026)
+
+F1: `img/`-Ordner neben der Seite (statt raw-GitHub). F2: Rangfolge passt. F3: Attribute nur als Listeneintrag.
+F4: README in der Ich-Form.
+
+## Abweichungen bei der Umsetzung
+
+- **18 Bilder** statt 17: zusätzlich `actions-menu.png` (README: aufklappbar unter „Keyboard first“, Seite: Abschnitt
+  Tastatur). Szene `attributes-dialog` existiert, wird aber nicht benutzt (F3).
+- Duplikate: neue Szene **`similar-images`** (Modus „ähnliche Bilder“ mit Vorschaubildern, Token `name#v` = getönte
+  Variante) statt die alte `duplicate-results` zu ändern – die bleibt für `pnpm screenshots`.
+- Starter und Shell: eine gemeinsame Rubrik wurde zu zwei Abschnitten (Shell line, Starter menu), README listet 17
+  Features + „And more“.
+- Szenen können `"ready"` setzen (Text, auf den der Runner wartet) – Archiv- und Serverszene zeigen kein
+  `IMG_4711.jpg`.
+- Neue Mock-Optionen: `conflict`, `photoFolders`, `archive`, `remote`, `shellHeight`; neue Commands im Mock:
+  `run_shell` (feste `git status`-Ausgabe), `duplicate_thumbnails`; `load_starter` mit Demo-Einträgen.
+- Die Werbeseite zeigt „Two panels“ als Hero statt als eigenen Abschnitt.
+
 ## Fortschritt
 
-- [x] Phase 1: Recherche, Probelauf aller Szenen in Norton (36/36), Entwurf – **wartet auf Freigabe**
-- [ ] Phase 3a: Szenen + Mock + `screenshots:readme`, Bilder erzeugt und angesehen
-- [ ] Phase 3b: README, `site/index.html`, `site/README.md`, Tests
-- [ ] Phase 4: Sichtprüfung 375/1440 px, hell/dunkel, axe
-- [ ] Phase 5/6: Doku (`docs/screenshots.md`, CLAUDE.md §2 Befehl, Index), `pnpm check`, Push, raw-URLs prüfen,
-      Prompt nach `prompts/done/`
+- [x] Phase 1: Recherche, Probelauf aller Szenen in Norton (36/36), Entwurf, Freigabe
+- [x] Phase 3a: 8 Szenen + Mock + `pnpm screenshots:readme` (18 Bilder, pngquant 2,9 MB → 1 MB), alle angesehen
+- [x] Phase 3b: README (17 Features + „And more“), `site/index.html`, `site/README.md`, `pnpm site`, Tests
+      (`scripts/site.test.mjs`, `scripts/screenshots.test.mjs`)
+- [x] Phase 4: Seite mit Playwright in 375 px und 1440 px, hell und dunkel: keine horizontale Scrollleiste, axe-core
+      4.10 (WCAG 2.1 A/AA + best practice) ohne Verstoß; Lighthouse nicht im Container
+- [x] Phase 5/6: Doku (`docs/screenshots.md`, CLAUDE.md, Index, Roadmap), `pnpm check`
+- [ ] Bei Marc: `pnpm site` und `site/dist/` nach krocon.de/fnf hochladen; Seite einmal im echten Browser ansehen

@@ -35,6 +35,8 @@
     "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test && pnpm notices:check",
     "screenshots": "node scripts/screenshots/run.mjs",
     "screenshots:docs": "node scripts/screenshots/run.mjs --docs",
+    "screenshots:readme": "node scripts/screenshots/run.mjs --readme",
+    "site": "node scripts/site.mjs",
     "screenshots:install": "playwright install chromium"
   },
   "private": true,

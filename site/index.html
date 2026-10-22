@@ -1,0 +1,496 @@
+<!doctype html>
+<!--
+  Files and Folders (FnF) – single page for https://krocon.de/fnf (prompt 044).
+  One static file: CSS inline, no JavaScript, no web fonts, no trackers, no external requests.
+  Pictures: img/<feature>.png next to this file – `pnpm site` builds site/dist/ (this page + img/ + favicon)
+  from docs/screenshots/readme/. Upload the content of site/dist/ to /fnf. See site/README.md.
+  IMG_BASE: img/
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Files and Folders (FnF) – a two-panel file manager for macOS, Windows and Linux</title>
+    <meta name="description" content="A fast, keyboard-first two-panel file manager for macOS, Windows and Linux in the spirit of Norton Commander and Total Commander. Free and open source (MIT).">
+    <meta name="color-scheme" content="light dark">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Files and Folders (FnF)">
+    <meta property="og:description" content="A fast, keyboard-first two-panel file manager for macOS, Windows and Linux. Free and open source.">
+    <meta property="og:url" content="https://krocon.de/fnf/">
+    <meta property="og:image" content="https://krocon.de/fnf/img/two-panels.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="760">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+      :root {
+        --nc-blue: #0000a8;
+        --nc-cyan: #00a8a8;
+        --nc-yellow: #ffff55;
+        --nc-white: #ffffff;
+        --nc-black: #000000;
+
+        --bg: #f2f4fb;
+        --text: #10104a;
+        --muted: #3c3f6b;
+        --link: #0000a8;
+        --frame: #0000a8;
+        --code-bg: #e2e6f6;
+        --rule: #c6cbe6;
+
+        --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+        --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+        --measure: 64ch;
+        --gutter: clamp(16px, 4vw, 40px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #00006e;
+          --text: #e9ecff;
+          --muted: #b9bfeb;
+          --link: #ffff55;
+          --frame: #00a8a8;
+          --code-bg: #000050;
+          --rule: #2a2a9a;
+        }
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.6 var(--sans);
+        -webkit-text-size-adjust: 100%;
+      }
+      img { max-width: 100%; height: auto; display: block; }
+      a { color: var(--link); text-underline-offset: 0.18em; }
+      a:hover { text-decoration-thickness: 2px; }
+      :focus-visible { outline: 3px solid var(--nc-yellow); outline-offset: 3px; box-shadow: 0 0 0 6px var(--nc-black); }
+      .skip { position: absolute; left: -999px; top: 0; background: var(--nc-yellow); color: var(--nc-black); padding: 8px 12px; z-index: 10; }
+      .skip:focus { left: 8px; top: 8px; }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
+      h1, h2, h3 { font-family: var(--mono); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+      p { max-width: var(--measure); }
+      kbd {
+        font: 600 0.82em/1 var(--mono);
+        display: inline-block;
+        padding: 0.28em 0.45em 0.24em;
+        border-radius: 3px;
+        background: var(--nc-cyan);
+        color: var(--nc-black);
+        white-space: nowrap;
+      }
+
+      /* ---- hero: the blue screen ---------------------------------------------------- */
+      .hero { background: var(--nc-blue); color: var(--nc-white); padding: clamp(28px, 6vw, 72px) 0 0; }
+      .hero .wrap { display: grid; gap: clamp(20px, 3vw, 36px); }
+      .brand { display: flex; align-items: center; gap: 14px; margin: 0; font: 600 15px/1 var(--mono); color: #c8ccff; }
+      .brand img { width: 40px; height: 40px; }
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 7.5vw, 5.4rem);
+        color: var(--nc-yellow);
+        letter-spacing: -0.03em;
+      }
+      .cursor {
+        display: inline-block;
+        width: 0.55em;
+        height: 0.12em;
+        margin-left: 0.08em;
+        background: var(--nc-yellow);
+        vertical-align: baseline;
+        animation: blink 1.06s steps(1) infinite;
+      }
+      @keyframes blink { 50% { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } html { scroll-behavior: auto; } }
+      .pitch { font-size: clamp(1.1rem, 2.2vw, 1.4rem); line-height: 1.5; margin: 0; max-width: 40ch; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      .btn {
+        font: 700 1rem/1 var(--mono);
+        padding: 14px 18px;
+        text-decoration: none;
+        border: 2px solid var(--nc-black);
+        box-shadow: 4px 4px 0 var(--nc-black);
+      }
+      .btn-primary { background: var(--nc-yellow); color: var(--nc-black); }
+      .btn-secondary { background: var(--nc-cyan); color: var(--nc-black); }
+      .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--nc-black); }
+      .note { margin: 0; font-size: 0.95rem; color: #c8ccff; }
+      .note a { color: var(--nc-white); }
+      .screen {
+        margin: 8px 0 0;
+        border: 6px double var(--nc-cyan);
+        border-bottom: 0;
+        background: var(--nc-black);
+      }
+
+      /* ---- function-key bar: the navigation ----------------------------------------- */
+      .fkeys {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        background: var(--nc-black);
+        border-top: 1px solid #333;
+      }
+      .fkeys ol {
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+        max-width: 1180px;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+      }
+      .fkeys a {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        text-decoration: none;
+        font: 600 15px/1 var(--mono);
+        color: var(--nc-black);
+        padding: 4px 3px;
+      }
+      .fkeys b { color: var(--nc-white); padding: 8px 6px 8px 8px; font-weight: 600; }
+      .fkeys span { background: var(--nc-cyan); flex: 1; padding: 8px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .fkeys a:hover span { background: var(--nc-yellow); }
+      .fkeys a:focus-visible { outline-offset: -3px; box-shadow: none; }
+      @media (max-width: 640px) {
+        .fkeys { position: static; }
+        .fkeys ol { grid-template-columns: repeat(3, 1fr); }
+      }
+
+      /* ---- sections ------------------------------------------------------------------- */
+      main { padding-bottom: 40px; }
+      .intro { padding-block: clamp(40px, 7vw, 88px) clamp(16px, 3vw, 32px); }
+      .intro p { font-size: 1.15rem; }
+      .signature { font-family: var(--mono); color: var(--muted); }
+      .intro h2, .block h2 { font-size: clamp(1.6rem, 3.6vw, 2.4rem); margin: 0 0 0.5em; }
+      .feature {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: clamp(20px, 4vw, 56px);
+        align-items: center;
+        padding: clamp(28px, 5vw, 64px) 0;
+        border-top: 1px solid var(--rule);
+      }
+      .feature:nth-of-type(even) { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+      .feature:nth-of-type(even) .text { order: 2; }
+      .feature h3 { font-size: clamp(1.25rem, 2.4vw, 1.6rem); margin: 0 0 0.6em; }
+      .feature .lead { font-weight: 650; margin: 0 0 0.6em; }
+      .feature p { margin: 0 0 0.8em; }
+      .keys { margin: 1em 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 0.92rem; color: var(--muted); }
+      .keys dt { font-family: var(--mono); }
+      .keys dd { margin: 0; color: var(--text); }
+      .shot { margin: 0; border: 6px double var(--frame); background: var(--nc-black); }
+      @media (max-width: 820px) {
+        .feature, .feature:nth-of-type(even) { grid-template-columns: 1fr; }
+        .feature:nth-of-type(even) .text { order: 0; }
+      }
+
+      .block { padding: clamp(40px, 7vw, 88px) 0; border-top: 1px solid var(--rule); }
+      .cheat { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px 28px; margin: 1.6em 0 0; padding: 0; }
+      .cheat div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dotted var(--rule); }
+      .cheat dt { margin: 0; }
+      .cheat dd { margin: 0; text-align: right; }
+      .platforms { width: 100%; border-collapse: collapse; margin-top: 1.4em; font-size: 0.98rem; }
+      .platforms th, .platforms td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+      .platforms th { font-family: var(--mono); }
+      .table-scroll { overflow-x: auto; }
+      details { border-bottom: 1px solid var(--rule); padding: 14px 0; max-width: 80ch; }
+      summary { cursor: pointer; font: 700 1.08rem/1.4 var(--mono); }
+      details p { margin: 0.6em 0 0; }
+      footer { background: var(--nc-blue); color: var(--nc-white); padding: 32px 0 40px; font-size: 0.95rem; }
+      footer a { color: var(--nc-yellow); }
+      footer ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 28px; }
+      footer p { margin: 16px 0 0; color: #c8ccff; }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#features">Skip to the features</a>
+
+    <header class="hero">
+      <div class="wrap">
+        <p class="brand"><img src="favicon.png" alt="" width="40" height="40">FnF</p>
+        <h1>Files and Folders<span class="cursor" aria-hidden="true"></span></h1>
+        <p class="pitch">A fast, keyboard-first two-panel file manager for macOS, Windows and Linux – in the spirit of Norton Commander and Total Commander.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/krocon/files-and-folders-tauri/releases">Releases on GitHub</a>
+          <a class="btn btn-secondary" href="https://github.com/krocon/files-and-folders-tauri">Source on GitHub</a>
+        </div>
+        <p class="note">Free and open source (MIT). The first public release is in the works – today you can <a href="https://github.com/krocon/files-and-folders-tauri#development">build it from source</a>.</p>
+        <figure class="screen">
+          <img src="img/two-panels.png" width="1280" height="760" fetchpriority="high"
+               alt="Files and Folders in the classic Norton colour scheme: the project folder on the left, holiday photos on the right with four of them marked, the function-key bar at the bottom">
+        </figure>
+      </div>
+    </header>
+
+    <nav class="fkeys" aria-label="Sections">
+      <ol>
+        <li><a href="#features"><b>1</b><span>Features</span></a></li>
+        <li><a href="#keys"><b>2</b><span>Keys</span></a></li>
+        <li><a href="#colours"><b>3</b><span>Colours</span></a></li>
+        <li><a href="#platforms"><b>4</b><span>Platforms</span></a></li>
+        <li><a href="#faq"><b>5</b><span>FAQ</span></a></li>
+        <li><a href="https://github.com/krocon/files-and-folders-tauri"><b>10</b><span>GitHub</span></a></li>
+      </ol>
+    </nav>
+
+    <main id="features">
+      <section class="intro wrap" aria-labelledby="intro-title">
+        <h2 id="intro-title">Become a master of file management</h2>
+        <p>I have been building file managers for myself since 2016 – first one that ran in the browser, now a real desktop app. FnF puts two folders side by side, lets you do everything with the keyboard and runs the slow work in the background while you go on.</p>
+        <p class="signature">Marc Kronberg</p>
+      </section>
+
+      <div class="wrap">
+        <article class="feature">
+          <div class="text">
+            <h3>Keyboard first</h3>
+            <p class="lead">Every function is an action with a name and a shortcut – type a few letters, press Enter.</p>
+            <p>The Command Palette finds any action and shows its key, so you learn the shortcuts on the way. The classic keys are where you expect them: F3 view, F5 copy, F6 move, F7 new folder, F8 delete.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+Shift+P</kbd></dd><dt>macOS</dt><dd><kbd>⌘⇧P</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/keyboard.png" width="1280" height="760" loading="lazy" decoding="async" alt="The Command Palette: typing co lists Copy, Connect to server, Colour schemes and more, each with its shortcut"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Jobs in the background</h3>
+            <p class="lead">Start a big copy and keep working – the window never freezes.</p>
+            <p>Copy, move, delete, pack and search run as jobs with progress, rate and remaining time. Pause, resume or cancel them; slow network drives and servers are handled the same way.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F5</kbd> <kbd>F6</kbd> <kbd>Ctrl+F11</kbd></dd><dt>macOS</dt><dd><kbd>F5</kbd> <kbd>F6</kbd> <kbd>⌃K F6</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/jobs.png" width="1280" height="760" loading="lazy" decoding="async" alt="The task list: a copy at 62 percent with rate and a pause button, a waiting move and a finished delete"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Safe by default</h3>
+            <p class="lead">Delete goes to the trash, nothing is overwritten without asking.</p>
+            <p>If a file already exists you see both versions with size and date and decide once – or for all further conflicts. Copies are written under a temporary name first, so there is never a half-written file under the real name.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F8</kbd> trash, <kbd>Shift+F8</kbd> permanently</dd><dt>macOS</dt><dd><kbd>F8</kbd> trash, <kbd>⇧F8</kbd> permanently</dd></dl>
+          </div>
+          <figure class="shot"><img src="img/safety.png" width="1280" height="760" loading="lazy" decoding="async" alt="The question when a file exists: new and existing photo with size and date, buttons Overwrite, Skip, Rename and Overwrite if newer"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Multi rename with preview and undo</h3>
+            <p class="lead">Rename hundreds of files in one go – and see every new name first.</p>
+            <p>Name, extension, counter and date macros, case rules, search and replace with regular expressions, presets. Problems show up in the preview, and a finished rename can be undone.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+M</kbd></dd><dt>macOS</dt><dd><kbd>⌘F6</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/multi-rename.png" width="1280" height="760" loading="lazy" decoding="async" alt="Multi rename: the pattern Italy 2026 - [C].[E] turns four photos into Italy 2026 - 0001.jpg and so on"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Search into a tab</h3>
+            <p class="lead">Results land in a tab you work with like a folder.</p>
+            <p>Search by name, content, size, date and depth; hits stream in while the search runs. Copy, move, rename or view them right there, and keep favourite searches as templates.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+F7</kbd></dd><dt>macOS</dt><dd><kbd>⌥F7</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/search.png" width="1280" height="760" loading="lazy" decoding="async" alt="A search for *.jpg: 22 hits in their own tab with a folder column"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Flat view</h3>
+            <p class="lead">Every file below a folder in one list.</p>
+            <p>All files of all subfolders in the same tab, with a Path column. Sort, mark, copy, delete or rename across all of them at once – the same key brings the normal view back.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+B</kbd></dd><dt>macOS</dt><dd><kbd>⌘B</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/flat-view.png" width="1280" height="760" loading="lazy" decoding="async" alt="Flat view of the photo folder: 36 entries from the folder and its subfolders Edited, Panorama and Videos"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Duplicates and similar images</h3>
+            <p class="lead">Free space without fear: rules decide which copy stays.</p>
+            <p>Find identical files, similar photos in another size or quality, or similar comics. Rules like “keep the oldest” or “keep the higher resolution” mark the rest; you check each group with thumbnails before anything goes to the trash.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+Shift+F7</kbd></dd><dt>macOS</dt><dd><kbd>⌥⇧F7</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/duplicates.png" width="1280" height="760" loading="lazy" decoding="async" alt="Similar images: an original photo and its edited copy as thumbnails side by side, the list marks the smaller copy for deletion"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Disk usage</h3>
+            <p class="lead">See at a glance what eats your disk.</p>
+            <p>Sizes with share bars next to rings or tiles, the largest files of a folder, and a basket that collects what can go – removed with F8.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+Shift+D</kbd></dd><dt>macOS</dt><dd><kbd>⌘⇧D</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/disk-usage.png" width="1280" height="760" loading="lazy" decoding="async" alt="Disk usage of the home folder: list by size with share bars and a ring chart, two folders marked for removal"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Archives as folders</h3>
+            <p class="lead">Open ZIP, TAR, 7z and RAR like any other folder.</p>
+            <p>Browse, view and open files inside, pack and unpack, with passwords that are only kept in memory. Archives from elsewhere are treated as hostile – no zip-slip, no zip-bombs.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Enter</kbd> <kbd>Alt+F5</kbd> <kbd>Alt+F9</kbd></dd><dt>macOS</dt><dd><kbd>Enter</kbd> <kbd>⌥F5</kbd> <kbd>⌥F9</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/archives.png" width="1280" height="760" loading="lazy" decoding="async" alt="Inside the archive Italy 2026 best of.zip: folders and photos, the header says ZIP, read-only"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>FTP, FTPS and SFTP servers</h3>
+            <p class="lead">Your web space as a folder in the panel.</p>
+            <p>Browse, copy in both directions, rename and delete like on your own disk. Passwords live only in your system keychain; host keys and certificates are checked, and plain FTP is marked as unencrypted.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+K</kbd></dd><dt>macOS</dt><dd><kbd>⌘K</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/servers.png" width="1280" height="760" loading="lazy" decoding="async" alt="The right panel shows the folder example.org on an SFTP server"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Viewer and quick view</h3>
+            <p class="lead">Look into files without opening another program.</p>
+            <p>Text with search, hex and images in the viewer; the quick view shows the file under the cursor in the other panel while you move through the list.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F3</kbd> <kbd>Ctrl+Q</kbd></dd><dt>macOS</dt><dd><kbd>F3</kbd> <kbd>⌃Q</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/viewer.png" width="1280" height="760" loading="lazy" decoding="async" alt="Quick view: the left panel shows the photo under the cursor of the right panel"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Compare files</h3>
+            <p class="lead">Two files side by side, the differences in colour.</p>
+            <p>Ignore white space or case, show the whole file or only the changes, jump from one difference to the next. Binary files are compared byte by byte.</p>
+            <dl class="keys"><dt>Menu</dt><dd>File, Compare files…</dd></dl>
+          </div>
+          <figure class="shot"><img src="img/compare.png" width="1280" height="760" loading="lazy" decoding="async" alt="Two configuration files compared side by side with three coloured differences"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Group files and clean folders</h3>
+            <p class="lead">Bring order into a messy folder in one step.</p>
+            <p>Move files into folders made from their names, remove empty folders and leftovers like .DS_Store or *.bak, create many folders from a template – each with a preview first.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+G</kbd> <kbd>Ctrl+Alt+R</kbd></dd><dt>macOS</dt><dd><kbd>⌥G</kbd> <kbd>⌘⌥R</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/organize.png" width="1280" height="760" loading="lazy" decoding="async" alt="Group files: four photos go into the folder IMG, shown in a preview"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Shell line</h3>
+            <p class="lead">A command line below the panels, in the folder you are looking at.</p>
+            <p>Type a command, press Enter, read the output right there. Marked names go into the line with one key, quoted for your shell.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Shift+F11</kbd></dd><dt>macOS</dt><dd><kbd>⇧F11</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/shell.png" width="1280" height="760" loading="lazy" decoding="async" alt="The shell line with the output of git status"></figure>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <h3>Starter menu</h3>
+            <p class="lead">Your own launcher for programs, scripts and folders.</p>
+            <p>Submenus, own shortcuts and Total Commander parameters such as %P%N for the file under the cursor. Programs start directly, never through a shell.</p>
+            <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+S</kbd></dd><dt>macOS</dt><dd><kbd>⌥S</kbd></dd></dl>
+          </div>
+          <figure class="shot"><img src="img/starter.png" width="1280" height="760" loading="lazy" decoding="async" alt="The starter menu with VS Code, GIMP, Terminal here, two folders and a submenu Scripts"></figure>
+        </article>
+      </div>
+
+      <section class="block" id="keys" aria-labelledby="keys-title">
+        <div class="wrap">
+          <h2 id="keys-title">Hands on the keyboard</h2>
+          <p>Every action has a name and can have several shortcuts, per operating system. Change them in the app; the Actions menu shows all of them at once.</p>
+          <dl class="cheat">
+            <div><dt>View</dt><dd><kbd>F3</kbd></dd></div>
+            <div><dt>Copy, move</dt><dd><kbd>F5</kbd> <kbd>F6</kbd></dd></div>
+            <div><dt>New folder</dt><dd><kbd>F7</kbd></dd></div>
+            <div><dt>Delete to the trash</dt><dd><kbd>F8</kbd></dd></div>
+            <div><dt>Rename in the list</dt><dd><kbd>F2</kbd></dd></div>
+            <div><dt>Mark</dt><dd><kbd>Space</kbd></dd></div>
+            <div><dt>Other side</dt><dd><kbd>Tab</kbd></dd></div>
+            <div><dt>Swap the panels</dt><dd><kbd>Ctrl+U</kbd> <kbd>⌘U</kbd></dd></div>
+            <div><dt>Go to a path</dt><dd><kbd>Ctrl+L</kbd> <kbd>⌘L</kbd></dd></div>
+            <div><dt>Find folder</dt><dd><kbd>Alt+F10</kbd> <kbd>⌥F10</kbd></dd></div>
+            <div><dt>Pack, unpack</dt><dd><kbd>Alt+F5</kbd> <kbd>Alt+F9</kbd></dd></div>
+            <div><dt>Command Palette</dt><dd><kbd>Ctrl+Shift+P</kbd> <kbd>⌘⇧P</kbd></dd></div>
+          </dl>
+          <figure class="shot" style="margin-top: 2em">
+            <img src="img/actions-menu.png" width="1280" height="760" loading="lazy" decoding="async" alt="The Actions menu: every action grouped in four columns with its shortcut">
+          </figure>
+        </div>
+      </section>
+
+      <section class="block" id="colours" aria-labelledby="colours-title">
+        <div class="wrap">
+          <h2 id="colours-title">Norton blue, paper white or your own</h2>
+          <p>Eleven colour schemes come with the app: the eight classic designs of the earlier versions – Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat and Norton – plus modern light, dark and Crimson. The live editor checks every colour pair for WCAG contrast; schemes can be exported and shared.</p>
+          <figure class="shot" style="margin-top: 1.6em">
+            <img src="img/colour-schemes-overview.png" width="2000" height="996" loading="lazy" decoding="async" alt="The main window in all eleven colour schemes, as tiles">
+          </figure>
+          <figure class="shot" style="margin-top: 1.6em">
+            <img src="img/themes.png" width="1280" height="760" loading="lazy" decoding="async" alt="The colour scheme editor with the Norton scheme selected and the contrast check passed">
+          </figure>
+        </div>
+      </section>
+
+      <section class="block" id="platforms" aria-labelledby="platforms-title">
+        <div class="wrap">
+          <h2 id="platforms-title">macOS, Windows and Linux</h2>
+          <p>One app, built with Tauri and Rust, with native menus on macOS and a keymap per system. The automated tests run on all three systems; a few platform details still need testing on real Macs and Windows PCs before the first release.</p>
+          <div class="table-scroll">
+            <table class="platforms">
+              <thead><tr><th scope="col">System</th><th scope="col">Needs</th><th scope="col">Package</th></tr></thead>
+              <tbody>
+                <tr><td>macOS</td><td>12 Monterey or later, Apple Silicon and Intel</td><td>.dmg</td></tr>
+                <tr><td>Windows</td><td>10 or 11, x64</td><td>Installer without admin rights, or .msi</td></tr>
+                <tr><td>Linux</td><td>WebKitGTK 4.1 – Ubuntu 22.04, Debian 12, Fedora 36 or later</td><td>.deb, .rpm, AppImage</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="faq" aria-labelledby="faq-title">
+        <div class="wrap">
+          <h2 id="faq-title">Questions</h2>
+          <details>
+            <summary>Is it free?</summary>
+            <p>Yes. Files and Folders is open source under the MIT license – use it at home and at work, read the code, change it.</p>
+          </details>
+          <details>
+            <summary>Where can I download it?</summary>
+            <p>The first public release is still being prepared. Until then you can build the app from source with Node.js, pnpm and Rust – the steps are in the <a href="https://github.com/krocon/files-and-folders-tauri#development">README</a>. Releases will appear on <a href="https://github.com/krocon/files-and-folders-tauri/releases">GitHub</a>.</p>
+          </details>
+          <details>
+            <summary>Are the packages signed?</summary>
+            <p>Not yet. The first packages will be unsigned: on macOS open the app with right-click, Open; on Windows choose More info, Run anyway in SmartScreen.</p>
+          </details>
+          <details>
+            <summary>What happens with my data?</summary>
+            <p>It stays on your computer. The app has no account, no telemetry and does not phone home. Server passwords are kept in the keychain of your system, archive passwords only in memory.</p>
+          </details>
+          <details>
+            <summary>I used the earlier browser versions. Can I keep my settings?</summary>
+            <p>Yes. The app imports shortcuts, buttons, file types, search patterns, tools and colour schemes of files-and-folders-mr, shows a preview first and keeps a backup of every file it changes.</p>
+          </details>
+          <details>
+            <summary>Which languages?</summary>
+            <p>English and German, switchable while the app runs.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <ul>
+          <li><a href="https://github.com/krocon/files-and-folders-tauri">Source on GitHub</a></li>
+          <li><a href="https://github.com/krocon/files-and-folders-tauri/issues">Report a problem</a></li>
+          <li><a href="https://github.com/krocon/files-and-folders-tauri/blob/main/LICENSE">MIT license</a></li>
+          <li><a href="https://krocon.de">Imprint and privacy (krocon.de)</a></li>
+        </ul>
+        <p>© Marc Kronberg. Norton Commander and Total Commander are trademarks of their owners; this project is not affiliated with them.</p>
+      </div>
+    </footer>
+  </body>
+</html>
