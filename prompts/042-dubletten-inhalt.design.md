@@ -1,6 +1,6 @@
 # Design 042: Dubletten nach Inhalt, Regeln zum Behalten, ähnliche Bilder und Comics
 
-> **Status:** Entwurf – 🛑 wartet auf Freigabe · **Datum:** 22.10.2026 · **Branch:** `feat/dubletten-inhalt`
+> **Status:** freigegeben (Marc, 22.10.2026, mit den Antworten in §8) · **Datum:** 22.10.2026 · **Branch:** `feat/dubletten-inhalt`
 > Auftrag: `prompts/042-dubletten-inhalt.md` (Marc, 21.10.2026). Baut auf 016 E6 (Job `duplicates`), 009 E4
 > (Ergebnis-Tabs), 010 E3 (`fnfpreview`), 025 (Archive lesen), 030 E5 (`expected`), 033 E1/E3 (Ansicht in der anderen
 > Seite, Löschen aus altem Stand) auf. Neue Crate: `image` (nur Decoder, pure Rust) – E6.
@@ -276,7 +276,7 @@ Löschen). Eintrag in `docs/feature-parity.md` als ✖ mit Begründung.
 | `DUP_RULES_DLG` „Regeln bearbeiten…“ | – | Dubletten-Tab |
 | `DUP_KEEP_THIS` „Diese Datei behalten“ | Enter / Doppelklick (über `NAVIGATE_OPEN` im Dubletten-Tab) | Dubletten-Tab |
 | `DUP_DELETE_MARKED` „Dubletten löschen…“ | F8/Entf, Shift+F8 (Umleitung im Dubletten-Tab) | Dubletten-Tab |
-| `DUP_NEXT_GROUP` / `DUP_PREV_GROUP` | – (Palette; Kürzel nur, wenn Marc eins möchte) | Dubletten-Tab |
+| `DUP_NEXT_GROUP` / `DUP_PREV_GROUP` | `Alt+↓` / `Alt+↑` (macOS ⌥↓/⌥↑) | Dubletten-Tab |
 | `DUP_MARK_KEEP_NEWEST/OLDEST/FIRST` | bleiben (wenden den gleichnamigen eingebauten Regelsatz an) | Dubletten-Tab |
 
 Alle in `action-catalog.ts`, Menü „Dubletten“ (`menu-model.ts`, bisher `DUP_MARK`), Texte en/de.
@@ -298,8 +298,8 @@ Alle in `action-catalog.ts`, Menü „Dubletten“ (`menu-model.ts`, bisher `DUP
 ```
 
 - Felder je Modus ein-/ausgeblendet (`fieldset` mit `legend`, Radiogruppen per Pfeiltasten); Werte über `dialogs.recent`.
-- „Regelsatz … wird angewandt“: Default **„keiner“** (erst ansehen, dann entscheiden – Marcs „Wichtig“); wählbar,
-  damit ein bewährter Satz nicht jedes Mal von Hand angewandt werden muss.
+- „Regelsatz … wird angewandt“: Default = **zuletzt benutzter Satz** (Antwort 2); er markiert nur, gelöscht wird erst
+  nach der Bestätigung. „keiner“ ist wählbar.
 - **paranoid** (Exakt): nach dem vollen SHA-256 innerhalb jeder Gruppe zusätzlich Bytevergleich gegen das erste
   Mitglied; Abweichler bilden eigene Gruppen.
 
@@ -411,13 +411,20 @@ Bilder/Comics (Grenzen vor der Allokation, Panics), Thumbnail-Command als Leck.
 - Dubletten auf Serververbindungen (034) – Treffer nur lokal (`skip_virtual_fs`, Serverpfade abgelehnt wie bisher).
 - Hash-Cache als Datei (E3).
 
-## 8. Fragen an Marc
+## 8. Fragen an Marc – Antworten (22.10.2026)
 
-1. Enter = „diese behalten“ im Dubletten-Tab (Öffnen dann über F3/Kontextmenü) – oder lieber `Mod+Enter`?
-2. Regelsatz nach der Suche automatisch anwenden: Default „keiner“ ok?
-3. „In Ordner verschieben“ als dritter Weg neben Papierkorb/endgültig – gewünscht?
-4. Kürzel für nächste/vorige Gruppe (Vorschlag `Alt+↓`/`Alt+↑`, sofern frei) oder nur Palette?
+1. Enter = „diese behalten“ im Dubletten-Tab → **ja, Enter**.
+2. Regelsatz nach der Suche → **den zuletzt gewählten anwenden** („oder sinnvoller“): Default im Dialog = zuletzt
+   benutzter Satz, beim allerersten Mal „Kopien-Namen löschen, sonst älteste“ (Bildmodus: „Höchste Auflösung, dann
+   größte Datei“); „keiner“ bleibt wählbar. Es wird nur markiert – gelöscht wird erst nach der Bestätigung (E5).
+3. „In Ordner verschieben“ → **ja**.
+4. `Alt+↓`/`Alt+↑` für nächste/vorige Gruppe → **ja** (auf allen drei OS frei, macOS ⌥↓/⌥↑).
+
+Nachtrag: Die Knöpfe im Kopf des Dubletten-Tabs waren zu hoch (`.btn` 36 px) – behoben vorab in `add5270`
+(`file-panel.css` `.btn.small`, Test `panel-styles.spec.ts`, Screenshot-Szene `duplicate-results`). Für Phase 3 gilt:
+der Kopf bleibt **eine Zeile**; Regelsatz-Auswahl und Knöpfe so kompakt wie diese.
 
 ## Fortschritt
 
-- 22.10.2026: Bestand geprüft, Design geschrieben. Container eingerichtet. Wartet auf Freigabe.
+- 22.10.2026: Bestand geprüft, Design geschrieben, von Marc freigegeben (Antworten §8). Vorab-Fix Kopf-Knöpfe
+  (`add5270`). Flackernder SFTP-Test als eigener Befund in `TODO.md`.
