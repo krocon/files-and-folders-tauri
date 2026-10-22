@@ -69,6 +69,9 @@ without stutter.
   Passwords and key passphrases are kept **only in the system keychain** (macOS Keychain, Windows Credential
   Manager, Secret Service) – never in a file of the app; SSH host keys and FTPS certificates are checked, plain FTP
   is marked as unencrypted
+- **Flat view** (`Ctrl+B` / `⌘B`) like Total Commander – every file below the folder in one list with a *Path*
+  column, in the same tab; mark, copy, move, delete, rename and multi-rename across all subfolders, back with the
+  same key
 - **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
 - **Compare files** – two files side by side with line numbers and coloured differences (ignore white space or
   case, whole file or only the changes, `F7` jumps to the next one), binaries byte by byte; or hand them to
@@ -182,6 +185,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Multi rename | `Ctrl+M` | `⌘F6` |
 | Find | `Alt+F7` | `⌥F7` |
 | Find folder (change dir) | `Alt+F10` | `⌥F10` |
+| Flat view (all files below) | `Ctrl+B` | `⌘B` |
 | Mark / unmark | `Space`, `Insert` | `Space` |
 | Switch panel | `Tab` | `Tab` |
 | New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |

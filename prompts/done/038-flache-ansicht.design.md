@@ -1,6 +1,6 @@
 # Design 038: Flache Ansicht (alle Dateien unterhalb eines Ordners)
 
-> **Status:** 🛑 Entwurf – Freigabe abwarten · **Datum:** 2026-10-22 · **Branch:** `feat/flache-ansicht` (von `main` 9106c8c)
+> **Status:** ✅ umgesetzt (Freigabe Marc 22.10.2026) · **Datum:** 2026-10-22 · **Branch:** `feat/flache-ansicht` (von `main` 9106c8c)
 > **Grundlage:** Prompt 038, Design 009 (Ergebnis-Tabs, `SearchStore`, Job `search`, E4), Design 029 E1 (Auffrischen ≠
 > Navigieren), Design 012 (Überwachung), Total Commander „Flache Ansicht“ (Strg+B). In legacy/mr gibt es kein Vorbild
 > (`docs/legacy-analysis*.md`: kein Treffer) – neue Funktion, Zeile in `docs/feature-parity.md` unter „über mr hinaus“.
@@ -241,18 +241,52 @@ shouldRefresh(root: string, changed: readonly string[]): boolean;
 
 ## 7. Abweichungen bei der Umsetzung
 
-(wird in Phase 2–4 gefüllt)
+- **Kopf:** zeigt `Flat view: <Ordnername>` (Tab-Titel) statt des vollen Pfads – in schmalen Panels verschwand der
+  Pfad sonst ganz (E2E); der volle Pfad steht im Tooltip. Hinweise kürzer („Obergrenze 100 000 – unvollständig“),
+  sie dürfen sich mit Ellipse kürzen.
+- **Sortierung:** `relDir` über den gemeinsamen `fileComparator` – Ordner (mit „Ordner zeigen“, auch Links auf Ordner)
+  stehen wie überall oben, danach Wurzel zuerst, dann natürlich ohne Groß/klein.
+- **Kein Häkchen im Menü:** das Menümodell kennt keinen `checked`-Zustand; die Einträge stehen als Text im Menü Ansicht.
+- **`isSameOrBelow`** liegt jetzt in `shared/path-prefix.ts` (Re-Export aus `search.store.ts`), sonst Importzyklus
+  `search.store` ↔ `flat-logic`.
+- **Cursor nach Umbenennen** (Review B7): `SearchResult.focus` – F2 gibt den neuen Pfad aus Rust, Multi-Rename Ordner +
+  neuen Namen (kein Zusammensetzen von Pfaden im Frontend); das Panel setzt den Cursor nach dem stillen Auffrischen.
+- **Wieder zeigen:** ein Tab mit flacher Ansicht, der nach einem anderen Tab wieder gezeigt wird, frischt auf (Review
+  B8) – im Hintergrund war er nicht überwacht.
+- **Esc/Stop** wirken auch während des stillen Auffrischens (Review B4) und verwerfen ein nachgeholtes (B3).
 
 ## 8. Review
 
-(Phase 6: separater Agent – Schwerpunkte: Auffrischen/Rennen zwischen Läufen, Ops auf Treffern in Unterordnern,
-Zyklen/Grenzen)
+Separater Agent (hat den Code nicht geschrieben) auf `4506d6c..d49b001`, Schwerpunkte Auffrischen/Rennen,
+Operationen auf Treffern in Unterordnern, Zyklen/Grenzen, CLAUDE.md §4. Alle Befunde behoben (Commit `c07f9ce`),
+B1–B3 zuerst mit rotem Test in `features/flat/flat.spec.ts` („review B1 …“ bis „review B7 …“):
+
+| # | Schwere | Befund | Behebung |
+|---|---|---|---|
+| B1 | hoch | Ergebnis, das während des Job-Starts eines Auffrischens freigegeben wird, kam wieder (Job lief durch) | `start()` prüft nach dem `await`, ob ein Tab den Key noch zeigt, sonst Job abbrechen; `release` stoppt auch Starts |
+| B2 | hoch/mittel | `startFlat` ohne anzeigenden Tab (Mod+B doppelt, schnell navigiert) hinterließ ein verwaistes Ergebnis | `attach` gibt `boolean`, sonst `release`; Sperre gegen Doppelstart im Panel |
+| B3 | mittel | Esc während der Auflistung startete danach ein nachgeholtes Auffrischen | `stop()` leert `queued` und den Watcher-Timer |
+| B4 | niedrig/mittel | Stilles Auffrischen nicht anhaltbar | `resultBusy` und Stop-Knopf auch bei `refreshing` |
+| B5/B6 | niedrig | Hidden-Effekt konnte bei abgelehntem Start kreisen; schnelles Doppelumschalten zeigte kurz Verstecktes | Effekt nur auf Hidden, Vergleich mit den neuesten (auch nachgeholten) Optionen; `queued` bei Fehler leeren |
+| B7 | niedrig/mittel | Cursor sprang nach F2/Multi-Rename nach oben | `focus` (s. §7) |
+| B8 | niedrig | Flache Ansicht im Hintergrund-Tab veraltet | Auffrischen beim Wieder-Zeigen |
+| B9 | niedrig | „Ordner zeigen“ in geklonten Tabs falsch angezeigt | Checkbox liest `r.criteria.kinds.dirs` |
+| B10 | niedrig | Zahlenformat der englischen Ansage | `formatCount` |
+
+Als in Ordnung bestätigt: Operationen nutzen `SearchHit.dir`, `removePaths` auch im laufenden Auffrischen, Umschalten
+im selben Tab und Verlauf, `rel_dir` mit mehreren Wurzeln, keine Verstöße gegen CLAUDE.md §4.
 
 ## 9. Fortschritt
 
-- [x] Phase 1: Bestand, Entscheidungen, Verträge (2026-10-22) – 🛑 Freigabe offen
-- [ ] Phase 2: Rust (`rel_dir`, Tests)
-- [ ] Phase 3: Frontend
-- [ ] Phase 4: E2E unter Xvfb
-- [ ] Phase 5: Doku
-- [ ] Phase 6: Abschlussprüfung, Review, Bericht
+- [x] Phase 1: Bestand, Entscheidungen, Verträge (2026-10-22) – freigegeben von Marc (22.10.2026)
+- [x] Phase 2: Rust (`rel_dir`, 5 neue Tests) – `916a3d9`
+- [x] Phase 3: Frontend (`features/flat/`, SearchStore, FilePanel, Spalte, Aktionen; Specs `flat.spec.ts`,
+  `file-panel.spec.ts` „flat view“) – `d49b001`
+- [x] Phase 4: E2E unter Xvfb (Debug-Build, Linux): 3 Ebenen mit Umlauten/Emoji/Leerzeichen, Symlink-Zyklus und
+  Link-Datei, versteckte Dateien, gesperrter Ordner (als root lesbar – nicht prüfbar); Strg+B an/aus mit Cursor,
+  F5 mit zwei `gleich.txt` aus verschiedenen Unterordnern → Warnung im Dialog + Konfliktfrage, Multi-Rename in
+  `eins/` und `eins/zwei/`, Ordner zeigen, Hidden, Enter auf Ordner + Verlauf, 110 000 Dateien (bedienbar während
+  der Auflistung, Esc hält an, Strg+R bis zur Obergrenze 100 000 mit Hinweis, Cursor bleibt), light/Crimson/dark.
+  Kopf-Layout danach korrigiert – `e21ee44`
+- [x] Phase 5: Doku (README, features.md, feature-parity, architecture, roadmap, CLAUDE.md, Index) – Prompt nach `done/`
+- [x] Phase 6: `pnpm check` grün, Debug-Build, Review (§8) behoben
