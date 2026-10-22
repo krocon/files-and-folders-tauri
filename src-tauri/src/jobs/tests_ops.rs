@@ -847,6 +847,53 @@ fn the_fs_guard_pauses_moved_and_deleted_paths_while_the_job_runs() {
     );
 }
 
+/// Review 012 #3 with the real watcher, wired as in `lib.rs`: a watched folder keeps
+/// its parent from being moved on Windows unless the job pauses the watch. The move
+/// goes through and the folder is reported gone afterwards – on every system (the
+/// guard is only installed on Windows in the app; here everywhere).
+#[test]
+fn moving_the_parent_of_a_watched_folder_works_with_the_guard() {
+    use crate::watch::{WatchEvent, WatchHub};
+    use std::time::{Duration, Instant};
+    let tmp = tempdir().unwrap();
+    let parent = tmp.path().join("Eltern ä");
+    let watched = parent.join("beobachtet");
+    let target = tmp.path().join("Ziel");
+    fs::create_dir_all(&watched).unwrap();
+    fs::write(watched.join("f.txt"), "x").unwrap();
+    fs::create_dir_all(&target).unwrap();
+    let (tx, rx) = std::sync::mpsc::channel::<WatchEvent>();
+    let tx = Mutex::new(tx);
+    let hub = Arc::new(WatchHub::new(Arc::new(move |e| {
+        let _ = tx.lock().unwrap().send(e);
+    })));
+    hub.set_dirs(std::slice::from_ref(&watched), false).unwrap();
+    let h = Harness::new();
+    let g = hub.clone();
+    h.mgr.set_fs_guard(Arc::new(move |paths: &[PathBuf]| {
+        let paused = g.pause_under(paths);
+        let g = g.clone();
+        Box::new(move || g.resume(&paused))
+    }));
+    let id = h.start_move(&[&parent], &target, CopyOptions::default());
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(target.join("Eltern ä/beobachtet/f.txt").is_file());
+    assert!(!parent.exists());
+    // resumed: the folder is gone – reported, not watched on silently
+    let gone = WatchEvent::Gone {
+        dir: watched.to_string_lossy().into_owned(),
+    };
+    let end = Instant::now() + Duration::from_secs(5);
+    let mut got = Vec::new();
+    while Instant::now() < end && !got.contains(&gone) {
+        if let Ok(e) = rx.recv_timeout(Duration::from_millis(50)) {
+            got.push(e);
+        }
+    }
+    assert!(got.contains(&gone), "{got:?}");
+}
+
 #[test]
 fn copy_reports_dest_bytes_per_destination_folder() {
     let tmp = tempdir().unwrap();

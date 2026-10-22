@@ -202,7 +202,26 @@ fn plan(paths: &[PathBuf], control: &Control) -> Option<(Vec<Step>, u64)> {
 }
 
 /// Moves one entry to the trash of its volume.
-pub(crate) fn trash_one(path: &Path) -> Result<(), String> {
+/// Moves `path` to the trash – or fails with `no_trash` (nothing deleted) where the
+/// drive has none, before Windows could ask on its own or delete for good.
+pub(crate) fn trash_one(path: &Path) -> Result<(), FsError> {
+    if !crate::platform::has_trash(path) {
+        return Err(FsError::new(
+            FsErrorCode::NoTrash,
+            "This drive has no trash",
+            Some(path),
+        ));
+    }
+    trash_any(path).map_err(|msg| {
+        FsError::new(
+            FsErrorCode::TrashFailed,
+            format!("Could not move to the trash: {msg}"),
+            Some(path),
+        )
+    })
+}
+
+fn trash_any(path: &Path) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         // Finder keeps "Put Back"; if the user refused to let us control the
@@ -306,14 +325,7 @@ fn run_trash(del: &mut Del, paths: &[PathBuf]) -> bool {
         } else {
             match trash_one(p) {
                 Ok(()) => del.summary.items_done += 1,
-                Err(msg) => del.fail(
-                    p,
-                    FsError::new(
-                        FsErrorCode::TrashFailed,
-                        format!("Could not move to the trash: {msg}"),
-                        Some(p),
-                    ),
-                ),
+                Err(e) => del.fail(p, e),
             }
         }
         del.done();

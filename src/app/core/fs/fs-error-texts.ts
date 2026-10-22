@@ -15,6 +15,8 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   invalid_name: 'This name is not allowed.',
   dangerous_path: 'This is a drive, your home folder or a system folder.',
   trash_failed: 'The item could not be moved to the trash.',
+  no_trash:
+    'This drive has no trash (network or removable drive). Nothing was deleted – delete permanently instead.',
   duplicate_target: 'Another selected entry gets the same name.',
   undo_unavailable: 'There is nothing to undo.',
   program_not_found: 'The program was not found – is it installed? (tools.json)',
@@ -78,6 +80,8 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   invalid_name: 'Dieser Name ist nicht erlaubt.',
   dangerous_path: 'Das ist ein Laufwerk, Ihr Home-Ordner oder ein Systemordner.',
   trash_failed: 'Das Element konnte nicht in den Papierkorb verschoben werden.',
+  no_trash:
+    'Dieses Laufwerk hat keinen Papierkorb (Netz- oder Wechsellaufwerk). Nichts wurde gelöscht – stattdessen endgültig löschen.',
   duplicate_target: 'Ein anderer ausgewählter Eintrag bekommt denselben Namen.',
   undo_unavailable: 'Es gibt nichts rückgängig zu machen.',
   program_not_found: 'Das Programm wurde nicht gefunden – ist es installiert? (tools.json)',
