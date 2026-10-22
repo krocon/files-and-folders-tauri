@@ -601,7 +601,7 @@ describe('FilePanel', () => {
       await settle();
       expect(store.entries().map((e) => e.name)).toEqual(['a.txt', 'deep.txt']);
       expect(store.resultBusy()).toBe(false);
-      expect(el.textContent).toContain('Flat view: /data');
+      expect(el.textContent).toContain('Flat view: data');
       // back to the normal view
       await handle.toggleFlat!();
       await settle();

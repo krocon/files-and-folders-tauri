@@ -6,14 +6,14 @@ const entries = (n: number) => (n === 1 ? '1 Eintrag' : `${formatCount(n)} Eintr
 
 /** Deutsche Texte der flachen Ansicht (design 038). */
 export const FLAT_DE: Translation<typeof FLAT_EN> = {
-  header: (root) => `Flache Ansicht: ${root}`,
-  headerTitle: 'Alle Dateien unterhalb dieses Ordners – Mod+B: zurück zur normalen Ansicht',
+  header: (folder) => `Flache Ansicht: ${folder}`,
+  headerTitle: (root) => `Alle Dateien unterhalb von ${root} – Mod+B: zurück zur normalen Ansicht`,
   tabTitle: (path) => `Flache Ansicht: ${path}`,
   entries,
   listing: 'Wird aufgelistet…',
   refreshing: 'Wird aktualisiert…',
-  truncated: (n) => `Obergrenze von ${formatCount(n)} erreicht – Liste unvollständig`,
-  cancelled: 'angehalten – Liste unvollständig',
+  truncated: (n) => `Obergrenze ${formatCount(n)} – unvollständig`,
+  cancelled: 'angehalten – unvollständig',
   showDirs: 'Ordner zeigen',
   normalView: 'Normale Ansicht',
   finished: (n) => `Flache Ansicht: ${entries(n)}`,

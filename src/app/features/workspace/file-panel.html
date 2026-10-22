@@ -93,11 +93,11 @@
       <span
         class="crumbs search-head flat-head"
         [id]="pathId"
-        [attr.title]="flatTexts.headerTitle"
+        [attr.title]="flatTexts.headerTitle(flat.root)"
         [attr.aria-busy]="r?.running || r?.refreshing ? 'true' : null"
       >
         <i class="fa fa-list" aria-hidden="true"></i>
-        <b class="search-label">{{ flatTexts.header(flat.root) }}</b>
+        <b class="search-label">{{ flatTexts.header(ref.label) }}</b>
         @if (r) {
           <span class="search-count"
             >· {{ flatTexts.entries(r.running ? r.stats.hits : r.hits.length) }}</span
