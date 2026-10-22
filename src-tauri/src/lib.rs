@@ -89,6 +89,7 @@ pub fn run() {
         .manage(commands::KeymapState::default())
         .manage(commands::JobsState::default())
         .manage(commands::PresetsState::default())
+        .manage(commands::duplicates::DupRulesState::default())
         .manage(commands::ThemesState::default())
         .manage(commands::SettingsState::default())
         .manage(commands::CleanScanState::default())
@@ -253,6 +254,10 @@ pub fn run() {
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets,
+            commands::duplicates::classify_paths,
+            commands::duplicates::duplicate_thumbnails,
+            commands::duplicates::load_duplicate_rules,
+            commands::duplicates::save_duplicate_rules,
             commands::list_volumes,
             commands::reveal_in_file_manager,
             commands::open_terminal,

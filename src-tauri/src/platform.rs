@@ -320,9 +320,29 @@ pub fn file_id(meta: &Metadata) -> Option<(u64, u64)> {
 /// (external review 031 #10 – std's `Metadata` has no stable id there). `None`
 /// if it cannot be read.
 pub fn entry_id(path: &Path) -> Option<(u64, u64)> {
+    file_identity(path).map(|i| i.id)
+}
+
+/// Identity and hard-link count of an entry (links not followed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FileIdentity {
+    /// Unix device + inode; Windows volume serial number + file index.
+    pub id: (u64, u64),
+    /// Names of the file (hard links); 1 for an ordinary file.
+    pub links: u32,
+}
+
+/// [`FileIdentity`] of the entry at `path` (design 042 E4: hard links are the same
+/// file – also on Windows, where std's `Metadata` has neither id nor link count).
+pub fn file_identity(path: &Path) -> Option<FileIdentity> {
     #[cfg(unix)]
     {
-        file_id(&fs::symlink_metadata(path).ok()?)
+        use std::os::unix::fs::MetadataExt;
+        let meta = fs::symlink_metadata(path).ok()?;
+        Some(FileIdentity {
+            id: (meta.dev(), meta.ino()),
+            links: u32::try_from(meta.nlink()).unwrap_or(u32::MAX),
+        })
     }
     #[cfg(windows)]
     {
@@ -343,11 +363,12 @@ pub fn entry_id(path: &Path) -> Option<(u64, u64)> {
         let mut info = BY_HANDLE_FILE_INFORMATION::default();
         // SAFETY: the handle is open for the call; info is a valid out-pointer
         let ok = unsafe { GetFileInformationByHandle(file.as_raw_handle() as _, &mut info) };
-        (ok != 0).then(|| {
-            (
+        (ok != 0).then(|| FileIdentity {
+            id: (
                 u64::from(info.dwVolumeSerialNumber),
                 (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
-            )
+            ),
+            links: info.nNumberOfLinks.max(1),
         })
     }
     #[cfg(not(any(unix, windows)))]
@@ -574,6 +595,30 @@ mod tests {
         assert_ne!(ia, ib);
         assert_eq!(entry_id(&t.path().join(".").join("a ä")), ia);
         assert_eq!(entry_id(&t.path().join("missing")), None);
+    }
+
+    /// Design 042 E4: a hard link is the same file (also on Windows, where `file_id` is
+    /// `None`), and its link count tells that deleting one name frees nothing.
+    #[test]
+    fn file_identity_knows_hard_links() {
+        let t = tempdir().unwrap();
+        let (a, b, c) = (
+            t.path().join("orig ä"),
+            t.path().join("hard 🎉"),
+            t.path().join("copy"),
+        );
+        fs::write(&a, "same").unwrap();
+        fs::hard_link(&a, &b).unwrap();
+        fs::write(&c, "same").unwrap();
+        let (ia, ib, ic) = (
+            file_identity(&a).unwrap(),
+            file_identity(&b).unwrap(),
+            file_identity(&c).unwrap(),
+        );
+        assert_eq!(ia.id, ib.id);
+        assert_ne!(ia.id, ic.id);
+        assert_eq!((ia.links, ib.links, ic.links), (2, 2, 1));
+        assert_eq!(entry_id(&a), Some(ia.id));
     }
 
     #[test]

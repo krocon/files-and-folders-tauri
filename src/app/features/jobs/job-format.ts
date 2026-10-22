@@ -108,6 +108,10 @@ export const JOB_EN = {
     link: (what: string, target: string, renameTo: string | null) =>
       `Link ${what} → ${target}${renameTo ? ` as ${renameTo}` : ''}`,
     duplicates: (where: string) => `Find duplicates in ${where}`,
+    dedupe: (n: number, action: 'trash' | 'permanent' | 'move', target: string) =>
+      `Remove ${n === 1 ? '1 duplicate' : `${n} duplicates`} ${
+        action === 'trash' ? 'to the trash' : action === 'permanent' ? 'permanently' : `→ ${target}`
+      }`,
     checksum: (what: string, algo: string) => `${algo} checksums of ${what}`,
     verifyChecksums: (file: string) => `Verify checksums of ${file}`,
     count: (what: string) => `Count ${what}`,
@@ -179,6 +183,10 @@ export function jobTitle(job: JobInfo): string {
     case 'duplicates': {
       const c = spec.criteria;
       return t.duplicates(c.roots.length === 1 ? c.roots[0] : t.folders(c.roots.length));
+    }
+    case 'dedupe': {
+      const n = spec.groups.reduce((sum, g) => sum + g.remove.length, 0);
+      return t.dedupe(n, spec.action, spec.targetDir ?? '');
     }
     case 'checksum': {
       const n = spec.paths.length;

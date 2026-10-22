@@ -167,6 +167,18 @@ fn run_dir(c: &mut Cache) -> Result<PathBuf, FsError> {
     ))
 }
 
+/// A fresh private folder inside this run's folder for a short-lived extraction
+/// (comic pages for the duplicate search, design 042 E7). The caller removes it with
+/// [`remove_tree`]; whatever is left goes with the run folder at exit.
+pub(crate) fn scratch_dir() -> Result<PathBuf, FsError> {
+    let mut c = lock();
+    let run = run_dir(&mut c)?;
+    c.next += 1;
+    let dir = run.join(format!("s{}", c.next));
+    create_private_dir(&dir).map_err(|e| FsError::from_io(&e, &dir))?;
+    Ok(dir)
+}
+
 fn evict(c: &mut Cache) {
     while c.copies.len() > MAX_FILES || (c.bytes > MAX_BYTES && c.copies.len() > 1) {
         if let Some(old) = c.copies.pop_front() {

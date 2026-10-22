@@ -9,6 +9,7 @@ pub mod checksum;
 pub mod clean;
 pub mod control;
 pub mod copy;
+pub mod dedupe;
 pub mod delete;
 pub mod disk_usage;
 pub mod duplicates;
@@ -29,6 +30,8 @@ mod tests_archive;
 mod tests_attributes;
 #[cfg(test)]
 mod tests_checksum;
+#[cfg(test)]
+mod tests_dedupe;
 #[cfg(test)]
 mod tests_disk_usage;
 #[cfg(test)]
@@ -199,6 +202,20 @@ pub enum JobSpec {
     },
     /// Duplicate files (design 016 E6): groups are streamed as `searchHits`.
     Duplicates { criteria: DuplicateCriteria },
+    /// Delete (trash/permanent) or move the copies the user chose (design 042 E5): each
+    /// copy is checked against the kept file of its group right before.
+    Dedupe {
+        groups: Vec<dedupe::DedupeGroup>,
+        #[serde(default)]
+        action: dedupe::DedupeAction,
+        /// `action = move`: the folder the copies go to.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target_dir: Option<String>,
+        #[serde(default)]
+        verify: dedupe::DedupeVerify,
+        #[serde(default)]
+        allow_dangerous: bool,
+    },
     /// Checksums of the selection (design 039): a list file in `base_dir`, one file
     /// per file, or only the digests (`show`, for the clipboard).
     Checksum {
@@ -266,6 +283,7 @@ impl JobSpec {
             | JobSpec::Extract { .. }
             | JobSpec::Pack { .. }
             | JobSpec::Link { .. }
+            | JobSpec::Dedupe { .. }
             | JobSpec::Attributes { .. } => false,
             JobSpec::ViewEntry { .. }
             | JobSpec::Duplicates { .. }
@@ -291,6 +309,10 @@ impl JobSpec {
                 ..
             } => items.iter().map(|i| &i.path).collect(),
             JobSpec::Clean { items, .. } => items.iter().map(|i| &i.path).collect(),
+            JobSpec::Dedupe { groups, .. } => groups
+                .iter()
+                .flat_map(|g| g.remove.iter().map(|e| &e.path))
+                .collect(),
             _ => Vec::new(),
         };
         strs.into_iter().map(std::path::PathBuf::from).collect()
@@ -306,6 +328,10 @@ impl JobSpec {
             | JobSpec::Pack { target_dir, .. }
             | JobSpec::Link { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
+            JobSpec::Dedupe {
+                target_dir: Some(dir),
+                ..
+            } => dir,
             JobSpec::Checksum {
                 base_dir, output, ..
             } if !matches!(output, checksum::ChecksumOutput::Show) => base_dir,
@@ -353,6 +379,7 @@ impl JobSpec {
             JobSpec::ViewEntry { .. } => "viewEntry",
             JobSpec::Link { .. } => "link",
             JobSpec::Duplicates { .. } => "duplicates",
+            JobSpec::Dedupe { .. } => "dedupe",
             JobSpec::Checksum { .. } => "checksum",
             JobSpec::VerifyChecksums { .. } => "verifyChecksums",
             JobSpec::Count { .. } => "count",

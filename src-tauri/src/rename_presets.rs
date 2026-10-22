@@ -101,6 +101,12 @@ fn parse(text: &str) -> Result<RenamePresets, String> {
 /// Missing file → empty; broken file (parse/version) → empty + warning, kept
 /// as `.bad`; unreadable file → empty + warning, untouched, not saved over.
 pub fn load(file: &Path) -> LoadedPresets {
+    load_named(file, "multi-rename presets")
+}
+
+/// [`load`] for another file of the same shape (`what` names it in the warnings) – the
+/// rule sets of the duplicate search (design 042 E2, `duplicate-rules.json`).
+pub fn load_named(file: &Path, what: &str) -> LoadedPresets {
     let failure = match fs::read_to_string(file) {
         Ok(text) => match parse(&text) {
             Ok(presets) => {
@@ -110,7 +116,7 @@ pub fn load(file: &Path) -> LoadedPresets {
                     persist: true,
                 };
             }
-            Err(reason) => format!("The multi-rename presets file was invalid ({reason})"),
+            Err(reason) => format!("The {what} file was invalid ({reason})"),
         },
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             return LoadedPresets {
@@ -124,7 +130,7 @@ pub fn load(file: &Path) -> LoadedPresets {
             return LoadedPresets {
                 presets: RenamePresets::default(),
                 warning: Some(format!(
-                    "The multi-rename presets file could not be read ({e}); changes are not saved in this session."
+                    "The {what} file could not be read ({e}); changes are not saved in this session."
                 )),
                 persist: false,
             };

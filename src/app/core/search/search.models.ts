@@ -60,9 +60,28 @@ export type SearchHit = DirEntry & {
   readonly relDir: string;
   readonly parentNames: readonly [string, string, string];
   readonly group?: number;
+  /** Duplicates (design 042): position in the walk – rule "first found". */
+  readonly order?: number;
+  /** Duplicates (042 E4): a hard link of the file at this path – the same file, never a copy. */
+  readonly sameAs?: string;
+  /** Duplicates (042 E4): the file has this many names (> 1) – deleting one frees nothing. */
+  readonly links?: number;
+  /** Similar images (042 E6): pixels (comics: of the title page). */
+  readonly width?: number;
+  readonly height?: number;
+  /** Comics (042 E7): number of pages. */
+  readonly pages?: number;
+  /** Similar images/comics: differing bits to the group's centre (0 = centre or identical). */
+  readonly distance?: number;
 };
 
-/** Duplicate search (design 016 E6). Keep in sync with `src-tauri/src/duplicates.rs`. */
+/** What counts as a duplicate (design 042). */
+export type DupMode = 'exact' | 'similarImages' | 'comics';
+/** Rust `duplicates::DEFAULT_THRESHOLD` / `MAX_THRESHOLD`. */
+export const DEFAULT_DUP_THRESHOLD = 8;
+export const MAX_DUP_THRESHOLD = 16;
+
+/** Duplicate search (design 016 E6, 042). Keep in sync with `src-tauri/src/duplicates/mod.rs`. */
 export interface DuplicateCriteria {
   readonly roots: readonly string[];
   /** `content`: same size and SHA-256; `size`: same size only. */
@@ -76,6 +95,14 @@ export interface DuplicateCriteria {
   /** Default 500 000, max. 2 000 000. */
   readonly maxFiles?: number | null;
   readonly skipVirtualFs?: boolean;
+  /** Default `exact` (design 042). */
+  readonly mode?: DupMode;
+  /** Name globs (`*.jpg;*.png`), empty = every file. */
+  readonly name?: string;
+  /** Exact: compare the bytes within each group as well. */
+  readonly paranoid?: boolean;
+  /** Similar images/comics: differing bits allowed (0–16, default 8). */
+  readonly threshold?: number | null;
 }
 
 export interface SearchStats {
@@ -90,6 +117,10 @@ export interface SearchStats {
   readonly groups?: number;
   readonly bytesToHash?: number;
   readonly bytesHashed?: number;
+  /** Similar images/comics (design 042): files to fingerprint / done; HEIC/AVIF skipped. */
+  readonly imagesTotal?: number;
+  readonly imagesDone?: number;
+  readonly skippedUnsupported?: number;
 }
 
 export const EMPTY_STATS: SearchStats = {

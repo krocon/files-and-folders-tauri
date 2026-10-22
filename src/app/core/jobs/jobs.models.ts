@@ -45,6 +45,15 @@ export interface ExpectedEntry {
   readonly modifiedMs?: number | null;
 }
 
+/** Rust `jobs::dedupe` (design 042 E5). */
+export interface DedupeGroup {
+  readonly keep: ExpectedEntry;
+  readonly remove: readonly ExpectedEntry[];
+}
+export type DedupeAction = 'trash' | 'permanent' | 'move';
+/** `content`: exact duplicates (bytes compared); `unchanged`: similar images/comics. */
+export type DedupeVerify = 'content' | 'unchanged';
+
 export type JobSpec =
   | {
       readonly kind: 'copy';
@@ -130,6 +139,19 @@ export type JobSpec =
     }
   /** Duplicate files (design 016 E6); groups come as `searchHits` events. */
   | { readonly kind: 'duplicates'; readonly criteria: DuplicateCriteria }
+  /**
+   * Remove the chosen copies (design 042 E5): each is checked against the kept file of
+   * its group right before (unchanged; `content`: the same bytes).
+   */
+  | {
+      readonly kind: 'dedupe';
+      readonly groups: readonly DedupeGroup[];
+      readonly action: DedupeAction;
+      /** `action = move`: the folder the copies go to. */
+      readonly targetDir?: string;
+      readonly verify: DedupeVerify;
+      readonly allowDangerous?: boolean;
+    }
   /** Checksums of files (design 039); folders recursively, links never followed. */
   | {
       readonly kind: 'checksum';

@@ -3,6 +3,7 @@
 
 pub mod config;
 pub mod disk_usage;
+pub mod duplicates;
 pub mod mr_import;
 pub mod os_drag;
 pub mod remote;
@@ -292,6 +293,17 @@ pub fn preview_response(
     let builder = tauri::http::Response::builder()
         .header("X-Content-Type-Options", "nosniff")
         .header("Cache-Control", "no-store");
+    // thumbnails of the duplicate search (design 042 E6.5): `t` + 32 hex, made in memory
+    if crate::duplicates::thumbs::is_token(token) {
+        return match crate::duplicates::thumbs::serve(token) {
+            Some(bytes) => builder
+                .status(200)
+                .header("Content-Type", "image/jpeg")
+                .body(bytes),
+            None => builder.status(404).body(Vec::new()),
+        }
+        .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()));
+    }
     let valid = token.len() == 32 && token.bytes().all(|b| b.is_ascii_hexdigit());
     match valid
         .then(|| crate::preview::serve_image(tokens, token))
@@ -1598,7 +1610,11 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 9] = [
+    const SOURCES: [(&str, &str); 10] = [
+        (
+            "commands/duplicates.rs",
+            include_str!("commands/duplicates.rs"),
+        ),
         ("commands.rs", include_str!("commands.rs")),
         (
             "commands/disk_usage.rs",

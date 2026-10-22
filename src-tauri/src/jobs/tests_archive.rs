@@ -487,12 +487,7 @@ fn duplicates_job_streams_groups() {
             criteria: DuplicateCriteria {
                 roots: vec![s(d.path())],
                 compare: Compare::Content,
-                same_name: false,
-                min_size: None,
-                include_hidden: false,
-                excludes: vec![],
-                max_files: None,
-                skip_virtual_fs: true,
+                ..DuplicateCriteria::default()
             },
         })
         .unwrap();
