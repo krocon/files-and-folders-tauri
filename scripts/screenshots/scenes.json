@@ -215,6 +215,33 @@
       ]
     },
     {
+      "name": "duplicate-results",
+      "prelude": false,
+      "mock": {
+        "duplicates": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "action": "NAVIGATE_PARENT"
+        },
+        {
+          "action": "NAVIGATE_PARENT"
+        },
+        {
+          "action": "OPEN_FIND_DUPLICATES_DLG"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 500
+        }
+      ]
+    },
+    {
       "name": "folder-finder-dialog",
       "steps": [
         {

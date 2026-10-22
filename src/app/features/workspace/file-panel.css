@@ -337,9 +337,15 @@
   }
 }
 
+/* a compact button in the header bar: `.btn` (controls.css) is 36 px high and 80 px wide –
+   that pushed the duplicate tab's header apart (Keep newest/oldest/first, Search again) */
 .btn.small {
   flex: none;
+  min-height: 0;
+  min-width: 0;
   padding: 0 var(--spacing-2);
+  line-height: inherit;
+  white-space: nowrap;
 }
 
 /* inside an archive (design 016 E1): read-only hint next to the breadcrumbs */
