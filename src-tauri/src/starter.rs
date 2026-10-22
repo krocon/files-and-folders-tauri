@@ -559,9 +559,13 @@ mod tests {
         assert_eq!(check(&ok, Some(home)), None);
         let t = to_tool(&ok, Some(home)).unwrap();
         assert_eq!(Path::new(&t.program), home.join("bin/run.sh"));
+        // %T = the target folder with a trailing separator; absolute on this system
+        let other = crate::test_paths::abs("/other");
+        let mut c = ctx(&["/f"]);
+        c.target_dir = Some(other.clone());
         assert_eq!(
-            plan(&t, &ctx(&["/f"])).unwrap()[0].cwd.as_deref(),
-            Some(Path::new(&format!("/other{SEP}")))
+            plan(&t, &c).unwrap()[0].cwd.as_deref(),
+            Some(Path::new(&format!("{}{SEP}", other.display())))
         );
     }
 
