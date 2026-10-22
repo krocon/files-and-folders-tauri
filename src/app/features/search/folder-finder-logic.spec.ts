@@ -5,6 +5,7 @@ import { FolderFilter, filterFolders, moveActive } from './folder-finder-logic';
 const hit = (path: string): SearchHit => ({
   ...dir(path.split('/').at(-1)!, { path }),
   dir: '/',
+  relDir: '',
   parentNames: ['', '', ''],
 });
 

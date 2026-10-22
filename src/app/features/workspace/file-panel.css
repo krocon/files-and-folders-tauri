@@ -275,6 +275,23 @@
   }
 }
 
+/* flat view (design 038 E3): the root may be long – it shrinks, the counters stay */
+.flat-head .search-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flat-dirs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  white-space: nowrap;
+}
+
 .btn.small {
   flex: none;
   padding: 0 var(--spacing-2);

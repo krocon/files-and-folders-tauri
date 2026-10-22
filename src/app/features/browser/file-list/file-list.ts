@@ -216,6 +216,7 @@ export class FileList implements OnDestroy {
       size: c.size,
       modifiedMs: c.modified,
       dir: c.folder,
+      relDir: c.path,
       group: c.group,
       share: USAGE_TEXTS.shareColumn,
       items: USAGE_TEXTS.itemsColumn,
@@ -357,7 +358,8 @@ export class FileList implements OnDestroy {
     }
     if (evt.key === 'Escape') {
       // a folder still opening: Esc gives it up (design 029 E4), else it ends type-ahead
-      if (this.store.loading()) {
+      // … and stops a running search or flat listing (design 038 E6)
+      if (this.store.loading() || this.store.resultBusy()) {
         evt.preventDefault();
         evt.stopPropagation();
         void this.injector.get(ActionService).run('CANCEL_LOADING');
@@ -615,11 +617,15 @@ export class FileList implements OnDestroy {
       this.controller?.showRows(rows, label, state);
       // the folder column belongs to result tabs (after the state: it may carry column widths)
       const usage = this.store.isUsage();
+      const flat = this.store.flat();
       this.bridge?.setColumnVisible(
         'dir',
         this.store.searchKey() !== null &&
+          !flat &&
           (!usage || rows.some((r) => (r as { dir?: string }).dir !== undefined)),
       );
+      // the flat view shows the folder relative to its root instead (design 038 E3)
+      this.bridge?.setColumnVisible('relDir', flat);
       this.bridge?.setColumnVisible('share', usage);
       this.bridge?.setColumnVisible('items', usage);
       // disk usage: the name needs the room the share bar takes (design 033)

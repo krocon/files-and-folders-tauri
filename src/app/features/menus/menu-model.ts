@@ -189,6 +189,8 @@ export const MENU_BAR: readonly TopMenu[] = [
       'TOGGLE_HIDDEN_FILES',
       'TOGGLE_FILTER',
       'CALC_DIR_SIZES',
+      'TOGGLE_FLAT_VIEW',
+      'TOGGLE_FLAT_VIEW_DIRS',
       '-',
       'QUICK_VIEW',
       'DISK_USAGE_TOGGLE_CHART',

@@ -21,6 +21,7 @@ import { FakeWatchApi } from '../../../testing/fake-watch-api';
 import { newTab, WorkspaceStore } from './workspace.store';
 import { blankProfile } from '../remote/remote-logic';
 import { RemoteStore } from '../remote/remote.store';
+import { EMPTY_STATS } from '../../core/search/search.models';
 
 /** jsdom has no layout – the real table is tested end-to-end; here a stand-in. */
 @Component({ selector: 'app-file-list', template: '<div class="stub-list" tabindex="0"></div>' })
@@ -544,6 +545,132 @@ describe('FilePanel', () => {
       ws.selectTab('left', 1);
       await settle();
       expect(store.takePendingTableState()).toEqual(table);
+    });
+  });
+  describe('flat view (design 038)', () => {
+    const SUM = {
+      itemsDone: 0,
+      itemsSkipped: 0,
+      itemsFailed: 0,
+      bytesDone: 0,
+      errors: [],
+      error: null,
+      dirSize: null,
+    };
+    const flatHit = (name: string, relDir: string) => ({
+      ...entry(name, { path: relDir ? `/data/${relDir}/${name}` : `/data/${name}` }),
+      dir: relDir ? `/data/${relDir}` : '/data',
+      relDir,
+      parentNames: ['', '', ''] as [string, string, string],
+    });
+
+    async function flatSetup() {
+      const r = await render();
+      await TestBed.inject(JobsStore).init();
+      const jobsApi = TestBed.inject(JobsApi) as FakeJobsApi;
+      const handle = ws.panel('left')!;
+      return { ...r, jobsApi, handle };
+    }
+
+    it('Mod+B turns the same tab into a flat view and back, cursor where it was', async () => {
+      const { store, el, settle, jobsApi, handle } = await flatSetup();
+      await settle();
+      const id = ws.activeTab('left').id;
+      store.setCursor('/data/b.txt');
+      await handle.toggleFlat!();
+      await settle();
+      const tab = ws.activeTab('left');
+      expect(tab.id).toBe(id);
+      expect(tab.path).toBe('/data');
+      expect(tab.search?.flat).toMatchObject({ root: '/data', cursorBefore: '/data/b.txt' });
+      expect(ws.panels().left.tabs).toHaveLength(2);
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({
+        kind: 'search',
+        criteria: { roots: ['/data'], name: '', followLinks: false },
+      });
+      expect(store.flat()).toBe(true);
+      expect(store.resultBusy()).toBe(true);
+      const jobId = jobsApi.started.at(-1)!.id;
+      jobsApi.emit({
+        type: 'searchHits',
+        id: jobId,
+        hits: [flatHit('a.txt', ''), flatHit('deep.txt', 'Übersicht/x')],
+        stats: { ...EMPTY_STATS, hits: 2 },
+      });
+      jobsApi.emit({ type: 'finished', id: jobId, state: 'done', summary: SUM });
+      await settle();
+      expect(store.entries().map((e) => e.name)).toEqual(['a.txt', 'deep.txt']);
+      expect(store.resultBusy()).toBe(false);
+      expect(el.textContent).toContain('Flat view: /data');
+      // back to the normal view
+      await handle.toggleFlat!();
+      await settle();
+      expect(ws.activeTab('left').search ?? null).toBeNull();
+      expect(ws.activeTab('left').id).toBe(id);
+      expect(store.path()).toBe('/data');
+      expect(store.cursorPath()).toBe('/data/b.txt');
+    });
+
+    it('Enter on a folder leaves the flat view into it, the root becomes history', async () => {
+      const { store, settle, jobsApi, handle } = await flatSetup();
+      await settle();
+      await handle.toggleFlat!();
+      await settle();
+      const jobId = jobsApi.started.at(-1)!.id;
+      jobsApi.emit({
+        type: 'searchHits',
+        id: jobId,
+        hits: [
+          { ...flatHit('Übersicht', ''), kind: 'directory' as const, path: '/data/Übersicht' },
+        ],
+        stats: { ...EMPTY_STATS, hits: 1 },
+      });
+      jobsApi.emit({ type: 'finished', id: jobId, state: 'done', summary: SUM });
+      await settle();
+      await store.open(store.entries()[0]);
+      await settle();
+      expect(store.flat()).toBe(false);
+      expect(store.path()).toBe('/data/Übersicht');
+      expect(ws.activeTab('left').history[0]).toBe('/data');
+    });
+
+    it('a job changing a folder below the root refreshes in the background; Hidden lists again', async () => {
+      const { store, settle, jobsApi, handle } = await flatSetup();
+      await settle();
+      await handle.toggleFlat!();
+      await settle();
+      const first = jobsApi.started.at(-1)!.id;
+      jobsApi.emit({ type: 'finished', id: first, state: 'done', summary: SUM });
+      await settle();
+      const n = jobsApi.started.length;
+      jobsApi.emit({ type: 'dirsChanged', dirs: ['/other'] });
+      await settle();
+      expect(jobsApi.started).toHaveLength(n);
+      jobsApi.emit({ type: 'dirsChanged', dirs: ['/data/Übersicht/x'] });
+      await settle();
+      expect(jobsApi.started).toHaveLength(n + 1);
+      jobsApi.emit({
+        type: 'finished',
+        id: jobsApi.started.at(-1)!.id,
+        state: 'done',
+        summary: SUM,
+      });
+      await settle();
+      store.hiddenVisible.set(true);
+      await settle();
+      expect(jobsApi.started).toHaveLength(n + 2);
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({ criteria: { includeHidden: true } });
+    });
+
+    it('the root of a flat view is watched; Esc stops the listing', async () => {
+      const { store, settle, jobsApi, handle } = await flatSetup();
+      await settle();
+      await handle.toggleFlat!();
+      await settle();
+      expect(watch.calls.at(-1)).toContain('/data');
+      expect(store.resultBusy()).toBe(true);
+      store.stopResult();
+      expect(jobsApi.cancelled).toContain(jobsApi.started.at(-1)!.id);
     });
   });
 });

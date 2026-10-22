@@ -49,12 +49,15 @@ export interface SearchCriteria {
 /**
  * A hit: an entry as in a listing plus the full path of its folder and the names
  * of that folder, its parent and grandparent (from Rust `paths::parent_names` – a
- * root or drive has no name; the frontend never splits paths). A duplicate (design
+ * root or drive has no name; the frontend never splits paths), and `dir` relative to
+ * the search root. A duplicate (design
  * 016 E6) also has its group (1 = most wasted bytes). Keep in sync with
  * `src-tauri/src/search.rs`.
  */
 export type SearchHit = DirEntry & {
   readonly dir: string;
+  /** `dir` relative to the search root (OS separators), "" directly in it – flat view (design 038 E2). */
+  readonly relDir: string;
   readonly parentNames: readonly [string, string, string];
   readonly group?: number;
 };

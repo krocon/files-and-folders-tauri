@@ -35,6 +35,10 @@ export interface PanelHandle {
   controller(): FileListController | undefined;
   /** Gives up the folder being opened (design 029 E4); false if nothing loads. */
   cancelLoading?(): boolean;
+  /** Turns the flat view of the active tab on or off (design 038). */
+  toggleFlat?(): Promise<void>;
+  /** "Show folders" of the flat view (design 038 E4). */
+  setFlatDirs?(show: boolean): void;
 }
 
 /** A result tab of a search (design 009 E4): points to a result in the root `SearchStore`. */
@@ -44,6 +48,20 @@ export interface SearchTabRef {
   readonly label: string;
   /** Title of the folder the tab falls back to when saved (paths are opaque here). */
   readonly rootTitle?: string;
+  /** Set when the tab shows its folder as a flat view (design 038 E1) – same tab, Mod+B. */
+  readonly flat?: FlatRef;
+}
+
+/** The flat view of a tab's folder (design 038 E1): what comes back when it is turned off. */
+export interface FlatRef {
+  /** The folder listed (= `tab.path`, opaque). */
+  readonly root: string;
+  /** Cursor of the normal view – restored when the flat view is turned off. */
+  readonly cursorBefore: string | null;
+  /** Column widths and sorting of the normal view. */
+  readonly tableBefore: TabSession['table'];
+  /** "Show folders" (design 038 E4). */
+  readonly showDirs: boolean;
 }
 
 /** A tab: a folder, or (with `search`) the result of a search – never saved as such. */
@@ -751,7 +769,7 @@ export class WorkspaceStore {
     );
   }
 
-  private findTab(id: string): TabState | undefined {
+  findTab(id: string): TabState | undefined {
     const { left, right } = this.panels();
     return left.tabs.find((t) => t.id === id) ?? right.tabs.find((t) => t.id === id);
   }
@@ -778,12 +796,24 @@ function clampSplitter(ratio: number): number {
   return Number.isFinite(ratio) ? Math.min(SPLITTER_MAX, Math.max(SPLITTER_MIN, ratio)) : 0.5;
 }
 
-/** Search tabs are not saved: they become a tab of their first folder (design 009 E4). */
+/**
+ * Search tabs are not saved: they become a tab of their first folder (design 009 E4);
+ * a flat view becomes its folder in the normal view (design 038 E1).
+ */
 function toPanelSession(p: PanelTabs): PanelSession {
   return {
     activeTab: p.activeTab,
     tabs: p.tabs.map((t) => {
       const { search, ...tab } = t;
+      if (search?.flat) {
+        const f = search.flat;
+        return {
+          ...tab,
+          title: search.rootTitle ?? '',
+          cursor: f.cursorBefore,
+          table: f.tableBefore,
+        };
+      }
       return search ? { ...tab, title: search.rootTitle ?? '', cursor: null, table: null } : tab;
     }),
   };

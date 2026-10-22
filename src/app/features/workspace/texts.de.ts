@@ -92,6 +92,7 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
     size: 'Größe',
     modified: 'Geändert',
     folder: 'Ordner',
+    path: 'Pfad',
     group: 'Gruppe',
   },
   bytesTitle: (marked, total) => `${formatCount(marked)} / ${formatCount(total)} Bytes`,

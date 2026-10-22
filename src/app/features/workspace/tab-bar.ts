@@ -21,6 +21,7 @@ import { displayPath } from '../../core/remote/remote-path';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { RemoteStore } from '../remote/remote.store';
 import { SearchStore } from '../search/search.store';
+import { FLAT_TEXTS } from '../flat/flat-texts';
 import { modifiersAfter } from '../../core/actions/shortcut';
 import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
 import { insertionIndex, tabDragCopies } from './tab-drag-logic';
@@ -315,6 +316,14 @@ export class TabBar {
       evt.preventDefault();
       this.ws.requestFocus(this.side());
     }
+  }
+
+  /** Tooltip: the folder, the search label or "Flat view: <folder>" (design 038 E3). */
+  protected tabTooltip(tab: TabState): string {
+    if (tab.search?.flat) {
+      return FLAT_TEXTS.tabTitle(tab.search.flat.root);
+    }
+    return tab.search ? tab.search.label : (tab.path ?? TEXTS.homeFolder);
   }
 
   protected title(tab: TabState): string {

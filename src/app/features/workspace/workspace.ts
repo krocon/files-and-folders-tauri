@@ -67,6 +67,7 @@ import { FindStore } from '../search/find.store';
 import { FolderFinderDialog } from '../search/folder-finder-dialog';
 import { FolderFinderStore } from '../search/folder-finder.store';
 import { registerSearchActions } from '../search/search-actions';
+import { registerFlatActions } from '../flat/flat-actions';
 import { ThemeService } from '../../core/theme/theme.service';
 import { registerThemeActions } from '../themes/theme-actions';
 import { ThemeDialog } from '../themes/theme-dialog';
@@ -341,6 +342,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
+    this.destroyRef.onDestroy(registerFlatActions(this.actions, this.ws));
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
     this.destroyRef.onDestroy(
       registerDiskUsageActions(this.actions, this.ws, this.diskUsage, this.jobs, this.settings),

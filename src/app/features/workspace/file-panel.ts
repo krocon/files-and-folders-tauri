@@ -47,6 +47,9 @@ import { DiskUsageChart } from '../diskusage/disk-usage-chart';
 import { USAGE_TEXTS } from '../diskusage/disk-usage-texts';
 import { isUsageKey, scanIdOf, usageKey } from '../diskusage/usage-rows';
 import { formatCount } from '../../shared/format';
+import { FLAT_TEXTS } from '../flat/flat-texts';
+import { shouldRefresh } from '../flat/flat-logic';
+import { FlatNavigator } from '../browser/file-browser.store';
 
 let panelSeq = 0;
 
@@ -112,6 +115,7 @@ export class FilePanel implements OnInit {
   protected readonly search = inject(SearchStore);
   private readonly find = inject(FindStore);
   protected readonly searchTexts = SEARCH_TEXTS;
+  protected readonly flatTexts = FLAT_TEXTS;
   protected readonly dupTexts = DUP_TEXTS;
   protected readonly archiveTexts = ARCHIVE_TEXTS;
   private readonly dup = inject(DuplicatesStore);
@@ -142,10 +146,15 @@ export class FilePanel implements OnInit {
       return '';
     }
     if (r.running) {
-      return SEARCH_TEXTS.searching;
+      return r.kind === 'flat' ? FLAT_TEXTS.listing : SEARCH_TEXTS.searching;
     }
     if (r.error) {
       return SEARCH_TEXTS.failed(describeError(r.error));
+    }
+    if (r.kind === 'flat') {
+      return r.stats.truncated
+        ? FLAT_TEXTS.finishedTruncated(r.hits.length)
+        : FLAT_TEXTS.finished(r.hits.length);
     }
     return r.kind === 'duplicates'
       ? this.dupSummary()
@@ -245,7 +254,22 @@ export class FilePanel implements OnInit {
       const result = this.searchResult();
       untracked(() => {
         if (key !== null && !isUsageKey(key) && this.shownTabId === tab.id) {
-          this.store.showSearch(key, result?.hits ?? [], result?.kind ?? 'search');
+          this.store.showSearch(key, result?.hits ?? [], result?.kind ?? kindOf(tab));
+        }
+      });
+    });
+    // a running search or flat listing: Esc stops it (design 038 E6)
+    effect(() => {
+      const busy = this.searchResult()?.running ?? false;
+      untracked(() => this.store.resultBusy.set(busy));
+    });
+    // flat view: Hidden is part of the listing – hidden folders are entered or not (design 038 E4)
+    effect(() => {
+      const hidden = this.store.hiddenVisible();
+      const r = this.searchResult();
+      untracked(() => {
+        if (r?.kind === 'flat' && this.tab().search?.flat && r.criteria.includeHidden !== hidden) {
+          this.search.refresh(r.key, { includeHidden: hidden });
         }
       });
     });
@@ -328,11 +352,18 @@ export class FilePanel implements OnInit {
         if (change && path !== null && change.dirs.includes(path)) {
           this.store.requestRefresh();
         }
+        // flat view: a job changed a folder at or below its root (design 038 E5)
+        const ref = this.tab().search;
+        if (change && ref?.flat && this.store.flat() && shouldRefresh(ref.flat.root, change.dirs)) {
+          this.search.refresh(ref.key);
+        }
       });
     });
     // the shown folder is watched (design 012 E2)
     effect(() => {
-      const path = this.store.path();
+      // a flat view watches its root (not recursively, design 038 E5)
+      const flatRoot = this.store.flat() ? (this.tab().search?.flat?.root ?? null) : null;
+      const path = this.store.path() ?? flatRoot;
       // a folder inside an archive is virtual: nothing to watch (design 016 E1)
       const dir = this.store.archive() === null ? path : null;
       untracked(() => this.watch.setPanelDir(this.side(), dir, this.store.listedAt ?? undefined));
@@ -379,10 +410,13 @@ export class FilePanel implements OnInit {
         confirmLabel: TEXTS.runProgramConfirm,
       });
     // the side is fixed for the lifetime of a panel
+    this.store.stopResult = () => this.stopSearch();
     const unregister = this.ws.registerPanel(this.side(), {
       store: this.store,
       controller: () => this.list()?.listController,
       cancelLoading: () => this.cancelLoading(),
+      toggleFlat: () => this.toggleFlat(),
+      setFlatDirs: (show) => this.setFlatDirs(show),
     });
     this.destroyRef.onDestroy(unregister);
     const unwatch = this.watch.on((event) => this.onWatchEvent(event));
@@ -394,6 +428,14 @@ export class FilePanel implements OnInit {
 
   /** Changes of the shown folder by other programs (design 012 E3). */
   private onWatchEvent(event: WatchEvent): void {
+    const ref = this.tab().search;
+    if (ref?.flat && this.store.flat()) {
+      // something changed in the root of the flat view: list it again (throttled, design 038 E5)
+      if (event.dir === ref.flat.root) {
+        this.search.requestRefresh(ref.key);
+      }
+      return;
+    }
     if (event.dir !== this.store.path() || this.store.navigationLocked()) {
       return;
     }
@@ -627,8 +669,11 @@ export class FilePanel implements OnInit {
     if (tab.search) {
       this.store.navigationLocked.set(false);
       this.store.setCursor(tab.cursor);
+      if (tab.search.flat) {
+        this.store.flatNav = this.flatNavigator();
+      }
       const result = this.search.result(tab.search.key);
-      this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? 'search');
+      this.store.showSearch(tab.search.key, result?.hits ?? [], result?.kind ?? kindOf(tab));
       return;
     }
     // a slow folder seen before comes from the cache at once (design 030 E1, replaces 029 E5)
@@ -664,6 +709,128 @@ export class FilePanel implements OnInit {
     if (listing) {
       this.ws.navigated(id, listing.path, listing.segments.at(-1)?.name ?? listing.path);
     }
+  }
+
+  // ---- flat view (design 038) ----
+
+  /**
+   * Mod+B: the active tab shows its folder flat – all entries below it – or, if it
+   * does, the normal view again (E1). Same tab: id, path and history stay.
+   */
+  async toggleFlat(): Promise<void> {
+    const tab = this.tab();
+    if (tab.search?.flat) {
+      return this.leaveFlat();
+    }
+    const root = this.store.path();
+    if (
+      tab.search ||
+      root === null ||
+      this.store.archive() !== null ||
+      this.store.remote() !== null ||
+      this.store.cachedAt() !== null ||
+      this.store.loading()
+    ) {
+      return;
+    }
+    const id = tab.id;
+    const cursorBefore = this.store.cursorPath();
+    const tableBefore = this.list()?.captureTableState() ?? tab.table;
+    const showDirs = this.search.flatShowDirs;
+    const error = await this.search.startFlat(
+      root,
+      { includeHidden: this.store.hiddenVisible(), showDirs },
+      (key) => {
+        const now = this.ws.findTab(id);
+        if (!now || now.search || now.path !== root) {
+          return; // the tab went elsewhere meanwhile – the result is released
+        }
+        if (this.shownTabId === id) {
+          this.store.rememberCurrent();
+        }
+        const title = now.title;
+        this.ws.updateTab(id, {
+          search: {
+            key,
+            label: title,
+            rootTitle: title,
+            flat: { root, cursorBefore, tableBefore, showDirs },
+          },
+          cursor: null,
+          table: null,
+        });
+        if (this.shownTabId === id) {
+          void this.showTab(id);
+        }
+      },
+    );
+    if (error) {
+      this.store.error.set(error);
+    }
+  }
+
+  /**
+   * Back to the normal view of the root with the cursor where it was (E1); `then`
+   * goes on into a folder from there (Enter on a folder, E6) – the root is history.
+   */
+  private async leaveFlat(then?: { navigate: string; cursor: string | null }): Promise<void> {
+    const tab = this.tab();
+    const flat = tab.search?.flat;
+    if (!flat) {
+      return;
+    }
+    const id = tab.id;
+    // the result is released once no tab shows it (its listing is cancelled)
+    this.ws.updateTab(id, {
+      search: null,
+      path: flat.root,
+      cursor: then ? null : flat.cursorBefore,
+      table: flat.tableBefore,
+    });
+    await this.showTab(id);
+    if (then && this.shownTabId === id && this.store.path() === flat.root) {
+      await this.store.load(then.navigate, { cursor: then.cursor });
+    }
+  }
+
+  /** "Show folders" of the flat view (E4): listed again with or without folders. */
+  private setFlatDirs(show: boolean): void {
+    const tab = this.tab();
+    const ref = tab.search;
+    if (!ref?.flat) {
+      return;
+    }
+    this.search.flatShowDirs = show;
+    this.ws.updateTab(tab.id, { search: { ...ref, flat: { ...ref.flat, showDirs: show } } });
+    this.search.refresh(ref.key, { showDirs: show });
+  }
+
+  private flatNavigator(): FlatNavigator {
+    return {
+      leave: (then) => this.leaveFlat(then),
+      up: async () => {
+        await this.leaveFlat();
+        if (!this.store.flat()) {
+          await this.store.up();
+        }
+      },
+      refresh: () => {
+        const key = this.tab().search?.key;
+        if (key) {
+          this.search.refresh(key);
+        }
+      },
+    };
+  }
+
+  /** Header checkbox "Show folders". */
+  protected onFlatDirs(evt: Event): void {
+    this.setFlatDirs((evt.target as HTMLInputElement).checked);
+  }
+
+  /** Header button "Normal view". */
+  protected normalView(): void {
+    void this.leaveFlat().then(() => this.ws.requestFocus(this.side()));
   }
 
   /** Cursor request of the disk-usage store already applied (after a navigation). */
@@ -762,4 +929,9 @@ export class FilePanel implements OnInit {
     this.cancelledTab.set(null);
     void this.showTab(this.tabId());
   }
+}
+
+/** What a result tab shows while its result is gone (released): a flat view stays one. */
+function kindOf(tab: { readonly search?: { readonly flat?: unknown } | null }): 'flat' | 'search' {
+  return tab.search?.flat ? 'flat' : 'search';
 }
