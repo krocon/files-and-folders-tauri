@@ -134,6 +134,9 @@ export type FsErrorCode =
   | 'invalid_profile'
   | 'invalid_url'
   | 'unknown_profile'
+  /** Duplicates (design 042): image not readable; kept file/copy changed since the search. */
+  | 'unsupported_image'
+  | 'duplicate_changed'
   | 'invalid_path'
   | 'no_home_directory'
   | 'io'

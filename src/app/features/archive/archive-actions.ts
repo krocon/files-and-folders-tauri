@@ -55,6 +55,16 @@ export function registerArchiveActions(
     DUP_MARK_KEEP_NEWEST: { enabled: () => dup.canMark(), run: () => dup.markAllBut('newest') },
     DUP_MARK_KEEP_OLDEST: { enabled: () => dup.canMark(), run: () => dup.markAllBut('oldest') },
     DUP_MARK_KEEP_FIRST: { enabled: () => dup.canMark(), run: () => dup.markAllBut('first') },
+    // design 042
+    DUP_APPLY_RULES: { enabled: () => dup.canMark(), run: () => dup.applyChosen() },
+    DUP_RULES_DLG: { enabled: () => dup.canMark(), run: () => dup.openRules() },
+    DUP_KEEP_THIS: { enabled: () => dup.canMark(), run: () => void dup.keepThis() },
+    DUP_DELETE_MARKED: {
+      enabled: () => dup.canMark(),
+      run: () => void dup.openDedupe('trash'),
+    },
+    DUP_NEXT_GROUP: { enabled: () => dup.canMoveGroup(), run: () => dup.moveGroup(1) },
+    DUP_PREV_GROUP: { enabled: () => dup.canMoveGroup(), run: () => dup.moveGroup(-1) },
   });
   return () => {
     unregister();

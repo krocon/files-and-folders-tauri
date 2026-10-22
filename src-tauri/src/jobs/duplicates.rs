@@ -25,7 +25,7 @@ pub fn run(
             stats: stats.clone(),
         });
     };
-    let result = duplicates::find(criteria, control.cancel_flag(), &mut |r| match r {
+    let result = duplicates::find(criteria, control, &mut |r| match r {
         Report::Stats(s) => send(Vec::new(), s),
     });
     let r = match result {

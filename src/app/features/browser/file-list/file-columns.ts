@@ -11,10 +11,21 @@ import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-ren
 import { ItemsCellRenderer, itemsOf, ShareCellRenderer } from '../../diskusage/usage-renderers';
 import { usageOf } from '../../diskusage/usage-rows';
 import { relDirOf } from '../../flat/flat-logic';
+import { DecisionCellRenderer, pixelCount, pixelsOf } from '../../duplicates/duplicate-renderers';
 
 /** Column properties of the file list. `ext` is computed from the name. */
 export type FileColumn =
-  'name' | 'ext' | 'size' | 'modifiedMs' | 'dir' | 'relDir' | 'group' | 'share' | 'items';
+  | 'name'
+  | 'ext'
+  | 'size'
+  | 'modifiedMs'
+  | 'dir'
+  | 'relDir'
+  | 'group'
+  | 'decision'
+  | 'pixels'
+  | 'share'
+  | 'items';
 
 const COLLATOR_OPTIONS: Intl.CollatorOptions = { numeric: true, sensitivity: 'base' };
 
@@ -124,6 +135,12 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
       (groupOf(a) as number) - (groupOf(b) as number) || collator.compare(dirOf(a), dirOf(b)),
     (e) => groupOf(e) === undefined,
   ),
+  // the decision changes with the marks: sorting by it would move rows under the cursor
+  decision: fileComparator(() => 0),
+  pixels: fileComparator(
+    (a, b) => pixelCount(a) - pixelCount(b),
+    (e) => pixelCount(e) === 0,
+  ),
   share: usageComparator((e) => usageOf(e)?.share ?? 0),
   items: usageComparator(itemsOf),
 };
@@ -206,6 +223,30 @@ export function createFileColumns(): ColumnDefIf[] {
       sortable: TrueFn,
       sortComparator: fileComparators.group,
       valueGetter: (row: DirEntry) => groupOf(row) ?? '',
+      headerClasses: ['ge-table-text-align-end'],
+      bodyClasses: ['ge-table-text-align-end'],
+    }),
+    // only shown in a duplicate tab (design 042 E1): keep / delete / same file … + reason
+    ColumnDef.create({
+      property: 'decision',
+      headerLabel: 'Decision',
+      width: px(112),
+      isVisible: FalseFn,
+      sortable: FalseFn,
+      sortComparator: fileComparators.decision,
+      bodyRenderer: new DecisionCellRenderer(),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    // similar images/comics (design 042 E6/E7): pixels (and pages)
+    ColumnDef.create({
+      property: 'pixels',
+      headerLabel: 'Pixels',
+      width: px(96),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.pixels,
+      valueGetter: (row: DirEntry) => pixelsOf(row),
       headerClasses: ['ge-table-text-align-end'],
       bodyClasses: ['ge-table-text-align-end'],
     }),

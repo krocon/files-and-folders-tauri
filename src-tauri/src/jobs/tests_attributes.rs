@@ -5,7 +5,9 @@ use super::*;
 use crate::attributes::{ApplyTo, AttrChange, MIN_MS, TimeValue};
 use crate::error::FsErrorCode;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(unix)]
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::tempdir;
 
@@ -635,7 +637,9 @@ mod unix {
     }
 
     /// #3: the walk stays on the file system of the selected folder. Needs a
-    /// tmpfs mount (root, e.g. the container); skipped elsewhere.
+    /// tmpfs mount (root, e.g. the container); skipped elsewhere. Linux only: `mount(2)` with a
+    /// file system type and `umount` exist in this form only there.
+    #[cfg(target_os = "linux")]
     #[test]
     fn recursion_stays_on_one_file_system() {
         if !is_root() {

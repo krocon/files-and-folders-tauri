@@ -1,10 +1,23 @@
-import { DuplicateCriteria } from '../../core/search/search.models';
+import {
+  DEFAULT_DUP_THRESHOLD,
+  DupMode,
+  DuplicateCriteria,
+  MAX_DUP_THRESHOLD,
+} from '../../core/search/search.models';
 import { DUP_TEXTS } from './duplicates-texts';
 
 export type DupUnit = 'B' | 'KB' | 'MB';
 
 /** Fields of the duplicates dialog (kept for the session). */
 export interface DuplicatesForm {
+  /** Exact (content), similar images or comics (design 042). */
+  readonly mode: DupMode;
+  /** Name globs, empty = every file. */
+  readonly names: string;
+  /** Exact: compare the bytes as well. */
+  readonly paranoid: boolean;
+  /** Similar images/comics: 0 (strict) – 16 (loose). */
+  readonly threshold: number;
   readonly compare: 'content' | 'size';
   readonly sameName: boolean;
   readonly minSize: string;
@@ -15,6 +28,10 @@ export interface DuplicatesForm {
 }
 
 export const DEFAULT_DUP_FORM: DuplicatesForm = {
+  mode: 'exact',
+  names: '',
+  paranoid: false,
+  threshold: DEFAULT_DUP_THRESHOLD,
   compare: 'content',
   sameName: false,
   minSize: '1',
@@ -55,11 +72,17 @@ export function formToDuplicateCriteria(
   if (!Number.isSafeInteger(bytes)) {
     return { error: { field: 'minSize', message: DUP_TEXTS.invalidNumber } };
   }
+  const exact = f.mode === 'exact';
   return {
     criteria: {
       roots,
-      compare: f.compare,
-      sameName: f.sameName,
+      mode: f.mode,
+      name: f.names.trim(),
+      // similar images/comics compare looks, never sizes or names
+      compare: exact ? f.compare : 'content',
+      sameName: exact && f.sameName,
+      paranoid: exact && f.compare === 'content' && f.paranoid,
+      threshold: exact ? null : Math.max(0, Math.min(MAX_DUP_THRESHOLD, Math.round(f.threshold))),
       // empty files are all "equal": at least 1 byte
       minSize: Math.max(1, bytes),
       includeHidden: f.includeHidden,

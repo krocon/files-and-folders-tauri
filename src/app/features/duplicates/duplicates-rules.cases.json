@@ -1,0 +1,1153 @@
+{
+  "decide": [
+    {
+      "name": "oldest keeps the oldest",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ],
+      "undecided": [],
+      "decisions": {
+        "/h/Archiv/a.jpg": "keep"
+      },
+      "reasons": {
+        "/h/Archiv/a.jpg": 0
+      }
+    },
+    {
+      "name": "newest keeps the newest",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "newest"
+        }
+      ],
+      "marks": [
+        "/h/Archiv/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ],
+      "undecided": [],
+      "decisions": {
+        "/h/Downloads/a.jpg": "keep"
+      }
+    },
+    {
+      "name": "first found",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "firstFound"
+        }
+      ],
+      "marks": [
+        "/h/Archiv/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ]
+    },
+    {
+      "name": "no copy suffix, then oldest",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "noCopySuffix"
+        },
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ],
+      "undecided": [],
+      "reasons": {
+        "/h/Archiv/a.jpg": 1,
+        "/h/Downloads/a.jpg": 1
+      }
+    },
+    {
+      "name": "pattern delete with a glob, then oldest (acceptance)",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "/Downloads/",
+          "syntax": "glob",
+          "prefer": "delete"
+        },
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ]
+    },
+    {
+      "name": "pattern keep",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "**/bilder/*",
+          "prefer": "keep"
+        }
+      ],
+      "marks": [
+        "/h/Archiv/a.jpg",
+        "/h/Downloads/a.jpg"
+      ],
+      "undecided": [],
+      "decisions": {
+        "/h/Bilder/Kopie von a.jpg": "keep"
+      }
+    },
+    {
+      "name": "pattern case sensitive does not match",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "/bilder/",
+          "caseSensitive": true,
+          "prefer": "keep"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ],
+      "decisions": {
+        "/h/Archiv/a.jpg": "undecided"
+      }
+    },
+    {
+      "name": "regex",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "Arch(iv|ive)/",
+          "syntax": "regex",
+          "prefer": "keep"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ]
+    },
+    {
+      "name": "an invalid regex marks nothing",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "(unclosed",
+          "syntax": "regex"
+        },
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ]
+    },
+    {
+      "name": "an empty pattern marks nothing",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "  "
+        },
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ]
+    },
+    {
+      "name": "slash in the pattern matches backslash paths",
+      "rows": [
+        {
+          "path": "C:\\Users\\m\\Downloads\\b.txt",
+          "name": "b.txt",
+          "size": 100,
+          "modifiedMs": 1,
+          "group": 1
+        },
+        {
+          "path": "C:\\Users\\m\\Docs\\b.txt",
+          "name": "b.txt",
+          "size": 100,
+          "modifiedMs": 2,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "/Downloads/",
+          "prefer": "delete"
+        }
+      ],
+      "marks": [
+        "C:\\Users\\m\\Downloads\\b.txt"
+      ]
+    },
+    {
+      "name": "glob star stays in one folder",
+      "rows": [
+        {
+          "path": "C:\\Users\\m\\Downloads\\b.txt",
+          "name": "b.txt",
+          "size": 100,
+          "modifiedMs": 1,
+          "group": 1
+        },
+        {
+          "path": "C:\\Users\\m\\Docs\\b.txt",
+          "name": "b.txt",
+          "size": 100,
+          "modifiedMs": 2,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "pathPattern",
+          "pattern": "C:/*/b.txt",
+          "prefer": "keep"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ]
+    },
+    {
+      "name": "in folder (from Rust)",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "inFolder",
+          "folder": "/h/Archiv",
+          "prefer": "keep"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ],
+      "undecided": [],
+      "inFolder": {
+        "/h/Archiv/a.jpg": [
+          true
+        ],
+        "/h/Downloads/a.jpg": [
+          false
+        ],
+        "/h/Bilder/Kopie von a.jpg": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "in folder delete",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "inFolder",
+          "folder": "/h/Downloads",
+          "prefer": "delete"
+        },
+        {
+          "kind": "shortestName"
+        }
+      ],
+      "marks": [
+        "/h/Downloads/a.jpg",
+        "/h/Bilder/Kopie von a.jpg"
+      ],
+      "undecided": [],
+      "inFolder": {
+        "/h/Archiv/a.jpg": [
+          false
+        ],
+        "/h/Downloads/a.jpg": [
+          true
+        ],
+        "/h/Bilder/Kopie von a.jpg": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "in folder without an answer separates nothing",
+      "rows": [
+        {
+          "path": "/h/Archiv/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 100,
+          "group": 1,
+          "order": 2
+        },
+        {
+          "path": "/h/Downloads/a.jpg",
+          "name": "a.jpg",
+          "size": 100,
+          "modifiedMs": 300,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/h/Bilder/Kopie von a.jpg",
+          "name": "Kopie von a.jpg",
+          "size": 100,
+          "modifiedMs": 200,
+          "group": 1,
+          "order": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "inFolder",
+          "folder": "/h/Archiv"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ]
+    },
+    {
+      "name": "shortest name (codepoints)",
+      "rows": [
+        {
+          "path": "/x/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/x/longer name 🎉.txt",
+          "name": "longer name 🎉.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 1
+        },
+        {
+          "path": "/x/sub/deeper/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 2
+        }
+      ],
+      "rules": [
+        {
+          "kind": "shortestName"
+        },
+        {
+          "kind": "shortestPath"
+        }
+      ],
+      "marks": [
+        "/x/longer name 🎉.txt",
+        "/x/sub/deeper/ä.txt"
+      ],
+      "undecided": [],
+      "reasons": {
+        "/x/ä.txt": 1
+      }
+    },
+    {
+      "name": "longest name",
+      "rows": [
+        {
+          "path": "/x/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/x/longer name 🎉.txt",
+          "name": "longer name 🎉.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 1
+        },
+        {
+          "path": "/x/sub/deeper/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 2
+        }
+      ],
+      "rules": [
+        {
+          "kind": "longestName"
+        }
+      ],
+      "marks": [
+        "/x/ä.txt",
+        "/x/sub/deeper/ä.txt"
+      ]
+    },
+    {
+      "name": "longest path",
+      "rows": [
+        {
+          "path": "/x/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 0
+        },
+        {
+          "path": "/x/longer name 🎉.txt",
+          "name": "longer name 🎉.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 1
+        },
+        {
+          "path": "/x/sub/deeper/ä.txt",
+          "name": "ä.txt",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "order": 2
+        }
+      ],
+      "rules": [
+        {
+          "kind": "longestPath"
+        }
+      ],
+      "marks": [
+        "/x/ä.txt",
+        "/x/sub/deeper/ä.txt"
+      ]
+    },
+    {
+      "name": "ties stay undecided and are marked so",
+      "rows": [
+        {
+          "path": "/a/x",
+          "name": "x",
+          "size": 100,
+          "modifiedMs": 5,
+          "group": 1
+        },
+        {
+          "path": "/b/x",
+          "name": "x",
+          "size": 100,
+          "modifiedMs": 5,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        },
+        {
+          "kind": "shortestName"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ],
+      "decisions": {
+        "/a/x": "undecided",
+        "/b/x": "undecided"
+      }
+    },
+    {
+      "name": "a missing time does not separate",
+      "rows": [
+        {
+          "path": "/a/x",
+          "name": "x",
+          "size": 100,
+          "modifiedMs": null,
+          "group": 1
+        },
+        {
+          "path": "/b/xx",
+          "name": "xx",
+          "size": 100,
+          "modifiedMs": 5,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        },
+        {
+          "kind": "shortestName"
+        }
+      ],
+      "marks": [
+        "/b/xx"
+      ],
+      "undecided": [],
+      "reasons": {
+        "/a/x": 1
+      }
+    },
+    {
+      "name": "larger resolution, then larger file",
+      "rows": [
+        {
+          "path": "/p/IMG.jpg",
+          "name": "IMG.jpg",
+          "size": 4000,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 4000,
+          "height": 3000
+        },
+        {
+          "path": "/p/IMG web.jpg",
+          "name": "IMG web.jpg",
+          "size": 300,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 800,
+          "height": 600
+        },
+        {
+          "path": "/p/IMG (1).jpg",
+          "name": "IMG (1).jpg",
+          "size": 4100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 4000,
+          "height": 3000
+        }
+      ],
+      "rules": [
+        {
+          "kind": "largerResolution"
+        },
+        {
+          "kind": "largerFile"
+        }
+      ],
+      "marks": [
+        "/p/IMG.jpg",
+        "/p/IMG web.jpg"
+      ]
+    },
+    {
+      "name": "resolution, then no copy suffix",
+      "rows": [
+        {
+          "path": "/p/IMG.jpg",
+          "name": "IMG.jpg",
+          "size": 4000,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 4000,
+          "height": 3000
+        },
+        {
+          "path": "/p/IMG web.jpg",
+          "name": "IMG web.jpg",
+          "size": 300,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 800,
+          "height": 600
+        },
+        {
+          "path": "/p/IMG (1).jpg",
+          "name": "IMG (1).jpg",
+          "size": 4100,
+          "modifiedMs": 1000,
+          "group": 1,
+          "width": 4000,
+          "height": 3000
+        }
+      ],
+      "rules": [
+        {
+          "kind": "largerResolution"
+        },
+        {
+          "kind": "noCopySuffix"
+        }
+      ],
+      "marks": [
+        "/p/IMG web.jpg",
+        "/p/IMG (1).jpg"
+      ]
+    },
+    {
+      "name": "resolution unknown separates nothing",
+      "rows": [
+        {
+          "path": "/a/1.bin",
+          "name": "1.bin",
+          "size": 1,
+          "modifiedMs": 1000,
+          "group": 1
+        },
+        {
+          "path": "/a/2.bin",
+          "name": "2.bin",
+          "size": 2,
+          "modifiedMs": 1000,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "largerResolution"
+        }
+      ],
+      "marks": [],
+      "undecided": [
+        1
+      ]
+    },
+    {
+      "name": "a linked file is kept first, its alias is the same file",
+      "rows": [
+        {
+          "path": "/h/orig",
+          "name": "orig",
+          "size": 100,
+          "modifiedMs": 50,
+          "group": 1,
+          "links": 2
+        },
+        {
+          "path": "/h/hard",
+          "name": "hard",
+          "size": 100,
+          "modifiedMs": 50,
+          "group": 1,
+          "links": 2,
+          "sameAs": "/h/orig"
+        },
+        {
+          "path": "/h/kopie",
+          "name": "kopie",
+          "size": 100,
+          "modifiedMs": 10,
+          "group": 1
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [
+        "/h/kopie"
+      ],
+      "undecided": [],
+      "decisions": {
+        "/h/orig": "keep",
+        "/h/hard": "same",
+        "/h/kopie": "delete"
+      },
+      "reasons": {
+        "/h/orig": "links",
+        "/h/kopie": "links"
+      }
+    },
+    {
+      "name": "two linked files: one stays, the other is spared",
+      "rows": [
+        {
+          "path": "/h/a",
+          "name": "a",
+          "size": 100,
+          "modifiedMs": 1,
+          "group": 1,
+          "links": 2
+        },
+        {
+          "path": "/h/b",
+          "name": "b",
+          "size": 100,
+          "modifiedMs": 2,
+          "group": 1,
+          "links": 3
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [],
+      "undecided": [],
+      "decisions": {
+        "/h/a": "keep",
+        "/h/b": "spare"
+      }
+    },
+    {
+      "name": "groups are decided one by one; a single file is kept",
+      "rows": [
+        {
+          "path": "/g1/a",
+          "name": "a",
+          "size": 100,
+          "modifiedMs": 1,
+          "group": 1
+        },
+        {
+          "path": "/g1/b",
+          "name": "b",
+          "size": 100,
+          "modifiedMs": 2,
+          "group": 1
+        },
+        {
+          "path": "/g2/a",
+          "name": "a",
+          "size": 100,
+          "modifiedMs": 7,
+          "group": 2
+        },
+        {
+          "path": "/g2/b",
+          "name": "b",
+          "size": 100,
+          "modifiedMs": 7,
+          "group": 2
+        },
+        {
+          "path": "/g3/only",
+          "name": "only",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 3
+        }
+      ],
+      "rules": [
+        {
+          "kind": "oldest"
+        }
+      ],
+      "marks": [
+        "/g1/b"
+      ],
+      "undecided": [
+        2
+      ],
+      "decisions": {
+        "/g3/only": "keep",
+        "/g2/a": "undecided"
+      }
+    },
+    {
+      "name": "no rules: every group undecided",
+      "rows": [
+        {
+          "path": "/g1/a",
+          "name": "a",
+          "size": 100,
+          "modifiedMs": 1,
+          "group": 1
+        },
+        {
+          "path": "/g1/b",
+          "name": "b",
+          "size": 100,
+          "modifiedMs": 2,
+          "group": 1
+        },
+        {
+          "path": "/g2/a",
+          "name": "a",
+          "size": 100,
+          "modifiedMs": 7,
+          "group": 2
+        },
+        {
+          "path": "/g2/b",
+          "name": "b",
+          "size": 100,
+          "modifiedMs": 7,
+          "group": 2
+        },
+        {
+          "path": "/g3/only",
+          "name": "only",
+          "size": 100,
+          "modifiedMs": 1000,
+          "group": 3
+        }
+      ],
+      "rules": [],
+      "marks": [],
+      "undecided": [
+        1,
+        2
+      ]
+    }
+  ],
+  "copyNames": {
+    "copies": [
+      "Kopie von a.jpg",
+      "Copy of a.jpg",
+      "a - Kopie.jpg",
+      "a - Copy.jpg",
+      "a - Copy (2).jpg",
+      "a copy.jpg",
+      "a copy 2.jpg",
+      "a (1).jpg",
+      "a(3).txt",
+      "a_copy.png",
+      "a Kopie (2).pdf",
+      "copie de a.doc",
+      "a - Copia.txt",
+      "Kopie"
+    ],
+    "originals": [
+      "a.jpg",
+      "copyright.txt",
+      "Kopierer.pdf",
+      "Photocopy.jpg",
+      "a (draft).jpg",
+      "IMG_0001.jpg",
+      "2024 (summary)",
+      "Recopy.txt",
+      ".copy"
+    ]
+  }
+}

@@ -72,7 +72,13 @@ without stutter.
 - **Flat view** (`Ctrl+B` / `⌘B`) like Total Commander – every file below the folder in one list with a *Path*
   column, in the same tab; mark, copy, move, delete, rename and multi-rename across all subfolders, back with the
   same key
-- **Find duplicates** by content (SHA-256) or size, with “keep newest / oldest / first” helpers
+- **Find duplicates** by content (SHA-256, optionally byte by byte), **similar images** (perceptual hash: other
+  quality, size or format) or **similar comics** (`.cbz`/`.cbr`/`.cb7`); hard links are shown as “same file”.
+  **Rules decide which file stays** (oldest, newest, shortest name/path, path pattern, folder, no “copy” name,
+  higher resolution …) – the first rule that tells the files apart decides, ties stay unmarked. A group view with
+  thumbnails on the other side, `Enter` keeps the file under the cursor. Deleting only after a confirmation with
+  the pictures: to the trash, permanently or into a folder – every copy is compared with the kept file right
+  before
 - **Compare files** – two files side by side with line numbers and coloured differences (ignore white space or
   case, whole file or only the changes, `F7` jumps to the next one), binaries byte by byte; or hand them to
   FileMerge, WinMerge or Meld
@@ -197,6 +203,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
 | Quick view | `Ctrl+Q` | `⌃Q` |
 | Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
+| Find duplicates / next, previous group | `Alt+Shift+F7` / `Alt+↓`, `Alt+↑` | `⌥⇧F7` / `⌥↓`, `⌥↑` |
 | Properties / change attributes | `Alt+Enter` / `Ctrl+Shift+F2` | `⌘I` / `⌘⇧F2` |
 | Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
 | Connect to server | `Ctrl+K`, `Ctrl+N` | `⌘K`, `⌘N` |
@@ -285,4 +292,4 @@ is still moving fast, please open an issue before starting a larger pull request
 
 [MIT](LICENSE) © Marc Kronberg
 
-Third-party licenses: [docs/licenses.md](docs/licenses.md).
+Third-party licenses: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) (full texts, shipped with the app), overview in [docs/licenses.md](docs/licenses.md).

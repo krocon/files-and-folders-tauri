@@ -159,9 +159,27 @@
             <span class="spinner" aria-hidden="true"></span>
             <span class="search-roots">· {{ dupProgress() }}</span>
           } @else {
+            @if (r.duplicates?.mode && r.duplicates.mode !== 'exact') {
+              <span class="search-roots">· {{ dupTexts.modeLabel(r.duplicates.mode) }}</span>
+            }
             <span class="search-count">· {{ dupSummary() }}</span>
             @if (r.duplicates?.compare === 'size') {
               <span class="warn" role="note">· {{ dupTexts.sizeOnlyHeader }}</span>
+            }
+            @if (dupDecided(); as dd) {
+              <span class="search-count">· {{ dd.toDelete }}</span>
+              @if (dd.undecided) {
+                <span class="warn">· {{ dd.undecided }}</span>
+              }
+              @if (dd.withoutKeep) {
+                <span class="warn" role="note">· {{ dd.withoutKeep }}</span>
+              }
+              @if (dd.unsupported > 0) {
+                <span class="search-roots">· {{ dupTexts.unsupported(dd.unsupported) }}</span>
+              }
+              @if (dd.error) {
+                <span class="warn" role="alert">· {{ dd.error }}</span>
+              }
             }
             @if (r.cancelled) {
               <span class="warn">· {{ searchTexts.cancelled }}</span>
@@ -184,31 +202,35 @@
           {{ searchTexts.stop }}
         </button>
       } @else if (r && r.hits.length > 0 && r.duplicates?.compare !== 'size') {
-        <span class="dup-keep" role="group" [attr.aria-label]="dupTexts.keepTitle">
-          <span aria-hidden="true">{{ dupTexts.keep }}</span>
+        <span class="dup-keep" role="group" [attr.aria-label]="dupTexts.ruleSetLabel">
+          <select
+            class="head-select"
+            [attr.aria-label]="dupTexts.ruleSetLabel"
+            [attr.title]="dupTexts.ruleSetLabel"
+            (change)="chooseSet($event)"
+          >
+            @for (id of dupSetIds(); track id) {
+              <option [value]="id" [selected]="id === dupSet()">{{ dupSetLabel(id) }}</option>
+            }
+          </select>
           <button
             type="button"
             class="btn small"
-            [attr.title]="dupTexts.keepTitle"
-            (click)="keep('newest')"
+            [attr.title]="dupTexts.applyTitle"
+            (click)="dupApply()"
           >
-            {{ dupTexts.keepNewest }}
+            {{ dupTexts.apply }}
+          </button>
+          <button type="button" class="btn small" (click)="dupRules()">
+            {{ dupTexts.rulesButton }}
           </button>
           <button
             type="button"
             class="btn small"
-            [attr.title]="dupTexts.keepTitle"
-            (click)="keep('oldest')"
+            [attr.title]="dupTexts.deleteTitle"
+            (click)="dupDelete()"
           >
-            {{ dupTexts.keepOldest }}
-          </button>
-          <button
-            type="button"
-            class="btn small"
-            [attr.title]="dupTexts.keepTitle"
-            (click)="keep('first')"
-          >
-            {{ dupTexts.keepFirst }}
+            {{ dupTexts.deleteButton }}
           </button>
         </span>
       }
@@ -375,10 +397,12 @@
   [id]="'fnf-pane-' + side()"
   [attr.aria-labelledby]="'fnf-tab-' + tab().id"
   [class.fnf-active-panel]="active()"
-  [class.quick-on]="quickView() || chartScan() !== null"
+  [class.quick-on]="quickView() || chartScan() !== null || dupGroupOf() !== null"
 >
   @if (chartScan(); as cid) {
     <app-disk-usage-chart class="quick" [scanId]="cid" [side]="otherSide()" />
+  } @else if (dupGroupOf(); as dside) {
+    <app-duplicate-group-view class="quick" [side]="dside" />
   } @else if (quickView()) {
     <app-quick-view class="quick" />
   }

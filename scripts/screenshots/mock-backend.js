@@ -186,8 +186,9 @@
     // the tree exists before the id returns: the app reads it at once
     if (spec.kind === 'diskUsage') scans[id] = buildScan(spec.roots ?? []);
     setTimeout(() => {
-      if (spec.kind === 'search') {
-        const hits = searchHits(spec.criteria ?? {});
+      if (spec.kind === 'search' || spec.kind === 'duplicates') {
+        const hits =
+          spec.kind === 'search' ? searchHits(spec.criteria ?? {}) : duplicateHits(spec.criteria ?? {});
         const stats = {
           hits: hits.length,
           dirsScanned: 42,
@@ -195,6 +196,7 @@
           unreadable: 0,
           elapsedMs: 38,
           truncated: false,
+          groups: new Set(hits.map((h) => h.group).filter((g) => g !== undefined)).size,
         };
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         send({ type: 'searchHits', id, hits, stats });
@@ -259,6 +261,49 @@
       big('demo-recording.mov', Math.round(410 * mb), '2026-10-01T11:20:00'),
     ]);
     add(`${home}/Downloads`, [big('ubuntu-26.04-desktop-arm64.iso', Math.round(3.4 * gb), '2026-10-19T20:00:00')]);
+  }
+
+  // Scene option `mock.duplicates`: copies under other names (design 016 E6/042), so the
+  // duplicate tab has groups to show – only for that scene.
+  if (cfg.mock?.duplicates) {
+    const copy = (name, size, modified) => ({
+      name,
+      kind: 'file',
+      targetKind: null,
+      size,
+      modifiedMs: Date.parse(`${modified}Z`),
+      hidden: false,
+      lossyName: false,
+    });
+    const add = (dir, list) => (dirs[dir] = [...(dirs[dir] ?? []), ...list]);
+    add(`${home}/Downloads`, [
+      copy('Lease agreement (1).pdf', 845 * 1024, '2026-10-03T09:12:00'),
+      copy('cover.jpg', 380 * 1024, '2026-09-30T21:40:00'),
+      copy('Budget 2026 - Kopie.xlsx', 38 * 1024, '2026-10-17T08:05:00'),
+    ]);
+  }
+
+  /** Duplicates of the demo tree: files of the same size (the mock has no contents). */
+  function duplicateHits(c) {
+    const bySize = new Map();
+    for (const root of c.roots ?? []) {
+      for (const e of walk(root, null, c.excludes ?? [], c.includeHidden)) {
+        if (e.kind !== 'file' || (e.size ?? 0) < (c.minSize ?? 1)) continue;
+        const list = bySize.get(e.size) ?? [];
+        list.push(e);
+        bySize.set(e.size, list);
+      }
+    }
+    const groups = [...bySize.values()]
+      .filter((g) => g.length > 1)
+      .sort((a, b) => b[0].size * (b.length - 1) - a[0].size * (a.length - 1));
+    return groups.flatMap((g, i) =>
+      g.map((e) => {
+        const dir = parentOf(e.path);
+        const names = dir.split('/').filter(Boolean).reverse();
+        return { ...e, dir, parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''], group: i + 1 };
+      }),
+    );
   }
 
   const scans = {};

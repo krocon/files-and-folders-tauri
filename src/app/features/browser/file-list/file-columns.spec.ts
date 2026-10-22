@@ -151,18 +151,21 @@ describe('createFileColumns', () => {
       'size',
       'modifiedMs',
       'group',
+      'decision',
+      'pixels',
       'share',
       'items',
       'dir',
       'relDir',
     ]);
-    // the group column belongs to duplicate tabs (design 016), share/objects to disk-usage
-    // tabs (design 033), the folder column to search result tabs (design 009), the path
-    // column to the flat view (design 038) – all hidden
-    for (const i of [4, 5, 6, 7, 8]) {
+    // the group, decision and pixels columns belong to duplicate tabs (design 016, 042),
+    // share/objects to disk-usage tabs (design 033), the folder column to search result tabs
+    // (design 009), the path column to the flat view (design 038) – all hidden
+    for (const i of [4, 5, 6, 7, 8, 9, 10]) {
       expect(cols[i].isVisible?.()).toBe(false);
     }
-    expect(cols.every((c) => c.sortable?.())).toBe(true);
+    // the decision follows the marks: not sortable (rows would move under the cursor)
+    expect(cols.filter((c) => !c.sortable?.()).map((c) => c.property)).toEqual(['decision']);
     expect(cols[0].sortState).toBe('asc');
     expect(cols[1].valueGetter?.(entry('x.json'), {} as never)).toBe('json');
   });

@@ -38,6 +38,11 @@ import {
 import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
 import { FileBrowserStore } from '../file-browser.store';
+import { DuplicatesStore } from '../../duplicates/duplicates.store';
+import { DUP_TEXTS } from '../../duplicates/duplicates-texts';
+import { DecisionView } from '../../duplicates/duplicate-renderers';
+import { markedGroups, shownDecision } from '../../duplicates/duplicates-rules';
+import { SearchHit } from '../../../core/search/search.models';
 import { FileListController } from './file-list-controller';
 import { createFileTable, HEADER_HEIGHT } from './file-table-model';
 import { TEXTS } from '../../workspace/texts';
@@ -102,6 +107,14 @@ export class FileList implements OnDestroy {
   readonly side = input<Side | null>(null);
 
   private readonly dnd = inject(DragStore);
+  private readonly dup = inject(DuplicatesStore);
+  /** Duplicate tab: rows by path and the groups with marks, for the decision column. */
+  private dupCache: {
+    readonly rows: readonly DirEntry[];
+    readonly marks: ReadonlySet<string>;
+    readonly byPath: ReadonlyMap<string, SearchHit>;
+    readonly groups: ReadonlySet<number>;
+  } | null = null;
   /** The folder row of this list a drag would drop into. */
   private readonly dropRow = computed(() => {
     const t = this.dnd.drag()?.target;
@@ -186,6 +199,7 @@ export class FileList implements OnDestroy {
     });
     effect(() => {
       this.store.marked();
+      this.dup.decided(); // the decision column (design 042)
       this.dropRow();
       this.store.animatedSizePaths();
       this.store.removingShown();
@@ -218,6 +232,8 @@ export class FileList implements OnDestroy {
       dir: c.folder,
       relDir: c.path,
       group: c.group,
+      decision: DUP_TEXTS.decisionColumn,
+      pixels: DUP_TEXTS.resolutionColumn,
       share: USAGE_TEXTS.shareColumn,
       items: USAGE_TEXTS.itemsColumn,
     };
@@ -288,6 +304,7 @@ export class FileList implements OnDestroy {
       isDropTarget: (path) => this.dropRow() === path,
       isCalculatingSize: (path) => this.store.isSizeAnimated(path),
       removing: (path) => this.store.removingOf(path),
+      dupDecision: (path) => this.dupDecision(path),
     });
     const side = this.side();
     if (side) {
@@ -629,11 +646,22 @@ export class FileList implements OnDestroy {
       this.bridge?.setColumnVisible('share', usage);
       this.bridge?.setColumnVisible('items', usage);
       // disk usage: the name needs the room the share bar takes (design 033)
-      this.bridge?.setColumnVisible('ext', !usage);
-      this.bridge?.setColumnVisible('modifiedMs', !usage);
+      // duplicates (design 042): the decision needs the room – the name shows the extension
       this.bridge?.setColumnVisible(
-        'group',
-        this.store.searchKey() !== null && this.store.searchKind() === 'duplicates',
+        'ext',
+        !usage && !(this.store.searchKey() !== null && this.store.searchKind() === 'duplicates'),
+      );
+      this.bridge?.setColumnVisible('modifiedMs', !usage);
+      const dupTab = this.store.searchKey() !== null && this.store.searchKind() === 'duplicates';
+      this.bridge?.setColumnVisible('group', dupTab);
+      // decisions only where contents (or looks) were compared (design 042 E1)
+      this.bridge?.setColumnVisible(
+        'decision',
+        dupTab && !this.dup.sizeOnlyKey(this.store.searchKey()),
+      );
+      this.bridge?.setColumnVisible(
+        'pixels',
+        dupTab && rows.some((r) => (r as SearchHit).width !== undefined),
       );
       this.applyEmptyText(rows.length === 0);
     } finally {
@@ -644,6 +672,46 @@ export class FileList implements OnDestroy {
         }
       }, 400);
     }
+  }
+
+  /** The "Decision" cell of a duplicate row (design 042 E1): the marks are the truth. */
+  private dupDecision(path: string): DecisionView | null {
+    const key = this.store.searchKey();
+    if (key === null || this.store.searchKind() !== 'duplicates') {
+      return null;
+    }
+    const rows = this.store.entries();
+    const marks = this.store.marked();
+    let c = this.dupCache;
+    if (!c || c.rows !== rows || c.marks !== marks) {
+      const hits = rows as readonly SearchHit[];
+      c = {
+        rows,
+        marks,
+        byPath: new Map(hits.map((h) => [h.path, h])),
+        groups: markedGroups(hits, marks),
+      };
+      this.dupCache = c;
+    }
+    const row = c.byPath.get(path);
+    if (!row) {
+      return null;
+    }
+    const d = shownDecision(
+      row,
+      marks.has(path),
+      row.group !== undefined && c.groups.has(row.group),
+      this.dup.decisionOf(key, path),
+    );
+    if (!d) {
+      return null;
+    }
+    return {
+      kind: d.decision,
+      text: DUP_TEXTS.decision[d.decision] ?? d.decision,
+      reason: this.dup.reasonLabel(key, d.reason),
+      title: DUP_TEXTS.decisionTitle[d.decision] ?? null,
+    };
   }
 
   ngOnDestroy(): void {

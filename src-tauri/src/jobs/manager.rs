@@ -382,6 +382,23 @@ impl JobManager {
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
                     }
+                    JobSpec::Dedupe {
+                        groups,
+                        action,
+                        target_dir,
+                        verify,
+                        threshold,
+                        ..
+                    } => super::dedupe::run(
+                        id,
+                        groups,
+                        *action,
+                        target_dir.as_deref().map(std::path::Path::new),
+                        *verify,
+                        *threshold,
+                        &control,
+                        &emit,
+                    ),
                     JobSpec::Checksum {
                         paths,
                         base_dir,
@@ -970,6 +987,15 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             all_any(expected.iter_mut().map(|e| &mut e.path))
         }
         JobSpec::Rename { items, .. } => all(items.iter_mut().map(|i| &mut i.path)),
+        JobSpec::Dedupe {
+            groups, target_dir, ..
+        } => {
+            for g in groups.iter_mut() {
+                one(&mut g.keep.path)?;
+                all(g.remove.iter_mut().map(|e| &mut e.path))?;
+            }
+            target_dir.as_mut().map_or(Ok(()), one)
+        }
         JobSpec::Group { root, items, .. } => {
             one(root)?;
             all(items.iter_mut().map(|i| &mut i.path))
@@ -1259,6 +1285,22 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::Duplicates { criteria } => {
             crate::duplicates::compile(criteria)?;
+        }
+        JobSpec::Dedupe {
+            groups,
+            action,
+            target_dir,
+            allow_dangerous,
+            ..
+        } => {
+            super::dedupe::validate(groups, *action, target_dir.as_deref())?;
+            for e in groups.iter().flat_map(|g| g.remove.iter()) {
+                check_danger_with(
+                    &mut danger,
+                    &validate_input_path(&e.path)?,
+                    *allow_dangerous,
+                )?;
+            }
         }
         JobSpec::Checksum {
             paths,

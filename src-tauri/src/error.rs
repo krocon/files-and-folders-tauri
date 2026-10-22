@@ -104,6 +104,10 @@ pub enum FsErrorCode {
     InvalidUrl,
     /// The connection profile does not exist (any more).
     UnknownProfile,
+    /// Duplicates (design 042): an image that cannot be read safely (format, broken, too large).
+    UnsupportedImage,
+    /// Duplicates (design 042 E5): the kept file or a copy changed since the search – left alone.
+    DuplicateChanged,
     Io,
 }
 

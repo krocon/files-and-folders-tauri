@@ -51,6 +51,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'invalid_profile',
   'invalid_url',
   'unknown_profile',
+  'unsupported_image',
+  'duplicate_changed',
   'invalid_path',
   'no_home_directory',
   'io',

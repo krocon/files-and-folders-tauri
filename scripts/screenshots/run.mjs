@@ -226,7 +226,7 @@ async function capture(browser, theme, scene, target) {
     await page.goto(baseUrl, { waitUntil: 'load' });
     await page.waitForFunction(
       () =>
-        document.querySelectorAll('guiexpert-table').length >= 2 &&
+        document.querySelectorAll('guiexpert-table, guiexpert-table-signal').length >= 2 &&
         document.body.innerText.includes('IMG_4711.jpg'),
       undefined,
       { timeout: 20000 },

@@ -13,6 +13,7 @@ import { DirEntry } from '../../../core/fs/fs.models';
 import { createFileColumns } from './file-columns';
 import { RenameEditor } from './rename-editor';
 import { TEXTS } from '../../workspace/texts';
+import type { DecisionView } from '../../duplicates/duplicate-renderers';
 
 export const ROW_HEIGHT = 30;
 export const HEADER_HEIGHT = 30;
@@ -28,6 +29,8 @@ export interface FileRowState {
   isCalculatingSize?(path: string): boolean;
   /** A running delete/move takes the entry away: progress 0–1, `null` unknown, `undefined` no. */
   removing?(path: string): number | null | undefined;
+  /** Duplicate tab (design 042 E1): what the "Decision" column shows. */
+  dupDecision?(path: string): DecisionView | null;
 }
 
 /**
@@ -96,6 +99,12 @@ export class FileBodyModel extends AreaModelObjectArrayWithColumndefs<DirEntry> 
   /** The table never writes a cell: renaming goes through Rust, then the folder reloads. */
   override setValue(): boolean {
     return false;
+  }
+
+  /** Used by the decision renderer of a duplicate tab (design 042 E1). */
+  dupDecisionAt(rowIndex: number): DecisionView | null {
+    const entry = this.getRowByIndex(rowIndex) as DirEntry | undefined;
+    return entry ? (this.state.dupDecision?.(entry.path) ?? null) : null;
   }
 
   /** Used by the name renderer: marked rows show a check mark instead of the icon (as in the old version). */

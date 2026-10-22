@@ -908,6 +908,7 @@ pub fn spawn_error(e: &io::Error, program: &str) -> FsError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use std::fs;
     use tempfile::tempdir;
 

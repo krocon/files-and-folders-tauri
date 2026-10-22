@@ -103,6 +103,24 @@ pub fn format_of_name(name: &str) -> Option<ArchiveFormat> {
     }
 }
 
+/// Comic book archives (design 042 E7): `.cbz` = ZIP, `.cbr` = RAR, `.cb7` = 7z, `.cbt` = TAR.
+/// Only the duplicate search reads them through [`read_index`]; the panel keeps opening
+/// them as files (with the comic reader of the system).
+pub fn comic_format(name: &str) -> Option<ArchiveFormat> {
+    let n = name.to_lowercase();
+    let (stem, ext) = n.rsplit_once('.')?;
+    if stem.is_empty() {
+        return None;
+    }
+    match ext {
+        "cbz" => Some(ArchiveFormat::Zip),
+        "cbt" => Some(ArchiveFormat::Tar),
+        "cb7" => Some(ArchiveFormat::SevenZ),
+        "cbr" if cfg!(feature = "rar") => Some(ArchiveFormat::Rar),
+        _ => None,
+    }
+}
+
 /// The archive name without its extension (`Fotos.tar.gz` → `Fotos`) – folder for "unpack into a subfolder".
 pub fn stem_of(name: &str) -> String {
     let lower = name.to_lowercase();
@@ -489,7 +507,7 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
     let format = path
         .file_name()
         .and_then(|n| n.to_str())
-        .and_then(format_of_name)
+        .and_then(|n| format_of_name(n).or_else(|| comic_format(n)))
         .ok_or_else(|| {
             archive_error("Not a supported archive (ZIP, TAR, TAR.GZ, 7z, RAR)", path)
         })?;

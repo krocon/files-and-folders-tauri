@@ -25,6 +25,15 @@ describe('panel styles', () => {
     expect(splitter).not.toContain('opacity');
   });
 
+  it('small buttons in the header are no higher than its text (Keep newest/…/Search again, 042)', () => {
+    const css = readFileSync('src/app/features/workspace/file-panel.css', 'utf8');
+    // `.btn` brings min-height 36px and min-width 80px from controls.css – too high for the header bar
+    const small = rule(css, '.btn.small');
+    expect(small).toContain('min-height: 0');
+    expect(small).toContain('min-width: 0');
+    expect(small).toContain('line-height: inherit');
+  });
+
   it('the menus of the button bar take no place in its flex row (Actions/Tasks stay right)', () => {
     const css = readFileSync('src/app/features/workspace/button-bar/button-bar.css', 'utf8');
     expect(rule(css, 'app-actions-menu,\napp-context-menu')).toContain('display: contents');

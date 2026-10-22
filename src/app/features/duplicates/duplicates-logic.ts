@@ -89,13 +89,15 @@ export function duplicateSummary(rows: readonly DirEntry[]): {
   let files = 0;
   let redundant = 0;
   for (const group of groupsOf(rows).values()) {
-    // a group whose other files were deleted is no duplicate any more
-    if (group.length < 2) {
+    // names of one file are one unit (hard links, design 042 E4): a group whose other
+    // files were deleted – or that is only a file and its links – is no duplicate any more
+    const units = new Set(group.map((e) => (e as SearchHit).sameAs ?? e.path)).size;
+    if (units < 2) {
       continue;
     }
     groups++;
     files += group.length;
-    redundant += (group[0].size ?? 0) * (group.length - 1);
+    redundant += (group[0].size ?? 0) * (units - 1);
   }
   return { groups, files, redundant };
 }

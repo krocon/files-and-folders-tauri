@@ -152,6 +152,27 @@ pub struct SearchHit {
     /// Duplicate search (design 016 E6): the group the file belongs to (1 = most wasted bytes).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<u32>,
+    /// Duplicates (design 042): position in the walk – rule "first found".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<u32>,
+    /// Duplicates (042 E4): this name is a hard link of the file at that path – the same
+    /// file, never a copy to delete.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub same_as: Option<String>,
+    /// Duplicates (042 E4): the file has this many names (> 1) – deleting one frees nothing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<u32>,
+    /// Similar images (042 E6): size in pixels (comics: of the title page).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    /// Comics (042 E7): number of pages.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pages: Option<u32>,
+    /// Similar images/comics: differing bits to the group's centre (0 = the centre or the same).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<u8>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -168,6 +189,11 @@ pub struct SearchStats {
     pub groups: u64,
     pub bytes_to_hash: u64,
     pub bytes_hashed: u64,
+    /// Similar images/comics (design 042): files to fingerprint / done.
+    pub images_total: u64,
+    pub images_done: u64,
+    /// Images in a format we cannot read (HEIC, AVIF) – counted, skipped.
+    pub skipped_unsupported: u64,
 }
 
 struct ContentMatcher {
@@ -651,6 +677,13 @@ pub fn walk(c: &Compiled, cancel: &AtomicBool, sink: &mut Sink<'_>) -> WalkResul
                 rel_dir: rel_dir.clone(),
                 parent_names: dir_parents.clone(),
                 group: None,
+                order: None,
+                same_as: None,
+                links: None,
+                width: None,
+                height: None,
+                pages: None,
+                distance: None,
             };
             stats.hits += 1;
             stats.elapsed_ms = start.elapsed().as_millis() as u64;

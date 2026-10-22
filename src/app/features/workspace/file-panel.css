@@ -250,6 +250,8 @@
 .search-head {
   justify-content: flex-start;
   gap: var(--spacing-1);
+  /* the title and the start of the summary stay visible next to the buttons (042) */
+  min-width: 7rem;
   font-family: var(--font-sans);
   cursor: default;
 
@@ -337,9 +339,15 @@
   }
 }
 
+/* a compact button in the header bar: `.btn` (controls.css) is 36 px high and 80 px wide –
+   that pushed the duplicate tab's header apart (Keep newest/oldest/first, Search again) */
 .btn.small {
   flex: none;
+  min-height: 0;
+  min-width: 0;
   padding: 0 var(--spacing-2);
+  line-height: inherit;
+  white-space: nowrap;
 }
 
 /* inside an archive (design 016 E1): read-only hint next to the breadcrumbs */
@@ -357,10 +365,26 @@
   }
 }
 
-/* selection helpers of a duplicate tab (design 016 E6) */
+/* a select in the header bar: as compact as the small buttons (rule set, design 042) */
+.head-select {
+  flex: 0 1 auto;
+  min-width: 3rem;
+  max-width: 9rem;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--spacing-1);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: inherit;
+}
+
+/* rules and delete of a duplicate tab (design 016 E6, 042): may shrink (the select first),
+   the title and the summary keep some room */
 .dup-keep {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
   gap: var(--spacing-1);
   font-size: var(--font-size-sm);

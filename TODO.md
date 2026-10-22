@@ -88,14 +88,19 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 
 ## 3. CI und Plattformen
 
-- [ ] Workflow-Vorlagen aus `docs/ci/` übernehmen (`docs/ci/README.md`) – erster Windows-/macOS-Lauf deckt
-      `#[cfg]`-Code aus 006–016 auf, der im Container nie kompiliert wurde (Fehler wahrscheinlich).
+- [ ] **Actions auf GitHub einschalten**: Stand 22.10.2026 gibt es trotz `.github/workflows/ci.yml` auf `main` keinen
+      einzigen Lauf und keinen registrierten Workflow (Settings → Actions → General → „Allow all actions“). Danach die
+      Vorlagen aus `docs/ci/` übernehmen (`docs/ci/README.md`).
+- [x] `#[cfg]`-Code für Windows/macOS kompiliert: Cross-Check `pnpm rust:cross` (clippy, Lib + Tests) für
+      x86_64-pc-windows-msvc, aarch64-apple-darwin, x86_64-apple-darwin grün (22.10.2026). Offen bleibt das
+      **Verhalten** auf echten Systemen (Tests laufen nur in der CI bzw. auf Marcs Mac).
 - [ ] Windows: Papierkorb je Laufwerk prüfen (006 Review #5), atomares Umbenennen im Fallback (`MoveFileExW`,
       007 #6), Pause der Watcher bei Move/Rename (012 #3, nur plattformneutral getestet).
-- [ ] `THIRD-PARTY-NOTICES` erzeugen (Lizenz MIT ist festgelegt); UnRAR-Lizenzabsatz ist Pflicht (`docs/licenses.md`).
-- [ ] CI muss neu den Code aus 022–031 für macOS/Windows kompilieren: `platform/attributes.rs` (`Dir`, `setattrlistat`,
-      `SetFileInformationByHandle`), `entry_id`, `make_symlink`, `platform/origin_mark.rs`, UnRAR-C++-Build
-      (Xcode/MSVC, Feature `rar`). Rust ≥ 1.93 in den Workflow-Vorlagen (`docs/ci/`) prüfen.
+- [x] `THIRD-PARTY-NOTICES.txt` (22.10.2026): `pnpm notices`, in jedem Paket, geprüft in `pnpm check` (`docs/release.md`).
+- [ ] About-Dialog: Link „Drittlizenzen“ auf die mitgelieferte `THIRD-PARTY-NOTICES.txt` (Ressourcenpfad über Tauri).
+- [ ] CI: Tests von `platform/attributes.rs` (`setattrlistat`, `SetFileInformationByHandle`), `entry_id`,
+      `make_symlink`, `platform/origin_mark.rs`, Papierkorb/Hardlinks (042) auf macOS/Windows **ausführen**; der
+      UnRAR-C++-Build (Xcode/MSVC, Feature `rar`) wird vom Cross-Check nicht gebaut (Platzhalter-Compiler).
 
 ## 4. Kleinere offene Punkte
 
@@ -109,6 +114,14 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] 031: „Verknüpfung anlegen“ im Kontextmenü der Liste.
 - [ ] Flackernd unter Last: `watch::tests::a_busy_target_holds_its_reload_until_the_job_ends` (wie der Rescan-Test).
 
+- [ ] Flackernder Test (22.10., vor 042 gefunden): `jobs::tests_remote::sftp_up_down_conflicts_move_delete` und
+      `ftp_up_down_conflicts_move_delete` – Kopie Server → Server endet als `DoneWithErrors` statt `Done` (Zeile
+      124), etwa jeder 3. Lauf von `cargo test --lib tests_remote`, allein nie. Verdacht: Testserver/Pool unter
+      gleichzeitigen Tests.
+- [ ] 042: HEIC/AVIF für ähnliche Bilder (bräuchte libheif/dav1d); Fortschritt während der Gruppierung (nur Bilder
+      zählen); Windows: `FileIdInfo` (128-Bit-Ids auf ReFS) statt `nFileIndex`; Bildersuche auf macOS/Windows
+      messen (Release, 4 Worker). **Bei Marc prüfen:** Papierkorb unter macOS/Windows aus dem Job `dedupe`, Hardlinks
+      unter Windows (NTFS) als „gleiche Datei“.
 - [ ] Flackernder Test: `watch::tests::a_mass_change_becomes_a_rescan` scheiterte einmal im Gesamtlauf (timing).
 - [ ] Bundle-Budget auf 1,5 MB angehoben (Merge 009) – Dialoge per `@defer` nachladen, dann zurücksetzen.
 - [ ] 019: Kontrast-Korrekturen in `docs/legacy-themes-contrast.md` durchsehen; Fehlertext in Dialogen hat kein

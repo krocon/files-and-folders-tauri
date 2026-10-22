@@ -59,6 +59,7 @@ fn lock() -> std::sync::MutexGuard<'static, Cache> {
 
 /// A folder only we may enter (0700 on Unix); fails if it exists already.
 fn create_private_dir(dir: &Path) -> io::Result<()> {
+    #[cfg_attr(not(unix), allow(unused_mut))] // the mode is set on Unix only
     let mut b = fs::DirBuilder::new();
     #[cfg(unix)]
     {
@@ -165,6 +166,18 @@ fn run_dir(c: &mut Cache) -> Result<PathBuf, FsError> {
         "No folder for files opened from archives",
         None,
     ))
+}
+
+/// A fresh private folder inside this run's folder for a short-lived extraction
+/// (comic pages for the duplicate search, design 042 E7). The caller removes it with
+/// [`remove_tree`]; whatever is left goes with the run folder at exit.
+pub(crate) fn scratch_dir() -> Result<PathBuf, FsError> {
+    let mut c = lock();
+    let run = run_dir(&mut c)?;
+    c.next += 1;
+    let dir = run.join(format!("s{}", c.next));
+    create_private_dir(&dir).map_err(|e| FsError::from_io(&e, &dir))?;
+    Ok(dir)
 }
 
 fn evict(c: &mut Cache) {

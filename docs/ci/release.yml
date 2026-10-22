@@ -84,6 +84,9 @@ jobs:
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
+      # THIRD-PARTY-NOTICES.txt goes into every package (tauri.conf.json `bundle.resources`):
+      # refuse to ship it out of date (`pnpm notices` regenerates it)
+      - run: pnpm notices:check
 
       # --- Windows code signing (optional) ------------------------------------------
       # Imports a .pfx (base64 in WINDOWS_CERTIFICATE) into the user store and tells

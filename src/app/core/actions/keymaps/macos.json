@@ -82,5 +82,7 @@
   "OPEN_STARTER_MENU": ["Alt+S"],
   "OPEN_TASK_DLG": ["Ctrl+K F6"],
   "NEXT_THEME": ["Mod+Ctrl+Alt+T"],
-  "OPEN_SETUP_DLG": ["Mod+,"]
+  "OPEN_SETUP_DLG": ["Mod+,"],
+  "DUP_NEXT_GROUP": ["Alt+ArrowDown"],
+  "DUP_PREV_GROUP": ["Alt+ArrowUp"]
 }

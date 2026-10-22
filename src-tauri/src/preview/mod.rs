@@ -312,7 +312,7 @@ impl ServeSlots {
 }
 
 /// 128 unpredictable bits without a crate: SipHash with the process' random keys.
-fn random_token(counter: u64) -> String {
+pub(crate) fn random_token(counter: u64) -> String {
     use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
     let nanos = std::time::SystemTime::now()

@@ -27,24 +27,17 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: fnfpreview: http://fnfpreview.localhost; font-src 'self' data:; connect-src ipc: http://ipc.localhost",
       "devCsp": null,
-      "dangerousDisableAssetCspModification": [
-        "style-src"
-      ]
+      "dangerousDisableAssetCspModification": ["style-src"]
     }
   },
   "bundle": {
     "active": true,
     "license": "MIT",
     "licenseFile": "../LICENSE",
-    "targets": [
-      "deb",
-      "rpm",
-      "appimage",
-      "dmg",
-      "app",
-      "msi",
-      "nsis"
-    ],
+    "resources": {
+      "../THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt"
+    },
+    "targets": ["deb", "rpm", "appimage", "dmg", "app", "msi", "nsis"],
     "publisher": "Marc Kronberg",
     "copyright": "© 2026 Marc Kronberg",
     "homepage": "https://github.com/krocon/files-and-folders-tauri",
@@ -90,10 +83,7 @@
       },
       "nsis": {
         "installMode": "currentUser",
-        "languages": [
-          "English",
-          "German"
-        ],
+        "languages": ["English", "German"],
         "displayLanguageSelector": false
       }
     },
