@@ -11,6 +11,7 @@
 //! and the result does not depend on chains.
 
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
 /// Side of the grey image the DCT runs on.
@@ -89,35 +90,103 @@ pub fn aspect_differs(a: (u32, u32), b: (u32, u32)) -> bool {
     (ra - rb).abs() / ra.max(rb) > 0.10
 }
 
+/// Bit blocks (shift, mask) for the multi-index: `threshold + 1` blocks over 64 bits.
+/// Two hashes at most `threshold` bits apart agree in at least one block (pigeonhole).
+fn blocks(threshold: u32) -> Vec<(u32, u64)> {
+    let k = threshold + 1;
+    let (base, extra) = (64 / k, 64 % k);
+    let mut out = Vec::with_capacity(k as usize);
+    let mut shift = 0;
+    for b in 0..k {
+        let len = base + u32::from(b < extra);
+        let mask = if len >= 64 {
+            u64::MAX
+        } else {
+            (1u64 << len) - 1
+        };
+        out.push((shift, mask));
+        shift += len;
+    }
+    out
+}
+
 /// Groups `items` (see the module docs): `order` decides who becomes a centre first,
 /// `dist` is `None` for "never similar". Returns groups of ≥ 2 members as
 /// `(index, distance to the centre)`, the centre first with distance 0, the others by
 /// distance and index. `cancelled` is polled once per centre.
+///
+/// `key` (optional): a 64-bit hash with `hamming(key(a), key(b)) ≤ dist(a, b)`. Then only
+/// items sharing a bit block with the centre are compared (multi-index hashing) instead
+/// of every free item – the same result, far fewer comparisons for many unique pictures
+/// (review 042 #3).
 pub fn cluster<T>(
     items: &[T],
     order: impl Fn(&T, &T) -> Ordering,
     dist: impl Fn(&T, &T) -> Option<u32>,
     threshold: u32,
+    key: Option<&dyn Fn(&T) -> u64>,
     cancelled: &dyn Fn() -> bool,
 ) -> Vec<Vec<(usize, u32)>> {
     let mut sorted: Vec<usize> = (0..items.len()).collect();
     sorted.sort_by(|&a, &b| order(&items[a], &items[b]).then(a.cmp(&b)));
-    // the free items in centre order; members leave the list as they are taken
-    let mut free = sorted;
+    let index = key.filter(|_| threshold < 64).map(|key| {
+        let blocks = blocks(threshold);
+        let keys: Vec<u64> = items.iter().map(key).collect();
+        let mut map: HashMap<(usize, u64), Vec<usize>> = HashMap::new();
+        for (i, &k) in keys.iter().enumerate() {
+            for (b, &(shift, mask)) in blocks.iter().enumerate() {
+                map.entry((b, (k >> shift) & mask)).or_default().push(i);
+            }
+        }
+        (blocks, keys, map)
+    });
+    let mut free = vec![true; items.len()];
     let mut groups = Vec::new();
-    while !free.is_empty() {
+    let mut seen: Vec<usize> = Vec::new();
+    let mut mark = vec![false; items.len()];
+    for &centre in &sorted {
+        if !free[centre] {
+            continue;
+        }
         if cancelled() {
             break;
         }
-        let centre = free.remove(0);
+        free[centre] = false;
         let mut members = vec![(centre, 0)];
-        free.retain(|&i| match dist(&items[centre], &items[i]) {
-            Some(d) if d <= threshold => {
+        let mut take = |i: usize, free: &mut Vec<bool>| {
+            if free[i]
+                && let Some(d) = dist(&items[centre], &items[i])
+                && d <= threshold
+            {
                 members.push((i, d));
-                false
+                free[i] = false;
             }
-            _ => true,
-        });
+        };
+        match &index {
+            Some((blocks, keys, map)) => {
+                for (b, &(shift, mask)) in blocks.iter().enumerate() {
+                    for &i in map
+                        .get(&(b, (keys[centre] >> shift) & mask))
+                        .into_iter()
+                        .flatten()
+                    {
+                        if !mark[i] {
+                            mark[i] = true;
+                            seen.push(i);
+                            take(i, &mut free);
+                        }
+                    }
+                }
+                for i in seen.drain(..) {
+                    mark[i] = false;
+                }
+            }
+            None => {
+                for &i in &sorted {
+                    take(i, &mut free);
+                }
+            }
+        }
         if members.len() > 1 {
             members[1..].sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
             groups.push(members);
@@ -195,6 +264,7 @@ mod tests {
             |_, _| Ordering::Equal,
             |a, b| Some(hamming(*a, *b)),
             t,
+            Some(&|h: &u64| *h),
             &|| false,
         )
     }
@@ -221,14 +291,57 @@ mod tests {
             |a, b| b.0.cmp(&a.0),
             |a, b| (a.0 != 3 && b.0 != 3).then(|| hamming(a.1, b.1)),
             4,
+            None,
             &|| false,
         );
         assert_eq!(g, vec![vec![(1, 0), (0, 0)]]);
         // cancelled: no groups
-        assert!(cluster(&items, |_, _| Ordering::Equal, |_, _| Some(0), 4, &|| true).is_empty());
+        assert!(
+            cluster(
+                &items,
+                |_, _| Ordering::Equal,
+                |_, _| Some(0),
+                4,
+                None,
+                &|| true
+            )
+            .is_empty()
+        );
     }
 
-    /// Brute force is enough (design 042 E6.4): 50 000 hashes, many groups.
+    /// The multi-index finds exactly what comparing everything finds (random hashes with
+    /// near copies, every threshold).
+    #[test]
+    fn index_equals_brute_force() {
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let mut items: Vec<u64> = Vec::new();
+        for i in 0..3000 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let near = if i % 3 == 0 && i > 0 {
+                items[i - 1] ^ (x & 0x0101_0010_0400_0003)
+            } else {
+                x
+            };
+            items.push(near);
+        }
+        for t in [0, 3, 8, 12, 16] {
+            let brute = cluster(
+                &items,
+                |_, _| Ordering::Equal,
+                |a, b| Some(hamming(*a, *b)),
+                t,
+                None,
+                &|| false,
+            );
+            assert_eq!(by_value(&items, t), brute, "threshold {t}");
+        }
+        assert_eq!(blocks(0), vec![(0, u64::MAX)]);
+        assert_eq!(blocks(15).len(), 16);
+    }
+
+    /// 50 000 mostly unique hashes (the normal case) with the multi-index (design 042 E6.4).
     /// `cargo test --release cluster_50k -- --ignored --nocapture`
     #[test]
     #[ignore]

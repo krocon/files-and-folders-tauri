@@ -1,10 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+} from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
 import { MAX_RULES } from './duplicates-presets';
 import { Prefer, Rule, RULE_KINDS, RuleKind, validateRuleSet } from './duplicates-rules';
 import { DUP_TEXTS } from './duplicates-texts';
 import { DuplicatesStore } from './duplicates.store';
+
+/** Controls inside a rule row, in DOM order. */
+const FOCUSABLE = 'select, input, button';
 
 /**
  * "Which file stays?" (DUP_RULES_DLG, design 042 E2): the rules in order, each with its
@@ -220,6 +231,8 @@ export class DuplicateRulesDialog {
   protected readonly t = DUP_TEXTS;
   protected readonly dup = inject(DuplicatesStore);
   private readonly ws = inject(WorkspaceStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly kinds: readonly RuleKind[] = RULE_KINDS;
   protected readonly maxRules = MAX_RULES;
 
@@ -284,10 +297,29 @@ export class DuplicateRulesDialog {
 
   /** Alt+↑/↓ inside a rule moves it (a widget key of the dialog, not an app action). */
   protected moveKey(evt: KeyboardEvent, i: number): void {
-    if (evt.altKey && (evt.key === 'ArrowUp' || evt.key === 'ArrowDown')) {
-      evt.preventDefault();
-      this.move(i, evt.key === 'ArrowUp' ? -1 : 1);
+    if (!evt.altKey || (evt.key !== 'ArrowUp' && evt.key !== 'ArrowDown')) {
+      return;
     }
+    evt.preventDefault();
+    const j = i + (evt.key === 'ArrowUp' ? -1 : 1);
+    if (j < 0 || j >= this.rules().length) {
+      return;
+    }
+    // the rows are tracked by index: remember which control had the focus and put it on
+    // the same control of the row the rule moved to
+    const row = evt.currentTarget as HTMLElement;
+    const at = [...row.querySelectorAll(FOCUSABLE)].indexOf(evt.target as Element);
+    this.move(i, j > i ? 1 : -1);
+    afterNextRender(
+      () => {
+        const rows = this.host.nativeElement.querySelectorAll('li.rule');
+        const target = rows[j] as HTMLElement | undefined;
+        const ctl = target?.querySelectorAll<HTMLElement>(FOCUSABLE)[at];
+        // a button that is now disabled (↓ in the last row) cannot take the focus: the row does
+        (ctl && !ctl.matches(':disabled') ? ctl : target)?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected apply(): void {

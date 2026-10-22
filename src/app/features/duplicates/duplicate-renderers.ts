@@ -61,9 +61,11 @@ export class DecisionCellRenderer implements CellRendererIf {
       domService.appendChild(r, domService.createText(` · ${view.reason}`));
       domService.appendChild(cellDiv, r);
     }
-    if (view.title) {
-      domService.setAttribute(cellDiv, 'title', view.title);
-    }
+    // the reason is cut in a narrow column: the tooltip has it whole
+    const tip = [view.reason ? `${view.text} · ${view.reason}` : view.text, view.title]
+      .filter((t) => !!t)
+      .join(' – ');
+    domService.setAttribute(cellDiv, 'title', tip);
     return undefined;
   }
 }

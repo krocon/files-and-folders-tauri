@@ -51,8 +51,11 @@ export interface DedupeGroup {
   readonly remove: readonly ExpectedEntry[];
 }
 export type DedupeAction = 'trash' | 'permanent' | 'move';
-/** `content`: exact duplicates (bytes compared); `unchanged`: similar images/comics. */
-export type DedupeVerify = 'content' | 'unchanged';
+/**
+ * `content`: exact duplicates (bytes compared); `similarImages`/`similarComics`: the copy
+ * must look like the kept file (pHash ≤ threshold, review 042 #2); `unchanged`: only that.
+ */
+export type DedupeVerify = 'content' | 'unchanged' | 'similarImages' | 'similarComics';
 
 export type JobSpec =
   | {
@@ -150,6 +153,8 @@ export type JobSpec =
       /** `action = move`: the folder the copies go to. */
       readonly targetDir?: string;
       readonly verify: DedupeVerify;
+      /** Similar modes: differing bits allowed between the kept file and a copy. */
+      readonly threshold?: number | null;
       readonly allowDangerous?: boolean;
     }
   /** Checksums of files (design 039); folders recursively, links never followed. */

@@ -58,7 +58,12 @@ interface Tile {
                 (click)="goTo(tile.row.path)"
               >
                 @if (thumb(tile.row.path); as url) {
-                  <img [src]="url" alt="" draggable="false" />
+                  <img
+                    [src]="url"
+                    alt=""
+                    draggable="false"
+                    (error)="dup.thumbFailed(tile.row.path)"
+                  />
                 } @else {
                   <i class="fa fa-file-o" aria-hidden="true"></i>
                 }
@@ -185,7 +190,7 @@ export class DuplicateGroupView {
   readonly side = input.required<Side>();
   protected readonly t = DUP_TEXTS;
   private readonly ws = inject(WorkspaceStore);
-  private readonly dup = inject(DuplicatesStore);
+  protected readonly dup = inject(DuplicatesStore);
   private readonly search = inject(SearchStore);
 
   private readonly key = computed(() => this.ws.panel(this.side())?.store.searchKey() ?? null);

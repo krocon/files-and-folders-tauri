@@ -214,7 +214,8 @@ describe('duplicates in the frontend (design 042)', () => {
     expect(dupApi.classifyCalls).toBe(1);
     expect(left.marked().has('/h/Archiv/a.jpg')).toBe(false);
     expect(left.marked().has('/h/Downloads/a.jpg')).toBe(true);
-    expect(dup.chosen()).toBe('u:Archiv zuerst');
+    expect(dup.chosen('exact')).toBe('u:Archiv zuerst');
+    expect(dup.chosen('similarImages')).toBeNull();
     expect(lastSetId(dupApi.saved)).toBe('u:Archiv zuerst');
     // an invalid regex marks nothing and says why
     dup.userSets.set(
@@ -355,6 +356,34 @@ describe('duplicates in the frontend (design 042)', () => {
     dup.deleteUserSet('Downloads weg');
     expect(userSets(dupApi.saved)).toEqual([]);
   });
+  it('similar images: the job checks the look against the kept file (review 042 #2)', async () => {
+    dup.open();
+    dup.update({ threshold: 6 });
+    await searchFinds(ROWS, 'similarImages');
+    dup.openDedupe('trash');
+    await dup.runDedupe();
+    expect(jobsApi.started.at(-1)!.spec).toMatchObject({
+      kind: 'dedupe',
+      verify: 'similarImages',
+      threshold: 6,
+    });
+  });
+
+  it('thumbnails: one batch at a time; a dropped token is fetched once more (review 042 #4/#6)', async () => {
+    const paths = Array.from({ length: 30 }, (_, i) => `/p/${i}.jpg`);
+    dup.wantThumbs(paths);
+    expect(dupApi.thumbCalls).toHaveLength(1);
+    await wait();
+    await wait();
+    expect(dupApi.thumbCalls.map((c) => c.length)).toEqual([24, 6]);
+    expect(dup.thumbs().get('/p/0.jpg')).toBe('url:thumb:/p/0.jpg');
+    dup.thumbFailed('/p/0.jpg');
+    await wait();
+    expect(dupApi.thumbCalls.at(-1)).toEqual(['/p/0.jpg']);
+    dup.thumbFailed('/p/0.jpg'); // a second failure: no picture, no loop
+    expect(dup.thumbs().get('/p/0.jpg')).toBeNull();
+  });
+
   it('renders the search dialog, the confirmation with pictures and the group view', async () => {
     const { DuplicatesDialog } = await import('./duplicates-dialog');
     const { DedupeDialog } = await import('./dedupe-dialog');
@@ -367,6 +396,9 @@ describe('duplicates in the frontend (design 042)', () => {
     f.detectChanges();
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('input[type=range]')).not.toBeNull();
+    // mode and comparison/similarity side by side (two columns), so the buttons stay visible
+    expect(el.querySelector('.cols > fieldset')).not.toBeNull();
+    expect(el.querySelector('.cols input[type=range]')).not.toBeNull();
     expect(el.textContent).toContain('HEIC and AVIF are not supported');
     expect(el.querySelector('select option[value=none]')?.textContent).toContain('no rules');
     dup.close();
@@ -408,6 +440,31 @@ describe('duplicates in the frontend (design 042)', () => {
     const r = TestBed.createComponent(DuplicateRulesDialog);
     r.detectChanges();
     expect((r.nativeElement as HTMLElement).querySelectorAll('li.rule').length).toBe(3);
+  });
+
+  it('Alt+↓ in the rule editor moves the rule and the focus goes with it (E2E 042)', async () => {
+    const { DuplicateRulesDialog } = await import('./duplicate-rules-dialog');
+    await searchFinds(ROWS);
+    dup.openRules('left');
+    await wait();
+    const r = TestBed.createComponent(DuplicateRulesDialog);
+    document.body.appendChild(r.nativeElement);
+    r.detectChanges();
+    const el = r.nativeElement as HTMLElement;
+    const kinds = () => dup.rules()!.set.rules.map((x) => x.kind);
+    const before = kinds();
+    const remove = el.querySelectorAll('li.rule')[0].querySelectorAll('button')[2];
+    remove.focus();
+    remove.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }),
+    );
+    r.detectChanges();
+    await wait();
+    expect(kinds()).toEqual([before[1], before[0], ...before.slice(2)]);
+    expect(document.activeElement).toBe(
+      el.querySelectorAll('li.rule')[1].querySelectorAll('button')[2],
+    );
+    el.remove();
   });
 });
 

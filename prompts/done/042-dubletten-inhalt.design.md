@@ -1,6 +1,6 @@
 # Design 042: Dubletten nach Inhalt, Regeln zum Behalten, ähnliche Bilder und Comics
 
-> **Status:** freigegeben (Marc, 22.10.2026, mit den Antworten in §8) · **Datum:** 22.10.2026 · **Branch:** `feat/dubletten-inhalt`
+> **Status:** umgesetzt (freigegeben von Marc am 22.10.2026, Antworten §8) · **Datum:** 22.10.2026 · **Branch:** `feat/dubletten-inhalt`
 > Auftrag: `prompts/042-dubletten-inhalt.md` (Marc, 21.10.2026). Baut auf 016 E6 (Job `duplicates`), 009 E4
 > (Ergebnis-Tabs), 010 E3 (`fnfpreview`), 025 (Archive lesen), 030 E5 (`expected`), 033 E1/E3 (Ansicht in der anderen
 > Seite, Löschen aus altem Stand) auf. Neue Crate: `image` (nur Decoder, pure Rust) – E6.
@@ -428,3 +428,60 @@ der Kopf bleibt **eine Zeile**; Regelsatz-Auswahl und Knöpfe so kompakt wie die
 
 - 22.10.2026: Bestand geprüft, Design geschrieben, von Marc freigegeben (Antworten §8). Vorab-Fix Kopf-Knöpfe
   (`add5270`). Flackernder SFTP-Test als eigener Befund in `TODO.md`.
+- 22.10.2026: Phase 2 (Rust: Einheiten für Hardlinks, Cache, paranoid, pHash, Comics, Job `dedupe`, Vorschaubilder,
+  `classify_paths`, Regelsatz-Datei) – `ca91ce9`. Phase 3 (Regel-Engine + Katalog, Spalte Entscheidung, Kopf,
+  Gruppen-Ansicht, Regeleditor, Bestätigung, Aktionen/Menü/Texte) – `5a3670f`.
+- 22.10.2026: E2E unter Xvfb (Abnahme-Ordner, Hardlink, unentschiedene Gruppe, geänderte behaltene Datei blockiert,
+  Papierkorb, ähnliche Bilder JPEG q35/50 %/PNG, Spiegelbild/anderes Foto nicht, kaputte/riesige Bilder; Comics
+  „neu gepackt“; Löschen ähnlicher Comics mit Prüfung `similarComics`; Regeleditor mit Alt+↑/↓). Externes Review
+  (14 Befunde) eingearbeitet, Doku nachgezogen.
+
+## 9. Abweichungen vom Design
+
+- **Grund** steht nicht in einer eigenen Spalte, sondern kurz in der Spalte „Entscheidung“ (112 px) und vollständig
+  im Tooltip und in der Gruppen-Ansicht – eine zweite Spalte machte den Namen in schmalen Seiten unlesbar (E2E).
+  Aus demselben Grund ist die Spalte „Endung“ im Dubletten-Tab ausgeblendet.
+- **Comics:** Fingerabdruck = Seitenzahl + pHash der **ersten 4 Seiten** (statt Titel + 3 Seiten bei 25/50/75 %):
+  ein Heft mit einer angehängten Werbeseite verschob die prozentualen Stichproben und wurde nicht erkannt.
+  Seitenzahl darf um ±1 abweichen.
+- **Regelsatz je Familie:** „zuletzt gewählt“ wird getrennt für Dateien (exakt) und Bilder/Comics gemerkt
+  (`last.id`/`last.pictures` in `duplicate-rules.json`) – sonst lief nach einer Bildsuche der Satz der exakten Suche.
+- **Vorschaubilder** sind nicht auf Pfade des Ergebnisses beschränkt (Rust kennt das Ergebnis nicht); sie bleiben
+  über dieselben Grenzen wie die Vorschau gesichert (Größe, Pixel, `MAX_DECODES`, Tokens mit LRU 256/32 MiB).
+- **Keine Einstellung `duplicates.cache`:** der Cache ist immer an (nur im Speicher, LRU 400 000 Einträge); paranoid
+  umgeht ihn.
+- **F8 ohne Markierung** im Dubletten-Tab meldet nur „keine Kopien markiert“ und fällt nicht auf das normale Löschen
+  zurück (sonst wäre die Prüfung des Jobs `dedupe` umgehbar).
+- **Gruppierung ähnlicher Bilder:** statt BK-Baum Multi-Index: die 64 Bit in t + 1 Blöcke geteilt
+  (Schubfachprinzip: bei Abstand ≤ t ist mindestens ein Block gleich, `phash::blocks`), Ergebnis gleich der Brute-Force-Gruppierung (Test
+  `index_equals_brute_force`).
+- **Alt+↑/↓ im Regeleditor** wirkt auf Buttons und Eingabefelder der Regel; in einem Select fängt WebKitGTK die Taste
+  ab (öffnet die Liste nicht, liefert aber kein keydown) – dort die Pfeil-Knöpfe. Der Fokus folgt der verschobenen
+  Regel (E2E-Befund, Test).
+
+## 10. Messungen (Container, aarch64/x86 VM, Release)
+
+| Was | Ergebnis |
+|---|---|
+| Gruppierung 50 000 pHashes (5 000 Gruppen, Rest einzeln), `cluster_50k` | 2,1 s brute force → **0,67 s** mit Multi-Index |
+| Dekodieren + pHash JPEG 4032×3024 / PNG 300×450 | ≈ 72 ms / ≈ 6 ms je Bild, 4 parallel (`MAX_DECODES`) |
+| Zweite exakte Suche desselben Ordners | nur Cache-Treffer, kein Byte gelesen; Fortschritt 100 % |
+
+## 11. Externes Review (22.10.2026)
+
+| # | Befund | Folge |
+|---|---|---|
+| 1 | Dieselbe Freigabe zweimal gemountet: anderes Gerät, gleiche Datei → zwei „Kopien“, Löschen einer löscht das Original | `FileStamp`/`possibly_same_file` (Inode+Größe+mtime über Geräte), solche Einheiten gelten als gleiche Datei; Job lehnt fail-closed ab, wenn die Identität unklar ist |
+| 2 | Ähnlich-Löschen prüfte nur „unverändert“; flache Bilder (eine Farbe) passen auf alles | Job prüft pHash Kopie ↔ behaltene Datei ≤ Schwelle (`similarImages`/`similarComics`); Fotos mit Kontrast < 3 werden nicht gruppiert |
+| 3 | Gruppierung quadratisch | Multi-Index (s. Messung) |
+| 4 | Speicher: viele gleichzeitige Dekodierungen/Vorschaubild-Anfragen | globaler Semaphor `MAX_DECODES` = 4; Frontend holt Vorschaubilder in einem Bündel nach dem anderen |
+| 5 | Panic eines Decoders bricht die Suche ab | `catch_unwind` je Datei → Fehler nur für diese Datei |
+| 6 | Verdrängtes Vorschaubild-Token → kaputtes Bild für immer | `(error)` lädt einmal neu, danach kein Bild |
+| 7 | Verschieben über Volumes: Quelle weg, bevor die Kopie auf der Platte ist | `sync_all` vor dem Umbenennen/Löschen |
+| 8 | Job nahm Dateien ohne Größe/Zeit an (keine Prüfung möglich) | `validate` verlangt beides |
+| 9 | Cache übersah Änderungen mit gleicher Größe und mtime | ctime im Schlüssel (Unix) |
+| 10 | SMB-Server mit Datei-Index 0 → alle Dateien „gleich“ | Index 0 = keine Identität |
+| 11 | Fortschritt erreicht nie 100 % (Cache-Treffer, übersprungene Kopien) | zählen als erledigt |
+| 12 | „first“ = kürzester Pfad statt Fundreihenfolge | **kein Fehler:** so in 016 und dokumentiert |
+| 13 | Gruppe zeigte einen schon gelöschten Namen als Hauptnamen | erster noch vorhandener Name führt |
+| 14 | `inFolder` auf macOS/Windows mit Groß/Klein-Unterschied | `classify_paths` vergleicht dort ohne Groß/Klein |

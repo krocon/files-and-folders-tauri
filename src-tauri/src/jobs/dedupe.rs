@@ -19,7 +19,7 @@ use super::report::Reporter;
 use super::{Control, ItemError, JobEvent, JobState, MAX_REPORTED_ERRORS, Summary};
 use crate::error::{FsError, FsErrorCode};
 use crate::model::EntryKind;
-use crate::platform::{entry_id, rename_noreplace};
+use crate::platform::{FileStamp, file_stamp, possibly_same_file, rename_noreplace};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
@@ -53,8 +53,13 @@ pub enum DedupeVerify {
     /// Exact duplicates: the bytes are compared right before.
     #[default]
     Content,
-    /// Similar images/comics (other bytes by nature): only "unchanged since the search".
+    /// Only "unchanged since the search".
     Unchanged,
+    /// Similar images: unchanged, and the copy looks like the file that stays (pHash
+    /// distance ≤ threshold – not only like the group's centre, review 042 #2).
+    SimilarImages,
+    /// Similar comics: the same for the sampled pages.
+    SimilarComics,
 }
 
 fn path_string(p: &Path) -> String {
@@ -73,6 +78,24 @@ fn keep_problem(keep: &Path, expected: &ExpectedEntry) -> Option<String> {
         Ok(_) => {
             expect::changed(keep, expected).map(|why| format!("the file to keep changed: {why}"))
         }
+    }
+}
+
+/// Why `copy` must not be removed against `keep` because it may be the same file (review
+/// 042 #1) – fail closed: without an identity on either side nothing is removed.
+pub(crate) fn same_file_reason(
+    keep: Option<&FileStamp>,
+    copy: Option<&FileStamp>,
+) -> Option<&'static str> {
+    match (keep, copy) {
+        (Some(k), Some(c)) if k.id == c.id => {
+            Some("it is the file to keep under another name (hard link)")
+        }
+        (Some(k), Some(c)) if possibly_same_file(k, c) => {
+            Some("it may be the file to keep on another mount (same file number, size and time)")
+        }
+        (Some(_), Some(_)) => None,
+        _ => Some("its identity cannot be read – not removed to be safe"),
     }
 }
 
@@ -97,10 +120,20 @@ fn move_into(src: &Path, dir: &Path) -> Result<PathBuf, FsError> {
         if len != fs::metadata(src)?.len() {
             return Err(io::Error::other("the copy is incomplete"));
         }
-        if let Ok(t) = fs::metadata(src).and_then(|m| m.modified()) {
-            let _ = fs::File::options().write(true).open(&tmp)?.set_modified(t);
+        {
+            let f = fs::File::options().write(true).open(&tmp)?;
+            if let Ok(t) = fs::metadata(src).and_then(|m| m.modified()) {
+                let _ = f.set_modified(t);
+            }
+            // on disk before the source goes (two volumes, two journals – review 042 #7)
+            f.sync_all()?;
         }
-        rename_noreplace(&tmp, &dst)
+        rename_noreplace(&tmp, &dst)?;
+        #[cfg(unix)]
+        if let Ok(d) = fs::File::open(dir) {
+            let _ = d.sync_all();
+        }
+        Ok(())
     })();
     if let Err(e) = copied {
         let _ = fs::remove_file(&tmp);
@@ -134,6 +167,12 @@ impl Run<'_> {
         self.rep.progress.items_done += 1;
         self.rep.tick(false);
     }
+
+    /// One copy is through: its bytes count as done.
+    fn step_to(&mut self, bytes: u64) {
+        self.rep.progress.bytes_done = self.rep.progress.bytes_done.max(bytes);
+        self.step();
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -143,6 +182,7 @@ pub fn run(
     action: DedupeAction,
     target_dir: Option<&Path>,
     verify: DedupeVerify,
+    threshold: Option<u8>,
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
@@ -184,25 +224,40 @@ pub fn run(
                 }
                 continue;
             }
-            let keep_id = entry_id(keep);
+            let keep_stamp = file_stamp(keep);
             let mut skip_rest: Option<String> = None;
             for r in &g.remove {
                 if control.is_cancelled() || !control.wait_while_paused() {
                     break 'groups true;
                 }
+                // whatever happens to this copy, its share of the bytes is done (review 042 #11)
+                let target = run.rep.progress.bytes_done
+                    + if verify == DedupeVerify::Content {
+                        r.size.unwrap_or(0) * 2
+                    } else {
+                        0
+                    };
                 let p = Path::new(&r.path);
                 run.rep.progress.current = Some(r.path.clone());
                 if let Some(why) = &skip_rest {
                     run.fail(p, changed(p, why.clone()));
-                    run.step();
+                    run.step_to(target);
                     continue;
                 }
-                match check_copy(p, r, keep, keep_id, verify, control, &mut run) {
+                match check_copy(
+                    p,
+                    r,
+                    keep,
+                    keep_stamp.as_ref(),
+                    (verify, threshold),
+                    control,
+                    &mut run,
+                ) {
                     Ok(()) => {}
                     Err(None) => break 'groups true,
                     Err(Some(e)) => {
                         run.fail(p, e);
-                        run.step();
+                        run.step_to(target);
                         continue;
                     }
                 }
@@ -210,7 +265,7 @@ pub fn run(
                 if let Some(why) = keep_problem(keep, &g.keep) {
                     run.fail(p, changed(p, why.clone()));
                     skip_rest = Some(why);
-                    run.step();
+                    run.step_to(target);
                     continue;
                 }
                 let done = match action {
@@ -239,7 +294,7 @@ pub fn run(
                     }
                     Err(e) => run.fail(p, e),
                 }
-                run.step();
+                run.step_to(target);
             }
         }
         false
@@ -262,8 +317,8 @@ fn check_copy(
     p: &Path,
     expected: &ExpectedEntry,
     keep: &Path,
-    keep_id: Option<(u64, u64)>,
-    verify: DedupeVerify,
+    keep_stamp: Option<&FileStamp>,
+    (verify, threshold): (DedupeVerify, Option<u8>),
     control: &Control,
     run: &mut Run<'_>,
 ) -> Result<(), Option<FsError>> {
@@ -274,11 +329,8 @@ fn check_copy(
     if let Some(why) = expect::changed(p, expected) {
         return Err(Some(changed(p, why)));
     }
-    if keep_id.is_some() && entry_id(p) == keep_id {
-        return Err(Some(changed(
-            p,
-            "it is the file to keep under another name (hard link)",
-        )));
+    if let Some(why) = same_file_reason(keep_stamp, file_stamp(p).as_ref()) {
+        return Err(Some(changed(p, why)));
     }
     if crate::paths::normalize_lexically(p) == crate::paths::normalize_lexically(keep) {
         return Err(Some(changed(p, "it is the file to keep")));
@@ -299,6 +351,23 @@ fn check_copy(
             }
             Err(_) if control.is_cancelled() => return Err(None),
             Err(e) => return Err(Some(FsError::from_io(&e, p))),
+        }
+    }
+    if matches!(
+        verify,
+        DedupeVerify::SimilarImages | DedupeVerify::SimilarComics
+    ) {
+        let comics = verify == DedupeVerify::SimilarComics;
+        let limit = u32::from(
+            threshold
+                .unwrap_or(crate::duplicates::DEFAULT_THRESHOLD)
+                .min(crate::duplicates::MAX_THRESHOLD),
+        );
+        match crate::duplicates::similar_distance(keep, p, comics, control) {
+            Ok(Some(d)) if d <= limit => {}
+            Ok(_) => return Err(Some(changed(p, "it does not look like the file to keep"))),
+            Err(_) if control.is_cancelled() => return Err(None),
+            Err(e) => return Err(Some(e)),
         }
     }
     Ok(())
@@ -330,6 +399,13 @@ pub fn validate(
                 ));
             }
             let p = crate::paths::validate_input_path(&e.path)?;
+            if e.size.is_none() || e.modified_ms.is_none() {
+                return Err(FsError::new(
+                    FsErrorCode::InvalidPath,
+                    "Size and time of every file are needed to check it before deleting",
+                    Some(&p),
+                ));
+            }
             if e.kind != EntryKind::File {
                 return Err(FsError::new(
                     FsErrorCode::NotAFile,

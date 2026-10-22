@@ -46,6 +46,7 @@ impl Harness {
                 action,
                 target_dir: target_dir.map(|d| d.to_string_lossy().into_owned()),
                 verify,
+                threshold: None,
                 allow_dangerous: false,
             })
             .unwrap();
@@ -266,6 +267,7 @@ fn invalid_specs_are_refused() {
             action,
             target_dir: target,
             verify: DedupeVerify::Content,
+            threshold: None,
             allow_dangerous: false,
         })
     };
@@ -318,6 +320,7 @@ fn cancel_during_the_comparison() {
             action: DedupeAction::Permanent,
             target_dir: None,
             verify: DedupeVerify::Content,
+            threshold: None,
             allow_dangerous: false,
         })
         .unwrap();
@@ -341,8 +344,10 @@ fn spec_json() {
             action,
             target_dir,
             verify,
+            threshold,
             allow_dangerous,
         } => {
+            assert_eq!(threshold, None);
             assert_eq!(groups[0].remove[0].modified_ms, Some(5));
             assert_eq!(action, DedupeAction::Move);
             assert_eq!(target_dir.as_deref(), Some("/t"));
@@ -351,4 +356,91 @@ fn spec_json() {
         }
         _ => panic!("not dedupe"),
     }
+}
+
+/// Review 042 #1: without an identity nothing is removed; another mount of the same file
+/// (other device, same file number, size, time) is refused.
+#[test]
+fn unknown_or_possibly_same_identity_is_refused() {
+    use super::dedupe::same_file_reason;
+    use crate::platform::FileStamp;
+    let k = FileStamp {
+        id: (1, 42),
+        size: 9,
+        modified_ns: Some(5),
+        changed_ns: None,
+    };
+    assert!(same_file_reason(Some(&k), None).is_some());
+    assert!(same_file_reason(None, Some(&k)).is_some());
+    assert!(same_file_reason(None, None).is_some());
+    assert!(
+        same_file_reason(Some(&k), Some(&k))
+            .unwrap()
+            .contains("hard link")
+    );
+    let other_mount = FileStamp { id: (2, 42), ..k };
+    assert!(
+        same_file_reason(Some(&k), Some(&other_mount))
+            .unwrap()
+            .contains("mount")
+    );
+    let other = FileStamp { id: (1, 43), ..k };
+    assert_eq!(same_file_reason(Some(&k), Some(&other)), None);
+}
+
+/// Review 042 #8: size and time of every file are required.
+#[test]
+fn size_and_time_are_required() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let (k, c) = (d.path().join("k"), d.path().join("c"));
+    fs::write(&k, "x").unwrap();
+    fs::write(&c, "x").unwrap();
+    let mut g = group(&k, &[&c]);
+    g.remove[0].modified_ms = None;
+    assert!(
+        h.mgr
+            .start(JobSpec::Dedupe {
+                groups: vec![g],
+                action: DedupeAction::Permanent,
+                target_dir: None,
+                verify: DedupeVerify::Unchanged,
+                threshold: None,
+                allow_dangerous: false,
+            })
+            .is_err()
+    );
+    assert!(c.exists());
+}
+
+/// Review 042 #2: in the similar modes a copy must look like the file that stays – not
+/// only like some other file of its group.
+#[test]
+fn similar_copies_must_look_like_the_kept_file() {
+    use crate::duplicates::images::testimg::{jpeg, photo};
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let r = d.path();
+    let (keep, close, far) = (r.join("keep.jpg"), r.join("close.jpg"), r.join("far.jpg"));
+    fs::write(&keep, jpeg(&photo(800, 600, 3), 95)).unwrap();
+    fs::write(&close, jpeg(&photo(800, 600, 3), 40)).unwrap();
+    fs::write(&far, jpeg(&photo(800, 600, 9), 95)).unwrap();
+    let id = h
+        .mgr
+        .start(JobSpec::Dedupe {
+            groups: vec![group(&keep, &[&close, &far])],
+            action: DedupeAction::Permanent,
+            target_dir: None,
+            verify: DedupeVerify::SimilarImages,
+            threshold: Some(8),
+            allow_dangerous: false,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert!(!close.exists(), "a recompressed copy goes");
+    assert!(far.exists(), "another picture stays");
+    assert_eq!(
+        codes(&info),
+        vec![("far.jpg".into(), FsErrorCode::DuplicateChanged)]
+    );
 }

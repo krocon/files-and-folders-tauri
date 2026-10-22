@@ -260,8 +260,26 @@ fn second_run_uses_the_cache() {
     let first = run(&criteria(r));
     assert!(first.stats.bytes_hashed >= 2 * data.len() as u64);
     let second = run(&criteria(r));
-    assert_eq!(second.stats.bytes_hashed, 0, "everything from the cache");
+    // everything known counts as done (review 042 #11) – the progress reaches 100 %
+    assert_eq!(second.stats.bytes_hashed, second.stats.bytes_to_hash);
     assert_eq!(names(&second), names(&first));
+    // an in-place edit that keeps size and mtime is still noticed (ctime, review 042 #9)
+    #[cfg(unix)]
+    {
+        let mtime = fs::metadata(r.join("two")).unwrap().modified().unwrap();
+        let mut other = data.clone();
+        other[PART as usize + 7] ^= 1;
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(r.join("two"), &other).unwrap();
+        fs::File::options()
+            .write(true)
+            .open(r.join("two"))
+            .unwrap()
+            .set_modified(mtime)
+            .unwrap();
+        assert!(run(&criteria(r)).groups.is_empty(), "stale hash not used");
+        fs::write(r.join("two"), &data).unwrap();
+    }
     // a changed file is read again – and is no duplicate any more
     let mut changed = data.clone();
     changed[PART as usize + 100] = 1;

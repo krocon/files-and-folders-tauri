@@ -82,13 +82,24 @@ export function userSets(file: RenamePresets): UserSet[] {
   return out;
 }
 
-/** The chosen set stored in `last` (`{ id }`), if valid. */
-export function lastSetId(file: RenamePresets): SetId | null {
+/** Files (exact duplicates) or pictures (similar images, comics): each remembers its set. */
+export type Family = 'files' | 'pictures';
+
+export function familyOf(mode: 'exact' | 'similarImages' | 'comics'): Family {
+  return mode === 'exact' ? 'files' : 'pictures';
+}
+
+export type Chosen = Readonly<Record<Family, SetId | null>>;
+export const NOTHING_CHOSEN: Chosen = { files: null, pictures: null };
+
+/** The chosen set of `family` stored in `last` (`{ id, pictures }`), if valid. */
+export function lastSetId(file: RenamePresets, family: Family = 'files'): SetId | null {
   const last = file.last;
-  if (!isRecord(last) || typeof last['id'] !== 'string') {
+  const key = family === 'files' ? 'id' : 'pictures';
+  if (!isRecord(last) || typeof last[key] !== 'string') {
     return null;
   }
-  return parseSetId(last['id']);
+  return parseSetId(last[key] as string);
 }
 
 export function parseSetId(id: string): SetId | null {
@@ -115,11 +126,12 @@ export function setOf(id: SetId, users: readonly UserSet[]): RuleSet | null {
   return users.find((u) => u.name === id.slice(2))?.set ?? null;
 }
 
-/** The file to save: the user's sets and the chosen one. */
-export function toFile(users: readonly UserSet[], last: SetId): RenamePresets {
+/** The file to save: the user's sets and the chosen ones. */
+export function toFile(users: readonly UserSet[], last: SetId | Chosen): RenamePresets {
+  const c: Chosen = typeof last === 'string' ? { files: last, pictures: null } : last;
   return {
     version: 1,
-    last: { id: last },
+    last: { id: c.files ?? 'none', ...(c.pictures ? { pictures: c.pictures } : {}) },
     presets: users.map((u) => ({ name: u.name, rules: { rules: u.set.rules } })),
   };
 }
@@ -133,7 +145,10 @@ export function withUserSet(users: readonly UserSet[], name: string, set: RuleSe
   );
 }
 
-/** The default when nothing was chosen yet (Marc, 042 §8.2): copy names go, else the oldest. */
+/**
+ * The default when nothing was chosen yet (Marc, 042 §8.2): files – copy names go, else
+ * the oldest; pictures – the highest resolution.
+ */
 export function defaultSetId(images: boolean): SetId {
   return images ? 'b:resolution' : 'b:copyNamesThenOldest';
 }

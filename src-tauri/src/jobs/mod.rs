@@ -213,6 +213,9 @@ pub enum JobSpec {
         target_dir: Option<String>,
         #[serde(default)]
         verify: dedupe::DedupeVerify,
+        /// `verify = similar…`: differing bits allowed between the kept file and a copy.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        threshold: Option<u8>,
         #[serde(default)]
         allow_dangerous: bool,
     },

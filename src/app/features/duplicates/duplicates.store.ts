@@ -19,8 +19,11 @@ import {
   formToDuplicateCriteria,
 } from './duplicates-form';
 import {
+  Chosen,
   defaultSetId,
+  familyOf,
   lastSetId,
+  NOTHING_CHOSEN,
   parseSetId,
   SetId,
   setOf,
@@ -122,8 +125,8 @@ export class DuplicatesStore {
 
   // ---- rule sets (design 042 E2)
   readonly userSets = signal<readonly UserSet[]>([]);
-  /** The set chosen last (null: never – the default of the mode applies). */
-  readonly chosen = signal<SetId | null>(null);
+  /** The set chosen last for files and for pictures (null: never – the default applies). */
+  readonly chosenSets = signal<Chosen>(NOTHING_CHOSEN);
   readonly rulesWarning = signal<string | null>(null);
   private loading: Promise<void> | null = null;
   /** Per result key: what the rules decided. */
@@ -141,6 +144,11 @@ export class DuplicatesStore {
   /** Thumbnail URLs by path (null: none can be made). */
   readonly thumbs = signal<ReadonlyMap<string, string | null>>(new Map());
   private readonly thumbWanted = new Set<string>();
+  /** Paths waiting for a thumbnail – one batch at a time (review 042 #4: memory). */
+  private thumbQueue: string[] = [];
+  private thumbBusy = false;
+  /** Paths whose thumbnail was fetched again once (a token Rust dropped). */
+  private readonly thumbRetried = new Set<string>();
 
   constructor() {
     // a duplicate search that ended: apply the chosen set (Marc, 042 §8.2); a search run
@@ -233,9 +241,14 @@ export class DuplicatesStore {
     this.error.set(null);
   }
 
+  /** The set chosen last for `mode`'s family (null: never). */
+  chosen(mode: DupMode = 'exact'): SetId | null {
+    return this.chosenSets()[familyOf(mode)];
+  }
+
   /** The set the dialog offers for `mode` (the one chosen last, else the default). */
   setFor(mode: DupMode): SetId {
-    return this.chosen() ?? defaultSetId(mode !== 'exact');
+    return this.chosen(mode) ?? defaultSetId(mode !== 'exact');
   }
 
   async run(): Promise<void> {
@@ -286,7 +299,10 @@ export class DuplicatesStore {
       .loadRules()
       .then((loaded) => {
         this.userSets.set(userSets(loaded.presets));
-        this.chosen.set(lastSetId(loaded.presets));
+        this.chosenSets.set({
+          files: lastSetId(loaded.presets, 'files'),
+          pictures: lastSetId(loaded.presets, 'pictures'),
+        });
         this.rulesWarning.set(loaded.warning);
       })
       .catch((e: unknown) => {
@@ -295,15 +311,15 @@ export class DuplicatesStore {
     return this.loading;
   }
 
-  /** Remembers `id` as the chosen set (saved with the user's sets). */
-  choose(id: SetId): void {
-    this.chosen.set(id);
+  /** Remembers `id` as the chosen set of `mode`'s family (saved with the user's sets). */
+  choose(id: SetId, mode: DupMode = 'exact'): void {
+    this.chosenSets.update((c) => ({ ...c, [familyOf(mode)]: id }));
     this.save();
   }
 
   private save(): void {
     void this.api
-      .saveRules(toFile(this.userSets(), this.chosen() ?? 'none'))
+      .saveRules(toFile(this.userSets(), this.chosenSets()))
       .catch((e: unknown) => this.rulesWarning.set(errorText(e as never)));
   }
 
@@ -375,7 +391,7 @@ export class DuplicatesStore {
     if (applied && applied !== 'none') {
       return applied;
     }
-    const chosen = this.chosen();
+    const chosen = this.chosen(this.modeOn(side));
     return chosen && chosen !== 'none' ? chosen : defaultSetId(this.modeOn(side) !== 'exact');
   }
 
@@ -419,8 +435,8 @@ export class DuplicatesStore {
       return;
     }
     const set = setOf(id, this.userSets());
-    if (id !== this.chosen()) {
-      this.choose(id);
+    if (id !== this.chosen(this.modeOn(side))) {
+      this.choose(id, this.modeOn(side));
     }
     const seq = ++this.applySeq;
     const errors = new Map(this.ruleError());
@@ -556,23 +572,49 @@ export class DuplicatesStore {
     const missing = paths.filter(
       (p) => IMAGE_NAME.test(p) && !this.thumbs().has(p) && !this.thumbWanted.has(p),
     );
-    for (let i = 0; i < missing.length; i += MAX_THUMB_PATHS) {
-      const batch = missing.slice(i, i + MAX_THUMB_PATHS);
-      batch.forEach((p) => this.thumbWanted.add(p));
-      void this.api
-        .thumbnails(batch, THUMB_PX)
-        .then((tokens) => {
-          const next = new Map(this.thumbs());
-          batch.forEach((p, k) => next.set(p, tokens[k] ? this.api.imageUrl(tokens[k]!) : null));
-          this.thumbs.set(next);
-        })
-        .catch(() => {
-          const next = new Map(this.thumbs());
-          batch.forEach((p) => next.set(p, null));
-          this.thumbs.set(next);
-        })
-        .finally(() => batch.forEach((p) => this.thumbWanted.delete(p)));
+    missing.forEach((p) => this.thumbWanted.add(p));
+    // the newest wish first: the group or page just shown
+    this.thumbQueue = [...missing, ...this.thumbQueue];
+    this.pumpThumbs();
+  }
+
+  /** An `<img>` failed: Rust dropped the token (bounded store) – fetch once more. */
+  thumbFailed(path: string): void {
+    if (this.thumbRetried.has(path)) {
+      const next = new Map(this.thumbs());
+      next.set(path, null);
+      this.thumbs.set(next);
+      return;
     }
+    this.thumbRetried.add(path);
+    const next = new Map(this.thumbs());
+    next.delete(path);
+    this.thumbs.set(next);
+    this.wantThumbs([path]);
+  }
+
+  private pumpThumbs(): void {
+    if (this.thumbBusy || this.thumbQueue.length === 0) {
+      return;
+    }
+    const batch = this.thumbQueue.splice(0, MAX_THUMB_PATHS);
+    this.thumbBusy = true;
+    const store = (tokens: readonly (string | null)[] | null) => {
+      const next = new Map(this.thumbs());
+      batch.forEach((p, k) => {
+        const t = tokens?.[k];
+        next.set(p, t ? this.api.imageUrl(t) : null);
+      });
+      this.thumbs.set(next);
+    };
+    void this.api
+      .thumbnails(batch, THUMB_PX)
+      .then(store, () => store(null))
+      .finally(() => {
+        batch.forEach((p) => this.thumbWanted.delete(p));
+        this.thumbBusy = false;
+        this.pumpThumbs();
+      });
   }
 
   // ---------------------------------------------------------------- deleting (design 042 E5)
@@ -643,7 +685,15 @@ export class DuplicatesStore {
         groups: req.plan.groups,
         action: req.action,
         ...(req.action === 'move' && req.target ? { targetDir: req.target } : {}),
-        verify: req.mode === 'exact' ? 'content' : 'unchanged',
+        verify:
+          req.mode === 'exact'
+            ? 'content'
+            : req.mode === 'comics'
+              ? 'similarComics'
+              : 'similarImages',
+        ...(req.mode === 'exact'
+          ? {}
+          : { threshold: this.search.result(req.key)?.duplicates?.threshold ?? null }),
         allowDangerous: req.dangerous,
       });
     } catch (e) {
@@ -718,7 +768,7 @@ export class DuplicatesStore {
     }
     this.userSets.set(withUserSet(this.userSets(), name, d.set));
     const id = `u:${name}` as SetId;
-    this.chosen.set(id);
+    this.chosenSets.update((c) => ({ ...c, [familyOf(this.modeOn(d.side))]: id }));
     this.save();
     this.rules.set({ ...d, from: id });
     return id;
@@ -726,9 +776,8 @@ export class DuplicatesStore {
 
   deleteUserSet(name: string): void {
     this.userSets.set(this.userSets().filter((u) => u.name !== name));
-    if (this.chosen() === `u:${name}`) {
-      this.chosen.set(null);
-    }
+    const gone = (id: SetId | null) => (id === `u:${name}` ? null : id);
+    this.chosenSets.update((c) => ({ files: gone(c.files), pictures: gone(c.pictures) }));
     this.save();
     this.rules.update((d) => (d && d.from === `u:${name}` ? { ...d, from: 'none', name: '' } : d));
   }

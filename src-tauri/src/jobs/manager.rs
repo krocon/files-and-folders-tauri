@@ -387,6 +387,7 @@ impl JobManager {
                         action,
                         target_dir,
                         verify,
+                        threshold,
                         ..
                     } => super::dedupe::run(
                         id,
@@ -394,6 +395,7 @@ impl JobManager {
                         *action,
                         target_dir.as_deref().map(std::path::Path::new),
                         *verify,
+                        *threshold,
                         &control,
                         &emit,
                     ),

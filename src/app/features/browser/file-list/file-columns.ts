@@ -230,7 +230,7 @@ export function createFileColumns(): ColumnDefIf[] {
     ColumnDef.create({
       property: 'decision',
       headerLabel: 'Decision',
-      width: px(140),
+      width: px(112),
       isVisible: FalseFn,
       sortable: FalseFn,
       sortComparator: fileComparators.decision,
@@ -242,7 +242,7 @@ export function createFileColumns(): ColumnDefIf[] {
     ColumnDef.create({
       property: 'pixels',
       headerLabel: 'Pixels',
-      width: px(110),
+      width: px(96),
       isVisible: FalseFn,
       sortable: TrueFn,
       sortComparator: fileComparators.pixels,

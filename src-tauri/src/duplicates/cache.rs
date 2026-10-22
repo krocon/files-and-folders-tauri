@@ -11,7 +11,6 @@ use super::images::ImageFp;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, OnceLock};
-use std::time::SystemTime;
 
 pub const MAX_ENTRIES: usize = 400_000;
 
@@ -19,7 +18,10 @@ pub const MAX_ENTRIES: usize = 400_000;
 pub struct Key {
     pub id: (u64, u64),
     pub size: u64,
-    pub modified: Option<SystemTime>,
+    pub modified_ns: Option<i128>,
+    /// Unix ctime: an in-place edit that keeps size and mtime (`touch -r`, `rsync --inplace -t`)
+    /// still changes it (review 042 #9).
+    pub changed_ns: Option<i128>,
     pub path: PathBuf,
 }
 
@@ -100,7 +102,8 @@ mod tests {
         Key {
             id: (u64::MAX - 7, n),
             size: 3,
-            modified: None,
+            modified_ns: None,
+            changed_ns: None,
             path: PathBuf::from(format!("/cache-test/{n}")),
         }
     }
@@ -123,7 +126,14 @@ mod tests {
         );
         assert_eq!(
             get(&Key {
-                modified: Some(SystemTime::UNIX_EPOCH),
+                modified_ns: Some(0),
+                ..k.clone()
+            }),
+            None
+        );
+        assert_eq!(
+            get(&Key {
+                changed_ns: Some(1),
                 ..k.clone()
             }),
             None

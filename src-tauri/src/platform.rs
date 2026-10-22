@@ -363,11 +363,10 @@ pub fn file_identity(path: &Path) -> Option<FileIdentity> {
         let mut info = BY_HANDLE_FILE_INFORMATION::default();
         // SAFETY: the handle is open for the call; info is a valid out-pointer
         let ok = unsafe { GetFileInformationByHandle(file.as_raw_handle() as _, &mut info) };
-        (ok != 0).then(|| FileIdentity {
-            id: (
-                u64::from(info.dwVolumeSerialNumber),
-                (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
-            ),
+        let index = (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow);
+        // some SMB servers answer 0 for every file: no identity (review 042 #10)
+        (ok != 0 && index != 0).then(|| FileIdentity {
+            id: (u64::from(info.dwVolumeSerialNumber), index),
             links: info.nNumberOfLinks.max(1),
         })
     }
@@ -376,6 +375,56 @@ pub fn file_identity(path: &Path) -> Option<FileIdentity> {
         let _ = path;
         None
     }
+}
+
+/// Identity plus what a copy on another mount of the same share would share with it
+/// (review 042 #1): file number, size, modification and change time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FileStamp {
+    pub id: (u64, u64),
+    pub size: u64,
+    pub modified_ns: Option<i128>,
+    /// Unix ctime (metadata change); `None` on Windows.
+    pub changed_ns: Option<i128>,
+}
+
+fn nanos_of(t: io::Result<std::time::SystemTime>) -> Option<i128> {
+    let t = t.ok()?;
+    Some(match t.duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_nanos() as i128,
+        Err(e) => -(e.duration().as_nanos() as i128),
+    })
+}
+
+/// [`FileStamp`] of the entry at `path` (links not followed); `None` without an identity.
+pub fn file_stamp(path: &Path) -> Option<FileStamp> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    let id = file_identity(path)?.id;
+    #[cfg(unix)]
+    let changed_ns = {
+        use std::os::unix::fs::MetadataExt;
+        Some(i128::from(meta.ctime()) * 1_000_000_000 + i128::from(meta.ctime_nsec()))
+    };
+    #[cfg(not(unix))]
+    let changed_ns = None;
+    Some(FileStamp {
+        id,
+        size: meta.len(),
+        modified_ns: nanos_of(meta.modified()),
+        changed_ns,
+    })
+}
+
+/// The two stamps may name the same file: the same identity – or (another mount of the
+/// same share, a FUSE mirror) the same file number, size and times on another device.
+/// Errs on the side of "same": used to refuse deleting one against the other.
+pub fn possibly_same_file(a: &FileStamp, b: &FileStamp) -> bool {
+    a.id == b.id
+        || (a.id.1 == b.id.1
+            && a.id.1 != 0
+            && a.size == b.size
+            && a.modified_ns.is_some()
+            && a.modified_ns == b.modified_ns)
 }
 
 /// What tells an entry apart from a new one under the same name later (undo,
@@ -595,6 +644,47 @@ mod tests {
         assert_ne!(ia, ib);
         assert_eq!(entry_id(&t.path().join(".").join("a ä")), ia);
         assert_eq!(entry_id(&t.path().join("missing")), None);
+    }
+
+    /// Review 042 #1: the same share mounted twice – other device, same file number, size, time.
+    #[test]
+    fn possibly_same_file_across_mounts() {
+        let a = FileStamp {
+            id: (1, 77),
+            size: 5,
+            modified_ns: Some(10),
+            changed_ns: Some(11),
+        };
+        assert!(possibly_same_file(&a, &a));
+        assert!(possibly_same_file(&a, &FileStamp { id: (2, 77), ..a }));
+        assert!(!possibly_same_file(&a, &FileStamp { id: (2, 78), ..a }));
+        assert!(!possibly_same_file(
+            &a,
+            &FileStamp {
+                id: (2, 77),
+                size: 6,
+                ..a
+            }
+        ));
+        assert!(!possibly_same_file(
+            &a,
+            &FileStamp {
+                id: (2, 77),
+                modified_ns: Some(9),
+                ..a
+            }
+        ));
+        let t = tempdir().unwrap();
+        let (p, q) = (t.path().join("p"), t.path().join("q"));
+        fs::write(&p, "x").unwrap();
+        fs::hard_link(&p, &q).unwrap();
+        let (sp, sq) = (file_stamp(&p).unwrap(), file_stamp(&q).unwrap());
+        assert!(possibly_same_file(&sp, &sq));
+        fs::write(t.path().join("r"), "x").unwrap();
+        assert!(!possibly_same_file(
+            &sp,
+            &file_stamp(&t.path().join("r")).unwrap()
+        ));
     }
 
     /// Design 042 E4: a hard link is the same file (also on Windows, where `file_id` is

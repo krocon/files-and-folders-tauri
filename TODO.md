@@ -109,9 +109,14 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] 031: „Verknüpfung anlegen“ im Kontextmenü der Liste.
 - [ ] Flackernd unter Last: `watch::tests::a_busy_target_holds_its_reload_until_the_job_ends` (wie der Rescan-Test).
 
-- [ ] Flackernder Test (22.10., vor 042 gefunden): `jobs::tests_remote::sftp_up_down_conflicts_move_delete` –
-      Kopie Server → Server endet als `DoneWithErrors` statt `Done` (Zeile 124), etwa jeder 3. Lauf von
-      `cargo test --lib tests_remote`, allein nie. Verdacht: SFTP-Testserver/Pool unter gleichzeitigen Tests.
+- [ ] Flackernder Test (22.10., vor 042 gefunden): `jobs::tests_remote::sftp_up_down_conflicts_move_delete` und
+      `ftp_up_down_conflicts_move_delete` – Kopie Server → Server endet als `DoneWithErrors` statt `Done` (Zeile
+      124), etwa jeder 3. Lauf von `cargo test --lib tests_remote`, allein nie. Verdacht: Testserver/Pool unter
+      gleichzeitigen Tests.
+- [ ] 042: HEIC/AVIF für ähnliche Bilder (bräuchte libheif/dav1d); Fortschritt während der Gruppierung (nur Bilder
+      zählen); Windows: `FileIdInfo` (128-Bit-Ids auf ReFS) statt `nFileIndex`; Bildersuche auf macOS/Windows
+      messen (Release, 4 Worker). **Bei Marc prüfen:** Papierkorb unter macOS/Windows aus dem Job `dedupe`, Hardlinks
+      unter Windows (NTFS) als „gleiche Datei“.
 - [ ] Flackernder Test: `watch::tests::a_mass_change_becomes_a_rescan` scheiterte einmal im Gesamtlauf (timing).
 - [ ] Bundle-Budget auf 1,5 MB angehoben (Merge 009) – Dialoge per `@defer` nachladen, dann zurücksetzen.
 - [ ] 019: Kontrast-Korrekturen in `docs/legacy-themes-contrast.md` durchsehen; Fehlertext in Dialogen hat kein

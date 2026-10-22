@@ -24,7 +24,7 @@ use crate::error::{FsError, FsErrorCode};
 use crate::jobs::Control;
 use crate::listing::stat_entry;
 use crate::paths::parent_names;
-use crate::platform::{file_identity, open_regular_file};
+use crate::platform::{file_identity, file_stamp, open_regular_file};
 use crate::search::{self, Kinds, NameMode, SearchCriteria, SearchHit, SearchStats};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -297,7 +297,12 @@ pub fn same_content(
 ) -> std::io::Result<bool> {
     let mut fa = open_regular_file(a)?;
     let mut fb = open_regular_file(b)?;
-    if fa.metadata()?.len() != fb.metadata()?.len() {
+    let (ma, mb) = (fa.metadata()?, fb.metadata()?);
+    // the opened files themselves (no race with the path checks): one file is no copy
+    if crate::platform::file_id(&ma).is_some_and(|id| Some(id) == crate::platform::file_id(&mb)) {
+        return Err(std::io::Error::other("both names open the same file"));
+    }
+    if ma.len() != mb.len() {
         return Ok(false);
     }
     let mut ba = vec![0u8; BLOCK];
@@ -353,6 +358,8 @@ fn make_units(
     cancel: &AtomicBool,
 ) -> Vec<usize> {
     let mut by_id: HashMap<(u64, u64), usize> = HashMap::new();
+    // the same share mounted twice: other device, same file number, size and time (review 042 #1)
+    let mut by_mount: HashMap<(u64, u64, i128), usize> = HashMap::new();
     let mut out = Vec::new();
     let mut sorted = idx.to_vec();
     sorted.sort_by_key(|&i| candidates[i].order);
@@ -367,8 +374,16 @@ fn make_units(
         };
         // without an identity (odd file systems) the file is its own unit
         let identity = file_identity(&c.path);
+        let stamp = file_stamp(&c.path);
         let id = identity.map_or((u64::MAX, i as u64), |x| x.id);
-        if let Some(&u) = by_id.get(&id) {
+        let mount_key = stamp
+            .filter(|s| s.id.1 != 0)
+            .and_then(|s| s.modified_ns.map(|m| (s.id.1, s.size, m)));
+        let same = by_id
+            .get(&id)
+            .or_else(|| mount_key.and_then(|k| by_mount.get(&k)))
+            .copied();
+        if let Some(u) = same {
             units[u].aliases.push(i);
             continue;
         }
@@ -380,11 +395,15 @@ fn make_units(
             key: cache::Key {
                 id,
                 size: meta.len(),
-                modified: meta.modified().ok(),
+                modified_ns: stamp.and_then(|s| s.modified_ns),
+                changed_ns: stamp.and_then(|s| s.changed_ns),
                 path: c.path.clone(),
             },
         });
         by_id.insert(id, u);
+        if let Some(k) = mount_key {
+            by_mount.insert(k, u);
+        }
         out.push(u);
     }
     out
@@ -616,6 +635,7 @@ fn exact(
             }
             let unit = &units[u];
             if let Some(h) = cache::get(&unit.key).and_then(|e| e.partial) {
+                hashed += unit.key.size.min(2 * PART); // known: counts as done (review 042 #11)
                 return Some(h);
             }
             let r = partial_hash(&unit.key.path, unit.key.size, cancel);
@@ -655,6 +675,7 @@ fn exact(
                 return None;
             }
             if let Some(h) = cache::get(&unit.key).and_then(|e| e.full) {
+                hashed += unit.key.size;
                 return Some(h);
             }
             let r = full_hash(&unit.key.path, cancel, &mut |n| {
@@ -730,6 +751,69 @@ fn exact(
         .collect()
 }
 
+/// Fingerprint of `key`'s file (from the cache or read now). A panic in a decoder or the
+/// archive code of a hostile file is an error for that file only (review 042 #5).
+fn fingerprint_cached(
+    key: &cache::Key,
+    comics: bool,
+    control: &Control,
+) -> Result<Fingerprint, FsError> {
+    let read = || -> Result<Fingerprint, FsError> {
+        let hit = cache::get(key);
+        if comics {
+            if let Some(fp) = hit.and_then(|e| e.comic) {
+                return Ok(Fingerprint::Comic(fp));
+            }
+            let fp = comic::fingerprint(&key.path, control)?;
+            cache::update(key, |e| e.comic = Some(fp.clone()));
+            Ok(Fingerprint::Comic(fp))
+        } else {
+            if let Some(fp) = hit.and_then(|e| e.image) {
+                return Ok(Fingerprint::Image(fp));
+            }
+            let fp = images::photo_fingerprint(&key.path)?;
+            cache::update(key, |e| e.image = Some(fp));
+            Ok(Fingerprint::Image(fp))
+        }
+    };
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(read)).unwrap_or_else(|_| {
+        Err(FsError::new(
+            FsErrorCode::UnsupportedImage,
+            "The file cannot be read (internal error while reading it)",
+            Some(&key.path),
+        ))
+    })
+}
+
+/// Distance between the looks of two files (`None`: never similar) – for the job that
+/// removes similar copies (review 042 #2: the copy must look like the file that stays,
+/// not only like the group's centre).
+pub fn similar_distance(
+    keep: &Path,
+    copy: &Path,
+    comics: bool,
+    control: &Control,
+) -> Result<Option<u32>, FsError> {
+    let key = |p: &Path| -> Result<cache::Key, FsError> {
+        let meta = std::fs::symlink_metadata(p).map_err(|e| FsError::from_io(&e, p))?;
+        let stamp = file_stamp(p);
+        Ok(cache::Key {
+            id: stamp.map_or((u64::MAX, 0), |s| s.id),
+            size: meta.len(),
+            modified_ns: stamp.and_then(|s| s.modified_ns),
+            changed_ns: stamp.and_then(|s| s.changed_ns),
+            path: p.to_path_buf(),
+        })
+    };
+    let a = fingerprint_cached(&key(keep)?, comics, control)?;
+    let b = fingerprint_cached(&key(copy)?, comics, control)?;
+    Ok(match (&a, &b) {
+        (Fingerprint::Image(x), Fingerprint::Image(y)) => images::distance(x, y),
+        (Fingerprint::Comic(x), Fingerprint::Comic(y)) => comic::distance(x, y),
+        _ => None,
+    })
+}
+
 /// Fingerprint of a unit in the similar modes.
 enum Fingerprint {
     Image(images::ImageFp),
@@ -767,24 +851,7 @@ fn similar(
     let results = parallel_map(
         &keys,
         cancel,
-        |key| -> Result<Fingerprint, FsError> {
-            let hit = cache::get(key);
-            if comics {
-                if let Some(fp) = hit.and_then(|e| e.comic) {
-                    return Ok(Fingerprint::Comic(fp));
-                }
-                let fp = comic::fingerprint(&key.path, control)?;
-                cache::update(key, |e| e.comic = Some(fp.clone()));
-                Ok(Fingerprint::Comic(fp))
-            } else {
-                if let Some(fp) = hit.and_then(|e| e.image) {
-                    return Ok(Fingerprint::Image(fp));
-                }
-                let fp = images::fingerprint(&key.path)?;
-                cache::update(key, |e| e.image = Some(fp));
-                Ok(Fingerprint::Image(fp))
-            }
-        },
+        |key| fingerprint_cached(key, comics, control),
         &mut |done| {
             stats.images_done = done as u64;
             report(Report::Stats(stats));
@@ -819,6 +886,11 @@ fn similar(
             _ => None,
         },
         criteria.threshold(),
+        Some(&|it: &(usize, Fingerprint)| match &it.1 {
+            Fingerprint::Image(f) => f.hash,
+            // the comic distance is the largest page distance: ≥ the title page's
+            Fingerprint::Comic(c) => c.hashes.first().copied().unwrap_or(0),
+        }),
         &|| cancelled(control),
     );
     let out = groups
@@ -861,7 +933,8 @@ fn hits(
         let mut real_units = 0;
         for (u, distance) in g {
             let unit = &units[u];
-            let primary = candidates[unit.primary].path.to_string_lossy().into_owned();
+            // the first name that still exists leads (review 042 #13)
+            let mut primary = String::new();
             let mut first = true;
             for i in std::iter::once(unit.primary).chain(unit.aliases.iter().copied()) {
                 let c = &candidates[i];
@@ -892,6 +965,7 @@ fn hits(
                 });
                 if first {
                     real_units += 1;
+                    primary = c.path.to_string_lossy().into_owned();
                 }
                 first = false;
             }

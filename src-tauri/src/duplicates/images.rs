@@ -12,6 +12,7 @@ use image::{DynamicImage, ImageReader, Limits, imageops::FilterType};
 use std::io::{Cursor, Read};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
+use std::sync::{Condvar, Mutex, OnceLock};
 
 /// Extensions the search looks at (lower case). The format itself is guessed from the bytes.
 pub const IMAGE_EXT: &[&str] = &[
@@ -116,13 +117,65 @@ pub fn decode_bytes(data: &[u8], path: &Path) -> Result<DynamicImage, FsError> {
     outcome.unwrap_or_else(|_| Err(bad("The image cannot be read (decoder failure)", path)))
 }
 
+/// At most this many images are read and decoded at once in the whole app – search
+/// workers and thumbnails share it (review 042 #4: each may hold the file and the
+/// decoder's allocation).
+pub const MAX_DECODES: usize = 4;
+
+struct Permits {
+    used: Mutex<usize>,
+    freed: Condvar,
+}
+
+fn permits() -> &'static Permits {
+    static P: OnceLock<Permits> = OnceLock::new();
+    P.get_or_init(|| Permits {
+        used: Mutex::new(0),
+        freed: Condvar::new(),
+    })
+}
+
+struct Permit;
+
+impl Permit {
+    fn take() -> Permit {
+        let p = permits();
+        let mut used = p.used.lock().unwrap_or_else(|e| e.into_inner());
+        while *used >= MAX_DECODES {
+            used = p.freed.wait(used).unwrap_or_else(|e| e.into_inner());
+        }
+        *used += 1;
+        Permit
+    }
+}
+
+impl Drop for Permit {
+    fn drop(&mut self) {
+        let p = permits();
+        let mut used = p.used.lock().unwrap_or_else(|e| e.into_inner());
+        *used -= 1;
+        p.freed.notify_one();
+    }
+}
+
 /// Decodes the image file at `path` with all limits.
 pub fn decode(path: &Path) -> Result<DynamicImage, FsError> {
+    let _permit = Permit::take();
     decode_bytes(&read_file(path)?, path)
 }
 
+/// Grey values vary less than this (standard deviation of the 32 × 32 image): the picture
+/// is (almost) one colour – its pHash is noise and would match every other flat picture
+/// (review 042 #2).
+pub const MIN_CONTRAST: f64 = 3.0;
+
 /// pHash of a decoded image.
 pub fn phash_of(img: &DynamicImage) -> u64 {
+    phash_and_contrast(img).0
+}
+
+/// pHash and the contrast (standard deviation of the grey values) of a decoded image.
+pub fn phash_and_contrast(img: &DynamicImage) -> (u64, f64) {
     // a cheap reduction first (big photos), then a proper filter down to 32 × 32
     let small = if img.width() > 512 || img.height() > 512 {
         img.thumbnail(256, 256)
@@ -135,16 +188,41 @@ pub fn phash_of(img: &DynamicImage) -> u64 {
         phash::SIDE as u32,
         FilterType::Triangle,
     );
-    phash::phash_of_grey(grey.as_raw())
+    let px = grey.as_raw();
+    let n = px.len() as f64;
+    let mean = px.iter().map(|&v| f64::from(v)).sum::<f64>() / n;
+    let var = px
+        .iter()
+        .map(|&v| (f64::from(v) - mean).powi(2))
+        .sum::<f64>()
+        / n;
+    (phash::phash_of_grey(px), var.sqrt())
 }
 
-/// Fingerprint of the image file at `path`.
+/// Fingerprint of the image file at `path` – any picture (comic pages may be blank).
 pub fn fingerprint(path: &Path) -> Result<ImageFp, FsError> {
+    fingerprint_with(path, false)
+}
+
+/// Fingerprint of a photo for the similar-image search: flat pictures (one colour, blank
+/// scans) are refused – they would all look alike.
+pub fn photo_fingerprint(path: &Path) -> Result<ImageFp, FsError> {
+    fingerprint_with(path, true)
+}
+
+fn fingerprint_with(path: &Path, need_contrast: bool) -> Result<ImageFp, FsError> {
     let img = decode(path)?;
+    let (hash, contrast) = phash_and_contrast(&img);
+    if need_contrast && contrast < MIN_CONTRAST {
+        return Err(bad(
+            "The image is (almost) one colour – it cannot be compared by its look",
+            path,
+        ));
+    }
     Ok(ImageFp {
         width: img.width(),
         height: img.height(),
-        hash: phash_of(&img),
+        hash,
     })
 }
 
@@ -297,6 +375,24 @@ pub(crate) mod tests {
             fingerprint(&d.path().join("missing.jpg")).unwrap_err().code,
             FsErrorCode::NotFound
         );
+    }
+
+    /// Review 042 #2: flat pictures get no fingerprint in the photo search.
+    #[test]
+    fn flat_images_are_not_compared() {
+        let d = tempfile::tempdir().unwrap();
+        let black = image::RgbImage::from_pixel(400, 300, image::Rgb([0, 0, 0]));
+        let white = image::RgbImage::from_pixel(400, 300, image::Rgb([250, 250, 250]));
+        for (name, img) in [("black.png", &black), ("white.png", &white)] {
+            let p = d.path().join(name);
+            fs::write(&p, encode(img, ImageFormat::Png)).unwrap();
+            let e = photo_fingerprint(&p).unwrap_err();
+            assert!(e.message.contains("one colour"), "{}", e.message);
+            assert!(fingerprint(&p).is_ok(), "comic pages may be blank");
+        }
+        let p = d.path().join("photo.jpg");
+        fs::write(&p, jpeg(&photo(400, 300, 1), 90)).unwrap();
+        assert!(photo_fingerprint(&p).is_ok());
     }
 
     #[test]

@@ -40,12 +40,13 @@
   040 (Panel-Aktionen: Seiten tauschen, Ziel = Quelle, Strg+←/→) und Prompt 027 (Ordnergedächtnis je Tab über einen
   Neustart in `folder-memory.json`, letzte Dialogeingaben in `dialogs.recent`) und Prompt 039 (Prüfsummen erzeugen/prüfen, Jobs `checksum`/
   `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) und Prompt 038 (Flache Ansicht: Strg+B im selben
-  Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) sind fertig, 022–031 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041–044
+  Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) und Prompt 042 (Dubletten: Hardlinks als Einheit, Cache,
+  Regel-Engine, Job `dedupe`, ähnliche Bilder/Comics per pHash) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041, 043, 044
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037–040 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037–040, 042 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -127,7 +128,11 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              OPEN_STARTER_MENU (Alt+S, Popup über `MenuService.openStarter`)/OPEN_STARTER_CONFIG_DLG
   app/features/flat/         Flache Ansicht (038): flat-logic.ts (rein: Kriterien, `shouldRefresh`), Aktionen
                              TOGGLE_FLAT_VIEW(_DIRS); Umschalten im FilePanel, Auffrischen im SearchStore (`refresh`)
-  app/features/duplicates/   DuplicatesStore + Dialog, duplicates-logic.ts (Auswahlhilfen, rein) – Ergebnis im SearchStore
+  app/core/duplicates/       DuplicatesApi (classify_paths, duplicate_thumbnails, Regelsätze `duplicate-rules.json`)
+  app/features/duplicates/   DuplicatesStore (Root: Dialog, Regelsätze, Anwenden, Enter = behalten, Alt+↓/↑, Vorschau-
+                             bilder, Bestätigung → Job `dedupe`), duplicates-rules.ts (reine Regel-Engine + Katalog
+                             `.cases.json`, `dedupePlan`), duplicates-presets.ts, Dialoge (Suche, Regeln, Löschen),
+                             DuplicateGroupView (andere Seite), Spalten-Renderer – Ergebnis im SearchStore (042)
   app/core/diskusage/        DiskUsageApi (`disk_usage_*`), DTOs (033)
   app/features/diskusage/    DiskUsageStore (Root: Scans, Ebene/Verlauf/Korb je Scan, Tab `usage:<scanId>`), usage-rows.ts,
                              basket-logic.ts, chart-layout.ts (Ringe/Kacheln, rein), usage-colors.ts, DiskUsageChart
@@ -220,7 +225,11 @@ src-tauri/                   Rust (Tauri 2)
                              Frontend core/diff/, features/diff/ (compare-files-logic.ts rein, DiffStore, Dialog)
   src/checksum.rs            Prüfsummen (039): Hashing MD5/SHA-1/SHA-256/SHA-512, GNU/BSD-Zeilen, `resolve` (feindliche
                              Namen); Jobs `jobs/checksum.rs` (+ tests_checksum.rs); Frontend features/checksum/
-  src/duplicates.rs          Duplikate: Größe → SHA-256 Kopf/Ende → voll (Crate `sha2`), Job `jobs/duplicates.rs`
+  src/duplicates/            Duplikate (016/042): mod.rs (Einheiten/Hardlinks, Größe → SHA-256 Kopf/Ende → voll →
+                             paranoid, `same_content`), cache.rs (Speicher-Cache), images.rs (Decoder mit Grenzen,
+                             Semaphor), phash.rs (pHash, Gruppierung mit Mehrfach-Index), comic.rs, thumbs.rs (Schema
+                             `fnfpreview`, Token `t…`), tests.rs; Jobs `jobs/duplicates.rs`, `jobs/dedupe.rs` (Prüfung
+                             je Kopie, Papierkorb/endgültig/verschieben); Commands `commands/duplicates.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)

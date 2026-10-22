@@ -22,7 +22,8 @@ fn too_many(what: &str) -> FsError {
 
 /// `result[i][j]`: path `i` lies in folder `j` (or below) – rule "in folder X" (E2a).
 /// Purely lexical (no file system access): both sides are normalised, links are not
-/// resolved – the rule compares the paths the user sees.
+/// resolved – the rule compares the paths the user sees. macOS and Windows compare
+/// without case, like their file systems usually do (review 042 #14).
 #[tauri::command]
 pub async fn classify_paths(
     paths: Vec<String>,
@@ -36,18 +37,28 @@ pub async fn classify_paths(
     }
     let folders: Vec<PathBuf> = folders
         .iter()
-        .map(|f| validate_input_path(f).map(|p| normalize_lexically(&p)))
+        .map(|f| validate_input_path(f).map(|p| fold(&normalize_lexically(&p))))
         .collect::<Result<_, _>>()?;
-    blocking("Classifying paths", move || {
-        Ok(paths
-            .iter()
-            .map(|p| {
-                let p = normalize_lexically(std::path::Path::new(p));
-                folders.iter().map(|f| p.starts_with(f)).collect()
-            })
-            .collect())
-    })
-    .await
+    blocking("Classifying paths", move || Ok(classify(&paths, &folders))).await
+}
+
+/// Case folding of the platforms whose file systems ignore case.
+fn fold(p: &std::path::Path) -> PathBuf {
+    if cfg!(any(target_os = "macos", windows)) {
+        PathBuf::from(p.to_string_lossy().to_lowercase())
+    } else {
+        p.to_path_buf()
+    }
+}
+
+fn classify(paths: &[String], folders: &[PathBuf]) -> Vec<Vec<bool>> {
+    paths
+        .iter()
+        .map(|p| {
+            let p = fold(&normalize_lexically(std::path::Path::new(p)));
+            folders.iter().map(|f| p.starts_with(f)).collect()
+        })
+        .collect()
 }
 
 /// Thumbnail tokens (`fnfpreview` scheme) for images or comics; `None` where none can
@@ -128,4 +139,36 @@ pub async fn save_duplicate_rules<R: Runtime>(
         rename_presets::save(&file, rules).map_err(|e| FsError::from_io(&e, &file))
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn classify_by_folder() {
+        let folders = vec![
+            fold(Path::new("/h/Archiv")),
+            fold(Path::new("/h/Fotos/2024")),
+        ];
+        let r = classify(
+            &[
+                "/h/Archiv/a.jpg".into(),
+                "/h/Archiv2/a.jpg".into(),
+                "/h/Fotos/2024/x/y.jpg".into(),
+                "/h/archiv/b.jpg".into(),
+            ],
+            &folders,
+        );
+        assert_eq!(r[0], vec![true, false]);
+        assert_eq!(
+            r[1],
+            vec![false, false],
+            "a name that only starts like the folder"
+        );
+        assert_eq!(r[2], vec![false, true]);
+        // macOS/Windows: without case
+        assert_eq!(r[3][0], cfg!(any(target_os = "macos", windows)));
+    }
 }

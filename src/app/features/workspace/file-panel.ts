@@ -173,7 +173,7 @@ export class FilePanel implements OnInit {
   /** The rule set offered in the header. */
   protected readonly dupSet = computed(() => {
     this.dup.decided();
-    this.dup.chosen();
+    this.dup.chosenSets();
     return this.dup.setOn(this.side());
   });
   /** While a duplicate search runs: scanning, then comparing contents or reading images. */
@@ -646,7 +646,7 @@ export class FilePanel implements OnInit {
   protected chooseSet(evt: Event): void {
     const id = this.dup.parseSet((evt.target as HTMLSelectElement).value);
     if (id) {
-      this.dup.choose(id);
+      this.dup.choose(id, this.dup.modeOn(this.side()));
     }
   }
 

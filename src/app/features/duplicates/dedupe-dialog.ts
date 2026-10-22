@@ -99,7 +99,7 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
                     <figure class="tile stays">
                       <div class="pic">
                         @if (thumb(g.keep.path); as url) {
-                          <img [src]="url" alt="" />
+                          <img [src]="url" alt="" (error)="dup.thumbFailed(g.keep.path)" />
                         } @else {
                           <i class="fa fa-file-o" aria-hidden="true"></i>
                         }
@@ -115,7 +115,7 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
                       <figure class="tile goes">
                         <div class="pic">
                           @if (thumb(c.path); as url) {
-                            <img [src]="url" alt="" />
+                            <img [src]="url" alt="" (error)="dup.thumbFailed(c.path)" />
                           } @else {
                             <i class="fa fa-file-o" aria-hidden="true"></i>
                           }
