@@ -31,9 +31,18 @@ einige Minuten.
 | `--chrome` | installiertes Google Chrome statt Playwrights Chromium (dann ist `screenshots:install` unnötig) |
 | `--headed` | Browser sichtbar (zum Nachsehen beim Schreiben neuer Szenen) |
 | `--verbose` | Konsole des Browsers ausgeben |
-| `--docs` | die Bilder für README/Doku (s. u., = `pnpm screenshots:docs`) |
+| `--docs` | die Bilder für die Doku (s. u., = `pnpm screenshots:docs`) |
+| `--readme` | je Feature der README ein Bild in Norton (s. u., = `pnpm screenshots:readme`) |
 
-## Bilder für README und Doku
+## Bilder der README und der Werbeseite (Prompt 044)
+
+`pnpm screenshots:readme` erzeugt `docs/screenshots/readme/<feature>.png`: die Liste in `scenes.json` →
+`"readme"` (Dateiname = Anker des Features, Szene), alle im Design `classic-norton`, Linux, Englisch, 1280 × 760,
+danach pngquant (18 Bilder ≈ 1 MB). README und `site/index.html` verweisen auf genau diese Dateien;
+`scripts/site.test.mjs` prüft, dass jedes Bild existiert und benutzt wird. Die Werbeseite bekommt ihre Kopien mit
+`pnpm site` (→ `site/dist/img/`, s. `site/README.md`).
+
+## Bilder für die Doku
 
 `pnpm screenshots:docs` erzeugt die eingecheckten Bilder in `docs/screenshots/` neu: die Auswahl aus
 `scenes.json` → `"docs"."images"` (Szene + Farbschema + Dateiname) und `colour-schemes-overview.png`, eine
@@ -96,8 +105,18 @@ Schritte:
 - `{ "wait": 500 }`: warten (ms).
 - `{ "click": "css-selector" }`: klicken.
 
-Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf), `"mock": { "jobs": true }`
-(Task-Liste mit Beispieljobs) und `"mock": { "bigFiles": true }` (ein paar große Dateien in sonst leeren
-Ordnern, damit die Speicherbelegung etwas zu zeigen hat – Szene `disk-usage`). Braucht eine neue Szene einen Command, den der Mock noch nicht kennt
+Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf), `"ready": "text"` (der Runner wartet auf
+diesen Text statt auf `IMG_4711.jpg`, z. B. wenn die Szene in einem Archiv startet) und `"mock"` mit:
+
+| Option | Wirkung |
+| --- | --- |
+| `"jobs": true` | Task-Liste mit Beispieljobs |
+| `"bigFiles": true` | ein paar große Dateien in sonst leeren Ordnern (Szene `disk-usage`) |
+| `"duplicates": true` | Kopien unter anderen Namen (Szene `duplicate-results`) |
+| `"conflict": true` | ein Kopierjob wartet auf die Konfliktfrage (Szene `conflict-dialog`) |
+| `"photoFolders": true` | Fotos auch in `Edited`, `Panorama`, `Videos` (Szenen `flat-view`, `similar-images`) |
+| `"archive": true` | `Italy 2026 best of.zip` hat Inhalt, der Cursor steht darauf (Szene `archive-folder`) |
+| `"remote": true` | rechts ein erster Tab auf dem SFTP-Profil „My server“ (Szene `remote-panel`, kein echter Host) |
+| `"shellHeight": 200` | höhere Ausgabe der Shell-Zeile (Szene `shell-output`; `run_shell` liefert eine feste Ausgabe) | Braucht eine neue Szene einen Command, den der Mock noch nicht kennt
 (Antwort `null`), ergänzt man ihn in `mock-backend.js` mit der Form aus dem passenden `*.models.ts`.
 `pnpm scripts:test` prüft, dass jede Aktion der Szenen auf allen drei Systemen auslösbar ist.

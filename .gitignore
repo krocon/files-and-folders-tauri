@@ -48,3 +48,6 @@ Thumbs.db
 /.tmp-bundle
 /.old_project/
 /old_project/
+
+# Landing page build (pnpm site)
+/site/dist

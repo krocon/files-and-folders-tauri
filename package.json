@@ -36,6 +36,7 @@
     "screenshots": "node scripts/screenshots/run.mjs",
     "screenshots:docs": "node scripts/screenshots/run.mjs --docs",
     "screenshots:readme": "node scripts/screenshots/run.mjs --readme",
+    "site": "node scripts/site.mjs",
     "screenshots:install": "playwright install chromium"
   },
   "private": true,

@@ -2,158 +2,276 @@
   <img src="docs/logo/png/ff-green-128x128.png" width="96" height="96" alt="Files and Folders logo">
 </p>
 
-<h1 align="center">Files and Folders</h1>
+<h1 align="center">Files and Folders (FnF)</h1>
 
 <p align="center">
-  A fast, keyboard-driven, two-panel file manager for <b>macOS</b>, <b>Windows</b> and <b>Linux</b> –
-  in the spirit of Total Commander and Norton Commander.
+  <b>A fast, keyboard-first two-panel file manager for macOS, Windows and Linux –<br>
+  in the spirit of Norton Commander and Total Commander.</b>
 </p>
 
 <p align="center">
-  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-orange">
-  <img alt="Platforms: macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="Built with Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB">
-  <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031">
-  <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-000000">
+  <img alt="Platforms: macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue">
+  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-orange">
 </p>
 
----
+![Files and Folders in the classic Norton colour scheme: two panels with tabs, four marked photos and the button bar](docs/screenshots/readme/two-panels.png)
 
-> [!WARNING]
-> **This app is under active development.** There is no public release yet, things change daily and some
-> features are still missing or only lightly tested (especially on Windows and macOS). Use it on data you have
-> backed up – and feedback is very welcome!
+**Become a master of file management.** I have been building file managers for myself since 2016 – first one
+that ran in the browser, now a real desktop app. FnF puts two folders side by side, lets you do everything with
+the keyboard and runs the slow work in the background while you go on. Copy, move, rename hundreds of files at
+once, find duplicates, look into archives and servers – without reaching for the mouse.
 
-**Files and Folders** (FnF) is the desktop successor of the browser-based
-[`files-and-folders`](https://www.npmjs.com/package/files-and-folders) (Node.js + AngularJS, 2016) and of
-[files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) (Angular + NestJS, 2025). It is rebuilt
-from scratch as a native desktop app with **[Tauri 2](https://tauri.app)**, **Angular 22** and a **Rust** backend –
-no local web server, no browser tab, just one small app.
-
-The file list is a [GuiExpert Table](https://github.com/guiexperttable/mono): virtual scrolling, 100 000 entries
-without stutter.
-
-![Files and Folders with the classic Norton colour scheme: two panels with tabs, marked files and the button bar](docs/screenshots/main.png)
-
-<p align="center"><i>The classic <b>Norton</b> colour scheme – one of eleven built-in designs.</i></p>
+> [!NOTE]
+> **There is no public release yet.** You can build the app from source today (see [Installation](#installation)).
+> The automated tests run on Linux, macOS and Windows, but some platform specifics (the trash per drive on Windows,
+> attributes, links) still need testing on real macOS and Windows machines. Back up what you care about – and tell
+> me what breaks.
 
 ## Main features
 
-- **Cross-platform** – one app for macOS, Windows and Linux, with native menus on macOS and keymaps per OS
-- **Orthodox two-panel layout** – source and target side by side, path breadcrumbs, favourites, status line,
-  button bar that changes with `Shift` / `Alt` / `Ctrl` (`⌘`)
-- **Tabs** on both sides – clone, drag to reorder or onto the other side (`Ctrl`/`⌥` copies), each tab keeps path,
-  sort order, column widths and cursor
-- **Panel actions** like Total Commander – swap the panels (`Ctrl+U` / `⌘U`, with all tabs `Ctrl+Shift+U`),
-  *target = source* (`Ctrl+Alt+O` / `⌘⌥O`), open the folder under the cursor in the left/right panel
-  (`Ctrl+←/→` / `⌘⌥←/→`)
-- **Session restore** – tabs, active side, splitter, favourites and window position survive a restart; each tab
-  also remembers cursor, marks and scroll position of its last 50 folders
-- **Keyboard first** – every function is an action with an id; shortcuts are configurable, a command palette
-  (*Command Palette*) finds every action
-- **Background jobs** – copy, move, delete, pack and search run as jobs with progress, rate, remaining time,
-  pause, resume and cancel; conflicts are asked once or “for all”
-- **Safe by default** – delete goes to the **trash**, no half-written files under the real name, rename never
-  overwrites, dangerous targets (root, home, system folders) need a second confirmation
-- **Multi rename** with live preview, macros, counters, case rules, regex replacements, presets and **undo**
-- **Group files** into folders by name, **clean folders** (empty folders, `*.bak`, `.DS_Store` …),
-  **create many folders** from a template
-- **Search** with glob/regex, content, size, date, depth and presets – results stream into a **result tab** you
-  can work with like a normal folder
-- **Archives** – open ZIP / TAR / TAR.GZ / 7z / RAR like a folder, view (F3) and open (Enter) files inside,
-  pack (ZIP, 7z, TAR, TAR.GZ) and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR; kept in memory only)
-  – zip-slip and zip-bomb safe
-- **Server connections** (`Ctrl+K` / `⌘K`) – FTP, FTPS and SFTP servers as folders in the panels: browse with
-  tabs and history, copy and move in both directions as jobs, delete, create, rename, view (`F3`) and open files.
-  Passwords and key passphrases are kept **only in the system keychain** (macOS Keychain, Windows Credential
-  Manager, Secret Service) – never in a file of the app; SSH host keys and FTPS certificates are checked, plain FTP
-  is marked as unencrypted
-- **Flat view** (`Ctrl+B` / `⌘B`) like Total Commander – every file below the folder in one list with a *Path*
-  column, in the same tab; mark, copy, move, delete, rename and multi-rename across all subfolders, back with the
-  same key
-- **Find duplicates** by content (SHA-256, optionally byte by byte), **similar images** (perceptual hash: other
-  quality, size or format) or **similar comics** (`.cbz`/`.cbr`/`.cb7`); hard links are shown as “same file”.
-  **Rules decide which file stays** (oldest, newest, shortest name/path, path pattern, folder, no “copy” name,
-  higher resolution …) – the first rule that tells the files apart decides, ties stay unmarked. A group view with
-  thumbnails on the other side, `Enter` keeps the file under the cursor. Deleting only after a confirmation with
-  the pictures: to the trash, permanently or into a folder – every copy is compared with the kept file right
-  before
-- **Compare files** – two files side by side with line numbers and coloured differences (ignore white space or
-  case, whole file or only the changes, `F7` jumps to the next one), binaries byte by byte; or hand them to
-  FileMerge, WinMerge or Meld
-- **Checksums** – create SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible) or one file per file, verify a
-  checksum file with a list of changed and missing files, copy the SHA-256 of a file to the clipboard
-- **Viewer** (`F3`) for text, hex and images, **quick view** in the other panel, **properties**
-- **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, modification /
-  access / creation time; for many entries at once (only what you touch changes) and optionally for folder contents
-- **Auto refresh** – folders shown in both panels are watched; changes by other programs appear in under a second
-- **Disk usage** (`Ctrl+Shift+D` / `⌘⇧D`, or *Disk usage of the drive…*) – scans the marked folders, the folder
-  under the cursor or the whole drive: a list by size with share bars next to rings or tiles in the other panel,
-  Enter goes into a folder, *Largest files* lists the big ones of the subtree, marks collect across all folders and
-  `F8` removes them (trash; anything changed since the scan is left alone)
-- **Drag & drop** between panels, from Finder / Explorer / your file manager, and out of the window into other
-  programs (copy); with `Ctrl+Shift` (`⌘⌥`) it creates **symbolic links** (also *Create link…*, `Ctrl+Shift+F5`)
-- **External tools** and *Open terminal here* / *Show in Finder/Explorer* – tools are started **without a
-  shell**, configured in a small JSON file
-- **Shell line** below the panels (`Shift+F11`): run a command in the current folder, output streamed, history
-- **Colour schemes** – the eight classic designs (Light, Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat,
-  Norton) plus modern light/dark and Crimson, *follow the system*, a live editor with WCAG contrast check, import/export
-- **Configurable button bar and file types** – structured editors for the buttons per modifier set and for the
-  file type categories (icons, colours, *mark by type*); own search templates are kept
-- **Full screen** with `F11` on Windows/Linux (`⌃⌘F` on macOS)
-- **Settings dialog** with search, export/import of the whole configuration
-- **Import from the previous version** – shortcuts, buttons, file types, search patterns, tools, colour schemes
-  and two settings of *files-and-folders-mr*, with a preview per area and a backup of every changed file
-- **English and German** UI, switchable at runtime
+1. [Two panels, tabs everywhere](#two-panels-tabs-everywhere)
+2. [Keyboard first – every function is one keystroke away](#keyboard-first)
+3. [Jobs in the background](#jobs-in-the-background)
+4. [Safe by default](#safe-by-default)
+5. [Multi rename with preview and undo](#multi-rename-with-preview-and-undo)
+6. [Search into a tab](#search-into-a-tab)
+7. [Flat view](#flat-view)
+8. [Duplicates and similar images](#duplicates-and-similar-images)
+9. [Disk usage](#disk-usage)
+10. [Archives as folders](#archives-as-folders)
+11. [FTP, FTPS and SFTP servers](#ftp-ftps-and-sftp-servers)
+12. [Viewer and quick view](#viewer-and-quick-view)
+13. [Compare files](#compare-files)
+14. [Group files and clean folders](#group-files-and-clean-folders)
+15. [Shell line](#shell-line)
+16. [Starter menu](#starter-menu)
+17. [Colour schemes](#colour-schemes)
+18. [And more](#and-more)
 
-![The Actions menu: every action grouped in four columns, with its keyboard shortcut](docs/screenshots/actions-menu.png)
+Shortcuts are written *Windows/Linux · macOS*. All of them can be changed.
 
-<p align="center"><i>The <b>Actions</b> menu (<code>Ctrl+F12</code>) lists every action with its shortcut.</i></p>
+## Two panels, tabs everywhere
 
-The complete feature list with all details (in German) is in **[docs/features.md](docs/features.md)**; the
-comparison with the previous version is in [docs/feature-parity.md](docs/feature-parity.md).
+**Source on the left, target on the right – the fastest way to move files around.**
+Each side has a clickable path, favourites, a status line and as many tabs as you like. Drag tabs to reorder them
+or onto the other side, swap the panels, or make the target show the same folder as the source. Tabs, cursor,
+marks, sort order and column widths survive a restart; every tab even remembers its last 50 folders.
 
-## Screenshots
+`Tab` switch side · `Ctrl+T` / `Ctrl+W` new / close tab · `Ctrl+U` swap panels · `Ctrl+Alt+O` target = source ·
+macOS: `Tab` · `⌘⌥T` / `⌘⌥W` · `⌘U` · `⌘⌥O`
 
-| | |
-| --- | --- |
-| ![Copy dialog with live count of files, folders and size](docs/screenshots/copy.png) | ![Task list with a running copy job, a waiting move and a finished delete](docs/screenshots/tasks.png) |
-| **Copy** – target, conflict default, background (*Light*) | **Tasks** – progress, rate, pause and cancel (*Crimson*) |
-| ![Multi rename with live preview of the new names](docs/screenshots/multi-rename.png) | ![Search results in their own tab](docs/screenshots/search-results.png) |
-| **Multi rename** – pattern, counter, preview (*Modern light*) | **Search** – results stream into a tab (*Modern dark*) |
-| ![Image viewer](docs/screenshots/viewer.png) | ![Colour scheme editor with contrast check](docs/screenshots/colour-schemes.png) |
-| **Viewer** (`F3`) – text, hex and images (*Blackboard*) | **Colour schemes** – live editor, WCAG check (*Coffee*) |
-| ![Disk usage: the home folder by size with share bars, rings in the other panel and two folders marked for removal](docs/screenshots/disk-usage.png) | |
-| **Disk usage** (`Ctrl+Shift+D`) – list by size, rings or tiles, remove what is big (*Norton*) | |
+## Keyboard first
 
-All eleven built-in colour schemes:
+**Every function is an action with a name and a shortcut – type a few letters, press Enter.**
+The *Command Palette* finds any action by name and shows its shortcut, so you learn the keys on the way. The
+*Actions* menu lists all of them in groups. The classic keys are where you expect them: `F3` view, `F5` copy,
+`F6` move, `F7` new folder, `F8` delete. The button bar at the bottom changes with `Shift`, `Alt` and `Ctrl`.
+
+`Ctrl+Shift+P` palette · `Ctrl+F12` actions menu · `Ctrl+Shift+K` shortcuts ·
+macOS: `⌘⇧P` · `⌃K ⌃M` · `⌘⇧K`
+
+![The Command Palette: typing "co" lists Copy, Connect to server, Colour schemes … with their shortcuts](docs/screenshots/readme/keyboard.png)
+
+<details>
+<summary>The <i>Actions</i> menu – every action in four columns</summary>
+
+![The Actions menu: every action grouped in four columns with its keyboard shortcut](docs/screenshots/readme/actions-menu.png)
+
+</details>
+
+## Jobs in the background
+
+**Start a big copy and keep working – the app never freezes.**
+Copy, move, delete, pack and search run as jobs with progress, rate and remaining time. Pause them, resume them,
+cancel them; several jobs line up in a queue. Slow network drives and servers are handled the same way – the
+panels stay usable.
+
+`F5` copy · `F6` move · `Ctrl+F11` tasks · macOS: `F5` · `F6` · `⌃K F6`
+
+![The task list: a copy at 62 percent with rate and pause button, a waiting move and a finished delete](docs/screenshots/readme/jobs.png)
+
+## Safe by default
+
+**Delete goes to the trash, nothing is overwritten without asking.**
+When a file already exists you see both versions with size and date and decide once – or for all further
+conflicts: overwrite, skip, overwrite if newer, or rename. Copies are written under a temporary name first, so
+there is never a half-written file under the real name. Renaming never overwrites, and dangerous targets (root,
+home, system folders) need a second confirmation.
+
+`F8` trash · `Shift+F8` delete permanently · macOS: `F8`, `⌘⌫` · `⇧F8`, `⌘⌥⌫`
+
+![The conflict question: the new and the existing IMG_4738.jpg with size and date, buttons Overwrite, Skip, Rename, Overwrite if newer and Cancel copying](docs/screenshots/readme/safety.png)
+
+## Multi rename with preview and undo
+
+**Rename hundreds of files in one go – and see every new name before you press the button.**
+Build names from macros like `[N]` name, `[E]` extension, `[C]` counter, `[D]` date, use upper/lower case rules,
+search and replace with regular expressions, replace umlauts and risky characters. Errors (duplicate names,
+invalid characters) are shown in the preview. Save your patterns as presets – and if it was a mistake: undo.
+
+`Ctrl+M` · macOS: `⌘F6`
+
+![Multi rename: the pattern "Italy 2026 - [C].[E]" turns four photos into "Italy 2026 - 0001.jpg" and so on](docs/screenshots/readme/multi-rename.png)
+
+## Search into a tab
+
+**Search results land in a tab you work with like a folder.**
+Search by name (glob or regex), content, size, date and depth; results stream in while the search runs. Copy,
+move, delete, rename or view the hits directly, jump to the folder of a hit, run the search again. Keep your
+favourite searches as templates.
+
+`Alt+F7` find · `Ctrl+Shift+F7` search again · `Alt+F10` find folder · macOS: `⌥F7` · `⌘⇧F7` · `⌥F10`
+
+![Search for *.jpg: 22 hits in their own tab with a folder column](docs/screenshots/readme/search.png)
+
+## Flat view
+
+**Every file below a folder in one list.**
+Like Total Commander's flat view: all files of all subfolders in the same tab, with a *Path* column. Sort them,
+mark them, copy or delete them, rename them – across all subfolders at once. The same key brings the normal view
+back.
+
+`Ctrl+B` · macOS: `⌘B`
+
+![Flat view of the photo folder: 36 entries from the folder and its subfolders Edited, Panorama and Videos](docs/screenshots/readme/flat-view.png)
+
+## Duplicates and similar images
+
+**Free space without fear: rules decide which copy stays.**
+Find files with the same content (SHA-256, optionally byte by byte), **similar images** (another size, quality or
+format) or similar comics. Rules like *keep the oldest*, *the shortest path*, *the higher resolution* or *not the
+one named "copy"* mark the rest; hard links are recognised as the same file. Check each group with thumbnails, then
+delete to the trash, permanently or into a folder – every copy is compared again right before.
+
+`Alt+Shift+F7` · `Alt+↓` / `Alt+↑` next / previous group · macOS: `⌥⇧F7` · `⌥↓` / `⌥↑`
+
+![Similar images: an original and its edited copy side by side as thumbnails, the list marks the smaller copy for deletion](docs/screenshots/readme/duplicates.png)
+
+## Disk usage
+
+**See at a glance what eats your disk.**
+Scan the marked folders, the folder under the cursor or the whole drive. The list shows sizes with share bars,
+the other panel draws rings or tiles. Go into folders with `Enter`, list the largest files, collect what can go
+across all folders and remove it with `F8`.
+
+`Ctrl+Shift+D` · macOS: `⌘⇧D`
+
+![Disk usage of the home folder: list by size with share bars and a ring chart; two folders marked for removal](docs/screenshots/readme/disk-usage.png)
+
+## Archives as folders
+
+**Open ZIP, TAR, 7z and RAR like any other folder.**
+Press `Enter` on an archive and browse it; view (`F3`) and open files inside, copy them out. Pack to ZIP, 7z, TAR
+or TAR.GZ and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR) that are only kept in memory. Archives from
+elsewhere are treated as hostile: no zip-slip, no zip-bombs.
+
+`Enter` open · `Alt+F5` pack · `Alt+F9` unpack · macOS: `Enter` · `⌥F5` · `⌥F9`
+
+![Inside "Italy 2026 best of.zip": folders and photos of the archive, the header says ZIP · read-only](docs/screenshots/readme/archives.png)
+
+## FTP, FTPS and SFTP servers
+
+**Your web space as a folder in the panel.**
+Connect to FTP, FTPS and SFTP servers and work with them like with a local folder: tabs, history, copy and move
+in both directions as jobs, delete, rename, view. Passwords and key passphrases are kept **only in your system
+keychain** (macOS Keychain, Windows Credential Manager, Secret Service). SSH host keys and FTPS certificates are
+checked; plain FTP is marked as unencrypted.
+
+`Ctrl+K` · macOS: `⌘K`
+
+![The right panel shows the folder example.org on the SFTP server "My server"](docs/screenshots/readme/servers.png)
+
+## Viewer and quick view
+
+**Look into files without opening another program.**
+`F3` shows text (with search and encoding detection), hex and images. The quick view shows the file under the
+cursor in the other panel while you move through the list. *Properties* show times, permissions and owner.
+
+`F3` view · `Ctrl+Q` quick view · `Alt+Enter` properties · macOS: `F3` · `⌃Q` · `⌘I`
+
+![Quick view: the left panel shows the photo under the cursor of the right panel](docs/screenshots/readme/viewer.png)
+
+## Compare files
+
+**Two files side by side, differences in colour.**
+Line numbers, changed, added and removed lines; ignore white space or case; whole file or only the changes,
+`F7` jumps to the next one. Binary files are compared byte by byte – or hand both files to FileMerge, WinMerge or
+Meld.
+
+Mark two files, *File ▸ Compare files…*
+
+![Comparing tsconfig.json with tsconfig.spec.json: three differences, coloured](docs/screenshots/readme/compare.png)
+
+## Group files and clean folders
+
+**Bring order into a messy folder in one step.**
+*Group files* moves or copies files into folders built from their names (the name before a running number, the
+first word, the text before a dash, the first letters) – with a preview. *Clean folders* removes empty folders and leftovers like `.DS_Store`, `Thumbs.db` or
+`*.bak` (to the trash by default). *Create folders* makes many folders from a template.
+
+`Alt+G` group · `Ctrl+Alt+R` clean · `Ctrl+F7` many folders · macOS: `⌥G` · `⌘⌥R` · `⌘F7`
+
+![Group files: four photos go into the folder IMG, shown in a preview](docs/screenshots/readme/organize.png)
+
+## Shell line
+
+**A command line below the panels – in the folder you are looking at.**
+Type a command, press `Enter`; the output streams in below, the history remembers your commands. `Ctrl+Shift+Enter`
+inserts the marked names, quoted for your shell. For interactive programs, *Open terminal here* starts your real
+terminal.
+
+`Shift+F11` · macOS: `⇧F11`
+
+![The shell line with the output of git status in the photo folder](docs/screenshots/readme/shell.png)
+
+## Starter menu
+
+**Your own launcher for programs, scripts and folders.**
+Build a menu with submenus and give entries their own shortcuts. Parameters work like in Total Commander:
+`%P%N` the file under the cursor, `%S` all marked files, `%T` the folder of the other side. Programs are started
+directly – never through a shell.
+
+`Alt+S` · macOS: `⌥S`
+
+![The starter menu: VS Code, GIMP, Terminal here, Projects, Backup drive and a submenu Scripts](docs/screenshots/readme/starter.png)
+
+## Colour schemes
+
+**Norton blue? Paper white? Dark? Your choice – or your own.**
+Eleven built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
+Blackboard, Coffee, Combat, Norton) plus modern light, dark and Crimson. *Follow the system* switches between a
+light and a dark one. The live editor checks every colour pair for WCAG contrast; schemes can be exported and
+imported.
+
+*Tools ▸ Colour schemes…* · `Ctrl+Alt+Shift+T` next scheme · macOS: `⌘⌃⌥T`
+
+![The colour scheme editor with the Norton scheme selected and the contrast check passed](docs/screenshots/readme/themes.png)
+
+All eleven schemes:
 
 ![The main window in all eleven colour schemes](docs/screenshots/colour-schemes-overview.png)
 
-The pictures are generated: `pnpm screenshots:docs` refreshes them, `pnpm screenshots` captures every dialog in
-every colour scheme ([docs/screenshots.md](docs/screenshots.md)).
+## And more
 
-## Status and roadmap
+- **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, times; for many
+  entries at once and optionally for folder contents (`Ctrl+Shift+F2` · `⌘⇧F2`)
+- **Checksums** – create and verify SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible)
+- **Drag & drop** between panels, from and to Finder/Explorer/your file manager; with `Ctrl+Shift` (`⌘⌥`)
+  symbolic links
+- **Auto refresh** – changes by other programs appear in under a second
+- **External tools** and *Open terminal here* / *Show in Finder/Explorer* – started without a shell
+- **Configurable** button bar, file types, shortcuts per OS; settings dialog with search, export and import
+- **Import from the previous version** (*files-and-folders-mr*): shortcuts, buttons, colour schemes, tools …
+- **English and German**, switchable at runtime
+- Responsive with **slow and network drives** (listing cache, nothing blocks the window)
 
-| Area | State |
-| --- | --- |
-| File list, panels, tabs, session | ✅ done |
-| Copy / move / delete / rename / create, job engine | ✅ done |
-| Multi rename, group files, clean folders, multi mkdir | ✅ done |
-| Search, folder finder, duplicates, archives | ✅ done |
-| Viewer, quick view, properties | ✅ done |
-| Watcher, drag & drop (into the app), clipboard, external tools, shell line | ✅ done |
-| Colour schemes, settings, menus, English/German | ✅ done |
-| Slow and network drives (responsive UI, listing cache) | ✅ done |
-| Drag from the app into other programs | ✅ done (copy only) |
-| Drag tabs, symbolic links by drag or dialog | ✅ done |
-| Further features from the previous version | 🚧 planned (see [feature-parity](docs/feature-parity.md)) |
-| Signed packages, first public release, auto update | 🚧 prepared, not set up |
+The complete list with all details (in German) is in [docs/features.md](docs/features.md).
 
-Details: [docs/roadmap.md](docs/roadmap.md).
+## Installation
 
-## Supported platforms
+There is **no published release yet.** Until then, build the app yourself (see [Development](#development)).
+Releases will appear on the [GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases):
 
 | OS | Minimum | Package |
 | --- | --- | --- |
@@ -161,18 +279,7 @@ Details: [docs/roadmap.md](docs/roadmap.md).
 | Windows | 10 / 11 (x64) | `-setup.exe` (no admin needed) or `.msi` |
 | Linux | WebKitGTK 4.1 – Ubuntu 22.04+, Debian 12+, Fedora 36+ | `.deb`, `.rpm`, `.AppImage` |
 
-## Installation
-
-There is **no published release yet.** Until then, build the app yourself (see [Development](#development)).
-Once releases are available they will appear on the
-[GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases):
-
-- **macOS:** open the DMG and drag *Files and Folders* to *Applications*.
-- **Windows:** run the installer (WebView2 is installed if missing).
-- **Linux:** `sudo apt install ./files-and-folders_<version>_amd64.deb`, `sudo dnf install ./….rpm`,
-  or make the AppImage executable (`chmod +x`) and start it.
-
-Early packages will be **unsigned**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
+The first packages will be **unsigned**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
 *More info* → *Run anyway*.
 
 ## Keyboard shortcuts (selection)
@@ -263,9 +370,11 @@ pnpm tauri dev        # Angular dev server (port 1420) + desktop window
 | Rust tests / clippy | `pnpm rust:test` / `pnpm rust:lint` |
 | Release build (packages per OS) | `pnpm tauri build` |
 | Screenshots of every colour scheme × every dialog | `pnpm screenshots` ([docs/screenshots.md](docs/screenshots.md)) |
+| The pictures of this README | `pnpm screenshots:readme` |
 
 Architecture and rules: [docs/architecture.md](docs/architecture.md) and [CLAUDE.md](CLAUDE.md);
-release process: [docs/release.md](docs/release.md).
+release process: [docs/release.md](docs/release.md); what is done and what comes next:
+[docs/roadmap.md](docs/roadmap.md) and [docs/feature-parity.md](docs/feature-parity.md).
 
 ### Tech stack
 
@@ -276,6 +385,10 @@ release process: [docs/release.md](docs/release.md).
 - **Font Awesome 4.5** – icons
 
 ## History
+
+FnF started in 2016 as my playground for web technologies: a file manager that ran in the browser, with a
+Node.js server doing the file work. In 2025 I rebuilt it with NestJS and Angular, and in 2026 it became a real
+desktop app – one small native program, no local web server, no browser tab.
 
 | Year | Project | Stack |
 | --- | --- | --- |
