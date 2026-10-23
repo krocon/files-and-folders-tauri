@@ -24,7 +24,7 @@ const ERR = 'fnf-find-error';
   imports: [Modal],
   template: `
     @if (find.request(); as req) {
-      <app-modal [heading]="t.title" width="min(48rem, 94vw)" (closed)="find.close()">
+      <app-modal [heading]="t.title" width="min(58rem, 94vw)" (closed)="find.close()">
         <form class="tool" (submit)="$event.preventDefault(); find.run()">
           <fieldset class="row group">
             <legend>{{ t.searchIn }}</legend>

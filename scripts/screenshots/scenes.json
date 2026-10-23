@@ -423,6 +423,23 @@
       ]
     },
     {
+      "name": "ftp-connection-dialog",
+      "steps": [
+        {
+          "action": "OPEN_CONNECTIONS_DLG"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": "app-connections-dialog [data-id=\"n4s7b1\"]"
+        },
+        {
+          "wait": 300
+        }
+      ]
+    },
+    {
       "name": "compare-files",
       "steps": [
         {

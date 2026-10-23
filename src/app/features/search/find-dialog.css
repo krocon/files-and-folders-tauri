@@ -7,6 +7,10 @@
     float: left;
     margin-inline-end: var(--spacing-2);
     font-weight: 600;
+    /* as high as the checkboxes/inputs beside it, text centred – the row aligns at the bottom */
+    display: flex;
+    align-items: center;
+    min-height: var(--control-height);
   }
 
   &[aria-invalid='true'] legend {

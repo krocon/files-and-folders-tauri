@@ -17,31 +17,21 @@ const ERR = 'fnf-dup-error';
       <app-modal [heading]="t.title" width="min(56rem, 96vw)" (closed)="dup.close()">
         <form class="tool" (submit)="$event.preventDefault(); dup.run()">
           <div class="scroll">
-            <fieldset class="row group">
-              <legend>{{ t.searchIn }}</legend>
-              <label class="check">
-                <input
-                  type="radio"
-                  name="fnf-dup-where"
-                  [checked]="dup.where() === 'folder'"
-                  (change)="dup.where.set('folder')"
-                />
-                <span class="path">{{
-                  req.folder.length === 1 ? req.folder[0] : t.folders(req.folder.length)
-                }}</span>
+            <div class="row">
+              <label class="inline where">
+                <span class="label">{{ t.searchIn }}</span>
+                <select (change)="setWhere($event)">
+                  <option value="folder" [selected]="dup.where() === 'folder'">
+                    {{ req.folder.length === 1 ? req.folder[0] : t.folders(req.folder.length) }}
+                  </option>
+                  @if (req.marked.length > 0) {
+                    <option value="marked" [selected]="dup.where() === 'marked'">
+                      {{ t.markedFolders(req.marked.length) }}
+                    </option>
+                  }
+                </select>
               </label>
-              @if (req.marked.length > 0) {
-                <label class="check">
-                  <input
-                    type="radio"
-                    name="fnf-dup-where"
-                    [checked]="dup.where() === 'marked'"
-                    (change)="dup.where.set('marked')"
-                  />
-                  {{ t.markedFolders(req.marked.length) }}
-                </label>
-              }
-            </fieldset>
+            </div>
             <div class="cols">
               <fieldset class="group col">
                 <legend>{{ t.mode }}</legend>
@@ -253,6 +243,13 @@ const ERR = 'fnf-dup-error';
         gap: var(--spacing-2);
         padding: 2px; /* room for the focus ring */
       }
+      .where {
+        flex: 1;
+        gap: var(--spacing-2);
+      }
+      .where select {
+        flex: 1;
+      }
       .col {
         display: flex;
         flex-direction: column;
@@ -301,6 +298,10 @@ export class DuplicatesDialog {
     if (id) {
       this.dup.choose(id, this.f().mode);
     }
+  }
+
+  protected setWhere(evt: Event): void {
+    this.dup.where.set(this.text(evt) === 'marked' ? 'marked' : 'folder');
   }
 
   protected invalid(field: DupField): 'true' | null {
