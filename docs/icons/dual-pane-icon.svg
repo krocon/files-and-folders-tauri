@@ -15,9 +15,9 @@
     <rect x="0" y="0" width="1024" height="220" fill="#fe6c2a"/>
   </g>
   <!-- schwarzes Quadrat, mittig (512 × 512) -->
-  <rect x="256" y="256" width="512" height="512" fill="#000"/>
+  <rect x="256" y="300" width="512" height="424" fill="#000" rx="40" ry="40"/>
   <!-- „FF“ als Pfade (keine Schrift nötig), Strichstärke 40, Höhe 240 -->
   <path fill="#fff" d="
-    M316,316 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z
-    M524,316 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z"/>
+    M320,392 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z
+    M528,392 h176 v40 h-136 v48 h112 v40 h-112 v112 h-40 Z"/>
 </svg>
