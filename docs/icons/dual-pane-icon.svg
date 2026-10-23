@@ -3,7 +3,7 @@
   <defs>
     <!-- stark abgerundete Ecken -->
     <clipPath id="body">
-      <rect x="0" y="0" width="1014" height="1024" rx="280" ry="280"/>
+      <rect x="0" y="0" width="1024" height="1024" rx="280" ry="280"/>
     </clipPath>
   </defs>
   <g clip-path="url(#body)">
