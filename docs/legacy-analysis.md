@@ -141,7 +141,7 @@ How shortcuts are shown (`C:shortcut/shortcut.service.js`):
 | **Color Config** | `config/color/*` | One text input per CSS variable (32 keys, §8) with a farbtastic colour picker in a popover. Changes apply live to `document.documentElement`. The text colour is the complementary hex. There is **no save**; only Cancel **[read]**. |
 | **Find duplicates** | `commands/finddublicates/dialog.html` | Placeholder ("Content..."). Its menu entry is commented out. |
 | **Drop** | `drop/*` | "Drop (not implemented yet)". A dropzone receives a browser `FileList`; the app only logs it (`C:app.controller.js`, "TODO ask, yes / no, then upload files"). |
-| **Context menu** | `index.html` `#gridPopup`, `grid/grid.popup.controller.js` | Four placeholder "Find..." items. The right-click binding is disabled (`xxxright-click`). |
+| **Context menu** | `../site/index.html` `#gridPopup`, `grid/grid.popup.controller.js` | Four placeholder "Find..." items. The right-click binding is disabled (`xxxright-click`). |
 
 Bookmarks, tab presets, an attributes dialog, a command line and an options dialog **do not exist**. The only bookmark feature is "favs" (§5).
 

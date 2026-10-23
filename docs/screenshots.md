@@ -38,9 +38,9 @@ einige Minuten.
 
 `pnpm screenshots:readme` erzeugt `docs/screenshots/readme/<feature>.png`: die Liste in `scenes.json` →
 `"readme"` (Dateiname = Anker des Features, Szene), alle im Design `classic-norton`, Linux, Englisch, 1280 × 760,
-danach pngquant (18 Bilder ≈ 1 MB). README und `site/index.html` verweisen auf genau diese Dateien;
+danach pngquant (18 Bilder ≈ 1 MB). README und `../site/index.html` verweisen auf genau diese Dateien;
 `scripts/site.test.mjs` prüft, dass jedes Bild existiert und benutzt wird. Die Werbeseite bekommt ihre Kopien mit
-`pnpm site` (→ `site/dist/img/`, s. `site/README.md`).
+`pnpm site` (→ `site/dist/img/`, s. `../site/README.md`).
 
 ## Bilder für die Doku
 

@@ -112,7 +112,7 @@ Geheimnisse.
 7. And more (Liste) · All colour schemes (Übersichtsbild) · Install/Download · Keyboard shortcuts (Auswahl, wie
    heute) · Customization (gekürzt) · Development (kurz, Verweis `CLAUDE.md`, `docs/`) · History · License.
 
-## 6. Werbeseite `site/index.html`
+## 6. Werbeseite `../../site/index.html`
 
 - Eine Datei, CSS inline, **kein JavaScript nötig** (gar keins vorgesehen), keine Fonts/CDNs/Tracker; Schrift:
   System-UI + `ui-monospace` für Akzente.
@@ -125,7 +125,7 @@ Geheimnisse.
   Kontrast AA, sichtbarer Fokus, `prefers-reduced-motion`, mobil zuerst, keine horizontale Scrollleiste.
 - `<img … width="1280" height="760" loading="lazy" decoding="async" alt="…">` (Hero ohne `lazy`), Open Graph:
   Titel, Beschreibung, `og:image` = Hero (absolute raw-URL), `lang="en"`.
-- `site/README.md`: Hochladen (nur `index.html`, optional `favicon.png` aus `docs/logo/`), Basis umstellen, Hinweis
+- `../../site/README.md`: Hochladen (nur `../../site/index.html`, optional `favicon.png` aus `docs/logo/`), Basis umstellen, Hinweis
   Datenschutz (F1).
 
 ## 7. Tests und Prüfung
@@ -133,7 +133,7 @@ Geheimnisse.
 - `scripts/screenshots.test.mjs`: jede `readme`-Szene existiert in `scenes`, Aktionen sind auf allen drei Systemen
   auslösbar (vorhandene Prüfung erweitert), Dateinamen eindeutig.
 - `scripts/readme-images.test.mjs` (neu, `node --test`, läuft in `pnpm check` über `scripts:test`): jedes Bild in
-  README und `site/index.html` unter `docs/screenshots/readme/` existiert; alle `<img>` der Seite nutzen die eine
+  README und `../../site/index.html` unter `docs/screenshots/readme/` existiert; alle `<img>` der Seite nutzen die eine
   Basis; jeder README-Anker der Feature-Liste hat eine Überschrift; jedes Bild aus `scenes.json` → `readme` wird
   benutzt.
 - Sichtprüfung: alle 17 Bilder ansehen; Seite mit Playwright in 375 px und 1440 px (hell + dunkel) rendern; axe-core
@@ -176,8 +176,8 @@ F4: README in der Ich-Form.
 
 - [x] Phase 1: Recherche, Probelauf aller Szenen in Norton (36/36), Entwurf, Freigabe
 - [x] Phase 3a: 8 Szenen + Mock + `pnpm screenshots:readme` (18 Bilder, pngquant 2,9 MB → 1 MB), alle angesehen
-- [x] Phase 3b: README (17 Features + „And more“), `site/index.html`, `site/README.md`, `pnpm site`, Tests
-      (`scripts/site.test.mjs`, `scripts/screenshots.test.mjs`)
+- [x] Phase 3b: README (17 Features + „And more“), `../../site/index.html`, `../../site/README.md`, `pnpm site`, Tests
+  (`scripts/site.test.mjs`, `scripts/screenshots.test.mjs`)
 - [x] Phase 4: Seite mit Playwright in 375 px und 1440 px, hell und dunkel: keine horizontale Scrollleiste, axe-core
       4.10 (WCAG 2.1 A/AA + best practice) ohne Verstoß; Lighthouse nicht im Container
 - [x] Phase 5/6: Doku (`docs/screenshots.md`, CLAUDE.md, Index, Roadmap), `pnpm check`

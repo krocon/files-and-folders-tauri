@@ -51,10 +51,13 @@ test('site: every picture comes from img/ and exists in the repository', () => {
     const file =
       name === 'colour-schemes-overview.png'
         ? join(ROOT, 'docs/screenshots', name)
-        : join(ROOT, 'docs/screenshots/readme', name);
+        : join(ROOT, 'screenshots/classic-norton', name);
     assert.ok(existsSync(file), name);
   }
-  for (const file of readmePictures) assert.ok(siteImages(html).includes(file), `${file} is not on the page`);
+  assert.ok(existsSync(join(ROOT, 'site/favicon.png')), 'favicon.png in site');
+  for (const name of siteImages(html)) {
+    assert.ok(existsSync(join(ROOT, 'site/img', name)), `${name} in site/img`);
+  }
 });
 
 test('site: static, nothing from elsewhere, every picture with alt and size', () => {

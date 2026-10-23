@@ -4,7 +4,7 @@
 > Mock-Backend + Demo-Dateisystem unter `scripts/screenshots/`), die erledigten Feature-Prompts (`prompts/done/`),
 > `docs/features.md`, `docs/feature-parity.md` · **Umfang:** M
 > Lies zuerst `prompts/000-arbeitsweise.md` (Phasen; hier keine Rust-/Frontend-Änderung nötig, außer neuen Szenen),
-> dann `docs/screenshots.md`, `scripts/screenshots/scenes.json` und die heutige `README.md`. Auftrag von Marc
+> dann `docs/screenshots.md`, `scripts/screenshots/scenes.json` und die heutige `../../site/README.md`. Auftrag von Marc
 > (21.10.2026).
 
 ## Auftrag (wörtlich)
@@ -54,7 +54,7 @@ vollständig umgesetzt: jedes ausgewählte Feature bekommt ein Bild.
    Geschichte (2016 AngularJS/Node → 2025 mr → Tauri), Lizenz. Ton: persönlich, werbend, aber nichts versprechen,
    was nicht geht (macOS/Windows ungeprüft kennzeichnen, solange die CI fehlt). Bilder relativ verlinkt.
    `docs/features.md` bleibt die ausführliche deutsche Referenz.
-4. **Werbeseite (Single Page, Englisch)** unter `site/index.html` (eine Datei, CSS inline, kein Build, kein
+4. **Werbeseite (Single Page, Englisch)** unter `../../site/index.html` (eine Datei, CSS inline, kein Build, kein
    Framework, keine externen Tracker/Fonts/CDNs – DSGVO, Hosting auf `krocon.de/fnf`):
    - Bilder **aus dem GitHub-Repo** einbinden: `https://raw.githubusercontent.com/krocon/files-and-folders-tauri/main/docs/screenshots/readme/<feature>.png`
      (Konstante am Seitenanfang, damit Branch/Pfad an einer Stelle änderbar sind); `alt`-Texte, `loading="lazy"`,
@@ -66,7 +66,7 @@ vollständig umgesetzt: jedes ausgewählte Feature bekommt ein Bild.
    - Optik angelehnt an Norton (Blau/Türkis/Gelb, Monospace-Akzente), modern, responsiv (Mobil zuerst, keine
      horizontale Scrollleiste), hell/dunkel über `prefers-color-scheme`, Kontrast WCAG AA, Fokus sichtbar,
      `prefers-reduced-motion` respektiert. Meta: Titel, Beschreibung, Open-Graph-Bild (Hero), `lang="en"`.
-   - Optional `site/README.md`: wie Marc die Seite hochlädt (nur `index.html` + ggf. Favicon), keine Server-Logik.
+   - Optional `../../site/README.md`: wie Marc die Seite hochlädt (nur `../../site/index.html` + ggf. Favicon), keine Server-Logik.
 5. **Prüfen:** Links und Anker der README (Bilder existieren), Seite lokal mit Playwright in 375 px und 1440 px
    Breite rendern und ansehen, Lighthouse/axe falls verfügbar (Ziel: Barrierefreiheit ≥ 95), keine 404 bei den
    raw-GitHub-URLs nach dem Push.
@@ -75,13 +75,13 @@ vollständig umgesetzt: jedes ausgewählte Feature bekommt ein Bild.
 
 - README zeigt 12–18 Features, jedes mit Norton-Screenshot, kurzer Beschreibung und Kürzeln; Reihenfolge nach Nutzen.
 - Alle Screenshots entstehen reproduzierbar mit einem Befehl aus dem Repo (kein Handbetrieb), Design `classic-norton`.
-- `site/index.html` ist eine einzelne, statische Datei, lädt Bilder nur von `raw.githubusercontent.com` (Repo
+- `../../site/index.html` ist eine einzelne, statische Datei, lädt Bilder nur von `raw.githubusercontent.com` (Repo
   `krocon/files-and-folders-tauri`), funktioniert ohne JavaScript und sieht auf Handy und Desktop gut aus.
 - Keine Aussage auf README/Seite, die der Stand nicht hält (Signierung, Plattformen, Funktionen).
 
 ## Tests
 
 - `scripts/screenshots.test.mjs`: neue Szenen laufen im Mock-Backend durch (Smoke).
-- Ein kleiner Node-Test prüft, dass jede in README und `site/index.html` referenzierte Bilddatei unter
+- Ein kleiner Node-Test prüft, dass jede in README und `../../site/index.html` referenzierte Bilddatei unter
   `docs/screenshots/readme/` existiert.
 - Sichtprüfung der Seite (Screenshots im Bericht beschreiben).

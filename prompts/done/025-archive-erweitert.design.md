@@ -319,7 +319,7 @@ E2E (Xvfb :95): `bomb-folders.7z` öffnen → sofort Banner „The 7z header can
 - [x] Phase 2 Rust: `archive/{sevenz,rar,secrets,view}.rs`, `platform/clock.rs`, Jobs `extract` (Sink, 7z, RAR, Passwort),
   `pack` (7z, ZIP-AES, Extended Timestamp), `viewEntry`, Command `set_archive_password`, `read_preview` mit virtuellen
   Pfaden – 34 neue Tests (`archive/tests_formats.rs`, `jobs/tests_formats.rs`, `secrets`, `clock`), Fixtures in
-  `archive/testdata/` (Herkunft: `README.md`); auch `--no-default-features` (ohne RAR) clippy-grün
+  `archive/testdata/` (Herkunft: `../../site/README.md`); auch `--no-default-features` (ohne RAR) clippy-grün
 - [x] Phase 3 Frontend: `ArchiveApi` (+ Fake), `ArchivePasswordPrompt`, Passwortdialog, Pack (7Z, Passwort + Wiederholung,
   Hinweise), Unpack-Passwort, Enter/F3 im Archiv, Konflikttext je Job-Art, Badge „encrypted“ – 8 neue Specs
   (`archive-025.spec.ts`) + angepasste

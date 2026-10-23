@@ -350,7 +350,7 @@ Templates are in `feature/cmd/*` [read via grep of labels and controls].
 ## 10. Electron desktop
 `apps/fnf-desktop` [read]
 
-- `electron-main/main.ts`: loads `.env`. Creates a 1280×800 `BrowserWindow` that loads `FNF_DEV_SERVER_URL` (dev) or the copied renderer `index.html`. Sets a CSP. Registers `fnf-local://` (unused) and **global** DevTools shortcuts (`Cmd+Alt+I`, `F12`) with `globalShortcut`. These are system-wide, and F12 collides with app keys [inferred]. It also starts a local HTTP helper on 127.0.0.1:4765 (`/app/version`, `/app/open-external`, `/api/request` proxy to `FNF_API_URL` = localhost:3333).
+- `electron-main/main.ts`: loads `.env`. Creates a 1280×800 `BrowserWindow` that loads `FNF_DEV_SERVER_URL` (dev) or the copied renderer `../site/index.html`. Sets a CSP. Registers `fnf-local://` (unused) and **global** DevTools shortcuts (`Cmd+Alt+I`, `F12`) with `globalShortcut`. These are system-wide, and F12 collides with app keys [inferred]. It also starts a local HTTP helper on 127.0.0.1:4765 (`/app/version`, `/app/open-external`, `/api/request` proxy to `FNF_API_URL` = localhost:3333).
 - **It does not start the NestJS API.** The API must run separately [inferred: no spawn or fork in main.ts].
 - Preload bridge `window.bridge = { getVersion(), openExternal(url), apiRequest({method,path,headers,body}) (zod-validated, IPC 'api:request'), util.fixPath(s) }`. **The Angular app never uses `window.bridge`** (grep finds nothing) [read].
 

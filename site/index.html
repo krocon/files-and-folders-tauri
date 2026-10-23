@@ -3,7 +3,7 @@
   Files and Folders (FnF) – single page for https://krocon.de/fnf (prompt 044).
   One static file: CSS inline, no JavaScript, no web fonts, no trackers, no external requests.
   Pictures: img/<feature>.png next to this file – `pnpm site` builds site/dist/ (this page + img/ + favicon)
-  from docs/screenshots/readme/. Upload the content of site/dist/ to /fnf. See site/README.md.
+  from screenshots/classic-norton/. Upload the content of site/dist/ to /fnf. See site/README.md.
   IMG_BASE: img/
 -->
 <html lang="en">
@@ -17,7 +17,7 @@
     <meta property="og:title" content="Files and Folders (FnF)">
     <meta property="og:description" content="A fast, keyboard-first two-panel file manager for macOS, Windows and Linux. Free and open source.">
     <meta property="og:url" content="https://krocon.de/fnf/">
-    <meta property="og:image" content="https://krocon.de/fnf/img/two-panels.png">
+    <meta property="og:image" content="https://krocon.de/fnf/img/main.png">
     <meta property="og:image:width" content="1280">
     <meta property="og:image:height" content="760">
     <meta name="twitter:card" content="summary_large_image">
@@ -56,7 +56,7 @@
       }
 
       *, *::before, *::after { box-sizing: border-box; }
-      html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+      html { scroll-behavior: smooth; scroll-padding-top: 64px; } /* sticky .fkeys height + air */
       body {
         margin: 0;
         background: var(--bg);
@@ -128,19 +128,22 @@
 
       /* ---- function-key bar: the navigation ----------------------------------------- */
       .fkeys {
+        /* top + bottom: sticks to the bottom edge while the hero is in view,
+           then to the top edge once the page has scrolled past it – no JS */
         position: sticky;
+        top: 0;
         bottom: 0;
         z-index: 5;
-        background: var(--nc-black);
-        border-top: 1px solid #333;
+        background: var(--nc-blue);
       }
       .fkeys ol {
         list-style: none;
         margin: 0 auto;
         padding: 0;
-        max-width: 1180px;
+        max-width: 1090px;
         display: grid;
         grid-template-columns: repeat(6, 1fr);
+        background: var(--nc-black);
       }
       .fkeys a {
         display: flex;
@@ -156,7 +159,7 @@
       .fkeys a:hover span { background: var(--nc-yellow); }
       .fkeys a:focus-visible { outline-offset: -3px; box-shadow: none; }
       @media (max-width: 640px) {
-        .fkeys { position: static; }
+        html { scroll-padding-top: 104px; } /* two rows of keys */
         .fkeys ol { grid-template-columns: repeat(3, 1fr); }
       }
 
@@ -211,7 +214,7 @@
 
     <header class="hero">
       <div class="wrap">
-        <p class="brand"><img src="favicon.png" alt="" width="40" height="40">FnF</p>
+<!--        <p class="brand"><img src="favicon.png" alt="" width="40" height="40">FnF</p>-->
         <h1>Files and Folders<span class="cursor" aria-hidden="true"></span></h1>
         <p class="pitch">A fast, keyboard-first two-panel file manager for macOS, Windows and Linux – in the spirit of Norton Commander and Total Commander.</p>
         <div class="actions">
@@ -220,7 +223,7 @@
         </div>
         <p class="note">Free and open source (MIT). The first public release is in the works – today you can <a href="https://github.com/krocon/files-and-folders-tauri#development">build it from source</a>.</p>
         <figure class="screen">
-          <img src="img/two-panels.png" width="1280" height="760" fetchpriority="high"
+          <img src="img/main.png" width="1280" height="760" fetchpriority="high"
                alt="Files and Folders in the classic Norton colour scheme: the project folder on the left, holiday photos on the right with four of them marked, the function-key bar at the bottom">
         </figure>
       </div>
@@ -252,7 +255,7 @@
             <p>The Command Palette finds any action and shows its key, so you learn the shortcuts on the way. The classic keys are where you expect them: F3 view, F5 copy, F6 move, F7 new folder, F8 delete.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+Shift+P</kbd></dd><dt>macOS</dt><dd><kbd>⌘⇧P</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/keyboard.png" width="1280" height="760" loading="lazy" decoding="async" alt="The Command Palette: typing co lists Copy, Connect to server, Colour schemes and more, each with its shortcut"></figure>
+          <figure class="shot"><img src="img/command-palette.png" width="1280" height="760" loading="lazy" decoding="async" alt="The Command Palette: typing co lists Copy, Connect to server, Colour schemes and more, each with its shortcut"></figure>
         </article>
 
         <article class="feature">
@@ -262,7 +265,7 @@
             <p>Copy, move, delete, pack and search run as jobs with progress, rate and remaining time. Pause, resume or cancel them; slow network drives and servers are handled the same way.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F5</kbd> <kbd>F6</kbd> <kbd>Ctrl+F11</kbd></dd><dt>macOS</dt><dd><kbd>F5</kbd> <kbd>F6</kbd> <kbd>⌃K F6</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/jobs.png" width="1280" height="760" loading="lazy" decoding="async" alt="The task list: a copy at 62 percent with rate and a pause button, a waiting move and a finished delete"></figure>
+          <figure class="shot"><img src="img/task-list.png" width="1280" height="760" loading="lazy" decoding="async" alt="The task list: a copy at 62 percent with rate and a pause button, a waiting move and a finished delete"></figure>
         </article>
 
         <article class="feature">
@@ -272,7 +275,7 @@
             <p>If a file already exists you see both versions with size and date and decide once – or for all further conflicts. Copies are written under a temporary name first, so there is never a half-written file under the real name.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F8</kbd> trash, <kbd>Shift+F8</kbd> permanently</dd><dt>macOS</dt><dd><kbd>F8</kbd> trash, <kbd>⇧F8</kbd> permanently</dd></dl>
           </div>
-          <figure class="shot"><img src="img/safety.png" width="1280" height="760" loading="lazy" decoding="async" alt="The question when a file exists: new and existing photo with size and date, buttons Overwrite, Skip, Rename and Overwrite if newer"></figure>
+          <figure class="shot"><img src="img/conflict-dialog.png" width="1280" height="760" loading="lazy" decoding="async" alt="The question when a file exists: new and existing photo with size and date, buttons Overwrite, Skip, Rename and Overwrite if newer"></figure>
         </article>
 
         <article class="feature">
@@ -282,7 +285,7 @@
             <p>Name, extension, counter and date macros, case rules, search and replace with regular expressions, presets. Problems show up in the preview, and a finished rename can be undone.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+M</kbd></dd><dt>macOS</dt><dd><kbd>⌘F6</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/multi-rename.png" width="1280" height="760" loading="lazy" decoding="async" alt="Multi rename: the pattern Italy 2026 - [C].[E] turns four photos into Italy 2026 - 0001.jpg and so on"></figure>
+          <figure class="shot"><img src="img/multi-rename-dialog.png" width="1280" height="760" loading="lazy" decoding="async" alt="Multi rename: the pattern Italy 2026 - [C].[E] turns four photos into Italy 2026 - 0001.jpg and so on"></figure>
         </article>
 
         <article class="feature">
@@ -292,7 +295,7 @@
             <p>Search by name, content, size, date and depth; hits stream in while the search runs. Copy, move, rename or view them right there, and keep favourite searches as templates.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+F7</kbd></dd><dt>macOS</dt><dd><kbd>⌥F7</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/search.png" width="1280" height="760" loading="lazy" decoding="async" alt="A search for *.jpg: 22 hits in their own tab with a folder column"></figure>
+          <figure class="shot"><img src="img/search-results.png" width="1280" height="760" loading="lazy" decoding="async" alt="A search for *.jpg: 22 hits in their own tab with a folder column"></figure>
         </article>
 
         <article class="feature">
@@ -312,7 +315,7 @@
             <p>Find identical files, similar photos in another size or quality, or similar comics. Rules like “keep the oldest” or “keep the higher resolution” mark the rest; you check each group with thumbnails before anything goes to the trash.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+Shift+F7</kbd></dd><dt>macOS</dt><dd><kbd>⌥⇧F7</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/duplicates.png" width="1280" height="760" loading="lazy" decoding="async" alt="Similar images: an original photo and its edited copy as thumbnails side by side, the list marks the smaller copy for deletion"></figure>
+          <figure class="shot"><img src="img/similar-images.png" width="1280" height="760" loading="lazy" decoding="async" alt="Similar images: an original photo and its edited copy as thumbnails side by side, the list marks the smaller copy for deletion"></figure>
         </article>
 
         <article class="feature">
@@ -332,7 +335,7 @@
             <p>Browse, view and open files inside, pack and unpack, with passwords that are only kept in memory. Archives from elsewhere are treated as hostile – no zip-slip, no zip-bombs.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Enter</kbd> <kbd>Alt+F5</kbd> <kbd>Alt+F9</kbd></dd><dt>macOS</dt><dd><kbd>Enter</kbd> <kbd>⌥F5</kbd> <kbd>⌥F9</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/archives.png" width="1280" height="760" loading="lazy" decoding="async" alt="Inside the archive Italy 2026 best of.zip: folders and photos, the header says ZIP, read-only"></figure>
+          <figure class="shot"><img src="img/archive-folder.png" width="1280" height="760" loading="lazy" decoding="async" alt="Inside the archive Italy 2026 best of.zip: folders and photos, the header says ZIP, read-only"></figure>
         </article>
 
         <article class="feature">
@@ -342,7 +345,7 @@
             <p>Browse, copy in both directions, rename and delete like on your own disk. Passwords live only in your system keychain; host keys and certificates are checked, and plain FTP is marked as unencrypted.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Ctrl+K</kbd></dd><dt>macOS</dt><dd><kbd>⌘K</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/servers.png" width="1280" height="760" loading="lazy" decoding="async" alt="The right panel shows the folder example.org on an SFTP server"></figure>
+          <figure class="shot"><img src="img/remote-panel.png" width="1280" height="760" loading="lazy" decoding="async" alt="The right panel shows the folder example.org on an SFTP server"></figure>
         </article>
 
         <article class="feature">
@@ -352,7 +355,7 @@
             <p>Text with search, hex and images in the viewer; the quick view shows the file under the cursor in the other panel while you move through the list.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>F3</kbd> <kbd>Ctrl+Q</kbd></dd><dt>macOS</dt><dd><kbd>F3</kbd> <kbd>⌃Q</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/viewer.png" width="1280" height="760" loading="lazy" decoding="async" alt="Quick view: the left panel shows the photo under the cursor of the right panel"></figure>
+          <figure class="shot"><img src="img/quick-view.png" width="1280" height="760" loading="lazy" decoding="async" alt="Quick view: the left panel shows the photo under the cursor of the right panel"></figure>
         </article>
 
         <article class="feature">
@@ -362,7 +365,7 @@
             <p>Ignore white space or case, show the whole file or only the changes, jump from one difference to the next. Binary files are compared byte by byte.</p>
             <dl class="keys"><dt>Menu</dt><dd>File, Compare files…</dd></dl>
           </div>
-          <figure class="shot"><img src="img/compare.png" width="1280" height="760" loading="lazy" decoding="async" alt="Two configuration files compared side by side with three coloured differences"></figure>
+          <figure class="shot"><img src="img/compare-files.png" width="1280" height="760" loading="lazy" decoding="async" alt="Two configuration files compared side by side with three coloured differences"></figure>
         </article>
 
         <article class="feature">
@@ -372,7 +375,7 @@
             <p>Move files into folders made from their names, remove empty folders and leftovers like .DS_Store or *.bak, create many folders from a template – each with a preview first.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+G</kbd> <kbd>Ctrl+Alt+R</kbd></dd><dt>macOS</dt><dd><kbd>⌥G</kbd> <kbd>⌘⌥R</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/organize.png" width="1280" height="760" loading="lazy" decoding="async" alt="Group files: four photos go into the folder IMG, shown in a preview"></figure>
+          <figure class="shot"><img src="img/group-files-dialog.png" width="1280" height="760" loading="lazy" decoding="async" alt="Group files: four photos go into the folder IMG, shown in a preview"></figure>
         </article>
 
         <article class="feature">
@@ -382,7 +385,7 @@
             <p>Type a command, press Enter, read the output right there. Marked names go into the line with one key, quoted for your shell.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Shift+F11</kbd></dd><dt>macOS</dt><dd><kbd>⇧F11</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/shell.png" width="1280" height="760" loading="lazy" decoding="async" alt="The shell line with the output of git status"></figure>
+          <figure class="shot"><img src="img/shell-output.png" width="1280" height="760" loading="lazy" decoding="async" alt="The shell line with the output of git status"></figure>
         </article>
 
         <article class="feature">
@@ -392,7 +395,7 @@
             <p>Submenus, own shortcuts and Total Commander parameters such as %P%N for the file under the cursor. Programs start directly, never through a shell.</p>
             <dl class="keys"><dt>Windows, Linux</dt><dd><kbd>Alt+S</kbd></dd><dt>macOS</dt><dd><kbd>⌥S</kbd></dd></dl>
           </div>
-          <figure class="shot"><img src="img/starter.png" width="1280" height="760" loading="lazy" decoding="async" alt="The starter menu with VS Code, GIMP, Terminal here, two folders and a submenu Scripts"></figure>
+          <figure class="shot"><img src="img/starter-menu.png" width="1280" height="760" loading="lazy" decoding="async" alt="The starter menu with VS Code, GIMP, Terminal here, two folders and a submenu Scripts"></figure>
         </article>
       </div>
 
@@ -428,7 +431,7 @@
             <img src="img/colour-schemes-overview.png" width="2000" height="996" loading="lazy" decoding="async" alt="The main window in all eleven colour schemes, as tiles">
           </figure>
           <figure class="shot" style="margin-top: 1.6em">
-            <img src="img/themes.png" width="1280" height="760" loading="lazy" decoding="async" alt="The colour scheme editor with the Norton scheme selected and the contrast check passed">
+            <img src="img/colour-schemes-dialog.png" width="1280" height="760" loading="lazy" decoding="async" alt="The colour scheme editor with the Norton scheme selected and the contrast check passed">
           </figure>
         </div>
       </section>
