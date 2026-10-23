@@ -17,7 +17,8 @@ use std::io;
 use std::path::Path;
 
 /// Renames `from` to `to` but never replaces an existing `to` (atomic where the
-/// OS offers it: Linux `renameat2(RENAME_NOREPLACE)`, macOS `renamex_np(RENAME_EXCL)`).
+/// OS offers it: Linux `renameat2(RENAME_NOREPLACE)`, macOS `renamex_np(RENAME_EXCL)`,
+/// Windows `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` – also for folders, 007 #6).
 /// Elsewhere – or on file systems without that flag – a regular file is hard-linked
 /// (fails atomically if `to` exists) and its old name removed; folders and links
 /// fall back to check + rename. Errors with `AlreadyExists` if `to` exists.
@@ -61,7 +62,25 @@ fn unsupported(e: &io::Error) -> bool {
             Some(libc::EINVAL) | Some(libc::ENOSYS) | Some(libc::ENOTSUP)
         )
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        // path too long for the plain Win32 call (std adds `\\?\`), or a file system
+        // that does not do it: the fallback below (it reports the real error)
+        const ERROR_INVALID_FUNCTION: i32 = 1;
+        const ERROR_PATH_NOT_FOUND: i32 = 3;
+        const ERROR_NOT_SUPPORTED: i32 = 50;
+        const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
+        matches!(
+            e.raw_os_error(),
+            Some(
+                ERROR_INVALID_FUNCTION
+                    | ERROR_PATH_NOT_FOUND
+                    | ERROR_NOT_SUPPORTED
+                    | ERROR_FILENAME_EXCED_RANGE
+            )
+        )
+    }
+    #[cfg(not(any(unix, windows)))]
     {
         let _ = e;
         true
@@ -114,9 +133,75 @@ fn native_noreplace(from: &Path, to: &Path) -> Option<io::Result<()>> {
     })
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
+/// `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` (and without `COPY_ALLOWED`: no
+/// copy across volumes) fails atomically with `ERROR_ALREADY_EXISTS` – files, folders and
+/// links alike. A change of case only is no replacement for NTFS (`fileops` handles it).
+#[cfg(windows)]
+fn native_noreplace(from: &Path, to: &Path) -> Option<io::Result<()>> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::MoveFileExW;
+    let wide = |p: &Path| -> Vec<u16> { p.as_os_str().encode_wide().chain(Some(0)).collect() };
+    let (f, t) = (wide(from), wide(to));
+    if f[..f.len() - 1].contains(&0) || t[..t.len() - 1].contains(&0) {
+        return Some(Err(io::Error::from(io::ErrorKind::InvalidInput)));
+    }
+    // SAFETY: two valid NUL-terminated wide strings that live for the call
+    let ok = unsafe { MoveFileExW(f.as_ptr(), t.as_ptr(), 0) };
+    Some(if ok != 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    })
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    windows
+)))]
 fn native_noreplace(_from: &Path, _to: &Path) -> Option<io::Result<()>> {
     None
+}
+
+/// Does the drive of `path` have a trash? Windows: only fixed drives – network shares,
+/// removable and optical drives and RAM disks have no Recycle Bin, and `IFileOperation`
+/// would ask in a dialog of its own (`FOF_WANTNUKEWARNING`) or delete for good (006
+/// review #5). Elsewhere the trash crate finds out itself (it fails, nothing is lost).
+pub fn has_trash(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use std::path::{Component, Prefix};
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetDriveTypeW(root: *const u16) -> u32;
+        }
+        let Some(Component::Prefix(prefix)) = path.components().next() else {
+            return false;
+        };
+        let letter = match prefix.kind() {
+            Prefix::Disk(l) | Prefix::VerbatimDisk(l) => l,
+            _ => return false, // UNC: a network share
+        };
+        let root: Vec<u16> = std::ffi::OsStr::new(&format!("{}:\\", letter as char))
+            .encode_wide()
+            .chain(Some(0))
+            .collect();
+        // SAFETY: a NUL-terminated wide string; GetDriveTypeW does no I/O on the volume
+        drive_type_has_trash(unsafe { GetDriveTypeW(root.as_ptr()) })
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        true
+    }
+}
+
+/// Windows `GetDriveTypeW` result → has a Recycle Bin (only `DRIVE_FIXED`, 3).
+pub fn drive_type_has_trash(kind: u32) -> bool {
+    const DRIVE_FIXED: u32 = 3;
+    kind == DRIVE_FIXED
 }
 
 /// Creates a symbolic link `link` → `target` (design 031 E9). Never replaces an
@@ -606,6 +691,18 @@ mod tests {
         );
     }
 
+    /// 006 review #5: only fixed drives have a Recycle Bin on Windows.
+    #[test]
+    fn only_fixed_drives_have_a_trash() {
+        // unknown, no root, removable, fixed, remote, optical, RAM disk
+        let has: Vec<bool> = (0..=6).map(drive_type_has_trash).collect();
+        assert_eq!(has, [false, false, false, true, false, false, false]);
+        // a local temp folder has one on every system (CI: C:\ on Windows)
+        assert!(has_trash(&std::env::temp_dir()));
+        #[cfg(windows)]
+        assert!(!has_trash(Path::new(r"\\server\share\x")));
+    }
+
     #[test]
     fn rename_noreplace_never_replaces() {
         let t = tempdir().unwrap();
@@ -623,6 +720,23 @@ mod tests {
         assert!(!a.exists());
         rename_noreplace(&t.path().join("d"), &t.path().join("e")).unwrap();
         assert!(t.path().join("e").is_dir());
+        // a folder never replaces a folder (Windows: MoveFileExW without REPLACE, 007 #6)
+        fs::create_dir(t.path().join("f")).unwrap();
+        fs::write(t.path().join("f").join("inner"), "x").unwrap();
+        assert_eq!(
+            rename_noreplace(&t.path().join("e"), &t.path().join("f"))
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::AlreadyExists
+        );
+        assert!(t.path().join("e").is_dir() && t.path().join("f/inner").is_file());
+        // a file never replaces a folder
+        assert!(rename_noreplace(&t.path().join("c"), &t.path().join("f")).is_err());
+        assert!(t.path().join("c").is_file());
+        // names with spaces and Unicode
+        let u = t.path().join("Grüße 🎉");
+        rename_noreplace(&t.path().join("c"), &u).unwrap();
+        assert_eq!(fs::read_to_string(&u).unwrap(), "A");
     }
 
     /// External review 031 #10: two identical copies are two entries – also on Windows.

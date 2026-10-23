@@ -269,13 +269,7 @@ pub fn run(
                     continue;
                 }
                 let done = match action {
-                    DedupeAction::Trash => super::delete::trash_one(p).map_err(|msg| {
-                        FsError::new(
-                            FsErrorCode::TrashFailed,
-                            format!("Could not move to the trash: {msg}"),
-                            Some(p),
-                        )
-                    }),
+                    DedupeAction::Trash => super::delete::trash_one(p),
                     DedupeAction::Permanent => {
                         fs::remove_file(p).map_err(|e| FsError::from_io(&e, p))
                     }
