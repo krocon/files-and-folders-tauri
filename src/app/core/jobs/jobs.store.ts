@@ -4,7 +4,15 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
 import { SearchHit, SearchStats } from '../search/search.models';
-import { Decision, EMPTY_PROGRESS, isFinished, JobEvent, JobInfo, JobSpec } from './jobs.models';
+import {
+  Decision,
+  EMPTY_PROGRESS,
+  isFinished,
+  JobEvent,
+  JobInfo,
+  JobSpec,
+  StartNowResult,
+} from './jobs.models';
 import { ACTION_TEXTS } from '../actions/action-texts';
 
 /** Hits of a job without a listener are kept this long after its end (then dropped). */
@@ -255,6 +263,11 @@ export class JobsStore {
 
   resume(id: string): Promise<void> {
     return this.api.resume(id);
+  }
+
+  /** Tasks → "Start now": a waiting job runs at once (`force` after an overlap question). */
+  startNow(id: string, force = false): Promise<StartNowResult> {
+    return this.api.startNow(id, force);
   }
 
   /** Answers a conflict; the job leaves `waitingForDecision` on its own. */

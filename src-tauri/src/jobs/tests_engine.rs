@@ -391,6 +391,105 @@ fn serial_queue_runs_one_after_another_background_in_parallel() {
     assert!(h.mgr.list().is_empty());
 }
 
+/// Three folders and a blocking first job: it waits for a conflict answer and
+/// holds the serial slot.
+fn blocked_queue(h: &Harness) -> (TempDir, PathBuf, PathBuf, String, Conflict) {
+    let dir = tempdir().unwrap();
+    let f = dir.path().join("f");
+    fs::write(&f, "x").unwrap();
+    let d1 = dir.path().join("1");
+    fs::create_dir(&d1).unwrap();
+    fs::write(d1.join("f"), "old").unwrap();
+    let first = h.copy(&[&f], &d1, false);
+    let c = h.conflict(&first);
+    (dir, f, d1, first, c)
+}
+
+#[test]
+fn start_now_runs_a_waiting_job_beside_the_running_one() {
+    let h = Harness::new();
+    let (dir, _f, _d1, first, c) = blocked_queue(&h);
+    let (g, k) = (dir.path().join("g"), dir.path().join("k"));
+    fs::write(&g, "g").unwrap();
+    fs::write(&k, "k").unwrap();
+    let (d2, d3) = (dir.path().join("2"), dir.path().join("3"));
+    fs::create_dir(&d2).unwrap();
+    fs::create_dir(&d3).unwrap();
+    let second = h.copy(&[&g], &d2, false);
+    let third = h.copy(&[&k], &d3, false);
+    h.wait_state(&second, JobState::Queued);
+    assert_eq!(h.mgr.start_now(&second, false), StartNow::Started);
+    assert_eq!(h.finish(&second).state, JobState::Done);
+    assert!(d2.join("g").exists());
+    // its end did not free the slot of the blocked job: the third still waits
+    thread::sleep(Duration::from_millis(50));
+    let state = |id: &str| h.mgr.list().iter().find(|j| j.id == id).unwrap().state;
+    assert_eq!(state(&third), JobState::Queued);
+    assert_eq!(state(&first), JobState::WaitingForDecision);
+    // a running or finished job is not in the queue
+    assert_eq!(h.mgr.start_now(&first, false), StartNow::NotQueued);
+    assert_eq!(h.mgr.start_now(&second, true), StartNow::NotQueued);
+    h.mgr
+        .resolve_conflict(&first, c.conflict_id, Decision::Skip, false);
+    assert_eq!(h.finish(&first).state, JobState::Done);
+    assert_eq!(h.finish(&third).state, JobState::Done);
+    assert!(h.mgr.wait_idle(WAIT));
+}
+
+#[test]
+fn start_now_reports_jobs_on_the_same_paths_and_starts_with_force() {
+    let h = Harness::new();
+    let (dir, f, _d1, first, c) = blocked_queue(&h);
+    let d2 = dir.path().join("2");
+    fs::create_dir(&d2).unwrap();
+    // the same source as the blocked job
+    let second = h.copy(&[&f], &d2, false);
+    h.wait_state(&second, JobState::Queued);
+    assert_eq!(
+        h.mgr.start_now(&second, false),
+        StartNow::Overlap {
+            with: vec![first.clone()]
+        }
+    );
+    // nothing changed: it still waits
+    let state = |id: &str| h.mgr.list().iter().find(|j| j.id == id).unwrap().state;
+    assert_eq!(state(&second), JobState::Queued);
+    assert_eq!(h.mgr.start_now(&second, true), StartNow::Started);
+    assert_eq!(h.finish(&second).state, JobState::Done);
+    h.mgr
+        .resolve_conflict(&first, c.conflict_id, Decision::Skip, false);
+    assert_eq!(h.finish(&first).state, JobState::Done);
+    assert!(h.mgr.wait_idle(WAIT));
+}
+
+#[test]
+fn a_waiting_job_paused_and_resumed_still_waits() {
+    let h = Harness::new();
+    let (dir, _f, _d1, first, c) = blocked_queue(&h);
+    let g = dir.path().join("g");
+    fs::write(&g, "g").unwrap();
+    let d2 = dir.path().join("2");
+    fs::create_dir(&d2).unwrap();
+    let second = h.copy(&[&g], &d2, false);
+    h.wait_state(&second, JobState::Queued);
+    h.mgr.pause(&second);
+    h.wait_state(&second, JobState::Paused);
+    h.mgr.resume(&second);
+    // was "running" although it had not started (it showed no Start now either)
+    h.wait_state(&second, JobState::Queued);
+    assert!(matches!(
+        h.events.lock().unwrap().last(),
+        Some(JobEvent::State {
+            state: JobState::Queued,
+            ..
+        })
+    ));
+    h.mgr
+        .resolve_conflict(&first, c.conflict_id, Decision::Skip, false);
+    assert_eq!(h.finish(&second).state, JobState::Done);
+    assert!(h.mgr.wait_idle(WAIT));
+}
+
 #[test]
 fn progress_is_throttled() {
     let h = Harness::new();

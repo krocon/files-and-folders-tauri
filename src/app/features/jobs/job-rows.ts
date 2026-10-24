@@ -2,7 +2,7 @@ import { isFinished, JobInfo, JobState } from '../../core/jobs/jobs.models';
 import { amountText, fraction, JOB_TEXTS, jobTitle, speedText, stateLabel } from './job-format';
 
 /** What a button in the last column does. */
-export type JobAct = 'answer' | 'pause' | 'resume' | 'cancel' | 'undo' | 'details';
+export type JobAct = 'answer' | 'startNow' | 'pause' | 'resume' | 'cancel' | 'undo' | 'details';
 
 export interface JobButton {
   readonly act: JobAct;
@@ -61,6 +61,10 @@ function buttonsOf(job: JobInfo, title: string): JobButton[] {
     return out;
   }
   const out: JobButton[] = [];
+  // waiting in the queue: may run at once, next to the others (Marc 2026-10-24)
+  if (job.state === 'queued') {
+    out.push(b('startNow', t.startNow, 'start', 'primary'));
+  }
   if (job.state === 'waitingForDecision') {
     out.push(b('answer', t.answer, 'toggle', 'primary'));
   } else {

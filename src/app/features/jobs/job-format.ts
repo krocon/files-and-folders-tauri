@@ -69,6 +69,15 @@ export const JOB_EN = {
       ? '1 task is still running. Cancel it and quit?'
       : `${n} tasks are still running. Cancel them and quit?`,
   quitConfirm: 'Cancel tasks and quit',
+  startNow: 'Start now',
+  startNowTitle: 'Start now?',
+  startNowMessage: (n: number) =>
+    n === 1
+      ? 'This task works on the same files or folders as another unfinished task:'
+      : `This task works on the same files or folders as ${n} other unfinished tasks:`,
+  startNowDetail:
+    'Running both at the same time can get in each other’s way – for example, a file may be moved while it is being copied.',
+  startNowConfirm: 'Start anyway',
   undo: 'Undo',
   undoLabel: (title: string) => `Undo: ${title}`,
   of: (done: string, total: string) => `${done} of ${total}`,

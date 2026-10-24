@@ -287,6 +287,14 @@ export interface Summary {
   readonly checksums?: ChecksumSummary | null;
 }
 
+/** What "Start now" did (Rust `jobs::manager::StartNow`). */
+export type StartNowResult =
+  | { readonly result: 'started' }
+  /** Not waiting in the queue (any more) – nothing changed. */
+  | { readonly result: 'notQueued' }
+  /** Not started: these unfinished jobs touch the same paths. */
+  | { readonly result: 'overlap'; readonly with: readonly string[] };
+
 export interface JobInfo {
   readonly id: string;
   readonly spec: JobSpec;

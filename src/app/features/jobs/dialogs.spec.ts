@@ -13,6 +13,7 @@ import { By } from '@angular/platform-browser';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { ConflictDialog } from './conflict-dialog';
 import { JobListDialog } from './job-list-dialog';
@@ -181,6 +182,41 @@ describe('job dialogs', () => {
   function tableOf(fixture: ComponentFixture<JobListDialog>): StubJobTable {
     return fixture.debugElement.query(By.directive(StubJobTable)).componentInstance as StubJobTable;
   }
+
+  it('job list: "Start now" for a waiting task, asks first when it overlaps another one', async () => {
+    const first = await store.start(copy);
+    api.emit({ type: 'state', id: first, state: 'running' });
+    const second = await store.start({ ...copy, targetDir: '/c' });
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const table = tableOf(fixture);
+    const row = (id: string) => table.rows().find((r) => r.id === id)!;
+    expect(row(first).buttons.map((b) => b.act)).toEqual(['pause', 'cancel']);
+    expect(row(second).buttons.map((b) => b.label)).toEqual(['Start now', 'Pause', 'Cancel']);
+    // no overlap: starts at once
+    table.act.emit({ id: second, act: 'startNow' });
+    await fixture.whenStable();
+    expect(api.startedNow).toEqual([{ id: second, force: false }]);
+    // overlap: the question names the other task; "Start anyway" forces it
+    const confirm = TestBed.inject(ConfirmService);
+    const dialogs = TestBed.inject(DialogService);
+    api.overlapWith = [first];
+    table.act.emit({ id: second, act: 'startNow' });
+    await fixture.whenStable();
+    expect(dialogs.open()).toBe('confirm');
+    expect(confirm.request()?.detail).toContain('Copy');
+    confirm.answer(true);
+    await new Promise((r) => setTimeout(r));
+    expect(api.startedNow.at(-1)).toEqual({ id: second, force: true });
+    expect(dialogs.open()).toBe('jobs');
+    // "Keep waiting": nothing more
+    table.act.emit({ id: second, act: 'startNow' });
+    await fixture.whenStable();
+    confirm.answer(false);
+    await new Promise((r) => setTimeout(r));
+    expect(api.startedNow.filter((c) => c.force)).toHaveLength(1);
+    expect(dialogs.open()).toBe('jobs');
+  });
 
   it('job list: table rows, pause/resume/cancel through the buttons, details, clear finished', async () => {
     const id = await store.start(copy);

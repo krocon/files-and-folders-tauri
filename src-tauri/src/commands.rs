@@ -14,7 +14,7 @@ pub mod watch;
 use crate::error::{FsError, FsErrorCode};
 use crate::fileops;
 use crate::jobs::rename::{self, RenameItem, RenamePlan};
-use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec};
+use crate::jobs::{Decision, JobEvent, JobInfo, JobManager, JobSpec, StartNow};
 use crate::keymap::{self, Bindings, LoadedOverride};
 use crate::model::DirectoryListing;
 use crate::opener;
@@ -1376,6 +1376,13 @@ pub fn cancel_job<R: Runtime>(app: AppHandle<R>, id: String) {
 #[tauri::command(async)]
 pub fn pause_job<R: Runtime>(app: AppHandle<R>, id: String) {
     app.state::<JobsState>().manager.pause(&id);
+}
+
+/// Tasks → "Start now": a waiting job runs at once; `force` after the user
+/// confirmed an overlap with other jobs.
+#[tauri::command(async)]
+pub fn start_job_now<R: Runtime>(app: AppHandle<R>, id: String, force: bool) -> StartNow {
+    app.state::<JobsState>().manager.start_now(&id, force)
 }
 
 #[tauri::command(async)]

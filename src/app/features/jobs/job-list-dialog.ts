@@ -10,6 +10,7 @@ import {
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { describeFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { Modal } from '../../shared/dialog/modal';
 import { JOB_TEXTS, jobTitle } from './job-format';
@@ -94,6 +95,7 @@ export class JobListDialog {
   protected readonly jobs = inject(JobsStore);
   protected readonly dialogs = inject(DialogService);
   protected readonly mr = inject(MultiRenameStore);
+  private readonly confirm = inject(ConfirmService);
   protected readonly shownErrors = SHOWN_ERRORS;
   protected readonly describe = describeFsError;
 
@@ -141,6 +143,9 @@ export class JobListDialog {
   /** A button in the table. */
   protected onAct(id: string, act: JobAct): void {
     switch (act) {
+      case 'startNow':
+        void this.startNow(id);
+        break;
       case 'pause':
         void this.jobs.pause(id);
         break;
@@ -161,5 +166,30 @@ export class JobListDialog {
         this.selected.set(id);
         break;
     }
+  }
+
+  /** "Start now"; if other unfinished tasks touch the same paths, ask first. */
+  private async startNow(id: string): Promise<void> {
+    const res = await this.jobs.startNow(id);
+    if (res.result !== 'overlap') {
+      return;
+    }
+    const all = this.jobs.jobs();
+    const titles = res.with.map((w) => {
+      const j = all.find((x) => x.id === w);
+      return j ? jobTitle(j) : w;
+    });
+    const ok = await this.confirm.ask({
+      title: this.t.startNowTitle,
+      message: this.t.startNowMessage(titles.length),
+      detail: `${titles.join('\n')}\n\n${this.t.startNowDetail}`,
+      confirmLabel: this.t.startNowConfirm,
+      danger: true,
+    });
+    if (ok) {
+      await this.jobs.startNow(id, true);
+    }
+    // the question replaced this dialog (one at a time): come back
+    this.dialogs.show('jobs');
   }
 }
