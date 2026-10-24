@@ -11,7 +11,7 @@ pnpm site                  # baut site/dist/: index.html, favicon.png, img/*.png
 ```
 
 Den **Inhalt** von `site/dist/` in den Ordner `/fnf` des Webspaces kopieren (z. B. per FTP – FnF selbst kann das:
-`Ctrl+K` / `⌘K`). Danach ist die Seite unter `https://krocon.de/fnf/` erreichbar. Serverlogik gibt es keine.
+`Ctrl+K` / `⌘K`). Danach ist die Seite unter `https://krocon.de/products/fnf/` erreichbar. Serverlogik gibt es keine.
 
 ```
 /fnf/index.html
@@ -24,7 +24,7 @@ Den **Inhalt** von `site/dist/` in den Ordner `/fnf` des Webspaces kopieren (z. 
 - **Datenschutz:** Die Seite lädt nichts von anderen Servern, setzt keine Cookies und hat kein JavaScript. Es
   bleiben nur die üblichen Zugriffsprotokolle des eigenen Webservers. Impressum und Datenschutzerklärung: Link im
   Fuß auf `https://krocon.de`.
-- **Open-Graph-Bild** (Vorschau beim Teilen): `https://krocon.de/fnf/img/main.png` – passt nur, wenn die
+- **Open-Graph-Bild** (Vorschau beim Teilen): `https://krocon.de/products/fnf/img/main.png` – passt nur, wenn die
   Seite wirklich unter `/fnf/` liegt; sonst `og:url`/`og:image` im Kopf der Seite anpassen.
 - **Bilder an anderer Stelle:** Alle `<img>` beginnen mit `img/` (Kommentar `IMG_BASE` im Kopf); ein Test
   (`scripts/site.test.mjs`) prüft das und dass jedes Bild existiert.
