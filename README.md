@@ -199,7 +199,7 @@ Line numbers, changed, added and removed lines; ignore white space or case; whol
 `F7` jumps to the next one. Binary files are compared byte by byte – or hand both files to FileMerge, WinMerge or
 Meld.
 
-Mark two files, *File ▸ Compare files…*
+Mark two files – in one panel, or one on each side – then *File ▸ Compare files…*
 
 ![Comparing tsconfig.json with tsconfig.spec.json: three differences, coloured](docs/screenshots/readme/compare.png)
 

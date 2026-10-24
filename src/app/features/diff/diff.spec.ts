@@ -62,6 +62,27 @@ describe('compare files: picking the two files (design 037)', () => {
     ).toEqual({ left: b, right: c });
   });
 
+  it('one marked file on each side: these two, not the cursors (Marc, 2026-10-24)', () => {
+    // active right: cursor on c, marked b; left: cursor on c, marked a
+    expect(
+      pickFiles(
+        { side: 'right', marked: [b], cursor: c },
+        { side: 'left', marked: [a], cursor: c },
+      ),
+    ).toEqual({ left: a, right: b });
+    // the other side's mark counts even if the active side uses its cursor
+    expect(
+      pickFiles({ side: 'left', marked: [], cursor: a }, { side: 'right', marked: [b], cursor: c }),
+    ).toEqual({ left: a, right: b });
+    // several marks on the other side: no single choice there – its cursor as before
+    expect(
+      pickFiles(
+        { side: 'left', marked: [], cursor: a },
+        { side: 'right', marked: [b, c], cursor: c },
+      ),
+    ).toEqual({ left: a, right: c });
+  });
+
   it('names what is missing', () => {
     expect(pickFiles({ side: 'left', marked: [a, b, c], cursor: a }, null)).toEqual({
       problem: 'twoMarked',

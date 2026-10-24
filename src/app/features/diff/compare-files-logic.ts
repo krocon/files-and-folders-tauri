@@ -25,9 +25,9 @@ export function isComparableFile(e: DirEntry | null | undefined): e is DirEntry 
 
 /**
  * Which two files to compare (Total Commander "Compare by content"): exactly two
- * marked files of the active side; otherwise the file under the cursor (or the one
- * marked) of the active side against the cursor file of the other side – the left
- * panel's file is shown left.
+ * marked files of the active side; otherwise the one marked file (else the cursor
+ * file) of the active side against the one marked file (else the cursor file) of the
+ * other side – the left panel's file is shown left.
  */
 export function pickFiles(active: ComparePanel, other: ComparePanel | null): ComparePick {
   const marked = active.marked.filter((e) => !isParentRow(e));
@@ -40,7 +40,9 @@ export function pickFiles(active: ComparePanel, other: ComparePanel | null): Com
     return { problem: 'twoMarked' };
   }
   const mine = marked[0] ?? active.cursor;
-  const theirs = other?.cursor ?? null;
+  // the other side: its one marked file (Marc, 2026-10-24), else the file under its cursor
+  const otherMarked = (other?.marked ?? []).filter((e) => !isParentRow(e));
+  const theirs = otherMarked.length === 1 ? otherMarked[0] : (other?.cursor ?? null);
   if (!isComparableFile(mine)) {
     return { problem: 'notFiles' };
   }

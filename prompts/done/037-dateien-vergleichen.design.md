@@ -15,7 +15,8 @@
 ## 2. Entscheidungen
 
 - **E1 – Welche zwei Dateien** (`pickFiles`, rein): genau zwei markierte Dateien der aktiven Seite; sonst die
-  Cursor-Datei (oder die eine markierte) der aktiven Seite gegen die Cursor-Datei der anderen Seite. Die Datei der
+  Cursor-Datei (oder die eine markierte) der aktiven Seite gegen die eine markierte Datei der anderen Seite, sonst
+  deren Cursor-Datei (Marc, 24.10.2026: je eine markierte Datei links und rechts). Die Datei der
   linken Seite steht links. Klare Meldungen: mehr als zwei markiert, andere Seite ohne Datei, keine Dateien,
   dieselbe Datei.
 - **E2 – Text-Diff in Rust** (`diff.rs`): Crate `similar` (Myers mit Deadline 10 s), Zeilenenden `\n`, `\r\n`, `\r`
