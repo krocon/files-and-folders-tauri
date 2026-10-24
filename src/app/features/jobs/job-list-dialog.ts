@@ -5,124 +5,72 @@ import {
   computed,
   ElementRef,
   inject,
+  signal,
 } from '@angular/core';
-import { isFinished, JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { describeFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { Modal } from '../../shared/dialog/modal';
-import { fraction, JOB_TEXTS, jobTitle, progressText, stateLabel } from './job-format';
+import { JOB_TEXTS, jobTitle } from './job-format';
+import { JobAct, jobRows } from './job-rows';
+import { JobTable } from './job-table';
 
 const SHOWN_ERRORS = 50;
 
 /**
- * Tasks (OPEN_TASK_DLG): every job with state, progress bar, bytes, rate and
- * time left, the current file, pause/resume/cancel and the error list. The
- * state lives in the JobsStore – closing the list loses nothing.
+ * Tasks (OPEN_TASK_DLG): every job as a row of a GuiExpert Table (state, amount + rate
+ * and time left, progress bar, task + current file, buttons – Marc, 2026-10-24); below
+ * it the details of the chosen task (errors, why it paused). The state lives in the
+ * JobsStore – closing the list loses nothing.
  */
 @Component({
   selector: 'app-job-list-dialog',
-  imports: [Modal],
+  imports: [Modal, JobTable],
   template: `
-    <app-modal [heading]="t.jobsTitle" width="44rem" (closed)="dialogs.close()">
+    <app-modal [heading]="t.jobsTitle" width="96vw" [fill]="true" (closed)="dialogs.close()">
       <!-- only finished counts are announced, not the progress (10×/s) -->
       <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
-      <ul class="jobs">
-        @for (row of rows(); track row.job.id) {
-          <li class="job" [class.finished]="row.finished" [attr.data-state]="row.job.state">
-            <div class="head">
-              <span class="title" [attr.title]="row.title">{{ row.title }}</span>
-              <span class="state">{{ row.state }}</span>
-            </div>
-            @if (!row.finished) {
-              <div
-                class="bar"
-                role="progressbar"
-                [attr.aria-label]="row.title"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                [attr.aria-valuenow]="row.percent"
-              >
-                <span
-                  [style.width.%]="row.percent ?? 0"
-                  [class.indeterminate]="row.percent === null"
-                ></span>
-              </div>
-              @if (row.job.pauseReason; as reason) {
-                <p class="error" role="alert">{{ describe(reason) }} {{ t.diskFullHint }}</p>
-              }
-              <div class="detail running">
-                <span class="numbers">{{ row.progress }}</span>
-                @if (row.job.progress.current; as cur) {
-                  <span class="current" [attr.title]="cur">{{ cur }}</span>
-                }
-              </div>
-            } @else if (row.job.summary; as s) {
-              <div class="detail">
-                <span>{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</span>
-              </div>
-              @if (s.error; as e) {
-                <p class="error">{{ describe(e) }} {{ e.message }}</p>
-              }
-              @if (row.job.undoAvailable) {
-                <div class="actions">
-                  <button
-                    type="button"
-                    class="btn"
-                    [attr.aria-label]="t.undoLabel(row.title)"
-                    (click)="mr.undo(row.job.id)"
-                  >
-                    {{ t.undo }}
-                  </button>
-                </div>
-              }
-              @if (s.errors.length) {
-                <details class="errors">
-                  <summary>{{ t.errors(s.itemsFailed) }}</summary>
-                  <ul>
-                    @for (e of s.errors.slice(0, shownErrors); track $index) {
-                      <li>
-                        <span class="path">{{ e.path }}</span> – {{ describe(e.error) }} ({{
-                          e.error.message
-                        }})
-                      </li>
-                    }
-                    @if (s.itemsFailed > shownErrors) {
-                      <li>{{ t.moreErrors(s.itemsFailed - shownErrors) }}</li>
-                    }
-                  </ul>
-                </details>
-              }
+      <app-job-table
+        [rows]="rows()"
+        [selectedId]="detail()?.id ?? null"
+        (act)="onAct($event.id, $event.act)"
+        (rowClick)="selected.set($event)"
+      />
+      <!-- the chosen task: errors, why it paused, what failed -->
+      <section class="detail" [attr.aria-label]="detail() ? t.detailsOf(detailTitle()) : null">
+        @if (detail(); as job) {
+          <h3 class="detail-title" [attr.title]="detailTitle()">{{ detailTitle() }}</h3>
+          @if (job.pauseReason; as reason) {
+            <p class="error" role="alert">{{ describe(reason) }} {{ t.diskFullHint }}</p>
+          }
+          @if (job.summary; as s) {
+            <p class="summary">{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</p>
+            @if (s.error; as e) {
+              <p class="error">{{ describe(e) }} {{ e.message }}</p>
             }
-            @if (!row.finished) {
-              <div class="actions">
-                @if (row.job.state === 'waitingForDecision') {
-                  <button type="button" class="btn primary" (click)="answer(row.job)">
-                    {{ t.answer }}
-                  </button>
+            @if (s.errors.length) {
+              <p class="errors-title">{{ t.errors(s.itemsFailed) }}</p>
+              <ul class="errors">
+                @for (e of s.errors.slice(0, shownErrors); track $index) {
+                  <li>
+                    <span class="path">{{ e.path }}</span> – {{ describe(e.error) }} ({{
+                      e.error.message
+                    }})
+                  </li>
                 }
-                @if (row.job.state !== 'waitingForDecision') {
-                  <!-- one button for both: toggling keeps the keyboard focus on it -->
-                  <button
-                    type="button"
-                    class="btn"
-                    [attr.aria-pressed]="row.paused"
-                    (click)="togglePause(row.job)"
-                  >
-                    {{ row.paused ? t.resume : t.pause }}
-                  </button>
+                @if (s.itemsFailed > shownErrors) {
+                  <li>{{ t.moreErrors(s.itemsFailed - shownErrors) }}</li>
                 }
-                <button type="button" class="btn danger" (click)="jobs.cancel(row.job.id)">
-                  {{ t.cancel }}
-                </button>
-              </div>
+              </ul>
             }
-          </li>
-        } @empty {
-          <li class="empty">{{ t.noJobs }}</li>
+          } @else if (job.progress.current; as cur) {
+            <p class="path">{{ cur }}</p>
+          }
+        } @else if (rows().length) {
+          <p class="hint">{{ t.selectHint }}</p>
         }
-      </ul>
+      </section>
       <div class="buttons">
         <button
           type="button"
@@ -149,20 +97,28 @@ export class JobListDialog {
   protected readonly shownErrors = SHOWN_ERRORS;
   protected readonly describe = describeFsError;
 
-  protected readonly rows = computed(() =>
-    this.jobs.visible().map((job: JobInfo) => {
-      const f = fraction(job.progress);
-      return {
-        job,
-        title: jobTitle(job),
-        state: stateLabel(job.state),
-        finished: isFinished(job.state),
-        percent: f === null ? null : Math.round(f * 100),
-        paused: job.state === 'paused',
-        progress: progressText(job.progress, job.state === 'running'),
-      };
-    }),
-  );
+  protected readonly rows = computed(() => jobRows(this.jobs.visible()));
+  /** The task whose details are shown: the clicked one, else the first with a problem. */
+  protected readonly selected = signal<string | null>(null);
+  protected readonly detail = computed(() => {
+    const all = this.jobs.visible();
+    const id = this.selected();
+    return (
+      all.find((j) => j.id === id) ??
+      all.find(
+        (j) =>
+          j.pauseReason !== null ||
+          j.state === 'failed' ||
+          j.state === 'doneWithErrors' ||
+          !!j.summary?.error,
+      ) ??
+      null
+    );
+  });
+  protected readonly detailTitle = computed(() => {
+    const d = this.detail();
+    return d ? jobTitle(d) : '';
+  });
   protected readonly hasFinished = computed(() => this.rows().some((r) => r.finished));
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -182,12 +138,28 @@ export class JobListDialog {
     return rows.length ? `${done} of ${rows.length} tasks finished` : '';
   });
 
-  protected togglePause(job: JobInfo): void {
-    void (job.state === 'paused' ? this.jobs.resume(job.id) : this.jobs.pause(job.id));
-  }
-
-  protected answer(job: JobInfo): void {
-    this.jobs.reopenConflict(job.id);
-    this.dialogs.show('conflict');
+  /** A button in the table. */
+  protected onAct(id: string, act: JobAct): void {
+    switch (act) {
+      case 'pause':
+        void this.jobs.pause(id);
+        break;
+      case 'resume':
+        void this.jobs.resume(id);
+        break;
+      case 'cancel':
+        void this.jobs.cancel(id);
+        break;
+      case 'answer':
+        this.jobs.reopenConflict(id);
+        this.dialogs.show('conflict');
+        break;
+      case 'undo':
+        void this.mr.undo(id);
+        break;
+      case 'details':
+        this.selected.set(id);
+        break;
+    }
   }
 }

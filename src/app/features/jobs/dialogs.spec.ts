@@ -8,13 +8,16 @@ import { RenameApi } from '../../core/rename/rename-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
 import { FakeFoldersApi } from '../../../testing/fake-folders-api';
 import { FoldersApi } from '../../core/folders/folders-api';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { ConflictDialog } from './conflict-dialog';
 import { JobListDialog } from './job-list-dialog';
+import { JobTable } from './job-table';
+import { StubJobTable } from '../../../testing/stub-job-table';
 
 const copy = { kind: 'copy' as const, sources: ['/a/x.txt'], targetDir: '/b' };
 
@@ -36,6 +39,11 @@ describe('job dialogs', () => {
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
       ],
+    });
+    // the GuiExpert Table needs a layout jsdom has not: the job list gets a stub
+    TestBed.overrideComponent(JobListDialog, {
+      remove: { imports: [JobTable] },
+      add: { imports: [StubJobTable] },
     });
     store = TestBed.inject(JobsStore);
     await store.init();
@@ -169,7 +177,12 @@ describe('job dialogs', () => {
     expect(store.pendingConflict()?.id).toBe(id);
   });
 
-  it('job list: progress, pause/cancel, errors after the end, clear finished', async () => {
+  /** The table of the dialog (a stub: the GuiExpert Table needs a layout jsdom has not). */
+  function tableOf(fixture: ComponentFixture<JobListDialog>): StubJobTable {
+    return fixture.debugElement.query(By.directive(StubJobTable)).componentInstance as StubJobTable;
+  }
+
+  it('job list: table rows, pause/resume/cancel through the buttons, details, clear finished', async () => {
     const id = await store.start(copy);
     api.emit({ type: 'state', id, state: 'running' });
     api.emit({
@@ -181,28 +194,30 @@ describe('job dialogs', () => {
         itemsDone: 1,
         itemsTotal: 2,
         current: '/a/x.txt',
-        rateBps: 0,
+        rateBps: 10,
       },
     });
     const fixture = TestBed.createComponent(JobListDialog);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('50');
-    const button = (label: string) =>
-      [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
-    const pause = button('Pause');
-    pause.focus();
-    pause.click();
+    const table = tableOf(fixture);
+    const row = () => table.rows()[0];
+    expect(row().status).toBe('Running');
+    expect(row().percent).toBe(50);
+    expect(row().amount).toBe('30 B of 60 B');
+    expect(row().speed).toContain('10 B/s');
+    expect(row().current).toBe('/a/x.txt');
+    expect(row().buttons.map((b) => b.label)).toEqual(['Pause', 'Cancel']);
+    table.act.emit({ id, act: 'pause' });
     expect(api.paused).toEqual([id]);
     api.emit({ type: 'state', id, state: 'paused' });
     fixture.detectChanges();
-    // the same button now resumes and keeps the focus
-    expect(document.activeElement).toBe(pause);
-    expect(pause.textContent?.trim()).toBe('Resume');
-    expect(pause.getAttribute('aria-pressed')).toBe('true');
-    pause.click();
+    // the same slot now resumes (the table gives the focus back to it)
+    const toggle = row().buttons[0];
+    expect([toggle.label, toggle.slot, toggle.pressed]).toEqual(['Resume', 'toggle', true]);
+    table.act.emit({ id, act: 'resume' });
     expect(api.resumed).toEqual([id]);
-    button('Cancel').click();
+    table.act.emit({ id, act: 'cancel' });
     expect(api.cancelled).toEqual([id]);
     api.emit({
       type: 'finished',
@@ -224,10 +239,16 @@ describe('job dialogs', () => {
       },
     });
     fixture.detectChanges();
-    expect(el.textContent).toContain('Done with errors');
-    expect(el.querySelector('.errors summary')?.textContent).toContain('1 error');
+    expect(row().status).toBe('Done with errors');
+    expect(row().problem).toBe(true);
+    expect([row().amount, row().speed]).toEqual(['1 done', '0 skipped · 1 failed']);
+    expect(row().buttons.map((b) => b.act)).toEqual(['details']);
+    // the task with a problem is shown below the table without a click
+    expect(el.querySelector('.errors-title')?.textContent).toContain('1 error');
     expect(el.querySelector('.errors li')?.textContent).toContain('/a/locked');
-    button('Remove finished').click();
+    [...el.querySelectorAll('button')]
+      .find((b) => b.textContent?.trim() === 'Remove finished')!
+      .click();
     expect(api.clearCalls).toBe(1);
   });
 
@@ -249,17 +270,28 @@ describe('job dialogs', () => {
     });
     const fixture = TestBed.createComponent(JobListDialog);
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    const undoButton = () =>
-      [...el.querySelectorAll<HTMLButtonElement>('button')].find(
-        (b) => b.textContent?.trim() === 'Undo',
-      );
-    expect(undoButton()).toBeUndefined();
+    const table = tableOf(fixture);
+    const undo = () => table.rows()[0].buttons.find((b) => b.act === 'undo');
+    expect(undo()).toBeUndefined();
     api.emit({ type: 'undoAvailable', id, available: true });
     fixture.detectChanges();
-    expect(undoButton()?.getAttribute('aria-label')).toBe('Undo: Rename /a/x → y');
-    undoButton()!.click();
+    expect(undo()?.ariaLabel).toBe('Undo: Rename /a/x → y');
+    table.act.emit({ id, act: 'undo' });
     await new Promise((r) => setTimeout(r));
     expect(renameApi.undos).toEqual([id]);
+  });
+
+  it('job list: the dialog fills the window, a click on a row shows its details', async () => {
+    const a = await store.start(copy);
+    const b = await store.start({ kind: 'rename', items: [{ path: '/a/x', newName: 'y' }] });
+    api.emit({ type: 'state', id: a, state: 'running' });
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.backdrop.fill')).not.toBeNull();
+    expect(el.querySelector('.hint')?.textContent).toContain('Click a task');
+    tableOf(fixture).rowClick.emit(b);
+    fixture.detectChanges();
+    expect(el.querySelector('.detail-title')?.textContent).toBe('Rename /a/x → y');
   });
 });

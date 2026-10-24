@@ -1,110 +1,44 @@
-.jobs {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Tasks: the table takes the height, the details of the chosen task below it */
+.detail {
+  flex: none;
+  max-height: 30%;
   overflow-y: auto;
-  min-height: 3rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-
-.job {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1);
-  padding: var(--spacing-2);
   font-size: var(--font-size-sm);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-sm);
 
-  &.finished {
-    color: var(--color-muted);
-  }
-
-  &[data-state='doneWithErrors'] .state,
-  &[data-state='failed'] .state {
-    color: var(--color-danger);
-  }
-
-  &[data-state='waitingForDecision'] .state {
-    color: var(--color-accent);
-    font-weight: 600;
+  &:empty {
+    display: none;
   }
 }
 
-.head,
-.detail {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--spacing-3);
-  min-width: 0;
-}
-
-.title,
-.current {
-  min-width: 0;
+.detail-title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.title {
-  font-weight: 600;
-  color: var(--color-text);
+.summary,
+.hint,
+.errors-title {
+  margin: 0;
 }
 
-.state {
-  flex: none;
-}
-
-/* "1.0 GB of 15 GB · 14 MB/s · 17:08 left" never breaks inside; the path gets
-   the rest, or its own line when less than 12rem is left (design 029 E12) */
-.detail.running {
-  flex-wrap: wrap;
-  row-gap: 0;
-
-  .numbers {
-    flex: none;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .current {
-    flex: 1 1 12rem;
-    text-align: end;
-  }
-}
-
-.current {
-  font-family: var(--font-mono);
+.hint {
   color: var(--color-muted);
 }
 
-.bar {
-  height: 6px;
-  overflow: hidden;
-  background: var(--color-surface-raised);
-  border-radius: 3px;
-
-  span {
-    display: block;
-    height: 100%;
-    background: var(--color-accent);
-    transition: width 0.2s linear;
-
-    &.indeterminate {
-      width: 30% !important;
-      opacity: 0.5;
-    }
-  }
+.errors-title {
+  color: var(--color-danger);
 }
 
-.actions,
-.buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-2);
+.errors {
+  margin: 0;
+  padding-left: 1.2rem;
 }
 
 .error {
@@ -112,27 +46,16 @@
   color: var(--color-danger);
 }
 
-.errors {
-  summary {
-    cursor: pointer;
-    color: var(--color-danger);
-  }
-
-  ul {
-    margin: var(--spacing-1) 0 0;
-    padding-left: 1.2rem;
-    max-height: 10rem;
-    overflow-y: auto;
-  }
-}
-
 .path {
+  margin: 0;
   font-family: var(--font-mono);
   word-break: break-all;
 }
 
-.empty {
-  color: var(--color-muted);
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
 }
 
 .sr-only {

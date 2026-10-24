@@ -21,6 +21,9 @@ import { keepsWebViewMenu, Workspace } from './workspace';
 import { WorkspaceStore } from './workspace.store';
 import { Component, input } from '@angular/core';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
+import { JobListDialog } from '../jobs/job-list-dialog';
+import { JobTable } from '../jobs/job-table';
+import { StubJobTable } from '../../../testing/stub-job-table';
 
 @Component({ selector: 'app-file-panel', template: '<button class="in-panel">x</button>' })
 class FilePanelStub {
@@ -50,6 +53,10 @@ describe('Workspace', () => {
     TestBed.overrideComponent(Workspace, {
       remove: { imports: [FilePanel] },
       add: { imports: [FilePanelStub] },
+    });
+    TestBed.overrideComponent(JobListDialog, {
+      remove: { imports: [JobTable] },
+      add: { imports: [StubJobTable] },
     });
     const fixture = TestBed.createComponent(Workspace);
     fixture.detectChanges();

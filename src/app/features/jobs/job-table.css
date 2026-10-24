@@ -1,0 +1,121 @@
+/* Task table (Marc, 2026-10-24) – ViewEncapsulation.None: every rule starts with app-job-table */
+app-job-table {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  /* = defaultRowHeights (ge-table-theme.css centres single-line text with it) */
+  --fnf-row-height: 46px;
+  --fnf-header-height: 30px;
+
+  .table {
+    display: block;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .fnf-job-finished {
+    opacity: 0.75;
+  }
+
+  .fnf-job-problem,
+  .fnf-job-state-failed,
+  .fnf-job-state-doneWithErrors {
+    color: var(--color-error-text);
+    font-weight: 600;
+  }
+
+  .fnf-job-state-waitingForDecision {
+    font-weight: 600;
+  }
+
+  /* two lines in a 46 px row – beats the single-line line-height of ge-table-theme.css */
+  .ge-table .ge-table-col-div[data-area='body'].fnf-job-2l {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    line-height: 1.35;
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .fnf-job-l1 {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fnf-job-l2 {
+    font-size: var(--font-size-xs);
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fnf-job-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* the bar as high as the row (a few px inset) */
+  .fnf-job-barcell {
+    height: 100%;
+    padding: 5px 8px;
+    box-sizing: border-box;
+  }
+
+  .fnf-job-track {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    border-radius: var(--radius-sm);
+  }
+
+  .fnf-job-fill {
+    height: 100%;
+    background: var(--color-accent);
+    transition: width 0.2s linear;
+
+    &.fnf-job-indeterminate {
+      width: 30%;
+      opacity: 0.5;
+    }
+  }
+
+  .fnf-job-pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    &.fnf-job-pct-on {
+      color: var(--color-accent-text);
+    }
+  }
+
+  .fnf-job-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-1);
+    height: 100%;
+    padding-inline: 8px;
+    box-sizing: border-box;
+
+    .btn {
+      min-width: 0;
+      padding: 2px 10px;
+    }
+  }
+}

@@ -54,6 +54,8 @@ const SAME = new Set([
   'Glob',
   'Text',
   'Info',
+  'Status',
+  'Details',
   'Home',
   'Tasks',
   'Tools',

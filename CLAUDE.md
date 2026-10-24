@@ -87,7 +87,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              Dialogeingaben: shared/dialog-memory.ts + shared/restore-fields.ts
   app/core/jobs/             Job-DTOs, JobsApi (ein Ereigniskanal), JobsStore (Root: alle Jobs, Konflikte, Waiter)
   app/core/rename/           Multi-Rename-DTOs, RenameApi (plan_rename, undo_rename, Vorlagen)
-  app/features/jobs/         Task-Liste, Konfliktdialog (auch „schreibgeschützt“), Aktion Tasks
+  app/features/jobs/         Task-Liste (GuiExpert Table `job-table.ts`, Zeilen rein in `job-rows.ts`, Details darunter),
+                             Konfliktdialog (auch „schreibgeschützt“), Aktion Tasks
   app/features/ops/          Dateioperationen: OpsStore (Auswahl, Ziele, Ausführung), Dialoge Kopieren/Verschieben,
                              Löschen, Name (Ordner/Datei anlegen, Umbenennen), Aktionen F2/F5–F8
   app/features/multirename/  rename-engine.ts (reine Regel-Engine + Testkatalog .cases.json), MultiRenameStore,

@@ -31,6 +31,14 @@ export const JOB_EN = {
   cancel: 'Cancel',
   answer: 'Answer…',
   clearFinished: 'Remove finished',
+  details: 'Details',
+  colStatus: 'Status',
+  colProgress: 'Progress',
+  colBar: 'Done',
+  colAction: 'Task',
+  colButtons: 'Actions',
+  detailsOf: (title: string) => `Details: ${title}`,
+  selectHint: 'Click a task to see its details.',
   close: 'Close',
   errors: (n: number) => (n === 1 ? '1 error' : `${n} errors`),
   moreErrors: (n: number) => `… and ${n} more`,
@@ -78,6 +86,9 @@ export const JOB_EN = {
   summary: (done: number, skipped: number, failed: number) =>
     `${done} done · ${skipped} skipped · ${failed} failed`,
   left: (time: string) => `${time} left`,
+  /** The summary in the table: two lines. */
+  doneCount: (done: number) => `${done} done`,
+  skippedFailed: (skipped: number, failed: number) => `${skipped} skipped · ${failed} failed`,
   states: {
     queued: 'Waiting',
     planning: 'Preparing',
@@ -231,22 +242,33 @@ export function fraction(p: Progress): number | null {
   return null;
 }
 
-/** "1.2 MB of 5.0 MB · 3.4 MB/s · 0:12 left" – rate and time only while running. */
-export function progressText(p: Progress, running = true): string {
-  const parts: string[] = [];
+/** "1.2 MB of 5.0 MB" (or items) – empty while the total is unknown. */
+export function amountText(p: Progress): string {
   if (p.bytesTotal > 0) {
-    parts.push(JOB_TEXTS.of(formatSize(p.bytesDone), formatSize(p.bytesTotal)));
-  } else if (p.itemsTotal > 0) {
-    parts.push(JOB_TEXTS.of(String(p.itemsDone), String(p.itemsTotal)));
+    return JOB_TEXTS.of(formatSize(p.bytesDone), formatSize(p.bytesTotal));
   }
-  if (running && p.rateBps > 0) {
-    parts.push(`${formatSize(p.rateBps)}/s`);
-    const left = p.bytesTotal - p.bytesDone;
-    if (left > 0) {
-      parts.push(JOB_TEXTS.left(formatDuration(left / p.rateBps)));
-    }
+  if (p.itemsTotal > 0) {
+    return JOB_TEXTS.of(String(p.itemsDone), String(p.itemsTotal));
+  }
+  return '';
+}
+
+/** "3.4 MB/s · 0:12 left" – only while running with a known rate. */
+export function speedText(p: Progress, running = true): string {
+  if (!running || p.rateBps <= 0) {
+    return '';
+  }
+  const parts = [`${formatSize(p.rateBps)}/s`];
+  const left = p.bytesTotal - p.bytesDone;
+  if (left > 0) {
+    parts.push(JOB_TEXTS.left(formatDuration(left / p.rateBps)));
   }
   return parts.join(' · ');
+}
+
+/** "1.2 MB of 5.0 MB · 3.4 MB/s · 0:12 left" – rate and time only while running. */
+export function progressText(p: Progress, running = true): string {
+  return [amountText(p), speedText(p, running)].filter((s) => s !== '').join(' · ');
 }
 
 export function formatDuration(seconds: number): string {

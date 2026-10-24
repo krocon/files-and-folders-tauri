@@ -13,6 +13,14 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
   cancel: 'Abbrechen',
   answer: 'Antworten…',
   clearFinished: 'Fertige entfernen',
+  details: 'Details',
+  colStatus: 'Status',
+  colProgress: 'Fortschritt',
+  colBar: 'Erledigt',
+  colAction: 'Aufgabe',
+  colButtons: 'Aktionen',
+  detailsOf: (title) => `Details: ${title}`,
+  selectHint: 'Eine Aufgabe anklicken, um ihre Details zu sehen.',
   close: 'Schließen',
   errors: (n) => (n === 1 ? '1 Fehler' : `${n} Fehler`),
   moreErrors: (n) => `… und ${n} weitere`,
@@ -62,6 +70,8 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
   summary: (done, skipped, failed) =>
     `${done} erledigt · ${skipped} übersprungen · ${failed} fehlgeschlagen`,
   left: (time) => `noch ${time}`,
+  doneCount: (done) => `${done} erledigt`,
+  skippedFailed: (skipped, failed) => `${skipped} übersprungen · ${failed} fehlgeschlagen`,
   states: {
     queued: 'Wartet',
     planning: 'Vorbereitung',
