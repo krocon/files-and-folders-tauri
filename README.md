@@ -254,6 +254,30 @@ All eleven schemes:
 
 ## And more
 
+Small things that save time every day:
+
+- **Quick filter per tab** – type `*.jpg -thumb` and the list shows only what matches (`Ctrl+Alt+F` · `⌘⌥F`);
+  hidden files on and off (`Ctrl+H` · `⌘⇧.`)
+- **Folder sizes** – `Space` on a folder marks it and calculates its size, `Alt+Shift+Enter` does it for all
+  marked folders (cancellable, symbolic links are not followed)
+- **Folder menu ▾** – drives with file system and free space, servers, favourites (`Ctrl+D` · `⌘D`) and recently
+  visited folders in one menu (`Alt+F1` / `Alt+F2`)
+- **History per tab** – back and forward with cursor and scroll position (`Alt+←` / `Alt+→` · `⌘[` / `⌘]`, also
+  mouse buttons 4/5)
+- **Mark by pattern** – *Enhance / Reduce Selection* with wildcards or regex and one-click presets per file type
+  (images, movies, documents …; `Num+` / `Num−`)
+- **Clipboard** – names or full paths of the marked entries, also as JSON (`Ctrl+Alt+N` / `Ctrl+Alt+C` ·
+  `⌘⌥N` / `⌘⌥C`)
+- **Context menu** that fits the selection (`Shift+F10`), a menu bar with every action – native on macOS
+- **New files and nested folders** – `Shift+F4` creates a file, `F7` takes `a/b/c`, and after `S01`, `S02` it
+  suggests `S03`
+- **Private** – no account, no telemetry, nothing phones home; server passwords live in your system keychain,
+  archive passwords only in memory
+- **Accessible** – every dialog, menu and list works with the keyboard alone, with ARIA roles and announcements for
+  screen readers
+
+And the bigger helpers:
+
 - **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, times; for many
   entries at once and optionally for folder contents (`Ctrl+Shift+F2` · `⌘⇧F2`)
 - **Checksums** – create and verify SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible)
