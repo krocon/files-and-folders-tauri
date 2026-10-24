@@ -89,21 +89,12 @@ app-context-menu {
   display: contents;
 }
 
-/* the number of unfinished tasks, as a badge on the gear (Marc 2026-10-24) */
-.icon-wrap {
-  position: relative;
-  display: inline-flex;
-
-  /* room for the badge: it must not cover the label */
-  &:has(.count-badge) {
-    margin-right: 10px;
-  }
-}
-
+/* the number of unfinished tasks, as a badge on the top right corner (Marc 2026-10-24) */
 .count-badge {
   position: absolute;
-  top: -10px;
-  right: -14px;
+  top: -8px;
+  right: -8px;
+  z-index: 1;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

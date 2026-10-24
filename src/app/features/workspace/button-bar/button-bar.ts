@@ -93,18 +93,14 @@ interface ToolButton {
           (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
-          <span class="icon-wrap"
-            ><i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
-            @if (t.status; as st) {
-              <span class="count-badge" aria-hidden="true">{{ st.open }}</span>
-            }
-          </span>
+          <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
           @if (t.showLabel) {
             <span class="label-word" [class.pulse]="t.status?.spinning" aria-hidden="true">{{
               t.word
             }}</span>
           }
           @if (t.status; as st) {
+            <span class="count-badge" aria-hidden="true">{{ st.open }}</span>
             <span class="task-bar" aria-hidden="true"
               ><span [style.width.%]="st.percent"></span
             ></span>
