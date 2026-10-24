@@ -251,7 +251,7 @@ src-tauri/                   Rust (Tauri 2)
                              Crate `drag` auf macOS/Windows, eigenes GTK unter Linux), `origin_mark.rs` (Mark-of-the-Web/
                              Quarantäne aufs Entpackte, 025), `clock.rs`; `make_symlink`, `entry_id` in platform.rs
   capabilities/default.json  nur core:default
-  icons/source/app-icon.svg  Quelle des App-Icons (`pnpm tauri icon …`)
+  icons/source/app-icon.png  Quelle des App-Icons (= docs/icons/img.png, 1024 px; `pnpm tauri icon …`)
 scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);
                              screenshots/ (Playwright + Mock-Backend + Demo-Dateisystem, Szenen in scenes.json);
                              site.mjs + site-lib.mjs (Werbeseite zusammenstellen, Bild-/Ankerprüfung, 044)

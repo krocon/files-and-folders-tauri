@@ -43,9 +43,12 @@ describe('version source of truth', () => {
   });
 
   it('the icon in the dialog is the current app icon', () => {
-    const source = readFileSync('src-tauri/icons/source/app-icon.svg', 'utf8');
-    expect(readFileSync('public/app-icon.svg', 'utf8')).toBe(source);
-    expect(readFileSync('docs/icons/dual-pane-icon.svg', 'utf8')).toBe(source);
+    // source of `pnpm tauri icon` = Marc's design (2026-10-24); the dialog shows a 192 px copy
+    const source = readFileSync('src-tauri/icons/source/app-icon.png');
+    expect(source.equals(readFileSync('docs/icons/img.png'))).toBe(true);
+    const shown = readFileSync('public/app-icon.png');
+    expect(shown.subarray(1, 4).toString('latin1')).toBe('PNG');
+    expect([shown.readUInt32BE(16), shown.readUInt32BE(20)]).toEqual([192, 192]);
   });
 });
 
@@ -81,7 +84,7 @@ describe('AboutDialog', () => {
     expect(el.querySelector('[data-testid="about-version"]')?.textContent).toContain('0.1.0');
     expect(el.querySelector('[role="dialog"]')).not.toBeNull();
     expect(el.querySelector('[data-testid="about-icon"]')?.getAttribute('src')).toBe(
-      'app-icon.svg',
+      'app-icon.png',
     );
     const copy = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Copy')!;
     copy.click();
