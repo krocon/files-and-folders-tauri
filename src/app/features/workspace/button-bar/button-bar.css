@@ -89,6 +89,35 @@ app-context-menu {
   display: contents;
 }
 
+/* the number of unfinished tasks, as a badge on the gear (Marc 2026-10-24) */
+.icon-wrap {
+  position: relative;
+  display: inline-flex;
+
+  /* room for the badge: it must not cover the label */
+  &:has(.count-badge) {
+    margin-right: 10px;
+  }
+}
+
+.count-badge {
+  position: absolute;
+  top: -10px;
+  right: -14px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--color-badge-text);
+  background: var(--color-badge-bg);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 /* the word "Tasks" breathes gently while a task runs: fades and takes the accent colour */
 .label-word.pulse {
   animation: task-pulse 1.8s ease-in-out infinite;

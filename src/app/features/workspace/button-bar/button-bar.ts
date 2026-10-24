@@ -93,12 +93,16 @@ interface ToolButton {
           (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
-          <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
+          <span class="icon-wrap"
+            ><i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
+            @if (t.status; as st) {
+              <span class="count-badge" aria-hidden="true">{{ st.open }}</span>
+            }
+          </span>
           @if (t.showLabel) {
-            <span aria-hidden="true"
-              ><span class="label-word" [class.pulse]="t.status?.spinning">{{ t.word }}</span
-              >{{ t.status ? ' ' + t.status.text : '' }}</span
-            >
+            <span class="label-word" [class.pulse]="t.status?.spinning" aria-hidden="true">{{
+              t.word
+            }}</span>
           }
           @if (t.status; as st) {
             <span class="task-bar" aria-hidden="true"
@@ -210,7 +214,10 @@ export class ButtonBar {
     });
   });
 
-  /** "finished / total" of the visible tasks while any runs (mr), plus overall progress. */
+  /**
+   * While any task runs: "finished / total" of the visible tasks (mr, spoken in the label),
+   * the unfinished ones as a badge, the overall progress as a bar.
+   */
   private readonly taskStatus = computed(() => {
     if (this.jobs.active().length === 0) {
       return null;
@@ -224,6 +231,8 @@ export class ButtonBar {
     const progress = this.jobs.overallProgress();
     return {
       text: `${finished} / ${visible.length}`,
+      // the badge: tasks not finished yet (Marc 2026-10-24)
+      open: this.jobs.active().length,
       percent: progress === null ? 0 : Math.round(progress * 100),
       waiting,
       spinning,

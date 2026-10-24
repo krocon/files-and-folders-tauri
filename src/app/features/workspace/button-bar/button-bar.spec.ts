@@ -184,6 +184,7 @@ describe('ButtonBar', () => {
     const spec = { kind: 'copy' as const, sources: ['/a'], targetDir: '/b' };
     const tasks = () => el.querySelector<HTMLButtonElement>('[aria-label^="Tasks"]')!;
     expect(tasks().getAttribute('aria-label')).toBe('Tasks');
+    expect(tasks().querySelector('.count-badge')).toBeNull();
     await jobs.start(spec);
     await jobs.start(spec);
     jobsApi.emit({
@@ -201,6 +202,8 @@ describe('ButtonBar', () => {
     fixture.detectChanges();
     expect(tasks().getAttribute('aria-label')).toBe('Tasks 0 / 2');
     expect((el.querySelector('.task-bar span') as HTMLElement).style.width).toBe('50%');
+    // the badge counts the unfinished tasks; no badge without tasks
+    expect(tasks().querySelector('.count-badge')!.textContent).toBe('2');
     jobsApi.emit({ type: 'state', id: 'j2', state: 'waitingForDecision' });
     fixture.detectChanges();
     expect(tasks().classList).toContain('attention');
@@ -238,7 +241,7 @@ describe('ButtonBar', () => {
     jobsApi.emit({ type: 'state', id: 'j1', state: 'running' });
     fixture.detectChanges();
     expect(word().classList).toContain('pulse');
-    expect(word().parentElement!.textContent).toBe('Tasks 0 / 1');
+    expect(el.querySelector('[aria-label^="Tasks"] .count-badge')!.textContent).toBe('1');
     jobsApi.emit({ type: 'state', id: 'j1', state: 'paused' });
     fixture.detectChanges();
     expect(word().classList).not.toContain('pulse');
