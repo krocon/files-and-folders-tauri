@@ -111,6 +111,9 @@
   --color-footer-error-text: var(--color-danger);
   --color-footer-focus: var(--color-focus);
   --color-footer-accent: var(--color-accent);
+  --color-task-bar: var(--color-footer-accent);
+  --color-badge-bg: #c62828;
+  --color-badge-text: #ffffff;
 
   /* shell bar (design 021) */
   --color-shell-bg: var(--color-surface);

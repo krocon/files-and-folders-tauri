@@ -533,6 +533,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-footer-error-text', '--color-footer-bg', 'Status line warning'),
   p('--color-footer-button-text', '--color-footer-button-bg', 'Function buttons'),
   p('--color-shortcut-text', '--color-shortcut-bg', 'Shortcut badges'),
+  p('--color-badge-text', '--color-badge-bg', 'Count badge on the Tasks button'),
 
   p('--color-dialog-text', '--color-dialog-bg', 'Dialogs'),
   p('--color-muted', '--color-dialog-bg', 'Muted text in dialogs'),

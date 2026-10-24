@@ -111,6 +111,13 @@ describe('old designs (prompt 019)', () => {
     expect(norton.tokens['--color-menu-text']).toBe('#ffffff');
     // Marc 21.10.2026: the splitter is black in Norton
     expect(norton.tokens['--color-splitter']).toBe('#000000');
+    // Marc 24.10.2026: the progress on the Tasks button is white in Norton
+    expect(norton.tokens['--color-task-bar']).toBe('#ffffff');
+    // … and its count badge white on red, like in the other designs
+    expect([norton.tokens['--color-badge-text'], norton.tokens['--color-badge-bg']]).toEqual([
+      '#ffffff',
+      '#c62828',
+    ]);
     for (const other of CLASSIC_THEMES.filter((t) => t !== norton)) {
       expect(other.tokens['--color-menu-bg']).not.toBe('#028383');
     }

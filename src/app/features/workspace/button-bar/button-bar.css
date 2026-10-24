@@ -80,7 +80,7 @@ app-context-menu {
   span {
     display: block;
     height: 100%;
-    background: var(--color-accent);
+    background: var(--color-task-bar);
   }
 }
 
@@ -89,9 +89,48 @@ app-context-menu {
   display: contents;
 }
 
-/* the gear of the Tasks button turns while a task runs (fa-spin) – not for reduced motion */
+/* the number of unfinished tasks, as a badge on the top right corner (Marc 2026-10-24) */
+.count-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 1;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--color-badge-text);
+  background: var(--color-badge-bg);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* the word "Tasks" breathes gently while a task runs: fades and takes the accent colour */
+.label-word.pulse {
+  animation: task-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes task-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+    color: var(--color-accent);
+  }
+}
+
+/* the gear of the Tasks button turns while a task runs (fa-spin), the word pulses –
+   neither for reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .fa-spin {
+  .fa-spin,
+  .label-word.pulse {
     animation: none;
   }
 }

@@ -95,9 +95,12 @@ interface ToolButton {
         >
           <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
           @if (t.showLabel) {
-            <span aria-hidden="true">{{ t.label }}</span>
+            <span class="label-word" [class.pulse]="t.status?.spinning" aria-hidden="true">{{
+              t.word
+            }}</span>
           }
           @if (t.status; as st) {
+            <span class="count-badge" aria-hidden="true">{{ st.open }}</span>
             <span class="task-bar" aria-hidden="true"
               ><span [style.width.%]="st.percent"></span
             ></span>
@@ -207,7 +210,10 @@ export class ButtonBar {
     });
   });
 
-  /** "finished / total" of the visible tasks while any runs (mr), plus overall progress. */
+  /**
+   * While any task runs: "finished / total" of the visible tasks (mr, spoken in the label),
+   * the unfinished ones as a badge, the overall progress as a bar.
+   */
   private readonly taskStatus = computed(() => {
     if (this.jobs.active().length === 0) {
       return null;
@@ -215,11 +221,14 @@ export class ButtonBar {
     const visible = this.jobs.visible();
     const finished = visible.filter((j) => isFinished(j.state)).length;
     const waiting = visible.some((j) => j.state === 'waitingForDecision');
-    // the gear turns while a task really works – not while all wait for an answer or are paused
+    // the gear turns and the word pulses while a task really works – not while all wait for an
+    // answer or are paused
     const spinning = this.jobs.active().some((j) => j.state === 'running');
     const progress = this.jobs.overallProgress();
     return {
       text: `${finished} / ${visible.length}`,
+      // the badge: tasks not finished yet (Marc 2026-10-24)
+      open: this.jobs.active().length,
       percent: progress === null ? 0 : Math.round(progress * 100),
       waiting,
       spinning,
@@ -233,6 +242,7 @@ export class ButtonBar {
       const label = shortLabel(t.id);
       return {
         ...t,
+        word: label,
         label: status ? `${label} ${status.text}` : label,
         status,
         ready: state === 'ready',
