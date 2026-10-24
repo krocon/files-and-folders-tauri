@@ -145,6 +145,11 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
 - [ ] 015: `loadingText` der Table folgt keinem Sprachwechsel (Overlay-Texte nur beim Erzeugen, `TODO(guiexpert)`).
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).
+- [ ] GuiExpert Table: `.ge-table-label-div` hat `text-overflow: ellipsis` ohne `white-space: nowrap` (lange Namen brechen
+      in eine verdeckte 2. Zeile um) – bei uns in `ge-table-theme.css` gesetzt, im Core nachziehen (`TODO(guiexpert)`).
+- [ ] Flackernder Rust-Test `jobs::tests_remote::sftp_up_down_conflicts_move_delete`: im vollen Lauf `cargo test --lib remote`
+      etwa 1 von 4 Mal `DoneWithErrors` beim Kopieren Server → Server (tests_remote.rs:124), einzeln immer grün – vermutlich
+      Pool/Zeitlimit unter Last (gefunden 24.10.2026, unabhängig vom Test-Passwort).
 
 ## 5. Logo
 

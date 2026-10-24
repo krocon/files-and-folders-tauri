@@ -1,5 +1,5 @@
 //! In-process FTP(S) and SFTP servers for the tests (design 034 §5): no daemon, the
-//! same on every OS. Both serve a temporary folder; user `u`, password `pw`.
+//! same on every OS. Both serve a temporary folder; user `u`, password [`PASSWORD`].
 //! The SFTP server also accepts the public key passed to [`start_sftp`].
 
 use super::sftp::runtime;
@@ -20,7 +20,9 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use tempfile::TempDir;
 
 pub const USER: &str = "u";
-pub const PASSWORD: &str = "pw";
+/// Long and unusual: tests check that it never shows up in files (a 2-letter "pw" could appear in a
+/// random id or fingerprint by chance).
+pub const PASSWORD: &str = "testSecretQx7";
 
 fn testdata() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/remote/testdata")
