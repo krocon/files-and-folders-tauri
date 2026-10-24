@@ -38,6 +38,8 @@ export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, stri
     '--color-menu-text': '#ffffff',
     // Marc 21.10.2026: black splitter between the panels
     '--color-splitter': '#000',
+    // Marc 24.10.2026: the progress on the Tasks button in white (the accent was hard to see)
+    '--color-task-bar': '#fff',
     '--fnf-activepanel-table-selected-row-fg-color': '#fcfc54',
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
   },

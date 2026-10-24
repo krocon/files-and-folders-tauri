@@ -159,6 +159,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-footer-error-text', 'footer', 'Warning text'),
   t('--color-footer-focus', 'footer', 'Focus ring'),
   t('--color-footer-accent', 'footer', 'Accent (busy, attention)'),
+  t('--color-task-bar', 'footer', 'Progress on the Tasks button'),
 
   t('--color-shell-bg', 'shell', 'Background'),
   t('--color-shell-text', 'shell', 'Text'),

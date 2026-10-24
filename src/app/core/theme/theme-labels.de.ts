@@ -158,6 +158,7 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'The file is not a colour scheme.': 'Die Datei ist kein Farbschema.',
   'The colour scheme has no usable values.': 'Das Farbschema hat keine verwendbaren Werte.',
   'Accent (busy, attention)': 'Akzent (beschäftigt, Hinweis)',
+  'Progress on the Tasks button': 'Fortschritt am Tasks-Button',
   'File icons': 'Datei-Icons',
   Folders: 'Ordner',
   Documents: 'Dokumente',

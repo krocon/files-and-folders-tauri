@@ -111,6 +111,7 @@
   --color-footer-error-text: var(--color-danger);
   --color-footer-focus: var(--color-focus);
   --color-footer-accent: var(--color-accent);
+  --color-task-bar: var(--color-footer-accent);
 
   /* shell bar (design 021) */
   --color-shell-bg: var(--color-surface);

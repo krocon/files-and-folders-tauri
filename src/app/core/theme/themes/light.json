@@ -88,6 +88,7 @@
     "--color-footer-error-text": "var(--color-danger)",
     "--color-footer-focus": "var(--color-focus)",
     "--color-footer-accent": "var(--color-accent)",
+    "--color-task-bar": "var(--color-footer-accent)",
     "--color-shell-bg": "var(--color-surface)",
     "--color-shell-text": "var(--color-text)",
     "--color-shell-prompt": "var(--color-accent)",
