@@ -116,6 +116,13 @@
   outline-offset: 0;
   transition: var(--control-transition);
 
+  /* selected text: the contrast-checked pair of every scheme, not the system colour (Norton: dark
+     input text on the macOS highlight was unreadable) */
+  &::selection {
+    color: var(--color-selection-text);
+    background: var(--color-selection);
+  }
+
   &::placeholder {
     /* from the input's own colours: --color-muted belongs to the dialog background and can
        vanish on the input (Norton: light on white) */

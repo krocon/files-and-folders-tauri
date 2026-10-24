@@ -38,4 +38,12 @@ describe('panel styles', () => {
     const css = readFileSync('src/app/features/workspace/button-bar/button-bar.css', 'utf8');
     expect(rule(css, 'app-actions-menu,\napp-context-menu')).toContain('display: contents');
   });
+
+  it('selected text in fields uses the contrast-checked selection pair (Norton: unreadable before)', () => {
+    const css = readFileSync('src/styles/controls.css', 'utf8');
+    const start = css.indexOf('&::selection {');
+    const sel = start < 0 ? '' : css.slice(start, css.indexOf('}', start));
+    expect(sel).toContain('color: var(--color-selection-text)');
+    expect(sel).toContain('background: var(--color-selection)');
+  });
 });
