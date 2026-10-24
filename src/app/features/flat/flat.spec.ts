@@ -438,6 +438,12 @@ describe('flat view actions and session (design 038 E1/E7)', () => {
     expect(ACT_TEXTS.menu['TOGGLE_FLAT_VIEW']).toBe('Toggle Flat View');
   });
 
+  it('the Actions menu lists Quick View under Toggle Shell', () => {
+    const first = ACTIONS_MENU_COLUMNS[0];
+    expect(first[first.indexOf('TOGGLE_SHELL') + 1]).toBe('QUICK_VIEW');
+    expect(ACT_TEXTS.menu['QUICK_VIEW']).toBe('Toggle Quick View');
+  });
+
   it('a flat view is saved as its folder with the cursor of the normal view', () => {
     const tab = { ...newTab('/r', 'r'), cursor: null };
     ws.restore({

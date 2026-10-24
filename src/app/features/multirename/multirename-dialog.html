@@ -1,5 +1,5 @@
 @if (mr.request()) {
-  <app-modal [heading]="heading()" width="92vw" height="86vh" (closed)="mr.close()">
+  <app-modal [heading]="heading()" width="92vw" [fill]="true" (closed)="mr.close()">
     <div class="mr">
       <!-- presets -->
       <div class="row presets">

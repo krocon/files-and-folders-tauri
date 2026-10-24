@@ -66,6 +66,7 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
   renameLabel: 'Neuer Name',
   renameConfirm: 'Umbenennen',
   renameAnyway: 'Trotzdem umbenennen',
+  currentName: 'Bisheriger Name',
   emptyName: 'Einen Namen eingeben.',
   nothingSelected: 'Nichts ausgewählt – Einträge markieren oder den Cursor auf einen setzen.',
   noFolder: 'Diese Seite zeigt keinen Ordner.',

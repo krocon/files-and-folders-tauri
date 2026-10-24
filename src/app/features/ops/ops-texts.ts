@@ -63,6 +63,7 @@ export const OPS_EN = {
   renameLabel: 'New name',
   renameConfirm: 'Rename',
   renameAnyway: 'Rename anyway',
+  currentName: 'Current name',
   emptyName: 'Enter a name.',
 
   nothingSelected: 'Nothing selected – mark entries or put the cursor on one.',

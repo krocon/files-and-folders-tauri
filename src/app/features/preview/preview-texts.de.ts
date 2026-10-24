@@ -25,6 +25,8 @@ export const PV_DE: Translation<typeof PV_EN> = {
   zoomIn: 'Vergrößern (+)',
   zoomOut: 'Verkleinern (−)',
   close: 'Schließen',
+  copy: 'Kopieren',
+  copied: 'In die Zwischenablage kopiert.',
   loading: 'Lade…',
   noFile: 'Den Cursor auf eine Datei setzen, um sie anzusehen.',
   noFolder: 'Ordner lassen sich nicht ansehen – Eigenschaften verwenden (Alt+Enter).',
@@ -32,6 +34,7 @@ export const PV_DE: Translation<typeof PV_EN> = {
   other: 'Spezialdatei (Gerät, Pipe oder Socket) – nicht geöffnet.',
   quickViewLabel: 'Schnellvorschau',
   quickViewEmpty: 'Keine Datei unter dem Cursor.',
+  quickViewClose: 'Schnellansicht schließen',
   mismatch: (label, ext) =>
     ext ? `Inhalt ist ${label}, obwohl die Endung .${ext} sagt` : `Inhalt ist ${label}`,
   truncated: (shown, total) =>

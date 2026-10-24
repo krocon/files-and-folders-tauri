@@ -25,6 +25,8 @@ export const PV_EN = {
   zoomIn: 'Zoom in (+)',
   zoomOut: 'Zoom out (−)',
   close: 'Close',
+  copy: 'Copy',
+  copied: 'Copied to the clipboard.',
   loading: 'Loading…',
   noFile: 'Place the cursor on a file to view it.',
   noFolder: 'Folders cannot be viewed – use Properties (Alt+Enter).',
@@ -32,6 +34,7 @@ export const PV_EN = {
   other: 'Special file (device, pipe or socket) – not opened.',
   quickViewLabel: 'Quick view',
   quickViewEmpty: 'No file under the cursor.',
+  quickViewClose: 'Close quick view',
   mismatch: (label: string, ext: string | null) =>
     ext ? `Content is ${label}, although the extension says .${ext}` : `Content is ${label}`,
   truncated: (shown: number, total: number) =>

@@ -85,6 +85,28 @@ code {
   font-family: var(--font-mono);
 }
 
+/* rename: the current name on top, the full path small below it */
+.current {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--spacing-2);
+
+  .current-label {
+    color: var(--color-muted);
+  }
+
+  .current-name {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-md);
+    overflow-wrap: anywhere;
+  }
+
+  .path {
+    font-size: var(--font-size-xs);
+  }
+}
+
 .names {
   max-height: 8rem;
   margin: 0;

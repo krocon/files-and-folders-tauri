@@ -17,6 +17,15 @@ import { QuickViewStore } from './quick-view.store';
         <span class="name" [attr.title]="e.path">{{ e.name }}</span>
         <span class="meta">{{ meta() }}</span>
       }
+      <button
+        type="button"
+        class="close"
+        [attr.aria-label]="t.quickViewClose"
+        [title]="t.quickViewClose"
+        (click)="q.toggle()"
+      >
+        &times;
+      </button>
     </div>
     @for (n of notes(); track n) {
       <p class="note">{{ n }}</p>
@@ -51,6 +60,27 @@ import { QuickViewStore } from './quick-view.store';
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .close {
+      align-self: center;
+      margin-left: auto;
+      padding: 0 var(--spacing-1);
+      font: inherit;
+      font-size: 1.25rem;
+      line-height: 1;
+      color: var(--color-muted);
+      background: none;
+      border: 0;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .meta + .close {
+      margin-left: 0;
+    }
+    .close:hover,
+    .close:focus-visible {
+      color: inherit;
+      background: color-mix(in srgb, currentColor 15%, transparent);
     }
     .meta {
       margin-left: auto;

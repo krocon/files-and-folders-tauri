@@ -40,7 +40,7 @@ export const MR_DE: Translation<typeof MR_EN> = {
   filterAll: 'alle',
   filterChanged: 'geänderte',
   filterErrors: 'Fehler',
-  presets: 'Vorlage',
+  presets: 'Vorlage:',
   presetLast: 'Zuletzt verwendet',
   presetSave: 'Speichern als…',
   presetName: 'Name der Vorlage',

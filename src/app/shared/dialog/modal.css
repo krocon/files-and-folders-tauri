@@ -9,6 +9,16 @@
   background: var(--color-backdrop);
 }
 
+/* fill: the dialog takes the window height (multi-rename) */
+.backdrop.fill {
+  align-items: stretch;
+  padding: var(--spacing-3) 0;
+
+  .dialog {
+    max-height: none;
+  }
+}
+
 .dialog {
   max-width: calc(100vw - 2rem);
   max-height: 80vh;

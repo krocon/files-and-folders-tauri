@@ -18,7 +18,7 @@ let modalSeq = 0;
 @Component({
   selector: 'app-modal',
   template: `
-    <div class="backdrop" (pointerdown)="onBackdrop($event)">
+    <div class="backdrop" [class.fill]="fill()" (pointerdown)="onBackdrop($event)">
       <div
         class="dialog"
         [attr.role]="dialogRole()"
@@ -26,8 +26,8 @@ let modalSeq = 0;
         aria-modal="true"
         [attr.aria-labelledby]="titleId"
         [style.width]="width()"
-        [style.height]="height()"
-        [style.max-height]="height() ? '90vh' : null"
+        [style.height]="fill() ? null : height()"
+        [style.max-height]="!fill() && height() ? '90vh' : null"
       >
         <h2 class="title" [id]="titleId">{{ heading() }}</h2>
         <ng-content />
@@ -43,6 +43,8 @@ export class Modal {
   readonly width = input('34rem');
   /** Fixed height for large dialogs (multi-rename); default: as high as the content. */
   readonly height = input<string | null>(null);
+  /** The full height of the window (a small margin): large tool dialogs with a preview table. */
+  readonly fill = input(false);
   /** `alertdialog` for questions that interrupt work (conflicts). */
   readonly dialogRole = input<'dialog' | 'alertdialog'>('dialog');
   /** Id of the element that explains the question (`aria-describedby`). */

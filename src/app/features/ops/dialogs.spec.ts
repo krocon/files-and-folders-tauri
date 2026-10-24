@@ -309,6 +309,15 @@ describe('operation dialogs', () => {
       TestBed.inject(DialogService).show('name');
       const { fixture, el } = await render(NameDialog);
       vi.runAllTimers();
+      // the current name stands on top, above the field (Marc, 2026-10-24)
+      const current = el.querySelector<HTMLElement>('.current')!;
+      expect(current.textContent).toContain('Current name');
+      expect(current.querySelector('.current-name')?.textContent?.trim()).toBe('a.txt');
+      expect(current.querySelector('.path')?.textContent?.trim()).toBe('/src/a.txt');
+      expect(
+        current.compareDocumentPosition(el.querySelector('input')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       const input = el.querySelector<HTMLInputElement>('input')!;
       expect(input.value).toBe('a.txt');
       expect([input.selectionStart, input.selectionEnd]).toEqual([0, 1]);

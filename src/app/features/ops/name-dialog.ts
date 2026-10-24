@@ -26,6 +26,13 @@ import { OpsStore } from './ops.store';
     @if (req(); as r) {
       <app-modal [heading]="texts().title" (closed)="ops.close()">
         <form class="form" (submit)="submit($event)">
+          @if (r.kind === 'rename' && r.entry; as e) {
+            <div class="current">
+              <span class="current-label">{{ t.currentName }}</span>
+              <strong class="current-name">{{ e.name }}</strong>
+              <span class="help path">{{ e.path }}</span>
+            </div>
+          }
           <label class="field">
             <span>{{ texts().label }}</span>
             <input
@@ -51,11 +58,6 @@ import { OpsStore } from './ops.store';
               <div id="fnf-name-help" class="help">{{ t.mkdirHelp }}</div>
               <div class="spacer"></div>
             }
-            @if (r.kind === 'rename') {
-              <div class="help path">{{ r.entry?.path }}</div>
-              <div class="spacer"></div>
-            }
-
             <button type="button" class="btn" (click)="ops.close()">{{ t.cancel }}</button>
             <button type="submit" class="btn primary" [disabled]="busy()">
               {{ dangerous() ? t.renameAnyway : texts().confirm }}

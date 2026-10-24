@@ -39,7 +39,7 @@ export const MR_EN = {
   filterAll: 'all',
   filterChanged: 'changed',
   filterErrors: 'errors',
-  presets: 'Preset',
+  presets: 'Preset:',
   presetLast: 'Last used',
   presetSave: 'Save as…',
   presetName: 'Preset name',

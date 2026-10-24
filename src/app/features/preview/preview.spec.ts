@@ -20,9 +20,10 @@ import { WorkspaceStore } from '../workspace/workspace.store';
 import { registerPreviewActions } from './preview-actions';
 import { previewNotes } from './preview-notes';
 import { PREVIEW_PROVIDERS, providerFor } from './preview-providers';
-import { propertyRows } from './properties-dialog';
+import { propertiesText, propertyRows } from './properties-dialog';
 import { PropertiesStore } from './properties.store';
 import { QuickViewStore } from './quick-view.store';
+import { QuickView } from './quick-view';
 import { ViewerStore } from './viewer.store';
 import { TextView } from './views/text-view';
 import { DEFAULT_CONTEXT } from './preview-providers';
@@ -173,6 +174,18 @@ describe('viewer, quick view and properties (design 010)', () => {
     expect(viewer.current()).toBe(-1);
   });
 
+  it('quick view: the × in its head closes it', async () => {
+    await actions.run('QUICK_VIEW');
+    const fixture = TestBed.createComponent(QuickView);
+    fixture.detectChanges();
+    const close = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.close',
+    )!;
+    expect(close.getAttribute('aria-label')).toBe('Close quick view');
+    close.click();
+    expect(quick.shownOn()).toBeNull();
+  });
+
   it('quick view: the other panel previews the cursor, debounced, stale answers dropped', async () => {
     left.setCursor('/src/a.txt');
     await actions.run('QUICK_VIEW');
@@ -265,6 +278,17 @@ describe('viewer, quick view and properties (design 010)', () => {
     });
     props.close();
     expect(dialogs.open()).toBeNull();
+  });
+
+  it('Copy in the properties dialog: name, path and every row as plain text', () => {
+    const rows = propertyRows(props_('/x/f.png'));
+    const text = propertiesText('f.png', rows, null);
+    const lines = text.split('\n');
+    expect(lines[0]).toBe('f.png');
+    expect(lines).toContain('Permissions: rw-r--r-- (644)');
+    expect(lines.length).toBe(rows.length + 1);
+    // a folder size calculated in the dialog is part of it
+    expect(propertiesText('d', [], '3 files')).toBe('d\nSize: 3 files');
   });
 
   it('rows of the properties dialog are platform-specific', () => {

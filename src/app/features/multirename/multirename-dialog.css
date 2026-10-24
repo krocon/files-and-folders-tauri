@@ -42,8 +42,10 @@
   gap: 2px;
 }
 
+/* narrow: as wide as the token, more room for "New name" (.btn has min-width 80px) */
 .btn.token {
-  padding: 2px var(--spacing-1);
+  min-width: 0;
+  padding: 0 6px;
   font-family: var(--font-mono);
 }
 
@@ -73,14 +75,20 @@
   color: var(--color-danger);
 }
 
+/* no frame: the heading and the space around it separate the block */
 .replacements {
-  margin: 0;
-  padding: var(--spacing-1) var(--spacing-2);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin: var(--spacing-2) 0 0;
+  padding: 0;
+  border: none;
+  min-inline-size: 0;
 
   legend {
-    padding: 0 var(--spacing-1);
+    padding: 0;
+    margin-bottom: var(--spacing-1);
+    font-weight: 600;
   }
 }
 
@@ -148,6 +156,10 @@
 .buttons {
   display: flex;
   justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+.presets .inline {
   gap: var(--spacing-2);
 }
 

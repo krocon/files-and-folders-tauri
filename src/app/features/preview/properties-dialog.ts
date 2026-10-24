@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ClipboardApi } from '../../core/os/clipboard';
 import { describeFsError } from '../../core/fs/fs-error';
 import { Properties } from '../../core/preview/preview.models';
 import { Modal } from '../../shared/dialog/modal';
@@ -14,6 +15,19 @@ const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeS
 export interface PropertyRow {
   readonly label: string;
   readonly value: string;
+}
+
+/** Plain text for the Copy button: the name, then `label: value` per row (pure; tested). */
+export function propertiesText(
+  name: string,
+  rows: readonly PropertyRow[],
+  folderSize: string | null,
+): string {
+  const lines = [name, ...rows.map((r) => `${r.label}: ${r.value}`)];
+  if (folderSize) {
+    lines.push(`${PV_TEXTS.size}: ${folderSize}`);
+  }
+  return lines.join('\n');
 }
 
 /** Rows of the properties dialog (pure; tested). */
@@ -122,6 +136,10 @@ export function propertyRows(p: Properties): PropertyRow[] {
           <p class="hint">{{ t.loading }}</p>
         }
         <div class="buttons">
+          <span class="status" role="status">{{ copied() ? t.copied : '' }}</span>
+          <button type="button" class="btn" [disabled]="!s.props()" (click)="copy()">
+            {{ t.copy }}
+          </button>
           @if (canChange()) {
             <button type="button" class="btn" [title]="t.changeAttributesHint" (click)="change()">
               {{ t.changeAttributes }}
@@ -167,7 +185,13 @@ export function propertyRows(p: Properties): PropertyRow[] {
     .buttons {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: var(--spacing-2);
+    }
+    .status {
+      margin-right: auto;
+      font-size: var(--font-size-sm);
+      color: var(--color-muted);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -176,6 +200,8 @@ export class PropertiesDialog {
   protected readonly s = inject(PropertiesStore);
   private readonly attrs = inject(AttributesStore);
   private readonly actions = inject(ActionService);
+  private readonly clipboard = inject(ClipboardApi);
+  protected readonly copied = signal(false);
   /** "Change…" (design 024 E1): not for links, not where the action is off (archive, unchecked). */
   protected readonly canChange = computed(() => {
     const e = this.s.entry();
@@ -192,6 +218,22 @@ export class PropertiesDialog {
       void this.attrs.openFor([entry]);
     }
   }
+  /** Copy: the shown properties as text (like About). */
+  protected async copy(): Promise<void> {
+    const entry = this.s.entry();
+    if (!entry || !this.s.props()) {
+      return;
+    }
+    try {
+      await this.clipboard.writeText(
+        propertiesText(entry.name, this.rows(), this.sizeText() || null),
+      );
+      this.copied.set(true);
+    } catch {
+      // clipboard not available – the text stays visible in the dialog
+    }
+  }
+
   protected readonly t = PV_TEXTS;
   protected readonly describe = describeFsError;
   protected readonly rows = computed(() => {
