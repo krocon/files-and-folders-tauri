@@ -15,10 +15,13 @@
   gap: var(--spacing-2);
 }
 
+/* in the toolbar rows: no top margin of the general `label` rule (styles.css) – it pushed
+   "Show as", "Encoding" and "Find" below the buttons */
 .field {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-1);
+  margin-top: 0;
   font-size: var(--font-size-sm);
 }
 
@@ -26,6 +29,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-1);
+  margin-top: 0;
   font-size: var(--font-size-sm);
 }
 
