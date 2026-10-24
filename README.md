@@ -273,8 +273,8 @@ Small things that save time every day:
   suggests `S03`
 - **Private** – no account, no telemetry, nothing phones home; server passwords live in your system keychain,
   archive passwords only in memory
-- **Accessible** – every dialog, menu and list works with the keyboard alone, with ARIA roles and announcements for
-  screen readers
+- **Built with accessibility in mind** – every dialog, menu and list works with the keyboard alone; ARIA roles and
+  announcements are in place, but the app has not been tested with a screen reader yet
 
 And the bigger helpers:
 
