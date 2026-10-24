@@ -97,7 +97,9 @@ export function groupOf(rawName: string, o: GroupOptions): string | null {
       const digits = name.match(DIGIT_RUNS);
       const words = name.match(NON_DIGIT_RUNS);
       if (digits && digits.length >= 1 && words && words.length >= 2) {
-        group = words[0]
+        // a name that starts with a number keeps it: "2001_Nights_06" → "2001_Nights"
+        const lead = name.startsWith(digits[0]) ? digits[0] : '';
+        group = (lead + words[0])
           .replace(/#/g, '')
           .replace(/ Band /g, '')
           .replace(/'/g, '')

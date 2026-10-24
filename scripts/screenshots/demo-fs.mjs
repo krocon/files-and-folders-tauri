@@ -129,6 +129,43 @@ function photos() {
   return list;
 }
 
+/** Comic archives in no order – the example of the group files dialog (Marc, 2026-10-24). */
+const COMICS = [
+  'Amazonia_04_-_Episode_4_(2019)_(Splitter)_(digital)_(Lynx-Empire).cbr',
+  'Arcanes 03.cbr',
+  'Angor_-_02_Mansïouran_(c2c)_(Splitter)_(2011)_(GCA-S&P).cbr',
+  '2001_Nights_06-_Planeten_Symbiose_(scanlation).cbr',
+  'Arcanes 02.cbr',
+  'Amazonia_03_-_Episode_03_(Splitter_2018-12)_(DAS).cbr',
+  '2001_Nights_05_-_Medusas_Thron_(carlsen)_(1996)_(mbmp).cbz',
+  '2001_Nights_04_-_Himmelslichter_(carlsen)_(1996)_(mbmp).cbz',
+  'Angor_-_03_Die_Insel_des_Heiligtums_(c2c)_(Splitter)_(2011)_(GCA-S&P).cbr',
+  '2001_Nights_02_-_Rendezvous_(carlsen)_(1995)_(mbmp).cbz',
+  'Africa_Dreams__Gesamtausgabe_(Splitter,_2019.).cbr',
+  'Angor_-_01_Flucht_(c2c)_(Splitter)_(2010)_(GCA-S&P).cbr',
+  'Amorostasia 01 - Amorostasia (Scanlation).cbr',
+  '2001_Nights_08_-_(Scanlation_#710)_(2019)_(GCA-Savages).cbz',
+  '2001_Nights_07_-_Elliptischer_Orbit_(2013)_(Scanlation).cbr',
+  '2001_Nights_03_-_Luzifer_(carlsen)_(1996)_(mbmp).cbz',
+  'Amazonia_05_-_Episode_5_(comicmafia.to)(Digital)(Splitter).cbr',
+  'Arcanes 01.cbr',
+  '2001_Nights_09_-_Odyssee_in_Gruen_(Scanlation_#898)_(2020)_(GCA-Savages).cbr',
+  'Amazonia_01_(Splitter_2017)_()_(Team_Paule)_(2560).cbr',
+  'Angor_-_04_Vilyana_(c2c)_(Splitter)_(2012)_(GCA-S&P).cbr',
+  'Amazonia_02_-_Episode_02_(Splitter_2017-12)_(DAS).cbr',
+  '2001_Nights_01_-_Erdgluehen_(carlsen)_(1995)_(mbmp).cbz',
+  'Angor_-_05_-_Lekerson_(Splitter,_2014).cbr',
+  '2001_Nights_10_-_Odyssee_in_Gruen_-_Teil_2_(Scanlation_#1309)_(2022)_(GCA-Savages).cbr',
+];
+
+function comics() {
+  return COMICS.map((name, i) => {
+    const month = String(1 + (i % 9)).padStart(2, '0');
+    const day = 10 + (i % 18);
+    return file(name, (18 + ((i * 37) % 70)) * MB + i * 4099, `2026-${month}-${day}T20:15:00`);
+  });
+}
+
 /** The whole demo tree. `repoRoot` = this repository (for the project folder). */
 export function buildDemoFs(repoRoot) {
   const files = repoFiles(repoRoot);
@@ -146,6 +183,7 @@ export function buildDemoFs(repoRoot) {
     [HOME]: [
       dir('.cache', '2026-10-20T08:00:00'),
       dir('.config', '2026-10-19T22:10:00'),
+      dir('Comics', '2026-10-12T21:30:00'),
       dir('Desktop', '2026-10-18T17:20:00'),
       dir('Documents', '2026-10-16T11:45:00'),
       dir('Downloads', '2026-10-20T07:58:00'),
@@ -157,6 +195,7 @@ export function buildDemoFs(repoRoot) {
       file('.gitconfig', 312, '2026-03-11T16:44:00'),
       file('todo.md', 1 * KB + 210, '2026-10-19T21:03:00'),
     ],
+    [`${HOME}/Comics`]: comics(),
     [`${HOME}/.cache`]: [],
     [`${HOME}/.config`]: [],
     [`${HOME}/Desktop`]: [file('Screenshot 2026-10-18.png', 1 * MB + 233 * KB, '2026-10-18T17:20:00')],

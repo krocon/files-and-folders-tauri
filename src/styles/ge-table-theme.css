@@ -86,6 +86,13 @@
   line-height: var(--fnf-header-height, 2.5);
 }
 
+/* Cells with the table's default renderer: one line, cut with "…" – the core sets text-overflow
+   without nowrap, so long names (group files preview: comic archives) wrapped into a hidden 2nd line.
+   TODO(guiexpert): white-space: nowrap on .ge-table-label-div in packages/table/css/main.css */
+.ge-table .ge-table-col-div[data-area='body'] .ge-table-label-div {
+  white-space: nowrap;
+}
+
 /* Cell content of our own renderers (same inner spacing as the table's label div). */
 .ge-table .fnf-cell {
   padding-inline: 10px;
