@@ -45,7 +45,7 @@ export const DUP_EN = {
   modeExact: 'exact duplicates (same content)',
   modeImages: 'similar images',
   modeComics: 'similar comics (.cbz, .cbr, .cb7)',
-  names: 'Files',
+  names: 'File name patterns',
   namesHint: 'e.g. *.jpg;*.png – empty = all',
   paranoid: 'compare byte by byte as well (slower)',
   similarity: 'Similarity',

@@ -219,23 +219,28 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
     .attrs {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-2);
+      gap: var(--spacing-3);
       font-size: var(--font-size-sm);
     }
+    /* sections without a frame: space and a bigger heading separate them */
     fieldset {
-      margin: 0;
-      padding: var(--spacing-2) var(--spacing-3);
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
+      margin: 0 0 var(--spacing-3);
+      padding: 0;
+      border: none;
+      min-inline-size: 0;
       display: flex;
       flex-direction: column;
       gap: var(--spacing-2);
     }
     legend {
-      padding: 0 var(--spacing-1);
-      font-weight: 600;
+      padding: 0;
+      margin-block-end: var(--spacing-2);
+      font-size: var(--font-size-md);
+      font-weight: 700;
     }
     .perm {
+      /* only as wide as its content (the fieldset is a flex column and would stretch it) */
+      align-self: flex-start;
       border-collapse: collapse;
       th,
       td {
@@ -243,8 +248,13 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
         text-align: center;
       }
       th[scope='row'] {
+        /* flush with the checkboxes below */
+        padding-inline: 0 var(--spacing-3);
         text-align: start;
         font-weight: normal;
+      }
+      thead td:first-child {
+        padding: 0;
       }
       th[scope='col'] {
         font-weight: normal;

@@ -41,6 +41,12 @@ describe('version source of truth', () => {
     const conf = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf8'));
     expect(conf.version).toBe('../package.json');
   });
+
+  it('the icon in the dialog is the current app icon', () => {
+    const source = readFileSync('src-tauri/icons/source/app-icon.svg', 'utf8');
+    expect(readFileSync('public/app-icon.svg', 'utf8')).toBe(source);
+    expect(readFileSync('docs/icons/dual-pane-icon.svg', 'utf8')).toBe(source);
+  });
 });
 
 describe('AboutDialog', () => {
@@ -74,6 +80,9 @@ describe('AboutDialog', () => {
     const el = await render();
     expect(el.querySelector('[data-testid="about-version"]')?.textContent).toContain('0.1.0');
     expect(el.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="about-icon"]')?.getAttribute('src')).toBe(
+      'app-icon.svg',
+    );
     const copy = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Copy')!;
     copy.click();
     await new Promise((r) => setTimeout(r));

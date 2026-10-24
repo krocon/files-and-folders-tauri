@@ -48,7 +48,7 @@ export function aboutText(info: AppInfo): string {
   template: `
     <app-modal [heading]="t.title" width="min(30rem, 92vw)" (closed)="close()">
       <div class="head">
-        <img src="favicon.ico" alt="" width="48" height="48" />
+        <img src="app-icon.svg" alt="" width="48" height="48" data-testid="about-icon" />
         <div>
           <p class="name">{{ info()?.name ?? 'Files and Folders' }}</p>
           @if (info(); as i) {

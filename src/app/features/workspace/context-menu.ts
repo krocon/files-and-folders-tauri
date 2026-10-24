@@ -48,6 +48,7 @@ export interface MenuItem {
       class="menu"
       role="menu"
       [class.sub]="submenu()"
+      [class.lines]="headingLines()"
       [attr.aria-label]="label()"
       [style.left.px]="x()"
       [style.top.px]="y()"
@@ -142,6 +143,9 @@ export class ContextMenu {
   readonly anchor = input<Element | null>(null);
   /** A submenu of another menu (← closes it). */
   readonly submenu = input(false);
+  /** Group headings as a thin line, more room per item (the folder menu of the tab row);
+   *  screen readers still get the heading as the group's label. */
+  readonly headingLines = input(false);
   /** Focus the first entry when shown (false when a submenu opens on hover). */
   readonly autofocus = input(true);
   readonly chosen = output<string>();

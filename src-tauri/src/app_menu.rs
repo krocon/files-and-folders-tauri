@@ -344,13 +344,15 @@ fn predefined<R: Runtime>(app: &AppHandle<R>, name: &str) -> tauri::Result<Prede
                 version: Some(info.version.to_string()),
                 ..Default::default()
             };
-            PredefinedMenuItem::about(app, None, Some(meta))
+            // muda would name the process (the Cargo binary `files-and-folders-tauri`)
+            let text = format!("About {}", info.name);
+            PredefinedMenuItem::about(app, Some(&text), Some(meta))
         }
         "services" => PredefinedMenuItem::services(app, None),
-        "hide" => PredefinedMenuItem::hide(app, None),
+        "hide" => PredefinedMenuItem::hide(app, Some(&format!("Hide {}", app.package_info().name))),
         "hideOthers" => PredefinedMenuItem::hide_others(app, None),
         "showAll" => PredefinedMenuItem::show_all(app, None),
-        "quit" => PredefinedMenuItem::quit(app, None),
+        "quit" => PredefinedMenuItem::quit(app, Some(&format!("Quit {}", app.package_info().name))),
         "undo" => PredefinedMenuItem::undo(app, None),
         "redo" => PredefinedMenuItem::redo(app, None),
         "cut" => PredefinedMenuItem::cut(app, None),

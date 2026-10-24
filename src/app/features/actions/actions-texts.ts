@@ -70,8 +70,6 @@ export const ACT_EN = {
   noTool: 'No matching tool',
   noAction: 'No matching action',
   // mark by pattern
-  markTitle: 'Mark by pattern',
-  unmarkTitle: 'Unmark by pattern',
   mark: 'Mark',
   unmark: 'Unmark',
   pattern: 'Pattern',
@@ -167,8 +165,6 @@ const ACT_DE: Translation<typeof ACT_EN> = {
   searchActions: 'Tippen, um Aktionen zu suchen…',
   noTool: 'Kein passendes Tool',
   noAction: 'Keine passende Aktion',
-  markTitle: 'Nach Muster markieren',
-  unmarkTitle: 'Nach Muster demarkieren',
   mark: 'Markieren',
   unmark: 'Demarkieren',
   pattern: 'Muster',

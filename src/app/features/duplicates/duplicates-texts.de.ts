@@ -44,7 +44,7 @@ export const DUP_DE: Translation<typeof DUP_EN> = {
   modeExact: 'exakte Duplikate (gleicher Inhalt)',
   modeImages: 'ähnliche Bilder',
   modeComics: 'ähnliche Comics (.cbz, .cbr, .cb7)',
-  names: 'Dateien',
+  names: 'Dateinamen-Muster',
   namesHint: 'z. B. *.jpg;*.png – leer = alle',
   paranoid: 'zusätzlich Byte für Byte vergleichen (langsamer)',
   similarity: 'Ähnlichkeit',

@@ -140,6 +140,8 @@ const ERR = 'fnf-dup-error';
                   (input)="set({ names: text($event) })"
                 />
               </label>
+            </div>
+            <div class="row">
               <label class="field">
                 <span>{{ t.minSize }}</span>
                 <span class="inline">
@@ -193,7 +195,9 @@ const ERR = 'fnf-dup-error';
                 />
                 {{ t.hidden }}
               </label>
-              @if (rulesShown()) {
+            </div>
+            @if (rulesShown()) {
+              <div class="row">
                 <label class="field grow">
                   <span>{{ t.ruleSet }}</span>
                   <select
@@ -208,9 +212,7 @@ const ERR = 'fnf-dup-error';
                     }
                   </select>
                 </label>
-              }
-            </div>
-            @if (rulesShown()) {
+              </div>
               <p class="hint" id="fnf-dup-rules-hint">{{ t.ruleSetHint }}</p>
             }
           </div>
@@ -269,6 +271,9 @@ const ERR = 'fnf-dup-error';
       .value {
         min-width: 2ch;
         text-align: end;
+      }
+      .row > .check {
+        height: var(--control-height);
       }
       .hint {
         margin: 0;

@@ -117,7 +117,9 @@
   transition: var(--control-transition);
 
   &::placeholder {
-    color: var(--color-muted);
+    /* from the input's own colours: --color-muted belongs to the dialog background and can
+       vanish on the input (Norton: light on white) */
+    color: color-mix(in srgb, var(--color-input-text) 55%, var(--color-input-bg));
     opacity: 1;
   }
 

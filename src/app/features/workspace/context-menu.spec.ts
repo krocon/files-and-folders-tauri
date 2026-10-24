@@ -8,6 +8,7 @@ import { ContextMenu, MenuItem } from './context-menu';
     <app-context-menu
       [items]="items()"
       label="Menu"
+      [headingLines]="lines()"
       (chosen)="chosen.push($event)"
       (closed)="closed.push($event)"
       (sideways)="sideways.push($event)"
@@ -27,6 +28,7 @@ class Host {
       ],
     },
   ]);
+  readonly lines = signal(false);
   readonly chosen: string[] = [];
   readonly closed: string[] = [];
   readonly sideways: number[] = [];
@@ -62,6 +64,22 @@ describe('ContextMenu', () => {
     expect(items[2].getAttribute('aria-haspopup')).toBe('menu');
     expect(el.querySelectorAll('[role="separator"]').length).toBe(1);
     expect(document.activeElement).toBe(items[0]);
+  });
+
+  it('headings as lines (folder menu): only a line to see, the group keeps its label', async () => {
+    const { fixture, el, host } = await render();
+    host.items.set([
+      { id: 'home', label: 'Home' },
+      { id: 'fav-h', label: 'Favourites', heading: true },
+      { id: 'fav:0', label: '/home/u' },
+    ]);
+    host.lines.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('[role="menu"]')!.classList.contains('lines')).toBe(true);
+    const group = el.querySelector('[role="group"]')!;
+    expect(group.getAttribute('aria-label')).toBe('Favourites');
+    expect(group.querySelector('.heading')!.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('opens a submenu with → / Enter, chooses inside it and goes back with ←', async () => {
