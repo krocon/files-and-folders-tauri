@@ -226,4 +226,21 @@ describe('ButtonBar', () => {
     fixture.detectChanges();
     expect(gear().classList).not.toContain('fa-spin');
   });
+
+  it('the word "Tasks" pulses only while a task runs', async () => {
+    const { fixture, el } = await render();
+    const jobs = TestBed.inject(JobsStore);
+    await jobs.init();
+    const word = () => el.querySelector('[aria-label^="Tasks"] .label-word')!;
+    expect(word().textContent).toBe('Tasks');
+    expect(word().classList).not.toContain('pulse');
+    await jobs.start({ kind: 'copy', sources: ['/a'], targetDir: '/b' });
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'running' });
+    fixture.detectChanges();
+    expect(word().classList).toContain('pulse');
+    expect(word().parentElement!.textContent).toBe('Tasks 0 / 1');
+    jobsApi.emit({ type: 'state', id: 'j1', state: 'paused' });
+    fixture.detectChanges();
+    expect(word().classList).not.toContain('pulse');
+  });
 });

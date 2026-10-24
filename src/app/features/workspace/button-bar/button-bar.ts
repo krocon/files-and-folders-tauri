@@ -95,7 +95,10 @@ interface ToolButton {
         >
           <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
           @if (t.showLabel) {
-            <span aria-hidden="true">{{ t.label }}</span>
+            <span aria-hidden="true"
+              ><span class="label-word" [class.pulse]="t.status?.spinning">{{ t.word }}</span
+              >{{ t.status ? ' ' + t.status.text : '' }}</span
+            >
           }
           @if (t.status; as st) {
             <span class="task-bar" aria-hidden="true"
@@ -215,7 +218,8 @@ export class ButtonBar {
     const visible = this.jobs.visible();
     const finished = visible.filter((j) => isFinished(j.state)).length;
     const waiting = visible.some((j) => j.state === 'waitingForDecision');
-    // the gear turns while a task really works – not while all wait for an answer or are paused
+    // the gear turns and the word pulses while a task really works – not while all wait for an
+    // answer or are paused
     const spinning = this.jobs.active().some((j) => j.state === 'running');
     const progress = this.jobs.overallProgress();
     return {
@@ -233,6 +237,7 @@ export class ButtonBar {
       const label = shortLabel(t.id);
       return {
         ...t,
+        word: label,
         label: status ? `${label} ${status.text}` : label,
         status,
         ready: state === 'ready',

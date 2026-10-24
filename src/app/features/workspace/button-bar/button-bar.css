@@ -89,9 +89,28 @@ app-context-menu {
   display: contents;
 }
 
-/* the gear of the Tasks button turns while a task runs (fa-spin) – not for reduced motion */
+/* the word "Tasks" breathes gently while a task runs: fades and takes the accent colour */
+.label-word.pulse {
+  animation: task-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes task-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+    color: var(--color-accent);
+  }
+}
+
+/* the gear of the Tasks button turns while a task runs (fa-spin), the word pulses –
+   neither for reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .fa-spin {
+  .fa-spin,
+  .label-word.pulse {
     animation: none;
   }
 }
