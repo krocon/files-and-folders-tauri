@@ -485,6 +485,7 @@ Kürzel `Mod+K` statt Strg+F (bei uns Suche).
 | Server-Links beim Kopieren | Link-Ziele per `stat` | übersprungen (`symlink_skipped`) | kein Kopieren von Link-Zielen, keine Zyklen |
 | F4 / Ziehen ins System / Archive auf Servern | Veto | Veto, Hinweis | Folgeideen (TODO.md) |
 | Frontend-Pfade | nur `isRemotePath` | zusätzlich `profileOf` (Id für „Verbinden“), `serverPath` (Favorit vor dem ersten Verbinden), `displayPath` (Menüs) | Lesen/Erzeugen des Präfixes, kein Zerlegen von Serverpfaden; Rust prüft jeden Pfad |
+| Dialog-Aufbau (Marc, 24.10.2026) | Profilliste links, Formular rechts | Tabelle über die volle Breite (Name, Typ, Server, Benutzer, Startordner, Aktionen Bearbeiten/Duplizieren/Löschen), Neu/Duplizieren/Löschen im Footer, Formular in eigenem Dialog „Verbindung bearbeiten“ (zweites `app-modal` neben dem ersten); „Testen“/„Als Favorit“/„Verbinden“ gelten der gewählten, gespeicherten Zeile; F2 bearbeitet | mehr Spalten auf einen Blick, Ablauf von oben nach unten |
 | Größe des Binarys (R4) | messen | nicht gemessen | ein Release-Build im Container ist zu teuer; neue Crates: rustls, ring (schon über Tauri? nein), russh, suppaftp – bei Marc/CI messen |
 
 ## Fortschritt

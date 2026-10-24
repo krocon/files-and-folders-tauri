@@ -1,43 +1,137 @@
-/* Server connections (design 034): list + form like the starter editor; prompts */
-.editor.connections {
-  grid-template-columns: minmax(15rem, 0.9fr) minmax(20rem, 1.3fr);
+/* Server connections (design 034): the profiles as a table, the form in an editor dialog */
+.section {
+  margin: var(--spacing-4) 0 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
 }
 
-@media (max-width: 44rem) {
-  .editor.connections {
-    grid-template-columns: 1fr;
-  }
-}
-
-.connections .entries [role='option'] {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  padding: 3px var(--spacing-2);
-  color: var(--color-input-text);
+/* the table takes the free height of the dialog (the dialog has a fixed height) */
+.body > .conns-wrap {
+  flex: 1 1 auto;
+  min-height: 8rem;
+  overflow: auto;
+  background: var(--color-input-bg);
+  border: var(--border-width) solid var(--color-input-border);
   border-radius: var(--radius-sm);
-  cursor: pointer;
+}
 
-  &[aria-selected='true'] {
-    color: var(--color-selection-text);
-    background: var(--color-selection);
+.conns {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: var(--color-input-text);
 
-    .muted,
-    .warn {
-      color: inherit;
-    }
-  }
-
-  .grow {
-    flex: 1;
+  th,
+  td {
+    padding: 5px var(--spacing-2);
     overflow: hidden;
+    text-align: start;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-weight: 600;
+    /* from the input colours: --color-muted belongs to the dialog background */
+    color: color-mix(in srgb, var(--color-input-text) 65%, var(--color-input-bg));
+    background: var(--color-input-bg);
+    border-bottom: var(--border-width) solid var(--color-input-border);
+  }
+
+  .icon {
+    width: 2rem;
+    text-align: center;
+  }
+
+  th:nth-child(2) {
+    width: 24%;
+  }
+
+  th:nth-child(3) {
+    width: 4.5rem;
+  }
+
+  th:nth-child(4) {
+    width: 24%;
+  }
+
+  th:nth-child(5) {
+    width: 14%;
+  }
+
+  .actions {
+    width: 6.5rem;
+    padding-block: 0;
+    text-align: end;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+  }
+
+  .name .fa-plug {
+    margin-inline-start: var(--spacing-1);
   }
 
   .warn {
     color: var(--color-danger);
   }
+
+  tbody tr[data-id] {
+    cursor: pointer;
+
+    &[aria-selected='true'] {
+      color: var(--color-selection-text);
+      background: var(--color-selection);
+
+      .warn {
+        color: inherit;
+      }
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring-width) solid var(--color-focus);
+      outline-offset: -2px;
+    }
+  }
+
+  .empty {
+    padding: var(--spacing-3);
+    white-space: normal;
+  }
+}
+
+/* row actions: quiet icons, the row colour */
+.icon-btn {
+  padding: 3px 6px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  opacity: 0.75;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+  }
+}
+
+.foot .stack {
+  gap: var(--spacing-2);
+}
+
+/* the editor dialog: one column of fields */
+.editor-modal .details {
+  gap: var(--spacing-3);
 }
 
 .details {
@@ -126,9 +220,4 @@
 .details label.field,
 .body > form label.field {
   margin-top: 0;
-}
-
-.connections .entries {
-  min-height: 10rem;
-  max-height: 20rem;
 }

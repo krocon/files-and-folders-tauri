@@ -448,7 +448,7 @@
           "wait": 300
         },
         {
-          "click": "app-connections-dialog [data-id=\"n4s7b1\"]"
+          "click": "app-connections-dialog [data-id=\"n4s7b1\"] [data-act=\"edit\"]"
         },
         {
           "wait": 300

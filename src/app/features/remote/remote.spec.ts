@@ -325,37 +325,73 @@ describe('remote store and dialogs (design 034)', () => {
     expect(actions.state('OPEN_TERMINAL_HERE')).toBe('ready');
   });
 
-  it('the connections dialog edits, saves and connects a profile', async () => {
+  it('the connections dialog: table, editor dialog, footer buttons (Marc, 2026-10-24)', async () => {
     store.openDialog('a1');
     const fixture = TestBed.createComponent(ConnectionsDialog);
     fixture.detectChanges();
     await flush();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const options = el.querySelectorAll('[role="option"]');
-    expect(options.length).toBe(1);
-    expect(options[0].getAttribute('aria-selected')).toBe('true');
+    const rows = () => [...el.querySelectorAll<HTMLElement>('tbody tr[data-id]')];
+    expect(rows().length).toBe(1);
+    expect(rows()[0].getAttribute('aria-selected')).toBe('true');
+    expect(rows()[0].textContent).toContain('Mein Server');
+    // no form in the main dialog: the editor opens from the row action
+    expect(el.querySelector('.details')).toBeNull();
+    rows()[0].querySelector<HTMLElement>('[data-act="edit"]')!.click();
+    fixture.detectChanges();
+    const editor = () => el.querySelector<HTMLElement>('.editor-modal')!;
+    expect(editor().textContent).toContain('Edit connection');
     // change the type: the port follows
-    const kind = el.querySelector<HTMLSelectElement>('.details select')!;
+    const kind = editor().querySelector<HTMLSelectElement>('select')!;
     kind.value = 'ftp';
     kind.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(el.querySelector<HTMLInputElement>('input[type="number"]')!.value).toBe('21');
-    expect(el.textContent).toContain('Unencrypted');
-    const button = (label: string) =>
+    expect(editor().querySelector<HTMLInputElement>('input[type="number"]')!.value).toBe('21');
+    expect(editor().textContent).toContain('Unencrypted');
+    editor().querySelector('form')!.dispatchEvent(new Event('submit'));
+    await flush();
+    fixture.detectChanges();
+    expect(api.profiles[0].kind).toBe('ftp');
+    expect(el.querySelector('.editor-modal')).toBeNull();
+    expect(rows()[0].textContent).toContain('FTP');
+    // footer: New opens an empty editor; an invalid host cannot be saved
+    const foot = (label: string) =>
       [...el.querySelectorAll<HTMLButtonElement>('.foot button')].find(
         (b) => b.textContent?.trim() === label,
       )!;
-    button('Save').click();
-    await flush();
-    expect(api.profiles[0].kind).toBe('ftp');
-    // a new profile with an invalid host cannot be saved
-    [...el.querySelectorAll<HTMLButtonElement>('.stack button')][0].click();
+    foot('New').click();
     fixture.detectChanges();
-    expect(el.querySelectorAll('[role="option"]').length).toBe(2);
-    expect(button('Save').disabled).toBe(true);
-    button('Connect');
-    expect(el.querySelector('.notice')?.textContent).toContain('server name');
+    expect(editor().textContent).toContain('New connection');
+    const save = [...editor().querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent?.trim() === 'Save',
+    )!;
+    expect(save.disabled).toBe(true);
+    expect(editor().querySelector('.notice')?.textContent).toContain('server name');
+    // Cancel closes only the editor, nothing was added
+    [...editor().querySelectorAll<HTMLButtonElement>('button')]
+      .find((b) => b.textContent?.trim() === 'Cancel')!
+      .click();
+    fixture.detectChanges();
+    expect(el.querySelector('.editor-modal')).toBeNull();
+    expect(rows().length).toBe(1);
+    // F2 on the row edits, Escape in the editor closes it
+    rows()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('.editor-modal')).not.toBeNull();
+    editor().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('.editor-modal')).toBeNull();
+    // Delete asks first (the button turns red), the second press removes
+    foot('Delete').click();
+    fixture.detectChanges();
+    expect(el.querySelector('.notice')?.textContent).toContain('Mein Server');
+    expect(api.profiles.length).toBe(1);
+    foot('Delete connection?').click();
+    await flush();
+    fixture.detectChanges();
+    expect(api.profiles.length).toBe(0);
+    expect(foot('Connect').disabled).toBe(true);
   });
 
   it('a quick-connect address drops the password and fills a draft', async () => {
