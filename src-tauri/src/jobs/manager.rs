@@ -26,6 +26,32 @@ pub type Sink = Arc<dyn Fn(&JobEvent) + Send + Sync>;
 struct Entry {
     info: JobInfo,
     control: Arc<Control>,
+    /// A serial job the user started at once ("Start now"): it ran past the queue,
+    /// so its end must not free the serial slot.
+    detached: bool,
+}
+
+impl Entry {
+    /// Runs outside the serial queue (by kind, or started at once).
+    fn parallel(&self) -> bool {
+        self.detached || self.info.spec.is_parallel()
+    }
+}
+
+/// What [`JobManager::start_now`] did.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(
+    tag = "result",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum StartNow {
+    /// Left the queue and runs now, next to the other jobs.
+    Started,
+    /// Not (any more) waiting in the queue – nothing changed.
+    NotQueued,
+    /// Not started: these unfinished jobs touch the same paths (ask, then `force`).
+    Overlap { with: Vec<String> },
 }
 
 #[derive(Default)]
@@ -144,6 +170,7 @@ impl JobManager {
             inner.jobs.push(Entry {
                 info: info.clone(),
                 control: Arc::new(Control::default()),
+                detached: false,
             });
             (id, run_now, info)
         };
@@ -166,9 +193,7 @@ impl JobManager {
         if spawned.is_err() {
             // no thread available: report the job as failed and keep the queue moving
             // (`finish` decrements `running`)
-            let parallel = self
-                .with_job(&id, |e| e.info.spec.is_parallel())
-                .unwrap_or(true);
+            let parallel = self.with_job(&id, Entry::parallel).unwrap_or(true);
             let summary = Summary {
                 error: Some(FsError::new(
                     FsErrorCode::Io,
@@ -182,8 +207,9 @@ impl JobManager {
     }
 
     fn run(self: &Arc<Self>, id: &str) {
-        let Some((spec, control)) = self.with_job(id, |e| (e.info.spec.clone(), e.control.clone()))
-        else {
+        let Some((spec, control, parallel)) = self.with_job(id, |e| {
+            (e.info.spec.clone(), e.control.clone(), e.parallel())
+        }) else {
             return;
         };
         let emit = |e: JobEvent| self.record(e);
@@ -512,13 +538,7 @@ impl JobManager {
                 },
             )
         });
-        self.finish(
-            id,
-            state,
-            summary,
-            spec.is_parallel(),
-            is_rename.then_some(undo),
-        );
+        self.finish(id, state, summary, parallel, is_rename.then_some(undo));
     }
 
     /// Records the final state and starts the next queued serial job. `parallel`
@@ -727,6 +747,49 @@ impl JobManager {
         self.lock().jobs.iter().find(|e| e.info.id == id).map(f)
     }
 
+    /// Starts a job waiting in the serial queue at once, next to the running ones
+    /// (Tasks → "Start now"). Unless `force`, it first looks for unfinished jobs
+    /// that touch the same paths (one path inside or equal to the other) and only
+    /// reports them – the frontend asks and calls again with `force`.
+    pub fn start_now(self: &Arc<Self>, id: &str, force: bool) -> StartNow {
+        {
+            let mut inner = self.lock();
+            let Some(pos) = inner.queue.iter().position(|q| q == id) else {
+                return StartNow::NotQueued;
+            };
+            let Some(mine) = inner
+                .jobs
+                .iter()
+                .find(|e| e.info.id == id)
+                .map(|e| e.info.spec.touched_paths())
+            else {
+                return StartNow::NotQueued;
+            };
+            if !force {
+                let with: Vec<String> = inner
+                    .jobs
+                    .iter()
+                    .filter(|e| {
+                        e.info.id != id
+                            && !e.info.state.is_finished()
+                            && !e.info.spec.is_helper()
+                            && paths_overlap(&mine, &e.info.spec.touched_paths())
+                    })
+                    .map(|e| e.info.id.clone())
+                    .collect();
+                if !with.is_empty() {
+                    return StartNow::Overlap { with };
+                }
+            }
+            inner.queue.remove(pos);
+            if let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) {
+                e.detached = true;
+            }
+        }
+        self.spawn(id.to_string());
+        StartNow::Started
+    }
+
     pub fn cancel(self: &Arc<Self>, id: &str) {
         let queued = {
             let mut inner = self.lock();
@@ -782,16 +845,23 @@ impl JobManager {
     pub fn resume(&self, id: &str) {
         let forward = {
             let mut inner = self.lock();
+            // paused while it waited: it still waits (not "running" in the queue)
+            let waiting = inner.queue.iter().any(|q| q == id);
             let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) else {
                 return;
             };
             e.control.set_paused(false);
             if e.info.state == JobState::Paused {
-                e.info.state = JobState::Running;
+                let state = if waiting {
+                    JobState::Queued
+                } else {
+                    JobState::Running
+                };
+                e.info.state = state;
                 e.info.pause_reason = None;
                 Some(JobEvent::State {
                     id: id.to_string(),
-                    state: JobState::Running,
+                    state,
                 })
             } else {
                 None
@@ -919,6 +989,18 @@ impl JobManager {
                 .0;
         }
     }
+}
+
+/// One path of `a` equals one of `b` or lies inside it (or the other way round),
+/// compared by components and without case (macOS and Windows ignore it) – a
+/// question too many rather than two jobs in the same files.
+fn paths_overlap(a: &[String], b: &[String]) -> bool {
+    let low = |ps: &[String]| -> Vec<PathBuf> {
+        ps.iter().map(|p| PathBuf::from(p.to_lowercase())).collect()
+    };
+    let (a, b) = (low(a), low(b));
+    a.iter()
+        .any(|x| b.iter().any(|y| x.starts_with(y) || y.starts_with(x)))
 }
 
 /// Replaces every path of a job by its validated form (external review #1):
@@ -1703,4 +1785,42 @@ fn run_simulate(
             ..Summary::default()
         },
     )
+}
+
+#[cfg(test)]
+mod overlap_tests {
+    use super::paths_overlap;
+
+    fn v(ps: &[&str]) -> Vec<String> {
+        ps.iter().map(|p| (*p).to_string()).collect()
+    }
+
+    #[test]
+    fn paths_overlap_by_components_and_without_case() {
+        let copy = v(&["/Users/m/Filme/Below", "/Volumes/Media/Serien"]);
+        // the same folder, inside, around it – and with other case
+        assert!(paths_overlap(&copy, &v(&["/Users/m/Filme/Below"])));
+        assert!(paths_overlap(
+            &copy,
+            &v(&["/Users/m/Filme/Below/S01/a.mkv"])
+        ));
+        assert!(paths_overlap(&copy, &v(&["/Users/m/Filme"])));
+        assert!(paths_overlap(&copy, &v(&["/volumes/media/serien/x"])));
+        // a sibling with the same beginning is something else
+        assert!(!paths_overlap(&copy, &v(&["/Users/m/Filme/Below.jpg"])));
+        assert!(!paths_overlap(
+            &copy,
+            &v(&["/Users/m/Filme/Other", "/Users/m/Filme/_filme"])
+        ));
+        assert!(!paths_overlap(&copy, &[]));
+        // server paths (design 034)
+        assert!(paths_overlap(
+            &v(&["remote://p1/home/a"]),
+            &v(&["remote://p1/home/a/b"])
+        ));
+        assert!(!paths_overlap(
+            &v(&["remote://p1/home/a"]),
+            &v(&["remote://p2/home/a"])
+        ));
+    }
 }

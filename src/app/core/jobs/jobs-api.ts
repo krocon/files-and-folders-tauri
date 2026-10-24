@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from '../fs/fs-error';
-import { Decision, JobEvent, JobInfo, JobSpec } from './jobs.models';
+import { Decision, JobEvent, JobInfo, JobSpec, StartNowResult } from './jobs.models';
 
 /** Facade for the job commands (Rust `jobs/`, `commands.rs`). Rejects with an `FsError`. */
 export abstract class JobsApi {
@@ -11,6 +11,8 @@ export abstract class JobsApi {
   abstract cancel(id: string): Promise<void>;
   abstract pause(id: string): Promise<void>;
   abstract resume(id: string): Promise<void>;
+  /** A waiting job runs at once, next to the others; `force` despite an overlap. */
+  abstract startNow(id: string, force: boolean): Promise<StartNowResult>;
   abstract resolveConflict(
     id: string,
     conflictId: number,
@@ -47,6 +49,10 @@ export class TauriJobsApi extends JobsApi {
 
   resume(id: string): Promise<void> {
     return call<void>('resume_job', { id });
+  }
+
+  startNow(id: string, force: boolean): Promise<StartNowResult> {
+    return call<StartNowResult>('start_job_now', { id, force });
   }
 
   resolveConflict(

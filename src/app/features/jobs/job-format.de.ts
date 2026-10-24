@@ -51,6 +51,15 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
       ? '1 Task läuft noch. Abbrechen und beenden?'
       : `${n} Tasks laufen noch. Abbrechen und beenden?`,
   quitConfirm: 'Tasks abbrechen und beenden',
+  startNow: 'Sofort starten',
+  startNowTitle: 'Sofort starten?',
+  startNowMessage: (n) =>
+    n === 1
+      ? 'Diese Aufgabe arbeitet mit denselben Dateien oder Ordnern wie eine andere, noch nicht fertige Aufgabe:'
+      : `Diese Aufgabe arbeitet mit denselben Dateien oder Ordnern wie ${n} andere, noch nicht fertige Aufgaben:`,
+  startNowDetail:
+    'Laufen beide gleichzeitig, können sie sich in die Quere kommen – zum Beispiel wird eine Datei verschoben, während sie noch kopiert wird.',
+  startNowConfirm: 'Trotzdem starten',
   undo: 'Rückgängig',
   undoLabel: (title) => `Rückgängig: ${title}`,
   of: (done, total) => `${done} von ${total}`,

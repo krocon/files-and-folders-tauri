@@ -64,7 +64,7 @@ use std::collections::HashMap;
 pub use control::Control;
 pub use group::{GroupItem, Transfer};
 pub use link::LinkOptions;
-pub use manager::JobManager;
+pub use manager::{JobManager, StartNow};
 pub use rename::RenameItem;
 pub use shell::{ShellChunk, ShellLaunch, ShellStream, ShellSummary};
 
@@ -366,6 +366,89 @@ impl JobSpec {
                 | JobSpec::Duplicates { .. }
                 | JobSpec::Shell { .. }
         )
+    }
+
+    /// Every path the job reads or changes (sources, targets, entries) – for the
+    /// overlap check when a queued job is started at once (`JobManager::start_now`).
+    /// Helper jobs (only reading, run in parallel anyway) give none.
+    pub fn touched_paths(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        match self {
+            JobSpec::Copy {
+                sources,
+                target_dir,
+                ..
+            }
+            | JobSpec::Move {
+                sources,
+                target_dir,
+                ..
+            }
+            | JobSpec::Pack {
+                sources,
+                target_dir,
+                ..
+            }
+            | JobSpec::Link {
+                sources,
+                target_dir,
+                ..
+            } => {
+                out.extend(sources.iter().cloned());
+                out.push(target_dir.clone());
+            }
+            JobSpec::Delete { paths, .. }
+            | JobSpec::Attributes { paths, .. }
+            | JobSpec::Count { paths } => out.extend(paths.iter().cloned()),
+            JobSpec::Rename { items, .. } => {
+                for i in items {
+                    out.push(i.path.clone());
+                    // the new name lands next to the old one
+                    if let Some(dir) = std::path::Path::new(&i.path).parent() {
+                        out.push(dir.join(&i.new_name).to_string_lossy().into_owned());
+                    }
+                }
+            }
+            JobSpec::Group { root, items, .. } => {
+                out.push(root.clone());
+                out.extend(items.iter().map(|i| i.path.clone()));
+            }
+            JobSpec::Clean { roots, items, .. } => {
+                out.extend(roots.iter().cloned());
+                out.extend(items.iter().map(|i| i.path.clone()));
+            }
+            JobSpec::Extract {
+                archive,
+                target_dir,
+                ..
+            } => {
+                out.push(archive.clone());
+                out.push(target_dir.clone());
+            }
+            JobSpec::Dedupe {
+                groups, target_dir, ..
+            } => {
+                for g in groups {
+                    out.push(g.keep.path.clone());
+                    out.extend(g.remove.iter().map(|e| e.path.clone()));
+                }
+                out.extend(target_dir.iter().cloned());
+            }
+            JobSpec::Checksum {
+                paths, base_dir, ..
+            } => {
+                out.extend(paths.iter().cloned());
+                out.push(base_dir.clone());
+            }
+            JobSpec::VerifyChecksums { file } => out.push(file.clone()),
+            JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => out.push(path.clone()),
+            JobSpec::DiskUsage { roots, .. } => out.extend(roots.iter().cloned()),
+            JobSpec::Search { .. }
+            | JobSpec::Duplicates { .. }
+            | JobSpec::Shell { .. }
+            | JobSpec::Simulate { .. } => {}
+        }
+        out
     }
 
     pub fn kind(&self) -> &'static str {

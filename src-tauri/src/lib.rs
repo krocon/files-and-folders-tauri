@@ -245,6 +245,7 @@ pub fn run() {
             commands::cancel_job,
             commands::pause_job,
             commands::resume_job,
+            commands::start_job_now,
             commands::resolve_conflict,
             commands::list_jobs,
             commands::clear_finished_jobs,

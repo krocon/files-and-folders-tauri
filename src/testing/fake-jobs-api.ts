@@ -1,5 +1,12 @@
 import { JobsApi } from '../app/core/jobs/jobs-api';
-import { Decision, EMPTY_PROGRESS, JobEvent, JobInfo, JobSpec } from '../app/core/jobs/jobs.models';
+import {
+  Decision,
+  EMPTY_PROGRESS,
+  JobEvent,
+  JobInfo,
+  JobSpec,
+  StartNowResult,
+} from '../app/core/jobs/jobs.models';
 
 /**
  * In-memory JobsApi: records calls; tests drive the job through `emit`.
@@ -13,6 +20,9 @@ export class FakeJobsApi extends JobsApi {
   readonly cancelled: string[] = [];
   readonly paused: string[] = [];
   readonly resumed: string[] = [];
+  readonly startedNow: { id: string; force: boolean }[] = [];
+  /** Jobs `startNow` reports as overlapping (unless `force`). */
+  overlapWith: string[] = [];
   readonly answers: { id: string; conflictId: number; decision: Decision; applyToAll: boolean }[] =
     [];
   quitCalls = 0;
@@ -75,6 +85,14 @@ export class FakeJobsApi extends JobsApi {
   resume(id: string): Promise<void> {
     this.resumed.push(id);
     return Promise.resolve();
+  }
+
+  startNow(id: string, force: boolean): Promise<StartNowResult> {
+    this.startedNow.push({ id, force });
+    if (!force && this.overlapWith.length > 0) {
+      return Promise.resolve({ result: 'overlap', with: this.overlapWith });
+    }
+    return Promise.resolve({ result: 'started' });
   }
 
   resolveConflict(
