@@ -1245,10 +1245,10 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
             }
             validate_input_path(target_dir)?;
             crate::paths::validate_name(name)?;
-            if level.is_some_and(|l| !(1..=9).contains(&l)) {
+            if level.is_some_and(|l| l > 9) {
                 return Err(FsError::new(
                     FsErrorCode::InvalidPath,
-                    "The compression level is 1–9",
+                    "The compression level is 0–9",
                     None,
                 ));
             }

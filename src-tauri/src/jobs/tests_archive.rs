@@ -337,6 +337,51 @@ fn an_entry_larger_than_declared_is_refused() {
 }
 
 #[test]
+fn level_0_stores_without_compression() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let src = d.path().join("text.txt");
+    let text = "abc ".repeat(10_000);
+    fs::write(&src, &text).unwrap();
+    for (format, name) in [
+        (ArchiveFormat::Zip, "s.zip"),
+        (ArchiveFormat::TarGz, "s.tar.gz"),
+        (ArchiveFormat::SevenZ, "s.7z"),
+    ] {
+        let id = h
+            .mgr
+            .start(JobSpec::Pack {
+                sources: vec![s(&src)],
+                target_dir: s(d.path()),
+                name: name.into(),
+                format,
+                level: Some(0),
+                password: None,
+            })
+            .unwrap();
+        let info = h.finish(&id);
+        assert_eq!(info.state, JobState::Done, "{format:?}: {:?}", info.summary);
+        let back = d.path().join(format!("back-{name}"));
+        fs::create_dir(&back).unwrap();
+        let info = h.finish(&h.extract(
+            &d.path().join(name),
+            &[],
+            &back,
+            false,
+            ConflictDefault::Ask,
+        ));
+        assert_eq!(info.state, JobState::Done, "{format:?}");
+        assert_eq!(fs::read_to_string(back.join("text.txt")).unwrap(), text);
+    }
+    // ZIP: the entry is stored, not deflated
+    let mut z = zip::ZipArchive::new(fs::File::open(d.path().join("s.zip")).unwrap()).unwrap();
+    assert_eq!(
+        z.by_index(0).unwrap().compression(),
+        zip::CompressionMethod::Stored
+    );
+}
+
+#[test]
 fn pack_and_extract_round_trip() {
     let h = Harness::new();
     let d = tempdir().unwrap();

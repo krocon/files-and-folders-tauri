@@ -12,7 +12,7 @@ import { dialogError } from '../ops/ops-logic';
 import { ArchiveStore } from './archive.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
 
-const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /**
  * Pack (Alt+F5, design 016 E5): archive name, format, compression, target
@@ -87,7 +87,7 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             }
           }
           @if (format() !== 'tar') {
-            <label class="field">
+            <label class="field level">
               <span>{{ t.level }}</span>
               <select (change)="level.set(+$any($event.target).value)">
                 @for (l of levels; track l) {
@@ -128,6 +128,13 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
       .radios legend {
         width: 100%;
         padding: 0;
+      }
+      /* 0–9: as wide as its longest entry, not the dialog */
+      .level {
+        align-self: flex-start;
+      }
+      .level select {
+        width: auto;
       }
     `,
   ],

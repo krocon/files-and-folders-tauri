@@ -182,7 +182,7 @@ pub enum JobSpec {
         target_dir: String,
         name: String,
         format: ArchiveFormat,
-        /// Compression level 1–9 (ZIP, TAR.GZ, 7z); default 6.
+        /// Compression level 0–9 (ZIP, TAR.GZ, 7z; 0 = store only); default 6.
         #[serde(default)]
         level: Option<u32>,
         /// ZIP (AES-256) / 7z (AES-256, names too) password (design 025 E4). Read from

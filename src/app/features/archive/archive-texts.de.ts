@@ -13,7 +13,14 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   format: 'Format',
   formats: { zip: 'ZIP', tar: 'TAR', tarGz: 'TAR.GZ', sevenZ: '7Z', rar: 'RAR' },
   level: 'Kompression',
-  levelHint: (n) => (n === 1 ? '1 (am schnellsten)' : n === 9 ? '9 (am kleinsten)' : `${n}`),
+  levelHint: (n) =>
+    n === 0
+      ? '0 (nur speichern)'
+      : n === 1
+        ? '1 (am schnellsten)'
+        : n === 9
+          ? '9 (am kleinsten)'
+          : `${n}`,
   to: 'In den Ordner',
   suggestions: 'Vorschläge',
   intoSubfolder: (name) => `In einen Unterordner „${name}“`,

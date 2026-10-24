@@ -19,7 +19,8 @@ export const ARCHIVE_EN = {
     rar: 'RAR',
   } as Readonly<Record<ArchiveFormat, string>>,
   level: 'Compression',
-  levelHint: (n: number) => (n === 1 ? '1 (fastest)' : n === 9 ? '9 (smallest)' : `${n}`),
+  levelHint: (n: number) =>
+    n === 0 ? '0 (store only)' : n === 1 ? '1 (fastest)' : n === 9 ? '9 (smallest)' : `${n}`,
   to: 'To folder',
   suggestions: 'Suggestions',
   intoSubfolder: (name: string) => `Into a subfolder “${name}”`,

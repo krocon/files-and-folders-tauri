@@ -189,9 +189,15 @@ impl Writer {
         };
         match self {
             Writer::Zip(z, password) => {
+                // level 0: stored – Deflate has no "no compression" of its own in the zip crate
+                let (method, lvl) = if level == 0 {
+                    (zip::CompressionMethod::Stored, None)
+                } else {
+                    (zip::CompressionMethod::Deflated, Some(i64::from(level)))
+                };
                 let opts = zip_options(meta.modified().ok(), mode_of(meta), password.as_ref())
-                    .compression_method(zip::CompressionMethod::Deflated)
-                    .compression_level(Some(i64::from(level)))
+                    .compression_method(method)
+                    .compression_level(lvl)
                     .large_file(len >= u64::from(u32::MAX));
                 z.start_file(rel, opts)
                     .map_err(|e| io::Error::other(e.to_string()))?;
@@ -431,7 +437,7 @@ pub fn run(
         Ok(f) => f,
         Err(e) => return failed(summary, FsError::from_io(&e, &target)),
     };
-    let level = level.unwrap_or(DEFAULT_LEVEL).clamp(1, 9);
+    let level = level.unwrap_or(DEFAULT_LEVEL).min(9);
     let mut writer = match format {
         ArchiveFormat::Zip => Writer::Zip(
             Box::new(zip::ZipWriter::new(BufWriter::new(file))),
