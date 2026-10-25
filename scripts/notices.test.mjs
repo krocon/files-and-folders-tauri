@@ -8,6 +8,7 @@ import {
   normalise,
   render,
   shippedCrates,
+  upToDate,
 } from './notices.mjs';
 
 const dep = (pkg, kinds) => ({ pkg, dep_kinds: kinds.map((kind) => ({ kind })) });
@@ -115,4 +116,12 @@ test('a crate without a licence file gets the standard text of a licence it offe
   );
   // nothing to offer: stays without text (listed apart)
   assert.deepEqual(out[4].texts, []);
+});
+
+test('notices --check: a CRLF checkout (git autocrlf on Windows) is still up to date', () => {
+  const generated = 'A\n\nB text\n';
+  assert.ok(upToDate(generated, generated));
+  assert.ok(upToDate('A\r\n\r\nB text\r\n', generated));
+  assert.ok(!upToDate('A\r\n\r\nB other\r\n', generated));
+  assert.ok(!upToDate('', generated));
 });

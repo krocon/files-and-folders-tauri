@@ -83,6 +83,14 @@ export function normalise(text) {
 }
 
 /**
+ * `--check`: is the file on disk the generated text? Line ends do not count – git with
+ * `core.autocrlf` (default on Windows, also on GitHub's runners) checks the file out with CRLF.
+ */
+export function upToDate(onDisk, generated) {
+  return onDisk.replace(/\r\n/g, '\n') === generated;
+}
+
+/**
  * Groups components by identical licence text. `components`: { label, license, texts: string[] }.
  * Components without any text are listed apart (with their licence id).
  */
@@ -261,7 +269,7 @@ function main() {
   });
   if (process.argv.includes('--check')) {
     const old = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
-    if (old !== text) {
+    if (!upToDate(old, text)) {
       console.error('THIRD-PARTY-NOTICES.txt is out of date – run `pnpm notices`.');
       process.exit(1);
     }
