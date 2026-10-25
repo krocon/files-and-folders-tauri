@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Landing page for krocon.de/fnf (prompt 044) – `pnpm site`.
+// Landing page for krocon.de/products/fnf (prompt 044) – `pnpm site`.
 //
 // Puts together site/dist/: index.html, favicon.png and img/ with the pictures
 // from site/img/ (screenshots/classic-norton and the colour scheme overview). Nothing is built or
 // rewritten – the page references img/… and works as it is. Upload the content of
-// site/dist/ to the folder /fnf of the web space (site/README.md).
+// site/dist/ to the folder /products/fnf of the web space (site/README.md).
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

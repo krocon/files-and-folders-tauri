@@ -42,7 +42,7 @@
   `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) und Prompt 038 (Flache Ansicht: Strg+B im selben
   Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) und Prompt 042 (Dubletten: Hardlinks als Einheit, Cache,
   Regel-Engine, Job `dedupe`, ähnliche Bilder/Comics per pHash) und Prompt 044 (README je Feature mit Norton-Bild,
-  Werbeseite `site/` für krocon.de/fnf) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041, 043
+  Werbeseite `site/` für krocon.de/products/fnf) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041, 043
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
@@ -66,7 +66,7 @@
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test`; `pnpm rust:cross` = clippy für Windows/macOS vom Linux-Container aus (nur Typprüfung, `scripts/cross-check.sh`, ~4 min je Ziel beim ersten Mal) |
 | Alles prüfen | `pnpm check` |
 | Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), `pnpm screenshots:docs` (Doku-Bilder in `docs/screenshots/`), `pnpm screenshots:readme` (je README-Feature ein Norton-Bild in `docs/screenshots/readme/`), einmalig `pnpm screenshots:install` |
-| Werbeseite | `pnpm site` → `site/dist/` (Seite + `img/` + Favicon) zum Hochladen nach krocon.de/fnf (`site/README.md`) |
+| Werbeseite | `pnpm site` → `site/dist/` (Seite + `img/` + Favicon) zum Hochladen nach krocon.de/products/fnf (`site/README.md`) |
 | Lizenzen | `pnpm notices` schreibt `THIRD-PARTY-NOTICES.txt` (nach jeder Abhängigkeitsänderung; `pnpm check` prüft per `notices:check`), `pnpm licenses:report` = Übersicht `docs/licenses.md` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
@@ -255,7 +255,7 @@ src-tauri/                   Rust (Tauri 2)
 scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);
                              screenshots/ (Playwright + Mock-Backend + Demo-Dateisystem, Szenen in scenes.json);
                              site.mjs + site-lib.mjs (Werbeseite zusammenstellen, Bild-/Ankerprüfung, 044)
-site/                        Werbeseite für krocon.de/fnf: index.html (statisch, ohne JS), README.md (Hochladen)
+site/                        Werbeseite für krocon.de/products/fnf: index.html (statisch, ohne JS), README.md (Hochladen)
 docs/                        architecture.md, roadmap.md, feature-parity.md, ui-layout.md, release.md, licenses.md,
                              ci/ (Workflow-Vorlagen),
                              legacy-analysis(-mr).md, legacy-themes/, legacy-screenshots/

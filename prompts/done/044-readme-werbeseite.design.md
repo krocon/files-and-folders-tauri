@@ -144,7 +144,7 @@ Geheimnisse.
 
 ## Offene Fragen an Marc
 
-- **F1 (DSGVO):** Bilder direkt von `raw.githubusercontent.com` zu laden heißt, jeder Besucher von krocon.de/fnf
+- **F1 (DSGVO):** Bilder direkt von `raw.githubusercontent.com` zu laden heißt, jeder Besucher von krocon.de/products/fnf
   schickt seine IP an GitHub. Möglichkeiten: (a) so lassen und in der Datenschutzerklärung von krocon.de erwähnen,
   (b) die Seite mit einem Ordner `img/` daneben hochladen (die Basis ist ein Suchen/Ersetzen, `pnpm site:base img/`),
   (c) beides vorbereiten, du entscheidest beim Hochladen. **Empfehlung: (c)**, Standard = raw-GitHub wie beauftragt.
@@ -181,4 +181,4 @@ F4: README in der Ich-Form.
 - [x] Phase 4: Seite mit Playwright in 375 px und 1440 px, hell und dunkel: keine horizontale Scrollleiste, axe-core
       4.10 (WCAG 2.1 A/AA + best practice) ohne Verstoß; Lighthouse nicht im Container
 - [x] Phase 5/6: Doku (`docs/screenshots.md`, CLAUDE.md, Index, Roadmap), `pnpm check`
-- [ ] Bei Marc: `pnpm site` und `site/dist/` nach krocon.de/fnf hochladen; Seite einmal im echten Browser ansehen
+- [ ] Bei Marc: `pnpm site` und `site/dist/` nach krocon.de/products/fnf hochladen; Seite einmal im echten Browser ansehen

@@ -1,4 +1,4 @@
-# Prompt 044: README mit Feature-Screenshots (Norton) und Werbeseite für krocon.de/fnf
+# Prompt 044: README mit Feature-Screenshots (Norton) und Werbeseite für krocon.de/products/fnf
 
 > **Slug:** `readme-werbeseite` · **Braucht:** Screenshot-Werkzeug (`pnpm screenshots`, `docs/screenshots.md`,
 > Mock-Backend + Demo-Dateisystem unter `scripts/screenshots/`), die erledigten Feature-Prompts (`prompts/done/`),
@@ -16,7 +16,7 @@
 > zu jedem tollen(*) Feature ein Screenshot (im Style Norton) mit Beschreibung des Feature.
 >
 > bitte auch eine SinglePage-Werbe-Seite auf englisch bauen, die auf die Bilder im Github-Repo verweist, da ich die
-> Seite auf krocon.de/fnf hosten werde.
+> Seite auf krocon.de/products/fnf hosten werde.
 >
 > *: recherchiere , was die tollen features sind.
 
@@ -55,7 +55,7 @@ vollständig umgesetzt: jedes ausgewählte Feature bekommt ein Bild.
    was nicht geht (macOS/Windows ungeprüft kennzeichnen, solange die CI fehlt). Bilder relativ verlinkt.
    `docs/features.md` bleibt die ausführliche deutsche Referenz.
 4. **Werbeseite (Single Page, Englisch)** unter `../../site/index.html` (eine Datei, CSS inline, kein Build, kein
-   Framework, keine externen Tracker/Fonts/CDNs – DSGVO, Hosting auf `krocon.de/fnf`):
+   Framework, keine externen Tracker/Fonts/CDNs – DSGVO, Hosting auf `krocon.de/products/fnf`):
    - Bilder **aus dem GitHub-Repo** einbinden: `https://raw.githubusercontent.com/krocon/files-and-folders-tauri/main/docs/screenshots/readme/<feature>.png`
      (Konstante am Seitenanfang, damit Branch/Pfad an einer Stelle änderbar sind); `alt`-Texte, `loading="lazy"`,
      feste `width`/`height` gegen Springen.

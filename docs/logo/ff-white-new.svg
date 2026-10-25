@@ -1,0 +1,70 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 4.5 4"
+    width="450"
+    height="450">
+  <style>
+    .filled {
+      fill: #fff;
+    }
+  </style>
+
+  <path
+      d="M0,1 A1,1 0 0 1 1,0 L2,1 Z"
+      class="filled"/>
+
+  <path
+      d="M2.5,1 A1,1 0 0 1 3.5,0 L4.5,1 Z"
+      class="filled"/>
+
+  <rect
+      x="0"
+      y="3"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="1"
+      y="2"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="0"
+      y="1"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="1"
+      y="0"
+      width="1"
+      height="1"
+      class="filled"/>
+
+  <rect
+      x="2.5"
+      y="3"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="3.5"
+      y="2"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="2.5"
+      y="1"
+      width="1"
+      height="1"
+      class="filled"/>
+  <rect
+      x="3.5"
+      y="0"
+      width="1"
+      height="1"
+      class="filled"/>
+
+</svg>
