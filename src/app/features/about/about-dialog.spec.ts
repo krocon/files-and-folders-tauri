@@ -43,9 +43,9 @@ describe('version source of truth', () => {
   });
 
   it('the icon in the dialog is the current app icon', () => {
-    // source of `pnpm tauri icon` = Marc's design (2026-10-24); the dialog shows a 192 px copy
+    // source of `pnpm tauri icon` = Marc's design (2026-10-25); the dialog shows a 192 px copy
     const source = readFileSync('src-tauri/icons/source/app-icon.png');
-    expect(source.equals(readFileSync('docs/icons/img.png'))).toBe(true);
+    expect(source.equals(readFileSync('docs/icons/icon-new.png'))).toBe(true);
     const shown = readFileSync('public/app-icon.png');
     expect(shown.subarray(1, 4).toString('latin1')).toBe('PNG');
     expect([shown.readUInt32BE(16), shown.readUInt32BE(20)]).toEqual([192, 192]);

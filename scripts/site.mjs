@@ -17,7 +17,7 @@ const html = readFileSync(join(ROOT, 'site', 'index.html'), 'utf8');
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'img'), { recursive: true });
 copyFileSync(join(ROOT, 'site', 'index.html'), join(OUT, 'index.html'));
-copyFileSync(join(ROOT, 'docs', 'logo', 'png', 'ff-green-64x64.png'), join(OUT, 'favicon.png'));
+copyFileSync(join(ROOT, 'site', 'favicon.png'), join(OUT, 'favicon.png'));
 const images = siteImages(html);
 for (const name of images) copyFileSync(sourceOf(name), join(OUT, 'img', name));
 console.log(`✔ site/dist: index.html, favicon.png, ${images.length} pictures in img/`);

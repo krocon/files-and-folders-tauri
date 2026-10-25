@@ -384,10 +384,10 @@ Release-Build: `pnpm tauri build` (Bundles in `src-tauri/target/release/bundle/`
 Version setzen: `pnpm version:set X.Y.Z`; Release Notes: `pnpm release:notes`; Lizenzbericht:
 `pnpm licenses:report > docs/licenses.md`. Signierung und Notarisierung sind vorbereitet, nicht eingerichtet –
 [docs/release.md](release.md), CI-Vorlagen: [docs/ci/](ci/README.md). App-Icon: Quelle
-`src-tauri/icons/source/app-icon.png` (1024 px, = `docs/icons/img.png`) → `pnpm tauri icon
+`src-tauri/icons/source/app-icon.png` (1024 px, = `docs/icons/icon-new.png`) → `pnpm tauri icon
 src-tauri/icons/source/app-icon.png -o src-tauri/icons` (danach die Ordner `android/`, `ios/` und `64x64.png`
-löschen); About-Dialog `public/app-icon.png` (192 px) und `public/favicon.ico` (16/32/48, ohne Rand) aus derselben
-Datei.
+löschen); About-Dialog `public/app-icon.png` (192 px) und `public/favicon.ico` (16/32/48, ohne Rand) sowie `site/favicon.png`
+(64 px, ohne Rand) aus derselben Datei.
 
 ## Projektstruktur
 
