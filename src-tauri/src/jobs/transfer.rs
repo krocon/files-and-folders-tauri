@@ -543,13 +543,7 @@ impl Run<'_> {
             }
             (Loc::Remote(s), Loc::Remote(t)) => {
                 // through a local temporary file: half of the bytes count per direction
-                let local = std::env::temp_dir().join(format!(
-                    "fnf-transfer-{}-{}-{}",
-                    std::process::id(),
-                    self.id,
-                    self.temp_seq
-                ));
-                let _ = fs::remove_file(&local);
+                let local = transfer_temp_path(self.id, self.temp_seq);
                 let half = |rep: &mut Reporter<'_>, n: u64| {
                     rep.progress.bytes_done += n / 2;
                     rep.tick(false);
@@ -1152,4 +1146,33 @@ fn changed(src: &RemotePath) -> FsError {
 
 fn changed_or(e: FsError, is_changed: bool, src: &RemotePath) -> FsError {
     if is_changed { changed(src) } else { e }
+}
+
+/// The local temporary file of a server → server transfer. Job ids are unique only per
+/// `JobManager`, so a process-wide counter keeps two managers (parallel tests) apart.
+fn transfer_temp_path(job: &str, seq: u64) -> PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!(
+        "fnf-transfer-{}-{}-{}-{}",
+        std::process::id(),
+        job,
+        seq,
+        n
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transfer_temp_paths_never_repeat_for_the_same_job_id() {
+        // job ids are only unique per JobManager (j1, j2, …): two managers in one process
+        // (parallel tests) once shared a temporary file and broke each other's transfers
+        let a = transfer_temp_path("j6", 0);
+        let b = transfer_temp_path("j6", 0);
+        assert_ne!(a, b);
+    }
 }
