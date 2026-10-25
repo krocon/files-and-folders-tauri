@@ -47,12 +47,15 @@ test('site: every picture comes from img/ and exists in the repository', () => {
   for (const src of imgSources(html)) {
     assert.ok(src === 'favicon.png' || src.startsWith(IMG_BASE), src);
   }
+  // screenshots/ is gitignored (`pnpm screenshots` writes it): check the sources only where they were generated,
+  // e.g. locally before `pnpm site` – CI has just the committed copies in site/img (checked below).
+  const haveScreenshots = existsSync(join(ROOT, 'screenshots/classic-norton'));
   for (const name of siteImages(html)) {
     const file =
       name === 'colour-schemes-overview.png'
         ? join(ROOT, 'docs/screenshots', name)
         : join(ROOT, 'screenshots/classic-norton', name);
-    assert.ok(existsSync(file), name);
+    if (haveScreenshots || name === 'colour-schemes-overview.png') assert.ok(existsSync(file), name);
   }
   assert.ok(existsSync(join(ROOT, 'site/favicon.png')), 'favicon.png in site');
   for (const name of siteImages(html)) {
