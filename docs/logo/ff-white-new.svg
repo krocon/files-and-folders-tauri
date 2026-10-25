@@ -24,9 +24,9 @@
       height="1"
       class="filled"/>
   <rect
-      x="1"
+      x="0"
       y="2"
-      width="1"
+      width="2"
       height="1"
       class="filled"/>
   <rect
@@ -49,11 +49,11 @@
       height="1"
       class="filled"/>
   <rect
-      x="3.5"
-      y="2"
-      width="1"
-      height="1"
-      class="filled"/>
+    x="2.5"
+    y="2"
+    width="2"
+    height="1"
+    class="filled"/>
   <rect
       x="2.5"
       y="1"
