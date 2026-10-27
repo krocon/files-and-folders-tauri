@@ -58,6 +58,8 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] Vorschau (010): Schnellvorschau ⌃Q, Bilder, ⌘I Eigenschaften.
 - [ ] Themes (013/019): System-Hell/Dunkel live; die acht alten Designs ansehen.
 - [ ] Einstellungen (015): App-Menü „Einstellungen…“ (⌘,), Sprache umschalten (auch natives Menü), Zeilenhöhe.
+- [ ] Palette (043): Index über das echte Home (Zeit bis „bereit“, MB in den Einstellungen), FSEvents-Updates (Datei im Finder
+      anlegen → nach ~2 s in der Palette), Systemsuche mit Spotlight (`mdfind`), ⌘⇧G / ⌘⇧D in der Palette.
 - [ ] Arbeitstag (018) auf macOS und Windows: markieren, F5 mit Konflikt, Multi-Rename, Gruppieren, Suchen, Tabs,
       Neustart; alte Kürzel ⌃⌘D (abwählen), ⌃⌥D (Pfad), ⌃⌘C/M/R/A, ⌃⌥G/N/M, ⇧Leertaste.
 - [ ] Actions-Menü (020): ⌃K ⌃M öffnet es (macOS), Badges `^ ⌘ alt ⇧` lesbar in hellen und dunklen Designs.
@@ -121,6 +123,8 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       `sevenz-rust2`: Grenzen in `Archive::read`, keine Header-Suche ohne CRC.
 - [ ] 026: Fokus nach der Rückfrage ins Pfadfeld statt auf „Importieren“; kein Timeout beim Scan auf hängendem NAS.
 - [ ] 031: „Verknüpfung anlegen“ im Kontextmenü der Liste.
+- [ ] 043: Windows Search als Quelle (COM/OLE DB) fehlt; Index auf Platte (schneller Start) bewusst nicht; Linux über
+      50 000 Ordner ohne Watcher (nur Panel-Watcher + stündlich); Wort über Ordnergrenzen (`docs/2025` als ein Pfadstück).
 - [ ] Flackernd unter Last: `watch::tests::a_busy_target_holds_its_reload_until_the_job_ends` (wie der Rescan-Test).
 
 - [ ] Flackernder Test (22.10., vor 042 gefunden): `jobs::tests_remote::sftp_up_down_conflicts_move_delete` und

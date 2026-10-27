@@ -105,6 +105,10 @@ pub struct DuplicateCriteria {
     /// Similar images/comics: differing bits allowed (0–[`MAX_THRESHOLD`]).
     #[serde(default)]
     pub threshold: Option<u8>,
+    /// Only the group of this file (palette "Find similar files", design 043 E4): exact
+    /// mode compares only files of its size.
+    #[serde(default)]
+    pub reference: Option<String>,
 }
 
 impl Default for DuplicateCriteria {
@@ -122,6 +126,7 @@ impl Default for DuplicateCriteria {
             name: String::new(),
             paranoid: false,
             threshold: None,
+            reference: None,
         }
     }
 }
@@ -520,6 +525,18 @@ pub fn find(
         }
     });
     drop(seen_paths);
+    // a reference file: in exact mode only files of its size can be its copies
+    let reference = criteria.reference.as_deref().map(PathBuf::from);
+    if let Some(r) = &reference {
+        match candidates.iter().find(|c| &c.path == r) {
+            Some(rc) if criteria.mode == DupMode::Exact => {
+                let size = rc.size;
+                candidates.retain(|c| c.size == size);
+            }
+            Some(_) => {}
+            None => candidates.clear(),
+        }
+    }
     stats.dirs_scanned = walked.stats.dirs_scanned;
     stats.files_scanned = walked.stats.files_scanned;
     stats.truncated = walked.stats.truncated;
@@ -569,13 +586,16 @@ pub fn find(
         return finish(stats, unreadable);
     }
 
-    let out = hits(
+    let mut out = hits(
         groups,
         &candidates,
         &units,
         &fingerprints,
         criteria.mode == DupMode::Exact,
     );
+    if let Some(r) = &reference {
+        out.retain(|g| g.iter().any(|h| Path::new(&h.entry.path) == r));
+    }
     stats.groups = out.len() as u64;
     stats.hits = out.iter().map(|g| g.len() as u64).sum();
     stats.elapsed_ms = start.elapsed().as_millis() as u64;

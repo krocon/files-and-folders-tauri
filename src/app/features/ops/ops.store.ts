@@ -372,6 +372,26 @@ export class OpsStore {
   }
 
   /**
+   * The rename dialog for an entry outside the panels (palette hit, design 043 E4):
+   * `parent` is its folder; the panel `side` shows the result afterwards.
+   */
+  openRenameFor(side: Side, parent: string, entry: DirEntry): void {
+    if (this.archive.isArchivePath(entry.path)) {
+      throw err('unknown', ARCHIVE_TEXTS.readOnly);
+    }
+    this.name.set({
+      kind: 'rename',
+      side,
+      parent,
+      initial: entry.name,
+      selectEnd: stemLength(entry.name, entry.kind === 'directory'),
+      entry,
+      searchKey: null,
+    });
+    this.dialogs.show('name');
+  }
+
+  /**
    * F2: rename the cursor entry in the list itself; the dialog if the list
    * cannot (marked entry elsewhere, table busy). A failed rename opens the
    * dialog with the typed name and the error.

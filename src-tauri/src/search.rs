@@ -234,7 +234,7 @@ fn invalid(message: impl Into<String>) -> FsError {
     FsError::new(FsErrorCode::InvalidPattern, message, None)
 }
 
-fn build(pattern: &str, case_sensitive: bool) -> Result<Regex, FsError> {
+pub(crate) fn build(pattern: &str, case_sensitive: bool) -> Result<Regex, FsError> {
     RegexBuilder::new(pattern)
         .case_insensitive(!case_sensitive)
         .size_limit(REGEX_SIZE_LIMIT)
@@ -292,7 +292,7 @@ fn glob_to_regex(glob: &str) -> String {
 
 /// `a;b` as one regex, `None` if one of the parts matches every name
 /// (`*`, `*.*` as in Total Commander and mr, empty pattern).
-fn globs_to_regex(patterns: &str, whole: bool) -> Option<String> {
+pub(crate) fn globs_to_regex(patterns: &str, whole: bool) -> Option<String> {
     let mut parts = Vec::new();
     for p in patterns.split(';') {
         let mut p = p.trim();
@@ -467,7 +467,7 @@ fn dir_key(path: &Path, meta: &Metadata) -> Option<DirKey> {
 
 /// Pseudo file systems that a walk does not enter (Linux): endless or blocking
 /// "files", and nothing a user searches for.
-fn is_virtual_fs(path: &Path) -> bool {
+pub(crate) fn is_virtual_fs(path: &Path) -> bool {
     cfg!(target_os = "linux")
         && [Path::new("/proc"), Path::new("/sys"), Path::new("/dev")].contains(&path)
 }

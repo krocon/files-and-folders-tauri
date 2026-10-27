@@ -437,7 +437,7 @@ export class FilePanel implements OnInit {
       const req = this.ws.navigateRequest();
       untracked(() => {
         if (req?.side === this.side() && !this.store.navigationLocked()) {
-          void this.store.load(req.path ?? undefined);
+          void this.store.load(req.path ?? undefined, req.cursor ? { cursor: req.cursor } : {});
         }
       });
     });

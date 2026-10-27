@@ -143,6 +143,8 @@ export class SearchStore {
   /** Flat views: end of the last listing and the timer of a refresh that waits for the gap. */
   private readonly lastEnd = new Map<string, number>();
   private readonly refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Results without a job (palette, design 043): how "search again" gets their hits. */
+  private readonly fixed = new Map<string, (() => Promise<readonly SearchHit[]>) | null>();
   /** Flat views: cursor after the next refresh (review 038 B7). */
   private readonly focusAfter = new Map<string, FocusWanted>();
 
@@ -245,6 +247,46 @@ export class SearchStore {
         ? from.title
         : undefined;
     const tabId = this.ws.openSearchTab(side, { key, label, rootTitle }, roots[0] ?? '', reuseTab);
+    if (tabId === null) {
+      this.release(key);
+      return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };
+    }
+    this.ws.setActive(side);
+    this.ws.requestFocus(side);
+    return null;
+  }
+
+  /**
+   * Shows `hits` in a new result tab on `side` without a job (palette "All hits as result
+   * tab", design 043 E4). `fetch` gets the hits again for "search again" (null: the
+   * hits stay as they are). Returns an error (too many tabs) or null.
+   */
+  showFixed(
+    label: string,
+    hits: readonly SearchHit[],
+    roots: readonly string[],
+    side: Side,
+    fetch: (() => Promise<readonly SearchHit[]>) | null,
+  ): FsError | null {
+    const key = `p${++keySeq}`;
+    this.fixed.set(key, fetch);
+    this.setResult({
+      key,
+      kind: 'search',
+      criteria: rootsOnly(roots),
+      duplicates: null,
+      label,
+      hits: hits.slice(),
+      running: false,
+      refreshing: false,
+      focus: null,
+      stats: { ...EMPTY_STATS, hits: hits.length },
+      unreadable: [],
+      error: null,
+      cancelled: false,
+      form: null,
+    });
+    const tabId = this.ws.openSearchTab(side, { key, label }, roots[0] ?? '');
     if (tabId === null) {
       this.release(key);
       return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };
@@ -361,6 +403,25 @@ export class SearchStore {
    */
   async rerun(key: string, focus?: FocusWanted): Promise<void> {
     const r = this.result(key);
+    if (r && this.fixed.has(key)) {
+      const fetch = this.fixed.get(key);
+      if (fetch) {
+        this.patch(key, { running: true });
+        const hits = await fetch();
+        if (this.result(key)) {
+          if (focus !== undefined) {
+            this.focusAfter.set(key, focus);
+          }
+          this.patch(key, {
+            hits,
+            running: false,
+            stats: { ...EMPTY_STATS, hits: hits.length },
+            focus: this.takeFocus(key, hits),
+          });
+        }
+      }
+      return;
+    }
     if (r?.kind === 'flat') {
       this.refresh(key, undefined, focus);
       return;
@@ -631,6 +692,7 @@ export class SearchStore {
       pending.stop = true;
     }
     this.focusAfter.delete(key);
+    this.fixed.delete(key);
     this.stopRun(key);
     this.queued.delete(key);
     this.lastEnd.delete(key);

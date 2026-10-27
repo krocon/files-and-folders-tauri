@@ -65,7 +65,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 040 | [040-panel-aktionen.md](done/040-panel-aktionen.md) | Panel-Aktionen: Seiten tauschen (auch mit allen Tabs), Ziel = Quelle, Ordner unter dem Cursor in der linken/rechten Seite öffnen (TC Strg+U, Strg+←/→) | 002, 004, 014, 031 | S |
 | 041 | [041-spalten-ansichten.md](041-spalten-ansichten.md) | Spaltenauswahl (ein-/ausblenden, Reihenfolge, Breiten bleiben), Datumsspalte für US-Format, Kurzansicht und Miniaturen – soweit die GuiExpert Table es trägt | 001, 010, 015 | M–L |
 | 042 ✅ | [042-dubletten-inhalt.md](done/042-dubletten-inhalt.md) | Dubletten nach Inhalt ausbauen (Hardlinks, Cache), Regel-Engine „welche Datei bleibt“ (älteste, kürzerer Name, Pfad-Regex …), Entscheidungsansicht + Bestätigung vor dem Löschen, optional ähnliche Bilder/Comics per Wahrnehmungs-Hash | 006, 009, 010, 016, 025, 033 | L |
-| 043 | [043-command-palette-universal.md](043-command-palette-universal.md) | Command Palette als universeller Einstieg: Dateien aus mehreren Orten finden (`invoice 2025`), Aktionen am Treffer (öffnen, Vorschau, Speicherort, kopieren/verschieben/umbenennen, ähnliche Dateien, Ordner analysieren); Rust-Suche/Index, Streaming, Virtualisierung, begrenzter Speicher | 002, 006, 009, 010, 033, (042) | L |
+| 043 ✅ | [043-command-palette-universal.md](done/043-command-palette-universal.md) | Command Palette als universeller Einstieg: Dateien aus mehreren Orten finden (`invoice 2025`), Aktionen am Treffer (öffnen, Vorschau, Speicherort, kopieren/verschieben/umbenennen, ähnliche Dateien, Ordner analysieren); Rust-Suche/Index, Streaming, Virtualisierung, begrenzter Speicher | 002, 006, 009, 010, 033, (042) | L |
 | 044 ✅ | [044-readme-werbeseite.md](done/044-readme-werbeseite.md) | README neu nach Vorbild der npm-Seite: Recherche der besten Features, je Feature ein Norton-Screenshot (reproduzierbar per `pnpm screenshots:readme`) + Beschreibung + Kürzel; englische Single-Page-Werbeseite `../site/index.html` für krocon.de/products/fnf, Bilder in `img/` neben der Seite (`pnpm site`, Marc 22.10.2026 statt raw-GitHub) | Screenshot-Werkzeug | M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
@@ -75,8 +75,8 @@ Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Pla
 Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: ~~040~~ (Panel-Aktionen, erledigt) → ~~027~~ (Persistenz,
 erledigt) → ~~039~~ (Prüfsummen, erledigt) → ~~037~~ (Dateien vergleichen, erledigt) → ~~038~~ (Flache Ansicht, erledigt) → **036** (Ordner
 synchronisieren, L) → **035** (Archive bearbeiten, L) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
-Table) → ~~042~~ (Dubletten nach Inhalt, Regeln, ähnliche Bilder, erledigt) → **043** (Command
-Palette als universeller Einstieg, L). ~~044~~ (README + Werbeseite) ist erledigt. Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.
+Table) → ~~042~~ (Dubletten nach Inhalt, Regeln, ähnliche Bilder, erledigt) → ~~043~~ (Command
+Palette als universeller Einstieg, erledigt). ~~044~~ (README + Werbeseite) ist erledigt. Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.
 
 ## Warum diese Reihenfolge
 

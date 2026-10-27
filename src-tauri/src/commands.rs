@@ -6,6 +6,7 @@ pub mod disk_usage;
 pub mod duplicates;
 pub mod mr_import;
 pub mod os_drag;
+pub mod palette;
 pub mod remote;
 pub mod shell;
 pub mod starter;
@@ -1617,7 +1618,7 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 10] = [
+    const SOURCES: [(&str, &str); 11] = [
         (
             "commands/duplicates.rs",
             include_str!("commands/duplicates.rs"),
@@ -1629,6 +1630,7 @@ mod command_rules {
         ),
         ("commands/config.rs", include_str!("commands/config.rs")),
         ("commands/watch.rs", include_str!("commands/watch.rs")),
+        ("commands/palette.rs", include_str!("commands/palette.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
         ("commands/starter.rs", include_str!("commands/starter.rs")),

@@ -74,7 +74,7 @@ test('README pictures (044): known scenes in Norton, one file per feature, every
   }
   // options of a scene: only those the runner and the mock know
   const known = new Set(['name', 'steps', 'prelude', 'mock', 'ready']);
-  const mocks = new Set(['jobs', 'bigFiles', 'duplicates', 'conflict', 'photoFolders', 'archive', 'remote', 'shellHeight']);
+  const mocks = new Set(['jobs', 'bigFiles', 'duplicates', 'conflict', 'photoFolders', 'archive', 'remote', 'shellHeight', 'invoices']);
   for (const s of cfg.scenes) {
     for (const k of Object.keys(s)) assert.ok(known.has(k), `${s.name}: ${k}`);
     for (const k of Object.keys(s.mock ?? {})) assert.ok(mocks.has(k), `${s.name}: mock.${k}`);

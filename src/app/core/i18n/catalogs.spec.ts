@@ -25,6 +25,7 @@ import '../../features/multimkdir/multimkdir-texts';
 import '../../features/multirename/multirename-texts';
 import '../../features/mrimport/mr-import-texts';
 import '../../features/ops/ops-texts';
+import '../../features/palette/palette-texts';
 import '../../features/osintegration/os-texts';
 import '../../features/preview/preview-texts';
 import '../../features/remote/remote-texts';

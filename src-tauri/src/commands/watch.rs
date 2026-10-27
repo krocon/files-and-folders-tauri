@@ -24,6 +24,8 @@ impl Default for WatchState {
         let subscribers: Subscribers = Arc::default();
         let sink_subs = subscribers.clone();
         let hub = WatchHub::new(Arc::new(move |event: WatchEvent| {
+            // the palette's index looks at a changed panel folder again (design 043 E2)
+            crate::palette::notice_watch(&event);
             // channels of closed webviews fail – drop them
             sink_subs
                 .lock()

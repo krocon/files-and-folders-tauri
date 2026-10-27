@@ -134,6 +134,18 @@ export const ACTION_IDS = [
   'OPEN_TASK_DLG',
   'OPEN_ABOUT_DLG',
   'QUIT_APP',
+  // hits of the universal palette (design 043): only while it shows a hit
+  'PALETTE_OPEN_HIT',
+  'PALETTE_PREVIEW_HIT',
+  'PALETTE_REVEAL_HIT',
+  'PALETTE_REVEAL_IN_NEW_TAB',
+  'PALETTE_COPY_HIT',
+  'PALETTE_MOVE_HIT',
+  'PALETTE_RENAME_HIT',
+  'PALETTE_SIMILAR_HIT',
+  'PALETTE_ANALYZE_PARENT',
+  'PALETTE_MARK_HIT',
+  'PALETTE_RESULTS_TAB',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
@@ -292,6 +304,17 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
   OPEN_ABOUT_DLG: m('About…', 'config', '017'),
   QUIT_APP: m('Quit', 'config', '014'),
+  PALETTE_OPEN_HIT: m('Open hit', 'navigation', '043', true),
+  PALETTE_PREVIEW_HIT: m('Preview hit', 'navigation', '043', true),
+  PALETTE_REVEAL_HIT: m('Go to location of hit', 'navigation', '043', true),
+  PALETTE_REVEAL_IN_NEW_TAB: m('Go to location of hit in new tab', 'navigation', '043', true),
+  PALETTE_COPY_HIT: m('Copy hit to the other side…', 'files', '043', true),
+  PALETTE_MOVE_HIT: m('Move hit to the other side…', 'files', '043', true),
+  PALETTE_RENAME_HIT: m('Rename hit…', 'files', '043', true),
+  PALETTE_SIMILAR_HIT: m('Find similar files', 'files', '043', true),
+  PALETTE_ANALYZE_PARENT: m('Analyse parent folder', 'files', '043', true),
+  PALETTE_MARK_HIT: m('Mark hit', 'selection', '043', true),
+  PALETTE_RESULTS_TAB: m('All hits in a result tab', 'navigation', '043', true),
 };
 
 /** Action labels in English (source of the translations). */

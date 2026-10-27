@@ -29,6 +29,13 @@ export interface SettingsValues {
   'search.recent': readonly unknown[];
   'search.templates': readonly unknown[];
   'dialogs.recent': readonly unknown[];
+  'palette.index': boolean;
+  'palette.roots': readonly unknown[];
+  'palette.excludes': readonly unknown[];
+  'palette.maxMemoryMb': number;
+  'palette.includeHidden': boolean;
+  'palette.systemSearch': boolean;
+  'palette.maxHits': number;
 }
 
 export type SettingKey = keyof SettingsValues;
