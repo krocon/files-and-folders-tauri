@@ -92,7 +92,7 @@ enum Writer {
 
 /// Options of a ZIP entry: local time + Extended Timestamp (design 025 E7),
 /// AES-256 with a password.
-fn zip_options<'k>(
+pub(crate) fn zip_options<'k>(
     modified: Option<std::time::SystemTime>,
     mode: u32,
     password: Option<&'k Secret>,

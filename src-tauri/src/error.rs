@@ -73,6 +73,10 @@ pub enum FsErrorCode {
     ArchivePasswordRequired,
     /// The password known for the archive does not fit (design 025 E4).
     ArchivePasswordWrong,
+    /// The archive cannot be changed: 7z/RAR, a link, unsafe or duplicate names, SFX (design 035).
+    ArchiveReadOnly,
+    /// Another job writes this archive right now (design 035 E2).
+    ArchiveBusy,
     /// The system refuses symbolic links here (Windows without developer mode, FAT …) (design 031 E9).
     LinkNotPermitted,
     /// A relative link cannot point to the source (other drive, or a linked folder on the way) (031 E9).
