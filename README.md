@@ -43,11 +43,12 @@ once, find duplicates, look into archives and servers – without reaching for t
 11. [FTP, FTPS and SFTP servers](#ftp-ftps-and-sftp-servers)
 12. [Viewer and quick view](#viewer-and-quick-view)
 13. [Compare files](#compare-files)
-14. [Group files and clean folders](#group-files-and-clean-folders)
-15. [Shell line](#shell-line)
-16. [Starter menu](#starter-menu)
-17. [Colour schemes](#colour-schemes)
-18. [And more](#and-more)
+14. [Compare and synchronise folders](#compare-and-synchronise-folders)
+15. [Group files and clean folders](#group-files-and-clean-folders)
+16. [Shell line](#shell-line)
+17. [Starter menu](#starter-menu)
+18. [Colour schemes](#colour-schemes)
+19. [And more](#and-more)
 
 Shortcuts are written *Windows/Linux · macOS*. All of them can be changed.
 
@@ -203,6 +204,16 @@ Mark two files – in one panel, or one on each side – then *File ▸ Compare 
 
 ![Comparing tsconfig.json with tsconfig.spec.json: three differences, coloured](docs/screenshots/readme/compare.png)
 
+## Compare and synchronise folders
+
+**Which files differ – and make both sides equal.**
+`Shift+F2` marks what is missing or newer on the other side (top level, like Total Commander). *File ▸ Synchronise
+folders…* (`Ctrl+Shift+S` / `⌘⇧S`) compares both folders with all subfolders – size and date with a tolerance (FAT/SMB:
+2 s, optionally ignoring 1-hour offsets), optionally byte by byte – and suggests an action per row: copy →, copy ←,
+delete, nothing. Change them with the arrow keys, `Del` and `Space`, check the summary, start. Copies use temporary
+files, deletes go to the trash, and nothing that changed since the comparison is overwritten. Names in NFC and NFD
+(macOS) and – where the system ignores case – `A.txt` and `a.txt` are recognised as the same file.
+
 ## Group files and clean folders
 
 **Bring order into a messy folder in one step.**
@@ -322,6 +333,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Multi rename | `Ctrl+M` | `⌘F6` |
 | Find | `Alt+F7` | `⌥F7` |
 | Find folder (change dir) | `Alt+F10` | `⌥F10` |
+| Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S` | `⇧F2` / `⌘⇧S` |
 | Flat view (all files below) | `Ctrl+B` | `⌘B` |
 | Mark / unmark | `Space`, `Insert` | `Space` |
 | Switch panel | `Tab` | `Tab` |

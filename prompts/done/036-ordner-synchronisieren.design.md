@@ -1,6 +1,6 @@
 # Design 036: Ordner vergleichen und synchronisieren
 
-> **Status:** umgesetzt (27.10.2026), Branch `feat/ordner-synchronisieren` · ohne Freigabe-Halt (Marc: „selbständig“) ·
+> **Status:** umgesetzt und reviewt (27.10.2026), Branch `feat/ordner-synchronisieren` · ohne Freigabe-Halt (Marc: „selbständig“) ·
 > Phasen 2/3 nacheinander, 4–6 zusammen · neue Crate **keine** (`icu_normalizer` 2.3 war schon im Baum über `url`/
 > `idna` und wird nur direkt genannt).
 
@@ -215,9 +215,35 @@ Default-Aktionen, erlaubte Aktionen, Kopplung, Filter, Summen, Ops bauen), `sync
   veraltete Job-Ids verworfen, Start des Sync-Jobs mit Zusammenfassung).
 - **E2E** unter Xvfb: Testordner mit neuen/geänderten/fehlenden Dateien, Unterordnern, Umlauten, Leerzeichen, Emoji.
 
-## 5. Fortschritt
+## 5. Externes Review (separater Agent, 27.10.2026) – alle Befunde behoben
+
+| # | Befund | Schwere | Behebung (Test) |
+|---|---|---|---|
+| 1 | Ordner löschen nahm Inhalt mit, den der Vergleich nie zeigte (Ausschlüsse `.git`, versteckte, Filter, nicht rekursiv, abgeschnitten, später hinzugekommen) | hoch | Das Frontend schickt den Inhalt mit; Rust löscht einen Ordner nur **ganz**, wenn jeder Eintrag darunter eine Löschung dieses Jobs und unverändert ist (`all_seen_below`), sonst nur die gezeigten Einträge; `CompareRow.complete` (`a_folder_with_unseen_content_is_not_deleted_whole`, `a_file_added_to_a_folder_after_the_comparison_keeps_it`) |
+| 2 | Lesefehler auf der Master-Seite → Löschvorschläge auf der Zielseite; Iterationsfehler von `read_dir` nicht gezählt | hoch | Fehler gezählt, `readError` je Ordner und `rootReadError`; darunter (und bei abgeschnittener Liste überall) keine Löschung erlaubt oder vorgeschlagen (`sync.spec.ts` › „no deletes below a folder that could not be read …“) |
+| 3 | Wurzeln physisch verschachtelt (Symlink, Bind-Mount) | hoch/mittel | `compare::check_physical` (kanonisch + Geräte/Inode der Vorfahren) in `compile` und erneut in `sync::run` (`roots_nested_through_a_link_are_refused`) |
+| 4 | NFC/NFD- bzw. nicht-UTF-8-Namen auf einer Seite fielen zu einer Zeile zusammen | mittel | Kollisionen auch unter dem NFC-Schlüssel, exakter Schlüssel aus den Rohbytes, `lossy`-Namen immer exakt (`nfc_and_nfd_names_on_one_side_stay_two_rows`, `names_that_are_not_utf8_are_paired_exactly_and_marked`) |
+| 5 | Groß/klein-unempfindliches Ziel bei `ignoreCase` aus: Kopie und Löschung derselben Datei | mittel | Löschungen von Dateien, die der Job liest oder schreibt (Gerät + Inode), werden abgelehnt (`a_delete_of_a_file_the_job_also_copies_is_refused`, über einen Hardlink nachgestellt) |
+| 6 | Link nach der Planung in den Pfad getauscht (TOCTOU) | mittel | `copy::run_targets` nimmt einen `Guard`, der direkt vor jeder Datei `no_link_on_the_way` prüft; ein Restfenster zwischen Prüfung und `open` bleibt (wie bei allen pfadbasierten Jobs) |
+| 7 | „Für alle überschreiben“ galt auch für seit dem Vergleich geänderte Ziele | niedrig | geänderte `replace`-Ziele fragen immer (`overwrite_for_all_does_not_cover_a_target_changed_since_the_comparison`) |
+| 8 | Nicht-UTF-8-Namen: Aktion lief ins Leere und galt als Erfolg | niedrig | `CompareSide.lossy`, solche Zeilen erlauben nur „nichts“ (`sync.spec.ts` › „lossy names allow nothing“) |
+
+Geprüft und in Ordnung laut Review: richtige Seite je Löschung, `..`/Normalisierung, eine Operation je Pfad, Ordner
+nur anlegen (nie rekursiv kopieren), `replace` nur für das exakte Ziel, Abbruch vor den Löschungen, Inhaltsvergleich
+ohne Link-Folgen, Kopplung im Frontend.
+
+## 6. Fortschritt
 
 - [x] Design (dieses Dokument)
-- [ ] Rust `compare` + `sync`
-- [ ] Frontend
-- [ ] E2E, Doku, Review
+- [x] Rust `compare` + `sync` (`compare/`, `jobs/compare.rs`, `jobs/sync.rs`, `copy::run_targets`), Tests
+- [x] Frontend (`features/sync/`, `core/sync/`, `JobsStore.onCompareRows`, `PreviewGrid.rowClick` mit Spalte)
+- [x] E2E Linux (Xvfb, Debug-Build): Testordner mit gleich/neu/geändert/älter/nur links/nur rechts, Unterordnern,
+  Umlauten, Emoji, verstecktem Eintrag, Symlinks und `Müller.txt` NFD links ↔ NFC rechts. Shift+F2 markiert links
+  `geändert.txt`, `neu links ä.txt`, rechts `älter.txt`, `nur rechts 🎉.txt`, `r` (NFD/NFC gepaart; seit dem E2E nur
+  noch Sichtbares – vorher wurde die versteckte Datei mitmarkiert). Dialog: 9 Unterschiede, Entf auf „neu links“ →
+  `✕ ·`, Zusammenfassung → Start: Kopien beider Richtungen, Löschung im Papierkorb (`~/.local/share/Trash`), erneutes
+  Öffnen vergleicht automatisch: 0 Unterschiede; mit „Inhalt vergleichen“ genau `inhalt.bin` (gleiche Größe/Zeit) `≠`.
+- [x] Externes Review (oben), Doku
+- Offen: Serverordner/Archive (E6), benannte Vorlagen (E9), macOS (NFD auf APFS, Papierkorb) und Windows bei Marc
+  bzw. in der CI; nicht lesbarer Ordner im Container nicht prüfbar (root) – Logik per Spec; Messung 2 × 100 000
+  Dateien im Debug-Build 0,9 s (`compare_large_tree`, `#[ignore]`).

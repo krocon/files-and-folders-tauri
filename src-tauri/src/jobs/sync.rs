@@ -240,6 +240,58 @@ fn ensure_dir(root: &Path, dir: &Path, created: &mut Vec<PathBuf>) -> Result<(),
     Ok(())
 }
 
+/// The folders must not be nested through a link or mount (review 036 #3).
+fn check_physical(left: &Path, right: &Path) -> Result<(), FsError> {
+    crate::compare::check_physical(left, right)
+}
+
+/// `path` is not one of the files the copy phase read or wrote (same device + inode).
+fn not_copied(path: &Path, copied: &HashSet<(u64, u64)>) -> Result<(), FsError> {
+    match crate::platform::file_identity(path) {
+        Some(i) if copied.contains(&i.id) => Err(FsError::new(
+            FsErrorCode::ChangedSinceListing,
+            "The same file is copied in this job – not deleted",
+            Some(path),
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// Entries a folder may hold to be deleted as a whole: every entry below it must be a delete
+/// of this job and still what the comparison saw – hidden, excluded, filtered or new entries
+/// keep the folder (review 036 #1). Links are not followed.
+fn all_seen_below(dir: &Path, seen: &HashMap<PathBuf, &Seen>) -> Result<(), FsError> {
+    let unseen = |p: &Path| {
+        FsError::new(
+            FsErrorCode::ChangedSinceListing,
+            "The folder holds entries the comparison did not show – left in place",
+            Some(p),
+        )
+    };
+    let mut stack = vec![dir.to_path_buf()];
+    let mut visited = 0usize;
+    while let Some(d) = stack.pop() {
+        let rd = fs::read_dir(&d).map_err(|e| FsError::from_io(&e, &d))?;
+        for item in rd {
+            let item = item.map_err(|e| FsError::from_io(&e, &d))?;
+            let p = item.path();
+            visited += 1;
+            if visited > seen.len() {
+                return Err(unseen(dir));
+            }
+            let Some(s) = seen.get(&p) else {
+                return Err(unseen(&p));
+            };
+            still_seen(&p, s)?;
+            let m = fs::symlink_metadata(&p).map_err(|e| FsError::from_io(&e, &p))?;
+            if m.is_dir() {
+                stack.push(p);
+            }
+        }
+    }
+    Ok(())
+}
+
 fn expected(path: &str, seen: &Seen) -> ExpectedEntry {
     ExpectedEntry {
         path: path.to_string(),
@@ -323,7 +375,7 @@ pub fn run(
         emit,
         summary: Summary::default(),
     };
-    if let Err(e) = check_ops(&left, &right, ops) {
+    if let Err(e) = check_ops(&left, &right, ops).and_then(|()| check_physical(&left, &right)) {
         rep.summary.error = Some(e);
         return (JobState::Failed, rep.summary);
     }
@@ -430,10 +482,28 @@ pub fn run(
         dirs.dedup();
         emit(JobEvent::DirsChanged { dirs });
     }
+    // what the copies read and write – a delete must never hit the same file under another
+    // name (case-insensitive or normalising target with `ignore_case` off, review 036 #5)
+    let copied: HashSet<(u64, u64)> = targets
+        .iter()
+        .flat_map(|(s, d)| [s, d])
+        .filter_map(|p| crate::platform::file_identity(p).map(|i| i.id))
+        .collect();
     let mut state = JobState::Done;
     if !targets.is_empty() {
         let before = std::mem::take(&mut rep.summary);
-        let (s, summary) = copy::run_targets(id, &targets, replace, before, control, emit);
+        // checked again right before each file: a link swapped in after planning (review 036 #6)
+        let roots = (left.clone(), right.clone());
+        let guard = move |dst: &Path| {
+            let root = if dst.starts_with(&roots.0) {
+                &roots.0
+            } else {
+                &roots.1
+            };
+            no_link_on_the_way(root, dst)
+        };
+        let (s, summary) =
+            copy::run_targets(id, &targets, replace, Some(&guard), before, control, emit);
         rep.summary = summary;
         if s == JobState::Cancelled || s == JobState::Failed {
             return (s, rep.summary);
@@ -443,18 +513,39 @@ pub fn run(
 
     // 3. deletes, per side (nested ones go with their folder)
     for side_root in [&left, &right] {
+        let side_ops: Vec<&SyncOp> = ops
+            .iter()
+            .filter(|o| !o.is_copy() && Path::new(&o.sides().0.path).starts_with(side_root))
+            .collect();
+        // what the comparison saw of every entry to delete on this side
+        let seen: HashMap<PathBuf, &Seen> = side_ops
+            .iter()
+            .filter_map(|o| {
+                let e = o.sides().0;
+                e.seen.as_ref().map(|s| (PathBuf::from(&e.path), s))
+            })
+            .collect();
         let mut paths: Vec<PathBuf> = Vec::new();
-        for op in ops.iter().filter(|o| !o.is_copy()) {
+        for op in side_ops {
             let (entry, _) = op.sides();
             let p = PathBuf::from(&entry.path);
-            if !p.starts_with(side_root) {
-                continue;
-            }
             if control.is_cancelled() {
                 return (JobState::Cancelled, rep.summary);
             }
             let check = no_link_on_the_way(side_root, &p)
-                .and_then(|()| still_seen(&p, entry.seen.as_ref().expect("checked")));
+                .and_then(|()| still_seen(&p, entry.seen.as_ref().expect("checked")))
+                .and_then(|()| not_copied(&p, &copied))
+                .and_then(|()| {
+                    if entry
+                        .seen
+                        .as_ref()
+                        .is_some_and(|s| s.kind == EntryKind::Directory)
+                    {
+                        all_seen_below(&p, &seen)
+                    } else {
+                        Ok(())
+                    }
+                });
             match check {
                 Ok(()) => paths.push(p),
                 Err(e) if e.code == FsErrorCode::NotFound => rep.summary.items_skipped += 1,

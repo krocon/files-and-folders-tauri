@@ -12,6 +12,7 @@
 
 .lbl {
   font-weight: 600;
+  margin-right: var(--spacing-1);
 }
 
 fieldset.options {
@@ -58,5 +59,10 @@ fieldset.options {
 .confirm-list {
   margin: 0;
   padding-left: 1.25rem;
-  flex: 1;
+
+  &.paths {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
 }

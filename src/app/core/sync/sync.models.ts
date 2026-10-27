@@ -32,6 +32,8 @@ export interface CompareSide {
   readonly kind: EntryKind;
   readonly size: number | null;
   readonly modifiedMs: number | null;
+  /** Not valid UTF-8: shown lossy, never acted on (review 036 #8). */
+  readonly lossy?: boolean;
 }
 
 export interface CompareRow {
@@ -45,6 +47,10 @@ export interface CompareRow {
   readonly rightPath: string;
   readonly status: CompareStatus;
   readonly contentChecked: boolean;
+  /** Folders: everything directly inside was listed on both sides (files: true). */
+  readonly complete: boolean;
+  /** Folders: listing a side failed – nothing below may be deleted (review 036 #2). */
+  readonly readError?: boolean;
 }
 
 export interface CompareStats {
@@ -56,6 +62,9 @@ export interface CompareStats {
   readonly truncated: boolean;
   readonly errors: readonly { readonly path: string; readonly error: FsError }[];
   readonly unreadable: number;
+  /** The compared folders themselves (see `CompareRow.complete` / `readError`). */
+  readonly rootComplete: boolean;
+  readonly rootReadError: boolean;
 }
 
 export const EMPTY_COMPARE_STATS: CompareStats = {
@@ -67,6 +76,8 @@ export const EMPTY_COMPARE_STATS: CompareStats = {
   truncated: false,
   errors: [],
   unreadable: 0,
+  rootComplete: true,
+  rootReadError: false,
 };
 
 export type SyncAction = 'copyToRight' | 'copyToLeft' | 'deleteLeft' | 'deleteRight';

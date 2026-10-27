@@ -110,6 +110,9 @@ pub struct CompareSide {
     pub kind: EntryKind,
     pub size: Option<u64>,
     pub modified_ms: Option<i64>,
+    /// The name is not valid UTF-8: shown lossy, never acted on (review 036 #8).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub lossy: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -127,6 +130,14 @@ pub struct CompareRow {
     pub status: CompareStatus,
     /// The content was compared (byte-wise).
     pub content_checked: bool,
+    /// Folders: every entry directly inside was listed on both sides (nothing hidden,
+    /// excluded, filtered, unread or below the depth limit) – only then may the folder
+    /// be deleted as a whole (review 036 #1). Files: always true.
+    pub complete: bool,
+    /// Folders: listing one side (or an entry in it) failed – nothing below may be
+    /// deleted, the other side's "only here" may be a read error (review 036 #2).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub read_error: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -142,6 +153,9 @@ pub struct CompareStats {
     /// Unreadable folders/files (the first 1 000).
     pub errors: Vec<ItemError>,
     pub unreadable: u64,
+    /// The compared folders themselves: like [`CompareRow::complete`] / `read_error`.
+    pub root_complete: bool,
+    pub root_read_error: bool,
 }
 
 /// Compiled options.
@@ -205,6 +219,7 @@ pub fn compile(left: &Path, right: &Path, opts: &CompareOptions) -> Result<Compi
             Some(&left),
         ));
     }
+    check_physical(&left, &right)?;
     let max_rows = u64::from(opts.max_rows.unwrap_or(MAX_ROWS).clamp(1, MAX_ROWS));
     Ok(Compiled {
         left,
@@ -214,6 +229,52 @@ pub fn compile(left: &Path, right: &Path, opts: &CompareOptions) -> Result<Compi
         exclude,
         max_rows,
     })
+}
+
+/// The roots must not be the same or nested *physically* either – through a link or a
+/// bind mount (review 036 #3). Only checked, never used for navigation.
+pub fn check_physical(left: &Path, right: &Path) -> Result<(), FsError> {
+    let l = fs::canonicalize(left).map_err(|e| FsError::from_io(&e, left))?;
+    let r = fs::canonicalize(right).map_err(|e| FsError::from_io(&e, right))?;
+    let same_id = crate::platform::file_identity(left)
+        .zip(crate::platform::file_identity(right))
+        .is_some_and(|(a, b)| a.id == b.id);
+    if l == r || same_id {
+        return Err(FsError::new(
+            FsErrorCode::SameSourceTarget,
+            "Both sides show the same folder",
+            Some(left),
+        ));
+    }
+    if l.starts_with(&r) || r.starts_with(&l) {
+        return Err(FsError::new(
+            FsErrorCode::TargetInsideSource,
+            "One folder lies inside the other",
+            Some(left),
+        ));
+    }
+    // a bind mount of an ancestor shows up as the same folder above
+    let ancestors = |p: &Path| {
+        p.ancestors()
+            .skip(1)
+            .filter_map(crate::platform::file_identity)
+            .map(|i| i.id)
+            .collect::<Vec<_>>()
+    };
+    let (lid, rid) = (
+        crate::platform::file_identity(left).map(|i| i.id),
+        crate::platform::file_identity(right).map(|i| i.id),
+    );
+    if lid.is_some_and(|id| ancestors(right).contains(&id))
+        || rid.is_some_and(|id| ancestors(left).contains(&id))
+    {
+        return Err(FsError::new(
+            FsErrorCode::TargetInsideSource,
+            "One folder lies inside the other",
+            Some(left),
+        ));
+    }
+    Ok(())
 }
 
 /// NFC form of a name.
@@ -363,6 +424,9 @@ fn read_full(f: &mut File, buf: &mut [u8]) -> io::Result<usize> {
 #[derive(Debug, Clone)]
 struct Entry {
     name: String,
+    /// The real name (for exact pairing; `name` may be lossy).
+    raw: std::ffi::OsString,
+    lossy: bool,
     path: PathBuf,
     meta: Metadata,
 }
@@ -411,8 +475,18 @@ impl Entry {
             kind,
             size: (kind == EntryKind::File).then_some(self.meta.len()),
             modified_ms: self.modified_ms(),
+            lossy: self.lossy,
         }
     }
+}
+
+/// One side's listing of a folder: what was kept, whether something was left out, whether
+/// reading failed.
+#[derive(Default)]
+struct Listing {
+    entries: Vec<Entry>,
+    skipped: bool,
+    failed: bool,
 }
 
 type Pair = (Option<Entry>, Option<Entry>);
@@ -451,75 +525,86 @@ impl Compiled {
         e.meta.is_dir() || self.filter.as_ref().is_none_or(|re| re.is_match(&e.name))
     }
 
-    fn read(&self, dir: &Path, stats: &mut CompareStats) -> Vec<Entry> {
+    fn read(&self, dir: &Path, stats: &mut CompareStats) -> Listing {
+        let mut out = Listing::default();
         let rd = match fs::read_dir(dir) {
             Ok(rd) => rd,
             Err(e) => {
                 error(stats, dir, FsError::from_io(&e, dir));
-                return Vec::new();
+                out.failed = true;
+                return out;
             }
         };
-        let mut out = Vec::new();
         for item in rd {
-            let Ok(item) = item else {
-                continue;
+            let item = match item {
+                Ok(i) => i,
+                Err(e) => {
+                    // counted: a partial listing must never look complete (review 036 #2)
+                    error(stats, dir, FsError::from_io(&e, dir));
+                    out.failed = true;
+                    continue;
+                }
             };
             let path = item.path();
-            let name = item.file_name().to_string_lossy().into_owned();
+            let raw = item.file_name();
+            let (name, lossy) = match raw.to_str() {
+                Some(n) => (n.to_string(), false),
+                None => (raw.to_string_lossy().into_owned(), true),
+            };
             match fs::symlink_metadata(&path) {
                 Ok(meta) => {
-                    let e = Entry { name, path, meta };
-                    if self.keep(&e) {
-                        out.push(e);
+                    let e = Entry {
+                        name,
+                        raw,
+                        lossy,
+                        path,
+                        meta,
+                    };
+                    if self.keep(&e) && self.passes_filter(&e) {
+                        out.entries.push(e);
+                    } else {
+                        out.skipped = true;
                     }
                 }
-                Err(err) => error(stats, &path, FsError::from_io(&err, &path)),
+                Err(err) => {
+                    error(stats, &path, FsError::from_io(&err, &path));
+                    out.failed = true;
+                }
             }
         }
         out
     }
 
-    /// Pairs the entries of both sides by key, sorted by key; names that collide under
-    /// the case-free key on one side are paired exactly (design 036 E1).
+    /// Pairs the entries of both sides by key, sorted by key. Names that collide under the
+    /// key on one side (`a`/`A` without case, NFC/NFD forms of one name) and names that are
+    /// not UTF-8 are paired by their exact bytes (design 036 E1, review 036 #4).
     fn pair(&self, left: Vec<Entry>, right: Vec<Entry>) -> Vec<Pair> {
         let ic = self.opts.ignore_case;
         let mut count: HashMap<String, (u32, u32)> = HashMap::new();
-        if ic {
-            for e in &left {
-                count.entry(key(&e.name, true)).or_default().0 += 1;
-            }
-            for e in &right {
-                count.entry(key(&e.name, true)).or_default().1 += 1;
-            }
+        for e in &left {
+            count.entry(key(&e.name, ic)).or_default().0 += 1;
         }
-        let key_of = |name: &str| {
-            if ic {
-                let k = key(name, true);
-                if count.get(&k).is_some_and(|(l, r)| *l > 1 || *r > 1) {
-                    // exact (still NFC), sorted next to the folded key
-                    return format!("{k}\u{0}{}", nfc(name));
-                }
-                k
-            } else {
-                nfc(name)
+        for e in &right {
+            count.entry(key(&e.name, ic)).or_default().1 += 1;
+        }
+        let key_of = |e: &Entry| {
+            let k = key(&e.name, ic);
+            if e.lossy || count.get(&k).is_some_and(|(l, r)| *l > 1 || *r > 1) {
+                // exact, sorted next to the folded key
+                return format!("{k}\u{0}{:?}", e.raw);
             }
+            k
         };
         let mut map: BTreeMap<String, Pair> = BTreeMap::new();
         for e in left {
-            let k = key_of(&e.name);
+            let k = key_of(&e);
             map.entry(k).or_insert((None, None)).0 = Some(e);
         }
         for e in right {
-            let k = key_of(&e.name);
+            let k = key_of(&e);
             map.entry(k).or_insert((None, None)).1 = Some(e);
         }
-        map.into_values()
-            .filter(|(l, r)| {
-                // the filter applies to files and links; folders are always walked
-                l.as_ref().is_none_or(|e| self.passes_filter(e))
-                    && r.as_ref().is_none_or(|e| self.passes_filter(e))
-            })
-            .collect()
+        map.into_values().collect()
     }
 
     /// Walks both trees and hands every row to `sink`. Stops at `cancel` and at the row limit.
@@ -528,8 +613,10 @@ impl Compiled {
         let l = self.read(&self.left, &mut stats);
         let r = self.read(&self.right, &mut stats);
         stats.dirs += 1;
+        stats.root_complete = !(l.skipped || r.skipped || l.failed || r.failed);
+        stats.root_read_error = l.failed || r.failed;
         let mut stack = vec![Frame {
-            pairs: self.pair(l, r).into_iter(),
+            pairs: self.pair(l.entries, r.entries).into_iter(),
             ldir: self.left.clone(),
             rdir: self.right.clone(),
             rel: String::new(),
@@ -593,26 +680,15 @@ impl Compiled {
             if status != CompareStatus::Equal {
                 stats.differences += 1;
             }
-            let row = CompareRow {
-                rel: rel.clone(),
-                depth,
-                left: le.as_ref().map(Entry::side),
-                right: re.as_ref().map(Entry::side),
-                left_path: lpath.to_string_lossy().into_owned(),
-                right_path: rpath.to_string_lossy().into_owned(),
-                status,
-                content_checked,
-            };
-            sink(Some(row), &stats);
-            if stats.rows >= self.max_rows {
-                stats.truncated = true;
-                break;
-            }
             // folders on both sides or on one side are walked; a folder against a file is not
+            let any_dir = is_dir(&le) || is_dir(&re);
             let walk = self.opts.recursive
                 && status != CompareStatus::KindMismatch
-                && (is_dir(&le) || is_dir(&re))
+                && any_dir
                 && (depth as usize) + 1 < MAX_DEPTH;
+            // the content is read before the folder's row goes out: the row says whether
+            // everything inside was seen
+            let (mut complete, mut read_error, mut children) = (!any_dir, false, None);
             if walk {
                 let l = le
                     .as_ref()
@@ -623,7 +699,28 @@ impl Compiled {
                     .map(|e| self.read(&e.path, &mut stats))
                     .unwrap_or_default();
                 stats.dirs += 1;
-                let pairs = self.pair(l, r);
+                complete = !(l.skipped || r.skipped || l.failed || r.failed);
+                read_error = l.failed || r.failed;
+                children = Some(self.pair(l.entries, r.entries));
+            }
+            let row = CompareRow {
+                rel: rel.clone(),
+                depth,
+                left: le.as_ref().map(Entry::side),
+                right: re.as_ref().map(Entry::side),
+                left_path: lpath.to_string_lossy().into_owned(),
+                right_path: rpath.to_string_lossy().into_owned(),
+                status,
+                content_checked,
+                complete,
+                read_error,
+            };
+            sink(Some(row), &stats);
+            if stats.rows >= self.max_rows {
+                stats.truncated = true;
+                break;
+            }
+            if let Some(pairs) = children {
                 sink(None, &stats);
                 stack.push(Frame {
                     pairs: pairs.into_iter(),

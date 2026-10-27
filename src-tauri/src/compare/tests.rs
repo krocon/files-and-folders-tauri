@@ -440,3 +440,48 @@ fn compare_large_tree() {
     );
     assert_eq!(rows.len(), 100_100);
 }
+
+#[test]
+fn rows_and_roots_say_whether_everything_was_seen() {
+    let f = fixture();
+    write(&f.left.join("all/a.txt"), b"a", T0);
+    write(&f.left.join("some/.hidden"), b"h", T0);
+    write(&f.left.join("some/b.txt"), b"b", T0);
+    let (rows, stats) = collect(&f, &opts());
+    assert!(stats.root_complete && !stats.root_read_error);
+    let row = |rel: &str| rows.iter().find(|r| r.rel == rel).unwrap().clone();
+    assert!(row("all").complete);
+    assert!(!row("some").complete, "a hidden entry was left out");
+    assert!(row("some/b.txt").complete);
+    assert!(!row("all").read_error);
+    let mut o = opts();
+    o.recursive = false;
+    let (rows, _) = collect(&f, &o);
+    assert!(
+        rows.iter().filter(|r| r.rel == "all").all(|r| !r.complete),
+        "not walked"
+    );
+    write(&f.right.join(".top-hidden"), b"x", T0);
+    let (_, stats) = collect(&f, &opts());
+    assert!(!stats.root_complete);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn names_that_are_not_utf8_are_paired_exactly_and_marked() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    let f = fixture();
+    write(&f.left.join(OsStr::from_bytes(b"\xff.txt")), b"a", T0);
+    write(&f.right.join(OsStr::from_bytes(b"\xfe.txt")), b"b", T0);
+    let (rows, _) = collect(&f, &opts());
+    assert_eq!(
+        rows.len(),
+        2,
+        "two different names, both shown as \u{fffd}.txt"
+    );
+    assert!(
+        rows.iter()
+            .all(|r| r.left.as_ref().or(r.right.as_ref()).unwrap().lossy)
+    );
+}

@@ -232,7 +232,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                     · {{ t.truncated }}
                   }
                   @if (sync.stats().unreadable > 0) {
-                    · {{ t.unreadable(sync.stats().unreadable) }}
+                    · {{ t.unreadable(sync.stats().unreadable) }} · {{ t.deletesBlocked }}
                   }
                 } @else {
                   {{ t.notCompared }}
@@ -293,6 +293,17 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                 <li>{{ line }}</li>
               }
             </ul>
+            @if (sync.deletions().paths.length > 0) {
+              <p class="lbl">{{ t.confirmDeleted }}</p>
+              <ul class="confirm-list paths">
+                @for (p of sync.deletions().paths; track p) {
+                  <li class="path">{{ p }}</li>
+                }
+                @if (sync.deletions().more > 0) {
+                  <li>{{ t.confirmMore(sync.deletions().more) }}</li>
+                }
+              </ul>
+            }
             <div class="foot">
               <div class="buttons">
                 <button type="button" class="btn" (click)="sync.back()">{{ t.back }}</button>
@@ -387,7 +398,7 @@ export class SyncDialog {
 
   protected readonly resultText = computed(() => {
     const s = this.sync.stats();
-    return s.rows === 0
+    return s.differences === 0
       ? this.t.noRows
       : this.t.result(s.rows, s.differences, this.sync.shown().length);
   });

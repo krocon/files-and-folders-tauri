@@ -80,6 +80,9 @@ function err(message: string): FsError {
   return { code: 'unknown', message, path: null };
 }
 
+/** Deletes the summary lists by path. */
+const MAX_LISTED_DELETES = 20;
+
 /** UI updates while rows stream in (the table swaps rows at most this often). */
 export const SYNC_FLUSH_MS = 250;
 
@@ -104,7 +107,10 @@ export class SyncStore {
   readonly pair = signal<FolderPair | null>(null);
   readonly form = signal<SyncForm>(defaultSyncForm(false, false));
   readonly rows = signal<readonly CompareRow[]>([]);
-  readonly tree = computed(() => buildTree(this.rows()));
+  readonly tree = computed(() => {
+    const s = this.stats();
+    return buildTree(this.rows(), s.rootReadError || s.truncated);
+  });
   readonly actions = signal<readonly RowAction[]>([]);
   readonly stats = signal<CompareStats>(EMPTY_COMPARE_STATS);
   readonly running = signal(false);
@@ -119,6 +125,19 @@ export class SyncStore {
   readonly confirming = signal(false);
   readonly busy = signal(false);
   readonly sums = computed(() => sums(this.tree(), this.actions()));
+  /** What the summary names before deleting (design 036 E4): the first paths and the rest. */
+  readonly deletions = computed(() => {
+    if (!this.confirming()) {
+      return { paths: [] as string[], more: 0 };
+    }
+    const ops = buildOps(this.tree(), this.actions()).filter(
+      (o) => o.action === 'deleteLeft' || o.action === 'deleteRight',
+    );
+    const paths = ops
+      .slice(0, MAX_LISTED_DELETES)
+      .map((o) => (o.action === 'deleteLeft' ? o.left.path : o.right.path));
+    return { paths, more: ops.length - paths.length };
+  });
   readonly canEdit = computed(() => this.compared() && !this.running());
   readonly canSync = computed(() => {
     const s = this.sums();
@@ -175,7 +194,8 @@ export class SyncStore {
       throw err(SYNC_TEXTS.noFolders);
     }
     const ignoreCase = this.actionService.platform() !== 'linux';
-    const res = quickCompare(l.entries(), r.entries(), ignoreCase);
+    // what the panels show: hidden or filtered entries are neither compared nor marked
+    const res = quickCompare(l.visibleEntries(), r.visibleEntries(), ignoreCase);
     l.clearMarks();
     r.clearMarks();
     l.setMarked(res.left, true);
@@ -210,7 +230,8 @@ export class SyncStore {
       this.reset();
     }
     this.dialogs.show('sync');
-    if (same && this.stale) {
+    // nothing compared yet, or the folders changed by a sync: compare right away
+    if (!same || this.stale || (!this.compared() && !this.running())) {
       void this.compare();
     }
   }
@@ -308,15 +329,16 @@ export class SyncStore {
   }
 
   private finishCompare(job: JobInfo): void {
-    this.flush();
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.jobId = null;
-    this.running.set(false);
     const final = job.summary?.compare;
     if (final) {
       this.stats.set({ ...final, errors: job.summary?.errors ?? [] });
     }
+    // after the final statistics: they decide which deletes are possible (review 036 #2)
+    this.flush();
+    this.running.set(false);
     if (job.state === 'failed') {
       this.error.set(
         SYNC_TEXTS.compareFailed(job.summary?.error ? errorText(job.summary.error) : ''),
@@ -382,7 +404,11 @@ export class SyncStore {
   cycle(index: number): void {
     const row = this.rows()[index];
     if (row) {
-      this.setAction(index, nextAction(row, this.actions()[index] ?? 'none'));
+      const tree = this.tree();
+      this.setAction(
+        index,
+        nextAction(row, this.actions()[index] ?? 'none', tree.noDelete[index] === 1),
+      );
     }
   }
 

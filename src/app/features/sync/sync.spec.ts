@@ -66,6 +66,7 @@ function row(
     rightPath: `/R/${rel}`,
     status,
     contentChecked: false,
+    complete: true,
   };
 }
 
@@ -191,8 +192,14 @@ describe('sync logic (design 036 E3)', () => {
     expect(a).toEqual(['copyToRight', 'copyToRight', 'copyToRight', 'copyToRight', 'copyToLeft']);
     a = setAction(t, a, 0, 'deleteLeft');
     expect(a.slice(0, 4)).toEqual(['deleteLeft', 'deleteLeft', 'deleteLeft', 'deleteLeft']);
-    // one delete for the folder, not four
-    expect(buildOps(t, a).map((o) => o.left.path)).toEqual(['/L/d', '/L/z']);
+    // the folder counts once; its content goes along so that Rust can check it (review #1)
+    expect(buildOps(t, a).map((o) => o.left.path)).toEqual([
+      '/L/d',
+      '/L/d/x',
+      '/L/d/sub',
+      '/L/d/sub/y',
+      '/L/z',
+    ]);
     expect(sums(t, a)).toMatchObject({ deleteLeft: 1, toLeft: 1, toLeftBytes: 3 });
     // copying a file out of the deleted folder keeps the folders above it
     a = setAction(t, a, 3, 'copyToRight');
@@ -203,6 +210,29 @@ describe('sync logic (design 036 E3)', () => {
     expect(a.slice(0, 4)).toEqual(['none', 'none', 'none', 'none']);
     // not allowed: unchanged
     expect(setAction(t, a, 0, 'deleteRight')).toEqual(a);
+  });
+
+  it('no deletes below a folder that could not be read, nor anywhere in a cut-off list', () => {
+    const rows = [
+      { ...row('d', 'equal', { dir: true }), readError: true },
+      row('d/x', 'onlyRight', { depth: 1 }),
+      row('y', 'onlyRight'),
+    ];
+    const t = buildTree(rows);
+    expect([...t.noDelete]).toEqual([0, 1, 0]);
+    const a = defaultActions(t, 'leftToRight', true);
+    expect(a).toEqual(['none', 'none', 'deleteRight']);
+    expect(setAction(t, a, 1, 'deleteRight')[1]).toBe('none');
+    expect(defaultActions(buildTree(rows, true), 'leftToRight', true)).toEqual([
+      'none',
+      'none',
+      'none',
+    ]);
+  });
+
+  it('lossy names allow nothing', () => {
+    const r = row('x', 'onlyLeft');
+    expect(allowedActions({ ...r, left: { ...r.left!, lossy: true } })).toEqual(['none']);
   });
 
   it('builds ops with both paths and what was seen', () => {
@@ -332,7 +362,7 @@ describe('sync store and dialog (design 036)', () => {
     await actions.run('OPEN_SYNC_DIRS_DLG');
     expect(dialogs.open()).toBe('sync');
     expect(sync.pair()).toEqual({ left: '/L', right: '/R' });
-    const done = sync.compare();
+    // opening compares right away
     await flush();
     expect(jobsApi.started[0].spec).toMatchObject({ kind: 'compare', left: '/L', right: '/R' });
     const id = jobsApi.started[0].id;
@@ -353,7 +383,8 @@ describe('sync store and dialog (design 036)', () => {
     expect(sync.rows().length).toBe(3);
     expect(sync.canEdit()).toBe(false); // still running
     finish(0, 'done', { compare: { ...EMPTY_COMPARE_STATS, rows: 3, differences: 2 } });
-    await done;
+    await flush();
+    await flush();
     expect(sync.compared()).toBe(true);
     expect(sync.shown()).toEqual([0, 1]); // equal rows hidden
     expect(sync.actions()).toEqual(['copyToRight', 'copyToRight', 'none']);
@@ -411,12 +442,11 @@ describe('sync store and dialog (design 036)', () => {
 
   it('a stopped comparison cannot be executed; changed options need a new comparison', async () => {
     sync.open();
-    const done = sync.compare();
     await flush();
     sync.stop();
     expect(jobsApi.cancelled).toContain(jobsApi.started[0].id);
     finish(0, 'cancelled');
-    await done;
+    await flush();
     expect(sync.canEdit()).toBe(false);
     const again = sync.compare();
     await flush();

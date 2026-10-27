@@ -44,6 +44,7 @@ export const SYNC_DE: Translation<typeof SYNC_EN> = {
   truncated: 'Zu viele Einträge – die Liste ist abgeschnitten.',
   unreadable: (n) => (n === 1 ? '1 Eintrag nicht lesbar' : `${n} Einträge nicht lesbar`),
   noRows: 'Die Ordner sind gleich.',
+  deletesBlocked: 'unter nicht lesbaren Ordnern wird nichts gelöscht',
   notCompared: '„Vergleichen“ vergleicht beide Ordner.',
   allTo: 'Gezeigte Zeilen:',
   setRight: '→',
@@ -66,6 +67,8 @@ export const SYNC_DE: Translation<typeof SYNC_EN> = {
   confirmDelete: (n, side, trash) =>
     `${files(n)} ${side === 'left' ? 'links' : 'rechts'} löschen ${trash ? '(in den Papierkorb)' : '(endgültig)'}`,
   confirmNothing: 'Nichts zu tun.',
+  confirmDeleted: 'Diese Einträge werden gelöscht:',
+  confirmMore: (n) => `… und ${n} weitere`,
   action: {
     copyToRight: 'nach rechts kopieren',
     copyToLeft: 'nach links kopieren',

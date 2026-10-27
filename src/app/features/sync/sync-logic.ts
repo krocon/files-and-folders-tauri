@@ -71,9 +71,12 @@ export function defaultAction(row: CompareRow, mode: SyncMode, mirror: boolean):
 }
 
 /** Actions a row allows, in the order the Space key cycles through them. */
-export function allowedActions(row: CompareRow): readonly RowAction[] {
+export function allowedActions(row: CompareRow, noDelete = false): readonly RowAction[] {
   const out: RowAction[] = [];
   const { left, right } = row;
+  if (left?.lossy || right?.lossy) {
+    return ['none']; // a lossy name cannot be named back to Rust
+  }
   const mismatch = row.status === 'kindMismatch';
   // a folder is never copied onto an existing entry (its files bring their own rows)
   if (left && !mismatch && !(isDir(left) && right)) {
@@ -82,23 +85,23 @@ export function allowedActions(row: CompareRow): readonly RowAction[] {
   if (right && !mismatch && !(isDir(right) && left)) {
     out.push('copyToLeft');
   }
-  if (left) {
+  if (left && !noDelete) {
     out.push('deleteLeft');
   }
-  if (right) {
+  if (right && !noDelete) {
     out.push('deleteRight');
   }
   out.push('none');
   return out;
 }
 
-export function isAllowed(row: CompareRow, action: RowAction): boolean {
-  return allowedActions(row).includes(action);
+export function isAllowed(row: CompareRow, action: RowAction, noDelete = false): boolean {
+  return allowedActions(row, noDelete).includes(action);
 }
 
 /** The next allowed action after `current` (Space, click on the action column). */
-export function nextAction(row: CompareRow, current: RowAction): RowAction {
-  const list = allowedActions(row);
+export function nextAction(row: CompareRow, current: RowAction, noDelete = false): RowAction {
+  const list = allowedActions(row, noDelete);
   const i = list.indexOf(current);
   return list[(i + 1) % list.length];
 }
@@ -112,30 +115,48 @@ export interface Tree {
   readonly rows: readonly CompareRow[];
   readonly parent: Int32Array;
   readonly end: Int32Array;
+  /**
+   * 1 = no delete for this row: a folder above it (or the compared folder) could not be
+   * read – "only on the other side" may just be a read error (review 036 #2) – or the list
+   * is cut off.
+   */
+  readonly noDelete: Uint8Array;
 }
 
-export function buildTree(rows: readonly CompareRow[]): Tree {
+/** `noDeleteAtAll`: the compared folders could not be read completely, or the list is cut off. */
+export function buildTree(rows: readonly CompareRow[], noDeleteAtAll = false): Tree {
   const n = rows.length;
   const parent = new Int32Array(n).fill(-1);
   const end = new Int32Array(n);
+  const noDelete = new Uint8Array(n);
   const stack: number[] = [];
   for (let i = 0; i < n; i++) {
     const d = rows[i].depth;
     while (stack.length > 0 && rows[stack[stack.length - 1]].depth >= d) {
       end[stack.pop()!] = i;
     }
-    parent[i] = stack.length > 0 ? stack[stack.length - 1] : -1;
+    const p = stack.length > 0 ? stack[stack.length - 1] : -1;
+    parent[i] = p;
+    noDelete[i] = noDeleteAtAll || (p >= 0 && (noDelete[p] === 1 || !!rows[p].readError)) ? 1 : 0;
     stack.push(i);
   }
   while (stack.length > 0) {
     end[stack.pop()!] = n;
   }
-  return { rows, parent, end };
+  return { rows, parent, end, noDelete };
+}
+
+/** The actions row `i` of `tree` allows. */
+export function allowedAt(tree: Tree, i: number): readonly RowAction[] {
+  return allowedActions(tree.rows[i], tree.noDelete[i] === 1);
 }
 
 export function defaultActions(tree: Tree, mode: SyncMode, mirror: boolean): RowAction[] {
   const { rows } = tree;
-  const out = rows.map((r) => defaultAction(r, mode, mirror));
+  const out = rows.map((r, i) => {
+    const a = defaultAction(r, mode, mirror);
+    return allowedAt(tree, i).includes(a) ? a : 'none';
+  });
   // a suggested delete of a folder takes its content with it (coupling, E3)
   for (let i = 0; i < rows.length; i++) {
     if (out[i] === 'deleteLeft' || out[i] === 'deleteRight') {
@@ -148,10 +169,8 @@ export function defaultActions(tree: Tree, mode: SyncMode, mirror: boolean): Row
 
 function cascadeDelete(tree: Tree, actions: RowAction[], i: number): void {
   const a = actions[i];
-  const leftSide = a === 'deleteLeft';
   for (let j = i + 1; j < tree.end[i]; j++) {
-    const has = leftSide ? tree.rows[j].left : tree.rows[j].right;
-    actions[j] = has ? a : 'none';
+    actions[j] = allowedAt(tree, j).includes(a) ? a : 'none';
   }
 }
 
@@ -163,7 +182,7 @@ function cascadeDelete(tree: Tree, actions: RowAction[], i: number): void {
  */
 export function applyAction(tree: Tree, out: RowAction[], i: number, action: RowAction): boolean {
   const row = tree.rows[i];
-  if (!row || !isAllowed(row, action)) {
+  if (!row || !allowedAt(tree, i).includes(action)) {
     return false;
   }
   const before = out[i];
@@ -253,7 +272,7 @@ export function sums(tree: Tree, actions: readonly RowAction[]): Sums {
   let toLeftBytes = 0;
   let deleteLeft = 0;
   let deleteRight = 0;
-  for (const i of opIndexes(tree, actions)) {
+  for (const i of countedIndexes(tree, actions)) {
     const r = rows[i];
     switch (actions[i]) {
       case 'copyToRight':
@@ -275,8 +294,11 @@ export function sums(tree: Tree, actions: readonly RowAction[]): Sums {
   return { toRight, toRightBytes, toLeft, toLeftBytes, deleteLeft, deleteRight };
 }
 
-/** Rows that become operations: not `none`, not below a folder deleted on the same side. */
-function opIndexes(tree: Tree, actions: readonly RowAction[]): number[] {
+/**
+ * Rows that count in the summary: not `none`, and a folder deleted on one side counts once
+ * (its content on that side goes with it).
+ */
+function countedIndexes(tree: Tree, actions: readonly RowAction[]): number[] {
   const { rows } = tree;
   const out: number[] = [];
   let i = 0;
@@ -288,7 +310,6 @@ function opIndexes(tree: Tree, actions: readonly RowAction[]): number[] {
     const r = rows[i];
     if ((a === 'deleteLeft' && isDir(r.left)) || (a === 'deleteRight' && isDir(r.right))) {
       const end = tree.end[i];
-      // only the other side's deletes below remain (the same side goes with the folder)
       for (let j = i + 1; j < end; j++) {
         const b = actions[j];
         if (b !== 'none' && b !== a) {
@@ -307,9 +328,19 @@ function seen(side: CompareSide | null): Seen | null {
   return side ? { kind: side.kind, size: side.size, modifiedMs: side.modifiedMs } : null;
 }
 
-/** The operations for the job `sync` (paths and seen values as Rust sent them). */
+/**
+ * The operations for the job `sync` (paths and seen values as Rust sent them). The content
+ * of a deleted folder is sent as well: Rust deletes the folder whole only if everything in
+ * it is one of these deletes and unchanged, else just these entries (review 036 #1).
+ */
 export function buildOps(tree: Tree, actions: readonly RowAction[]): SyncOp[] {
-  return opIndexes(tree, actions).map((i) => {
+  const out: number[] = [];
+  actions.forEach((a, i) => {
+    if (a !== 'none' && i < tree.rows.length) {
+      out.push(i);
+    }
+  });
+  return out.map((i) => {
     const r = tree.rows[i];
     return {
       action: actions[i] as SyncAction,

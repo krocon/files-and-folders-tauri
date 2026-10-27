@@ -334,7 +334,12 @@ struct Run<'a> {
     top_dsts: Vec<Option<String>>,
     /// Targets that may be replaced without a question while unchanged (design 036 E4).
     replace: HashMap<PathBuf, ExpectedEntry>,
+    /// Checked right before each file is written (folder sync: no link on the way).
+    guard: Option<&'a Guard<'a>>,
 }
+
+/// A check of a target path right before it is written.
+pub type Guard<'a> = dyn Fn(&Path) -> Result<(), FsError> + 'a;
 
 fn is_cross_device(e: &io::Error) -> bool {
     e.kind() == io::ErrorKind::CrossesDevices
@@ -683,6 +688,7 @@ pub fn run_pairs(
         cross: matches!(mode, Mode::Move { force_copy: true }),
         top_dsts: Vec::new(),
         replace: HashMap::new(),
+        guard: None,
     };
     run.state(JobState::Planning);
     let mut plan = Plan::default();
@@ -704,6 +710,7 @@ pub fn run_targets(
     id: &str,
     targets: &[(PathBuf, PathBuf)],
     replace: HashMap<PathBuf, ExpectedEntry>,
+    guard: Option<&Guard<'_>>,
     summary: Summary,
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
@@ -720,6 +727,7 @@ pub fn run_targets(
         cross: false,
         top_dsts: Vec::new(),
         replace,
+        guard,
     };
     run.state(JobState::Planning);
     let mut plan = Plan::default();
@@ -913,15 +921,24 @@ fn execute(
             let Ok(sm) = fs::symlink_metadata(&item.src) else {
                 break;
             };
-            // the user confirmed replacing exactly this target (folder sync, design 036 E4)
+            // the user confirmed replacing exactly this target (folder sync, design 036 E4);
+            // changed meanwhile: always asked, an earlier "for all" does not cover it (review #7)
+            let mut fresh = false;
             if dst == item.dst
                 && let Some(seen) = run.replace.get(&dst)
-                && super::expect::changed(&dst, seen).is_none()
             {
-                overwrite = true;
-                break;
+                if super::expect::changed(&dst, seen).is_none() {
+                    overwrite = true;
+                    break;
+                }
+                fresh = true;
             }
-            let Some(decision) = run.ask(&item.src, &dst, &sm, &dm) else {
+            let kept = if fresh { run.for_all.take() } else { None };
+            let answer = run.ask(&item.src, &dst, &sm, &dm);
+            if kept.is_some() && run.for_all.is_none() {
+                run.for_all = kept;
+            }
+            let Some(decision) = answer else {
                 cancelled = true;
                 break 'items;
             };
@@ -962,6 +979,14 @@ fn execute(
                     break 'items;
                 }
             }
+        }
+        if let Some(guard) = run.guard
+            && let Err(e) = guard(&dst)
+        {
+            run.fail(&item.src, e);
+            run.rep.progress.items_done += 1;
+            run.rep.progress.bytes_done += size;
+            continue;
         }
         let before = run.rep.progress.bytes_done;
         let top_dst = run.top_dsts.get(item.top_idx).cloned().flatten();

@@ -45,6 +45,7 @@ export const SYNC_EN = {
   truncated: 'Too many entries – the list is cut off.',
   unreadable: (n: number) => (n === 1 ? '1 entry not readable' : `${n} entries not readable`),
   noRows: 'The folders are equal.',
+  deletesBlocked: 'nothing is deleted below folders that could not be read',
   notCompared: 'Press Compare to compare both folders.',
   allTo: 'Shown rows:',
   setRight: '→',
@@ -67,6 +68,8 @@ export const SYNC_EN = {
   confirmDelete: (n: number, side: 'left' | 'right', trash: boolean) =>
     `Delete ${files(n)} on the ${side} ${trash ? '(to the trash)' : 'permanently'}`,
   confirmNothing: 'Nothing to do.',
+  confirmDeleted: 'These entries will be deleted:',
+  confirmMore: (n: number) => `… and ${n} more`,
   action: {
     copyToRight: 'copy to the right',
     copyToLeft: 'copy to the left',

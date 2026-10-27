@@ -197,10 +197,9 @@ fn mirror_deletes_the_extra_entries() {
     let ops: Vec<SyncOp> = rows
         .iter()
         .filter_map(|r| match r.status {
-            CompareStatus::OnlyRight if !r.rel.contains('/') => {
-                Some(op(&p, r, SyncAction::DeleteRight))
-            }
-            CompareStatus::OnlyRight => None, // inside the deleted folder: goes with it
+            // the folder and everything in it: Rust deletes the folder whole only when every
+            // entry inside is one of these deletes (review 036 #1)
+            CompareStatus::OnlyRight => Some(op(&p, r, SyncAction::DeleteRight)),
             CompareStatus::Equal => None,
             _ => Some(op(&p, r, SyncAction::CopyToRight)),
         })
@@ -508,4 +507,180 @@ fn wire_format() {
     .unwrap();
     assert_eq!(e["type"], "compareRows");
     assert_eq!(e["stats"]["differences"], 0);
+}
+
+fn mirror_ops(p: &Pair, rows: &[CompareRow]) -> Vec<SyncOp> {
+    rows.iter()
+        .filter_map(|r| match r.status {
+            CompareStatus::OnlyRight => Some(op(p, r, SyncAction::DeleteRight)),
+            CompareStatus::Equal => None,
+            _ => Some(op(p, r, SyncAction::CopyToRight)),
+        })
+        .collect()
+}
+
+#[test]
+fn a_folder_with_unseen_content_is_not_deleted_whole() {
+    // review 036 #1: `.git` is excluded by default, a hidden file is not shown
+    let h = Harness::new();
+    let p = pair();
+    write(&p.right.join("proj/a.txt"), b"a", T0);
+    write(&p.right.join("proj/.git/HEAD"), b"ref", T0);
+    write(&p.right.join("proj/.hidden"), b"h", T0);
+    write(&p.right.join("weg/x.txt"), b"x", T0);
+    let (_, rows) = h.compare(&p, opts());
+    assert!(!rows.iter().find(|r| r.rel == "proj").unwrap().complete);
+    assert!(rows.iter().find(|r| r.rel == "weg").unwrap().complete);
+    let id = h
+        .sync(&p, mirror_ops(&p, &rows), DeleteMode::Permanent)
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(!p.right.join("proj/a.txt").exists(), "listed entries go");
+    assert!(
+        p.right.join("proj/.git/HEAD").exists(),
+        "unseen entries stay"
+    );
+    assert!(p.right.join("proj/.hidden").exists());
+    assert!(
+        !p.right.join("weg").exists(),
+        "a fully seen folder goes whole"
+    );
+}
+
+#[test]
+fn a_file_added_to_a_folder_after_the_comparison_keeps_it() {
+    let h = Harness::new();
+    let p = pair();
+    write(&p.right.join("weg/x.txt"), b"x", T0);
+    let (_, rows) = h.compare(&p, opts());
+    write(&p.right.join("weg/neu.txt"), b"new", T0);
+    let id = h
+        .sync(&p, mirror_ops(&p, &rows), DeleteMode::Permanent)
+        .unwrap();
+    h.finish(&id);
+    assert!(p.right.join("weg/neu.txt").exists());
+    assert!(!p.right.join("weg/x.txt").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn roots_nested_through_a_link_are_refused() {
+    // review 036 #3
+    use std::os::unix::fs::symlink;
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let left = d.path().join("L");
+    fs::create_dir_all(left.join("S")).unwrap();
+    let right = d.path().join("R");
+    symlink(left.join("S"), &right).unwrap();
+    let e = h
+        .mgr
+        .start(JobSpec::Compare {
+            left: s(&left),
+            right: s(&right),
+            options: opts(),
+        })
+        .unwrap();
+    let info = h.finish(&e);
+    assert_eq!(info.state, JobState::Failed);
+    assert_eq!(
+        info.summary.unwrap().error.unwrap().code,
+        FsErrorCode::TargetInsideSource
+    );
+    // and the sync job checks the same, even with lexically fine ops
+    write(&left.join("a.txt"), b"a", T0);
+    let id = h
+        .mgr
+        .start(JobSpec::Sync {
+            left: s(&left),
+            right: s(&right),
+            ops: vec![SyncOp {
+                action: SyncAction::CopyToRight,
+                left: SyncSide {
+                    path: s(&left.join("a.txt")),
+                    seen: Some(Seen {
+                        kind: EntryKind::File,
+                        size: Some(1),
+                        modified_ms: Some((T0 * 1000) as i64),
+                    }),
+                },
+                right: SyncSide {
+                    path: s(&right.join("a.txt")),
+                    seen: None,
+                },
+            }],
+            delete_mode: DeleteMode::Permanent,
+        })
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Failed);
+    assert!(!left.join("S/a.txt").exists());
+}
+
+#[test]
+fn nfc_and_nfd_names_on_one_side_stay_two_rows() {
+    // review 036 #4 (Linux keeps both forms as two files)
+    let h = Harness::new();
+    let p = pair();
+    write(&p.left.join("\u{e9}.txt"), b"nfc", T0);
+    write(&p.left.join("e\u{301}.txt"), b"nfd", T0);
+    write(&p.right.join("e\u{301}.txt"), b"nfd", T0);
+    let (_, rows) = h.compare(&p, opts());
+    if fs::read_dir(&p.left).unwrap().count() == 2 {
+        assert_eq!(rows.len(), 2, "{rows:?}");
+        let both = rows
+            .iter()
+            .find(|r| r.left.is_some() && r.right.is_some())
+            .unwrap();
+        assert_eq!(both.left.as_ref().unwrap().name, "e\u{301}.txt");
+        assert_eq!(both.status, CompareStatus::Equal);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_delete_of_a_file_the_job_also_copies_is_refused() {
+    // review 036 #5: another name of the same file (hard link = like a case-insensitive target)
+    let h = Harness::new();
+    let p = pair();
+    write(&p.left.join("Readme.md"), b"new", T0 + 100);
+    write(&p.right.join("Readme.md"), b"old", T0);
+    fs::hard_link(p.right.join("Readme.md"), p.right.join("README.md")).unwrap();
+    let (_, rows) = h.compare(&p, opts());
+    let ops = mirror_ops(&p, &rows);
+    assert!(ops.iter().any(|o| o.action == SyncAction::DeleteRight));
+    let id = h.sync(&p, ops, DeleteMode::Permanent).unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert!(
+        p.right.join("README.md").exists(),
+        "not deleted: the copy wrote it"
+    );
+}
+
+#[test]
+fn overwrite_for_all_does_not_cover_a_target_changed_since_the_comparison() {
+    // review 036 #7
+    let h = Harness::new();
+    let p = pair();
+    write(&p.left.join("a.txt"), b"left a", T0 + 100);
+    write(&p.left.join("b.txt"), b"left b", T0 + 100);
+    write(&p.right.join("b.txt"), b"right b", T0);
+    let (_, rows) = h.compare(&p, opts());
+    write(&p.right.join("a.txt"), b"appeared", T0); // a conflict: answer "overwrite all"
+    write(&p.right.join("b.txt"), b"edited", T0 + 50); // changed since the comparison
+    let id = h
+        .sync(&p, default_ops(&p, &rows), DeleteMode::Permanent)
+        .unwrap();
+    let c = h.conflict(&id);
+    assert!(c.target.ends_with("a.txt"));
+    h.mgr
+        .resolve_conflict(&id, c.conflict_id, Decision::Overwrite, true);
+    let c2 = h.conflict(&id);
+    assert!(c2.target.ends_with("b.txt"), "asked again");
+    h.mgr
+        .resolve_conflict(&id, c2.conflict_id, Decision::Skip, false);
+    h.finish(&id);
+    assert_eq!(fs::read(p.right.join("a.txt")).unwrap(), b"left a");
+    assert_eq!(fs::read(p.right.join("b.txt")).unwrap(), b"edited");
 }

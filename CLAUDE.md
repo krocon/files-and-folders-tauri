@@ -42,12 +42,13 @@
   `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) und Prompt 038 (Flache Ansicht: Strg+B im selben
   Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) und Prompt 042 (Dubletten: Hardlinks als Einheit, Cache,
   Regel-Engine, Job `dedupe`, ähnliche Bilder/Comics per pHash) und Prompt 044 (README je Feature mit Norton-Bild,
-  Werbeseite `site/` für krocon.de/products/fnf) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041, 043
+  Werbeseite `site/` für krocon.de/products/fnf) und Prompt 036 (Ordner vergleichen Shift+F2 / synchronisieren: Jobs
+  `compare`/`sync`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 041, 043
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037–040, 042, 044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 036–040, 042, 044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -234,6 +235,9 @@ src-tauri/                   Rust (Tauri 2)
                              Semaphor), phash.rs (pHash, Gruppierung mit Mehrfach-Index), comic.rs, thumbs.rs (Schema
                              `fnfpreview`, Token `t…`), tests.rs; Jobs `jobs/duplicates.rs`, `jobs/dedupe.rs` (Prüfung
                              je Kopie, Papierkorb/endgültig/verschieben); Commands `commands/duplicates.rs`
+  src/compare/               Ordner vergleichen (036): Paarung NFC/Groß-klein, Status, Preorder-Durchlauf, `check_physical`;
+                             Jobs `jobs/compare.rs` (Zeilen als `compareRows`), `jobs/sync.rs` (Prüfungen je Schritt,
+                             `copy::run_targets`); Frontend core/sync/, features/sync/ (quick-compare.ts, sync-logic.ts rein)
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
