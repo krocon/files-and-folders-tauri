@@ -217,8 +217,8 @@ export const SETTINGS_EN = {
     building: 'The index is being built…',
     ready: 'The index is ready.',
   } as Readonly<Record<string, string>>,
-  indexInfo: (entries: number, mb: number, max: number) =>
-    `${entries.toLocaleString()} entries, ${mb} of ${max} MB`,
+  indexInfo: (entries: number, mb: number, max: number, ms: number) =>
+    `${entries.toLocaleString()} entries, ${mb} of ${max} MB, built in ${(ms / 1000).toFixed(1)} s`,
   indexFull: 'Memory limit reached: not every entry is in the index.',
   indexProblems: (list: readonly string[]) =>
     `Left out (not a usable folder or pattern): ${list.join(', ')}`,
@@ -527,8 +527,8 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     building: 'Der Index wird aufgebaut…',
     ready: 'Der Index ist bereit.',
   },
-  indexInfo: (entries, mb, max) =>
-    `${entries.toLocaleString('de-DE')} Einträge, ${mb} von ${max} MB`,
+  indexInfo: (entries, mb, max, ms) =>
+    `${entries.toLocaleString('de-DE')} Einträge, ${mb} von ${max} MB, aufgebaut in ${(ms / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`,
   indexFull: 'Speichergrenze erreicht: Nicht jeder Eintrag ist im Index.',
   indexProblems: (list) =>
     `Ausgelassen (kein nutzbarer Ordner oder kein Muster): ${list.join(', ')}`,

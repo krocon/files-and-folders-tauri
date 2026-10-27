@@ -22,7 +22,7 @@ export const HIT_ACTIONS: readonly {
   { action: 'rename', id: 'PALETTE_RENAME_HIT', via: ['OPEN_RENAME_DLG', 'RENAME_INLINE'] },
   { action: 'similar', id: 'PALETTE_SIMILAR_HIT', via: ['OPEN_FIND_DUPLICATES_DLG'] },
   { action: 'analyzeParent', id: 'PALETTE_ANALYZE_PARENT', via: ['OPEN_DISK_USAGE'] },
-  { action: 'mark', id: 'PALETTE_MARK_HIT', via: ['TOGGLE_MARK_AND_ADVANCE', 'TOGGLE_MARK'] },
+  { action: 'mark', id: 'PALETTE_MARK_HIT', via: ['TOGGLE_MARK', 'TOGGLE_MARK_AND_ADVANCE'] },
   { action: 'resultsTab', id: 'PALETTE_RESULTS_TAB', via: ['OPEN_FIND_DLG'] },
 ];
 

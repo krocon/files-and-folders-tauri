@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   signal,
@@ -37,6 +38,9 @@ import { SETTINGS_TEXTS } from './settings-texts';
 import { PaletteStore } from '../palette/palette.store';
 
 /** JSON lists of strings edited as text (design 043 E6). */
+/** The index state is read this often while the settings are open. */
+const INDEX_POLL_MS = 1000;
+
 const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   'palette.roots',
   'palette.excludes',
@@ -251,7 +255,8 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                   t.indexInfo(
                     palette.status().entries,
                     mb(palette.status().bytes),
-                    mb(palette.status().maxBytes)
+                    mb(palette.status().maxBytes),
+                    palette.status().buildMs
                   )
                 }}
               }
@@ -430,6 +435,13 @@ export class SettingsDialog {
   private readonly shell = inject(ShellStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly palette = inject(PaletteStore);
+
+  constructor() {
+    // the index state as it is now – and while it is built (design 043 E7)
+    void this.palette.refreshStatus();
+    const timer = setInterval(() => void this.palette.refreshStatus(), INDEX_POLL_MS);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
 
   protected readonly sections = SECTIONS;
   protected readonly allParts = SETTINGS_PARTS;

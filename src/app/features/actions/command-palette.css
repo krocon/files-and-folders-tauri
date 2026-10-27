@@ -98,8 +98,11 @@
 }
 
 .sub-head {
+  justify-content: flex-start;
+  gap: var(--spacing-2);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   text-transform: none;
 }
 
