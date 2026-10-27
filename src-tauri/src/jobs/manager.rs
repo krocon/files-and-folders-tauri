@@ -365,6 +365,32 @@ impl JobManager {
                         )
                     }
                     JobSpec::Search { criteria } => search::run(id, criteria, &control, &emit),
+                    JobSpec::Compare {
+                        left,
+                        right,
+                        options,
+                    } => super::compare::run(
+                        id,
+                        &PathBuf::from(left),
+                        &PathBuf::from(right),
+                        options,
+                        &control,
+                        &emit,
+                    ),
+                    JobSpec::Sync {
+                        left,
+                        right,
+                        ops,
+                        delete_mode,
+                    } => super::sync::run(
+                        id,
+                        &PathBuf::from(left),
+                        &PathBuf::from(right),
+                        ops,
+                        *delete_mode,
+                        &control,
+                        &emit,
+                    ),
                     JobSpec::Extract {
                         archive,
                         entries,
@@ -1105,6 +1131,21 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             one(base_dir)
         }
         JobSpec::VerifyChecksums { file } => one(file),
+        JobSpec::Compare { left, right, .. } => {
+            any(left)?;
+            any(right)
+        }
+        JobSpec::Sync {
+            left, right, ops, ..
+        } => {
+            any(left)?;
+            any(right)?;
+            for o in ops.iter_mut() {
+                one(&mut o.left.path)?;
+                one(&mut o.right.path)?;
+            }
+            Ok(())
+        }
         JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
         JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => any(path),
         JobSpec::Search { .. }
@@ -1288,6 +1329,45 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         JobSpec::Search { criteria } => {
             // patterns and paths only – the roots are read in the job thread
             crate::search::compile(criteria)?;
+        }
+        JobSpec::Compare { left, right, .. } => {
+            // servers and archives: second stage (design 036 E6)
+            for p in [left, right] {
+                if crate::remote::is_remote(p) {
+                    return Err(FsError::at(
+                        FsErrorCode::RemoteUnsupported,
+                        "Folders on servers cannot be compared yet",
+                        p,
+                    ));
+                }
+                validate_input_path(p)?;
+            }
+        }
+        JobSpec::Sync {
+            left, right, ops, ..
+        } => {
+            for p in [left, right] {
+                if crate::remote::is_remote(p) {
+                    return Err(FsError::at(
+                        FsErrorCode::RemoteUnsupported,
+                        "Folders on servers cannot be synchronised yet",
+                        p,
+                    ));
+                }
+            }
+            let (l, r) = (validate_input_path(left)?, validate_input_path(right)?);
+            super::sync::check_ops(&l, &r, ops)?;
+            for o in ops {
+                match o.action {
+                    super::sync::SyncAction::DeleteLeft => {
+                        check_danger_with(&mut danger, Path::new(&o.left.path), false)?
+                    }
+                    super::sync::SyncAction::DeleteRight => {
+                        check_danger_with(&mut danger, Path::new(&o.right.path), false)?
+                    }
+                    _ => {}
+                }
+            }
         }
         JobSpec::Count { paths } => {
             for p in paths {

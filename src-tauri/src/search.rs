@@ -315,6 +315,17 @@ fn globs_to_regex(patterns: &str, whole: bool) -> Option<String> {
     Some(if whole { format!("^(?:{alt})$") } else { alt })
 }
 
+/// `a;b` globs as one whole-name regex without case (design 036: filter and exclusions of
+/// the folder comparison); `None` = every name matches (empty, `*`, `*.*`).
+pub(crate) fn glob_set(patterns: &str) -> Result<Option<Regex>, FsError> {
+    if patterns.len() > MAX_PATTERN_LEN {
+        return Err(invalid("Pattern too long"));
+    }
+    globs_to_regex(patterns, true)
+        .map(|s| build(&s, false))
+        .transpose()
+}
+
 /// Checks the criteria without touching the file system (the job checks the roots).
 pub fn compile(c: &SearchCriteria) -> Result<Compiled, FsError> {
     if c.roots.is_empty() {

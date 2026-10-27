@@ -5,6 +5,7 @@
 //! as links. Existing targets raise a conflict question; per-item errors are
 //! collected and the job goes on (a full disk pauses it instead).
 
+use super::expect::ExpectedEntry;
 use super::report::Reporter;
 use super::{
     Conflict, ConflictKind, Control, CopyOptions, Decision, FileMeta, ItemError, JobEvent,
@@ -13,7 +14,7 @@ use super::{
 use crate::error::{FsError, FsErrorCode};
 use crate::paths::{normalize_lexically, validate_name};
 use crate::platform::{file_id, io_hints, rename_noreplace};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::{self, File, Metadata};
 use std::io::{self, Read, Write};
@@ -331,6 +332,8 @@ struct Run<'a> {
     /// not exist before – only then is its size at the target what this job wrote
     /// (`Progress::dest_bytes`). Merged into an existing folder: `None`.
     top_dsts: Vec<Option<String>>,
+    /// Targets that may be replaced without a question while unchanged (design 036 E4).
+    replace: HashMap<PathBuf, ExpectedEntry>,
 }
 
 fn is_cross_device(e: &io::Error) -> bool {
@@ -679,6 +682,7 @@ pub fn run_pairs(
         moving: matches!(mode, Mode::Move { .. }),
         cross: matches!(mode, Mode::Move { force_copy: true }),
         top_dsts: Vec::new(),
+        replace: HashMap::new(),
     };
     run.state(JobState::Planning);
     let mut plan = Plan::default();
@@ -689,6 +693,62 @@ pub fn run_pairs(
             return (JobState::Failed, run.summary);
         }
     };
+    execute(run, tops, plan, control)
+}
+
+/// Copies pairs *source → exact target path* (folder sync, design 036 E4). A target in
+/// `replace` is replaced without a question while it still is what the comparison saw;
+/// any other existing target raises the normal conflict question. The parent folders of
+/// the targets must exist. `summary` carries what happened before.
+pub fn run_targets(
+    id: &str,
+    targets: &[(PathBuf, PathBuf)],
+    replace: HashMap<PathBuf, ExpectedEntry>,
+    summary: Summary,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    let mut run = Run {
+        id,
+        control,
+        rep: Reporter::new(id, emit),
+        summary,
+        conflict_seq: 0,
+        for_all: None,
+        temp_seq: 0,
+        moving: false,
+        cross: false,
+        top_dsts: Vec::new(),
+        replace,
+    };
+    run.state(JobState::Planning);
+    let mut plan = Plan::default();
+    let mut tops = Vec::new();
+    for (src, dst) in targets {
+        let src = normalize_lexically(src);
+        let dst = normalize_lexically(dst);
+        if src == dst || dst.parent().is_none() {
+            run.summary.error = Some(FsError::new(
+                FsErrorCode::SameSourceTarget,
+                "Source and target are the same",
+                Some(&src),
+            ));
+            return (JobState::Failed, run.summary);
+        }
+        match fs::symlink_metadata(&src) {
+            Ok(meta) => tops.push(Top { src, dst, meta }),
+            Err(e) => plan.error(&src, FsError::from_io(&e, &src)),
+        }
+    }
+    execute(run, tops, plan, control)
+}
+
+fn execute(
+    mut run: Run<'_>,
+    tops: Vec<Top>,
+    mut plan: Plan,
+    control: &Control,
+) -> (JobState, Summary) {
     // moving: whole entries whose target name is free are renamed at once
     let mut fast_done = 0u64;
     let mut rest = Vec::new();
@@ -853,6 +913,14 @@ pub fn run_pairs(
             let Ok(sm) = fs::symlink_metadata(&item.src) else {
                 break;
             };
+            // the user confirmed replacing exactly this target (folder sync, design 036 E4)
+            if dst == item.dst
+                && let Some(seen) = run.replace.get(&dst)
+                && super::expect::changed(&dst, seen).is_none()
+            {
+                overwrite = true;
+                break;
+            }
             let Some(decision) = run.ask(&item.src, &dst, &sm, &dm) else {
                 cancelled = true;
                 break 'items;

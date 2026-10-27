@@ -44,6 +44,7 @@ pub mod buttons;
 pub mod checksum;
 pub mod clean;
 pub mod commands;
+pub mod compare;
 pub mod config_file;
 pub mod diff;
 pub mod dirsize;

@@ -17,6 +17,8 @@ tauri-build = { version = "2.7.3", features = [] }
 
 [dependencies]
 flate2 = "1"
+# design 036 E7: NFC keys for the folder comparison – already in the tree (url → idna)
+icu_normalizer = "2.3"
 notify = "8.2"
 open = "5"
 regex = "1.13"

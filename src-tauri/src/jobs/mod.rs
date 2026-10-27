@@ -7,6 +7,7 @@ pub mod ask;
 pub mod attributes;
 pub mod checksum;
 pub mod clean;
+pub mod compare;
 pub mod control;
 pub mod copy;
 pub mod dedupe;
@@ -24,6 +25,7 @@ pub mod rename;
 pub mod report;
 pub mod search;
 pub mod shell;
+pub mod sync;
 #[cfg(test)]
 mod tests_archive;
 #[cfg(test)]
@@ -46,6 +48,8 @@ mod tests_ops;
 mod tests_remote;
 #[cfg(all(test, unix))]
 mod tests_shell;
+#[cfg(test)]
+mod tests_sync;
 #[cfg(test)]
 mod tests_tools;
 pub mod transfer;
@@ -164,6 +168,21 @@ pub enum JobSpec {
     },
     /// Recursive search (design 009): hits are streamed as `searchHits` events.
     Search { criteria: SearchCriteria },
+    /// Compare two folder trees (design 036 E2): rows are streamed as `compareRows`.
+    Compare {
+        left: String,
+        right: String,
+        #[serde(default)]
+        options: crate::compare::CompareOptions,
+    },
+    /// Execute the actions chosen in a comparison (design 036 E4): folders, copies, deletes.
+    Sync {
+        left: String,
+        right: String,
+        ops: Vec<sync::SyncOp>,
+        #[serde(default = "trash")]
+        delete_mode: DeleteMode,
+    },
     /// Extract entries of an archive (design 016 E4). `entries` are virtual paths
     /// (`…/a.zip/dir`) – empty = everything; `into_subfolder` = into `<target>/<archive stem>`.
     Extract {
@@ -287,6 +306,7 @@ impl JobSpec {
             | JobSpec::Pack { .. }
             | JobSpec::Link { .. }
             | JobSpec::Dedupe { .. }
+            | JobSpec::Sync { .. }
             | JobSpec::Attributes { .. } => false,
             JobSpec::ViewEntry { .. }
             | JobSpec::Duplicates { .. }
@@ -294,6 +314,7 @@ impl JobSpec {
             | JobSpec::DiskUsage { .. }
             | JobSpec::Count { .. }
             | JobSpec::Search { .. }
+            | JobSpec::Compare { .. }
             | JobSpec::Shell { .. }
             | JobSpec::Simulate { .. } => true,
         }
@@ -312,6 +333,14 @@ impl JobSpec {
                 ..
             } => items.iter().map(|i| &i.path).collect(),
             JobSpec::Clean { items, .. } => items.iter().map(|i| &i.path).collect(),
+            JobSpec::Sync { ops, .. } => ops
+                .iter()
+                .filter_map(|o| match o.action {
+                    sync::SyncAction::DeleteLeft => Some(&o.left.path),
+                    sync::SyncAction::DeleteRight => Some(&o.right.path),
+                    _ => None,
+                })
+                .collect(),
             JobSpec::Dedupe { groups, .. } => groups
                 .iter()
                 .flat_map(|g| g.remove.iter().map(|e| &e.path))
@@ -338,6 +367,12 @@ impl JobSpec {
             JobSpec::Checksum {
                 base_dir, output, ..
             } if !matches!(output, checksum::ChecksumOutput::Show) => base_dir,
+            JobSpec::Sync { left, right, .. } => {
+                return vec![
+                    crate::paths::normalize_lexically(std::path::Path::new(left)),
+                    crate::paths::normalize_lexically(std::path::Path::new(right)),
+                ];
+            }
             // the folders of the changed entries (design 024 E2)
             JobSpec::Attributes { paths, .. } => {
                 let mut dirs: Vec<std::path::PathBuf> = paths
@@ -363,6 +398,7 @@ impl JobSpec {
                 | JobSpec::DiskUsage { .. }
                 | JobSpec::Count { .. }
                 | JobSpec::Search { .. }
+                | JobSpec::Compare { .. }
                 | JobSpec::Duplicates { .. }
                 | JobSpec::Shell { .. }
         )
@@ -441,6 +477,20 @@ impl JobSpec {
                 out.push(base_dir.clone());
             }
             JobSpec::VerifyChecksums { file } => out.push(file.clone()),
+            JobSpec::Sync {
+                left, right, ops, ..
+            } => {
+                out.push(left.clone());
+                out.push(right.clone());
+                for o in ops {
+                    out.push(o.left.path.clone());
+                    out.push(o.right.path.clone());
+                }
+            }
+            JobSpec::Compare { left, right, .. } => {
+                out.push(left.clone());
+                out.push(right.clone());
+            }
             JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => out.push(path.clone()),
             JobSpec::DiskUsage { roots, .. } => out.extend(roots.iter().cloned()),
             JobSpec::Search { .. }
@@ -460,6 +510,8 @@ impl JobSpec {
             JobSpec::Group { .. } => "group",
             JobSpec::Clean { .. } => "clean",
             JobSpec::Search { .. } => "search",
+            JobSpec::Compare { .. } => "compare",
+            JobSpec::Sync { .. } => "sync",
             JobSpec::Extract { .. } => "extract",
             JobSpec::Pack { .. } => "pack",
             JobSpec::ViewEntry { .. } => "viewEntry",
@@ -512,6 +564,10 @@ impl ConflictDefault {
             ConflictDefault::Rename => Some(Decision::Rename { new_name: None }),
         }
     }
+}
+
+fn trash() -> DeleteMode {
+    DeleteMode::Trash
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -646,6 +702,9 @@ pub struct Summary {
     /// Jobs `checksum` / `verifyChecksums` (design 039).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checksums: Option<checksum::ChecksumSummary>,
+    /// Job `compare` (design 036): the final statistics (`errors` = unreadable entries).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compare: Option<crate::compare::CompareStats>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;
@@ -714,6 +773,12 @@ pub enum JobEvent {
         id: String,
         hits: Vec<SearchHit>,
         stats: SearchStats,
+    },
+    /// A batch of rows of a folder comparison (design 036 E2) with the statistics so far.
+    CompareRows {
+        id: String,
+        rows: Vec<crate::compare::CompareRow>,
+        stats: crate::compare::CompareStats,
     },
     /// Output of a shell command (design 021 E3): cleaned text per stream;
     /// `dropped` = bytes left out by the flood protection since the last event.
