@@ -484,3 +484,33 @@ fn similar_speed() {
     assert_eq!(res.groups.len(), 2);
     assert_eq!(again.groups.len(), 2);
 }
+
+#[test]
+fn a_reference_keeps_only_its_group() {
+    // palette "Find similar files" (design 043 E4)
+    let d = tempfile::tempdir().unwrap();
+    let r = d.path();
+    fs::write(r.join("invoice.pdf"), "invoice bytes").unwrap();
+    fs::write(r.join("invoice copy.pdf"), "invoice bytes").unwrap();
+    fs::write(r.join("other.txt"), "other").unwrap();
+    fs::write(r.join("other copy.txt"), "other").unwrap();
+    let mut c = criteria(r);
+    assert_eq!(run(&c).groups.len(), 2);
+    c.reference = Some(r.join("invoice.pdf").to_string_lossy().into_owned());
+    let mut got = names(&run(&c));
+    got[0].sort();
+    assert_eq!(
+        got,
+        vec![vec![
+            "invoice copy.pdf".to_string(),
+            "invoice.pdf".to_string()
+        ]]
+    );
+    // a reference outside the roots: nothing
+    c.reference = Some("/nowhere/x.pdf".into());
+    assert!(run(&c).groups.is_empty());
+    // a file without copies: nothing
+    fs::write(r.join("alone.bin"), "unique").unwrap();
+    c.reference = Some(r.join("alone.bin").to_string_lossy().into_owned());
+    assert!(run(&c).groups.is_empty());
+}

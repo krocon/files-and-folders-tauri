@@ -158,7 +158,13 @@ export class WorkspaceStore {
   /** Asks a panel to reload its folder. */
   readonly reloadRequest = signal<{ side: Side; seq: number } | null>(null);
   /** Asks a panel to open a folder (menu ▾). */
-  readonly navigateRequest = signal<{ side: Side; path: string | null; seq: number } | null>(null);
+  readonly navigateRequest = signal<{
+    side: Side;
+    path: string | null;
+    /** The cursor goes here once the folder is shown (palette "Go to location", design 043). */
+    cursor?: string | null;
+    seq: number;
+  } | null>(null);
   /** Asks a panel to show the path input (Strg/⌘+L). */
   readonly pathEditRequest = signal<{ side: Side; seq: number } | null>(null);
   /** Asks a panel to open its folder menu ▾ (Alt+F1/F2). */
@@ -312,8 +318,8 @@ export class WorkspaceStore {
     this.focusRequest.set({ side, seq: ++this.seq });
   }
 
-  requestNavigate(side: Side, path: string | null): void {
-    this.navigateRequest.set({ side, path, seq: ++this.seq });
+  requestNavigate(side: Side, path: string | null, cursor: string | null = null): void {
+    this.navigateRequest.set({ side, path, cursor, seq: ++this.seq });
   }
 
   requestPathEdit(side: Side): void {

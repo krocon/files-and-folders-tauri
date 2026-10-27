@@ -63,6 +63,7 @@ pub mod model;
 pub mod mr_import;
 pub mod opener;
 pub mod os_drag;
+pub mod palette;
 pub mod paths;
 pub mod platform;
 pub mod preview;
@@ -131,6 +132,8 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // the palette's name index (design 043): built in the background, memory only
+            palette::init(app.path().home_dir().ok());
             // server connections (design 034): profiles in the config folder, nothing connects yet
             if let Ok(dir) = app.path().app_config_dir() {
                 remote::init(dir, app.path().home_dir().ok().as_deref());
@@ -280,6 +283,12 @@ pub fn run() {
             commands::set_menu_enabled,
             commands::subscribe_menu,
             commands::close_main_window,
+            commands::palette::palette_configure,
+            commands::palette::palette_status,
+            commands::palette::palette_query,
+            commands::palette::palette_cancel,
+            commands::palette::palette_rebuild,
+            commands::palette::palette_clear,
             commands::watch::subscribe_watch,
             commands::watch::watch_dirs,
             commands::watch::describe_paths,

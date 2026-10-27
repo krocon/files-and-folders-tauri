@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   signal,
@@ -34,6 +35,16 @@ import { FileTypesStore } from '../config/file-types.store';
 import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings-logic';
 import { describeSettingsWarning } from './settings-warnings';
 import { SETTINGS_TEXTS } from './settings-texts';
+import { PaletteStore } from '../palette/palette.store';
+
+/** JSON lists of strings edited as text (design 043 E6). */
+/** The index state is read this often while the settings are open. */
+const INDEX_POLL_MS = 1000;
+
+const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
+  'palette.roots',
+  'palette.excludes',
+]);
 
 /**
  * Settings… (Mod+,, design 015 E6): sections as vertical tabs (APG), a search over
@@ -147,6 +158,32 @@ import { SETTINGS_TEXTS } from './settings-texts';
                 </select>
               </label>
             }
+            @case ('lines') {
+              <label class="field">
+                <span>{{ label(key) }}</span>
+                <textarea
+                  rows="3"
+                  spellcheck="false"
+                  [placeholder]="t.linesPlaceholder"
+                  [attr.aria-describedby]="helpId(key)"
+                  [value]="linesOf(key)"
+                  (change)="setLines(key, $event)"
+                ></textarea>
+              </label>
+            }
+            @case ('int') {
+              <label class="field">
+                <span>{{ label(key) }}</span>
+                <input
+                  type="number"
+                  [min]="intRange(key)[0]"
+                  [max]="intRange(key)[1]"
+                  [value]="value(key)"
+                  [attr.aria-describedby]="helpId(key)"
+                  (change)="setInt(key, $event)"
+                />
+              </label>
+            }
             @case ('json') {
               <div class="field">
                 <span>{{ label(key) }}</span>
@@ -206,6 +243,49 @@ import { SETTINGS_TEXTS } from './settings-texts';
                 (click)="actions.resetAllOverrides()"
               >
                 {{ t.resetShortcuts }}
+              </button>
+            </div>
+          }
+          @case ('palette') {
+            <p>{{ t.paletteIntro }}</p>
+            <p role="status">
+              {{ t.indexState[palette.status().state] }}
+              @if (palette.status().state === 'ready') {
+                {{
+                  t.indexInfo(
+                    palette.status().entries,
+                    mb(palette.status().bytes),
+                    mb(palette.status().maxBytes),
+                    palette.status().buildMs
+                  )
+                }}
+              }
+            </p>
+            @if (palette.status().problems.length) {
+              <p class="warn" role="note">{{ t.indexProblems(palette.status().problems) }}</p>
+            }
+            @if (palette.status().truncated) {
+              <p class="warn" role="note">{{ t.indexFull }}</p>
+            }
+            @if (palette.status().state === 'ready' && !palette.status().watching) {
+              <p class="hint">{{ t.indexNotWatching }}</p>
+            }
+            <div class="row">
+              <button
+                type="button"
+                class="btn"
+                [disabled]="!settings.get('palette.index')"
+                (click)="palette.rebuild()"
+              >
+                {{ t.rebuildIndex }}
+              </button>
+              <button
+                type="button"
+                class="btn"
+                [disabled]="palette.status().state === 'off'"
+                (click)="palette.clearIndex()"
+              >
+                {{ t.clearIndex }}
               </button>
             </div>
           }
@@ -354,6 +434,14 @@ export class SettingsDialog {
   private readonly mr = inject(MultiRenameStore);
   private readonly shell = inject(ShellStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly palette = inject(PaletteStore);
+
+  constructor() {
+    // the index state as it is now – and while it is built (design 043 E7)
+    void this.palette.refreshStatus();
+    const timer = setInterval(() => void this.palette.refreshStatus(), INDEX_POLL_MS);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
 
   protected readonly sections = SECTIONS;
   protected readonly allParts = SETTINGS_PARTS;
@@ -429,7 +517,41 @@ export class SettingsDialog {
   }
 
   protected kindOf(key: SettingKey): string {
-    return SCHEMA[key].type;
+    return LINE_LISTS.has(key) ? 'lines' : SCHEMA[key].type;
+  }
+
+  /** A list of strings as one text: folders one per line, names separated by ";". */
+  protected linesOf(key: SettingKey): string {
+    const list = (this.settings.get(key) as readonly unknown[]).filter(
+      (x): x is string => typeof x === 'string',
+    );
+    return list.join(key === 'palette.excludes' ? '; ' : '\n');
+  }
+
+  protected setLines(key: SettingKey, evt: Event): void {
+    const raw = (evt.target as HTMLTextAreaElement).value;
+    const parts = raw
+      .split(key === 'palette.excludes' ? /[;\n]/ : /\n/)
+      .map((x) => x.trim())
+      .filter((x) => x !== '');
+    this.settings.set(key, [...new Set(parts)] as never);
+  }
+
+  protected intRange(key: SettingKey): readonly [number, number] {
+    const spec = SCHEMA[key];
+    return spec.type === 'int' ? [spec.min, spec.max] : [0, 0];
+  }
+
+  protected setInt(key: SettingKey, evt: Event): void {
+    const [min, max] = this.intRange(key);
+    const n = Math.round(Number((evt.target as HTMLInputElement).value));
+    if (Number.isFinite(n)) {
+      this.settings.set(key, Math.min(max, Math.max(min, n)) as never);
+    }
+  }
+
+  protected mb(bytes: number): number {
+    return Math.round(bytes / 2 ** 20);
   }
 
   protected valuesOf(key: SettingKey): readonly string[] {

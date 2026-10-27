@@ -63,6 +63,24 @@
       ]
     },
     {
+      "name": "palette-files",
+      "prelude": false,
+      "mock": {
+        "invoices": true
+      },
+      "steps": [
+        {
+          "action": "OPEN_COMMAND_PALETTE"
+        },
+        {
+          "type": "invoice 2025"
+        },
+        {
+          "wait": 400
+        }
+      ]
+    },
+    {
       "name": "context-menu",
       "steps": [
         {
@@ -749,6 +767,10 @@
       {
         "file": "keyboard.png",
         "scene": "command-palette"
+      },
+      {
+        "file": "palette.png",
+        "scene": "palette-files"
       },
       {
         "file": "actions-menu.png",

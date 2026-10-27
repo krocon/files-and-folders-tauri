@@ -19,6 +19,8 @@ tauri-build = { version = "2.7.3", features = [] }
 flate2 = "1"
 # design 036 E7: NFC keys for the folder comparison – already in the tree (url → idna)
 icu_normalizer = { version = "2.3", default-features = false, features = ["compiled_data"] }
+# design 043: combining marks (Unicode M) like JavaScript's \p{M} – already in the tree (url → idna)
+icu_properties = { version = "2.3", default-features = false, features = ["compiled_data"] }
 notify = "8.2"
 open = "5"
 regex = "1.13"
@@ -35,6 +37,8 @@ sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["aes2
 # tiff) – no system library; HEIC/AVIF are not supported on purpose
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp", "tiff"] }
 md-5 = "0.10"
+# design 043: substring search over a million names per keystroke – already in the tree (regex)
+memchr = "2"
 sha1 = "0.10"
 sha2 = "0.10"
 similar = { version = "2", default-features = false }

@@ -512,6 +512,109 @@
     };
     return { rows, stats };
   }
+  // Scene option `mock.invoices`: invoices in several folders for the palette (design 043)
+  if (cfg.mock?.invoices) {
+    const f = (name, size, modified) => ({
+      name,
+      kind: 'file',
+      targetKind: null,
+      size,
+      modifiedMs: Date.parse(`${modified}Z`),
+      hidden: false,
+      lossyName: false,
+    });
+    const add = (dir, list) => (dirs[dir] = [...(dirs[dir] ?? []), ...list]);
+    add(`${home}/Documents/Invoices`, [
+      f('Invoice-0816.pdf', 176 * 1024, '2025-04-02T09:41:00'),
+      f('Invoice-0901 2025 hosting.pdf', 96 * 1024, '2025-11-30T18:20:00'),
+      f('Invoice-0702.pdf', 160 * 1024, '2024-12-01T08:00:00'),
+    ]);
+    add(`${home}/Documents/Taxes 2025`, [
+      f('Invoice-0815.pdf', 182 * 1024, '2025-03-14T10:02:00'),
+      f('Invoices 2025.xlsx', 48 * 1024, '2026-01-12T20:15:00'),
+      f('Receipts.pdf', 2 * 1024 * 1024, '2026-01-12T20:20:00'),
+    ]);
+    add(`${home}/Downloads`, [f('invoice_2025_03.pdf', 212 * 1024, '2025-03-31T07:58:00')]);
+    add(`${home}/Projects/website`, [f('invoice-template-2025.html', 12 * 1024, '2025-02-02T12:00:00')]);
+  }
+
+  // ---- the universal palette (design 043): a query walks the demo tree --------------------
+  const foldText = (t) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  let paletteNo = 0;
+  function paletteQuery(a) {
+    const channel = a?.onEvent;
+    const id = ++paletteNo;
+    const text = (a?.request?.text ?? '').trim();
+    const terms = text.split(/\s+/).filter((w) => w && !w.includes(':') && !w.startsWith('>')).map(foldText);
+    let index = 0;
+    const emit = (message) => channel && window.__TAURI_INTERNALS__.runCallback(channel.id, { index: index++, message });
+    setTimeout(() => {
+      const hits = [];
+      if (terms.length && !text.startsWith('>')) {
+        const visit = (dir, above) => {
+          for (const e of entriesOf(dir)) {
+            if (e.hidden) continue;
+            const name = foldText(e.name);
+            const path = [...above, name];
+            if (terms.every((t) => path.some((p) => p.includes(t)))) {
+              const ranges = [];
+              let score = 0;
+              for (const t of terms) {
+                const at = name.indexOf(t);
+                if (at >= 0) {
+                  ranges.push([at, at + t.length]);
+                  score += at === 0 ? 140 : 100;
+                } else score += 10;
+              }
+              ranges.sort((x, y) => x[0] - y[0]);
+              hits.push({
+                ...e,
+                dir,
+                relDir: '',
+                parentNames: [nameOf(dir), '', ''],
+                score: score - above.length * 2,
+                source: 'index',
+                ranges,
+              });
+            }
+            if (e.kind === 'directory') visit(e.path, path);
+          }
+        };
+        visit(home, []);
+        hits.sort((x, y) => y.score - x.score);
+        if (hits.length) emit({ type: 'hits', id, hits: hits.slice(0, 300) });
+      }
+      emit({
+        type: 'done',
+        id,
+        stats: {
+          matched: hits.length,
+          sent: hits.length,
+          scanned: 1234,
+          elapsedMs: 4,
+          firstHitMs: 3,
+          truncated: false,
+          liveExhausted: false,
+          index: 'ready',
+          stale: 0,
+        },
+      });
+    }, 0);
+    return id;
+  }
+  const paletteStatus = () => ({
+    state: 'ready',
+    entries: 412873,
+    dirs: 21544,
+    bytes: 21 * 1024 * 1024,
+    maxBytes: 256 * 1024 * 1024,
+    truncated: false,
+    watching: true,
+    builtAtMs: Date.parse('2026-10-27T08:00:00Z'),
+    buildMs: 3400,
+    roots: [home],
+    systemAvailable: false,
+  });
 
   /** Duplicates of the demo tree: files of the same size (the mock has no contents). */
   function duplicateHits(c) {
@@ -972,6 +1075,12 @@
       return { rows, ok, unchanged: rows.length - ok, errors: 0 };
     },
     load_shell_history: () => ['git status', 'pnpm check', 'ls -la'],
+    palette_configure: paletteStatus,
+    palette_status: paletteStatus,
+    palette_query: paletteQuery,
+    palette_cancel: () => null,
+    palette_rebuild: paletteStatus,
+    palette_clear: paletteStatus,
     subscribe_jobs: (a) => {
       jobChannel = a?.onEvent ?? null;
       if (cfg.mock?.conflict) return [conflictJob()];

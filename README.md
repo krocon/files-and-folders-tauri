@@ -32,23 +32,24 @@ once, find duplicates, look into archives and servers – without reaching for t
 
 1. [Two panels, tabs everywhere](#two-panels-tabs-everywhere)
 2. [Keyboard first – every function is one keystroke away](#keyboard-first)
-3. [Jobs in the background](#jobs-in-the-background)
-4. [Safe by default](#safe-by-default)
-5. [Multi rename with preview and undo](#multi-rename-with-preview-and-undo)
-6. [Search into a tab](#search-into-a-tab)
-7. [Flat view](#flat-view)
-8. [Duplicates and similar images](#duplicates-and-similar-images)
-9. [Disk usage](#disk-usage)
-10. [Archives as folders](#archives-as-folders)
-11. [FTP, FTPS and SFTP servers](#ftp-ftps-and-sftp-servers)
-12. [Viewer and quick view](#viewer-and-quick-view)
-13. [Compare files](#compare-files)
-14. [Compare and synchronise folders](#compare-and-synchronise-folders)
-15. [Group files and clean folders](#group-files-and-clean-folders)
-16. [Shell line](#shell-line)
-17. [Starter menu](#starter-menu)
-18. [Colour schemes](#colour-schemes)
-19. [And more](#and-more)
+3. [Find anything from the Command Palette](#find-anything-from-the-command-palette)
+4. [Jobs in the background](#jobs-in-the-background)
+5. [Safe by default](#safe-by-default)
+6. [Multi rename with preview and undo](#multi-rename-with-preview-and-undo)
+7. [Search into a tab](#search-into-a-tab)
+8. [Flat view](#flat-view)
+9. [Duplicates and similar images](#duplicates-and-similar-images)
+10. [Disk usage](#disk-usage)
+11. [Archives as folders](#archives-as-folders)
+12. [FTP, FTPS and SFTP servers](#ftp-ftps-and-sftp-servers)
+13. [Viewer and quick view](#viewer-and-quick-view)
+14. [Compare files](#compare-files)
+15. [Compare and synchronise folders](#compare-and-synchronise-folders)
+16. [Group files and clean folders](#group-files-and-clean-folders)
+17. [Shell line](#shell-line)
+18. [Starter menu](#starter-menu)
+19. [Colour schemes](#colour-schemes)
+20. [And more](#and-more)
 
 Shortcuts are written *Windows/Linux · macOS*. All of them can be changed.
 
@@ -72,7 +73,7 @@ The *Command Palette* finds any action by name and shows its shortcut, so you le
 `Ctrl+Shift+P` palette · `Ctrl+F12` actions menu · `Ctrl+Shift+K` shortcuts ·
 macOS: `⌘⇧P` · `⌃K ⌃M` · `⌘⇧K`
 
-![The Command Palette: typing "co" lists Copy, Connect to server, Colour schemes … with their shortcuts](docs/screenshots/readme/keyboard.png)
+![The Command Palette: typing "co" lists Copy, Connect to server … with their shortcuts, then matching folders](docs/screenshots/readme/keyboard.png)
 
 <details>
 <summary>The <i>Actions</i> menu – every action in four columns</summary>
@@ -80,6 +81,22 @@ macOS: `⌘⇧P` · `⌃K ⌃M` · `⌘⇧K`
 ![The Actions menu: every action grouped in four columns with its keyboard shortcut](docs/screenshots/readme/actions-menu.png)
 
 </details>
+
+## Find anything from the Command Palette
+
+**Type `invoice 2025` – files from all your folders, actions and folders in one list, and act on a hit at once.**
+The palette searches a name index that is built in the background and kept up to date (only names, sizes and dates, only
+in memory – about 50 MB per million files), plus your tabs, favourites and recent folders directly. Every word must
+appear in the name or a folder above it; case and accents don't matter. Narrow it down with `ext:pdf`, `in:Projects`,
+`size>10m`, `modified:2025` or `is:dir`; `>` lists only actions, `~/` completes a path. On a hit, the keys you know
+work: `Enter` opens, `F3` shows a preview beside the list, `F5`/`F6` open the copy/move dialog with the other side as
+target, `Shift+F6` renames; `Tab` shows everything else – go to its location, find similar files, analyse the parent
+folder, show all hits in a result tab.
+
+`Ctrl+Shift+P` palette · `Tab` actions on the hit · `Insert` mark several ·
+macOS: `⌘⇧P` · `Tab` · `Insert`
+
+![The Command Palette for "invoice 2025": five files from Downloads, Documents and Projects, the words highlighted](docs/screenshots/readme/palette.png)
 
 ## Jobs in the background
 
@@ -336,6 +353,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Delete (trash) / delete permanently | `F8` / `Shift+F8` | `F8`, `⌘⌫` / `⌘⌥⌫` |
 | Rename in list / dialog | `F2` / `Shift+F6` | `F2` / `⇧F6` |
 | Multi rename | `Ctrl+M` | `⌘F6` |
+| Command palette – actions, folders and files | `Ctrl+Shift+P` | `⌘⇧P` |
 | Find | `Alt+F7` | `⌥F7` |
 | Find folder (change dir) | `Alt+F10` | `⌥F10` |
 | Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S` | `⇧F2` / `⌘⇧S` |

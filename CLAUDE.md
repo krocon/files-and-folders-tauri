@@ -44,12 +44,13 @@
   Regel-Engine, Job `dedupe`, ähnliche Bilder/Comics per pHash) und Prompt 044 (README je Feature mit Norton-Bild,
   Werbeseite `site/` für krocon.de/products/fnf) und Prompt 036 (Ordner vergleichen Shift+F2 / synchronisieren: Jobs
   `compare`/`sync`) und Prompt 035 (Archive bearbeiten: ZIP/TAR/TAR.GZ hineinkopieren,
-  löschen, Ordner anlegen – Jobs `archiveAdd`/`archiveDelete`/`archiveMkdir`, `archive/write.rs`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041, 043
+  löschen, Ordner anlegen – Jobs `archiveAdd`/`archiveDelete`/`archiveMkdir`, `archive/write.rs`) und Prompt 043 (Command Palette universell: Namensindex im Speicher,
+  Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042, 044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -155,6 +156,12 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/actions/          Aktionskatalog, Kürzel-Notation, Keymaps je OS (JSON), ActionService, KeyboardDispatcher,
                              KeymapApi (invoke load/save_keymap_override)
   app/features/actions/      Befehlspalette, Markier-Dialog, Kürzel-Dialog, Actions-Menü, Workspace-Aktionen
+  app/core/palette/          PaletteApi (palette_query mit eigener Channel, configure/status/rebuild/clear), DTOs (043)
+  app/features/palette/      PaletteStore (Root: Anfrage je Taste, veraltete verwerfen, Markierte, Vorschau, Treffer-
+                             Aktionen über die normalen Dialoge), palette-query.ts (rein, Katalog palette-query.cases.json
+                             mit Rust), palette-logic.ts (rein: Gruppen, Fenster der virtuellen Liste), palette-actions.ts
+                             (`PALETTE_*`, Tasten = Panel-Aktionen über `HIT_ACTIONS.via`); die Palette selbst bleibt
+                             `features/actions/command-palette.ts`
   app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
   app/core/shell/            ShellApi (nur `run_shell`, einziger Importeur: ShellBar), ShellSupportApi (Quotieren, Verlauf)
   app/features/shell/        ShellStore (Root: Sichtbarkeit, Verlauf, laufender Job, Ausgabepuffer), ShellBar (Zeile 5,
@@ -239,7 +246,10 @@ src-tauri/                   Rust (Tauri 2)
                              je Kopie, Papierkorb/endgültig/verschieben); Commands `commands/duplicates.rs`
   src/compare/               Ordner vergleichen (036): Paarung NFC/Groß-klein, Status, Preorder-Durchlauf, `check_physical`;
                              Jobs `jobs/compare.rs` (Zeilen als `compareRows`), `jobs/sync.rs` (Prüfungen je Schritt,
-                             `copy::run_targets`); Frontend core/sync/, features/sync/ (quick-compare.ts, sync-logic.ts rein)
+                             `copy::run_targets`); Frontend core/sync/, features/sync/ (quick-compare.ts, sync-logic.ts rein)  src/palette/               Universelle Palette (043): query.rs (Abfragesprache, Falten, Rang), index.rs (Namensindex im
+                             Speicher, parallele Arrays, Grenze in MB, apply_dir), live.rs (bekannte Orte, begrenzt),
+                             system.rs (mdfind/plocate optional, feste Argumente), mod.rs (Hub: Worker, Watcher, Anfragen
+                             mit Abbruch); Commands `commands/palette.rs`
   src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)

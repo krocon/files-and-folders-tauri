@@ -78,6 +78,8 @@ import { registerThemeActions } from '../themes/theme-actions';
 import { ThemeDialog } from '../themes/theme-dialog';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
+import { registerPaletteActions } from '../palette/palette-actions';
+import { PaletteStore } from '../palette/palette.store';
 import { registerOsActions } from '../osintegration/os-actions';
 import { ShellBar } from '../shell/shell-bar';
 import { registerShellActions } from '../shell/shell-actions';
@@ -210,6 +212,8 @@ export class Workspace implements OnInit {
   private readonly attrs = inject(AttributesStore);
   private readonly find = inject(FindStore);
   private readonly search = inject(SearchStore);
+  /** Created at the start: it sends the palette settings to Rust (index build, design 043). */
+  private readonly palette = inject(PaletteStore);
   private readonly finder = inject(FolderFinderStore);
   private readonly archive = inject(ArchiveStore);
   private readonly dup = inject(DuplicatesStore);
@@ -353,6 +357,7 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerFlatActions(this.actions, this.ws));
+    this.destroyRef.onDestroy(registerPaletteActions(this.actions, this.palette, this.dialogs));
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
     this.destroyRef.onDestroy(
       registerDiskUsageActions(this.actions, this.ws, this.diskUsage, this.jobs, this.settings),

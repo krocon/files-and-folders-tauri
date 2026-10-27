@@ -7,6 +7,7 @@ export type SectionId =
   | 'view'
   | 'behavior'
   | 'shell'
+  | 'palette'
   | 'keyboard'
   | 'tools'
   | 'colors'
@@ -51,6 +52,18 @@ export const SECTIONS: readonly Section[] = [
     ],
   },
   { id: 'shell', keys: ['shell.enabled', 'shell.loginPath', 'shell.windowsShell'] },
+  {
+    id: 'palette',
+    keys: [
+      'palette.index',
+      'palette.roots',
+      'palette.excludes',
+      'palette.maxMemoryMb',
+      'palette.includeHidden',
+      'palette.systemSearch',
+      'palette.maxHits',
+    ],
+  },
   { id: 'keyboard', keys: [] },
   { id: 'tools', keys: [] },
   { id: 'colors', keys: [] },

@@ -19,6 +19,7 @@ export const SETTINGS_EN = {
     view: 'View',
     behavior: 'Behaviour',
     shell: 'Shell',
+    palette: 'Palette & index',
     keyboard: 'Keyboard',
     tools: 'Tools',
     colors: 'Colours',
@@ -146,6 +147,41 @@ export const SETTINGS_EN = {
       help: 'Group files, Clean folders, Create several folders and Create checksums open with the values of their last run.',
       keywords: 'remember last inputs dialog group clean folders mkdir template',
     },
+    'palette.index': {
+      label: 'Name index for the palette',
+      help: 'Names, sizes and dates of the entries below the search folders, built in the background and kept up to date – only in memory, never on disk, no file contents. Off: the palette searches the folders directly (slower).',
+      keywords: 'palette index search find files everything quick open',
+    },
+    'palette.roots': {
+      label: 'Search folders',
+      help: 'One folder per line; empty = the home folder. Server and archive folders are searched only when listed here (directly, not indexed).',
+      keywords: 'palette index roots folders search where',
+    },
+    'palette.excludes': {
+      label: 'Skipped names',
+      help: 'Names or patterns separated by ";" – such files and folders are not indexed or searched (e.g. node_modules; .git; *.tmp).',
+      keywords: 'palette index exclude skip ignore node_modules git',
+    },
+    'palette.maxMemoryMb': {
+      label: 'Index memory (MB)',
+      help: 'Upper limit of the index in memory (about 50 MB per million entries). When full, the rest is searched directly.',
+      keywords: 'palette index memory ram limit size megabytes',
+    },
+    'palette.includeHidden': {
+      label: 'Hidden entries in the palette',
+      help: 'Dot files and hidden folders are indexed and found as well.',
+      keywords: 'palette hidden dot files index',
+    },
+    'palette.systemSearch': {
+      label: 'Use the system search',
+      help: 'Also asks Spotlight (macOS) or plocate/locate (Linux); every result is checked. Not available on Windows.',
+      keywords: 'palette spotlight mdfind locate plocate system search',
+    },
+    'palette.maxHits': {
+      label: 'Hits per query',
+      help: 'At most this many files and folders per query (memory per query stays small).',
+      keywords: 'palette hits limit results count',
+    },
   },
   values: {
     system: 'System',
@@ -173,6 +209,23 @@ export const SETTINGS_EN = {
   on: 'On',
   clearRecent: 'Clear',
   shellIntro: 'The shell history is kept in shell-history.json in the app folder (100 commands).',
+  paletteIntro:
+    'The Command Palette (Mod+Shift+P) finds actions, folders and files. The index lives only in memory and goes with the app.',
+  indexState: {
+    off: 'The index is off.',
+    waiting: 'The index starts in a moment.',
+    building: 'The index is being built…',
+    ready: 'The index is ready.',
+  } as Readonly<Record<string, string>>,
+  indexInfo: (entries: number, mb: number, max: number, ms: number) =>
+    `${entries.toLocaleString()} entries, ${mb} of ${max} MB, built in ${(ms / 1000).toFixed(1)} s`,
+  indexFull: 'Memory limit reached: not every entry is in the index.',
+  indexProblems: (list: readonly string[]) =>
+    `Left out (not a usable folder or pattern): ${list.join(', ')}`,
+  indexNotWatching: 'Changes are not watched (too many folders) – the index is renewed every hour.',
+  rebuildIndex: 'Build again',
+  clearIndex: 'Remove from memory',
+  linesPlaceholder: 'One per line',
   clearShellHistory: 'Clear shell history',
   shellHistoryCleared: 'The shell history was cleared.',
   recentCount: (n: number) => (n === 1 ? '1 search remembered' : `${n} searches remembered`),
@@ -276,6 +329,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     view: 'Ansicht',
     behavior: 'Verhalten',
     shell: 'Shell',
+    palette: 'Palette & Index',
     keyboard: 'Tastatur',
     tools: 'Tools',
     colors: 'Farben',
@@ -403,6 +457,41 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Dateien gruppieren, Ordner aufräumen, Mehrere Ordner anlegen und Prüfsummen erzeugen öffnen mit den Werten ihres letzten Laufs.',
       keywords: 'merken letzte eingaben dialog gruppieren aufräumen ordner anlegen vorlage',
     },
+    'palette.index': {
+      label: 'Namensindex für die Palette',
+      help: 'Namen, Größen und Daten der Einträge unter den Suchordnern, im Hintergrund aufgebaut und aktuell gehalten – nur im Speicher, nie auf der Platte, keine Dateiinhalte. Aus: Die Palette durchsucht die Ordner direkt (langsamer).',
+      keywords: 'palette index suche finden dateien schnell öffnen',
+    },
+    'palette.roots': {
+      label: 'Suchordner',
+      help: 'Ein Ordner je Zeile; leer = der Home-Ordner. Server- und Archivordner werden nur durchsucht, wenn sie hier stehen (direkt, nicht im Index).',
+      keywords: 'palette index wurzeln ordner suche wo',
+    },
+    'palette.excludes': {
+      label: 'Übersprungene Namen',
+      help: 'Namen oder Muster, getrennt durch „;“ – solche Dateien und Ordner werden weder indiziert noch durchsucht (z. B. node_modules; .git; *.tmp).',
+      keywords: 'palette index ausschließen überspringen ignorieren node_modules git',
+    },
+    'palette.maxMemoryMb': {
+      label: 'Speicher des Index (MB)',
+      help: 'Obergrenze des Index im Speicher (etwa 50 MB je Million Einträge). Ist er voll, wird der Rest direkt durchsucht.',
+      keywords: 'palette index speicher ram grenze größe megabyte',
+    },
+    'palette.includeHidden': {
+      label: 'Versteckte Einträge in der Palette',
+      help: 'Punkt-Dateien und versteckte Ordner werden mit indiziert und gefunden.',
+      keywords: 'palette versteckt punkt dateien index',
+    },
+    'palette.systemSearch': {
+      label: 'Systemsuche mitbenutzen',
+      help: 'Fragt zusätzlich Spotlight (macOS) oder plocate/locate (Linux); jedes Ergebnis wird geprüft. Unter Windows nicht verfügbar.',
+      keywords: 'palette spotlight mdfind locate plocate systemsuche',
+    },
+    'palette.maxHits': {
+      label: 'Treffer je Anfrage',
+      help: 'Höchstens so viele Dateien und Ordner je Anfrage (der Speicher je Anfrage bleibt klein).',
+      keywords: 'palette treffer grenze ergebnisse anzahl',
+    },
   },
   values: {
     system: 'System',
@@ -430,6 +519,24 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   on: 'An',
   clearRecent: 'Leeren',
   shellIntro: 'Der Shell-Verlauf liegt in shell-history.json im App-Ordner (100 Befehle).',
+  paletteIntro:
+    'Die Befehlspalette (Mod+Umschalt+P) findet Aktionen, Ordner und Dateien. Der Index liegt nur im Speicher und endet mit der App.',
+  indexState: {
+    off: 'Der Index ist aus.',
+    waiting: 'Der Index startet gleich.',
+    building: 'Der Index wird aufgebaut…',
+    ready: 'Der Index ist bereit.',
+  },
+  indexInfo: (entries, mb, max, ms) =>
+    `${entries.toLocaleString('de-DE')} Einträge, ${mb} von ${max} MB, aufgebaut in ${(ms / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`,
+  indexFull: 'Speichergrenze erreicht: Nicht jeder Eintrag ist im Index.',
+  indexProblems: (list) =>
+    `Ausgelassen (kein nutzbarer Ordner oder kein Muster): ${list.join(', ')}`,
+  indexNotWatching:
+    'Änderungen werden nicht überwacht (zu viele Ordner) – der Index wird stündlich erneuert.',
+  rebuildIndex: 'Neu aufbauen',
+  clearIndex: 'Aus dem Speicher entfernen',
+  linesPlaceholder: 'Eine je Zeile',
   clearShellHistory: 'Shell-Verlauf leeren',
   shellHistoryCleared: 'Der Shell-Verlauf wurde geleert.',
   recentCount: (n) => (n === 1 ? '1 Suche gemerkt' : `${n} Suchen gemerkt`),

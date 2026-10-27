@@ -77,14 +77,17 @@ describe('CommandPalette', () => {
 
   it('marks actions of later prompts and moves with the arrow keys', async () => {
     const { el, type, key, input } = await render();
-    type('copy');
+    type('copy…');
     const copy = [...el.querySelectorAll('[role="option"]')].find((o) =>
       o.textContent?.includes('Copy…'),
     )!;
     expect(copy.getAttribute('aria-disabled')).toBe('true');
     expect(copy.textContent).toContain('prompt 006');
-    key('ArrowDown');
+    // a strong action match: the group "Actions" comes first, its header is row 0
+    expect(el.querySelector('.head')?.textContent).toContain('Actions');
     expect(input.getAttribute('aria-activedescendant')).toMatch(/-1$/);
+    key('ArrowDown');
+    expect(input.getAttribute('aria-activedescendant')).toMatch(/-2$/);
   });
 
   it('lists known folders (tabs, histories, favourites, recent) and opens one in the active panel (018 J9)', async () => {

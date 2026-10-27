@@ -103,6 +103,8 @@ export interface DuplicateCriteria {
   readonly paranoid?: boolean;
   /** Similar images/comics: differing bits allowed (0–16, default 8). */
   readonly threshold?: number | null;
+  /** Only the group of this file (palette "Find similar files", design 043 E4). */
+  readonly reference?: string | null;
 }
 
 export interface SearchStats {

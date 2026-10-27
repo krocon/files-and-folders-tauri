@@ -126,6 +126,17 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_TASK_DLG: 'Tasks…',
   OPEN_ABOUT_DLG: 'Über…',
   QUIT_APP: 'Beenden',
+  PALETTE_OPEN_HIT: 'Treffer öffnen',
+  PALETTE_PREVIEW_HIT: 'Vorschau des Treffers',
+  PALETTE_REVEAL_HIT: 'Zum Speicherort des Treffers',
+  PALETTE_REVEAL_IN_NEW_TAB: 'Zum Speicherort des Treffers im neuen Tab',
+  PALETTE_COPY_HIT: 'Treffer in die andere Seite kopieren…',
+  PALETTE_MOVE_HIT: 'Treffer in die andere Seite verschieben…',
+  PALETTE_RENAME_HIT: 'Treffer umbenennen…',
+  PALETTE_SIMILAR_HIT: 'Ähnliche Dateien finden',
+  PALETTE_ANALYZE_PARENT: 'Übergeordneten Ordner analysieren',
+  PALETTE_MARK_HIT: 'Treffer markieren',
+  PALETTE_RESULTS_TAB: 'Alle Treffer als Ergebnis-Tab',
 };
 
 export const CATEGORY_LABELS_DE: Readonly<Record<ActionCategory, string>> = {

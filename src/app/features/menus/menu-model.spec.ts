@@ -1,4 +1,5 @@
 import { afterEach } from 'vitest';
+import { HIT_ACTION_IDS } from '../palette/palette-actions';
 import { setLanguage } from '../../core/i18n/i18n';
 import { MENU_TEXTS } from './menu-texts';
 import { ACTION_IDS, ActionId } from '../../core/actions/action-catalog';
@@ -69,6 +70,8 @@ describe('menu model', () => {
       'OPEN_ACTIONS_MENU',
       // the starter menu itself (Alt+S) is the menu "Start" (design 032)
       'OPEN_STARTER_MENU',
+      // the actions on palette hits work only in the palette (design 043 E4)
+      ...HIT_ACTION_IDS,
     ];
     const missing = ACTION_IDS.filter((id) => !inBar.has(id) && !keysOnly.includes(id));
     expect(missing).toEqual([]);
