@@ -230,6 +230,16 @@ describe('sync logic (design 036 E3)', () => {
     ]);
   });
 
+  it('a folder with unseen content is not suggested for deleting, its content is', () => {
+    const rows = [
+      { ...row('proj', 'onlyRight', { dir: true }), complete: false },
+      row('proj/a', 'onlyRight', { depth: 1 }),
+    ];
+    const t = buildTree(rows);
+    expect([...t.whole]).toEqual([0, 1]);
+    expect(defaultActions(t, 'leftToRight', true)).toEqual(['none', 'deleteRight']);
+  });
+
   it('lossy names allow nothing', () => {
     const r = row('x', 'onlyLeft');
     expect(allowedActions({ ...r, left: { ...r.left!, lossy: true } })).toEqual(['none']);

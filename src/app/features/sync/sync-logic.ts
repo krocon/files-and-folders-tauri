@@ -121,6 +121,8 @@ export interface Tree {
    * is cut off.
    */
   readonly noDelete: Uint8Array;
+  /** 1 = the row and everything below it were seen completely (`CompareRow.complete`). */
+  readonly whole: Uint8Array;
 }
 
 /** `noDeleteAtAll`: the compared folders could not be read completely, or the list is cut off. */
@@ -143,7 +145,16 @@ export function buildTree(rows: readonly CompareRow[], noDeleteAtAll = false): T
   while (stack.length > 0) {
     end[stack.pop()!] = n;
   }
-  return { rows, parent, end, noDelete };
+  const whole = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    whole[i] = rows[i].complete ? 1 : 0;
+  }
+  for (let i = n - 1; i >= 0; i--) {
+    if (whole[i] === 0 && parent[i] >= 0) {
+      whole[parent[i]] = 0;
+    }
+  }
+  return { rows, parent, end, noDelete, whole };
 }
 
 /** The actions row `i` of `tree` allows. */
@@ -157,10 +168,15 @@ export function defaultActions(tree: Tree, mode: SyncMode, mirror: boolean): Row
     const a = defaultAction(r, mode, mirror);
     return allowedAt(tree, i).includes(a) ? a : 'none';
   });
-  // a suggested delete of a folder takes its content with it (coupling, E3)
+  // a suggested delete of a folder takes its content with it (coupling, E3); a folder that
+  // holds something the comparison did not show is not suggested itself – Rust would keep it
   for (let i = 0; i < rows.length; i++) {
     if (out[i] === 'deleteLeft' || out[i] === 'deleteRight') {
       cascadeDelete(tree, out, i);
+      if (tree.whole[i] === 0) {
+        out[i] = 'none';
+        continue; // its children keep the delete, each on its own
+      }
       i = tree.end[i] - 1;
     }
   }
