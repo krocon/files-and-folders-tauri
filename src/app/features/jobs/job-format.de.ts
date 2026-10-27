@@ -121,6 +121,9 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
       }`,
     checksum: (what, algo) => `${algo}-Prüfsummen von ${what}`,
     verifyChecksums: (file) => `Prüfsummen prüfen: ${file}`,
+    compare: (left, right) => `Vergleichen ${left} ↔ ${right}`,
+    sync: (left, right, n) =>
+      `Synchronisieren ${left} ↔ ${right} (${n === 1 ? '1 Operation' : `${n} Operationen`})`,
     count: (what) => `${what} zählen`,
     dirSize: (path) => `Ordnergröße von ${path}`,
     diskUsage: (what, rescan) =>

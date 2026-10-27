@@ -134,6 +134,9 @@ export const JOB_EN = {
       }`,
     checksum: (what: string, algo: string) => `${algo} checksums of ${what}`,
     verifyChecksums: (file: string) => `Verify checksums of ${file}`,
+    compare: (left: string, right: string) => `Compare ${left} ↔ ${right}`,
+    sync: (left: string, right: string, n: number) =>
+      `Synchronise ${left} ↔ ${right} (${n === 1 ? '1 operation' : `${n} operations`})`,
     count: (what: string) => `Count ${what}`,
     dirSize: (path: string) => `Folder size of ${path}`,
     diskUsage: (what: string, rescan: boolean) =>
@@ -214,6 +217,10 @@ export function jobTitle(job: JobInfo): string {
     }
     case 'verifyChecksums':
       return t.verifyChecksums(spec.file);
+    case 'compare':
+      return t.compare(spec.left, spec.right);
+    case 'sync':
+      return t.sync(spec.left, spec.right, spec.ops.length);
     case 'count':
       return t.count(spec.paths.length === 1 ? spec.paths[0] : t.entries(spec.paths.length));
     case 'dirSize':

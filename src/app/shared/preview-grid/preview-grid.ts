@@ -112,8 +112,8 @@ export class PreviewGrid<T extends object> implements OnInit {
   readonly labelledBy = input<string | null>(null);
   /** Highlighted row (a list driven from an input field, design 009 folder finder); -1 = none. */
   readonly activeIndex = input<number>(-1);
-  /** Click on a body row (displayed index). */
-  readonly rowClick = output<{ index: number; clickCount: number }>();
+  /** Click on a body row (displayed index) and the `property` of the clicked column. */
+  readonly rowClick = output<{ index: number; clickCount: number; column: string | null }>();
 
   protected options: TableOptionsIf = new TableOptions();
   protected model: TableModelIf | null = null;
@@ -130,7 +130,11 @@ export class PreviewGrid<T extends object> implements OnInit {
       const unsubscribe = api.subscribe({
         onMouseClicked: (evt) => {
           if (evt.areaIdent === 'body' && evt.rowIndex >= 0) {
-            this.rowClick.emit({ index: evt.rowIndex, clickCount: evt.clickCount });
+            this.rowClick.emit({
+              index: evt.rowIndex,
+              clickCount: evt.clickCount,
+              column: this.columns()[evt.columnIndex]?.property ?? null,
+            });
           }
         },
       });

@@ -121,6 +121,9 @@ pub struct CompareRow {
     pub depth: u32,
     pub left: Option<CompareSide>,
     pub right: Option<CompareSide>,
+    /// Where the entry is – or would be after a copy – on each side (Rust builds every path).
+    pub left_path: String,
+    pub right_path: String,
     pub status: CompareStatus,
     /// The content was compared (byte-wise).
     pub content_checked: bool,
@@ -417,6 +420,8 @@ type Pair = (Option<Entry>, Option<Entry>);
 /// A folder to walk: its two sides (one may be missing), relative path and depth.
 struct Frame {
     pairs: std::vec::IntoIter<Pair>,
+    ldir: PathBuf,
+    rdir: PathBuf,
     rel: String,
     depth: u32,
 }
@@ -525,6 +530,8 @@ impl Compiled {
         stats.dirs += 1;
         let mut stack = vec![Frame {
             pairs: self.pair(l, r).into_iter(),
+            ldir: self.left.clone(),
+            rdir: self.right.clone(),
             rel: String::new(),
             depth: 0,
         }];
@@ -538,6 +545,15 @@ impl Compiled {
                 continue;
             };
             let depth = frame.depth;
+            let other = |e: &Option<Entry>, o: &Option<Entry>, dir: &Path| -> PathBuf {
+                match (e, o) {
+                    (Some(e), _) => e.path.clone(),
+                    (None, Some(o)) => dir.join(&o.name),
+                    (None, None) => dir.to_path_buf(),
+                }
+            };
+            let lpath = other(&le, &re, &frame.ldir);
+            let rpath = other(&re, &le, &frame.rdir);
             let name = le
                 .as_ref()
                 .or(re.as_ref())
@@ -582,6 +598,8 @@ impl Compiled {
                 depth,
                 left: le.as_ref().map(Entry::side),
                 right: re.as_ref().map(Entry::side),
+                left_path: lpath.to_string_lossy().into_owned(),
+                right_path: rpath.to_string_lossy().into_owned(),
                 status,
                 content_checked,
             };
@@ -609,6 +627,8 @@ impl Compiled {
                 sink(None, &stats);
                 stack.push(Frame {
                     pairs: pairs.into_iter(),
+                    ldir: lpath,
+                    rdir: rpath,
                     rel,
                     depth: depth + 1,
                 });

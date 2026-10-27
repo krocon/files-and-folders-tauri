@@ -9,6 +9,7 @@ import { RenameItem } from '../rename/rename.models';
 import { ApplyTo, AttrChange } from '../attributes/attributes.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 import { ChecksumAlgo, ChecksumOutput, ChecksumSummary } from '../checksum/checksum.models';
+import { CompareOptions, CompareRow, CompareStats, SyncOp } from '../sync/sync.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -194,6 +195,21 @@ export type JobSpec =
       readonly recursive?: boolean;
       readonly applyTo?: ApplyTo;
     }
+  /** Compare two folder trees (design 036); rows come as `compareRows` events. */
+  | {
+      readonly kind: 'compare';
+      readonly left: string;
+      readonly right: string;
+      readonly options?: Partial<CompareOptions>;
+    }
+  /** Execute the actions chosen in a comparison (design 036 E4). */
+  | {
+      readonly kind: 'sync';
+      readonly left: string;
+      readonly right: string;
+      readonly ops: readonly SyncOp[];
+      readonly deleteMode?: DeleteMode;
+    }
   /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
   | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 
@@ -285,6 +301,8 @@ export interface Summary {
   readonly diskUsage?: DiskUsageSummary | null;
   /** Jobs `checksum` / `verifyChecksums` (design 039). */
   readonly checksums?: ChecksumSummary | null;
+  /** Job `compare` (design 036): the final statistics. */
+  readonly compare?: CompareStats | null;
 }
 
 /** What "Start now" did (Rust `jobs::manager::StartNow`). */
@@ -328,6 +346,12 @@ export type JobEvent =
       readonly id: string;
       readonly hits: readonly SearchHit[];
       readonly stats: SearchStats;
+    }
+  | {
+      readonly type: 'compareRows';
+      readonly id: string;
+      readonly rows: readonly CompareRow[];
+      readonly stats: CompareStats;
     }
   | {
       readonly type: 'shellOutput';

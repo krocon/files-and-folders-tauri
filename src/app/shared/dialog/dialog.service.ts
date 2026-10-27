@@ -40,7 +40,8 @@ export type DialogKind =
   | 'remote-prompt'
   | 'checksum'
   | 'checksum-result'
-  | 'diff';
+  | 'diff'
+  | 'sync';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

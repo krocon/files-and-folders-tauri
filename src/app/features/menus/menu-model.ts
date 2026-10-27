@@ -149,6 +149,8 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_UNPACK_DLG',
       'OPEN_FIND_DUPLICATES_DLG',
       'COMPARE_FILES',
+      'COMPARE_DIRS',
+      'OPEN_SYNC_DIRS_DLG',
       'OPEN_CHECKSUM_CREATE_DLG',
       'CHECKSUM_VERIFY',
       'COPY_CHECKSUM',

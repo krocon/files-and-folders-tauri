@@ -95,21 +95,16 @@ fn seen_of(side: &Option<CompareSide>) -> Option<Seen> {
     })
 }
 
-/// The op for a row: the counterpart path of a one-sided row lies at the same place.
-fn op(p: &Pair, row: &CompareRow, action: SyncAction) -> SyncOp {
-    let path = |side: &Option<CompareSide>, root: &Path| {
-        side.as_ref()
-            .map(|c| c.path.clone())
-            .unwrap_or_else(|| s(&root.join(&row.rel)))
-    };
+/// The op for a row: Rust names both paths, also the missing side.
+fn op(_p: &Pair, row: &CompareRow, action: SyncAction) -> SyncOp {
     SyncOp {
         action,
         left: SyncSide {
-            path: path(&row.left, &p.left),
+            path: row.left_path.clone(),
             seen: seen_of(&row.left),
         },
         right: SyncSide {
-            path: path(&row.right, &p.right),
+            path: row.right_path.clone(),
             seen: seen_of(&row.right),
         },
     }

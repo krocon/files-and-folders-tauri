@@ -1,0 +1,62 @@
+/* Synchronise folders (design 036 E5) – on top of tool-dialog.css */
+.pair {
+  align-items: center;
+  flex-wrap: nowrap;
+
+  .side {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+}
+
+.lbl {
+  font-weight: 600;
+}
+
+fieldset.options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  align-items: center;
+}
+
+.options {
+  align-items: center;
+}
+
+.num {
+  width: 5rem;
+}
+
+.list {
+  display: flex;
+  flex: 1;
+  min-height: 10rem;
+  border-radius: var(--radius-sm);
+
+  &:focus-visible {
+    outline: var(--focus-ring-width, 2px) solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+.sums {
+  color: var(--color-muted);
+}
+
+.foot > .row {
+  flex: 1 1 100%;
+  align-items: center;
+}
+
+.confirm {
+  margin: 0;
+  font-size: var(--font-size-md, 1rem);
+}
+
+.confirm-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  flex: 1;
+}

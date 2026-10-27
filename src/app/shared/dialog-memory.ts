@@ -1,8 +1,11 @@
 import { acceptsValue, SCHEMA } from '../core/settings/settings.models';
 import { SettingsStore } from '../core/settings/settings.store';
 
+/** = `maxItems` of `dialogs.recent` in settings-schema.json. */
+const MAX_REMEMBERED = 8;
+
 /** Tool dialogs that open with the values of their last run (design 027 E5). */
-export type RememberedDialog = 'groupFiles' | 'clean' | 'multiMkdir' | 'checksum';
+export type RememberedDialog = 'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync';
 
 interface Entry {
   readonly dialog: RememberedDialog;
@@ -30,7 +33,11 @@ export function rememberDialog(
   dialog: RememberedDialog,
   value: unknown,
 ): void {
-  const next = [{ dialog, value }, ...entries(settings).filter((e) => e.dialog !== dialog)];
+  // newest first; the oldest go when the list is full (`maxItems` in the schema)
+  const next = [{ dialog, value }, ...entries(settings).filter((e) => e.dialog !== dialog)].slice(
+    0,
+    MAX_REMEMBERED,
+  );
   if (acceptsValue(SCHEMA['dialogs.recent'], next)) {
     settings.set('dialogs.recent', next);
   }

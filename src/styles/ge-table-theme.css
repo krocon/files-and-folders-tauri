@@ -276,6 +276,11 @@
   font-style: italic;
 }
 
+/* folder sync (design 036): equal rows muted; copies/deletes use the diff colours above */
+.ge-table .fnf-sync-equal {
+  color: var(--color-muted);
+}
+
 /* the folder row a drag would drop into (design 012 E5) */
 .ge-table .fnf-drop-target {
   box-shadow:

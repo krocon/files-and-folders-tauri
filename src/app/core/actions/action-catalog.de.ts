@@ -93,6 +93,8 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_DELETE_EMPTY_FOLDERS_DLG: 'Ordner aufräumen (leere Ordner löschen)…',
   OPEN_FIND_DUPLICATES_DLG: 'Duplikate finden…',
   COMPARE_FILES: 'Dateien vergleichen…',
+  COMPARE_DIRS: 'Ordner vergleichen (Unterschiede markieren)',
+  OPEN_SYNC_DIRS_DLG: 'Ordner synchronisieren…',
   OPEN_CHECKSUM_CREATE_DLG: 'Prüfsummen erzeugen…',
   CHECKSUM_VERIFY: 'Prüfsummen prüfen',
   COPY_CHECKSUM: 'SHA-256 in die Zwischenablage',

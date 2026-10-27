@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../fs/fs-error';
 import { JobsApi } from './jobs-api';
 import { SearchHit, SearchStats } from '../search/search.models';
+import { CompareRow, CompareStats } from '../sync/sync.models';
 import {
   Decision,
   EMPTY_PROGRESS,
@@ -27,6 +28,14 @@ interface HitBuffer {
   stats: SearchStats;
   timer: ReturnType<typeof setTimeout> | null;
 }
+
+interface RowBuffer {
+  rows: CompareRow[];
+  stats: CompareStats;
+}
+
+/** At most this many comparison rows are buffered per job without a listener (Rust's limit). */
+const MAX_BUFFERED_ROWS = 200_000;
 
 /**
  * All jobs of the app (root): kept in sync with the Rust job manager through
@@ -52,6 +61,13 @@ export class JobsStore {
   private readonly hitBuffers = new Map<string, HitBuffer>();
   /** Jobs whose listener unsubscribed: their late hits are dropped, not buffered. */
   private readonly hitsClosed = new Set<string>();
+  /** Rows of folder comparisons (design 036) – same rules as the search hits. */
+  private readonly rowListeners = new Map<
+    string,
+    (rows: readonly CompareRow[], stats: CompareStats) => void
+  >();
+  private readonly rowBuffers = new Map<string, RowBuffer>();
+  private readonly rowsClosed = new Set<string>();
   /** In-flight dirSize starts to prevent concurrent duplicate calls. */
   private readonly startingDirSizes = new Map<string, Promise<string>>();
   /** Finished jobs Rust removed (helper jobs, review 009 #10), newest last. */
@@ -236,6 +252,51 @@ export class JobsStore {
     };
   }
 
+  /**
+   * Receives the rows of comparison job `id` (design 036 E2); rows that arrived before
+   * `start` resolved are delivered at once. After unsubscribing, late rows are dropped.
+   */
+  onCompareRows(
+    id: string,
+    listener: (rows: readonly CompareRow[], stats: CompareStats) => void,
+  ): () => void {
+    this.rowListeners.set(id, listener);
+    this.rowsClosed.delete(id);
+    const buffered = this.rowBuffers.get(id);
+    if (buffered) {
+      this.rowBuffers.delete(id);
+      listener(buffered.rows, buffered.stats);
+    }
+    return () => {
+      if (this.rowListeners.get(id) === listener) {
+        this.rowListeners.delete(id);
+        this.rowsClosed.add(id);
+        if (this.rowsClosed.size > RETIRED_KEPT * 16) {
+          this.rowsClosed.delete(this.rowsClosed.values().next().value!);
+        }
+        this.rowBuffers.delete(id);
+      }
+    };
+  }
+
+  private deliverRows(id: string, rows: readonly CompareRow[], stats: CompareStats): void {
+    const listener = this.rowListeners.get(id);
+    if (listener) {
+      listener(rows, stats);
+      return;
+    }
+    if (this.rowsClosed.has(id)) {
+      return;
+    }
+    const b = this.rowBuffers.get(id) ?? { rows: [], stats };
+    const room = MAX_BUFFERED_ROWS - b.rows.length;
+    if (room > 0) {
+      b.rows.push(...(rows.length > room ? rows.slice(0, room) : rows));
+    }
+    b.stats = stats;
+    this.rowBuffers.set(id, b);
+  }
+
   /** A job by id – also a finished one Rust has removed meanwhile (helper jobs). */
   find(id: string): JobInfo | undefined {
     return this.jobs().find((j) => j.id === id) ?? this.retired().find((j) => j.id === id);
@@ -342,6 +403,14 @@ export class JobsStore {
           progress: { ...(j.progress ?? EMPTY_PROGRESS), current: null },
         }));
         this.expireHits(event.id);
+        if (!this.rowListeners.has(event.id)) {
+          // a comparison nobody listens to any more: its rows go after the grace time
+          setTimeout(() => {
+            if (!this.rowListeners.has(event.id)) {
+              this.rowBuffers.delete(event.id);
+            }
+          }, HIT_BUFFER_GRACE_MS);
+        }
         const job = this.find(event.id);
         const waiting = this.waiters.get(event.id);
         this.waiters.delete(event.id);
@@ -364,6 +433,9 @@ export class JobsStore {
         break;
       case 'searchHits':
         this.deliverHits(event.id, event.hits, event.stats);
+        break;
+      case 'compareRows':
+        this.deliverRows(event.id, event.rows, event.stats);
         break;
       case 'shellOutput':
         this.shellListeners.forEach((l) => l(event.id, event.chunks, event.dropped));
@@ -424,6 +496,7 @@ export function isHelperJob(job: JobInfo): boolean {
     k === 'dirSize' ||
     k === 'count' ||
     k === 'search' ||
+    k === 'compare' ||
     k === 'duplicates' ||
     k === 'diskUsage' ||
     k === 'shell'
