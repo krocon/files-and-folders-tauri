@@ -194,6 +194,18 @@ export type JobSpec =
       readonly recursive?: boolean;
       readonly applyTo?: ApplyTo;
     }
+  /** Add files/folders to a ZIP/TAR/TAR.GZ (design 035); `targetDir` is a folder in it. */
+  | {
+      readonly kind: 'archiveAdd';
+      readonly sources: readonly string[];
+      readonly targetDir: string;
+      readonly options?: CopyOptions;
+      readonly moveSources?: boolean;
+    }
+  /** Remove entries of an archive (virtual paths) – no trash (design 035 E5). */
+  | { readonly kind: 'archiveDelete'; readonly paths: readonly string[] }
+  /** Create a folder in an archive (design 035). */
+  | { readonly kind: 'archiveMkdir'; readonly parent: string; readonly name: string }
   /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
   | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 

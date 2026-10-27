@@ -135,13 +135,13 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     expect(left.archive()).toBeNull();
   });
 
-  it('inside an archive only copying (= extracting) is possible', async () => {
+  it('inside a ZIP: copying (= extracting), deleting and new folders (design 035)', async () => {
     await left.load('/data/Fotos 📷.zip');
     left.setMarked(['/data/Fotos 📷.zip/Über'], true);
     expect(actions.state('OPEN_COPY_DLG') === 'ready').toBe(true);
     expect(actions.state('OPEN_MOVE_DLG') === 'ready').toBe(false);
-    expect(actions.state('OPEN_DELETE_DLG') === 'ready').toBe(false);
-    expect(actions.state('OPEN_MKDIR_DLG') === 'ready').toBe(false);
+    expect(actions.state('OPEN_DELETE_DLG') === 'ready').toBe(true);
+    expect(actions.state('OPEN_MKDIR_DLG') === 'ready').toBe(true);
     expect(actions.state('OPEN_RENAME_DLG') === 'ready').toBe(false);
     expect(actions.state('OPEN_PACK_DLG') === 'ready').toBe(false);
     // every action that needs real files is vetoed centrally (also those of other features)
@@ -178,7 +178,23 @@ describe('archives and duplicates in the frontend (design 016)', () => {
       options: { conflictDefault: 'skip' },
     });
     await expect(ops.openCopyMove('move')).rejects.toBeTruthy();
-    await expect(ops.openDelete('trash')).rejects.toBeTruthy();
+    // F8 in a ZIP: always asked, always for good (design 035 E5)
+    await ops.openDelete('trash');
+    expect(ops.del()).toMatchObject({ mode: 'permanent', inArchive: true });
+    expect(await ops.runDelete(ops.del()!, false)).toBeNull();
+    expect(jobsApi.started.at(-1)?.spec).toEqual({
+      kind: 'archiveDelete',
+      paths: ['/data/Fotos 📷.zip/Über'],
+    });
+    ops.openName('mkdir');
+    const name = ops.name()!;
+    expect(name.parent).toBe('/data/Fotos 📷.zip');
+    expect(await ops.runName(name, 'Neu', false)).toBeNull();
+    expect(jobsApi.started.at(-1)?.spec).toEqual({
+      kind: 'archiveMkdir',
+      parent: '/data/Fotos 📷.zip',
+      name: 'Neu',
+    });
   });
 
   it('the veto also dims menu and context-menu entries, tools included (merge 014)', async () => {
@@ -198,44 +214,74 @@ describe('archives and duplicates in the frontend (design 016)', () => {
     await left.load('/data/Fotos 📷.zip');
     left.setMarked(['/data/Fotos 📷.zip/Über'], true);
     const s = states();
-    expect(s.get('OPEN_MKDIR_DLG')).toBe(true);
+    expect(s.get('OPEN_MKDIR_DLG')).toBe(false); // a folder in a ZIP (design 035)
     expect(s.get('OPEN_CREATE_FILE_DLG')).toBe(true);
     expect(s.get('tool:edit')).toBe(true);
     expect(s.get('OPEN_UNPACK_DLG')).toBe(false);
     expect(s.get('OPEN_COPY_DLG')).toBe(false);
     const native = nativeEnabled(toNativeSpec(actions, 'linux', false));
-    expect(native.get('OPEN_DELETE_DLG')).toBe(false);
+    expect(native.get('OPEN_DELETE_DLG')).toBe(true);
     expect(native.get('tool:edit')).toBe(false);
     expect(native.get('OPEN_UNPACK_DLG')).toBe(true);
     expect(await actions.runAny('tool:edit')).toBe(false);
   });
 
-  it('a panel inside an archive is never a copy target', async () => {
+  it('a ZIP in the other panel is a copy target; 7z and RAR are not (design 035)', async () => {
     await right.load('/data/Fotos 📷.zip');
     left.setCursor('/data/a.txt');
     await ops.openCopyMove('copy');
-    expect(ops.copyMove()?.target).toBe('/data'); // not the virtual folder
+    expect(ops.copyMove()?.target).toBe('/data/Fotos 📷.zip');
+    const input = {
+      target: '/data/Fotos 📷.zip',
+      name: null,
+      conflictDefault: 'ask' as const,
+      background: false,
+      allowDangerous: false,
+    };
+    expect(await ops.runCopyMove(ops.copyMove()!, { ...input, name: 'anders.txt' })).toMatchObject({
+      code: 'invalid_name',
+    });
+    expect(await ops.runCopyMove(ops.copyMove()!, input)).toBeNull();
+    expect(jobsApi.started.at(-1)?.spec).toEqual({
+      kind: 'archiveAdd',
+      sources: ['/data/a.txt'],
+      targetDir: '/data/Fotos 📷.zip',
+      options: { conflictDefault: 'ask' },
+      moveSources: false,
+    });
+    ws.noteArchive('/data/alt.7z');
     await expect(
       ops.openCopyMoveFor({
         kind: 'copy',
         side: 'left',
         sourceDir: '/data',
         sources: [left.entries()[1]],
+        target: '/data/alt.7z/Über',
+      }),
+    ).rejects.toMatchObject({ message: expect.stringContaining('7z or RAR') });
+    await expect(
+      ops.openCopyMoveFor({
+        kind: 'link',
+        side: 'left',
+        sourceDir: '/data',
+        sources: [left.entries()[1]],
         target: '/data/Fotos 📷.zip/Über',
       }),
-    ).rejects.toMatchObject({ message: expect.stringContaining('into an archive') });
+    ).rejects.toMatchObject({ message: expect.stringContaining('Links') });
   });
 
-  it('archive folders are never suggested as targets; tools get no archive targetDir (review 016 #7)', async () => {
+  it('only changeable archives are suggested for copying; packing and tools get none (review 016 #7)', async () => {
     await right.load('/data/Fotos 📷.zip');
     ws.toggleFavorite('/data/Fotos 📷.zip/Über');
     ws.toggleFavorite('/target');
-    ws.addRecent('/data/Fotos 📷.zip');
+    ws.noteArchive('/data/alt.7z');
+    ws.toggleFavorite('/data/alt.7z/x');
     left.setCursor('/data/a.txt');
     await ops.openCopyMove('copy');
     const paths = ops.copyMove()!.targets.map((t) => t.path);
     expect(paths).toContain('/target');
-    expect(paths.filter((p) => p.startsWith('/data/Fotos'))).toEqual([]);
+    expect(paths).toContain('/data/Fotos 📷.zip/Über');
+    expect(paths.filter((p) => p.startsWith('/data/alt.7z'))).toEqual([]);
     ops.close();
     archive.openPack();
     expect(

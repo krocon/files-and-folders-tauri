@@ -9,6 +9,7 @@ import {
   archiveFormatOf,
   canEncrypt,
   isArchiveEntry,
+  isWritableFormat,
   stripArchiveExtension,
 } from '../../core/archive/archive-names';
 import { FsApi } from '../../core/fs/fs-api';
@@ -162,6 +163,26 @@ export class ArchiveStore {
    * `path` is an archive shown as a folder, or lies inside one (archives seen
    * this session + those shown now) – never a target (review 016 #7).
    */
+  /**
+   * `path` lies in a ZIP, TAR or TAR.GZ that can be changed (design 035). The format comes
+   * from the panel showing it, else from the end of the archive's path (never split).
+   */
+  canWriteInto(path: string): boolean {
+    for (const s of ['left', 'right'] as const) {
+      const info = this.ws.panel(s)?.store.archive();
+      if (info && isSameOrBelow(path, info.path)) {
+        return isWritableFormat(info.format);
+      }
+    }
+    const root = [...this.ws.archiveRoots()].find((r) => isSameOrBelow(path, r));
+    return root !== undefined && isWritableFormat(archiveFormatOf(root));
+  }
+
+  /** The active panel shows a folder of an archive that can be changed. */
+  activeWritable(): boolean {
+    return isWritableFormat(this.ws.panel()?.store.archive()?.format);
+  }
+
   isArchivePath(path: string): boolean {
     const roots = new Set(this.ws.archiveRoots());
     for (const s of ['left', 'right'] as const) {

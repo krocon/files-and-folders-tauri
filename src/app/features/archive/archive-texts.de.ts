@@ -36,8 +36,13 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   targetIsFile: 'Das Ziel ist eine Datei – bitte einen Ordner wählen.',
   noArchive:
     'Kein Archiv gewählt – den Cursor auf eine .zip-, .7z-, .rar-, .tar- oder .tar.gz-Datei setzen.',
-  readOnly: 'Archive sind hier schreibgeschützt – die Einträge zuerst entpacken (F5).',
-  intoArchive: 'In ein Archiv kann nicht kopiert werden – stattdessen packen (Alt+F5).',
+  readOnly: 'Im Archiv nicht möglich – die Einträge zuerst entpacken (F5).',
+  intoArchive:
+    'In ein 7z- oder RAR-Archiv kann nicht kopiert werden – nur ZIP, TAR und TAR.GZ lassen sich ändern.',
+  readOnlyFormat: '7z- und RAR-Archive sind nur lesbar – ZIP, TAR und TAR.GZ lassen sich ändern.',
+  noRenameInto: 'Ein neuer Name ist beim Kopieren in ein Archiv nicht möglich.',
+  linkIntoArchive: 'In einem Archiv können keine Verknüpfungen angelegt werden.',
+  deleteNoTrash: 'Einträge im Archiv werden endgültig entfernt – ein Archiv hat keinen Papierkorb.',
   unsafeHidden: (n) =>
     n === 1 ? '1 unsicherer Eintrag ausgeblendet' : `${n} unsichere Einträge ausgeblendet`,
   archiveBadge: (format: ArchiveFormat) =>

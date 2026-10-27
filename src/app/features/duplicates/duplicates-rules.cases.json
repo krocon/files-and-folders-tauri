@@ -33,10 +33,7 @@
           "kind": "oldest"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ],
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"],
       "undecided": [],
       "decisions": {
         "/h/Archiv/a.jpg": "keep"
@@ -78,10 +75,7 @@
           "kind": "newest"
         }
       ],
-      "marks": [
-        "/h/Archiv/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ],
+      "marks": ["/h/Archiv/a.jpg", "/h/Bilder/Kopie von a.jpg"],
       "undecided": [],
       "decisions": {
         "/h/Downloads/a.jpg": "keep"
@@ -120,10 +114,7 @@
           "kind": "firstFound"
         }
       ],
-      "marks": [
-        "/h/Archiv/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ]
+      "marks": ["/h/Archiv/a.jpg", "/h/Bilder/Kopie von a.jpg"]
     },
     {
       "name": "no copy suffix, then oldest",
@@ -161,10 +152,7 @@
           "kind": "oldest"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ],
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"],
       "undecided": [],
       "reasons": {
         "/h/Archiv/a.jpg": 1,
@@ -210,10 +198,7 @@
           "kind": "oldest"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ]
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"]
     },
     {
       "name": "pattern keep",
@@ -250,10 +235,7 @@
           "prefer": "keep"
         }
       ],
-      "marks": [
-        "/h/Archiv/a.jpg",
-        "/h/Downloads/a.jpg"
-      ],
+      "marks": ["/h/Archiv/a.jpg", "/h/Downloads/a.jpg"],
       "undecided": [],
       "decisions": {
         "/h/Bilder/Kopie von a.jpg": "keep"
@@ -296,9 +278,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ],
+      "undecided": [1],
       "decisions": {
         "/h/Archiv/a.jpg": "undecided"
       }
@@ -339,10 +319,7 @@
           "prefer": "keep"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ]
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"]
     },
     {
       "name": "an invalid regex marks nothing",
@@ -383,9 +360,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ]
+      "undecided": [1]
     },
     {
       "name": "an empty pattern marks nothing",
@@ -425,9 +400,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ]
+      "undecided": [1]
     },
     {
       "name": "slash in the pattern matches backslash paths",
@@ -454,9 +427,7 @@
           "prefer": "delete"
         }
       ],
-      "marks": [
-        "C:\\Users\\m\\Downloads\\b.txt"
-      ]
+      "marks": ["C:\\Users\\m\\Downloads\\b.txt"]
     },
     {
       "name": "glob star stays in one folder",
@@ -484,9 +455,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ]
+      "undecided": [1]
     },
     {
       "name": "in folder (from Rust)",
@@ -523,21 +492,12 @@
           "prefer": "keep"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ],
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"],
       "undecided": [],
       "inFolder": {
-        "/h/Archiv/a.jpg": [
-          true
-        ],
-        "/h/Downloads/a.jpg": [
-          false
-        ],
-        "/h/Bilder/Kopie von a.jpg": [
-          false
-        ]
+        "/h/Archiv/a.jpg": [true],
+        "/h/Downloads/a.jpg": [false],
+        "/h/Bilder/Kopie von a.jpg": [false]
       }
     },
     {
@@ -578,21 +538,12 @@
           "kind": "shortestName"
         }
       ],
-      "marks": [
-        "/h/Downloads/a.jpg",
-        "/h/Bilder/Kopie von a.jpg"
-      ],
+      "marks": ["/h/Downloads/a.jpg", "/h/Bilder/Kopie von a.jpg"],
       "undecided": [],
       "inFolder": {
-        "/h/Archiv/a.jpg": [
-          false
-        ],
-        "/h/Downloads/a.jpg": [
-          true
-        ],
-        "/h/Bilder/Kopie von a.jpg": [
-          false
-        ]
+        "/h/Archiv/a.jpg": [false],
+        "/h/Downloads/a.jpg": [true],
+        "/h/Bilder/Kopie von a.jpg": [false]
       }
     },
     {
@@ -630,9 +581,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ]
+      "undecided": [1]
     },
     {
       "name": "shortest name (codepoints)",
@@ -670,10 +619,7 @@
           "kind": "shortestPath"
         }
       ],
-      "marks": [
-        "/x/longer name 🎉.txt",
-        "/x/sub/deeper/ä.txt"
-      ],
+      "marks": ["/x/longer name 🎉.txt", "/x/sub/deeper/ä.txt"],
       "undecided": [],
       "reasons": {
         "/x/ä.txt": 1
@@ -712,10 +658,7 @@
           "kind": "longestName"
         }
       ],
-      "marks": [
-        "/x/ä.txt",
-        "/x/sub/deeper/ä.txt"
-      ]
+      "marks": ["/x/ä.txt", "/x/sub/deeper/ä.txt"]
     },
     {
       "name": "longest path",
@@ -750,10 +693,7 @@
           "kind": "longestPath"
         }
       ],
-      "marks": [
-        "/x/ä.txt",
-        "/x/sub/deeper/ä.txt"
-      ]
+      "marks": ["/x/ä.txt", "/x/sub/deeper/ä.txt"]
     },
     {
       "name": "ties stay undecided and are marked so",
@@ -782,9 +722,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ],
+      "undecided": [1],
       "decisions": {
         "/a/x": "undecided",
         "/b/x": "undecided"
@@ -816,9 +754,7 @@
           "kind": "shortestName"
         }
       ],
-      "marks": [
-        "/b/xx"
-      ],
+      "marks": ["/b/xx"],
       "undecided": [],
       "reasons": {
         "/a/x": 1
@@ -863,10 +799,7 @@
           "kind": "largerFile"
         }
       ],
-      "marks": [
-        "/p/IMG.jpg",
-        "/p/IMG web.jpg"
-      ]
+      "marks": ["/p/IMG.jpg", "/p/IMG web.jpg"]
     },
     {
       "name": "resolution, then no copy suffix",
@@ -907,10 +840,7 @@
           "kind": "noCopySuffix"
         }
       ],
-      "marks": [
-        "/p/IMG web.jpg",
-        "/p/IMG (1).jpg"
-      ]
+      "marks": ["/p/IMG web.jpg", "/p/IMG (1).jpg"]
     },
     {
       "name": "resolution unknown separates nothing",
@@ -936,9 +866,7 @@
         }
       ],
       "marks": [],
-      "undecided": [
-        1
-      ]
+      "undecided": [1]
     },
     {
       "name": "a linked file is kept first, its alias is the same file",
@@ -973,9 +901,7 @@
           "kind": "oldest"
         }
       ],
-      "marks": [
-        "/h/kopie"
-      ],
+      "marks": ["/h/kopie"],
       "undecided": [],
       "decisions": {
         "/h/orig": "keep",
@@ -1063,12 +989,8 @@
           "kind": "oldest"
         }
       ],
-      "marks": [
-        "/g1/b"
-      ],
-      "undecided": [
-        2
-      ],
+      "marks": ["/g1/b"],
+      "undecided": [2],
       "decisions": {
         "/g3/only": "keep",
         "/g2/a": "undecided"
@@ -1115,10 +1037,7 @@
       ],
       "rules": [],
       "marks": [],
-      "undecided": [
-        1,
-        2
-      ]
+      "undecided": [1, 2]
     }
   ],
   "copyNames": {

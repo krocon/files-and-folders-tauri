@@ -105,6 +105,8 @@ export type FsErrorCode =
   | 'archive_password_required'
   /** The known password does not fit. */
   | 'archive_password_wrong'
+  | 'archive_read_only'
+  | 'archive_busy'
   | 'invalid_menu'
   /** A file to import is no settings export (design 015). */
   | 'invalid_settings'

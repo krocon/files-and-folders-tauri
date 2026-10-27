@@ -129,6 +129,9 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     simulate: (n) => `Test-Task (${n} Schritte)`,
     shell: (command, cwd) => `Shell: ${command} (in ${cwd})`,
     viewEntry: (path) => `Aus dem Archiv öffnen: ${path}`,
+    archiveAdd: (what, target, move) => `${what} ${move ? 'verschieben' : 'kopieren'} in ${target}`,
+    archiveDelete: (what) => `${what} aus dem Archiv entfernen`,
+    archiveMkdir: (name, parent) => `Ordner ${name} anlegen in ${parent}`,
     attributes: (what, recursive) => `Attribute ändern: ${what}${recursive ? ' samt Inhalt' : ''}`,
   },
 };

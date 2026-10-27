@@ -39,15 +39,28 @@ export const OFF_IN_ARCHIVE: ReadonlySet<ActionId> = new Set<ActionId>([
   'COPY_CHECKSUM',
 ]);
 
+/** Allowed inside a ZIP, TAR or TAR.GZ (design 035 E7) – still off in 7z and RAR. */
+export const WRITABLE_IN_ARCHIVE: ReadonlySet<ActionId> = new Set<ActionId>([
+  'OPEN_MKDIR_DLG',
+  'OPEN_DELETE_DLG',
+  'DELETE_PERMANENT',
+]);
+
 /** Pack, unpack and duplicate actions (design 016 E7). */
 export function registerArchiveActions(
   actions: ActionService,
   archive: ArchiveStore,
   dup: DuplicatesStore,
 ): () => void {
-  const unveto = actions.setVeto((id) =>
-    archive.inArchive() && (id === null || OFF_IN_ARCHIVE.has(id)) ? ARCHIVE_TEXTS.readOnly : null,
-  );
+  const unveto = actions.setVeto((id) => {
+    if (!archive.inArchive() || (id !== null && !OFF_IN_ARCHIVE.has(id))) {
+      return null;
+    }
+    if (id !== null && WRITABLE_IN_ARCHIVE.has(id)) {
+      return archive.activeWritable() ? null : ARCHIVE_TEXTS.readOnlyFormat;
+    }
+    return ARCHIVE_TEXTS.readOnly;
+  });
   const unregister = actions.register({
     OPEN_PACK_DLG: { enabled: () => archive.canPack(), run: () => archive.openPack() },
     OPEN_UNPACK_DLG: { enabled: () => archive.canUnpack(), run: () => archive.openUnpack() },

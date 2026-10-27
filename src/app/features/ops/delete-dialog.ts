@@ -4,6 +4,7 @@ import { FsError } from '../../core/fs/fs.models';
 import { DeleteMode } from '../../core/jobs/jobs.models';
 import { isRemotePath } from '../../core/remote/remote-path';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
+import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
@@ -48,6 +49,12 @@ const SHOWN = 5;
             }
           </ul>
 
+          @if (r.inArchive) {
+            <p class="muted strong" role="note">
+              <i class="fa fa-file-archive-o" aria-hidden="true"></i>
+              {{ archiveTexts.deleteNoTrash }}
+            </p>
+          }
           @if (onServer()) {
             <p class="muted strong" role="note">
               <i class="fa fa-server" aria-hidden="true"></i> {{ remoteTexts.noTrash }}
@@ -146,6 +153,7 @@ export class DeleteDialog {
   protected readonly req = this.ops.del;
   protected readonly permanent = computed(() => this.req()?.mode === 'permanent');
   protected readonly remoteTexts = REMOTE_TEXTS;
+  protected readonly archiveTexts = ARCHIVE_TEXTS;
   /** Deleting on a server (design 034): permanent, there is no trash. */
   protected readonly onServer = computed(() => isRemotePath(this.req()?.sourceDir));
   /** The trash dialog's "Delete permanently" button is hovered or focused. */
