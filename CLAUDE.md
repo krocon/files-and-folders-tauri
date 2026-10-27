@@ -246,7 +246,8 @@ src-tauri/                   Rust (Tauri 2)
                              je Kopie, Papierkorb/endgültig/verschieben); Commands `commands/duplicates.rs`
   src/compare/               Ordner vergleichen (036): Paarung NFC/Groß-klein, Status, Preorder-Durchlauf, `check_physical`;
                              Jobs `jobs/compare.rs` (Zeilen als `compareRows`), `jobs/sync.rs` (Prüfungen je Schritt,
-                             `copy::run_targets`); Frontend core/sync/, features/sync/ (quick-compare.ts, sync-logic.ts rein)  src/palette/               Universelle Palette (043): query.rs (Abfragesprache, Falten, Rang), index.rs (Namensindex im
+                             `copy::run_targets`); Frontend core/sync/, features/sync/ (quick-compare.ts, sync-logic.ts rein)
+  src/palette/               Universelle Palette (043): query.rs (Abfragesprache, Falten, Rang), index.rs (Namensindex im
                              Speicher, parallele Arrays, Grenze in MB, apply_dir), live.rs (bekannte Orte, begrenzt),
                              system.rs (mdfind/plocate optional, feste Argumente), mod.rs (Hub: Worker, Watcher, Anfragen
                              mit Abbruch); Commands `commands/palette.rs`

@@ -1,5 +1,7 @@
 # Release und Distribution
 
+> Portale, Paketquellen, kuratierte Listen und ein Browser-Prompt dafür: [`distribution.md`](distribution.md).
+
 > Stand: Prompt 017 (Design: `prompts/done/017-release-distribution.design.md`). **Releases, Tags, Signierung und
 > Veröffentlichung nur mit Marcs ausdrücklicher Freigabe.** Lizenz: **MIT** (`LICENSE`, `license` in
 > `Cargo.toml`/`package.json`, `bundle.license` in `tauri.conf.json`).
