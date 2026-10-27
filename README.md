@@ -214,6 +214,8 @@ delete, nothing. Change them with the arrow keys, `Del` and `Space`, check the s
 files, deletes go to the trash, and nothing that changed since the comparison is overwritten. Names in NFC and NFD
 (macOS) and – where the system ignores case – `A.txt` and `a.txt` are recognised as the same file.
 
+![Synchronise folders: the photo folder against its backup, eleven files to copy to the right and one to the left](docs/screenshots/readme/sync.png)
+
 ## Group files and clean folders
 
 **Bring order into a messy folder in one step.**

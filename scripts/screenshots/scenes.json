@@ -482,6 +482,54 @@
       ]
     },
     {
+      "name": "sync-folders",
+      "prelude": false,
+      "mock": {
+        "sync": true
+      },
+      "steps": [
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "action": "OPEN_CHDIR_DLG"
+        },
+        {
+          "type": "/home/marc/Pictures/Italy 2026"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "action": "SELECT_RIGHT_PANEL"
+        },
+        {
+          "action": "OPEN_CHDIR_DLG"
+        },
+        {
+          "type": "/home/marc/Backup/Italy 2026"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "action": "SELECT_LEFT_PANEL"
+        },
+        {
+          "action": "OPEN_SYNC_DIRS_DLG"
+        },
+        {
+          "wait": 600
+        }
+      ]
+    },
+    {
       "name": "conflict-dialog",
       "mock": {
         "conflict": true
@@ -749,6 +797,10 @@
       {
         "file": "compare.png",
         "scene": "compare-files"
+      },
+      {
+        "file": "sync.png",
+        "scene": "sync-folders"
       },
       {
         "file": "organize.png",

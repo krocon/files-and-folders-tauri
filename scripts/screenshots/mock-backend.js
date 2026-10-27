@@ -366,6 +366,11 @@
         const dirSize = { files, dirs: dirCount, bytes, unreadable: 0, cancelled: false };
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         send({ type: 'finished', id, state: 'done', summary: summary({ dirSize }) });
+      } else if (spec.kind === 'compare') {
+        const { rows, stats } = compareRows(spec.left, spec.right);
+        send({ type: 'added', job: jobInfo(id, spec, 'running') });
+        send({ type: 'compareRows', id, rows, stats });
+        send({ type: 'finished', id, state: 'done', summary: summary({ itemsDone: rows.length, compare: stats }) });
       } else if (spec.kind === 'diskUsage') {
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         const entries = scans[id].length;
@@ -427,6 +432,85 @@
       copy('cover.jpg', 380 * 1024, '2026-09-30T21:40:00'),
       copy('Budget 2026 - Kopie.xlsx', 38 * 1024, '2026-10-17T08:05:00'),
     ]);
+  }
+
+  // Scene option `mock.sync`: a backup of the photo folder that is a few days behind (design
+  // 036) – some photos missing, one edited later, one only in the backup.
+  if (cfg.mock?.sync) {
+    const backup = `${home}/Backup/Italy 2026`;
+    const photosDir = `${home}/Pictures/Italy 2026`;
+    dirs[home] = [
+      ...(dirs[home] ?? []),
+      { name: 'Backup', kind: 'directory', targetKind: null, size: null, modifiedMs: Date.parse('2026-09-08T20:00:00Z'), hidden: false, lossyName: false },
+    ];
+    dirs[`${home}/Backup`] = [{ ...dirs[`${home}`].at(-1), name: 'Italy 2026' }];
+    const src = dirs[photosDir] ?? [];
+    const files = src.filter((e) => e.kind === 'file');
+    const keep = files.filter((e, i) => !/\.zip$/.test(e.name) && i < files.length - 9);
+    dirs[backup] = [
+      ...src.filter((e) => e.kind === 'directory' && e.name !== 'Videos'),
+      ...keep.map((e, i) => (i === 4 ? { ...e, size: e.size - 120_000, modifiedMs: e.modifiedMs - 86_400_000 } : e)),
+      { ...keep[0], name: 'IMG_4709.jpg', size: 3_145_728, modifiedMs: Date.parse('2026-08-31T19:02:00Z') },
+    ];
+    for (const d of ['Edited', 'Panorama']) dirs[`${backup}/${d}`] = [...(dirs[`${photosDir}/${d}`] ?? [])];
+  }
+
+  /** Rows of the comparison job (design 036) – the same rules as Rust, in short. */
+  function compareRows(left, right) {
+    const rows = [];
+    const side = (e) => e && { path: e.path, name: e.name, kind: e.kind, size: e.size, modifiedMs: e.modifiedMs };
+    const visit = (l, r, rel, depth) => {
+      const ls = l ? entriesOf(l).filter((e) => !e.hidden) : [];
+      const rs = r ? entriesOf(r).filter((e) => !e.hidden) : [];
+      const names = [...new Set([...ls, ...rs].map((e) => e.name))].sort((a, b) => {
+        const da = [...ls, ...rs].find((e) => e.name === a).kind === 'directory';
+        const db = [...ls, ...rs].find((e) => e.name === b).kind === 'directory';
+        return da === db ? a.localeCompare(b) : da ? -1 : 1;
+      });
+      for (const name of names) {
+        const a = ls.find((e) => e.name === name) ?? null;
+        const b = rs.find((e) => e.name === name) ?? null;
+        const isDir = (a ?? b).kind === 'directory';
+        let status;
+        if (!a) status = 'onlyRight';
+        else if (!b) status = 'onlyLeft';
+        else if (isDir) status = 'equal';
+        else if (Math.abs(a.modifiedMs - b.modifiedMs) <= 2000 && a.size === b.size) status = 'equal';
+        else status = a.modifiedMs > b.modifiedMs ? 'leftNewer' : b.modifiedMs > a.modifiedMs ? 'rightNewer' : 'differs';
+        const path = rel ? `${rel}/${name}` : name;
+        const row = {
+          rel: path,
+          depth,
+          left: side(a),
+          right: side(b),
+          leftPath: a?.path ?? join(l ?? left, name),
+          rightPath: b?.path ?? join(r ?? right, name),
+          status,
+          contentChecked: false,
+          complete: true,
+        };
+        rows.push(row);
+        if (isDir) {
+          visit(a?.path ?? null, b?.path ?? null, path, depth + 1);
+          if (status === 'equal' && rows.some((x) => x.rel.startsWith(`${path}/`) && x.status !== 'equal')) row.status = 'differs';
+        }
+      }
+    };
+    visit(left, right, '', 0);
+    const files = rows.filter((r) => (r.left ?? r.right).kind === 'file').length;
+    const stats = {
+      dirs: rows.length - files,
+      files,
+      rows: rows.length,
+      differences: rows.filter((r) => r.status !== 'equal').length,
+      bytesCompared: 0,
+      truncated: false,
+      errors: [],
+      unreadable: 0,
+      rootComplete: true,
+      rootReadError: false,
+    };
+    return { rows, stats };
   }
 
   /** Duplicates of the demo tree: files of the same size (the mock has no contents). */
