@@ -32,7 +32,7 @@
   Kopieren) und Prompt 022 (Konfigurations-Editoren: Buttons, Dateitypen, dauerhafte Suchvorlagen, Vollbild F11), Prompt
   024 (Attribute ändern: Rechte/Oktal, R/H/S/A, macOS versteckt, Zeitstempel als Job `attributes`; Eigentümer/Gruppe
   offen), Prompt 025 (Archive: 7z lesen/packen, RAR lesen, Passwörter nur im Speicher, Einträge ansehen/öffnen über
-  einen App-Cache; in Archive schreiben offen), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
+  einen App-Cache; in Archive schreiben seit 035), Prompt 026 (Import alter Konfiguration aus mr: Assistent, Vorschau,
   Sicherungen) und Prompt 031 (Tabs ziehen, Verknüpfungen per Drag/Dialog; Verschieben ins System bewusst nicht) und
   Prompt 032 (Starter-Menü: Menü „Start“, `Alt+S`, Editor, TC-Parameter `%P%N` …, `starter.json`) und Prompt 033
   (Speicherbelegung: Scan als Job `diskUsage`, Tab „Belegung“, Ringe/Kacheln, Sammelkorb, `Mod+Shift+D`) und Prompt 034
@@ -42,12 +42,13 @@
   `verifyChecksums`) und Prompt 037 (Dateien vergleichen: Command `diff_files`, Tool `diff`) und Prompt 038 (Flache Ansicht: Strg+B im selben
   Tab, Such-Ergebnis der Art `flat`, `SearchHit.relDir`) und Prompt 042 (Dubletten: Hardlinks als Einheit, Cache,
   Regel-Engine, Job `dedupe`, ähnliche Bilder/Comics per pHash) und Prompt 044 (README je Feature mit Norton-Bild,
-  Werbeseite `site/` für krocon.de/products/fnf) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 035, 036, 041, 043
+  Werbeseite `site/` für krocon.de/products/fnf) und Prompt 035 (Archive bearbeiten: ZIP/TAR/TAR.GZ hineinkopieren,
+  löschen, Ordner anlegen – Jobs `archiveAdd`/`archiveDelete`/`archiveMkdir`, `archive/write.rs`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 036, 041, 043
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–034, 037–040, 042, 044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–035, 037–040, 042, 044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -213,7 +214,8 @@ src-tauri/                   Rust (Tauri 2)
                              `sevenz_header.rs`, RAR `rar.rs` = einziges FFI/`unsafe`, Feature `rar`), `secrets.rs`
                              (Passwörter), `view.rs` (App-Cache zum Ansehen), testdata/ (+ Generatoren), `sanitize` (Zip-Slip), Bomben-Grenzen, LRU,
                              `list_directory_or_archive` (virtuelle Pfade); Jobs `jobs/extract.rs`, `jobs/pack.rs`,
-                             `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`
+                             `jobs/ask.rs` (Konfliktfrage), Tests `archive/tests.rs`, `jobs/tests_archive.rs`;
+                             Schreiben (035): `write.rs` (`writable`, Umschreiben in Temp-Datei), Jobs `jobs/archive_write.rs`
   src/disk_usage/            Speicherbelegung (033): tree.rs (Arena, Summen, view/largest/locate/remove/graft), walk.rs
                              (Worker, Gerät+Inode, Gerätemenge), mod.rs (Hub ≤ 3 Scans, Plan, DTOs), tests.rs; Job
                              `jobs/disk_usage.rs`, Commands `commands/disk_usage.rs`, `platform/disk_usage.rs` (Blöcke,
