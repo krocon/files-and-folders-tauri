@@ -12,7 +12,7 @@
 <p align="center">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Platforms: macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue">
-  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-orange">
+  <a href="https://github.com/krocon/files-and-folders-tauri/releases"><img alt="Release: v1.0.0" src="https://img.shields.io/github/v/release/krocon/files-and-folders-tauri?label=release"></a>
 </p>
 
 ![Files and Folders in the classic Norton colour scheme: two panels with tabs, four marked photos and the button bar](docs/screenshots/readme/two-panels.png)
@@ -23,7 +23,8 @@ the keyboard and runs the slow work in the background while you go on. Copy, mov
 once, find duplicates, look into archives and servers – without reaching for the mouse.
 
 > [!NOTE]
-> **There is no public release yet.** You can build the app from source today (see [Installation](#installation)).
+> **Version 1.0.0 is available** – packages for macOS, Windows and Linux on the [GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases)
+> (see [Installation](#installation)).
 > The automated tests run on Linux, macOS and Windows, but some platform specifics (the trash per drive on Windows,
 > attributes, links) still need testing on real macOS and Windows machines. Back up what you care about – and tell
 > me what breaks.
@@ -327,8 +328,8 @@ The complete list with all details (in German) is in [docs/features.md](docs/fea
 
 ## Installation
 
-There is **no published release yet.** Until then, build the app yourself (see [Development](#development)).
-Releases will appear on the [GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases):
+**Version 1.0.0** is available on the [GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases); you can also build the app
+yourself (see [Development](#development)):
 
 | OS | Minimum | Package |
 | --- | --- | --- |
@@ -336,7 +337,7 @@ Releases will appear on the [GitHub releases page](https://github.com/krocon/fil
 | Windows | 10 / 11 (x64) | `-setup.exe` (no admin needed) or `.msi` |
 | Linux | WebKitGTK 4.1 – Ubuntu 22.04+, Debian 12+, Fedora 36+ | `.deb`, `.rpm`, `.AppImage` |
 
-The first packages will be **unsigned**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
+The packages are **not signed yet**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
 *More info* → *Run anyway*.
 
 ## Keyboard shortcuts (selection)
