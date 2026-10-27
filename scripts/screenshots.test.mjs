@@ -74,7 +74,7 @@ test('README pictures (044): known scenes in Norton, one file per feature, every
   }
   // options of a scene: only those the runner and the mock know
   const known = new Set(['name', 'steps', 'prelude', 'mock', 'ready']);
-  const mocks = new Set(['jobs', 'bigFiles', 'duplicates', 'conflict', 'photoFolders', 'archive', 'remote', 'shellHeight']);
+  const mocks = new Set(['jobs', 'bigFiles', 'duplicates', 'conflict', 'photoFolders', 'archive', 'remote', 'shellHeight', 'sync']);
   for (const s of cfg.scenes) {
     for (const k of Object.keys(s)) assert.ok(known.has(k), `${s.name}: ${k}`);
     for (const k of Object.keys(s.mock ?? {})) assert.ok(mocks.has(k), `${s.name}: mock.${k}`);
@@ -83,7 +83,7 @@ test('README pictures (044): known scenes in Norton, one file per feature, every
 
 test('mock backend: the scene options exist in mock-backend.js', () => {
   const mock = readFileSync(new URL('./screenshots/mock-backend.js', import.meta.url), 'utf8');
-  for (const k of ['conflict', 'photoFolders', 'archive', 'remote', 'shellHeight']) {
+  for (const k of ['conflict', 'photoFolders', 'archive', 'remote', 'shellHeight', 'sync']) {
     assert.ok(mock.includes(`cfg.mock?.${k}`), k);
   }
   for (const cmd of ['run_shell', 'duplicate_thumbnails', 'load_starter']) assert.ok(mock.includes(`${cmd}:`), cmd);
