@@ -1,3 +1,4 @@
+import { isWritableFormat } from '../../core/archive/archive-names';
 import { DiskUsageStore } from '../diskusage/disk-usage.store';
 import { isUsageKey, scanIdOf } from '../diskusage/usage-rows';
 import { inject, Injectable, signal } from '@angular/core';
@@ -23,7 +24,7 @@ import { wholeGroups } from '../duplicates/duplicates-logic';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
-import { WorkspaceStore } from '../workspace/workspace.store';
+import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
 import {
   cursorAfterRemoval,
   expectedFor,
@@ -78,6 +79,8 @@ export interface DeleteRequest {
   readonly expected?: readonly ExpectedEntry[];
   /** Disk-usage tab (design 033 E3): minutes since the scan – the entries may have changed. */
   readonly scanAgeMin?: number;
+  /** Entries of an archive (design 035 E5): removed for good, job `archiveDelete`. */
+  readonly inArchive?: boolean;
 }
 
 export interface NameRequest {
@@ -132,6 +135,11 @@ export class OpsStore {
     return store && store.archive() === null ? store.path() : null;
   }
 
+  /** The active panel shows a folder of a ZIP/TAR/TAR.GZ, which can be changed (design 035). */
+  archiveWritable(): boolean {
+    return this.archive.activeWritable();
+  }
+
   /** The active panel shows a folder inside an archive (design 016 E1). */
   inArchive(): boolean {
     return (this.ws.panel()?.store.archive() ?? null) !== null;
@@ -181,7 +189,12 @@ export class OpsStore {
     if (sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
-    const other = this.ws.targetDir(side);
+    // the other panel in a ZIP/TAR/TAR.GZ is a target too (design 035)
+    const otherStore = this.ws.panel(otherSide(side))?.store;
+    const intoArchive = isWritableFormat(otherStore?.archive()?.format)
+      ? (otherStore?.path() ?? null)
+      : null;
+    const other = intoArchive ?? this.ws.targetDir(side);
     await this.openCopyMoveFor({
       kind,
       side,
@@ -232,15 +245,18 @@ export class OpsStore {
     if (args.sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
-    // archives are read-only (design 016): never a target; out of one only by extracting (F5)
+    // into a ZIP/TAR/TAR.GZ (design 035): copy and move; 7z/RAR stay read-only; links never.
+    // Out of an archive only by extracting (F5).
     if (this.archive.isArchivePath(args.target)) {
-      throw err('unknown', ARCHIVE_TEXTS.intoArchive); // also a tab that is not open
+      if (args.kind === 'link') {
+        throw err('unknown', ARCHIVE_TEXTS.linkIntoArchive);
+      }
+      if (!this.archive.canWriteInto(args.target)) {
+        throw err('unknown', ARCHIVE_TEXTS.intoArchive); // also a tab that is not open
+      }
     }
     for (const s of ['left', 'right'] as const) {
       const info = this.ws.panel(s)?.store.archive();
-      if (info && isSameOrBelow(args.target, info.path)) {
-        throw err('unknown', ARCHIVE_TEXTS.intoArchive);
-      }
       if (info && s === args.side && args.sources.some((e) => isSameOrBelow(e.path, info.path))) {
         throw err(
           'unknown',
@@ -258,7 +274,9 @@ export class OpsStore {
         { group: OPS_TEXTS.favouriteGroup, paths: [...this.ws.favorites()] },
         { group: OPS_TEXTS.recentGroup, paths: this.ws.recent() },
       ],
-      (p) => this.archive.isArchivePath(p),
+      // suggestions: no archive for links, only changeable ones otherwise
+      (p) =>
+        this.archive.isArchivePath(p) && (args.kind === 'link' || !this.archive.canWriteInto(p)),
     );
     const dangers = args.kind === 'move' ? await this.dangers(args.sources) : [];
     // fixed now: the listing may be checked (and look fresh) before the dialog is confirmed
@@ -280,7 +298,7 @@ export class OpsStore {
       return;
     }
     if (this.inArchive()) {
-      throw err('unknown', ARCHIVE_TEXTS.readOnly);
+      return this.openDeleteInArchive();
     }
     const sourceDir = this.location();
     const entries = this.selection();
@@ -330,6 +348,31 @@ export class OpsStore {
     this.dialogs.show('delete');
   }
 
+  /** F8 in a ZIP/TAR/TAR.GZ (design 035 E5): always asked, always for good. */
+  private openDeleteInArchive(): void {
+    if (!this.archive.activeWritable()) {
+      throw err('archive_read_only', ARCHIVE_TEXTS.readOnlyFormat);
+    }
+    const store = this.ws.panel()?.store;
+    const sourceDir = store?.path() ?? null;
+    const entries = this.selection();
+    if (sourceDir === null) {
+      throw err('unknown', OPS_TEXTS.noFolder);
+    }
+    if (entries.length === 0) {
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    this.del.set({
+      mode: 'permanent',
+      side: this.ws.source(),
+      sourceDir,
+      entries,
+      dangers: [],
+      inArchive: true,
+    });
+    this.dialogs.show('delete');
+  }
+
   openName(kind: NameRequest['kind']): void {
     const side = this.ws.source();
     const store = this.ws.panel(side)?.store;
@@ -355,7 +398,9 @@ export class OpsStore {
       this.dialogs.show('name');
       return;
     }
-    const parent = store && store.archive() === null ? store.path() : null;
+    // F7 in a ZIP/TAR/TAR.GZ (design 035): a folder in the archive; nothing else there
+    const inWritable = kind === 'mkdir' && this.archive.activeWritable();
+    const parent = store && (store.archive() === null || inWritable) ? store.path() : null;
     if (!store || parent === null) {
       throw err('unknown', store?.archive() ? ARCHIVE_TEXTS.readOnly : OPS_TEXTS.noFolder);
     }
@@ -429,6 +474,9 @@ export class OpsStore {
     if (raw === '') {
       return err('invalid_path', OPS_TEXTS.emptyTarget);
     }
+    if (this.archive.isArchivePath(raw)) {
+      return this.runIntoArchive(req, raw, input);
+    }
     let dir: string;
     try {
       const loc = await this.fs.resolveLocation(raw);
@@ -477,6 +525,47 @@ export class OpsStore {
     this.ws.addRecent(dir);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, req.kind === 'move');
+    return null;
+  }
+
+  /** Copy or move into a ZIP/TAR/TAR.GZ (design 035): the job `archiveAdd`. */
+  private async runIntoArchive(
+    req: CopyMoveRequest,
+    target: string,
+    input: CopyMoveInput,
+  ): Promise<FsError | null> {
+    if (req.kind === 'link') {
+      return err('unknown', ARCHIVE_TEXTS.linkIntoArchive);
+    }
+    if (!this.archive.canWriteInto(target)) {
+      return err('archive_read_only', ARCHIVE_TEXTS.intoArchive);
+    }
+    const single = req.sources.length === 1 ? req.sources[0] : null;
+    const name = input.name?.trim() ?? '';
+    if (single && name !== '' && name !== single.name) {
+      return err('invalid_name', ARCHIVE_TEXTS.noRenameInto);
+    }
+    const sources = req.sources.map((e) => e.path);
+    const move = req.kind === 'move';
+    const cursor = this.ws.panel(req.side)?.store.cursorPath() ?? null;
+    if (move) {
+      this.moveCursorOff(req.side, req.sourceDir, sources);
+    }
+    let id: string;
+    try {
+      id = await this.jobs.start({
+        kind: 'archiveAdd',
+        sources,
+        targetDir: target,
+        options: { conflictDefault: input.conflictDefault },
+        moveSources: move,
+      });
+    } catch (e) {
+      this.ws.panel(req.side)?.store.setCursor(cursor);
+      return toFsError(e);
+    }
+    this.close();
+    this.afterJob(id, req.side, req.sourceDir, sources, move);
     return null;
   }
 
@@ -551,13 +640,17 @@ export class OpsStore {
     let id: string;
     try {
       const expected = req.expected;
-      id = await this.jobs.start({
-        kind: 'delete',
-        paths,
-        mode: req.mode,
-        allowDangerous,
-        ...(expected ? { expected } : {}),
-      });
+      id = await this.jobs.start(
+        req.inArchive
+          ? { kind: 'archiveDelete', paths }
+          : {
+              kind: 'delete',
+              paths,
+              mode: req.mode,
+              allowDangerous,
+              ...(expected ? { expected } : {}),
+            },
+      );
     } catch (e) {
       this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
@@ -575,6 +668,17 @@ export class OpsStore {
     }
     if (req.kind === 'rename' && req.entry && name === req.entry.name) {
       this.close();
+      return null;
+    }
+    if (req.kind === 'mkdir' && this.archive.isArchivePath(req.parent)) {
+      // a folder in an archive is a rewrite of the archive: a job (design 035)
+      try {
+        const id = await this.jobs.start({ kind: 'archiveMkdir', parent: req.parent, name });
+        this.close();
+        this.afterJob(id, req.side, req.parent, [], false);
+      } catch (e) {
+        return toFsError(e);
+      }
       return null;
     }
     let result: string;

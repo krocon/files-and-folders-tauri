@@ -35,10 +35,18 @@ export const ARCHIVE_EN = {
   emptyTarget: 'Enter a target folder.',
   targetIsFile: 'The target is a file – choose a folder.',
   noArchive: 'No archive selected – put the cursor on a .zip, .7z, .rar, .tar or .tar.gz file.',
-  readOnly: 'Archives are read-only here – extract the entries first (F5).',
-  intoArchive: 'Cannot copy into an archive – pack instead (Alt+F5).',
+  readOnly: 'Not possible inside an archive – extract the entries first (F5).',
+  intoArchive: 'Cannot copy into a 7z or RAR archive – only ZIP, TAR and TAR.GZ can be changed.',
+  readOnlyFormat: '7z and RAR archives can only be read – ZIP, TAR and TAR.GZ can be changed.',
+  noRenameInto: 'A new name is not possible when copying into an archive.',
+  linkIntoArchive: 'Links cannot be created in an archive.',
+  deleteNoTrash: 'Entries in an archive are removed for good – an archive has no trash.',
   unsafeHidden: (n: number) => (n === 1 ? '1 unsafe entry hidden' : `${n} unsafe entries hidden`),
-  archiveBadge: (format: ArchiveFormat) => `${ARCHIVE_TEXTS.formats[format]} · read-only`,
+  archiveBadge: (format: ArchiveFormat) =>
+    // ZIP, TAR and TAR.GZ can be changed since design 035
+    format === 'sevenZ' || format === 'rar'
+      ? `${ARCHIVE_TEXTS.formats[format]} · read-only`
+      : ARCHIVE_TEXTS.formats[format],
   encryptedBadge: 'encrypted',
   password: 'Password',
   passwordOptional: 'Password (if encrypted)',

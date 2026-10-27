@@ -3,6 +3,7 @@
 //! Pure std code without Tauri – the command layer only forwards events.
 //! Keep in sync with `src/app/core/jobs/jobs.models.ts`.
 
+pub mod archive_write;
 pub mod ask;
 pub mod attributes;
 pub mod checksum;
@@ -28,6 +29,8 @@ pub mod shell;
 pub mod sync;
 #[cfg(test)]
 mod tests_archive;
+#[cfg(test)]
+mod tests_archive_write;
 #[cfg(test)]
 mod tests_attributes;
 #[cfg(test)]
@@ -209,6 +212,21 @@ pub enum JobSpec {
         #[serde(default, skip_serializing)]
         password: Option<crate::archive::secrets::Secret>,
     },
+    /// Adds files and folders to a ZIP/TAR/TAR.GZ (design 035): `target_dir` is a folder in
+    /// the archive (virtual path) or the archive itself; `move_sources` removes what went in
+    /// after the archive was replaced.
+    ArchiveAdd {
+        sources: Vec<String>,
+        target_dir: String,
+        #[serde(default)]
+        options: CopyOptions,
+        #[serde(default)]
+        move_sources: bool,
+    },
+    /// Removes entries (virtual paths of one archive) – there is no trash in an archive.
+    ArchiveDelete { paths: Vec<String> },
+    /// Creates folder `name` in the archive folder `parent` (virtual path).
+    ArchiveMkdir { parent: String, name: String },
     /// Extracts one file of an archive into the app's view cache (design 025 E5):
     /// Enter on a file inside an archive; the copy's path is `Summary.view_path`.
     ViewEntry { path: String },
@@ -307,6 +325,9 @@ impl JobSpec {
             | JobSpec::Link { .. }
             | JobSpec::Dedupe { .. }
             | JobSpec::Sync { .. }
+            | JobSpec::ArchiveAdd { .. }
+            | JobSpec::ArchiveDelete { .. }
+            | JobSpec::ArchiveMkdir { .. }
             | JobSpec::Attributes { .. } => false,
             JobSpec::ViewEntry { .. }
             | JobSpec::Duplicates { .. }
@@ -341,6 +362,11 @@ impl JobSpec {
                     _ => None,
                 })
                 .collect(),
+            JobSpec::ArchiveAdd {
+                sources,
+                move_sources: true,
+                ..
+            } => sources.iter().collect(),
             JobSpec::Dedupe { groups, .. } => groups
                 .iter()
                 .flat_map(|g| g.remove.iter().map(|e| &e.path))
@@ -360,6 +386,22 @@ impl JobSpec {
             | JobSpec::Pack { target_dir, .. }
             | JobSpec::Link { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
+            // the folder that holds the archive (the archive file is replaced there)
+            JobSpec::ArchiveAdd { target_dir: p, .. } | JobSpec::ArchiveMkdir { parent: p, .. } => {
+                return archive_write::split(p)
+                    .ok()
+                    .and_then(|(a, _)| a.parent().map(crate::paths::normalize_lexically))
+                    .into_iter()
+                    .collect();
+            }
+            JobSpec::ArchiveDelete { paths } => {
+                return paths
+                    .first()
+                    .and_then(|p| archive_write::split(p).ok())
+                    .and_then(|(a, _)| a.parent().map(crate::paths::normalize_lexically))
+                    .into_iter()
+                    .collect();
+            }
             JobSpec::Dedupe {
                 target_dir: Some(dir),
                 ..
@@ -491,6 +533,16 @@ impl JobSpec {
                 out.push(left.clone());
                 out.push(right.clone());
             }
+            JobSpec::ArchiveAdd {
+                sources,
+                target_dir,
+                ..
+            } => {
+                out.extend(sources.iter().cloned());
+                out.push(target_dir.clone());
+            }
+            JobSpec::ArchiveDelete { paths } => out.extend(paths.iter().cloned()),
+            JobSpec::ArchiveMkdir { parent, .. } => out.push(parent.clone()),
             JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => out.push(path.clone()),
             JobSpec::DiskUsage { roots, .. } => out.extend(roots.iter().cloned()),
             JobSpec::Search { .. }
@@ -515,6 +567,9 @@ impl JobSpec {
             JobSpec::Extract { .. } => "extract",
             JobSpec::Pack { .. } => "pack",
             JobSpec::ViewEntry { .. } => "viewEntry",
+            JobSpec::ArchiveAdd { .. } => "archiveAdd",
+            JobSpec::ArchiveDelete { .. } => "archiveDelete",
+            JobSpec::ArchiveMkdir { .. } => "archiveMkdir",
             JobSpec::Link { .. } => "link",
             JobSpec::Duplicates { .. } => "duplicates",
             JobSpec::Dedupe { .. } => "dedupe",

@@ -145,6 +145,10 @@ export const JOB_EN = {
     simulate: (n: number) => `Test job (${n} steps)`,
     shell: (command: string, cwd: string) => `Shell: ${command} (in ${cwd})`,
     viewEntry: (path: string) => `Open from the archive: ${path}`,
+    archiveAdd: (what: string, target: string, move: boolean) =>
+      `${move ? 'Move' : 'Copy'} ${what} into ${target}`,
+    archiveDelete: (what: string) => `Remove ${what} from the archive`,
+    archiveMkdir: (name: string, parent: string) => `Create folder ${name} in ${parent}`,
     attributes: (what: string, recursive: boolean) =>
       `Change attributes of ${what}${recursive ? ' and their contents' : ''}`,
   },
@@ -240,6 +244,20 @@ export function jobTitle(job: JobInfo): string {
       return t.shell(spec.command, spec.cwd);
     case 'viewEntry':
       return t.viewEntry(spec.path);
+    case 'archiveAdd': {
+      const n = spec.sources.length;
+      return t.archiveAdd(
+        n === 1 ? spec.sources[0] : t.entries(n),
+        spec.targetDir,
+        !!spec.moveSources,
+      );
+    }
+    case 'archiveDelete':
+      return t.archiveDelete(
+        spec.paths.length === 1 ? spec.paths[0] : t.entries(spec.paths.length),
+      );
+    case 'archiveMkdir':
+      return t.archiveMkdir(spec.name, spec.parent);
     case 'attributes': {
       const n = spec.paths.length;
       return t.attributes(n === 1 ? spec.paths[0] : t.entries(n), !!spec.recursive);

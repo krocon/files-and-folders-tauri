@@ -431,6 +431,34 @@ impl JobManager {
                     JobSpec::ViewEntry { path } => {
                         crate::archive::view::run_job(id, &PathBuf::from(path), &control, &emit)
                     }
+                    JobSpec::ArchiveAdd {
+                        sources,
+                        target_dir,
+                        options,
+                        move_sources,
+                    } => super::archive_write::run(
+                        id,
+                        super::archive_write::Op::Add {
+                            sources,
+                            target_dir,
+                            options,
+                            move_sources: *move_sources,
+                        },
+                        &control,
+                        &emit,
+                    ),
+                    JobSpec::ArchiveDelete { paths } => super::archive_write::run(
+                        id,
+                        super::archive_write::Op::Delete { paths },
+                        &control,
+                        &emit,
+                    ),
+                    JobSpec::ArchiveMkdir { parent, name } => super::archive_write::run(
+                        id,
+                        super::archive_write::Op::Mkdir { parent, name },
+                        &control,
+                        &emit,
+                    ),
                     JobSpec::Duplicates { criteria } => {
                         duplicates::run(id, criteria, &control, &emit)
                     }
@@ -1146,6 +1174,16 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
             }
             Ok(())
         }
+        JobSpec::ArchiveAdd {
+            sources,
+            target_dir,
+            ..
+        } => {
+            all(sources.iter_mut())?;
+            one(target_dir)
+        }
+        JobSpec::ArchiveDelete { paths } => all(paths.iter_mut()),
+        JobSpec::ArchiveMkdir { parent, .. } => one(parent),
         JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
         JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => any(path),
         JobSpec::Search { .. }
@@ -1391,6 +1429,39 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::ViewEntry { path } => {
             validate_any(path)?;
+        }
+        // the job resolves the archive and checks everything else (file I/O, off this thread)
+        JobSpec::ArchiveAdd {
+            sources,
+            target_dir,
+            move_sources,
+            ..
+        } => {
+            if sources.is_empty() {
+                return Err(nothing());
+            }
+            for s in sources {
+                let p = validate_input_path(s)?;
+                if *move_sources {
+                    check_danger_with(&mut danger, &p, false)?;
+                }
+            }
+            validate_input_path(target_dir)?;
+        }
+        JobSpec::ArchiveDelete { paths } => {
+            if paths.is_empty() {
+                return Err(nothing());
+            }
+            if paths.len() > crate::archive::MAX_ENTRIES {
+                return Err(FsError::new(FsErrorCode::TooMany, "Too many entries", None));
+            }
+            for p in paths {
+                validate_input_path(p)?;
+            }
+        }
+        JobSpec::ArchiveMkdir { parent, name } => {
+            validate_input_path(parent)?;
+            crate::paths::validate_name(name)?;
         }
         JobSpec::Pack {
             sources,

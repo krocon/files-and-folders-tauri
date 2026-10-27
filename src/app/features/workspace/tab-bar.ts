@@ -193,8 +193,12 @@ export class TabBar {
       hit: (el) => {
         const id = el.closest<HTMLElement>('[role="tab"]')?.dataset['tabId'];
         const tab = this.panel().tabs.find((t) => t.id === id);
-        return tabZoneHit(this.side(), tab, tab ? this.title(tab) : '', (p) =>
-          this.archives.isArchivePath(p),
+        // a ZIP/TAR/TAR.GZ tab takes drops since design 035; 7z/RAR stay read-only
+        return tabZoneHit(
+          this.side(),
+          tab,
+          tab ? this.title(tab) : '',
+          (p) => this.archives.isArchivePath(p) && !this.archives.canWriteInto(p),
         );
       },
     });

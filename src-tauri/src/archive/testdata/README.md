@@ -10,6 +10,7 @@ fixture into a temporary folder (the password store is keyed by path).
 | `sevenzip-enc-names.7z` | `7z a -t7z -pgeheim -mhe=on` | same, names encrypted – `geheim` |
 | `sevenzip-enc-data.7z` | `7z a -t7z -pgeheim -mhe=off` | same, data encrypted – `geheim` |
 | `zip-aes.zip` | `7z a -tzip -mem=AES256 -pgeheim` | same, WinZip AES-256 – `geheim` |
+| `zip-infozip.zip` | design 035 E2E: `zip -qr` (Info-ZIP 3.0, Linux), stored, with the extra fields `UT` (0x5455) and `ux` (0x7875) | `sub/`, `sub/s.txt`, `a.txt` |
 | `zip-crypto.zip` | `7z a -tzip -mem=ZipCrypto -pgeheim` | same, ZipCrypto – `geheim` |
 | `rar-version.rar`, `rar-unicode.rar`, `rar-solid.rar` | test data of the crate `unrar` 0.5.8 (`data/`, MIT/Apache-2.0, github.com/muja/unrar.rs) | `VERSION` (11 bytes), `te…―st✌`, `.gitignore` |
 | `rar-crypted.rar` | same | data encrypted – `unrar` |

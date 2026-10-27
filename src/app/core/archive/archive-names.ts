@@ -25,6 +25,11 @@ export function archiveFormatOf(name: string): ArchiveFormat | null {
   return null;
 }
 
+/** Formats whose entries can be added, deleted and created (design 035 E1). */
+export function isWritableFormat(format: ArchiveFormat | null | undefined): boolean {
+  return format === 'zip' || format === 'tar' || format === 'tarGz';
+}
+
 /** A file (or link to a file) whose name says ZIP, TAR, TAR.GZ, 7z or RAR (design 025). */
 export function isArchiveEntry(entry: DirEntry): boolean {
   const file = entry.kind === 'file' || (entry.kind === 'symlink' && entry.targetKind === 'file');

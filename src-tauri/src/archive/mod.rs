@@ -17,6 +17,7 @@ pub(crate) mod tests;
 #[cfg(test)]
 pub(crate) mod tests_formats;
 pub mod view;
+pub mod write;
 
 use crate::error::{FsError, FsErrorCode};
 use crate::listing::compare_entries;
@@ -511,6 +512,16 @@ pub fn read_index_until(path: &Path, deadline: Instant) -> Result<ArchiveIndex, 
         .ok_or_else(|| {
             archive_error("Not a supported archive (ZIP, TAR, TAR.GZ, 7z, RAR)", path)
         })?;
+    read_index_as(path, format, deadline)
+}
+
+/// [`read_index_until`] for a file whose name does not tell the format (the temporary
+/// file of a rewrite, design 035 E2).
+pub fn read_index_as(
+    path: &Path,
+    format: ArchiveFormat,
+    deadline: Instant,
+) -> Result<ArchiveIndex, FsError> {
     let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
     let meta = file.metadata().map_err(|e| FsError::from_io(&e, path))?;
     if !meta.is_file() {
@@ -834,6 +845,13 @@ pub fn index_of(path: &Path) -> Result<Arc<ArchiveIndex>, FsError> {
         c.pop_front();
     }
     Ok(index)
+}
+
+/// Drops the cached index of `path` (after the archive was rewritten, design 035 E2): a new
+/// file with the same size and a coarse modification time must not show the old content.
+pub fn forget_index(path: &Path) {
+    let mut c = cache().lock().unwrap_or_else(|e| e.into_inner());
+    c.retain(|(k, _)| k.0 != path);
 }
 
 /// Splits a path that leads into an archive: the nearest ancestor (or the path
