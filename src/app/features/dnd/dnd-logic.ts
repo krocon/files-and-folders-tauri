@@ -185,7 +185,7 @@ export interface TabView {
 /**
  * A tab header as a drop target: its folder – also of a tab that is not open.
  * Not a result tab (no folder), a home tab before its first listing (path not
- * known yet) or a folder inside an archive (read-only, design 016).
+ * known yet) or a folder inside an archive that cannot be changed (`readOnly`, design 016/035).
  */
 export function tabZoneHit(
   side: Side,

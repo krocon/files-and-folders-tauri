@@ -45,8 +45,10 @@ export const ARCHIVE_DE: Translation<typeof ARCHIVE_EN> = {
   deleteNoTrash: 'Einträge im Archiv werden endgültig entfernt – ein Archiv hat keinen Papierkorb.',
   unsafeHidden: (n) =>
     n === 1 ? '1 unsicherer Eintrag ausgeblendet' : `${n} unsichere Einträge ausgeblendet`,
-  archiveBadge: (format: ArchiveFormat) =>
-    `${{ zip: 'ZIP', tar: 'TAR', tarGz: 'TAR.GZ', sevenZ: '7Z', rar: 'RAR' }[format]} · schreibgeschützt`,
+  archiveBadge: (format: ArchiveFormat) => {
+    const name = { zip: 'ZIP', tar: 'TAR', tarGz: 'TAR.GZ', sevenZ: '7Z', rar: 'RAR' }[format];
+    return format === 'sevenZ' || format === 'rar' ? `${name} · schreibgeschützt` : name;
+  },
   encryptedBadge: 'verschlüsselt',
   password: 'Passwort',
   passwordOptional: 'Passwort (falls verschlüsselt)',

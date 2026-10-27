@@ -42,7 +42,11 @@ export const ARCHIVE_EN = {
   linkIntoArchive: 'Links cannot be created in an archive.',
   deleteNoTrash: 'Entries in an archive are removed for good – an archive has no trash.',
   unsafeHidden: (n: number) => (n === 1 ? '1 unsafe entry hidden' : `${n} unsafe entries hidden`),
-  archiveBadge: (format: ArchiveFormat) => `${ARCHIVE_TEXTS.formats[format]} · read-only`,
+  archiveBadge: (format: ArchiveFormat) =>
+    // ZIP, TAR and TAR.GZ can be changed since design 035
+    format === 'sevenZ' || format === 'rar'
+      ? `${ARCHIVE_TEXTS.formats[format]} · read-only`
+      : ARCHIVE_TEXTS.formats[format],
   encryptedBadge: 'encrypted',
   password: 'Password',
   passwordOptional: 'Password (if encrypted)',

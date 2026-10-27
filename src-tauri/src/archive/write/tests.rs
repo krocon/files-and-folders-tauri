@@ -301,3 +301,198 @@ fn what_cannot_be_judged_is_refused() {
     assert!(writable(&ok).is_ok());
     let _ = virtual_path(&ok, &["a.txt".into()]);
 }
+
+#[test]
+fn info_zip_extra_fields_are_copied_raw() {
+    // design 035 E2E: Info-ZIP writes the Unix extra field 0x7875 – the zip crate refuses it
+    // in raw copies without its feature `unreserved`
+    let d = tempdir().unwrap();
+    let a = d.path().join("i.zip");
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/archive/testdata/zip-infozip.zip"),
+        &a,
+    )
+    .unwrap();
+    let before = zip_raw(&a);
+    let tmp = d.path().join(".t.part");
+    let change = Change {
+        remove: vec![],
+        add: vec![dir_entry(&["neu"])],
+    };
+    rewrite(&a, ArchiveFormat::Zip, &change, None, &tmp, &mut tick_all()).unwrap();
+    let after = zip_raw(&tmp);
+    for b in &before {
+        assert!(after.contains(b), "{} changed", b.0);
+    }
+    // the extra fields stayed byte for byte
+    let mut za = zip::ZipArchive::new(File::open(&tmp).unwrap()).unwrap();
+    let f = za.by_name("a.txt").unwrap();
+    assert!(
+        f.extra_data()
+            .is_some_and(|x| x.windows(2).any(|w| w == [0x75, 0x78]))
+    );
+}
+
+fn copy_fixture(d: &Path, name: &str) -> PathBuf {
+    let a = d.join(name);
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/archive/testdata")
+            .join(name),
+        &a,
+    )
+    .unwrap();
+    a
+}
+
+#[test]
+fn review_zipcrypto_is_refused() {
+    // review 035 #1: raw_copy_file drops the ZipCrypto flag – the entries would be garbage
+    let d = tempdir().unwrap();
+    let a = copy_fixture(d.path(), "zip-crypto.zip");
+    let e = writable(&a).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ArchiveReadOnly);
+    assert!(e.message.contains("ZipCrypto"));
+    let aes = copy_fixture(d.path(), "zip-aes.zip");
+    assert!(writable(&aes).is_ok());
+}
+
+/// A stored ZIP whose central directory names the same local entry twice (review 035 #4).
+fn overlapping_zip(path: &Path) {
+    let data = b"x".repeat(1000);
+    let crc = crc32fast::hash(&data);
+    let mut out: Vec<u8> = Vec::new();
+    let local = |out: &mut Vec<u8>, name: &[u8]| {
+        out.extend_from_slice(&0x0403_4b50u32.to_le_bytes());
+        out.extend_from_slice(&[20, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        out.extend_from_slice(&crc.to_le_bytes());
+        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(name.len() as u16).to_le_bytes());
+        out.extend_from_slice(&0u16.to_le_bytes());
+        out.extend_from_slice(name);
+    };
+    local(&mut out, b"a");
+    out.extend_from_slice(&data);
+    let cd_start = out.len() as u32;
+    for name in [b"a", b"b"] {
+        out.extend_from_slice(&0x0201_4b50u32.to_le_bytes());
+        out.extend_from_slice(&[20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        out.extend_from_slice(&crc.to_le_bytes());
+        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        out.extend_from_slice(&1u16.to_le_bytes());
+        out.extend_from_slice(&[0; 12]);
+        out.extend_from_slice(&0u32.to_le_bytes()); // both at offset 0
+        out.extend_from_slice(name);
+    }
+    let cd_len = out.len() as u32 - cd_start;
+    out.extend_from_slice(&0x0605_4b50u32.to_le_bytes());
+    out.extend_from_slice(&[0, 0, 0, 0, 2, 0, 2, 0]);
+    out.extend_from_slice(&cd_len.to_le_bytes());
+    out.extend_from_slice(&cd_start.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes());
+    fs::write(path, out).unwrap();
+}
+
+#[test]
+fn review_overlapping_zip_entries_are_refused() {
+    let d = tempdir().unwrap();
+    let a = d.path().join("o.zip");
+    overlapping_zip(&a);
+    assert!(writable(&a).is_err());
+}
+
+#[test]
+fn review_hard_links_and_data_after_the_end_are_refused() {
+    let d = tempdir().unwrap();
+    // a hard link entry (`1`)
+    let a = d.path().join("h.tar");
+    let mut data: Vec<u8> = Vec::new();
+    {
+        let mut b = tar::Builder::new(&mut data);
+        let mut h = tar::Header::new_gnu();
+        h.set_size(1);
+        h.set_cksum();
+        b.append_data(&mut h, "a", &b"x"[..]).unwrap();
+        let mut h = tar::Header::new_gnu();
+        h.set_entry_type(tar::EntryType::Link);
+        h.set_size(0);
+        b.append_link(&mut h, "b", "a").unwrap();
+        b.finish().unwrap();
+    }
+    fs::write(&a, &data).unwrap();
+    assert_eq!(writable(&a).unwrap_err().code, FsErrorCode::ArchiveReadOnly);
+    // two TARs one after the other
+    let one = d.path().join("one.tar");
+    make_tar(&one, &[E::File("x.txt", b"x")], false);
+    let mut both = fs::read(&one).unwrap();
+    both.extend(fs::read(&one).unwrap());
+    let cat = d.path().join("cat.tar");
+    fs::write(&cat, both).unwrap();
+    assert_eq!(
+        writable(&cat).unwrap_err().code,
+        FsErrorCode::ArchiveReadOnly
+    );
+    assert!(writable(&one).is_ok());
+}
+
+#[test]
+fn review_pax_global_headers_stay_when_the_next_entry_goes() {
+    let d = tempdir().unwrap();
+    let a = d.path().join("g.tar");
+    let mut data: Vec<u8> = Vec::new();
+    {
+        let mut b = tar::Builder::new(&mut data);
+        // a global header as `git archive` writes it
+        let rec = b"52 comment=0123456789012345678901234567890123456789\n";
+        let mut g = tar::Header::new_ustar();
+        g.set_entry_type(tar::EntryType::XGlobalHeader);
+        g.set_size(rec.len() as u64);
+        g.set_cksum();
+        b.append_data(&mut g, "pax_global_header", &rec[..])
+            .unwrap();
+        for n in ["first.txt", "second.txt"] {
+            let mut h = tar::Header::new_gnu();
+            h.set_size(1);
+            h.set_cksum();
+            b.append_data(&mut h, n, &b"x"[..]).unwrap();
+        }
+        b.finish().unwrap();
+    }
+    fs::write(&a, &data).unwrap();
+    let tmp = d.path().join(".g.part");
+    let change = Change {
+        remove: vec![vec!["first.txt".into()]],
+        add: vec![],
+    };
+    rewrite(&a, ArchiveFormat::Tar, &change, None, &tmp, &mut tick_all()).unwrap();
+    let out = fs::read(&tmp).unwrap();
+    assert!(
+        out.windows(8).any(|w| w == b"comment="),
+        "global header kept"
+    );
+    assert!(!out.windows(9).any(|w| w == b"first.txt"));
+    let fresh = d.path().join("g2.tar");
+    fs::rename(&tmp, &fresh).unwrap();
+    assert_eq!(names(&fresh), vec!["second.txt"]);
+}
+
+#[test]
+fn review_write_protected_and_hard_linked_archives_are_refused() {
+    let d = tempdir().unwrap();
+    let a = d.path().join("ro.zip");
+    make_zip(&a, &[E::File("a.txt", b"a")]);
+    let mut p = fs::metadata(&a).unwrap().permissions();
+    p.set_readonly(true);
+    fs::set_permissions(&a, p.clone()).unwrap();
+    assert_eq!(writable(&a).unwrap_err().code, FsErrorCode::ArchiveReadOnly);
+    #[allow(clippy::permissions_set_readonly_false)]
+    p.set_readonly(false);
+    fs::set_permissions(&a, p).unwrap();
+    #[cfg(unix)]
+    {
+        fs::hard_link(&a, d.path().join("other.zip")).unwrap();
+        assert_eq!(writable(&a).unwrap_err().code, FsErrorCode::ArchiveReadOnly);
+    }
+}

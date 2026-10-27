@@ -1,6 +1,6 @@
 # Design 035: Archive bearbeiten (in Archive kopieren, darin löschen, Ordner anlegen)
 
-> **Status:** umgesetzt (27.10.2026), Branch `feat/archive-bearbeiten` · ohne Freigabe-Halt (Marc: „selbständig“) ·
+> **Status:** umgesetzt und reviewt (27.10.2026), Branch `feat/archive-bearbeiten` · ohne Freigabe-Halt (Marc: „selbständig“) ·
 > keine neue Crate (`zip` 9 `raw_copy_file`, `tar` 0.4 Rohpositionen, `flate2`).
 
 ## 1. Bestand
@@ -115,9 +115,30 @@ FsErrorCode::ArchiveReadOnly ("archive_read_only"), ArchiveBusy ("archive_busy")
   und `archiveDelete`, F7 → `archiveMkdir`.
 - E2E: `unzip -t`, `tar tvf` als Prüfung.
 
-## 5. Fortschritt
+## 5. Externes Review (separater Agent, 27.10.2026) – Befunde behoben
+
+| # | Befund | Schwere | Behebung (Test) |
+|---|---|---|---|
+| 1 | `raw_copy_file` verliert das ZipCrypto-Flag – jeder Umbau zerstörte solche Einträge, die Gegenprobe sah nur Namen | hoch | ZipCrypto-ZIPs werden abgelehnt (`archive_read_only`); Gegenprobe vergleicht je behaltenem ZIP-Eintrag CRC, gepackte Größe, Verschlüsselung (`review_zipcrypto_is_refused`) |
+| 2 | Verschieben eines Ordners, der das Archiv enthält, löschte (Windows ohne Inode) das neue Archiv | hoch | Quelle, die das Archiv enthält → `target_inside_source`; Entfernen nach dem Verschieben nur bei gleicher Identität **und** Größe/mtime über `file_identity` (auch Windows) (`review_moving_the_folder_that_holds_the_archive_is_refused`) |
+| 3 | Gewachsene Datei wurde abgeschnitten gespeichert und beim Verschieben gelöscht | mittel | nach der geplanten Länge muss EOF kommen, sonst Fehler; Löschen nur bei unveränderter Größe/mtime (`review_a_file_that_grows_while_it_is_added_fails_and_stays`) |
+| 4 | Überlappende ZIP-Einträge vervielfachen die Ausgabe | mittel | `check_zip`: Einträge dürfen sich nicht überlappen, Summe der gepackten Größen ≤ Dateigröße (`review_overlapping_zip_entries_are_refused`) |
+| 5 | TAR-Hardlink verliert seinen Inhalt, wenn das Ziel gelöscht wird | mittel | TARs mit Hardlinks werden nicht umgeschrieben (`review_hard_links_and_data_after_the_end_are_refused`) |
+| 6 | Daten nach der TAR-Endmarke (angehängtes Archiv) gingen still verloren | mittel | nach dem Ende nur Nullen, sonst abgelehnt (gleicher Test) |
+| 7 | PAX-Globalkopf (`g`) ging mit dem folgenden Eintrag | niedrig/mittel | beim Entfernen eines Eintrags bleiben seine `g`-Köpfe (`review_pax_global_headers_stay_when_the_next_entry_goes`) |
+| 8 | Ein im Archiv unzulässiger Name (`a:b.txt`) ließ den ganzen Job scheitern | niedrig | Prüfung mit `sanitize` je Eintrag, nur dieser scheitert (`review_a_name_the_archive_refuses_fails_alone`) |
+| 9 | Schreibgeschützte bzw. mehrfach verlinkte Archive wurden ersetzt; Eigentümer/xattrs/Erstellzeit gehen verloren | niedrig | schreibgeschützt oder `nlink > 1` → abgelehnt (`review_write_protected_and_hard_linked_archives_are_refused`); Eigentümer/xattrs/Quarantäne: **offen**, dokumentiert |
+| 10 | Sperre nach lexikalischem Pfad; Ansicht-Cache nicht verworfen | niedrig | Sperrschlüssel kanonisch; der Ansicht-Cache hängt an Größe + mtime (die mtime ist nach dem Umschreiben neu) – auf groben Dateisystemen **offen** |
+| 11 | Temp-Reste nach Absturz; Doppelnamen-Prüfung reihenfolgeabhängig | niedrig | Doppelnamen jetzt unabhängig von der Reihenfolge (auch Datei ↔ implizierter Ordner); Aufräumen alter `.fnf-*.part` nach Absturz **offen** |
+
+## 6. Fortschritt
 
 - [x] Design
-- [ ] Rust
-- [ ] Frontend
-- [ ] E2E, Review, Doku
+- [x] Rust (`archive/write.rs`, `jobs/archive_write.rs`, Tests), Review-Befunde
+- [x] Frontend (Vetos, `OpsStore`, Dialog-Hinweis, Drop auf Archiv-Tabs, Kopf-Badge nur noch bei 7z/RAR „schreibgeschützt“)
+- [x] E2E Linux (Xvfb, Debug-Build): siehe unten
+- [x] Doku (README, Werbeseite, architecture, feature-parity, roadmap)
+- **E2E-Fund:** ZIPs von Info-ZIP (`zip -r`) tragen das Extra-Feld `ux` (0x7875) – `raw_copy_file` lehnte es ohne das
+  zip-Feature `unreserved` ab; Feature an, Fixture `zip-infozip.zip` + Test `info_zip_extra_fields_are_copied_raw`.
+- Offen: 7z (zweite Stufe), Umbenennen im Archiv, Eigentümer/xattrs beim Ersetzen, Aufräumen alter Temp-Dateien,
+  macOS/Windows bei Marc bzw. in der CI (Windows: `rename` über eine geöffnete Datei schlägt fehl → Fehlermeldung).

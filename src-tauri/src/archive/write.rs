@@ -36,6 +36,16 @@ pub fn writable(path: &Path) -> Result<ArchiveIndex, FsError> {
     if !meta.is_file() {
         return Err(archive_error("Not a file", path));
     }
+    if meta.permissions().readonly() {
+        return Err(read_only("The archive is write-protected", path));
+    }
+    // replacing the file would split its names into two different files (review 035 #9)
+    if crate::platform::file_identity(path).is_some_and(|i| i.links > 1) {
+        return Err(read_only(
+            "The archive has several names (hard links) – it is not rewritten",
+            path,
+        ));
+    }
     let index = read_index(path)?;
     match index.format {
         ArchiveFormat::Zip | ArchiveFormat::Tar | ArchiveFormat::TarGz => {}
@@ -52,26 +62,105 @@ pub fn writable(path: &Path) -> Result<ArchiveIndex, FsError> {
             path,
         ));
     }
-    let mut names = HashSet::new();
+    // two entries of one name (in any order; a folder entry twice is harmless)
+    let mut files = HashSet::new();
+    let mut dirs = HashSet::new();
     for e in &index.entries {
-        if !names.insert(&e.name) && e.kind != EntryType::Dir {
+        let dup = if e.kind == EntryType::Dir {
+            dirs.insert(&e.name);
+            false
+        } else {
+            !files.insert(&e.name)
+        };
+        if dup {
             return Err(read_only(
                 "The archive holds two entries of the same name – it is not rewritten",
                 path,
             ));
         }
     }
-    if index.format == ArchiveFormat::Zip {
-        let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
-        let za = zip::ZipArchive::new(BufReader::new(file)).map_err(|e| zip_error(e, path))?;
-        if za.offset() != 0 {
-            return Err(read_only(
-                "Data before the ZIP (self-extracting archive) – it is not rewritten",
-                path,
-            ));
+    // folders implied by deeper names count as folders too
+    let mut implied: HashSet<&[String]> = HashSet::new();
+    for e in &index.entries {
+        for k in 1..e.name.len() {
+            implied.insert(&e.name[..k]);
+        }
+    }
+    if files
+        .iter()
+        .any(|n| dirs.contains(n) || implied.contains(n.as_slice()))
+    {
+        return Err(read_only(
+            "The archive holds a file and a folder of the same name – it is not rewritten",
+            path,
+        ));
+    }
+    match index.format {
+        ArchiveFormat::Zip => check_zip(path, index.archive_size)?,
+        _ => {
+            tar_ranges(path, index.format)?;
         }
     }
     Ok(index)
+}
+
+/// What a ZIP must look like to be rewritten (review 035 #1/#4): no data before it, no
+/// ZipCrypto entries (`raw_copy_file` drops their encryption flag – they would turn into
+/// garbage), entries that do not overlap and together are not larger than the file.
+fn check_zip(path: &Path, archive_size: u64) -> Result<(), FsError> {
+    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let mut za = zip::ZipArchive::new(BufReader::new(file)).map_err(|e| zip_error(e, path))?;
+    if za.offset() != 0 {
+        return Err(read_only(
+            "Data before the ZIP (self-extracting archive) – it is not rewritten",
+            path,
+        ));
+    }
+    let mut spans: Vec<(u64, u64)> = Vec::with_capacity(za.len());
+    let mut total = 0u64;
+    for i in 0..za.len() {
+        let f = za.by_index_raw(i).map_err(|e| zip_error(e, path))?;
+        if f.encrypted() && !is_aes(&f) {
+            return Err(read_only(
+                "The ZIP uses the old ZipCrypto encryption – it cannot be rewritten safely",
+                path,
+            ));
+        }
+        let start = f.header_start();
+        total = total.saturating_add(f.compressed_size());
+        spans.push((start, start.saturating_add(f.compressed_size())));
+    }
+    spans.sort_unstable();
+    let overlap = spans.windows(2).any(|w| w[0].1 >= w[1].0);
+    if overlap || total > archive_size {
+        return Err(read_only(
+            "Entries of the ZIP overlap – it is not rewritten",
+            path,
+        ));
+    }
+    Ok(())
+}
+
+/// The entry carries the WinZip AES extra field (0x9901).
+fn is_aes<R: Read>(f: &zip::read::ZipFile<'_, R>) -> bool {
+    f.extra_data()
+        .is_some_and(|x| x.windows(2).any(|w| w == [0x01, 0x99]))
+}
+
+/// Name → (CRC, compressed size, encrypted) of every ZIP entry: the kept entries of a
+/// rewritten ZIP must still be what they were (review 035 #1).
+pub fn zip_fingerprints(
+    path: &Path,
+) -> Result<std::collections::HashMap<String, (u32, u64, bool)>, FsError> {
+    let file = File::open(path).map_err(|e| FsError::from_io(&e, path))?;
+    let mut za = zip::ZipArchive::new(BufReader::new(file)).map_err(|e| zip_error(e, path))?;
+    let mut out = std::collections::HashMap::new();
+    for i in 0..za.len() {
+        let f = za.by_index_raw(i).map_err(|e| zip_error(e, path))?;
+        let name = f.name().map_err(|e| zip_error(e, path))?.into_owned();
+        out.insert(name, (f.crc32(), f.compressed_size(), f.encrypted()));
+    }
+    Ok(out)
 }
 
 /// A new entry: a folder or the content of a local file.
@@ -168,6 +257,14 @@ struct Source<'t, 'a> {
 impl Read for Source<'_, '_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if self.left == 0 {
+            // a file that grew while it was added fails instead of being cut (review 035 #3)
+            let mut probe = [0u8; 1];
+            if self.inner.read(&mut probe)? > 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "The file grew while it was added",
+                ));
+            }
             return Ok(0);
         }
         let max = buf
@@ -251,6 +348,8 @@ fn rewrite_zip(
 /// One entry of a TAR stream: its bytes `[start, end)` (headers, data, padding) and name.
 struct Range {
     start: u64,
+    /// Where the entry's own header starts (`[start, header)` = its GNU/PAX headers).
+    header: u64,
     end: u64,
     name: Vec<String>,
 }
@@ -272,6 +371,13 @@ fn tar_ranges(path: &Path, format: ArchiveFormat) -> Result<Vec<Range>, FsError>
     let mut prev = 0u64;
     for item in TarEntries::new(raw) {
         let (_, name, entry) = item.map_err(|e| tar_error(&e, path))?;
+        if entry.header().entry_type() == tar::EntryType::Link {
+            // a hard link has no data of its own: removing its target would empty it (#5)
+            return Err(read_only(
+                "The TAR holds hard links – it is not rewritten",
+                path,
+            ));
+        }
         let start_data = entry.raw_file_position();
         if entry.raw_header_position() < prev || start_data < entry.raw_header_position() {
             return Err(read_only("Unexpected TAR layout – not rewritten", path));
@@ -280,14 +386,58 @@ fn tar_ranges(path: &Path, format: ArchiveFormat) -> Result<Vec<Range>, FsError>
             .checked_add(pad(entry.size()))
             .ok_or_else(|| read_only("Unexpected TAR layout – not rewritten", path))?;
         let name = sanitize(&name_string(name)).map_err(|why| read_only(why, path))?;
+        if entry.raw_header_position() - prev > MAX_PREFIX {
+            return Err(read_only("Unexpected TAR layout – not rewritten", path));
+        }
         out.push(Range {
             start: prev,
+            header: entry.raw_header_position(),
             end,
             name,
         });
         prev = end;
     }
+    // anything but zeros after the end marker (a second archive appended) would be lost (#6)
+    let mut rest = archive.into_inner();
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        let n = rest.read(&mut buf).map_err(|e| tar_error(&e, path))?;
+        if n == 0 {
+            break;
+        }
+        if buf[..n].iter().any(|b| *b != 0) {
+            return Err(read_only(
+                "Data after the end of the TAR – it is not rewritten",
+                path,
+            ));
+        }
+    }
     Ok(out)
+}
+
+/// Largest run of GNU/PAX headers in front of one entry that a rewrite reads at once.
+const MAX_PREFIX: u64 = 16 << 20;
+
+/// The PAX global headers (`g`) among the headers in front of a removed entry – they apply
+/// to every later entry and must stay (review 035 #7).
+fn global_headers(prefix: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut o = 0usize;
+    while o + 512 <= prefix.len() {
+        let h = &prefix[o..o + 512];
+        let size = std::str::from_utf8(&h[124..136])
+            .ok()
+            .map(|t| t.trim_matches(|c: char| c == '\0' || c == ' '))
+            .and_then(|t| u64::from_str_radix(t, 8).ok())
+            .unwrap_or(0);
+        let total = 512 + usize::try_from(pad(size)).unwrap_or(usize::MAX);
+        let end = o.saturating_add(total).min(prefix.len());
+        if h[156] == b'g' {
+            out.extend_from_slice(&prefix[o..end]);
+        }
+        o = o.saturating_add(total);
+    }
+    out
 }
 
 /// Copies `n` bytes from `r` to `w` (or skips them with `w = None`), reporting progress.
@@ -335,9 +485,25 @@ fn rewrite_tar<W: Write>(
     let mut stream = tar_stream(file, format, size);
     let mut buf = vec![0u8; BLOCK];
     for r in &ranges {
-        let keep = !change.removes(&r.name);
-        let w: Option<&mut dyn Write> = if keep { Some(&mut out) } else { None };
-        pass_bytes(&mut stream, w, r.end - r.start, &mut buf, tick, path)?;
+        if !change.removes(&r.name) {
+            pass_bytes(
+                &mut stream,
+                Some(&mut out),
+                r.end - r.start,
+                &mut buf,
+                tick,
+                path,
+            )?;
+            continue;
+        }
+        // removed: only its PAX global headers stay
+        let mut prefix = vec![0u8; usize::try_from(r.header - r.start).unwrap_or(0)];
+        stream
+            .read_exact(&mut prefix)
+            .map_err(|e| io_fail(e, path))?;
+        out.write_all(&global_headers(&prefix))
+            .map_err(|e| io_fail(e, path))?;
+        pass_bytes(&mut stream, None, r.end - r.header, &mut buf, tick, path)?;
     }
     let mut b = tar::Builder::new(out);
     for e in &change.add {

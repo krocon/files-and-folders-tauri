@@ -47,15 +47,17 @@ struct Lock(PathBuf);
 
 impl Lock {
     fn take(archive: &Path) -> Result<Lock, FsError> {
+        // one key for every alias of the file (case, linked parent folder – review 035 #10)
+        let key = fs::canonicalize(archive).unwrap_or_else(|_| archive.to_path_buf());
         let mut l = locks().lock().unwrap_or_else(|e| e.into_inner());
-        if !l.insert(archive.to_path_buf()) {
+        if !l.insert(key.clone()) {
             return Err(FsError::new(
                 FsErrorCode::ArchiveBusy,
                 "Another task changes this archive right now",
                 Some(archive),
             ));
         }
-        Ok(Lock(archive.to_path_buf()))
+        Ok(Lock(key))
     }
 }
 
@@ -183,7 +185,8 @@ impl Ctx<'_> {
 /// A planned source of an add job (for moving: removed after the archive was replaced).
 struct Added {
     src: PathBuf,
-    id: Option<(u64, u64)>,
+    /// Identity, size and mtime when it was planned: only that exact file is removed.
+    stamp: Option<Stamp>,
     dir: bool,
 }
 
@@ -211,7 +214,8 @@ fn plan_add(
     let mut tops = Vec::new();
     for s in super::drop_nested(&sources.iter().map(PathBuf::from).collect::<Vec<_>>()) {
         let src = normalize_lexically(&s);
-        if src.starts_with(archive_path) {
+        // the archive into itself, or a folder that holds the archive (review 035 #2)
+        if src.starts_with(archive_path) || archive_path.starts_with(&src) {
             return Err(FsError::new(
                 FsErrorCode::TargetInsideSource,
                 "An archive cannot be added to itself",
@@ -291,6 +295,20 @@ fn plan_add(
             ctx.fail(&item.src, e);
             continue;
         }
+        // a name the archive reader would refuse (`:`, control characters) fails alone (#8)
+        let mut probe = name.clone();
+        probe.push(leaf.to_string());
+        if archive::sanitize(&probe.join("/")).ok().as_ref() != Some(&probe) {
+            ctx.fail(
+                &item.src,
+                FsError::new(
+                    FsErrorCode::InvalidName,
+                    "The name is not allowed in an archive",
+                    Some(&item.src),
+                ),
+            );
+            continue;
+        }
         let mut leaf = leaf.to_string();
         let meta = match fs::symlink_metadata(&item.src) {
             Ok(m) => m,
@@ -344,7 +362,7 @@ fn plan_add(
                 moved.insert(item.dst.clone(), full);
                 added.push(Added {
                     src: item.src.clone(),
-                    id: item.id,
+                    stamp: None,
                     dir: true,
                 });
                 ctx.summary.items_done += 1;
@@ -375,7 +393,7 @@ fn plan_add(
                             taken.insert(full);
                             added.push(Added {
                                 src: item.src.clone(),
-                                id: item.id,
+                                stamp: stamp(&item.src),
                                 dir: false,
                             });
                             ctx.summary.items_done += 1;
@@ -694,6 +712,29 @@ pub fn run(
             Ok(())
         }
     });
+    // ZIP: every kept entry is still what it was – CRC, size, encryption (review 035 #1)
+    let check = check.and_then(|()| {
+        if index.format != ArchiveFormat::Zip {
+            return Ok(());
+        }
+        let old = write::zip_fingerprints(&archive_path)?;
+        let new = write::zip_fingerprints(&tmp)?;
+        let added: HashSet<String> = change.add.iter().map(|a| a.name.join("/")).collect();
+        let lost = old.iter().any(|(name, fp)| {
+            let comps = archive::sanitize(name).unwrap_or_default();
+            !change.removes(&comps)
+                && !added.contains(&comps.join("/"))
+                && new.get(name) != Some(fp)
+        });
+        if lost {
+            Err(archive::archive_error(
+                "An entry would change while it is copied – the original stays",
+                &archive_path,
+            ))
+        } else {
+            Ok(())
+        }
+    });
     if let Err(e) = check {
         return fail_tmp(e, ctx.summary);
     }
@@ -721,8 +762,8 @@ pub fn run(
     // moving: the sources that went in – each only if it is still the same entry
     if move_sources {
         for a in added.iter().rev() {
-            let same =
-                || a.id.is_none() || crate::platform::file_identity(&a.src).map(|i| i.id) == a.id;
+            // identity, size and mtime as planned (Windows too – review 035 #2/#3)
+            let same = || a.stamp.is_some() && stamp(&a.src) == a.stamp;
             let removed = if a.dir {
                 fs::remove_dir(&a.src) // only when empty: skipped content stays
             } else if same() {

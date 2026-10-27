@@ -165,10 +165,13 @@ across all folders and remove it with `F8`.
 Press `Enter` on an archive and browse it; view (`F3`) and open files inside, copy them out. Pack to ZIP, 7z, TAR
 or TAR.GZ and unpack, with passwords (ZIP AES/ZipCrypto, 7z, RAR) that are only kept in memory. Archives from
 elsewhere are treated as hostile: no zip-slip, no zip-bombs.
+ZIP, TAR and TAR.GZ can be changed: copy or move files into them (`F5`/`F6`, drag and drop), delete entries (`F8`)
+and create folders (`F7`). The archive is rewritten into a temporary file and replaced only when that is complete –
+untouched entries stay bit for bit the same, a cancel leaves the original as it was. 7z and RAR stay read-only.
 
-`Enter` open · `Alt+F5` pack · `Alt+F9` unpack · macOS: `Enter` · `⌥F5` · `⌥F9`
+`Enter` open · `Alt+F5` pack · `Alt+F9` unpack · `F5`/`F6`/`F8`/`F7` into or inside a ZIP/TAR · macOS: `Enter` · `⌥F5` · `⌥F9`
 
-![Inside "Italy 2026 best of.zip": folders and photos of the archive, the header says ZIP · read-only](docs/screenshots/readme/archives.png)
+![Inside "Italy 2026 best of.zip": folders and photos of the archive](docs/screenshots/readme/archives.png)
 
 ## FTP, FTPS and SFTP servers
 

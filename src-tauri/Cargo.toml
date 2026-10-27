@@ -41,7 +41,7 @@ tauri = { version = "2.12.4", features = [] }
 trash = { version = "5.2.9", default-features = false, features = ["coinit_apartmentthreaded"] }
 unrar-ng-sys = { version = "=0.7.7", optional = true }
 zeroize = "1.9"
-zip = { version = "9.0.5", default-features = false, features = ["aes-crypto", "deflate-flate2"] }
+zip = { version = "9.0.5", default-features = false, features = ["aes-crypto", "deflate-flate2", "unreserved"] }
 # design 034 E2: server connections – FTP/FTPS (sync, rustls with ring: no OpenSSL), SFTP in pure Rust,
 # certificates checked by the OS, secrets only in the system keychain
 suppaftp = { version = "12.2", default-features = false, features = ["rustls-ring", "deprecated"] }

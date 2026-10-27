@@ -380,3 +380,72 @@ fn an_archive_cannot_be_added_to_itself_and_a_missing_folder_is_an_error() {
     assert_eq!(h.finish(&id).state, JobState::Failed);
     let _: PathBuf = zip;
 }
+
+#[test]
+fn review_moving_the_folder_that_holds_the_archive_is_refused() {
+    // review 035 #2: the old archive would be a source – and deleted after the move
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let dir = d.path().join("dir");
+    fs::create_dir(&dir).unwrap();
+    let zip = dir.join("a.zip");
+    make_zip(&zip, &[E::File("x.txt", b"x")]);
+    fs::write(dir.join("b.txt"), "b").unwrap();
+    let id = h.add(&[&dir], &s(&zip), true, ConflictDefault::Ask);
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Failed);
+    assert_eq!(
+        info.summary.unwrap().error.unwrap().code,
+        FsErrorCode::TargetInsideSource
+    );
+    assert!(zip.exists() && dir.join("b.txt").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn review_a_name_the_archive_refuses_fails_alone() {
+    // review 035 #8: `:` is fine on Unix, not in an archive
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let zip = d.path().join("a.zip");
+    make_zip(&zip, &[E::File("x.txt", b"x")]);
+    let src = d.path().join("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("a:b.txt"), "c").unwrap();
+    fs::write(src.join("ok.txt"), "o").unwrap();
+    let id = h.add(
+        &[&src.join("a:b.txt"), &src.join("ok.txt")],
+        &s(&zip),
+        false,
+        ConflictDefault::Ask,
+    );
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::DoneWithErrors);
+    assert_eq!(names(&zip), vec!["ok.txt", "x.txt"]);
+}
+
+#[test]
+fn review_a_file_that_grows_while_it_is_added_fails_and_stays() {
+    // review 035 #3: cut at the planned size and deleted on move – no longer
+    let d = tempdir().unwrap();
+    let zip = d.path().join("a.zip");
+    make_zip(&zip, &[E::File("x.txt", b"x")]);
+    let f = d.path().join("grow.txt");
+    fs::write(&f, "1234").unwrap();
+    let mut change = crate::archive::write::Change::default();
+    change.add.push(crate::archive::write::NewEntry {
+        name: vec!["grow.txt".into()],
+        source: Some(f.clone()),
+        len: 2, // planned smaller than it is now
+        mode: 0o644,
+        modified: None,
+    });
+    let tmp = d.path().join(".t.part");
+    let r =
+        crate::archive::write::rewrite(&zip, ArchiveFormat::Zip, &change, None, &tmp, &mut |_| {
+            true
+        });
+    assert!(r.is_err());
+    let _ = fs::remove_file(&tmp);
+    assert!(f.exists());
+}
