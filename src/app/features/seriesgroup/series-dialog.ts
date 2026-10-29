@@ -37,7 +37,7 @@ function rowClass(r: SeriesGridRow): string | null {
   imports: [Modal, PreviewGrid],
   template: `
     @if (sg.request(); as req) {
-      <app-modal [heading]="heading()" width="min(72rem, 94vw)" height="86vh" (closed)="sg.close()">
+      <app-modal [heading]="heading()" width="min(72rem, 96vw)" [fill]="true" (closed)="sg.close()">
         <div class="tool">
           <div class="row">
             <label class="field">
@@ -63,39 +63,33 @@ function rowClass(r: SeriesGridRow): string | null {
                 />
               </label>
             }
-            <span class="help">
-              {{ t.target }}: <span class="path">{{ sg.root() }}</span>
-            </span>
-          </div>
-          <div class="row options">
-            <label class="check">
-              <input
-                type="checkbox"
-                [checked]="o().otherSide && req.otherDir !== null"
-                [disabled]="req.otherDir === null"
-                (change)="sg.update({ otherSide: checked($event) })"
-              />
-              {{ t.otherSide }}
-              @if (req.otherDir === null) {
-                {{ t.noOtherPanel }}
-              }
-            </label>
-            <label class="check">
-              <input
-                type="checkbox"
-                [checked]="o().subtitles"
-                (change)="sg.update({ subtitles: checked($event) })"
-              />
-              {{ t.subtitles }}
-            </label>
-            <label class="check">
-              <input
-                type="checkbox"
-                [checked]="o().showIgnored"
-                (change)="sg.update({ showIgnored: checked($event) })"
-              />
-              {{ t.showIgnored }}
-            </label>
+            <div class="row options">
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="o().otherSide && req.otherDir !== null"
+                  [disabled]="req.otherDir === null"
+                  (change)="sg.update({ otherSide: checked($event) })"
+                />
+                {{ t.otherSide }}
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="o().subtitles"
+                  (change)="sg.update({ subtitles: checked($event) })"
+                />
+                {{ t.subtitles }}
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="o().showIgnored"
+                  (change)="sg.update({ showIgnored: checked($event) })"
+                />
+                {{ t.showIgnored }}
+              </label>
+            </div>
           </div>
           <div class="row">
             <label class="field grow">
@@ -106,6 +100,16 @@ function rowClass(r: SeriesGridRow): string | null {
                 autocomplete="off"
                 [value]="o().videos"
                 (input)="sg.update({ videos: text($event) })"
+              />
+            </label>
+            <label class="field">
+              <span>{{ t.junkDirs }}</span>
+              <input
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+                [value]="o().junkDirs"
+                (input)="sg.update({ junkDirs: text($event) })"
               />
             </label>
           </div>
@@ -120,16 +124,6 @@ function rowClass(r: SeriesGridRow): string | null {
                 (input)="sg.update({ junk: text($event) })"
               />
             </label>
-            <label class="field">
-              <span>{{ t.junkDirs }}</span>
-              <input
-                type="text"
-                spellcheck="false"
-                autocomplete="off"
-                [value]="o().junkDirs"
-                (input)="sg.update({ junkDirs: text($event) })"
-              />
-            </label>
           </div>
           <div class="row options">
             <label class="check">
@@ -140,6 +134,12 @@ function rowClass(r: SeriesGridRow): string | null {
               />
               {{ t.cleanup }}
             </label>
+            <span class="help">
+              {{ t.target }}: <span class="path">{{ sg.root() }}</span>
+              @if (req.otherDir === null) {
+                {{ t.noOtherPanel }}
+              }
+            </span>
           </div>
           <span [id]="labelId" class="preview-label">
             {{ t.preview }}
@@ -154,11 +154,11 @@ function rowClass(r: SeriesGridRow): string | null {
             [rowClass]="rowClass"
             [labelledBy]="labelId"
           />
+          @if (sg.hints().length > 0) {
+            <p class="help hints">⚠ {{ sg.hints().join(' · ') }}</p>
+          }
           <div class="foot">
             <p class="summary" aria-live="polite">{{ summary() }}</p>
-            @for (h of sg.hints(); track h) {
-              <p class="help">⚠ {{ h }}</p>
-            }
             <p class="error" role="alert">{{ errorText() }}</p>
             <div class="buttons">
               <button type="button" class="btn" (click)="sg.close()">{{ t.cancel }}</button>
@@ -180,7 +180,7 @@ function rowClass(r: SeriesGridRow): string | null {
       </app-modal>
     }
   `,
-  styleUrl: '../../shared/dialog/tool-dialog.css',
+  styleUrls: ['../../shared/dialog/tool-dialog.css', './series-dialog.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
 })

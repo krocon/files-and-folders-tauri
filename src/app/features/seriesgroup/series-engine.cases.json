@@ -1,7 +1,15 @@
 {
   "parseEpisode": [
-    { "name": "die.kirche.bleibt.im.dorf.s01e01.german.1080p.web.h264-dmpd.mkv", "ep": [1, 1, 1], "series": "die kirche bleibt im dorf" },
-    { "name": "Die.Kirche.bleibt.im.Dorf.S04E06.German.1080p.WEB.h264-DMPD", "ep": [4, 6, 6], "series": "die kirche bleibt im dorf" },
+    {
+      "name": "die.kirche.bleibt.im.dorf.s01e01.german.1080p.web.h264-dmpd.mkv",
+      "ep": [1, 1, 1],
+      "series": "die kirche bleibt im dorf"
+    },
+    {
+      "name": "Die.Kirche.bleibt.im.Dorf.S04E06.German.1080p.WEB.h264-DMPD",
+      "ep": [4, 6, 6],
+      "series": "die kirche bleibt im dorf"
+    },
     { "name": "Show s1e1.mkv", "ep": [1, 1, 1], "series": "show" },
     { "name": "Show.S01.E02.mkv", "ep": [1, 2, 2] },
     { "name": "Show_S01_E03.mkv", "ep": [1, 3, 3] },
@@ -22,7 +30,11 @@
     { "name": "Show - Staffel 2 - Folge 5.mkv", "ep": [2, 5, 5] },
     { "name": "Show Season 1 Episode 10.mkv", "ep": [1, 10, 10] },
     { "name": "Show season 3 ep. 7.mkv", "ep": [3, 7, 7] },
-    { "name": "Grüße aus Köln – S03E02 – Ünïcode 🎬.mkv", "ep": [3, 2, 2], "series": "grüße aus köln –" },
+    {
+      "name": "Grüße aus Köln – S03E02 – Ünïcode 🎬.mkv",
+      "ep": [3, 2, 2],
+      "series": "grüße aus köln –"
+    },
     { "name": "Show.S01E01.and.1x05.mkv", "ep": [1, 1, 1] },
     { "name": "Show.1x05.then.S01E01.mkv", "ep": [1, 5, 5] },
     { "name": "S01E07.mkv", "ep": [1, 7, 7], "series": "" },
