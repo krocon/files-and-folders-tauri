@@ -451,9 +451,20 @@ pub(crate) fn forget_keys() {
 /// 7-Zip's key derivation: SHA-256 over 2^cycles rounds of salt, UTF-16LE
 /// password and a counter – cached per (salt, rounds, password).
 fn derived_key(salt: &[u8], cycles: u8, pw: &[u8]) -> Zeroizing<[u8; 32]> {
+    derived_key_in(&KEYS, salt, cycles, pw)
+}
+
+/// [`derived_key`] with its cache as a parameter (tests use their own: the global
+/// one is shared with tests running in parallel).
+fn derived_key_in(
+    cache: &Mutex<Vec<CachedKey>>,
+    salt: &[u8],
+    cycles: u8,
+    pw: &[u8],
+) -> Zeroizing<[u8; 32]> {
     use sha2::Digest;
     {
-        let keys = KEYS.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = cache.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(k) = keys
             .iter()
             .find(|k| k.cycles == cycles && k.salt == salt && k.password[..] == *pw)
@@ -476,7 +487,7 @@ fn derived_key(salt: &[u8], cycles: u8, pw: &[u8]) -> Zeroizing<[u8; 32]> {
     }
     let mut key = Zeroizing::new([0u8; 32]);
     key.copy_from_slice(&sha.finalize());
-    let mut keys = KEYS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut keys = cache.lock().unwrap_or_else(|e| e.into_inner());
     if keys.len() >= KEYS_KEPT {
         keys.remove(0);
     }
@@ -759,17 +770,28 @@ mod tests {
     /// N2: a derived key is reused for the same salt, rounds and password only.
     #[test]
     fn derived_keys_are_cached_per_salt_rounds_and_password() {
-        let a = derived_key(b"salt-n2", 4, b"g\0e\0");
-        assert_eq!(derived_key(b"salt-n2", 4, b"g\0e\0")[..], a[..]);
-        assert_ne!(derived_key(b"salt-n2", 4, b"x\0")[..], a[..]);
-        assert_ne!(derived_key(b"salt-n2", 5, b"g\0e\0")[..], a[..]);
+        // an own cache: the global one is cleared and filled by tests running in parallel
+        let cache = Mutex::new(Vec::new());
+        let key = |salt: &[u8], cycles, pw: &[u8]| derived_key_in(&cache, salt, cycles, pw);
+        let a = key(b"salt-n2", 4, b"g\0e\0");
+        assert_eq!(key(b"salt-n2", 4, b"g\0e\0")[..], a[..]);
+        assert_eq!(cache.lock().unwrap().len(), 1, "the second call is a hit");
+        assert_ne!(key(b"salt-n2", 4, b"x\0")[..], a[..]);
+        assert_ne!(key(b"salt-n2", 5, b"g\0e\0")[..], a[..]);
+        assert_ne!(key(b"salt-n3", 4, b"g\0e\0")[..], a[..]);
+        assert_eq!(cache.lock().unwrap().len(), KEYS_KEPT);
+        // full: the oldest goes first
+        key(b"salt-n4", 4, b"g\0e\0");
+        let keys = cache.lock().unwrap();
+        assert_eq!(keys.len(), KEYS_KEPT);
         assert!(
-            KEYS.lock()
-                .unwrap()
+            !keys
                 .iter()
-                .any(|k| k.salt == b"salt-n2" && k.cycles == 4)
-                || KEYS.lock().unwrap().len() == KEYS_KEPT
+                .any(|k| k.salt == b"salt-n2" && k.cycles == 4 && k.password[..] == *b"g\0e\0")
         );
+        // the global cache is the same code
+        drop(keys);
+        assert_eq!(derived_key(b"salt-n2", 4, b"g\0e\0")[..], a[..]);
     }
 
     /// B2: huge declared counts are refused before anything is allocated.
