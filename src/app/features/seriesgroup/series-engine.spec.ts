@@ -67,6 +67,22 @@ describe('series engine (design 045 E2)', () => {
     expect(nameMatcher('')('anything')).toBe(false);
   });
 
+  it('matches patterns in linear time like clean.rs (review 045 #1)', () => {
+    const t0 = Date.now();
+    expect(nameMatcher('*a*a*a*a*a*a*a*b')('a'.repeat(200))).toBe(false);
+    expect(Date.now() - t0).toBeLessThan(200);
+    expect(nameMatcher('a?c')('a\nc')).toBe(true); // `?` is any character, as in Rust
+  });
+
+  it('the folder fallback only for a folder with one video (review 045 #4)', () => {
+    const p = plan([
+      'Show.S01E01-E10.Complete/folge-a.mkv',
+      'Show.S01E01-E10.Complete/folge-b.mkv',
+      'Show.S02E03-GRP/grp.mkv',
+    ]);
+    expect(p.rows.map((r) => r.status)).toEqual(['unrecognized', 'unrecognized', 'ok']);
+  });
+
   it("groups Marc's example: 30 episodes into S01–S04, extras and samples ignored", () => {
     const text: string = readFileSync('prompts/done/045-serien-gruppieren-beispiel.txt', 'utf8');
     const rels = text.split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#'));

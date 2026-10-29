@@ -291,16 +291,19 @@ fn clean_rechecks_every_entry() {
         path: s(&d.path().join("leer daneben")),
         kind: CleanKind::Dir,
         junk: 0,
+        junk_names: Vec::new(),
     });
     list.push(crate::clean::CleanItem {
         path: s(&root),
         kind: CleanKind::Dir,
         junk: 0,
+        junk_names: Vec::new(),
     });
     list.push(crate::clean::CleanItem {
         path: s(&root.join("keep.txt")),
         kind: CleanKind::File,
         junk: 0,
+        junk_names: Vec::new(),
     });
     // `..` refuses the whole job before it starts (external review #1)
     let mut with_up = list.clone();
@@ -308,6 +311,7 @@ fn clean_rechecks_every_entry() {
         path: s(&root.join("..").join("leer daneben")),
         kind: CleanKind::Dir,
         junk: 0,
+        junk_names: Vec::new(),
     });
     let refused = h.mgr.start(JobSpec::Clean {
         roots: vec![s(&root)],

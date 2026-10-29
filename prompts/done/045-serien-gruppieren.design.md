@@ -301,6 +301,20 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
 - **E1:** Unter Windows gibt es (wie in `clean.rs`) keine Geräte-Id aus `std` – die Grenze „kein fremdes
   Dateisystem“ greift dort nicht; Links (Junctions) werden dennoch nie betreten.
 
+## 6a. Externes Review (separater Agent, 29.10.2026) – Befunde und Behebung
+
+| # | Befund | Behebung |
+|---|---|---|
+| 1 | **ReDoS** im TS-Musterabgleich (`nameMatcher` baute `.*`-Regexe; `*a*a*a*a*a*b` → 28–41 s, im Test 377 s) – das Muster wird gemerkt und hinge bei jedem Öffnen | Port von Rusts linearem `glob_match` nach TS (Code-Points, ohne Regex); Test „matches patterns in linear time like clean.rs“ (rot → grün) |
+| 2 | Aufräumen übernahm die ganze Beiwerk-Liste des Dialogs (`*.jpg`, `*.txt`) als Clean-Müll – ein Ordner mit fremdem `cover.jpg` wäre samt Datei in den Papierkorb gegangen; der Dialog zeigte nur die Anzahl | Clean bekommt nur noch echte Release-Extras (`RELEASE_EXTRAS`: `*.nfo; *.sfv; *.srr; *.md5; *-sample.*; *.sample.*; sample-*; sample.*` + Systemmüll); Rust liefert je Ordner die ersten 5 Müll-Namen (`CleanItem.junkNames`), der Clean-Dialog zeigt sie („mit 7 Müll-Dateien: a.nfo, … …“) – auch im normalen Aufräumen |
+| 3 | `openPrepared` bekam den Zielordner statt des Quellordners (Ziel = andere Seite) | `req.sourceDir`; Test „cleanup after a move into the other side …“ |
+| 4 | Fehlerkennungen `3x45 Min`; Ordner-Fallback gab allen Dateien eines Sammel-Releases (`Show.S01E01-E10.Complete`) dieselbe Folge | `NxMM` nicht vor „min“; Ordner-Fallback nur, wenn der Ordner genau ein Video enthält; Testfälle im Katalog |
+| – | Walker: Ordner könnte zwischen Prüfung und `read_dir` gegen einen Link getauscht werden | akzeptiert wie `clean.rs` (nur listen; der Job prüft jede Quelle neu), im Modulkopf dokumentiert |
+| – | Windows: keine Geräte-Id → „kein fremdes FS“ greift nicht | bekannt (Abschnitt 6), wie `clean.rs` |
+| – | `failed` kennt nur die ersten 1 000 Fehler | unkritisch: ein nicht verschobenes Video hält seinen Release-Ordner fest; nur reine Müll-Unterordner (`Sample/`) könnten angeboten werden, mit Liste und Bestätigung |
+| – | Faltung: `toLocaleLowerCase` vs. `iu` | einheitlich `toLowerCase` |
+| – | Texte in `computed` (`rows`, `hints`) | wie `GroupFilesStore`/`CleanFoldersStore`; die Texte sind Proxys auf das Sprach-Signal, die Zeilen rechnen beim Sprachwechsel neu (kein GuiExpert-Modell im `computed`) |
+
 ## 7. Fortschritt
 
 - [x] Phase 1 – Bestand, Design (29.10.2026) – freigegeben von Marc (29.10.2026, „passt“, A1–A7 bestätigt)
@@ -309,7 +323,7 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
 - [x] Phase 3 – Frontend: `features/seriesgroup/` (Engine + Katalog `series-engine.cases.json`, Store, Dialog,
       Aktion), `FoldersApi.collectFiles` + Fake, Keymaps/Menüs/Vetos, Texte en/de, `CleanFoldersStore.openPrepared`
       (vorbelegtes Formular wird nie gemerkt, das eigene kehrt beim Schließen zurück); `pnpm check` grün
-- [ ] Phase 4 – E2E unter Xvfb
+- [x] Phase 4 – E2E unter Xvfb (s. unten)
 - [ ] Phase 5 – Doku (README, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md §1/§3)
 - [ ] Phase 6 – `pnpm check`, Debug-Build, Review durch separaten Agenten (Schwerpunkte: Walker-Grenzen/Links,
       Müll-Muster im Clean-Job, Verschieben/Aufräumen nie außerhalb der Wurzel)

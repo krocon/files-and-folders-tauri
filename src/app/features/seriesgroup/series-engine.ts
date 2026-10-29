@@ -36,6 +36,21 @@ export const SUBTITLES: readonly string[] = ['.srt', '.sub', '.idx', '.ass', '.s
 export const DEFAULT_JUNK =
   '*.nfo; *.sfv; *.srr; *.md5; *.txt; *.url; *.jpg; *.jpeg; *.png; *-sample.*; *.sample.*; sample-*; sample.*';
 export const DEFAULT_JUNK_DIRS = 'Sample; Samples; Proof';
+/**
+ * What "clean folders" may treat as junk after a move (design 045 E4): only true release
+ * extras – never the dialog's own list, which may hold `*.jpg` or `*.txt` of the user
+ * (review 045 #2).
+ */
+export const RELEASE_EXTRAS: readonly string[] = [
+  '*.nfo',
+  '*.sfv',
+  '*.srr',
+  '*.md5',
+  '*-sample.*',
+  '*.sample.*',
+  'sample-*',
+  'sample.*',
+];
 
 export const DEFAULT_SERIES_OPTIONS: SeriesOptions = {
   template: 'S{nn}',
@@ -78,8 +93,8 @@ const E = '(?![\\p{L}\\p{N}])';
 const PATTERNS: readonly RegExp[] = [
   // S01E01, s1e1, S01.E01, S01_E01, S01 E01; double: S01E01E02, S01E01-E02, S01E01-02
   new RegExp(`${B}s(\\d{1,4})[ ._-]?e(\\d{1,4})(?:(?:[ ._-]?e|-)(\\d{1,4}))?${E}`, 'iu'),
-  // 1x01
-  new RegExp(`${B}(\\d{1,2})x(\\d{2,3})${E}`, 'iu'),
+  // 1x01 (not `3x45 Min` – review 045 #4)
+  new RegExp(`${B}(\\d{1,2})x(\\d{2,3})${E}(?![ ._-]*min)`, 'iu'),
   // Staffel 2 Folge 5, Season 1 Episode 10 (up to three words between)
   new RegExp(
     `${B}(?:staffel|season)[ ._-]*(\\d{1,4})(?:[ ._-]+\\p{L}+){0,3}?[ ._-]+(?:folge|episode|ep\\.?)[ ._-]*(\\d{1,4})(?!\\p{N})`,
@@ -135,16 +150,39 @@ export function splitList(text: string): string[] {
     .filter((s) => s !== '');
 }
 
-function escapeRe(s: string): string {
-  return s.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+/**
+ * `*` = any sequence, `?` = one character – a port of Rust `clean.rs::glob_match`:
+ * linear, no regex, so a pattern from the dialog can never hang the app (review 045 #1).
+ */
+function globMatch(p: readonly string[], s: readonly string[]): boolean {
+  let pi = 0;
+  let si = 0;
+  let star: [number, number] | null = null;
+  while (si < s.length) {
+    if (pi < p.length && (p[pi] === '?' || p[pi] === s[si])) {
+      pi++;
+      si++;
+    } else if (pi < p.length && p[pi] === '*') {
+      star = [pi, si];
+      pi++;
+    } else if (star !== null) {
+      pi = star[0] + 1;
+      si = star[1] + 1;
+      star = [star[0], star[1] + 1];
+    } else {
+      return false;
+    }
+  }
+  return p.slice(pi).every((c) => c === '*');
 }
 
-/** Name patterns as in Rust `clean.rs`: `*`, `?`, else exact; without case. */
+/** Name patterns as in Rust `clean.rs`: `*`, `?`, else exact; without case (by code point). */
 export function nameMatcher(list: string): (name: string) => boolean {
-  const res = splitList(list).map(
-    (p) => new RegExp(`^${escapeRe(p).replaceAll('*', '.*').replaceAll('?', '.')}$`, 'iu'),
-  );
-  return (name) => res.some((re) => re.test(name));
+  const patterns = splitList(list).map((p) => Array.from(p.toLowerCase()));
+  return (name) => {
+    const chars = Array.from(name.toLowerCase());
+    return patterns.some((p) => globMatch(p, chars));
+  };
 }
 
 function extensions(list: string): Set<string> {
@@ -195,16 +233,25 @@ export interface SeriesPlan {
   readonly templateInvalid: boolean;
 }
 
-function episodeOf(file: TreeFile): Episode | null {
+/** Key of the folder `dirs[0..=i]` below the root (names joined by NUL – never a path). */
+function folderKey(dirs: readonly string[], i: number): string {
+  return dirs.slice(0, i + 1).join('\0');
+}
+
+/**
+ * Season/episode from the name, else from the folders innermost first – but only a
+ * folder that holds a single video (a pack `Show.S01E01-E10.Complete` with many files
+ * says nothing about each of them, review 045 #4).
+ */
+function episodeOf(file: TreeFile, videosIn: ReadonlyMap<string, number>): Episode | null {
   const own = parseEpisode(file.name);
   if (own) {
     return own;
   }
-  // from the folders, innermost first (the release folder)
   for (let i = file.dirs.length - 1; i >= 0; i--) {
     const e = parseEpisode(file.dirs[i]);
     if (e) {
-      return e;
+      return (videosIn.get(folderKey(file.dirs, i)) ?? 0) === 1 ? e : null;
     }
   }
   return null;
@@ -224,6 +271,16 @@ export function planSeries(
   const videos = extensions(o.videos);
   const subtitles = new Set(SUBTITLES);
   const templateInvalid = seasonFolder(o.template, 1) === null;
+  // videos below each folder (all depths) – for the folder fallback
+  const videosIn = new Map<string, number>();
+  for (const f of files) {
+    if (videos.has(extOf(f.name)) && !isJunk(f.name) && !f.dirs.some(isJunkDir)) {
+      for (let i = 0; i < f.dirs.length; i++) {
+        const k = folderKey(f.dirs, i);
+        videosIn.set(k, (videosIn.get(k) ?? 0) + 1);
+      }
+    }
+  }
   const rows: SeriesRow[] = files.map((file) => {
     const base = {
       file,
@@ -247,7 +304,7 @@ export function planSeries(
     if (!videos.has(ext) && !subtitle) {
       return { ...base, status: 'ignored', reason: 'notVideo' };
     }
-    const episode = episodeOf(file);
+    const episode = episodeOf(file, videosIn);
     if (episode === null) {
       return { ...base, subtitle, status: 'unrecognized', reason: null };
     }
@@ -257,15 +314,13 @@ export function planSeries(
       return { ...base, subtitle, episode, folder, status: 'invalid', reason: null, error };
     }
     const inPlace =
-      sameRoot &&
-      file.dirs.length === 1 &&
-      file.dirs[0].toLocaleLowerCase() === folder.toLocaleLowerCase();
+      sameRoot && file.dirs.length === 1 && file.dirs[0].toLowerCase() === folder.toLowerCase();
     return { ...base, subtitle, episode, folder, status: inPlace ? 'inPlace' : 'ok', reason: null };
   });
 
   // after a copy (design 045, E2E): the original of a file that is in its season folder
   // already is done as well – a second run has nothing to do
-  const lower = (t: string) => t.toLocaleLowerCase();
+  const lower = (t: string) => t.toLowerCase();
   const placed = new Set(
     rows
       .filter((r) => r.status === 'inPlace')

@@ -218,7 +218,7 @@ describe('group series by season (design 045)', () => {
     await left.load('/src');
     sg.open();
     await flush();
-    sg.update({ cleanup: true, junk: '*.nfo; *-sample.*' });
+    sg.update({ cleanup: true, junk: '*.nfo; *-sample.*; *.jpg' });
     await sg.run('move');
     finish(0, 'doneWithErrors', {
       itemsDone: 2,
@@ -236,20 +236,61 @@ describe('group series by season (design 045)', () => {
       folder: '/src',
       roots: ['/src/Show.S01E01-GRP', '/src/Show.S01E02-GRP'],
     });
+    // only real release extras – never the dialog's own list (`*.jpg`, `*.txt`: review 045 #2)
     expect(cl.options()).toEqual({
       emptyDirs: true,
       includeRoots: true,
-      junk: ['*.nfo', '*-sample.*', '.DS_Store', 'Thumbs.db', 'desktop.ini'],
+      junk: [
+        '*.nfo',
+        '*.sfv',
+        '*.srr',
+        '*.md5',
+        '*-sample.*',
+        '*.sample.*',
+        'sample-*',
+        'sample.*',
+        '.DS_Store',
+        'Thumbs.db',
+        'desktop.ini',
+      ],
       patterns: [],
     });
     expect(cl.mode()).toBe('trash');
+    // the dialog names the junk that leaves with a folder (review 045 #2)
+    folders.scan = {
+      ...folders.scan,
+      items: [
+        {
+          path: '/src/Show.S01E01-GRP',
+          kind: 'dir',
+          junk: 7,
+          junkNames: ['a.nfo', 'b.nfo', 'c.nfo', 'd.nfo', 'e.nfo'],
+        },
+      ],
+    };
+    await cl.scanNow();
+    expect(cl.rows()[0].info).toBe('with 7 junk files: a.nfo, b.nfo, c.nfo, d.nfo, e.nfo …');
     // the prepared form is not kept as the user's last input, and goes on close
     cl.close();
     expect(cl.form().patternsText).toBe('*.mine');
     const kept = settings.get('dialogs.recent') as { dialog: string; value: object }[];
     expect(kept.map((k) => k.dialog)).toEqual(['seriesGroup']);
-    expect(kept[0].value).toMatchObject({ cleanup: true, junk: '*.nfo; *-sample.*' });
+    expect(kept[0].value).toMatchObject({ cleanup: true, junk: '*.nfo; *-sample.*; *.jpg' });
     expect(JSON.stringify(kept[0].value)).not.toContain('move');
+  });
+
+  it('cleanup after a move into the other side: the start folders lie in the source folder (review 045 #3)', async () => {
+    const cl = TestBed.inject(CleanFoldersStore);
+    await left.load('/src');
+    await right.load('/dst');
+    sg.open();
+    await flush();
+    sg.update({ cleanup: true, otherSide: true });
+    await sg.run('move');
+    finish(0);
+    await flush();
+    expect(cl.request()).toMatchObject({ side: 'left', folder: '/src' });
+    cl.close();
   });
 
   it('opens with the kept options, never with a kept transfer', async () => {

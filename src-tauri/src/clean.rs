@@ -73,7 +73,14 @@ pub struct CleanItem {
     /// Junk files inside the folder (they go with it).
     #[serde(default)]
     pub junk: u32,
+    /// The first junk names (at most [`MAX_JUNK_NAMES`]) – shown in the dialog, so the
+    /// user sees what leaves with the folder (review 045 #2). Not read by the job.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub junk_names: Vec<String>,
 }
+
+/// Junk names reported per folder.
+pub const MAX_JUNK_NAMES: usize = 5;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -242,7 +249,7 @@ impl Ctx<'_> {
         }
     }
 
-    fn push(&mut self, path: &Path, kind: CleanKind, junk: u32) {
+    fn push(&mut self, path: &Path, kind: CleanKind, junk: u32, junk_names: Vec<String>) {
         if self.scan.items.len() >= MAX_ITEMS {
             self.scan.truncated = true;
             return;
@@ -252,6 +259,7 @@ impl Ctx<'_> {
                 path: path_string(path),
                 kind,
                 junk,
+                junk_names,
             });
         }
     }
@@ -267,6 +275,7 @@ impl Ctx<'_> {
         };
         let mut removable = true;
         let mut junk = 0u32;
+        let mut junk_names: Vec<String> = Vec::new();
         for entry in rd {
             if self.cancel.load(Ordering::Relaxed) {
                 self.scan.cancelled = true;
@@ -312,9 +321,12 @@ impl Ctx<'_> {
                 }
             } else if ft.is_file() {
                 if self.m.matches(name) {
-                    self.push(&path, CleanKind::File, 0);
+                    self.push(&path, CleanKind::File, 0, Vec::new());
                 } else if self.m.is_junk(name) {
                     junk += 1;
+                    if junk_names.len() < MAX_JUNK_NAMES {
+                        junk_names.push(name.to_string());
+                    }
                 } else {
                     removable = false;
                 }
@@ -327,7 +339,7 @@ impl Ctx<'_> {
         }
         // a linked start folder is never offered: the job deletes no link (review 008 #4)
         if !is_root || (self.o.include_roots && self.root_real) {
-            self.push(dir, CleanKind::Dir, junk);
+            self.push(dir, CleanKind::Dir, junk, junk_names);
         }
         true
     }
@@ -591,6 +603,9 @@ mod tests {
             scan.items.iter().map(|i| i.junk).collect::<Vec<_>>(),
             [1, 1, 1]
         );
+        // the names go along, so the dialog can show what leaves with the folder (review 045 #2)
+        assert_eq!(scan.items[1].junk_names, ["serie.s01e01.NFO"]);
+        assert_eq!(scan.items[0].junk_names, ["serie.s01e01-sample.mkv"]);
         let m = Matcher::new(&o).unwrap();
         assert!(m.is_junk("A.NFO"));
         assert!(m.is_junk(".ds_store"));

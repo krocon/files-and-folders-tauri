@@ -7,6 +7,11 @@
 //! unreadable folders are reported and never fatal. Names that are not UTF-8
 //! cannot be addressed again by the frontend and are skipped.
 //!
+//! Residual risk (review 045, same as `clean.rs`): between `symlink_metadata` and
+//! `read_dir` a folder could be swapped for a link by someone with write access below
+//! the start folder; paths stay lexically below it. The walk only lists – the `group`
+//! job checks every source again (`check_danger`) before it moves anything.
+//!
 //! Keep in sync with `src/app/core/folders/folders.models.ts` (`TreeFile`, `FileTree`).
 
 use crate::error::{FsError, FsErrorCode};

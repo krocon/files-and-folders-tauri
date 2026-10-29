@@ -49,7 +49,10 @@
     { "name": "Show.S01.mkv", "ep": null },
     { "name": "Classics01E02.mkv", "ep": null },
     { "name": "Show.S01E01x.mkv", "ep": null },
-    { "name": "Staffel 1", "ep": null }
+    { "name": "Staffel 1", "ep": null },
+    { "name": "Doku 3x45 Min.mkv", "ep": null },
+    { "name": "Doku 3x45min.mkv", "ep": null },
+    { "name": "Show 2x05 - Titel.mkv", "ep": [2, 5, 5] }
   ],
   "seasonFolder": [
     { "template": "S{nn}", "season": 1, "folder": "S01" },

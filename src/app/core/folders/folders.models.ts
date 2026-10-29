@@ -25,6 +25,8 @@ export interface CleanItem {
   readonly kind: CleanKind;
   /** Junk files inside the folder (they go with it). */
   readonly junk?: number;
+  /** The first junk names (at most 5, design 045 review #2) – shown, not sent back. */
+  readonly junkNames?: readonly string[];
 }
 
 export interface CleanScan {

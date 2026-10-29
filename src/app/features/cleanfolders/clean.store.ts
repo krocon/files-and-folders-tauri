@@ -90,6 +90,12 @@ export function cleanRoots(folder: string, marked: readonly DirEntry[]): readonl
   return dirs.length > 0 ? dirs : [folder];
 }
 
+/** "with 7 junk files: a.nfo, b.nfo …" – the user sees what leaves with the folder. */
+function junkInfo(n: number, names: readonly string[]): string {
+  const base = CL_TEXTS.junkInside(n);
+  return names.length === 0 ? base : `${base}: ${names.join(', ')}${n > names.length ? ' …' : ''}`;
+}
+
 function err(message: string): FsError {
   return { code: 'unknown', message, path: null };
 }
@@ -141,7 +147,7 @@ export class CleanFoldersStore {
       nr: i + 1,
       path: it.path,
       kind: it.kind === 'dir' ? CL_TEXTS.kindDir : CL_TEXTS.kindFile,
-      info: it.junk ? CL_TEXTS.junkInside(it.junk) : '',
+      info: it.junk ? junkInfo(it.junk, it.junkNames ?? []) : '',
     })),
   );
   readonly counts = computed(() => {

@@ -17,8 +17,8 @@ import {
   planSeries,
   restoreSeriesOptions,
   SeriesOptions,
+  RELEASE_EXTRAS,
   SeriesRow,
-  splitList,
 } from './series-engine';
 import { SG_TEXTS } from './series-texts';
 
@@ -283,15 +283,12 @@ export class SeriesGroupStore {
     rememberDialog(this.settings, 'seriesGroup', options); // never the transfer (design 045 E3)
     this.close();
     this.busy.set(false);
-    void this.jobs
-      .whenFinished(id)
-      .then((job) => this.afterJob(job, req, root, rows, options, transfer));
+    void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, rows, options, transfer));
   }
 
   private afterJob(
     job: JobInfo,
     req: SeriesRequest,
-    root: string,
     rows: readonly SeriesRow[],
     options: SeriesOptions,
     transfer: 'copy' | 'move',
@@ -316,12 +313,13 @@ export class SeriesGroupStore {
     if (roots.length === 0 || this.dialogs.open() !== null) {
       return;
     }
-    this.clean.openPrepared(req.side, root, roots, {
+    // the start folders lie in the scanned folder, also when the target was the other side
+    this.clean.openPrepared(req.side, req.sourceDir, roots, {
       ...DEFAULT_CLEAN_FORM,
       emptyDirs: true,
       includeRoots: true,
       junkOn: true,
-      junkText: [...splitList(options.junk), ...DEFAULT_JUNK].join('; '),
+      junkText: [...RELEASE_EXTRAS, ...DEFAULT_JUNK].join('; '),
       patternsOn: false,
     });
   }
