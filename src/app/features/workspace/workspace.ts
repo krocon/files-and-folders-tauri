@@ -31,6 +31,9 @@ import { MultiRenameStore } from '../multirename/multirename.store';
 import { GroupFilesDialog } from '../groupfiles/groupfiles-dialog';
 import { registerGroupFilesActions } from '../groupfiles/groupfiles-actions';
 import { GroupFilesStore } from '../groupfiles/groupfiles.store';
+import { SeriesGroupDialog } from '../seriesgroup/series-dialog';
+import { registerSeriesGroupActions } from '../seriesgroup/series-actions';
+import { SeriesGroupStore } from '../seriesgroup/series.store';
 import { CleanFoldersDialog } from '../cleanfolders/clean-dialog';
 import { registerCleanFoldersActions } from '../cleanfolders/clean-actions';
 import { ChecksumDialog } from '../checksum/checksum-dialog';
@@ -146,6 +149,7 @@ import { RemoteStore } from '../remote/remote.store';
     NameDialog,
     MultiRenameDialog,
     GroupFilesDialog,
+    SeriesGroupDialog,
     CleanFoldersDialog,
     ChecksumDialog,
     ChecksumResultDialog,
@@ -199,6 +203,7 @@ export class Workspace implements OnInit {
   private readonly ops = inject(OpsStore);
   private readonly mr = inject(MultiRenameStore);
   private readonly gf = inject(GroupFilesStore);
+  private readonly sg = inject(SeriesGroupStore);
   private readonly cl = inject(CleanFoldersStore);
   private readonly cs = inject(ChecksumStore);
   private readonly diff = inject(DiffStore);
@@ -343,6 +348,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));
     this.destroyRef.onDestroy(registerMultiRenameActions(this.actions, this.mr, this.jobs));
     this.destroyRef.onDestroy(registerGroupFilesActions(this.actions, this.gf));
+    this.destroyRef.onDestroy(registerSeriesGroupActions(this.actions, this.sg));
     this.destroyRef.onDestroy(registerCleanFoldersActions(this.actions, this.cl));
     this.destroyRef.onDestroy(registerChecksumActions(this.actions, this.cs));
     this.destroyRef.onDestroy(registerDiffActions(this.actions, this.diff));

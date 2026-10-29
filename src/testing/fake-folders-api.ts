@@ -1,5 +1,11 @@
 import { FoldersApi } from '../app/core/folders/folders-api';
-import { CleanOptions, CleanScan, CreatedFolders } from '../app/core/folders/folders.models';
+import {
+  CleanOptions,
+  CleanScan,
+  CollectOptions,
+  CreatedFolders,
+  FileTree,
+} from '../app/core/folders/folders.models';
 
 const EMPTY_SCAN: CleanScan = {
   items: [],
@@ -10,16 +16,29 @@ const EMPTY_SCAN: CleanScan = {
   visited: 0,
 };
 
+export const EMPTY_TREE: FileTree = {
+  files: [],
+  unreadable: [],
+  unreadableMore: 0,
+  truncated: false,
+  cancelled: false,
+  visited: 0,
+};
+
 /**
- * In-memory FoldersApi: `scan` is the answer of `findEmptyDirs`, `existing`
- * names fail in `createFolders`. `hold` keeps scan answers pending until
- * `release()` (tests of stale answers).
+ * In-memory FoldersApi: `scan` is the answer of `findEmptyDirs`, `tree` the one of
+ * `collectFiles`, `existing` names fail in `createFolders`. `hold` keeps scan and
+ * collect answers pending until `release()` (tests of stale answers).
  */
 export class FakeFoldersApi extends FoldersApi {
   readonly scans: { scanId: string; roots: string[]; options: CleanOptions }[] = [];
   readonly cancels: string[] = [];
   readonly creates: { parent: string; names: string[] }[] = [];
+  readonly collects: { scanId: string; root: string; options: CollectOptions }[] = [];
   scan: CleanScan = EMPTY_SCAN;
+  tree: FileTree = EMPTY_TREE;
+  /** Set: `collectFiles` rejects with it. */
+  collectError: unknown = null;
   existing = new Set<string>();
   hold = false;
   private held: (() => void)[] = [];
@@ -31,6 +50,18 @@ export class FakeFoldersApi extends FoldersApi {
   ): Promise<CleanScan> {
     this.scans.push({ scanId, roots: [...roots], options });
     const result = this.scan;
+    if (!this.hold) {
+      return Promise.resolve(result);
+    }
+    return new Promise((resolve) => this.held.push(() => resolve(result)));
+  }
+
+  collectFiles(scanId: string, root: string, options: CollectOptions): Promise<FileTree> {
+    this.collects.push({ scanId, root, options });
+    if (this.collectError !== null) {
+      return Promise.reject(this.collectError);
+    }
+    const result = this.tree;
     if (!this.hold) {
       return Promise.resolve(result);
     }

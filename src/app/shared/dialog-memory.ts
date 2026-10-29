@@ -5,7 +5,8 @@ import { SettingsStore } from '../core/settings/settings.store';
 const MAX_REMEMBERED = 8;
 
 /** Tool dialogs that open with the values of their last run (design 027 E5). */
-export type RememberedDialog = 'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync';
+export type RememberedDialog =
+  'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync' | 'seriesGroup';
 
 interface Entry {
   readonly dialog: RememberedDialog;

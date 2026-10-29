@@ -79,6 +79,7 @@
   "OPEN_SYNC_DIRS_DLG": ["Mod+Shift+S"],
   "OPEN_MULTIRENAME_DLG": ["Mod+F6", "Mod+Alt+M", "Mod+M"],
   "OPEN_GROUPFILES_DLG": ["Alt+G", "Mod+Alt+G"],
+  "OPEN_SERIES_GROUP_DLG": ["Alt+Shift+G"],
   "OPEN_DELETE_EMPTY_FOLDERS_DLG": ["Mod+Alt+R", "Mod+Alt+Shift+D"],
   "OPEN_MULTIMKDIR_DLG": ["Mod+F7"],
   "OPEN_SHORTCUT_DLG": ["Mod+Shift+K"],

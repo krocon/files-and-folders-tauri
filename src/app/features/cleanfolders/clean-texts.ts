@@ -8,7 +8,7 @@ export const CL_EN = {
   emptyDirs: 'Delete empty folders',
   includeRoots: 'Also the start folder itself',
   junk: 'Treat folders as empty that only contain',
-  junkField: 'Junk file names (separated by ;)',
+  junkField: 'Junk file names or patterns such as *.nfo (separated by ;)',
   patterns: 'Delete files matching',
   patternsField: 'File name patterns (* and ?, separated by ;)',
   preview: 'Will be deleted (children first)',

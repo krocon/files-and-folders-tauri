@@ -144,6 +144,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_MULTIRENAME_DLG',
       'UNDO_RENAME',
       'OPEN_GROUPFILES_DLG',
+      'OPEN_SERIES_GROUP_DLG',
       'OPEN_DELETE_EMPTY_FOLDERS_DLG',
       'OPEN_PACK_DLG',
       'OPEN_UNPACK_DLG',

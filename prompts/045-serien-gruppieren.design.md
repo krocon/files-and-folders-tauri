@@ -306,7 +306,9 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
 - [x] Phase 1 – Bestand, Design (29.10.2026) – freigegeben von Marc (29.10.2026, „passt“, A1–A7 bestätigt)
 - [x] Phase 2 – Rust: `collect.rs` + Command `collect_files`, Müll-Muster in `clean.rs`, Tests `group` aus
       Unterordnern und Aufräumen (`jobs/tests_tools.rs` › `series_*`, `clean_with_junk_patterns_rechecks_new_content`)
-- [ ] Phase 3 – Frontend: Engine + Katalog, Fassade/Fake, Store, Dialog, Aktion/Keymaps/Menüs/Vetos, Texte, Clean `openPrepared`
+- [x] Phase 3 – Frontend: `features/seriesgroup/` (Engine + Katalog `series-engine.cases.json`, Store, Dialog,
+      Aktion), `FoldersApi.collectFiles` + Fake, Keymaps/Menüs/Vetos, Texte en/de, `CleanFoldersStore.openPrepared`
+      (vorbelegtes Formular wird nie gemerkt, das eigene kehrt beim Schließen zurück); `pnpm check` grün
 - [ ] Phase 4 – E2E unter Xvfb
 - [ ] Phase 5 – Doku (README, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md §1/§3)
 - [ ] Phase 6 – `pnpm check`, Debug-Build, Review durch separaten Agenten (Schwerpunkte: Walker-Grenzen/Links,
