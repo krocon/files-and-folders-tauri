@@ -9,6 +9,8 @@ import { Modal } from '../../shared/dialog/modal';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
+import { liveCount } from './live-count';
+import { formatSize } from '../../shared/format';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
 
 const SHOWN = 5;
@@ -18,7 +20,8 @@ const SHOWN = 5;
  * Shift+Del (permanent: red, Enter = cancel). Root, home and system paths need
  * an extra tick (design 006 E6/E7). The trash dialog also offers "Delete
  * permanently" as a second, red button: never the default, and while it is
- * hovered or focused the message says that it cannot be undone.
+ * hovered or focused the message says that it cannot be undone. The size of
+ * the entries is counted live; the buttons never wait for it.
  */
 @Component({
   selector: 'app-delete-dialog',
@@ -40,6 +43,26 @@ const SHOWN = 5;
                 : t.deleteTrashMessage(r.entries.length)
             }}
           </p>
+          @if (count(); as c) {
+            <p class="size" data-testid="delete-size">
+              {{ t.deleteSize }}:
+              @if (c.state === 'done') {
+                <strong>{{
+                  c.size.cancelled ? t.sizeAtLeast(fmtSize(c.size.bytes)) : fmtSize(c.size.bytes)
+                }}</strong>
+                <span class="muted">
+                  · {{ t.filesAndDirs(c.size.files, c.size.dirs)
+                  }}{{ c.size.unreadable > 0 ? t.unreadable(c.size.unreadable) : '' }}</span
+                >
+              } @else {
+                <strong>{{ c.items > 0 ? t.sizeAtLeast(fmtSize(c.bytes)) : t.counting }}</strong>
+                @if (c.items > 0) {
+                  <span class="muted"> · {{ t.countedSoFar(c.items) }}</span>
+                }
+                <i class="fa fa-spinner fa-pulse muted" aria-hidden="true"></i>
+              }
+            </p>
+          }
           <ul class="names">
             @for (e of shown(); track e.path) {
               <li class="path">{{ e.name }}</li>
@@ -169,6 +192,14 @@ export class DeleteDialog {
   );
   protected readonly dup = DUP_TEXTS;
   protected readonly usage = USAGE_TEXTS;
+  /**
+   * Size of what goes away, counted live (job `count`, the progress grows about
+   * every 100 ms). Never blocks the buttons. Not inside archives (virtual paths).
+   */
+  protected readonly count = liveCount(
+    this.req()?.inArchive ? null : (this.req()?.entries.map((e) => e.path) ?? null),
+  );
+  protected readonly fmtSize = formatSize;
   protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);

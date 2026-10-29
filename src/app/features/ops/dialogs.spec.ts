@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { KeymapApi } from '../../core/actions/keymap-api';
 import { FsApi } from '../../core/fs/fs-api';
 import { JobsApi } from '../../core/jobs/jobs-api';
+import { EMPTY_PROGRESS } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { SessionApi } from '../../core/session/session-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
@@ -236,7 +237,7 @@ describe('operation dialogs', () => {
     expect(buttons[1].hasAttribute('data-autofocus')).toBe(false);
     confirmBtn().click();
     await flush();
-    expect(jobsApi.started[0].spec).toMatchObject({ kind: 'delete', mode: 'trash' });
+    expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'trash' });
     r.fixture.destroy();
 
     ops.del.set({ mode: 'permanent', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
@@ -291,8 +292,93 @@ describe('operation dialogs', () => {
     expect(message().textContent).toContain('cannot be undone');
     forever.click();
     await flush();
-    expect(jobsApi.started[0].spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
+    expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
     expect(ops.del()).toBeNull();
+  });
+
+  it('delete: shows the size live while counting, deleting does not wait for it', async () => {
+    ops.del.set({
+      mode: 'permanent',
+      side: 'left',
+      sourceDir: '/src',
+      entries: [a, sub],
+      dangers: [],
+    });
+    TestBed.inject(DialogService).show('delete');
+    const r = await render(DeleteDialog);
+    expect(jobsApi.started[0].spec).toEqual({ kind: 'count', paths: ['/src/a.txt', '/src/Sub'] });
+    const countId = jobsApi.started[0].id;
+    await flush();
+    const size = () => r.el.querySelector('[data-testid="delete-size"]')?.textContent ?? '';
+    jobsApi.emit({ type: 'state', id: countId, state: 'running' });
+    r.fixture.detectChanges();
+    expect(size()).toContain('counting');
+    const progress = (itemsDone: number, bytesDone: number) =>
+      jobsApi.emit({
+        type: 'progress',
+        id: countId,
+        progress: { ...EMPTY_PROGRESS, itemsDone, bytesDone },
+      });
+    progress(120, 3 * 1024 ** 3);
+    r.fixture.detectChanges();
+    expect(size()).toContain('at least 3.0 GB');
+    expect(size()).toContain('120 entries counted so far');
+    progress(4000, 45 * 1024 ** 3);
+    r.fixture.detectChanges();
+    expect(size()).toContain('at least 45 GB');
+    // the buttons work while counting; closing cancels the count
+    const confirm = r.el.querySelector<HTMLButtonElement>('[data-testid="delete-confirm"]')!;
+    expect(confirm.disabled).toBe(false);
+    confirm.click();
+    await flush();
+    expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
+    r.fixture.destroy();
+    expect(jobsApi.cancelled).toEqual([countId]);
+  });
+
+  it('delete: the finished count shows the total; none inside archives', async () => {
+    ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a, sub], dangers: [] });
+    TestBed.inject(DialogService).show('delete');
+    let r = await render(DeleteDialog);
+    const countId = jobsApi.started[0].id;
+    await flush();
+    jobsApi.emit({
+      type: 'finished',
+      id: countId,
+      state: 'done',
+      summary: {
+        itemsDone: 31,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 5 * 1024 ** 2,
+        errors: [],
+        error: null,
+        dirSize: { files: 30, dirs: 1, bytes: 5 * 1024 ** 2, unreadable: 2, cancelled: false },
+      },
+    });
+    r.fixture.detectChanges();
+    const size = r.el.querySelector('[data-testid="delete-size"]')!.textContent!;
+    expect(size).toContain('5.0 MB');
+    expect(size).not.toContain('at least');
+    expect(size).toContain('30 files, 1 folder');
+    expect(size).toContain('2 not readable');
+    r.fixture.destroy();
+    expect(jobsApi.cancelled).toEqual([]);
+
+    jobsApi.started.length = 0;
+    ops.del.set({
+      mode: 'permanent',
+      side: 'left',
+      sourceDir: '/x.zip',
+      entries: [a],
+      dangers: [],
+      inArchive: true,
+    });
+    r = await render(DeleteDialog);
+    await flush();
+    r.fixture.detectChanges();
+    expect(jobsApi.started).toEqual([]);
+    expect(r.el.querySelector('[data-testid="delete-size"]')).toBeNull();
   });
 
   it('rename: selects the name without extension, offers "Rename anyway" for dangerous paths', async () => {

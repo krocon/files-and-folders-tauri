@@ -1758,7 +1758,6 @@ fn run_count(
         id: id.to_string(),
         state: JobState::Running,
     });
-    let mut total = DirSize::default();
     let report = |t: &DirSize| {
         emit(JobEvent::Progress {
             id: id.to_string(),
@@ -1769,40 +1768,12 @@ fn run_count(
             },
         });
     };
-    for p in paths {
-        if control.is_cancelled() {
-            total.cancelled = true;
-            break;
-        }
-        match std::fs::symlink_metadata(p) {
-            Ok(m) if m.is_dir() => {
-                total.dirs += 1;
-                let base = total;
-                let sub =
-                    dirsize::dir_size(p, control.cancel_flag(), Duration::from_millis(100), |s| {
-                        report(&DirSize {
-                            files: base.files + s.files,
-                            dirs: base.dirs + s.dirs,
-                            bytes: base.bytes + s.bytes,
-                            ..base
-                        })
-                    });
-                total.files += sub.files;
-                total.dirs += sub.dirs;
-                total.bytes += sub.bytes;
-                total.unreadable += sub.unreadable;
-                if sub.cancelled {
-                    total.cancelled = true;
-                    break;
-                }
-            }
-            Ok(m) => {
-                total.files += 1;
-                total.bytes += m.len();
-            }
-            Err(_) => total.unreadable += 1,
-        }
-    }
+    let total = dirsize::count_paths(
+        paths,
+        control.cancel_flag(),
+        super::report::PROGRESS_INTERVAL,
+        report,
+    );
     report(&total);
     let state = if total.cancelled {
         JobState::Cancelled

@@ -44,6 +44,12 @@ export const OPS_EN = {
       : `Delete ${n} entries permanently? This cannot be undone.`,
   trashHint: 'You can restore it from the trash.',
   moreEntries: (n: number) => `… and ${n} more`,
+  deleteSize: 'Size',
+  sizeAtLeast: (size: string) => `at least ${size}`,
+  countedSoFar: (n: number) =>
+    `${n} ${n === 1 ? 'entry' : 'entries'} counted so far – still counting, you can delete anyway`,
+  filesAndDirs: (files: number, dirs: number) =>
+    `${files} ${files === 1 ? 'file' : 'files'}, ${dirs} ${dirs === 1 ? 'folder' : 'folders'}`,
   toTrash: 'Move to trash',
   deletePermanent: 'Delete permanently',
 

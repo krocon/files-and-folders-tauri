@@ -45,6 +45,11 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
       : `${n} Einträge endgültig löschen? Das lässt sich nicht rückgängig machen.`,
   trashHint: 'Sie können es aus dem Papierkorb wiederherstellen.',
   moreEntries: (n) => `… und ${n} weitere`,
+  deleteSize: 'Größe',
+  sizeAtLeast: (size) => `mindestens ${size}`,
+  countedSoFar: (n) =>
+    `bisher ${n} ${n === 1 ? 'Eintrag' : 'Einträge'} gezählt – zähle weiter, Löschen geht trotzdem`,
+  filesAndDirs: (files, dirs) => `${files} ${files === 1 ? 'Datei' : 'Dateien'}, ${dirs} Ordner`,
   toTrash: 'In den Papierkorb',
   deletePermanent: 'Endgültig löschen',
   dangerTitle: 'Vorsicht',
