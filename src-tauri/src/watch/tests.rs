@@ -130,19 +130,33 @@ fn a_mass_change_becomes_a_rescan() {
     let dir = tmp.path().to_path_buf();
     let (hub, rx) = hub();
     hub.set_dirs(std::slice::from_ref(&dir), false).unwrap();
+    let started = Instant::now();
     for i in 0..2000 {
         fs::write(dir.join(format!("f{i:05}.txt")), b"").unwrap();
     }
+    let writing = started.elapsed();
     let got = wait_for(&rx, Duration::from_secs(3), |g| {
         g.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }))
     });
-    assert!(
-        got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. })),
-        "{} events",
-        got.len()
-    );
-    // never 2000 single entries
-    assert!(upserted_names(&got).len() <= 2 * batch::MAX_NAMES);
+    let rescan = got.iter().any(|e| matches!(e, WatchEvent::Rescan { .. }));
+    // A batch is due MAX_DELAY after its first event at the latest: only writes faster than
+    // MAX_NAMES per MAX_DELAY are a "mass change". A slow runner (Windows CI with its virus
+    // scanner) may write slower – then the batches must still stay small (the rule itself is
+    // tested without timing in `batch.rs`).
+    if writing < Duration::from_secs(1) {
+        assert!(rescan, "{} events after {writing:?} of writing", got.len());
+        // never 2000 single entries
+        assert!(upserted_names(&got).len() <= 2 * batch::MAX_NAMES);
+    }
+    for e in &got {
+        if let WatchEvent::Changes { upserted, .. } = e {
+            assert!(
+                upserted.len() <= batch::MAX_NAMES,
+                "{} names",
+                upserted.len()
+            );
+        }
+    }
 }
 
 #[test]
