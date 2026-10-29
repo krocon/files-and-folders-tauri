@@ -402,15 +402,26 @@ fn never_writes_through_a_link_on_the_way() {
 #[test]
 fn danger_paths_are_refused_for_deletes() {
     let h = Harness::new();
+    // a system folder of this OS ("/usr" is no absolute path on Windows)
+    let (sys, sys_sub, other, other_sub) = if cfg!(windows) {
+        (
+            "C:\\Windows",
+            "C:\\Windows\\System32",
+            "C:\\nowhere-fnf",
+            "C:\\nowhere-fnf\\System32",
+        )
+    } else {
+        ("/usr", "/usr/bin", "/nowhere-fnf", "/nowhere-fnf/bin")
+    };
     let e = h
         .mgr
         .start(JobSpec::Sync {
-            left: "/usr".into(),
-            right: "/nowhere-fnf".into(),
+            left: sys.into(),
+            right: other.into(),
             ops: vec![SyncOp {
                 action: SyncAction::DeleteLeft,
                 left: SyncSide {
-                    path: "/usr/bin".into(),
+                    path: sys_sub.into(),
                     seen: Some(Seen {
                         kind: EntryKind::Directory,
                         size: None,
@@ -418,7 +429,7 @@ fn danger_paths_are_refused_for_deletes() {
                     }),
                 },
                 right: SyncSide {
-                    path: "/nowhere-fnf/bin".into(),
+                    path: other_sub.into(),
                     seen: None,
                 },
             }],
@@ -473,7 +484,8 @@ fn compare_and_sync_refuse_servers() {
         .mgr
         .start(JobSpec::Compare {
             left: "remote://p1/home".into(),
-            right: "/tmp".into(),
+            // an absolute path on every OS ("/tmp" is none on Windows)
+            right: s(&std::env::temp_dir()),
             options: opts(),
         })
         .unwrap_err();
@@ -640,12 +652,13 @@ fn nfc_and_nfd_names_on_one_side_stay_two_rows() {
 #[cfg(unix)]
 #[test]
 fn a_delete_of_a_file_the_job_also_copies_is_refused() {
-    // review 036 #5: another name of the same file (hard link = like a case-insensitive target)
+    // review 036 #5: another name of the same file (hard link = like a case-insensitive target).
+    // Not "README.md": on a case-insensitive file system (macOS) that is the same name.
     let h = Harness::new();
     let p = pair();
     write(&p.left.join("Readme.md"), b"new", T0 + 100);
     write(&p.right.join("Readme.md"), b"old", T0);
-    fs::hard_link(p.right.join("Readme.md"), p.right.join("README.md")).unwrap();
+    fs::hard_link(p.right.join("Readme.md"), p.right.join("Liesmich.md")).unwrap();
     let (_, rows) = h.compare(&p, opts());
     let ops = mirror_ops(&p, &rows);
     assert!(ops.iter().any(|o| o.action == SyncAction::DeleteRight));
@@ -653,7 +666,7 @@ fn a_delete_of_a_file_the_job_also_copies_is_refused() {
     let info = h.finish(&id);
     assert_eq!(info.state, JobState::DoneWithErrors);
     assert!(
-        p.right.join("README.md").exists(),
+        p.right.join("Liesmich.md").exists(),
         "not deleted: the copy wrote it"
     );
 }
