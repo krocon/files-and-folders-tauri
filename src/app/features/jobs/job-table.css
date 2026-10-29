@@ -114,8 +114,11 @@ app-job-table {
     box-sizing: border-box;
 
     .btn {
+      flex-shrink: 0;
       min-width: 0;
       padding: 2px 10px;
+      /* "Start now" / "Sofort starten" stay on one line (otherwise the button doubles in height). */
+      white-space: nowrap;
     }
   }
 }

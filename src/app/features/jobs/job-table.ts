@@ -318,7 +318,8 @@ export class JobTable {
       ColumnDef.create({
         property: 'buttons',
         headerLabel: t.colButtons,
-        width: px(230),
+        // Room for three single-line buttons, also in German ("Sofort starten", "Fortsetzen", "Abbrechen").
+        width: px(320),
         bodyRenderer: new ButtonsRenderer((id, act) => this.act.emit({ id, act })),
         headerClasses: ['ge-table-text-align-end'],
         bodyClasses: ['ge-table-text-align-end'],
