@@ -156,6 +156,10 @@ pub enum JobSpec {
     /// Group files (design 008): every entry to `<root>/<group>/<name>` by copy or move.
     Group {
         root: String,
+        /// Design 045 E8: the group folders go into `<root>/<subdir>` (one name, created if
+        /// missing – a series folder on the other side). `None` = into `root`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        subdir: Option<String>,
         items: Vec<GroupItem>,
         transfer: Transfer,
         #[serde(default)]

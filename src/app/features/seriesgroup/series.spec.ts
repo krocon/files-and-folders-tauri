@@ -16,7 +16,7 @@ import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
-import { entry, FakeFsApi } from '../../../testing/fs-fixtures';
+import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { CleanFoldersStore, DEFAULT_CLEAN_FORM } from '../cleanfolders/clean.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
@@ -125,14 +125,15 @@ describe('group series by season (design 045)', () => {
     expect(actions.state('OPEN_SERIES_GROUP_DLG')).toBe('ready');
   });
 
-  it('collects below the folder, previews and copies into season folders of the source folder', async () => {
+  it('collects below the folder, previews and copies into season folders of the series folder itself', async () => {
     await left.load('/src');
     await right.load('/dst');
     await actions.run('OPEN_SERIES_GROUP_DLG');
     expect(dialogs.open()).toBe('series-group');
     expect(folders.collects[0]).toMatchObject({ root: '/src', options: { maxDepth: 8 } });
     await flush();
-    expect(sg.root()).toBe('/src');
+    expect(sg.target()).toBe('other'); // Marc 29.10.2026: the default
+    sg.update({ target: 'source' });
     expect(sg.plan().seasons.map((s) => [s.folder, s.count])).toEqual([
       ['S01', 2],
       ['S02', 1],
@@ -167,15 +168,93 @@ describe('group series by season (design 045)', () => {
     expect(dialogs.open()).toBeNull(); // a copy never offers the cleanup
   });
 
-  it('the other side as target: nothing is in place there', async () => {
+  it('targets (design 045 E8): other side (default), series folder, other side + series name', async () => {
     await left.load('/src');
     await right.load('/dst');
     sg.open();
     await flush();
-    sg.update({ otherSide: true });
-    expect(sg.root()).toBe('/dst');
+    // other side: nothing is in place there
+    expect(sg.plans()[0]).toMatchObject({ root: '/dst', subdir: null });
     expect(sg.items().length).toBe(4);
+    expect(sg.rows()[0].target).toBe('S01');
+    sg.update({ target: 'otherSeries' });
+    expect(sg.plans()[0]).toMatchObject({ root: '/dst', subdir: 'src' });
+    expect(sg.rows()[0].target).toBe('src › S01');
+    await sg.run('copy');
+    expect(jobsApi.started[0].spec).toMatchObject({ kind: 'group', root: '/dst', subdir: 'src' });
+    expect((jobsApi.started[0].spec as unknown as { items: unknown[] }).items.length).toBe(4);
+  });
+
+  it('without a folder on the other side the series folder is the target', async () => {
+    await left.load('/src');
+    sg.open();
+    await flush();
+    expect(sg.options().target).toBe('other');
+    expect(sg.target()).toBe('source');
+    expect(sg.plans()[0]).toMatchObject({ root: '/src', subdir: null });
     sg.close();
+  });
+
+  it('marked folders are the series folders; several never mix in one target (Marc 29.10.2026)', async () => {
+    fsApi.handler = (path?: string) =>
+      Promise.resolve({
+        path: path ?? '/filme',
+        parent: '/',
+        segments: [
+          { name: '/', path: '/' },
+          { name: 'filme', path: path ?? '/filme' },
+        ],
+        entries: [
+          dir('Die Kirche', { path: '/filme/Die Kirche' }),
+          dir('Cyberpunk', { path: '/filme/Cyberpunk' }),
+          entry('notes.txt', { path: '/filme/notes.txt' }),
+        ],
+        unreadableEntries: 0,
+      });
+    const at = (root: string, rels: string[]): FileTree => ({
+      ...EMPTY_TREE,
+      files: rels.map((rel) => ({ ...file(rel), path: `${root}/${rel}`, top: null })),
+    });
+    folders.trees.set(
+      '/filme/Die Kirche',
+      at('/filme/Die Kirche', ['k.s01e01.mkv', 'k.s01e02.mkv']),
+    );
+    folders.trees.set('/filme/Cyberpunk', at('/filme/Cyberpunk', ['c.s01e01.mkv']));
+    await left.load('/filme');
+    await right.load('/dst');
+    left.setMarked(['/filme/Die Kirche', '/filme/Cyberpunk', '/filme/notes.txt'], true);
+    sg.open();
+    await flush();
+    expect(folders.collects.map((c) => c.root)).toEqual(['/filme/Die Kirche', '/filme/Cyberpunk']);
+    expect(sg.rows().map((r) => r.source)).toEqual([
+      'Die Kirche › k.s01e01.mkv',
+      'Die Kirche › k.s01e02.mkv',
+      'Cyberpunk › c.s01e01.mkv',
+    ]);
+    // both into /dst/S01 would mix the series
+    expect(sg.blocked()).toContain('Several series would mix');
+    expect(sg.canRun()).toBe(false);
+    sg.update({ target: 'otherSeries' });
+    expect(sg.blocked()).toBeNull();
+    await sg.run('move');
+    expect(jobsApi.started.map((j) => j.spec)).toMatchObject([
+      { kind: 'group', root: '/dst', subdir: 'Die Kirche', transfer: 'move' },
+      { kind: 'group', root: '/dst', subdir: 'Cyberpunk', transfer: 'move' },
+    ]);
+    finish(0, 'done', { itemsDone: 2 });
+    finish(1, 'done', { itemsDone: 1 });
+    await flush();
+    expect(TestBed.inject(JobsStore).messages()).toContain('Series grouped: 3 files');
+    // into the series folders themselves: one job each, no sub-folder
+    sg.open();
+    await flush();
+    sg.update({ target: 'source' });
+    await sg.run('copy');
+    expect(jobsApi.started.slice(2).map((j) => j.spec)).toMatchObject([
+      { root: '/filme/Die Kirche', transfer: 'copy' },
+      { root: '/filme/Cyberpunk', transfer: 'copy' },
+    ]);
+    expect('subdir' in jobsApi.started[2].spec).toBe(false);
   });
 
   it('drops a stale scan, cancels it on close and shows a scan error', async () => {
@@ -185,7 +264,7 @@ describe('group series by season (design 045)', () => {
     expect(sg.scanning()).toBe(true);
     expect(sg.canRun()).toBe(false);
     sg.close();
-    expect(folders.cancels).toEqual(['series-1']);
+    expect(folders.cancels).toEqual(['series-1-0']);
     folders.tree = tree(['x.s05e01.mkv']);
     sg.open();
     folders.release('lifo');
@@ -285,7 +364,7 @@ describe('group series by season (design 045)', () => {
     await right.load('/dst');
     sg.open();
     await flush();
-    sg.update({ cleanup: true, otherSide: true });
+    sg.update({ cleanup: true, target: 'other' });
     await sg.run('move');
     finish(0);
     await flush();

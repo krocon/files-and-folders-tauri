@@ -1,4 +1,5 @@
 import { translatable } from '../../core/i18n/i18n';
+import type { SeriesTarget } from './series-engine';
 import { SG_DE } from './series-texts.de';
 
 const files = (n: number) => (n === 1 ? '1 file' : `${n} files`);
@@ -13,7 +14,15 @@ export const SG_EN = {
   custom: 'Own template…',
   customTemplate: 'Template ({n} = 1, {nn} = 01)',
   target: 'Target',
-  otherSide: 'Into the folder of the other side',
+  targets: {
+    other: 'Folder of the other side',
+    source: 'The series folder itself',
+    otherSeries: 'Other side + a folder named like the series',
+  } satisfies Record<SeriesTarget, string>,
+  blockedMixed:
+    'Several series would mix in the same season folders – choose "Other side + a folder named like the series" or "The series folder itself".',
+  blockedSeriesName: (name: string, why: string) => `"${name}" cannot be a folder name: ${why}`,
+  seriesCount: (n: number) => `${n} series folders`,
   noOtherPanel: '(the other side shows no folder)',
   subtitles: 'Subtitles go along',
   showIgnored: 'Show ignored files',

@@ -29,6 +29,7 @@ impl Harness {
         self.mgr
             .start(JobSpec::Group {
                 root: s(root),
+                subdir: None,
                 items,
                 transfer,
                 options: CopyOptions::default(),
@@ -204,6 +205,7 @@ fn group_refuses_dangerous_moves_and_empty_requests() {
         .mgr
         .start(JobSpec::Group {
             root: "/tmp".into(),
+            subdir: None,
             items: vec![],
             transfer: Transfer::Copy,
             options: CopyOptions::default(),
@@ -216,6 +218,7 @@ fn group_refuses_dangerous_moves_and_empty_requests() {
         .mgr
         .start(JobSpec::Group {
             root: s(d.path()),
+            subdir: None,
             items: vec![GroupItem {
                 path: s(&crate::test_paths::abs("/")),
                 group: "x".into(),
@@ -732,4 +735,53 @@ fn clean_with_junk_patterns_rechecks_new_content() {
         rel.join("neu.mkv").is_file() && rel.join("die.kirche.s01e01.german-dmpd.nfo").is_file()
     );
     assert!(!rel.join("Sample").exists(), "the junk-only child may go");
+}
+
+/// Design 045 E8 (Marc, 29.10.2026): target = other side + a folder named like the series.
+#[test]
+fn series_into_a_series_folder_on_the_other_side() {
+    let h = Harness::new();
+    let (d, root) = series_tree();
+    let other = d.path().join("Ziel ö");
+    fs::create_dir(&other).unwrap();
+    let start = |subdir: &str| {
+        h.mgr.start(JobSpec::Group {
+            root: s(&other),
+            subdir: Some(subdir.to_string()),
+            items: series_items(&root),
+            transfer: Transfer::Copy,
+            options: CopyOptions::default(),
+        })
+    };
+    let info = h.finish(&start("Die Kirche bleibt im Dorf").unwrap());
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let series = other.join("Die Kirche bleibt im Dorf");
+    assert!(
+        series
+            .join("S01/die.kirche.s01e02.german-dmpd.mkv")
+            .is_file()
+    );
+    assert!(
+        series
+            .join("S02/die.kirche.s02e01.german-dmpd.mkv")
+            .is_file()
+    );
+    // again: the series folder exists – merged into, the copies conflict (skipped by default answer)
+    assert!(
+        PathBuf::from(s_(&root, 1, 1)).is_file(),
+        "copy keeps the source"
+    );
+    // an invalid series folder name is refused before the job starts
+    for bad in ["a/b", "..", "", "x\\y"] {
+        let e = start(bad).unwrap_err();
+        assert!(
+            matches!(e.code, FsErrorCode::InvalidName | FsErrorCode::InvalidPath),
+            "{bad}: {e:?}"
+        );
+    }
+    // a file with the series' name is in the way: the job fails, nothing is copied
+    fs::write(other.join("Blockiert"), "x").unwrap();
+    let info = h.finish(&start("Blockiert").unwrap());
+    assert_eq!(info.state, JobState::Failed, "{:?}", info.summary);
+    assert!(other.join("Blockiert").is_file());
 }

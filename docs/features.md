@@ -66,8 +66,10 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
 - **Serien nach Staffeln gruppieren** (`Alt+Shift+G`, macOS `⌥⇧G`, Prompt 045): sammelt die Videos des aktuellen
   Ordners **und seiner Unterordner** (keine Links, kein fremdes Laufwerk, keine versteckten Dateien) und erkennt
   Staffel/Folge im Namen (`S01E01`, `s1e1`, `S01.E01`, Doppelfolgen, `1x01`, „Staffel 1 Folge 2“, sonst aus dem
-  Release-Ordner) – `x264`, `1080p`, `1920x1080` zählen nie. Ziel `S01`, `S02` … (Vorlage `S{nn}`, `Staffel {n}` …) im
-  aktuellen Ordner oder der anderen Seite, **Kopieren** als Standard (`Strg/⌘+Enter`), Verschieben als Knopf;
+  Release-Ordner) – `x264`, `1080p`, `1920x1080` zählen nie. Serienordner = die markierten Ordner, sonst der
+  angezeigte. Ziel `S01`, `S02` … (Vorlage `S{nn}`, `Staffel {n}` …) wahlweise im Ordner der anderen Seite (Standard),
+  im Serienordner selbst oder in *andere Seite + Ordner mit dem Seriennamen*; mehrere Serien in einen gemeinsamen
+  Zielordner sind gesperrt. **Kopieren** als Standard (`Strg/⌘+Enter`), Verschieben als Knopf;
   Beiwerk (`Sample/`, `*-sample.*`, `*.nfo` …) wird ignoriert, Untertitel auf Wunsch mitgenommen. Vorschau mit Status
   je Datei, Hinweisen zu doppelten/fehlenden Folgen und mehreren Serien. Nach dem Verschieben öffnet sich auf Wunsch
   *Ordner aufräumen* mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).

@@ -243,9 +243,10 @@ files, deletes go to the trash, and nothing that changed since the comparison is
 *Group files* moves or copies files into folders built from their names (the name before a running number, the
 first word, the text before a dash, the first letters) – with a preview. *Clean folders* removes empty folders and leftovers like `.DS_Store`, `Thumbs.db` or
 `*.bak` (to the trash by default). *Create folders* makes many folders from a template.
-*Group series by season* collects the episodes of a series folder – also from release sub-folders – and copies
-(or moves) them into `S01`, `S02` …, recognising `S01E01`, `1x01` and the like; samples and `.nfo` files are left
-out, and after a move the emptied release folders can go to the trash.
+*Group series by season* collects the episodes of one or more marked series folders – also from release
+sub-folders – and copies (or moves) them into `S01`, `S02` … on the other side, in the series folder itself or in a
+folder named like the series, recognising `S01E01`, `1x01` and the like; samples and `.nfo` files are left out, and
+after a move the emptied release folders can go to the trash.
 
 `Alt+G` group · `Alt+Shift+G` series by season · `Ctrl+Alt+R` clean · `Ctrl+F7` many folders · macOS: `⌥G` · `⌥⇧G` · `⌘⌥R` · `⌘F7`
 

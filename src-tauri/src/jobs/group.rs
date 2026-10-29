@@ -86,6 +86,7 @@ fn group_dir(root: &Path, group: &str) -> Result<PathBuf, FsError> {
 pub fn run(
     id: &str,
     root: &Path,
+    subdir: Option<&str>,
     items: &[GroupItem],
     transfer: Transfer,
     options: &CopyOptions,
@@ -114,6 +115,23 @@ pub fn run(
         id: id.to_string(),
         state: JobState::Planning,
     });
+    // design 045 E8: a series folder below the root (created, or an existing real folder)
+    let outer = root.clone();
+    let root = match subdir {
+        None => root,
+        Some(sd) => match group_dir(&root, sd) {
+            Ok(dir) => {
+                emit(JobEvent::DirsChanged {
+                    dirs: vec![path_string(&outer)],
+                });
+                dir
+            }
+            Err(e) => {
+                summary.error = Some(e);
+                return (JobState::Failed, summary);
+            }
+        },
+    };
     // one folder per group, in the order the groups first appear
     let mut dirs: HashMap<String, Result<PathBuf, FsError>> = HashMap::new();
     let mut created_any = false;

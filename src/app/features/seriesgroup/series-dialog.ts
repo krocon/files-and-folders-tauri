@@ -3,7 +3,7 @@ import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
-import { TEMPLATES } from './series-engine';
+import { SeriesTarget, TARGETS, TEMPLATES } from './series-engine';
 import { SG_TEXTS } from './series-texts';
 import { SeriesGridRow, SeriesGroupStore } from './series.store';
 
@@ -63,16 +63,21 @@ function rowClass(r: SeriesGridRow): string | null {
                 />
               </label>
             }
+            <label class="field">
+              <span>{{ t.target }}</span>
+              <select (change)="setTarget($event)">
+                @for (tg of targets; track tg) {
+                  <option
+                    [value]="tg"
+                    [selected]="tg === sg.target()"
+                    [disabled]="tg !== 'source' && req.otherDir === null"
+                  >
+                    {{ t.targets[tg] }}
+                  </option>
+                }
+              </select>
+            </label>
             <div class="row options">
-              <label class="check">
-                <input
-                  type="checkbox"
-                  [checked]="o().otherSide && req.otherDir !== null"
-                  [disabled]="req.otherDir === null"
-                  (change)="sg.update({ otherSide: checked($event) })"
-                />
-                {{ t.otherSide }}
-              </label>
               <label class="check">
                 <input
                   type="checkbox"
@@ -135,7 +140,7 @@ function rowClass(r: SeriesGridRow): string | null {
               {{ t.cleanup }}
             </label>
             <span class="help">
-              {{ t.target }}: <span class="path">{{ sg.root() }}</span>
+              {{ t.target }}: <span class="path">{{ targetText() }}</span>
               @if (req.otherDir === null) {
                 {{ t.noOtherPanel }}
               }
@@ -189,6 +194,7 @@ export class SeriesGroupDialog {
   protected readonly sg = inject(SeriesGroupStore);
   protected readonly o = this.sg.options;
   protected readonly templates = TEMPLATES;
+  protected readonly targets = TARGETS;
   protected readonly customValue = CUSTOM;
   protected readonly columns = columns();
   protected readonly rowClass = rowClass;
@@ -200,7 +206,7 @@ export class SeriesGroupDialog {
     if (this.sg.scanning()) {
       return this.t.titleScanning;
     }
-    const seasons = this.sg.plan().seasons;
+    const seasons = this.sg.plans().flatMap((sp) => sp.plan.seasons);
     return this.t.title(
       seasons.reduce((n, s) => n + s.count, 0),
       seasons.length,
@@ -210,16 +216,34 @@ export class SeriesGroupDialog {
     if (this.sg.scanning()) {
       return this.t.scanning;
     }
-    const perSeason = this.sg
-      .plan()
-      .seasons.map((s) => `${s.folder}: ${s.count}`)
-      .join(' · ');
+    const plans = this.sg.plans();
+    const perSeason =
+      plans.length === 1
+        ? plans[0].plan.seasons.map((s) => `${s.folder}: ${s.count}`).join(' · ')
+        : plans
+            .map((sp) => `${sp.source.name}: ${sp.plan.seasons.reduce((n, s) => n + s.count, 0)}`)
+            .join(' · ');
     const c = this.sg.counts();
     return this.t.summary(perSeason, c.ok, c.ignored, c.other);
   });
   protected readonly errorText = computed(() => {
     const e: FsError | null = this.sg.runError() ?? this.sg.scanError();
-    return e ? `${describeFsError(e)} ${e.message}` : '';
+    return e ? `${describeFsError(e)} ${e.message}` : (this.sg.blocked() ?? '');
+  });
+  /** Where the season folders go – display only (` › ` is no path separator). */
+  protected readonly targetText = computed(() => {
+    const plans = this.sg.plans();
+    const first = plans[0];
+    if (!first) {
+      return '';
+    }
+    if (plans.length > 1 && this.sg.target() === 'source') {
+      return this.t.seriesCount(plans.length);
+    }
+    if (plans.length > 1 && this.sg.target() === 'otherSeries') {
+      return `${first.root} › (${this.t.seriesCount(plans.length)})`;
+    }
+    return first.subdir !== null ? `${first.root} › ${first.subdir}` : first.root;
   });
 
   protected text(evt: Event): string {
@@ -228,6 +252,10 @@ export class SeriesGroupDialog {
 
   protected checked(evt: Event): boolean {
     return (evt.target as HTMLInputElement).checked;
+  }
+
+  protected setTarget(evt: Event): void {
+    this.sg.update({ target: this.text(evt) as SeriesTarget });
   }
 
   protected setTemplate(evt: Event): void {

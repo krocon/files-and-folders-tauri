@@ -13,7 +13,15 @@ export const SG_DE: Translation<typeof SG_EN> = {
   custom: 'Eigene Vorlage…',
   customTemplate: 'Vorlage ({n} = 1, {nn} = 01)',
   target: 'Ziel',
-  otherSide: 'In den Ordner der anderen Seite',
+  targets: {
+    other: 'Ordner der anderen Seite',
+    source: 'Der Serienordner selbst',
+    otherSeries: 'Andere Seite + Ordner mit dem Seriennamen',
+  },
+  blockedMixed:
+    'Mehrere Serien würden sich in denselben Staffelordnern mischen – „Andere Seite + Ordner mit dem Seriennamen“ oder „Der Serienordner selbst“ wählen.',
+  blockedSeriesName: (name, why) => `„${name}“ geht nicht als Ordnername: ${why}`,
+  seriesCount: (n) => `${n} Serienordner`,
   noOtherPanel: '(die andere Seite zeigt keinen Ordner)',
   subtitles: 'Untertitel mitnehmen',
   showIgnored: 'Ignorierte zeigen',

@@ -37,6 +37,8 @@ export class FakeFoldersApi extends FoldersApi {
   readonly collects: { scanId: string; root: string; options: CollectOptions }[] = [];
   scan: CleanScan = EMPTY_SCAN;
   tree: FileTree = EMPTY_TREE;
+  /** Answers per root (else `tree`). */
+  trees = new Map<string, FileTree>();
   /** Set: `collectFiles` rejects with it. */
   collectError: unknown = null;
   existing = new Set<string>();
@@ -61,7 +63,7 @@ export class FakeFoldersApi extends FoldersApi {
     if (this.collectError !== null) {
       return Promise.reject(this.collectError);
     }
-    const result = this.tree;
+    const result = this.trees.get(root) ?? this.tree;
     if (!this.hold) {
       return Promise.resolve(result);
     }

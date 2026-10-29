@@ -226,5 +226,8 @@ describe('series engine (design 045 E2)', () => {
     expect(
       restoreSeriesOptions({ template: 'Staffel {n}', subtitles: true, cleanup: 'yes', x: 1 }),
     ).toEqual({ ...DEFAULT_SERIES_OPTIONS, template: 'Staffel {n}', subtitles: true });
+    // design 045 E8: the target is kept; an unknown or old value (`otherSide`) falls back
+    expect(restoreSeriesOptions({ target: 'otherSeries' }).target).toBe('otherSeries');
+    expect(restoreSeriesOptions({ target: 'x', otherSide: true }).target).toBe('other');
   });
 });

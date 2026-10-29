@@ -301,6 +301,25 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
 - **E1:** Unter Windows gibt es (wie in `clean.rs`) keine Geräte-Id aus `std` – die Grenze „kein fremdes
   Dateisystem“ greift dort nicht; Links (Junctions) werden dennoch nie betreten.
 
+## 6b. Nachtrag E8 – Ziel-Auswahl und markierte Serienordner (Marc, 29.10.2026)
+
+Anlass: Marc hatte in `Filme.nosync` den Ordner „Die Kirche bleibt im Dorf“ markiert – der Dialog sammelte aber den
+**ganzen** angezeigten Ordner, und 66 Dateien mehrerer Serien landeten in gemeinsamen `S01`–`S04` von `Filme.nosync`.
+Marcs Vorschlag: eine Auswahl für das Ziel.
+
+- **Quellen:** die markierten (echten) Ordner der aktiven Seite sind die Serienordner; ohne Markierung der angezeigte
+  Ordner (Name = letztes Segment des Listings). Je Serienordner ein `collect_files` und **ein `group`-Job**.
+- **Ziel** (Auswahl, gemerkt in `dialogs.recent`): `other` = Ordner der anderen Seite (**Standard**), `source` = der
+  Serienordner selbst (bisheriges Verhalten; nur hier gibt es „schon am Ziel“), `otherSeries` = andere Seite + Ordner
+  mit dem Seriennamen (`…/_filme/Die Kirche bleibt im Dorf/S01`). Ohne Ordner auf der anderen Seite gilt `source`.
+- **Rust:** `JobSpec::Group` bekommt `subdir: Option<String>` – ein Name (`validate_name` schon beim Start), der Job
+  legt `<root>/<subdir>` an oder nimmt einen vorhandenen echten Ordner (Datei/Link gleichen Namens = Job scheitert).
+  Test `jobs/tests_tools.rs` › `series_into_a_series_folder_on_the_other_side`.
+- **Sperre:** mehrere Serienordner mit Ziel `other` würden sich in denselben Staffelordnern mischen → Ausführen
+  gesperrt, Hinweis nennt die beiden anderen Ziele; ein Serienname, der kein gültiger Ordnername ist, sperrt
+  `otherSeries`. Test `series.spec.ts` › „marked folders are the series folders; several never mix in one target“.
+- Aufräumen nach dem Verschieben: Startordner aus allen Jobs zusammen, ein Clean-Dialog.
+
 ## 6a. Externes Review (separater Agent, 29.10.2026) – Befunde und Behebung
 
 | # | Befund | Behebung |

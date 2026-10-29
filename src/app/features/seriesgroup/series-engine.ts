@@ -1,5 +1,5 @@
 import { TreeFile } from '../../core/folders/folders.models';
-import { boolOr, record, textOr } from '../../shared/restore-fields';
+import { boolOr, oneOf, record, textOr } from '../../shared/restore-fields';
 import { checkGroupName } from '../groupfiles/group-engine';
 
 /**
@@ -20,13 +20,20 @@ export interface SeriesOptions {
   readonly junkDirs: string;
   /** Subtitles go along with the episodes. */
   readonly subtitles: boolean;
-  /** The other side's folder is the root (default: the source folder). */
-  readonly otherSide: boolean;
+  /**
+   * Where the season folders go (design 045 E8, Marc 29.10.2026): `other` = the other
+   * side's folder (default), `source` = the series folder itself, `otherSeries` = the
+   * other side + a folder named like the series (`…/Die Kirche bleibt im Dorf/S01`).
+   */
+  readonly target: SeriesTarget;
   /** The preview lists the ignored files, too. */
   readonly showIgnored: boolean;
   /** After a move: open "clean folders" for the release folders (design 045 E4). */
   readonly cleanup: boolean;
 }
+
+export type SeriesTarget = 'other' | 'source' | 'otherSeries';
+export const TARGETS: readonly SeriesTarget[] = ['other', 'source', 'otherSeries'];
 
 export const TEMPLATES: readonly string[] = ['S{nn}', 'Staffel {n}', 'Season {nn}', 'Season {n}'];
 
@@ -58,7 +65,7 @@ export const DEFAULT_SERIES_OPTIONS: SeriesOptions = {
   junk: DEFAULT_JUNK,
   junkDirs: DEFAULT_JUNK_DIRS,
   subtitles: false,
-  otherSide: false,
+  target: 'other',
   showIgnored: true,
   cleanup: false,
 };
@@ -73,7 +80,7 @@ export function restoreSeriesOptions(v: unknown): SeriesOptions {
     junk: textOr(r['junk'], d.junk),
     junkDirs: textOr(r['junkDirs'], d.junkDirs),
     subtitles: boolOr(r['subtitles'], d.subtitles),
-    otherSide: boolOr(r['otherSide'], d.otherSide),
+    target: oneOf(r['target'], TARGETS, d.target),
     showIgnored: boolOr(r['showIgnored'], d.showIgnored),
     cleanup: boolOr(r['cleanup'], d.cleanup),
   };
