@@ -21,11 +21,11 @@ importers:
         specifier: ^22.2.0
         version: 22.2.3(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))
       '@guiexpert/angular-table':
-        specifier: 22.1.100
-        version: 22.1.100(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(@guiexpert/table@1.1.103)
+        specifier: 22.1.104
+        version: 22.1.104(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(@guiexpert/table@1.1.104)
       '@guiexpert/table':
-        specifier: 1.1.103
-        version: 1.1.103
+        specifier: 1.1.104
+        version: 1.1.104
       '@tauri-apps/api':
         specifier: ^2.12.4
         version: 2.12.4
@@ -569,15 +569,15 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@guiexpert/angular-table@22.1.100':
-    resolution: {integrity: sha512-VlFPcje4raZ4YPSeAV7TwuY1wHewFPkC0zjXq4mPg8l3l8RWYwY/eRATTS50BTkPh7QfDJvy3iJ68HKvn5M8SQ==}
+  '@guiexpert/angular-table@22.1.104':
+    resolution: {integrity: sha512-9+bGDqQ2Gglolh59qgPyvwEnlyCm9gulYRKLrGIkXiO525ULjRPB2bxT2QVyDfOikDojogtwkg6jCHgGYh/iIg==}
     peerDependencies:
       '@angular/common': ^22.0.1
       '@angular/core': ^22.0.1
-      '@guiexpert/table': ^1.1.100
+      '@guiexpert/table': ^1.1.104
 
-  '@guiexpert/table@1.1.103':
-    resolution: {integrity: sha512-A1nqExmOnEfPLebGsXR97GZqRe0lyHHPf+BqoSzRWLwVF0wwu5zH379nzczSOtQeJDHsy3umt71cZStNzLkj0w==}
+  '@guiexpert/table@1.1.104':
+    resolution: {integrity: sha512-N6LmXoYNFkYeDmO0AXqP0wVTuKy70oBCJQyoBZNd5rA3nBCRQXnDpXfGKpgTu7dKC6Fn5TLUg1frV32SCKVm3Q==}
 
   '@harperfast/extended-iterable@1.0.3':
     resolution: {integrity: sha512-sSAYhQca3rDWtQUHSAPeO7axFIUJOI6hn1gjRC5APVE1a90tuyT8f5WIgRsFhhWA7htNkju2veB9eWL6YHi/Lw==}
@@ -3149,14 +3149,14 @@ snapshots:
 
   '@exodus/bytes@1.16.0': {}
 
-  '@guiexpert/angular-table@22.1.100(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(@guiexpert/table@1.1.103)':
+  '@guiexpert/angular-table@22.1.104(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(@guiexpert/table@1.1.104)':
     dependencies:
       '@angular/common': 22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2)
       '@angular/core': 22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)
-      '@guiexpert/table': 1.1.103
+      '@guiexpert/table': 1.1.104
       tslib: 2.8.1
 
-  '@guiexpert/table@1.1.103':
+  '@guiexpert/table@1.1.104':
     dependencies:
       tslib: 2.8.1
 
