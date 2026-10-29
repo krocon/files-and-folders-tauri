@@ -1,18 +1,11 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
-import { ConflictDefault, isFinished } from '../../core/jobs/jobs.models';
-import { JobsStore } from '../../core/jobs/jobs.store';
+import { ConflictDefault } from '../../core/jobs/jobs.models';
 import { Modal } from '../../shared/dialog/modal';
 import { formatSize } from '../../shared/format';
 import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
+import { liveCount } from './live-count';
 import { OpsStore, TransferKind } from './ops.store';
 import { TargetField } from './target-field';
 
@@ -159,7 +152,6 @@ export class CopyMoveDialog {
   protected readonly t = OPS_TEXTS;
   protected readonly defaults = DEFAULTS;
   protected readonly ops = inject(OpsStore);
-  private readonly jobs = inject(JobsStore);
   protected readonly req = this.ops.copyMove;
 
   protected readonly target = signal(this.req()?.target ?? '');
@@ -177,59 +169,27 @@ export class CopyMoveDialog {
   /** Equal names from different folders (search results) collide in the target. */
   protected readonly sameNames = computed(() => sameNames(this.req()?.sources ?? []));
 
-  /** The live count runs as a helper job; it is cancelled when the dialog closes. */
-  private readonly countId = signal<string | null>(null);
-  private readonly countJob = computed(() => {
-    const id = this.countId();
-    // `find`: the count is a helper job that Rust removes right after its end
-    return id === null ? undefined : this.jobs.find(id);
-  });
+  /** The live count runs as a helper job; it is cancelled when the dialog closes. Links: none. */
+  private readonly count = liveCount(
+    this.req()?.kind === 'link' ? null : (this.req()?.sources.map((e) => e.path) ?? null),
+  );
   protected readonly countText = computed(() => {
-    const job = this.countJob();
-    if (!job) {
+    const c = this.count();
+    if (!c) {
       return '';
     }
-    const size = job.summary?.dirSize;
-    if (size) {
+    if (c.state === 'done') {
+      const size = c.size;
       return (
         ' · ' +
         this.t.counted(size.files, size.dirs, formatSize(size.bytes)) +
         (size.unreadable > 0 ? this.t.unreadable(size.unreadable) : '')
       );
     }
-    if (isFinished(job.state)) {
-      return '';
-    }
-    const p = job.progress;
-    return p.itemsDone > 0
-      ? ` · ${p.itemsDone} … ${formatSize(p.bytesDone)} (${this.t.counting})`
+    return c.items > 0
+      ? ` · ${c.items} … ${formatSize(c.bytes)} (${this.t.counting})`
       : ` · ${this.t.counting}`;
   });
-
-  constructor() {
-    const req = this.req();
-    let destroyed = false;
-    // links are quick and copy nothing: no count
-    if (req && req.kind !== 'link') {
-      this.jobs
-        .start({ kind: 'count', paths: req.sources.map((e) => e.path) })
-        .then((id) => {
-          if (destroyed) {
-            void this.jobs.cancel(id); // the dialog closed before the count started
-          } else {
-            this.countId.set(id);
-          }
-        })
-        .catch(() => undefined);
-    }
-    inject(DestroyRef).onDestroy(() => {
-      destroyed = true;
-      const job = this.countJob();
-      if (job && !isFinished(job.state)) {
-        void this.jobs.cancel(job.id);
-      }
-    });
-  }
 
   protected heading(kind: TransferKind): string {
     return kind === 'copy' ? this.t.copy : kind === 'move' ? this.t.move : this.t.link;

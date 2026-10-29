@@ -53,6 +53,16 @@ code {
   margin: 0;
 }
 
+/* delete: size of what goes away, counted live */
+.size {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--spacing-1);
+  font-variant-numeric: tabular-nums;
+}
+
 .error {
   color: var(--color-danger);
 }

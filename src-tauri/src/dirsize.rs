@@ -83,6 +83,61 @@ pub fn dir_size(
     total
 }
 
+/// Counts several top-level entries (job `count`: the copy and delete dialogs).
+/// Folders are walked with [`dir_size`], files and links count with their own
+/// size, missing entries as unreadable. `progress` gets the running total at most
+/// every `interval` – also between top-level entries, so many small folders or
+/// plain files still show a growing number while the walk is slow.
+pub fn count_paths(
+    paths: &[PathBuf],
+    cancel: &AtomicBool,
+    interval: Duration,
+    mut progress: impl FnMut(&DirSize),
+) -> DirSize {
+    let mut total = DirSize::default();
+    let mut last = Instant::now();
+    for p in paths {
+        if cancel.load(Ordering::Relaxed) {
+            total.cancelled = true;
+            break;
+        }
+        match fs::symlink_metadata(p) {
+            Ok(m) if m.is_dir() => {
+                total.dirs += 1;
+                let base = total;
+                let sub = dir_size(p, cancel, interval, |s| {
+                    progress(&DirSize {
+                        files: base.files + s.files,
+                        dirs: base.dirs + s.dirs,
+                        bytes: base.bytes + s.bytes,
+                        unreadable: base.unreadable + s.unreadable,
+                        cancelled: false,
+                    });
+                    last = Instant::now();
+                });
+                total.files += sub.files;
+                total.dirs += sub.dirs;
+                total.bytes += sub.bytes;
+                total.unreadable += sub.unreadable;
+                if sub.cancelled {
+                    total.cancelled = true;
+                    break;
+                }
+            }
+            Ok(m) => {
+                total.files += 1;
+                total.bytes += m.len();
+            }
+            Err(_) => total.unreadable += 1,
+        }
+        if last.elapsed() >= interval {
+            progress(&total);
+            last = Instant::now();
+        }
+    }
+    total
+}
+
 #[cfg(unix)]
 fn device_of(path: &Path) -> Option<u64> {
     use std::os::unix::fs::MetadataExt;
@@ -184,5 +239,37 @@ mod tests {
         let dir = tempdir().unwrap();
         let s = run(&dir.path().join("gone"));
         assert_eq!(s.unreadable, 1);
+    }
+
+    #[test]
+    fn count_paths_sums_entries_and_reports_between_them() {
+        let dir = tempdir().unwrap();
+        let mut paths = Vec::new();
+        for i in 0..5u8 {
+            let f = dir.path().join(format!("Film {i}.mkv"));
+            fs::write(&f, vec![0u8; 100]).unwrap();
+            paths.push(f);
+        }
+        let folder = dir.path().join("Staffel ä");
+        fs::create_dir_all(folder.join("S01")).unwrap();
+        fs::write(folder.join("S01/E01.mkv"), vec![0u8; 1000]).unwrap();
+        paths.push(folder);
+        paths.push(dir.path().join("weg"));
+        let mut seen = Vec::new();
+        let s = count_paths(&paths, &AtomicBool::new(false), Duration::ZERO, |t| {
+            seen.push(t.bytes)
+        });
+        assert_eq!(
+            (s.files, s.dirs, s.bytes, s.unreadable, s.cancelled),
+            (6, 2, 1500, 1, false)
+        );
+        // a growing number while counting, not only at the end
+        assert!(seen.len() >= 6, "{seen:?}");
+        assert!(seen.windows(2).all(|w| w[0] <= w[1]), "{seen:?}");
+        assert_eq!(seen[..5], [100, 200, 300, 400, 500]);
+
+        let s = count_paths(&paths, &AtomicBool::new(true), Duration::ZERO, |_| {});
+        assert!(s.cancelled);
+        assert_eq!(s.files, 0);
     }
 }
