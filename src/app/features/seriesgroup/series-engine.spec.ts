@@ -68,7 +68,7 @@ describe('series engine (design 045 E2)', () => {
   });
 
   it("groups Marc's example: 30 episodes into S01–S04, extras and samples ignored", () => {
-    const text: string = readFileSync('prompts/045-serien-gruppieren-beispiel.txt', 'utf8');
+    const text: string = readFileSync('prompts/done/045-serien-gruppieren-beispiel.txt', 'utf8');
     const rels = text.split('\n').filter((l) => l.trim() !== '' && !l.startsWith('#'));
     expect(rels.length).toBe(90);
     const p = plan(rels);

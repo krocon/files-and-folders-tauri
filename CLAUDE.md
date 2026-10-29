@@ -45,12 +45,13 @@
   Werbeseite `site/` für krocon.de/products/fnf) und Prompt 036 (Ordner vergleichen Shift+F2 / synchronisieren: Jobs
   `compare`/`sync`) und Prompt 035 (Archive bearbeiten: ZIP/TAR/TAR.GZ hineinkopieren,
   löschen, Ordner anlegen – Jobs `archiveAdd`/`archiveDelete`/`archiveMkdir`, `archive/write.rs`) und Prompt 043 (Command Palette universell: Namensindex im Speicher,
-  Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
+  Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) und Prompt 045 (Serien nach Staffeln
+  gruppieren: Command `collect_files`, Job `group`, Aufräumen über `CleanFoldersStore.openPrepared`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–044 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–045 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -96,10 +97,13 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              Löschen, Name (Ordner/Datei anlegen, Umbenennen), Aktionen F2/F5–F8
   app/features/multirename/  rename-engine.ts (reine Regel-Engine + Testkatalog .cases.json), MultiRenameStore,
                              Dialog mit Vorschau-Table, Aktionen OPEN_MULTIRENAME_DLG/UNDO_RENAME
-  app/core/folders/          FoldersApi (find_empty_dirs, create_folders), DTOs der Ordner-Werkzeuge
+  app/core/folders/          FoldersApi (find_empty_dirs, collect_files, create_folders), DTOs der Ordner-Werkzeuge
   app/features/groupfiles/   group-engine.ts (rein, Testkatalog .cases.json), GroupFilesStore + Dialog (Job `group`)
   app/features/cleanfolders/ CleanFoldersStore + Dialog (Suche in Rust, Job `clean`, Papierkorb als Default)
   app/features/multimkdir/   mkdir-engine.ts (rein), MultiMkdirStore + Dialog (create_folders)
+  app/features/seriesgroup/  Serien nach Staffeln (045): series-engine.ts (rein: Erkennung SxxEyy/1x01, Filter, Vorlage,
+                             Katalog .cases.json), SeriesGroupStore (Root: collect_files → Plan → Job `group` →
+                             ggf. Clean-Dialog vorbelegt), Dialog, Aktion OPEN_SERIES_GROUP_DLG (Alt+Shift+G)
   app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
   app/core/file-icon/        FileIconService (Icon-Zuordnung nach Dateiendung/Kategorie zu Font Awesome)
   app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
@@ -251,7 +255,10 @@ src-tauri/                   Rust (Tauri 2)
                              Speicher, parallele Arrays, Grenze in MB, apply_dir), live.rs (bekannte Orte, begrenzt),
                              system.rs (mdfind/plocate optional, feste Argumente), mod.rs (Hub: Worker, Watcher, Anfragen
                              mit Abbruch); Commands `commands/palette.rs`
-  src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS)
+  src/clean.rs               find_empty_dirs: leere Ordner/Musterdateien finden (keine Links, kein fremdes FS); Müll-Namen
+                             dürfen `*`/`?` enthalten (045)
+  src/collect.rs             collect_files (045): Dateien unterhalb eines Ordners mit Ordnernamen relativ zur Wurzel
+                             (keine Links, kein fremdes FS, keine versteckten, Grenzen, Abbruch über CleanScanState)
   src/search.rs              Suche: Kriterien, Glob/Regex/Text (Crate `regex`), zyklensichere Tiefensuche, Inhalt
                              mit Größenlimit; Job `jobs/search.rs` bündelt Treffer (≤ 500 / 50 ms)
   src/shell/                 Shell-Zeile (rein): Shell-Wahl, `cd`/`clear`, Quotieren je Shell, ANSI/Kodierung,
