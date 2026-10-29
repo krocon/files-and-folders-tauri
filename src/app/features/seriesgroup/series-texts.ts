@@ -32,6 +32,7 @@ export const SG_EN = {
   infoOk: 'OK',
   infoSubtitle: 'subtitle',
   infoInPlace: 'already in its season folder',
+  infoCopied: (folder: string) => `already in ${folder}`,
   infoUnrecognized: 'no season/episode found',
   infoJunkDir: (name: string) => `in folder ${name}`,
   infoJunk: 'extra',

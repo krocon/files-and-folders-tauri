@@ -169,8 +169,10 @@ export interface SeriesRow {
   /** The season folder (ok, inPlace, invalid). */
   readonly folder: string | null;
   readonly subtitle: boolean;
-  /** Another video row has the same season and episode. */
+  /** Another video (another name) has the same season and episode. */
   readonly duplicate: boolean;
+  /** `inPlace` because a file of this name is in its season folder already (after a copy). */
+  readonly copied: boolean;
   /** Why the folder name is invalid. */
   readonly error: string | null;
 }
@@ -230,6 +232,7 @@ export function planSeries(
       folder: null,
       subtitle: false,
       duplicate: false,
+      copied: false,
       error: null,
     };
     const junkDir = file.dirs.find(isJunkDir);
@@ -260,24 +263,40 @@ export function planSeries(
     return { ...base, subtitle, episode, folder, status: inPlace ? 'inPlace' : 'ok', reason: null };
   });
 
-  // duplicates: the same episode twice among the videos to run or already in place
-  const seen = new Map<string, number>();
+  // after a copy (design 045, E2E): the original of a file that is in its season folder
+  // already is done as well – a second run has nothing to do
+  const lower = (t: string) => t.toLocaleLowerCase();
+  const placed = new Set(
+    rows
+      .filter((r) => r.status === 'inPlace')
+      .map((r) => `${lower(r.folder!)}/${lower(r.file.name)}`),
+  );
+  const settled = rows.map((r): SeriesRow =>
+    r.status === 'ok' && placed.has(`${lower(r.folder!)}/${lower(r.file.name)}`)
+      ? { ...r, status: 'inPlace', copied: true }
+      : r,
+  );
+
+  // duplicates: the same episode under different names among the videos to run or in place
+  const seen = new Map<string, Set<string>>();
   const key = (r: SeriesRow, ep: number) => `${r.episode!.season}:${ep}`;
-  const videoRows = rows.filter(
+  const videoRows = settled.filter(
     (r) => (r.status === 'ok' || r.status === 'inPlace') && !r.subtitle,
   );
   for (const r of videoRows) {
     for (let ep = r.episode!.first; ep <= r.episode!.last; ep++) {
-      seen.set(key(r, ep), (seen.get(key(r, ep)) ?? 0) + 1);
+      const names = seen.get(key(r, ep)) ?? new Set<string>();
+      names.add(lower(r.file.name));
+      seen.set(key(r, ep), names);
     }
   }
-  const marked = rows.map((r) => {
+  const marked = settled.map((r) => {
     if (!videoRows.includes(r)) {
       return r;
     }
     let dup = false;
     for (let ep = r.episode!.first; ep <= r.episode!.last; ep++) {
-      dup ||= (seen.get(key(r, ep)) ?? 0) > 1;
+      dup ||= (seen.get(key(r, ep))?.size ?? 0) > 1;
     }
     return dup ? { ...r, duplicate: true } : r;
   });

@@ -56,7 +56,7 @@ function info(r: SeriesRow): string {
         .filter((s) => s !== '')
         .join(' · ');
     case 'inPlace':
-      return t.infoInPlace;
+      return r.copied ? t.infoCopied(r.folder ?? '') : t.infoInPlace;
     case 'unrecognized':
       return t.infoUnrecognized;
     case 'invalid':

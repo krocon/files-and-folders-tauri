@@ -32,6 +32,7 @@ export const SG_DE: Translation<typeof SG_EN> = {
   infoOk: 'OK',
   infoSubtitle: 'Untertitel',
   infoInPlace: 'schon im Staffelordner',
+  infoCopied: (folder) => `schon in ${folder}`,
   infoUnrecognized: 'keine Staffel/Folge erkannt',
   infoJunkDir: (name) => `im Ordner ${name}`,
   infoJunk: 'Beiwerk',

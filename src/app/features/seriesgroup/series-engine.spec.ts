@@ -99,6 +99,20 @@ describe('series engine (design 045 E2)', () => {
     expect(other.rows[0].status).toBe('ok');
   });
 
+  it('after a copy: the originals whose copy is in its season folder are done, no duplicates', () => {
+    const p = plan([
+      'R.S01E01/show.s01e01.mkv',
+      'R.S01E02/show.s01e02.mkv',
+      'S01/show.s01e01.mkv',
+      'S01/SHOW.S01E02.MKV',
+    ]);
+    expect(p.rows.map((r) => r.status)).toEqual(['inPlace', 'inPlace', 'inPlace', 'inPlace']);
+    expect(p.rows.some((r) => r.duplicate)).toBe(false);
+    expect(p.seasons).toEqual([]);
+    // into the other side the copies there are not seen: nothing is in place
+    expect(plan(['R.S01E01/show.s01e01.mkv'], {}, false).rows[0].status).toBe('ok');
+  });
+
   it('takes the season from the release folder when the file name has none', () => {
     const p = plan(['Show.S03E04.German-GRP/grp-show-720p.mkv', 'Ohne Nummer/film.mkv']);
     expect(p.rows[0].episode).toMatchObject({ season: 3, first: 4 });
