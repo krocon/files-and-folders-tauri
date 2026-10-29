@@ -51,7 +51,8 @@
   align-items: center;
   overflow: hidden;
   white-space: nowrap;
-  font-family: var(--font-mono);
+  /*font-family: var(--font-mono);*/
+  font-stretch: condensed;
   font-size: var(--font-size-sm);
 }
 
