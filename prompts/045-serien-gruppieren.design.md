@@ -1,6 +1,6 @@
 # Design 045: Serien nach Staffeln gruppieren
 
-> **Status:** Entwurf – 🛑 wartet auf Freigabe · **Datum:** 29.10.2026 · **Branch:** `feat/serien-gruppieren`
+> **Status:** freigegeben (29.10.2026), in Umsetzung · **Datum:** 29.10.2026 · **Branch:** `feat/serien-gruppieren`
 > Auftrag: [045-serien-gruppieren.md](045-serien-gruppieren.md) · Beispiel: [045-serien-gruppieren-beispiel.txt](045-serien-gruppieren-beispiel.txt)
 >
 > **Entscheidungen (Kurzfassung):** E1 Einsammeln über einen neuen, schmalen Command `collect_files` (eigener
@@ -293,12 +293,19 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
 
 ## 6. Abweichungen bei der Umsetzung
 
-(leer)
+- **E4 (Phase 2):** Ein reiner Müll-Unterordner (`Sample/` nur mit `*-sample.mkv`) wird vom Clean-Scan auch dann
+  gelistet, wenn der Release-Ordner selbst noch Inhalt hat – das ist das bestehende Verhalten von 008 (leere bzw.
+  nur-Müll-Unterordner eines nicht leeren Ordners). Der Release-Ordner selbst bleibt dann stehen. Da als Wurzeln nur
+  die Release-Ordner **verschobener** Videos übergeben werden und der Nutzer die Liste bestätigt, bleibt das so
+  (Tests `clean::tests::junk_may_be_name_patterns`, `jobs::tests_tools::series_move_then_clean_…`).
+- **E1:** Unter Windows gibt es (wie in `clean.rs`) keine Geräte-Id aus `std` – die Grenze „kein fremdes
+  Dateisystem“ greift dort nicht; Links (Junctions) werden dennoch nie betreten.
 
 ## 7. Fortschritt
 
-- [x] Phase 1 – Bestand, Design (29.10.2026) – 🛑 Freigabe offen
-- [ ] Phase 2 – Rust: `collect.rs` + Command, Müll-Muster in `clean.rs`, Tests `group` aus Unterordnern
+- [x] Phase 1 – Bestand, Design (29.10.2026) – freigegeben von Marc (29.10.2026, „passt“, A1–A7 bestätigt)
+- [x] Phase 2 – Rust: `collect.rs` + Command `collect_files`, Müll-Muster in `clean.rs`, Tests `group` aus
+      Unterordnern und Aufräumen (`jobs/tests_tools.rs` › `series_*`, `clean_with_junk_patterns_rechecks_new_content`)
 - [ ] Phase 3 – Frontend: Engine + Katalog, Fassade/Fake, Store, Dialog, Aktion/Keymaps/Menüs/Vetos, Texte, Clean `openPrepared`
 - [ ] Phase 4 – E2E unter Xvfb
 - [ ] Phase 5 – Doku (README, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md §1/§3)

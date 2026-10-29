@@ -43,6 +43,7 @@ pub mod attributes;
 pub mod buttons;
 pub mod checksum;
 pub mod clean;
+pub mod collect;
 pub mod commands;
 pub mod compare;
 pub mod config_file;
@@ -258,6 +259,7 @@ pub fn run() {
             commands::create_folders,
             commands::find_empty_dirs,
             commands::cancel_clean_scan,
+            commands::collect_files,
             commands::undo_rename,
             commands::load_rename_presets,
             commands::save_rename_presets,

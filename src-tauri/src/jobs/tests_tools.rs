@@ -614,3 +614,118 @@ fn helper_jobs_removed(h: Harness) {
     }
     assert_eq!(h.finish(&search).summary.unwrap().items_done, 1);
 }
+
+/// Design 045: a series folder with release folders (video, `.nfo`, `Sample/`).
+fn series_tree() -> (tempfile::TempDir, PathBuf) {
+    let d = tempdir().unwrap();
+    let root = d.path().join("Die Kirche bleibt im Dorf");
+    for (s, e) in [(1, 1), (1, 2), (2, 1)] {
+        let rel = root.join(format!("Die.Kirche.S{s:02}E{e:02}.German-DMPD"));
+        let f = format!("die.kirche.s{s:02}e{e:02}.german-dmpd");
+        fs::create_dir_all(rel.join("Sample")).unwrap();
+        fs::write(rel.join(format!("{f}.mkv")), &f).unwrap();
+        fs::write(rel.join(format!("{f}.nfo")), "nfo").unwrap();
+        fs::write(rel.join(format!("Sample/{f}-sample.mkv")), "sample").unwrap();
+    }
+    (d, root)
+}
+
+fn series_items(root: &Path) -> Vec<GroupItem> {
+    [(1, 1, "S01"), (1, 2, "S01"), (2, 1, "S02")]
+        .iter()
+        .map(|(s, e, g)| GroupItem {
+            path: s_(root, *s, *e),
+            group: g.to_string(),
+        })
+        .collect()
+}
+
+fn s_(root: &Path, season: u32, ep: u32) -> String {
+    s(&root
+        .join(format!("Die.Kirche.S{season:02}E{ep:02}.German-DMPD"))
+        .join(format!("die.kirche.s{season:02}e{ep:02}.german-dmpd.mkv")))
+}
+
+#[test]
+fn series_copy_from_release_folders_into_season_folders() {
+    let h = Harness::new();
+    let (_d, root) = series_tree();
+    let id = h.group(&root, series_items(&root), Transfer::Copy);
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(
+        fs::read_to_string(root.join("S01/die.kirche.s01e02.german-dmpd.mkv")).unwrap(),
+        "die.kirche.s01e02.german-dmpd"
+    );
+    assert!(root.join("S02/die.kirche.s02e01.german-dmpd.mkv").is_file());
+    assert!(!root.join("S01/die.kirche.s01e01.german-dmpd.nfo").exists());
+    assert!(
+        PathBuf::from(s_(&root, 1, 1)).is_file(),
+        "copy keeps the source"
+    );
+    // a second run: the copies in the season folders are where they belong
+    let again = vec![GroupItem {
+        path: s(&root.join("S01/die.kirche.s01e01.german-dmpd.mkv")),
+        group: "S01".into(),
+    }];
+    let info = h.finish(&h.group(&root, again, Transfer::Copy));
+    assert_eq!(info.summary.unwrap().items_skipped, 1);
+}
+
+#[test]
+fn series_move_then_clean_removes_only_release_folders_with_extras() {
+    let h = Harness::new();
+    let (d, root) = series_tree();
+    fs::write(root.join("S02"), "a file in the way").unwrap();
+    let info = h.finish(&h.group(&root, series_items(&root), Transfer::Move));
+    // season 2 fails as a group (a file named S02), season 1 moves
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(root.join("S01/die.kirche.s01e01.german-dmpd.mkv").is_file());
+    assert!(PathBuf::from(s_(&root, 2, 1)).is_file(), "season 2 stays");
+    // clean the release folders of the moved files: extras only → the whole folder goes
+    let tops: Vec<PathBuf> = [(1, 1), (1, 2), (2, 1)]
+        .iter()
+        .map(|(s, e)| root.join(format!("Die.Kirche.S{s:02}E{e:02}.German-DMPD")))
+        .collect();
+    let o = CleanOptions {
+        include_roots: true,
+        junk: vec!["*.nfo".into(), "*-sample.*".into()],
+        ..CleanOptions::default()
+    };
+    // the frontend passes only the folders of files that really moved (design 045 E4)
+    let moved = &tops[..2];
+    let scan = find_empty_dirs(moved, &o).unwrap();
+    assert_eq!(scan.items.len(), 4, "{:?}", scan.items); // 2 × (Sample, release)
+    let info = h.finish(&h.clean(moved, scan.items.clone(), o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(!tops[0].exists() && !tops[1].exists());
+    assert!(
+        tops[2].join("Sample").is_dir(),
+        "season 2 kept its video – untouched"
+    );
+    assert!(PathBuf::from(s_(&root, 2, 1)).is_file());
+    assert!(root.join("S01").is_dir() && d.path().join("Die Kirche bleibt im Dorf").is_dir());
+}
+
+#[test]
+fn clean_with_junk_patterns_rechecks_new_content() {
+    let h = Harness::new();
+    let (_d, root) = series_tree();
+    let rel = root.join("Die.Kirche.S01E01.German-DMPD");
+    fs::remove_file(rel.join("die.kirche.s01e01.german-dmpd.mkv")).unwrap();
+    let o = CleanOptions {
+        include_roots: true,
+        junk: vec!["*.nfo".into(), "*-sample.*".into()],
+        ..CleanOptions::default()
+    };
+    let scan = find_empty_dirs(std::slice::from_ref(&rel), &o).unwrap();
+    assert_eq!(scan.items.len(), 2);
+    // a new file arrives before the job runs: the folder is not junk-only any more
+    fs::write(rel.join("neu.mkv"), "x").unwrap();
+    let info = h.finish(&h.clean(std::slice::from_ref(&rel), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(
+        rel.join("neu.mkv").is_file() && rel.join("die.kirche.s01e01.german-dmpd.nfo").is_file()
+    );
+    assert!(!rel.join("Sample").exists(), "the junk-only child may go");
+}
