@@ -17,8 +17,8 @@ function columns(): readonly GridColumn[] {
     { property: 'source', label: t.colSource, width: null },
     { property: 'season', label: t.colSeason, width: 70, align: 'end' },
     { property: 'episode', label: t.colEpisode, width: 70, align: 'end' },
-    { property: 'target', label: t.colTarget, width: 110 },
-    { property: 'info', label: t.colInfo, width: 230 },
+    { property: 'target', label: t.colTarget, width: 220 },
+    { property: 'info', label: t.colInfo, width: 200 },
   ];
 }
 

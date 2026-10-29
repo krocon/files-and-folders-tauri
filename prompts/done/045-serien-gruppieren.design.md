@@ -319,6 +319,11 @@ Marcs Vorschlag: eine Auswahl für das Ziel.
   gesperrt, Hinweis nennt die beiden anderen Ziele; ein Serienname, der kein gültiger Ordnername ist, sperrt
   `otherSeries`. Test `series.spec.ts` › „marked folders are the series folders; several never mix in one target“.
 - Aufräumen nach dem Verschieben: Startordner aus allen Jobs zusammen, ein Clean-Dialog.
+- **E2E (Xvfb):** `Filme` mit „Die Kirche bleibt im Dorf“ (90 Dateien) und „Cyberpunk Edgerunners“, nur „Die Kirche“
+  markiert, andere Seite = `home` → Vorschau nur 30 Folgen, Ziel „Ordner der anderen Seite“ vorgewählt; Ziel „andere
+  Seite + Ordner mit dem Seriennamen“ zeigt `/…/home › Die Kirche bleibt im Dorf`, `Strg+Enter` legt
+  `home/Die Kirche bleibt im Dorf/S01–S04` (12/6/6/6) an; in `Filme` entsteht nichts, Cyberpunk bleibt unberührt.
+  Die Ziel-Spalte wurde dafür breiter (220 px).
 
 ## 6a. Externes Review (separater Agent, 29.10.2026) – Befunde und Behebung
 
