@@ -324,9 +324,27 @@ function restoreSeriesOptions(v: unknown): SeriesOptions;
       Aktion), `FoldersApi.collectFiles` + Fake, Keymaps/Menüs/Vetos, Texte en/de, `CleanFoldersStore.openPrepared`
       (vorbelegtes Formular wird nie gemerkt, das eigene kehrt beim Schließen zurück); `pnpm check` grün
 - [x] Phase 4 – E2E unter Xvfb (s. unten)
-- [ ] Phase 5 – Doku (README, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md §1/§3)
-- [ ] Phase 6 – `pnpm check`, Debug-Build, Review durch separaten Agenten (Schwerpunkte: Walker-Grenzen/Links,
-      Müll-Muster im Clean-Job, Verschieben/Aufräumen nie außerhalb der Wurzel)
+- [x] Phase 5 – Doku (README, features, architecture, roadmap, feature-parity, prompts/README, CLAUDE.md §1/§3)
+- [x] Phase 6 – `pnpm check` grün, Debug-Build, externes Review (Abschnitt 6a, alle Befunde behoben oder begründet)
+
+**E2E Linux (Xvfb, Debug-Build, eigener `HOME`, 1100×720):** Testordner = Marcs 90 Dateien + `Ünïcode 🎬.S05E01-GRP/ünï
+köln.s05e01.mkv`, `Bonus/film.mkv`, `.versteckt/…`, `._direkt.s01e01.mkv`, Ordner `gesperrt` (0o000) und Link
+`link draußen` auf einen Ordner außerhalb. `Alt+Shift+G` → „32 episodes in 6 seasons“ (S01 12, S02–S04 je 6, S05, S07),
+60 ignoriert, `Bonus/film.mkv` nicht erkannt, Warnung „mehrere Serien“; versteckte Dateien und Link nicht dabei.
+`Strg+Enter` kopiert: `S01`–`S07` mit den richtigen Dateien, Quellen unverändert, Panel frisch, Meldung „Series grouped:
+32 files“. Zweiter Lauf: „0 to group“, Knöpfe gesperrt, Zeilen „already in S01“. Verschieben + Aufräumen (fremdes
+`cover.jpg` im Release S02E01): Clean-Dialog vorbelegt, 61 Einträge mit Müll-Namen in „Info“; nach „Löschen“ 61 Einträge
+im Papierkorb, Release S02E01 bleibt mit `cover.jpg` und `.nfo` (nur sein `Sample/` ging), Ziel des Links unberührt.
+
+**Gefunden im E2E und behoben:** (1) Dialog passte nicht in ein kleines Fenster (Knöpfe abgeschnitten) → `[fill]`,
+kompaktere Zeilen, Hinweise in einer begrenzten Zeile. (2) Nach **Kopieren** hätte ein zweiter Lauf die Originale erneut
+kopiert (Konflikte, „doppelt“) → Original gilt als erledigt, wenn eine gleichnamige Datei im Staffelordner liegt
+(`copied`); Dubletten zählen nur verschiedene Namen (Test rot → grün). (3) Clean-Dialog listete 30 Startordner voll aus
+und schob die Knöpfe weg → Startordner-Block begrenzt und scrollbar.
+
+**Nicht geprüft:** gesperrter Ordner (der Container läuft als root – Rechte greifen nicht; Rust-Test bedingt),
+dunkles Design im echten Fenster (`GTK_THEME` wirkte nicht, das Farbschema stand fest auf hell; der Dialog nutzt nur
+vorhandene Tokens/Klassen), macOS/Windows (Papierkorb, `⌥⇧G`, Windows ohne Geräte-Id) bei Marc bzw. in der CI.
 
 ## 8. Offen
 
