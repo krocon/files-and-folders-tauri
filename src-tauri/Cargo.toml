@@ -1,6 +1,6 @@
 [package]
 name = "files-and-folders-tauri"
-version = "1.0.0"
+version = "1.1.0"
 description = "Cross-platform dual-pane file manager (Tauri 2 + Angular)"
 authors = ["krocon"]
 license = "MIT"
