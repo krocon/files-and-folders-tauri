@@ -74,6 +74,13 @@
   color: var(--color-danger);
 }
 
+/* many start folders (e.g. 30 release folders, design 045) never push the buttons out */
+.roots {
+  max-height: 4.2em;
+  overflow: auto;
+  flex: none;
+}
+
 .preview-label {
   font-weight: 600;
 }
