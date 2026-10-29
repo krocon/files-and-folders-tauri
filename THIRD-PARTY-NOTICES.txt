@@ -41,8 +41,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ================================================================================
-@guiexpert/angular-table 22.1.100 (MIT, npm)
-@guiexpert/table 1.1.103 (MIT, npm)
+@guiexpert/angular-table 22.1.105 (MIT, npm)
+@guiexpert/table 1.1.105 (MIT, npm)
 ================================================================================
 
 MIT License
