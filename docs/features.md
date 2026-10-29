@@ -63,7 +63,18 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Minus-Trenner, erstem Wort, ersten Buchstaben oder in einen neuen Ordner – Vorschau-Tabelle, Mindestgröße, Klammern
   ignorieren; Ziel `<anderes Panel oder Quellordner>/<Gruppe>/<Name>` per Kopieren oder Verschieben, Konflikte über
   den Dialog der Job-Engine.
-- **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`): leere Ordner (optional mit Systemmüll wie `.DS_Store`) und
+- **Serien nach Staffeln gruppieren** (`Alt+Shift+G`, macOS `⌥⇧G`, Prompt 045): sammelt die Videos des aktuellen
+  Ordners **und seiner Unterordner** (keine Links, kein fremdes Laufwerk, keine versteckten Dateien) und erkennt
+  Staffel/Folge im Namen (`S01E01`, `s1e1`, `S01.E01`, Doppelfolgen, `1x01`, „Staffel 1 Folge 2“, sonst aus dem
+  Release-Ordner) – `x264`, `1080p`, `1920x1080` zählen nie. Serienordner = die markierten Ordner, sonst der
+  angezeigte. Ziel `S01`, `S02` … (Vorlage `S{nn}`, `Staffel {n}` …) wahlweise im Ordner der anderen Seite (Standard),
+  im Serienordner selbst oder in *andere Seite + Ordner mit dem Seriennamen*; mehrere Serien in einen gemeinsamen
+  Zielordner sind gesperrt. **Kopieren** als Standard (`Strg/⌘+Enter`), Verschieben als Knopf;
+  Beiwerk (`Sample/`, `*-sample.*`, `*.nfo` …) wird ignoriert, Untertitel auf Wunsch mitgenommen. Vorschau mit Status
+  je Datei, Hinweisen zu doppelten/fehlenden Folgen und mehreren Serien. Nach dem Verschieben öffnet sich auf Wunsch
+  *Ordner aufräumen* mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).
+- **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`): leere Ordner (optional mit Systemmüll wie `.DS_Store` – Namen
+  oder Muster wie `*.nfo`, seit 045) und
   Dateien nach Muster (`*.bak`) unterhalb des aktuellen bzw. der markierten Ordner – Vorschau, Papierkorb als Standard,
   nie oberhalb des Startordners, Links werden nie verfolgt; jeder Eintrag wird vor dem Löschen erneut geprüft.
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,

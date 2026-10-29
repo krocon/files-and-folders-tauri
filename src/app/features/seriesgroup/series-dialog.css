@@ -1,0 +1,5 @@
+/* Group series by season (design 045 E6): the hints never push the buttons out. */
+.hints {
+  max-height: 2.8em;
+  overflow: auto;
+}

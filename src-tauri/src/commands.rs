@@ -430,6 +430,25 @@ pub async fn find_empty_dirs<R: Runtime>(
     result
 }
 
+/// Lists the files below `root` (design 045 E1: group series by season); writes
+/// nothing. Shares the tokens of `find_empty_dirs`: `cancel_clean_scan(scan_id)` stops it.
+#[tauri::command]
+pub async fn collect_files<R: Runtime>(
+    app: AppHandle<R>,
+    scan_id: String,
+    root: String,
+    options: crate::collect::CollectOptions,
+) -> Result<crate::collect::FileTree, FsError> {
+    let root = resolve_input(&app, &root)?;
+    let token = app.state::<CleanScanState>().begin(&scan_id);
+    let result = blocking("Collecting files", move || {
+        crate::collect::collect_files_cancellable(&root, &options, &token)
+    })
+    .await;
+    app.state::<CleanScanState>().end(&scan_id);
+    result
+}
+
 /// Stops the search `scan_id` (a newer one started, the dialog closed).
 #[tauri::command(async)]
 pub fn cancel_clean_scan<R: Runtime>(app: AppHandle<R>, scan_id: String) {

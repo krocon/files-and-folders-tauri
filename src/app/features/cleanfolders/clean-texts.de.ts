@@ -11,7 +11,7 @@ export const CL_DE: Translation<typeof CL_EN> = {
   emptyDirs: 'Leere Ordner löschen',
   includeRoots: 'Auch den Startordner selbst',
   junk: 'Ordner als leer behandeln, die nur enthalten',
-  junkField: 'Namen von Müll-Dateien (getrennt durch ;)',
+  junkField: 'Namen oder Muster von Müll-Dateien wie *.nfo (getrennt durch ;)',
   patterns: 'Dateien löschen, die passen auf',
   patternsField: 'Dateinamen-Muster (* und ?, getrennt durch ;)',
   preview: 'Wird gelöscht (Inhalt zuerst)',

@@ -95,6 +95,8 @@ export type JobSpec =
   | {
       readonly kind: 'group';
       readonly root: string;
+      /** Design 045 E8: the group folders go into `<root>/<subdir>` (one name, created). */
+      readonly subdir?: string;
       readonly items: readonly GroupItem[];
       readonly transfer: 'copy' | 'move';
       readonly options?: CopyOptions;

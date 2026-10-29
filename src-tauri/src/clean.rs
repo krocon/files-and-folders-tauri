@@ -38,7 +38,8 @@ pub struct CleanOptions {
     /// The start folders themselves may go, too (default off).
     #[serde(default)]
     pub include_roots: bool,
-    /// File names that do not count as content (`.DS_Store` …); empty = off.
+    /// File names that do not count as content (`.DS_Store` …); with `*`/`?` a name
+    /// pattern (`*.nfo`, design 045 E4). Junk goes with its folder. Empty = off.
     #[serde(default)]
     pub junk: Vec<String>,
     /// Name patterns (`*`, `?`) of files to delete; empty = off.
@@ -72,7 +73,14 @@ pub struct CleanItem {
     /// Junk files inside the folder (they go with it).
     #[serde(default)]
     pub junk: u32,
+    /// The first junk names (at most [`MAX_JUNK_NAMES`]) – shown in the dialog, so the
+    /// user sees what leaves with the folder (review 045 #2). Not read by the job.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub junk_names: Vec<String>,
 }
+
+/// Junk names reported per folder.
+pub const MAX_JUNK_NAMES: usize = 5;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,8 +98,17 @@ pub struct CleanScan {
 
 /// Compiled options: lower-case junk names and patterns.
 pub struct Matcher {
+    /// Exact names (lower case).
     junk: Vec<String>,
+    /// Junk names with `*`/`?` (design 045 E4: `*.nfo`, `*-sample.*`).
+    junk_patterns: Vec<Vec<char>>,
     patterns: Vec<Vec<char>>,
+}
+
+/// A pattern without a literal other than `.` hits (almost) every file:
+/// `*`, `?*`, `*?*`, `*.*` (review 008 #1).
+fn matches_everything(p: &str) -> bool {
+    p.chars().all(|c| matches!(c, '*' | '?' | '.'))
 }
 
 impl Matcher {
@@ -101,6 +118,7 @@ impl Matcher {
             return bad("Too many names or patterns");
         }
         let mut junk = Vec::new();
+        let mut junk_patterns = Vec::new();
         for j in &o.junk {
             let j = j.trim();
             if j.is_empty() {
@@ -109,7 +127,14 @@ impl Matcher {
             if j.len() > MAX_NAME_LEN || j.contains(['/', '\\', '\0']) {
                 return bad("A junk file name is invalid");
             }
-            junk.push(j.to_lowercase());
+            if j.contains(['*', '?']) {
+                if matches_everything(j) {
+                    return bad("The junk pattern would match every file");
+                }
+                junk_patterns.push(j.to_lowercase().chars().collect());
+            } else {
+                junk.push(j.to_lowercase());
+            }
         }
         let mut patterns = Vec::new();
         for p in &o.patterns {
@@ -122,18 +147,28 @@ impl Matcher {
             if p.len() > MAX_NAME_LEN || p.contains(['/', '\\', '\0']) {
                 return bad("A file pattern must be a name pattern such as *.bak");
             }
-            // without a literal other than `.` it hits (almost) every file:
-            // `*`, `?*`, `*?*`, `*.*` (review 008 #1)
-            if p.chars().all(|c| matches!(c, '*' | '?' | '.')) {
+            if matches_everything(p) {
                 return bad("The file pattern would match every file");
             }
             patterns.push(p.to_lowercase().chars().collect());
         }
-        Ok(Matcher { junk, patterns })
+        Ok(Matcher {
+            junk,
+            junk_patterns,
+            patterns,
+        })
     }
 
     pub fn is_junk(&self, name: &str) -> bool {
-        !self.junk.is_empty() && self.junk.contains(&name.to_lowercase())
+        if self.junk.is_empty() && self.junk_patterns.is_empty() {
+            return false;
+        }
+        let lower = name.to_lowercase();
+        if self.junk.contains(&lower) {
+            return true;
+        }
+        let chars: Vec<char> = lower.chars().collect();
+        self.junk_patterns.iter().any(|p| glob_match(p, &chars))
     }
 
     pub fn matches(&self, name: &str) -> bool {
@@ -214,7 +249,7 @@ impl Ctx<'_> {
         }
     }
 
-    fn push(&mut self, path: &Path, kind: CleanKind, junk: u32) {
+    fn push(&mut self, path: &Path, kind: CleanKind, junk: u32, junk_names: Vec<String>) {
         if self.scan.items.len() >= MAX_ITEMS {
             self.scan.truncated = true;
             return;
@@ -224,6 +259,7 @@ impl Ctx<'_> {
                 path: path_string(path),
                 kind,
                 junk,
+                junk_names,
             });
         }
     }
@@ -239,6 +275,7 @@ impl Ctx<'_> {
         };
         let mut removable = true;
         let mut junk = 0u32;
+        let mut junk_names: Vec<String> = Vec::new();
         for entry in rd {
             if self.cancel.load(Ordering::Relaxed) {
                 self.scan.cancelled = true;
@@ -284,9 +321,12 @@ impl Ctx<'_> {
                 }
             } else if ft.is_file() {
                 if self.m.matches(name) {
-                    self.push(&path, CleanKind::File, 0);
+                    self.push(&path, CleanKind::File, 0, Vec::new());
                 } else if self.m.is_junk(name) {
                     junk += 1;
+                    if junk_names.len() < MAX_JUNK_NAMES {
+                        junk_names.push(name.to_string());
+                    }
                 } else {
                     removable = false;
                 }
@@ -299,7 +339,7 @@ impl Ctx<'_> {
         }
         // a linked start folder is never offered: the job deletes no link (review 008 #4)
         if !is_root || (self.o.include_roots && self.root_real) {
-            self.push(dir, CleanKind::Dir, junk);
+            self.push(dir, CleanKind::Dir, junk, junk_names);
         }
         true
     }
@@ -527,6 +567,61 @@ mod tests {
         )
         .unwrap();
         assert_eq!(names(&scan, &root), ["bak/old.bak"]);
+    }
+
+    #[test]
+    fn junk_may_be_name_patterns() {
+        // design 045 E4: a release folder holding only extras (`*.nfo`, `Sample/*-sample.*`)
+        // goes as a whole; with anything else in it, it stays (a junk-only child may go)
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().to_path_buf();
+        let rel = root.join("Serie.S01E01.Grüße 🎬");
+        fs::create_dir_all(rel.join("Sample")).unwrap();
+        fs::write(rel.join("serie.s01e01.NFO"), "x").unwrap();
+        fs::write(rel.join("Sample/serie.s01e01-sample.mkv"), "x").unwrap();
+        let other = root.join("Serie.S01E02");
+        fs::create_dir_all(other.join("Sample")).unwrap();
+        fs::write(other.join("serie.s01e02.nfo"), "x").unwrap();
+        fs::write(other.join("Sample/serie.s01e02-sample.mkv"), "x").unwrap();
+        fs::write(other.join("serie.s01e02.mkv"), "x").unwrap(); // not moved: content
+        let o = CleanOptions {
+            include_roots: true,
+            junk: vec!["*.nfo".into(), "*-sample.*".into(), ".DS_Store".into()],
+            ..opts()
+        };
+        let scan = find_empty_dirs(&[rel.clone(), other.clone()], &o).unwrap();
+        let got = names(&scan, &root);
+        assert_eq!(
+            got,
+            [
+                "Serie.S01E01.Grüße 🎬/Sample/",
+                "Serie.S01E01.Grüße 🎬/",
+                "Serie.S01E02/Sample/"
+            ]
+        );
+        assert_eq!(
+            scan.items.iter().map(|i| i.junk).collect::<Vec<_>>(),
+            [1, 1, 1]
+        );
+        // the names go along, so the dialog can show what leaves with the folder (review 045 #2)
+        assert_eq!(scan.items[1].junk_names, ["serie.s01e01.NFO"]);
+        assert_eq!(scan.items[0].junk_names, ["serie.s01e01-sample.mkv"]);
+        let m = Matcher::new(&o).unwrap();
+        assert!(m.is_junk("A.NFO"));
+        assert!(m.is_junk(".ds_store"));
+        assert!(!m.is_junk("a.nfo.mkv"));
+        assert!(!m.matches("a.nfo"), "junk is no delete pattern");
+        // the same guard as for patterns: no literal → refused
+        for bad in ["*", "*.*", "?", "a/b", "*\\x"] {
+            assert!(
+                Matcher::new(&CleanOptions {
+                    junk: vec![bad.into()],
+                    ..opts()
+                })
+                .is_err(),
+                "{bad}"
+            );
+        }
     }
 
     #[test]

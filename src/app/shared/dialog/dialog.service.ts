@@ -14,6 +14,7 @@ export type DialogKind =
   | 'name'
   | 'multi-rename'
   | 'group-files'
+  | 'series-group'
   | 'clean-folders'
   | 'multi-mkdir'
   | 'tools'

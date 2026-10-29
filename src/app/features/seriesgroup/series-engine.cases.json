@@ -1,0 +1,66 @@
+{
+  "parseEpisode": [
+    {
+      "name": "die.kirche.bleibt.im.dorf.s01e01.german.1080p.web.h264-dmpd.mkv",
+      "ep": [1, 1, 1],
+      "series": "die kirche bleibt im dorf"
+    },
+    {
+      "name": "Die.Kirche.bleibt.im.Dorf.S04E06.German.1080p.WEB.h264-DMPD",
+      "ep": [4, 6, 6],
+      "series": "die kirche bleibt im dorf"
+    },
+    { "name": "Show s1e1.mkv", "ep": [1, 1, 1], "series": "show" },
+    { "name": "Show.S01.E02.mkv", "ep": [1, 2, 2] },
+    { "name": "Show_S01_E03.mkv", "ep": [1, 3, 3] },
+    { "name": "Show S01 E04.mkv", "ep": [1, 4, 4] },
+    { "name": "Show - S02E10 - Titel.mkv", "ep": [2, 10, 10], "series": "show" },
+    { "name": "Show.S01E01E02.mkv", "ep": [1, 1, 2] },
+    { "name": "Show.S01E01-E02.mkv", "ep": [1, 1, 2] },
+    { "name": "Show.S01E01-02.mkv", "ep": [1, 1, 2] },
+    { "name": "Show.S01E05-2019.mkv", "ep": [1, 5, 5] },
+    { "name": "Show.S01E05-DMPD.mkv", "ep": [1, 5, 5] },
+    { "name": "Show.S01E05-1080p.mkv", "ep": [1, 5, 5] },
+    { "name": "Show.S2024E03.mkv", "ep": [2024, 3, 3] },
+    { "name": "Show.S00E01.Special.mkv", "ep": [0, 1, 1] },
+    { "name": "Show.S01E100.mkv", "ep": [1, 100, 100] },
+    { "name": "Show 1x01.mkv", "ep": [1, 1, 1], "series": "show" },
+    { "name": "Show.10x112.mkv", "ep": [10, 112, 112] },
+    { "name": "Show Staffel 2 Folge 5.mkv", "ep": [2, 5, 5], "series": "show" },
+    { "name": "Show - Staffel 2 - Folge 5.mkv", "ep": [2, 5, 5] },
+    { "name": "Show Season 1 Episode 10.mkv", "ep": [1, 10, 10] },
+    { "name": "Show season 3 ep. 7.mkv", "ep": [3, 7, 7] },
+    {
+      "name": "Grüße aus Köln – S03E02 – Ünïcode 🎬.mkv",
+      "ep": [3, 2, 2],
+      "series": "grüße aus köln –"
+    },
+    { "name": "Show.S01E01.and.1x05.mkv", "ep": [1, 1, 1] },
+    { "name": "Show.1x05.then.S01E01.mkv", "ep": [1, 5, 5] },
+    { "name": "S01E07.mkv", "ep": [1, 7, 7], "series": "" },
+    { "name": "Film.2019.1080p.x264-GRP.mkv", "ep": null },
+    { "name": "Film.h264.mkv", "ep": null },
+    { "name": "Film.h.265.mkv", "ep": null },
+    { "name": "Film.2160p.mkv", "ep": null },
+    { "name": "Film.1920x1080.mkv", "ep": null },
+    { "name": "Film.DDP5.1.mkv", "ep": null },
+    { "name": "Film.AAC2.0.mkv", "ep": null },
+    { "name": "Show.E01.mkv", "ep": null },
+    { "name": "Show.S01.mkv", "ep": null },
+    { "name": "Classics01E02.mkv", "ep": null },
+    { "name": "Show.S01E01x.mkv", "ep": null },
+    { "name": "Staffel 1", "ep": null },
+    { "name": "Doku 3x45 Min.mkv", "ep": null },
+    { "name": "Doku 3x45min.mkv", "ep": null },
+    { "name": "Show 2x05 - Titel.mkv", "ep": [2, 5, 5] }
+  ],
+  "seasonFolder": [
+    { "template": "S{nn}", "season": 1, "folder": "S01" },
+    { "template": "S{nn}", "season": 0, "folder": "S00" },
+    { "template": "S{nn}", "season": 100, "folder": "S100" },
+    { "template": "Staffel {n}", "season": 3, "folder": "Staffel 3" },
+    { "template": "Season {nn}", "season": 12, "folder": "Season 12" },
+    { "template": " Season {n} ", "season": 2, "folder": "Season 2" },
+    { "template": "Alle Folgen", "season": 1, "folder": null }
+  ]
+}

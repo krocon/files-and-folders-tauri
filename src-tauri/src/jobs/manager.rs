@@ -336,6 +336,7 @@ impl JobManager {
                     }
                     JobSpec::Group {
                         root,
+                        subdir,
                         items,
                         transfer,
                         options,
@@ -343,7 +344,15 @@ impl JobManager {
                         let force_copy = self.force_copy_on_move.load(Ordering::SeqCst);
                         let root = PathBuf::from(root);
                         group::run(
-                            id, &root, items, *transfer, options, force_copy, &control, &emit,
+                            id,
+                            &root,
+                            subdir.as_deref(),
+                            items,
+                            *transfer,
+                            options,
+                            force_copy,
+                            &control,
+                            &emit,
                         )
                     }
                     JobSpec::Clean {
@@ -1322,12 +1331,17 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
         }
         JobSpec::Group {
             root,
+            subdir,
             items,
             transfer,
             ..
         } => {
             if items.is_empty() {
                 return Err(nothing());
+            }
+            // one plain name (design 045 E8) – never a path that leaves the root
+            if let Some(sd) = subdir {
+                crate::paths::validate_name(sd)?;
             }
             if items.len() > group::MAX_ITEMS {
                 return Err(FsError::new(

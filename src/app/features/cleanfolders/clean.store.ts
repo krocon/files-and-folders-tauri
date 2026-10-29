@@ -90,6 +90,12 @@ export function cleanRoots(folder: string, marked: readonly DirEntry[]): readonl
   return dirs.length > 0 ? dirs : [folder];
 }
 
+/** "with 7 junk files: a.nfo, b.nfo …" – the user sees what leaves with the folder. */
+function junkInfo(n: number, names: readonly string[]): string {
+  const base = CL_TEXTS.junkInside(n);
+  return names.length === 0 ? base : `${base}: ${names.join(', ')}${n > names.length ? ' …' : ''}`;
+}
+
 function err(message: string): FsError {
   return { code: 'unknown', message, path: null };
 }
@@ -120,6 +126,11 @@ export class CleanFoldersStore {
   private seq = 0;
   /** Id of the search still running in Rust (review 008 #2: cancelled when obsolete). */
   private running: string | null = null;
+  /**
+   * The user's form while a prepared one is shown (design 045 E4): restored on close,
+   * and a prepared form is never kept as the last input.
+   */
+  private ownForm: CleanForm | null = null;
 
   readonly options = computed(() => cleanOptions(this.form()));
   /** The search result belongs to the current options. */
@@ -136,7 +147,7 @@ export class CleanFoldersStore {
       nr: i + 1,
       path: it.path,
       kind: it.kind === 'dir' ? CL_TEXTS.kindDir : CL_TEXTS.kindFile,
-      info: it.junk ? CL_TEXTS.junkInside(it.junk) : '',
+      info: it.junk ? junkInfo(it.junk, it.junkNames ?? []) : '',
     })),
   );
   readonly counts = computed(() => {
@@ -177,12 +188,39 @@ export class CleanFoldersStore {
     this.schedule(0);
   }
 
+  /**
+   * Opens the dialog for given start folders and a given form – after "group series by
+   * season" moved episodes out of their release folders (design 045 E4). The user sees
+   * the list and confirms; the trash is the default as always.
+   */
+  openPrepared(side: Side, folder: string, roots: readonly string[], form: CleanForm): void {
+    if (roots.length === 0) {
+      return;
+    }
+    if (this.ownForm === null) {
+      this.ownForm = this.form();
+    }
+    this.form.set(form);
+    this.scanned.set(null);
+    this.scanError.set(null);
+    this.runError.set(null);
+    this.busy.set(false);
+    this.mode.set('trash');
+    this.request.set({ side, folder, roots: [...roots] });
+    this.dialogs.show('clean-folders');
+    this.schedule(0);
+  }
+
   close(): void {
     this.cancelTimer();
     this.cancelRunning();
     this.seq++;
     this.request.set(null);
     this.scanned.set(null);
+    if (this.ownForm !== null) {
+      this.form.set(this.ownForm);
+      this.ownForm = null;
+    }
     this.dialogs.close();
   }
 
@@ -265,7 +303,9 @@ export class CleanFoldersStore {
       this.busy.set(false);
       return;
     }
-    rememberDialog(this.settings, 'clean', this.form());
+    if (this.ownForm === null) {
+      rememberDialog(this.settings, 'clean', this.form());
+    }
     this.close();
     this.busy.set(false);
     void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req));

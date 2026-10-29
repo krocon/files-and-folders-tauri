@@ -28,7 +28,7 @@ const COLUMNS: readonly GridColumn[] = [
       <app-modal [heading]="heading()" width="min(64rem, 92vw)" height="80vh" (closed)="cl.close()">
         <div class="tool">
           @if (req.roots.length > 1) {
-            <p class="help">
+            <p class="help roots">
               {{ t.startFolders }}:
               @for (r of req.roots; track r; let last = $last) {
                 <span class="path">{{ r }}</span
