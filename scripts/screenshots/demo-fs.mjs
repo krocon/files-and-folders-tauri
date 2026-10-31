@@ -242,7 +242,20 @@ export function buildDemoFs(repoRoot) {
     ],
     [`${HOME}/Projects/guiexpert-table`]: [],
     [`${HOME}/Projects/website`]: [],
-    [`${HOME}/Videos`]: [],
+    [`${HOME}/Videos`]: [
+      file('By Any Means (2026).jpg', 97 * KB, '2026-10-31T13:10:00'),
+      file('By Any Means (2026).mkv', 6758 * MB, '2026-10-31T05:46:00'),
+      file('Coup (2019).jpg', 52 * KB, '2026-10-31T13:14:00'),
+      file('Coup (2019).mkv', 3276 * MB, '2026-10-27T14:48:00'),
+      file('Das Ende der Sterne (2026).jpg', 113 * KB, '2026-10-31T13:09:00'),
+      file('Das Ende der Sterne (2026).mkv', 2457 * MB, '2026-10-29T18:41:00'),
+      file('Meine Schwester und ich (2005).mkv', 2252 * MB, '2026-10-28T18:08:00'),
+      file('My Way (2011).jpg', 109 * KB, '2026-10-31T13:14:00'),
+      file('My Way (2011).mkv', 8294 * MB, '2026-10-28T11:35:00'),
+      file('Real Genius (1985).jpg', 86 * KB, '2026-10-31T13:12:00'),
+      file('Real Genius (1985).mkv', 3584 * MB, '2026-10-28T18:33:00'),
+      file('poster_unused.webp', 66 * KB, '2026-10-03T17:17:00'),
+    ],
     ...treeFromPaths(PROJECT, files, sizeOf),
   };
   return { home: HOME, dirs };

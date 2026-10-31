@@ -19,6 +19,11 @@
   font-weight: 600;
 }
 
+.row > .section-title {
+  min-width: 3rem;
+  padding-bottom: 6px;
+}
+
 .conditions {
   display: flex;
   flex-direction: column;

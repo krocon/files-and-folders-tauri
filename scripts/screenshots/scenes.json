@@ -216,6 +216,27 @@
       ]
     },
     {
+      "name": "select-if-dialog",
+      "prelude": false,
+      "steps": [
+        {
+          "action": "OPEN_CHDIR_DLG"
+        },
+        {
+          "type": "/home/marc/Videos"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "action": "OPEN_SELECT_IF_DLG"
+        }
+      ]
+    },
+    {
       "name": "find-dialog",
       "steps": [
         {
