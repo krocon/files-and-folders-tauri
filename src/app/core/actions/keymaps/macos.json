@@ -35,6 +35,7 @@
   "INVERT_MARKS": ["NumpadMultiply"],
   "OPEN_MARK_PATTERN_DLG": ["NumpadAdd", "Ctrl+Alt+A"],
   "OPEN_UNMARK_PATTERN_DLG": ["NumpadSubtract"],
+  "OPEN_SELECT_IF_DLG": ["Mod+Alt+S"],
   "TOGGLE_PANEL": ["Tab"],
   "SELECT_LEFT_PANEL": ["Alt+1"],
   "SELECT_RIGHT_PANEL": ["Alt+2"],

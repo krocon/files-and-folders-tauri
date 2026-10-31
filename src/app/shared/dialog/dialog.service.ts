@@ -5,6 +5,7 @@ export type DialogKind =
   | 'call-action'
   | 'mark-pattern'
   | 'unmark-pattern'
+  | 'select-if'
   | 'shortcuts'
   | 'confirm'
   | 'jobs'

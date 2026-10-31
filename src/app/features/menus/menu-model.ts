@@ -188,6 +188,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'TOGGLE_MARK_AND_ADVANCE',
       'OPEN_MARK_PATTERN_DLG',
       'OPEN_UNMARK_PATTERN_DLG',
+      'OPEN_SELECT_IF_DLG',
       DUP_MARK,
       '-',
       COPY_AS,
@@ -398,6 +399,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     '-',
     'DESELECT_ALL',
     'INVERT_MARKS',
+    'OPEN_SELECT_IF_DLG',
   ],
   empty: [
     'OPEN_MKDIR_DLG',
@@ -410,6 +412,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     '-',
     'SELECT_ALL',
     'OPEN_MARK_PATTERN_DLG',
+    'OPEN_SELECT_IF_DLG',
     '-',
     // no REVEAL_IN_FILE_MANAGER / CALC_DIR_SIZES: they act on the cursor row,
     // which a click on free space does not move (review 014 #2)
@@ -445,6 +448,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'DESELECT_ALL',
     'INVERT_MARKS',
     'OPEN_MARK_PATTERN_DLG',
+    'OPEN_SELECT_IF_DLG',
   ],
 };
 

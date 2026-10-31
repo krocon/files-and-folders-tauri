@@ -919,6 +919,26 @@ export class FileBrowserStore implements OnDestroy {
     this.marked.set(EMPTY_MARKS);
   }
 
+  /**
+   * Replaces the marks among `displayed` with `nextMarked` in one signal update,
+   * preserving any marks outside `displayed` and excluding unmarkable rows (design 046 E2).
+   */
+  replaceMarks(displayed: readonly string[], nextMarked: ReadonlySet<string>): void {
+    const shown = new Set(displayed);
+    const next = new Set<string>();
+    for (const p of this.marked()) {
+      if (!shown.has(p) && !this.isParentPath(p)) {
+        next.add(p);
+      }
+    }
+    for (const p of nextMarked) {
+      if (!this.isParentPath(p)) {
+        next.add(p);
+      }
+    }
+    this.marked.set(next.size === 0 ? EMPTY_MARKS : next);
+  }
+
   invertMarks(displayed: readonly string[]): void {
     const current = this.marked();
     this.marked.set(new Set(displayed.filter((p) => !current.has(p) && !this.isParentPath(p))));

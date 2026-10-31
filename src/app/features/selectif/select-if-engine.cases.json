@@ -1,0 +1,344 @@
+{
+  "fixtures": {
+    "marcDownloads": [
+      { "name": "..", "path": "/Users/marc", "kind": "directory", "size": null, "parentLink": true },
+      { "name": "Archiv", "path": "/Users/marc/Downloads/Archiv", "kind": "directory", "size": null },
+      { "name": "Downloads", "path": "/Users/marc/Downloads/Downloads", "kind": "directory", "size": null },
+      { "name": "Extras", "path": "/Users/marc/Downloads/Extras", "kind": "directory", "size": null },
+      { "name": "Serien", "path": "/Users/marc/Downloads/Serien", "kind": "directory", "size": null },
+      { "name": "By Any Means (2026).jpg", "path": "/Users/marc/Downloads/By Any Means (2026).jpg", "kind": "file", "size": 99328 },
+      { "name": "By Any Means (2026).mkv", "path": "/Users/marc/Downloads/By Any Means (2026).mkv", "kind": "file", "size": 7086696038 },
+      { "name": "Coup (2019).jpg", "path": "/Users/marc/Downloads/Coup (2019).jpg", "kind": "file", "size": 53248 },
+      { "name": "Coup (2019).mkv", "path": "/Users/marc/Downloads/Coup (2019).mkv", "kind": "file", "size": 3435973836 },
+      { "name": "Das Ende der Sterne (2026).jpg", "path": "/Users/marc/Downloads/Das Ende der Sterne (2026).jpg", "kind": "file", "size": 115712 },
+      { "name": "Das Ende der Sterne (2026).mkv", "path": "/Users/marc/Downloads/Das Ende der Sterne (2026).mkv", "kind": "file", "size": 2576980377 },
+      { "name": "Der Fractal Design Ridge und die Geschichte von „Weniger ist mehr“.pdf", "path": "/Users/marc/Downloads/Der Fractal Design Ridge und die Geschichte von „Weniger ist mehr“.pdf", "kind": "file", "size": 45088768 },
+      { "name": "Die Hoelle der roten Berge - Red Mountain (1951).jpg", "path": "/Users/marc/Downloads/Die Hoelle der roten Berge - Red Mountain (1951).jpg", "kind": "file", "size": 137216 },
+      { "name": "Die Hoelle der roten Berge - Red Mountain (1951).mkv", "path": "/Users/marc/Downloads/Die Hoelle der roten Berge - Red Mountain (1951).mkv", "kind": "file", "size": 9985798963 },
+      { "name": "Erstellen Sie Ihr Ajax System für Sicherheit und Automation.pdf", "path": "/Users/marc/Downloads/Erstellen Sie Ihr Ajax System für Sicherheit und Automation.pdf", "kind": "file", "size": 345088 },
+      { "name": "FP400_en_EManual_0723.pdf", "path": "/Users/marc/Downloads/FP400_en_EManual_0723.pdf", "kind": "file", "size": 1046528 },
+      { "name": "Je Suis Karl (2021).jpg", "path": "/Users/marc/Downloads/Je Suis Karl (2021).jpg", "kind": "file", "size": 68608 },
+      { "name": "Je Suis Karl (2021).mkv", "path": "/Users/marc/Downloads/Je Suis Karl (2021).mkv", "kind": "file", "size": 32212254720 },
+      { "name": "Kronberg_Marc.pdf", "path": "/Users/marc/Downloads/Kronberg_Marc.pdf", "kind": "file", "size": 633856 },
+      { "name": "Mainboard MSI MPG B850I EDGE TI WIFI MPGB850IEDGETIWIFI.pdf", "path": "/Users/marc/Downloads/Mainboard MSI MPG B850I EDGE TI WIFI MPGB850IEDGETIWIFI.pdf", "kind": "file", "size": 5242880 },
+      { "name": "mainboard_1.webp", "path": "/Users/marc/Downloads/mainboard_1.webp", "kind": "file", "size": 67584 },
+      { "name": "Meine Schwester und ich (2005).mkv", "path": "/Users/marc/Downloads/Meine Schwester und ich (2005).mkv", "kind": "file", "size": 2362232012 },
+      { "name": "MPGB850IEDGETIWIFI_English.pdf", "path": "/Users/marc/Downloads/MPGB850IEDGETIWIFI_English.pdf", "kind": "file", "size": 5242880 },
+      { "name": "My Way (2011).jpg", "path": "/Users/marc/Downloads/My Way (2011).jpg", "kind": "file", "size": 111616 },
+      { "name": "My Way (2011).mkv", "path": "/Users/marc/Downloads/My Way (2011).mkv", "kind": "file", "size": 8697308774 },
+      { "name": "Real Genius (1985).jpg", "path": "/Users/marc/Downloads/Real Genius (1985).jpg", "kind": "file", "size": 88064 },
+      { "name": "Real Genius (1985).mkv", "path": "/Users/marc/Downloads/Real Genius (1985).mkv", "kind": "file", "size": 3758096384 },
+      { "name": "Solaris (1972).jpg", "path": "/Users/marc/Downloads/Solaris (1972).jpg", "kind": "file", "size": 96256 },
+      { "name": "Solaris (1972).mkv", "path": "/Users/marc/Downloads/Solaris (1972).mkv", "kind": "file", "size": 4509715660 },
+      { "name": "Stalker (1979).jpg", "path": "/Users/marc/Downloads/Stalker (1979).jpg", "kind": "file", "size": 90112 },
+      { "name": "Stalker (1979).mkv", "path": "/Users/marc/Downloads/Stalker (1979).mkv", "kind": "file", "size": 3972844748 },
+      { "name": "Handbuch_1.pdf", "path": "/Users/marc/Downloads/Handbuch_1.pdf", "kind": "file", "size": 102400 },
+      { "name": "Handbuch_2.pdf", "path": "/Users/marc/Downloads/Handbuch_2.pdf", "kind": "file", "size": 102400 },
+      { "name": "Handbuch_3.pdf", "path": "/Users/marc/Downloads/Handbuch_3.pdf", "kind": "file", "size": 102400 },
+      { "name": "Handbuch_4.pdf", "path": "/Users/marc/Downloads/Handbuch_4.pdf", "kind": "file", "size": 102400 },
+      { "name": "Handbuch_5.pdf", "path": "/Users/marc/Downloads/Handbuch_5.pdf", "kind": "file", "size": 102400 }
+    ]
+  },
+  "cases": [
+    {
+      "name": "marc screenshot: movies with cover image (incl. cover) marks 9 pairs = 18 of 35 entries",
+      "fixture": "marcDownloads",
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "images" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectTotalEntries": 35,
+      "expectPrimaryCount": 9,
+      "expectCompanionCount": 9,
+      "expectMarkedNames": [
+        "By Any Means (2026).jpg",
+        "By Any Means (2026).mkv",
+        "Coup (2019).jpg",
+        "Coup (2019).mkv",
+        "Das Ende der Sterne (2026).jpg",
+        "Das Ende der Sterne (2026).mkv",
+        "Die Hoelle der roten Berge - Red Mountain (1951).jpg",
+        "Die Hoelle der roten Berge - Red Mountain (1951).mkv",
+        "Je Suis Karl (2021).jpg",
+        "Je Suis Karl (2021).mkv",
+        "My Way (2011).jpg",
+        "My Way (2011).mkv",
+        "Real Genius (1985).jpg",
+        "Real Genius (1985).mkv",
+        "Solaris (1972).jpg",
+        "Solaris (1972).mkv",
+        "Stalker (1979).jpg",
+        "Stalker (1979).mkv"
+      ],
+      "expectExcludedNames": ["Meine Schwester und ich (2005).mkv"]
+    },
+    {
+      "name": "marc screenshot: movies without cover image marks only Meine Schwester und ich (2005).mkv",
+      "fixture": "marcDownloads",
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "missing",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "images" },
+            "stemMatch": "exact",
+            "includeCompanions": false
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 1,
+      "expectCompanionCount": 0,
+      "expectMarkedNames": ["Meine Schwester und ich (2005).mkv"]
+    },
+    {
+      "name": "marc screenshot: orphaned images without movie marks only mainboard_1.webp",
+      "fixture": "marcDownloads",
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "images" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "missing",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "movies" },
+            "stemMatch": "exact",
+            "includeCompanions": false
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 1,
+      "expectCompanionCount": 0,
+      "expectMarkedNames": ["mainboard_1.webp"]
+    },
+    {
+      "name": "prefix stem matching finds .de.srt, -poster.jpg, _fanart.png and .spec.ts without matching Coup to Couples",
+      "entries": [
+        { "name": "Film (2026).mkv", "path": "/d/Film (2026).mkv", "kind": "file", "size": 1000 },
+        { "name": "Film (2026).de.srt", "path": "/d/Film (2026).de.srt", "kind": "file", "size": 10 },
+        { "name": "Film (2026)-poster.jpg", "path": "/d/Film (2026)-poster.jpg", "kind": "file", "size": 20 },
+        { "name": "Film (2026)_fanart.png", "path": "/d/Film (2026)_fanart.png", "kind": "file", "size": 30 },
+        { "name": "Coup.mkv", "path": "/d/Coup.mkv", "kind": "file", "size": 1000 },
+        { "name": "Couples.jpg", "path": "/d/Couples.jpg", "kind": "file", "size": 20 },
+        { "name": "Couples.srt", "path": "/d/Couples.srt", "kind": "file", "size": 10 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "glob", "pattern": "*.srt *.jpg *.png" },
+            "stemMatch": "prefix",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 1,
+      "expectCompanionCount": 3,
+      "expectMarkedNames": [
+        "Film (2026).mkv",
+        "Film (2026).de.srt",
+        "Film (2026)-poster.jpg",
+        "Film (2026)_fanart.png"
+      ],
+      "expectExcludedNames": ["Coup.mkv"]
+    },
+    {
+      "name": "self-exclusion: images with companion images marks only multi-format pairs (.png + .webp), never singletons",
+      "entries": [
+        { "name": "hero.png", "path": "/d/hero.png", "kind": "file", "size": 100 },
+        { "name": "hero.webp", "path": "/d/hero.webp", "kind": "file", "size": 80 },
+        { "name": "solo.jpg", "path": "/d/solo.jpg", "kind": "file", "size": 50 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "images" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "images" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 2,
+      "expectCompanionCount": 0,
+      "expectMarkedNames": ["hero.png", "hero.webp"],
+      "expectExcludedNames": ["solo.jpg"]
+    },
+    {
+      "name": "AND invariant: candidate failing second condition (> 100 MB) must NOT pull in its companion from condition 1",
+      "entries": [
+        { "name": "Feature.mkv", "path": "/d/Feature.mkv", "kind": "file", "size": 524288000 },
+        { "name": "Feature.jpg", "path": "/d/Feature.jpg", "kind": "file", "size": 81920 },
+        { "name": "Sample.mkv", "path": "/d/Sample.mkv", "kind": "file", "size": 5242880 },
+        { "name": "Sample.jpg", "path": "/d/Sample.jpg", "kind": "file", "size": 40960 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "images" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          },
+          {
+            "id": "c2",
+            "kind": "size",
+            "operator": "gt",
+            "min": "100",
+            "max": "",
+            "unit": "MB"
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 1,
+      "expectCompanionCount": 1,
+      "expectMarkedNames": ["Feature.mkv", "Feature.jpg"],
+      "expectExcludedNames": ["Sample.mkv"]
+    },
+    {
+      "name": "OR invariant: only companions of satisfied sub-conditions are included",
+      "entries": [
+        { "name": "MovieA.mkv", "path": "/d/MovieA.mkv", "kind": "file", "size": 1000 },
+        { "name": "MovieA.jpg", "path": "/d/MovieA.jpg", "kind": "file", "size": 10 },
+        { "name": "MovieB.mkv", "path": "/d/MovieB.mkv", "kind": "file", "size": 1000 },
+        { "name": "MovieB.srt", "path": "/d/MovieB.srt", "kind": "file", "size": 10 },
+        { "name": "MovieB.nfo", "path": "/d/MovieB.nfo", "kind": "file", "size": 10 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "any",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "glob", "pattern": "*.jpg" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          },
+          {
+            "id": "c2",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "glob", "pattern": "*.srt" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectPrimaryCount": 2,
+      "expectCompanionCount": 2,
+      "expectMarkedNames": ["MovieA.mkv", "MovieA.jpg", "MovieB.mkv", "MovieB.srt"]
+    },
+    {
+      "name": "flat view folder isolation: OrdnerA/Film.mkv pairs only with OrdnerA/Film.jpg, never OrdnerB/Film.jpg",
+      "entries": [
+        { "name": "Film.mkv", "path": "/root/A/Film.mkv", "dir": "/root/A", "relDir": "A", "kind": "file", "size": 100 },
+        { "name": "Film.jpg", "path": "/root/B/Film.jpg", "dir": "/root/B", "relDir": "B", "kind": "file", "size": 10 },
+        { "name": "Paired.mkv", "path": "/root/B/Paired.mkv", "dir": "/root/B", "relDir": "B", "kind": "file", "size": 100 },
+        { "name": "Paired.jpg", "path": "/root/B/Paired.jpg", "dir": "/root/B", "relDir": "B", "kind": "file", "size": 10 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "category", "category": "movies" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "category", "category": "images" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectMarkedPaths": ["/root/B/Paired.mkv", "/root/B/Paired.jpg"]
+    },
+    {
+      "name": "dotfiles and multi-dot names use stemLength accurately",
+      "entries": [
+        { "name": ".gitignore", "path": "/d/.gitignore", "kind": "file", "size": 10 },
+        { "name": ".gitignore.bak", "path": "/d/.gitignore.bak", "kind": "file", "size": 10 },
+        { "name": "Film.1080p.mkv", "path": "/d/Film.1080p.mkv", "kind": "file", "size": 1000 },
+        { "name": "Film.1080p.jpg", "path": "/d/Film.1080p.jpg", "kind": "file", "size": 20 },
+        { "name": "Archiv.2026.tar.gz", "path": "/d/Archiv.2026.tar.gz", "kind": "file", "size": 500 },
+        { "name": "Archiv.2026.tar.sha256", "path": "/d/Archiv.2026.tar.sha256", "kind": "file", "size": 64 }
+      ],
+      "rule": {
+        "targetKind": "files",
+        "targetMatcher": { "kind": "glob", "pattern": ".gitignore *.mkv *.gz" },
+        "matchMode": "all",
+        "conditions": [
+          {
+            "id": "c1",
+            "kind": "companion",
+            "operator": "exists",
+            "partnerKind": "files",
+            "partnerMatcher": { "kind": "glob", "pattern": "*.bak *.jpg *.sha256" },
+            "stemMatch": "exact",
+            "includeCompanions": true
+          }
+        ],
+        "combineMode": "replace"
+      },
+      "expectMarkedNames": [
+        ".gitignore",
+        ".gitignore.bak",
+        "Film.1080p.mkv",
+        "Film.1080p.jpg",
+        "Archiv.2026.tar.gz",
+        "Archiv.2026.tar.sha256"
+      ]
+    }
+  ]
+}

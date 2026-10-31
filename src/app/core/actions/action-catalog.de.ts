@@ -46,6 +46,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   INVERT_MARKS: 'Markierung umkehren',
   OPEN_MARK_PATTERN_DLG: 'Nach Muster markieren…',
   OPEN_UNMARK_PATTERN_DLG: 'Nach Muster demarkieren…',
+  OPEN_SELECT_IF_DLG: 'Bedingt markieren (Select if)…',
   TOGGLE_PANEL: 'Seite wechseln',
   SELECT_LEFT_PANEL: 'Linke Seite',
   SELECT_RIGHT_PANEL: 'Rechte Seite',
