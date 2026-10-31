@@ -1,6 +1,6 @@
 # Design 046: Bedingt markieren – „Select if…“
 
-> **Status:** in Arbeit (31.10.2026), Branch `feat/select-if` · ohne Freigabe-Halt (Marc: „go“) · keine neuen npm- oder
+> **Status:** umgesetzt (31.10.2026), Branch `feat/select-if` · ohne Freigabe-Halt (Marc: „go“) · keine neuen npm- oder
 > Cargo-Abhängigkeiten · rein im Speicher auf den gelisteten Panel-Metadaten (kein Dateisystem-I/O).
 
 ## 1. Bestand
@@ -232,8 +232,8 @@ kehrt mit dem Fokus in die aktive Dateiliste zurück.
 ## 5. Fortschritt
 
 - [x] Phase 1: Bestand geprüft, Design `046-select-if.design.md` erstellt
-- [ ] Phase 2: Schema (`selectIf.templates`, `dialogs.recent` `maxItems: 12`) & Rust-Tests (`settings.rs`)
-- [ ] Phase 3: Engine, Fallkatalog, Vorlagen, Store, Dialog, Aktion/Keymaps/Menüs, Specs en/de
-- [ ] Phase 4: E2E- & Sichtprüfung (light & dark)
-- [ ] Phase 5: Doku (`feature-parity.md`, `architecture.md`, `roadmap.md`, `README.md`, `CLAUDE.md`, `prompts/done/`)
-- [ ] Phase 6: `pnpm check` & `pnpm tauri build --debug --no-bundle` grün
+- [x] Phase 2: Schema (`selectIf.templates`, `dialogs.recent` `maxItems: 12`) & Rust-Tests (`settings.rs`)
+- [x] Phase 3: Engine, Fallkatalog, Vorlagen, Store, Dialog, Aktion/Keymaps/Menüs, Specs en/de
+- [x] Phase 4: E2E- & Sichtprüfung (`screenshots/{light,dark,classic-norton}/select-if-dialog.png`, vertikale Ausrichtung der `Check`-Überschrift nachgeschärft)
+- [x] Phase 5: Doku (`feature-parity.md`, `architecture.md`, `roadmap.md`, `features.md`, `README.md`, `CLAUDE.md`, `prompts/done/`)
+- [x] Phase 6: `pnpm check` & `pnpm tauri build --debug --no-bundle` grün

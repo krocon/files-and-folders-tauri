@@ -46,12 +46,14 @@
   `compare`/`sync`) und Prompt 035 (Archive bearbeiten: ZIP/TAR/TAR.GZ hineinkopieren,
   löschen, Ordner anlegen – Jobs `archiveAdd`/`archiveDelete`/`archiveMkdir`, `archive/write.rs`) und Prompt 043 (Command Palette universell: Namensindex im Speicher,
   Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) und Prompt 045 (Serien nach Staffeln
-  gruppieren: Command `collect_files`, Job `group`, Aufräumen über `CleanFoldersStore.openPrepared`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
+  gruppieren: Command `collect_files`, Job `group`, Aufräumen über `CleanFoldersStore.openPrepared`) und Prompt 046
+  (Bedingt markieren „Select if…“: reine Engine `select-if-engine.ts` + Fallkatalog, `SelectIfStore`, Dialog,
+  `selectIf.templates`, `OPEN_SELECT_IF_DLG` `Mod+Alt+S`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–045 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–046 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -104,6 +106,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/seriesgroup/  Serien nach Staffeln (045): series-engine.ts (rein: Erkennung SxxEyy/1x01, Filter, Vorlage,
                              Katalog .cases.json), SeriesGroupStore (Root: collect_files → Plan → Job `group` →
                              ggf. Clean-Dialog vorbelegt), Dialog, Aktion OPEN_SERIES_GROUP_DLG (Alt+Shift+G)
+  app/features/selectif/     Bedingt markieren „Select if…“ (046): select-if-engine.ts (rein: Begleitdatei exact/prefix,
+                             anderes Panel, Größe/Alter/Name, Katalog .cases.json), SelectIfStore (Root: Live-Auswertung,
+                             Vorlagen in `selectIf.templates`, letzte Regel in `dialogs.recent`), Dialog, Aktion
+                             OPEN_SELECT_IF_DLG (Mod+Alt+S)
   app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
   app/core/file-icon/        FileIconService (Icon-Zuordnung nach Dateiendung/Kategorie zu Font Awesome)
   app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke

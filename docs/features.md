@@ -29,8 +29,14 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
 - **Ordnergedächtnis** (Prompt 027): jeder Tab merkt sich Cursor, Markierung und Scrollposition seiner letzten 50
   Ordner auch über einen Neustart (`folder-memory.json`; nur noch vorhandene Einträge werden wieder markiert; Archive,
   Server und Ergebnis-Tabs nie). Einstellung *Cursor und Markierung je Ordner merken* (aus = vergessen).
-  *Dateien gruppieren*, *Ordner aufräumen* und *Mehrere Ordner anlegen* öffnen mit den Werten ihres letzten Laufs
+  *Dateien gruppieren*, *Ordner aufräumen*, *Mehrere Ordner anlegen* und *Bedingt markieren* öffnen mit den Werten ihres letzten Laufs
   (Aufräumen startet trotzdem immer mit Papierkorb).
+- **Bedingt markieren („Select if…“)** (`Strg+Alt+S`, macOS `⌘⌥S`, Prompt 046): markiert Einträge nach Beziehungen und
+  Eigenschaften – etwa alle Filme samt Cover-Bild, wenn ein gleichnamiges Bild im selben Ordner existiert, Filme ohne
+  Cover, verwaiste Bilder ohne Film, RAW-Fotos ohne JPEG, Einträge ohne Entsprechung im anderen Panel oder nach Größe,
+  Alter/Datum und Namensmuster (1–8 Bedingungen mit UND/ODER, Ersetzen/Hinzufügen/Entfernen/Einschränken, Live-Vorschau,
+  7 Schnellvorlagen und eigene speicherbare Vorlagen in `settings.json`). Funktioniert in lokalen Ordnern, Archiven,
+  auf Servern, in der Flachen Ansicht (pro Unterordner) und in Ergebnis-Tabs.
 - Ohne gespeicherte Sitzung: beide Seiten im Home-Ordner des aktuellen Benutzers.
 - **Navigation** (Prompt 003): „..“-Zeile, Zurück/Vor je Tab (auch Maustasten 4/5) mit Cursor und Scrollposition,
   Cursor und Markierung je Ordner gemerkt, Menü ▾ mit Home, Favoriten und zuletzt besuchten Ordnern (`Alt+F1`/`Alt+F2`),

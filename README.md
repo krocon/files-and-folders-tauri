@@ -304,6 +304,9 @@ Small things that save time every day:
   mouse buttons 4/5)
 - **Mark by pattern** – *Enhance / Reduce Selection* with wildcards or regex and one-click presets per file type
   (images, movies, documents …; `Num+` / `Num−`)
+- **Select if…** – conditional selection by companion files in the same folder (e.g. *all movies and their cover
+  images when a cover exists*, movies without cover, RAW without JPEG), comparison with the other panel, size,
+  date/age and name rules, with live preview and saved templates (`Ctrl+Alt+S` · `⌘⌥S`)
 - **Clipboard** – names or full paths of the marked entries, also as JSON (`Ctrl+Alt+N` / `Ctrl+Alt+C` ·
   `⌘⌥N` / `⌘⌥C`)
 - **Context menu** that fits the selection (`Shift+F10`), a menu bar with every action – native on macOS
@@ -364,6 +367,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S` | `⇧F2` / `⌘⇧S` |
 | Flat view (all files below) | `Ctrl+B` | `⌘B` |
 | Mark / unmark | `Space`, `Insert` | `Space` |
+| Select if… (conditional selection) | `Ctrl+Alt+S` | `⌘⌥S` |
 | Switch panel | `Tab` | `Tab` |
 | New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |
 | Swap panels (with all tabs) | `Ctrl+U` (`Ctrl+Shift+U`) | `⌘U` (`⌘⇧U`) |
