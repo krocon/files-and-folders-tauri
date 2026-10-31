@@ -24,6 +24,7 @@ export type FileListStore = Pick<
   | 'markRange'
   | 'markAll'
   | 'clearMarks'
+  | 'replaceMarks'
   | 'invertMarks'
   | 'isMarked'
 >;
@@ -190,6 +191,11 @@ export class FileListController {
 
   clearMarks(): void {
     this.store.clearMarks();
+    this.bridge.repaint();
+  }
+
+  replaceMarks(nextMarked: ReadonlySet<string>): void {
+    this.store.replaceMarks(this.displayedPaths(), nextMarked);
     this.bridge.repaint();
   }
 

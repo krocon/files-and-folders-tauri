@@ -29,6 +29,7 @@ import '../../features/palette/palette-texts';
 import '../../features/osintegration/os-texts';
 import '../../features/preview/preview-texts';
 import '../../features/remote/remote-texts';
+import '../../features/selectif/select-if-texts';
 import '../../features/sync/sync-texts';
 import '../../features/search/search-texts';
 import '../../features/seriesgroup/series-texts';

@@ -2,11 +2,12 @@ import { acceptsValue, SCHEMA } from '../core/settings/settings.models';
 import { SettingsStore } from '../core/settings/settings.store';
 
 /** = `maxItems` of `dialogs.recent` in settings-schema.json. */
-const MAX_REMEMBERED = 8;
+const MAX_REMEMBERED =
+  SCHEMA['dialogs.recent'].type === 'json' ? SCHEMA['dialogs.recent'].maxItems : 12;
 
-/** Tool dialogs that open with the values of their last run (design 027 E5). */
+/** Tool dialogs that open with the values of their last run (design 027 E5, 046 E6). */
 export type RememberedDialog =
-  'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync' | 'seriesGroup';
+  'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync' | 'seriesGroup' | 'selectIf';
 
 interface Entry {
   readonly dialog: RememberedDialog;

@@ -48,6 +48,7 @@ export const SECTIONS: readonly Section[] = [
       'diskUsage.chart',
       'search.recent',
       'search.templates',
+      'selectIf.templates',
       'dialogs.recent',
     ],
   },

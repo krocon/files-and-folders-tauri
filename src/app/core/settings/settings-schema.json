@@ -34,7 +34,8 @@
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
   "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 },
   "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
-  "dialogs.recent": { "type": "json", "default": [], "maxItems": 8, "maxBytes": 16384 },
+  "selectIf.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
+  "dialogs.recent": { "type": "json", "default": [], "maxItems": 12, "maxBytes": 16384 },
   "palette.index": { "type": "bool", "default": true },
   "palette.roots": { "type": "json", "default": [], "maxItems": 32, "maxBytes": 16384 },
   "palette.excludes": {

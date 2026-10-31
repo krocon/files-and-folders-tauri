@@ -53,6 +53,7 @@ export const ACTION_IDS = [
   'INVERT_MARKS',
   'OPEN_MARK_PATTERN_DLG',
   'OPEN_UNMARK_PATTERN_DLG',
+  'OPEN_SELECT_IF_DLG',
   // panels / tabs
   'TOGGLE_PANEL',
   'SELECT_LEFT_PANEL',
@@ -229,6 +230,7 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   INVERT_MARKS: m('Invert marks', 'selection', '002'),
   OPEN_MARK_PATTERN_DLG: m('Mark by pattern…', 'selection', '002'),
   OPEN_UNMARK_PATTERN_DLG: m('Unmark by pattern…', 'selection', '002'),
+  OPEN_SELECT_IF_DLG: m('Select if…', 'selection', '046'),
   TOGGLE_PANEL: m('Switch panel', 'selection', '002'),
   SELECT_LEFT_PANEL: m('Left panel', 'selection', '002'),
   SELECT_RIGHT_PANEL: m('Right panel', 'selection', '002'),

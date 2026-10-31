@@ -5,7 +5,7 @@ import { FakeSettingsApi } from '../../testing/fake-settings-api';
 import { DEFAULT_GROUP_OPTIONS, restoreGroupOptions } from '../features/groupfiles/group-engine';
 import { DEFAULT_MKDIR, restoreMkdir } from '../features/multimkdir/mkdir-engine';
 import { DEFAULT_CLEAN_FORM, restoreCleanForm } from '../features/cleanfolders/clean.store';
-import { recallDialog, rememberDialog } from './dialog-memory';
+import { recallDialog, RememberedDialog, rememberDialog } from './dialog-memory';
 
 describe('last inputs of the tool dialogs (design 027 E5)', () => {
   it('keeps one value per dialog, newest first, and reads it back', async () => {
@@ -26,6 +26,29 @@ describe('last inputs of the tool dialogs (design 027 E5)', () => {
     // too big for the setting: the old value stays
     rememberDialog(settings, 'multiMkdir', { template: 'x'.repeat(20_000) });
     expect(recallDialog(settings, 'multiMkdir')).toBeUndefined();
+  });
+
+  it('retains all 7 remembered tool dialogs simultaneously without dropping older ones (design 046 E6)', async () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: SettingsApi, useValue: new FakeSettingsApi() }],
+    });
+    const settings = TestBed.inject(SettingsStore);
+    await settings.init();
+    const all: readonly RememberedDialog[] = [
+      'groupFiles',
+      'clean',
+      'multiMkdir',
+      'checksum',
+      'sync',
+      'seriesGroup',
+      'selectIf',
+    ];
+    for (const d of all) {
+      rememberDialog(settings, d, { id: d });
+    }
+    for (const d of all) {
+      expect(recallDialog(settings, d)).toEqual({ id: d });
+    }
   });
 
   it('restores only valid fields, the rest falls back to the defaults', () => {

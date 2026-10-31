@@ -94,6 +94,9 @@ import { registerStarterActions } from '../starter/starter-actions';
 import { StarterStore } from '../starter/starter.store';
 import { MarkPatternDialog } from '../actions/mark-pattern-dialog';
 import { ShortcutDialog } from '../actions/shortcut-dialog';
+import { SelectIfDialog } from '../selectif/select-if-dialog';
+import { registerSelectIfActions } from '../selectif/select-if-actions';
+import { SelectIfStore } from '../selectif/select-if.store';
 import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { registerMenuActions } from '../menus/menu-actions';
 import { AboutDialog } from '../about/about-dialog';
@@ -140,6 +143,7 @@ import { RemoteStore } from '../remote/remote.store';
     ButtonBar,
     CommandPalette,
     MarkPatternDialog,
+    SelectIfDialog,
     ShortcutDialog,
     ConfirmDialog,
     JobListDialog,
@@ -228,6 +232,7 @@ export class Workspace implements OnInit {
   private readonly mrImport = inject(MrImportStore);
   private readonly starter = inject(StarterStore);
   private readonly remote = inject(RemoteStore);
+  private readonly selectIf = inject(SelectIfStore);
   private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -343,6 +348,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(
       registerWorkspaceActions(this.actions, this.ws, this.dialogs, this.settings),
     );
+    this.destroyRef.onDestroy(registerSelectIfActions(this.actions, this.selectIf));
     this.destroyRef.onDestroy(registerSettingsActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerJobActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerOpsActions(this.actions, this.ops));

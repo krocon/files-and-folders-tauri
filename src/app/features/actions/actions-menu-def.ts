@@ -36,6 +36,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     '-',
     'OPEN_MARK_PATTERN_DLG',
     'OPEN_UNMARK_PATTERN_DLG',
+    'OPEN_SELECT_IF_DLG',
     'INVERT_MARKS',
     'SELECT_ALL',
     'DESELECT_ALL',

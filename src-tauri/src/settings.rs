@@ -633,6 +633,66 @@ mod tests {
         }
     }
 
+    /// Design 046 E6: own Select-if templates and raised `dialogs.recent` limit (12) validate and travel with bundles.
+    #[test]
+    fn select_if_templates_and_dialog_memory_round_trip_and_bounds() {
+        assert!(SCHEMA.contains_key("selectIf.templates"));
+        let too_many_templates: Vec<Value> = (0..51)
+            .map(|i| json!({ "label": format!("T{i}") }))
+            .collect();
+        let too_big_templates = vec![json!("x".repeat(140_000))];
+        for bad in [
+            Value::Array(too_many_templates),
+            Value::Array(too_big_templates),
+        ] {
+            let (out, w) = sanitize(map(json!({ "selectIf.templates": bad })));
+            assert!(out.is_empty());
+            assert_eq!(w[0].code, "invalid_value");
+            assert_eq!(w[0].key.as_deref(), Some("selectIf.templates"));
+        }
+
+        let twelve_dialogs: Vec<Value> = (0..12)
+            .map(|i| json!({ "dialog": format!("d{i}"), "value": { "n": i } }))
+            .collect();
+        let (ok_out, ok_w) = sanitize(map(json!({ "dialogs.recent": twelve_dialogs.clone() })));
+        assert!(ok_w.is_empty());
+        assert_eq!(ok_out["dialogs.recent"].as_array().unwrap().len(), 12);
+
+        let thirteen_dialogs: Vec<Value> = (0..13)
+            .map(|i| json!({ "dialog": format!("d{i}"), "value": { "n": i } }))
+            .collect();
+        let (bad_out, bad_w) = sanitize(map(json!({ "dialogs.recent": thirteen_dialogs })));
+        assert!(bad_out.is_empty());
+        assert_eq!(bad_w[0].code, "invalid_value");
+
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("src"));
+        let tpl = json!([{
+            "label": "Filme + Cover",
+            "rule": { "targetKind": "files", "targetMatcher": { "kind": "category", "category": "movies" } }
+        }]);
+        save(
+            &src.settings,
+            map(json!({
+                "selectIf.templates": tpl,
+                "dialogs.recent": twelve_dialogs
+            })),
+        )
+        .unwrap();
+        let out_file = export(&src, dir.path()).unwrap();
+        let bundle = read_bundle(&out_file).unwrap();
+        let dst = config(&dir.path().join("dst"));
+        let report = import(&dst, &bundle, &["settings".into()]).unwrap();
+        assert_eq!(report.imported, ["settings"]);
+        assert!(report.warnings.is_empty());
+        let loaded = load(&dst.settings);
+        assert_eq!(loaded.settings["selectIf.templates"], tpl);
+        assert_eq!(
+            loaded.settings["dialogs.recent"].as_array().unwrap().len(),
+            12
+        );
+    }
+
     #[test]
     fn unknown_keys_are_kept_within_limits() {
         let mut input = map(json!({

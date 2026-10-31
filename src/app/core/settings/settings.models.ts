@@ -28,6 +28,7 @@ export interface SettingsValues {
   'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
   'search.templates': readonly unknown[];
+  'selectIf.templates': readonly unknown[];
   'dialogs.recent': readonly unknown[];
   'palette.index': boolean;
   'palette.roots': readonly unknown[];
