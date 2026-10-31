@@ -68,14 +68,15 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 043 ✅ | [043-command-palette-universal.md](done/043-command-palette-universal.md) | Command Palette als universeller Einstieg: Dateien aus mehreren Orten finden (`invoice 2025`), Aktionen am Treffer (öffnen, Vorschau, Speicherort, kopieren/verschieben/umbenennen, ähnliche Dateien, Ordner analysieren); Rust-Suche/Index, Streaming, Virtualisierung, begrenzter Speicher | 002, 006, 009, 010, 033, (042) | L |
 | 044 ✅ | [044-readme-werbeseite.md](done/044-readme-werbeseite.md) | README neu nach Vorbild der npm-Seite: Recherche der besten Features, je Feature ein Norton-Screenshot (reproduzierbar per `pnpm screenshots:readme`) + Beschreibung + Kürzel; englische Single-Page-Werbeseite `../site/index.html` für krocon.de/products/fnf, Bilder in `img/` neben der Seite (`pnpm site`, Marc 22.10.2026 statt raw-GitHub) | Screenshot-Werkzeug | M |
 | 045 ✅ | [045-serien-gruppieren.md](done/045-serien-gruppieren.md) | Serien nach Staffeln gruppieren: Videos aus dem Ordner und seinen Unterordnern nach `SxxEyy` in `S01`, `S02` … kopieren/verschieben, Beiwerk (`Sample/`, `*.nfo`) ignorieren, Vorschau mit Dubletten, optional leere Release-Ordner aufräumen (Papierkorb) | 005, 006, 008, 009/038, 022, 027 | M |
+| 046 | [046-select-if.md](046-select-if.md) | Bedingt markieren („Select if…“): Einträge nach Beziehungen (hat/hat keine Begleitdatei gleichen Basisnamens, optional Begleitdateien mitmarkieren; Abgleich mit anderem Panel) und Eigenschaften (Dateityp, Muster, Größe, Alter) markieren, Schnell- und eigene Vorlagen | 001, 002, 014/020, 015, 022, 027, 038 | S–M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
-## Nächste Prompts (Stand 21.10.2026)
+## Nächste Prompts (Stand 31.10.2026)
 
 Vorgeschlagene Reihenfolge der offenen Prompts, kleine zuerst: ~~040~~ (Panel-Aktionen, erledigt) → ~~027~~ (Persistenz,
 erledigt) → ~~039~~ (Prüfsummen, erledigt) → ~~037~~ (Dateien vergleichen, erledigt) → ~~038~~ (Flache Ansicht, erledigt) → ~~036~~ (Ordner
-synchronisieren, erledigt) → ~~035~~ (Archive bearbeiten, erledigt) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
+synchronisieren, erledigt) → ~~035~~ (Archive bearbeiten, erledigt) → **046** (Bedingt markieren „Select if…“, S–M) → **041** (Spalten und Ansichten, M–L, hängt an der GuiExpert
 Table) → ~~042~~ (Dubletten nach Inhalt, Regeln, ähnliche Bilder, erledigt) → ~~043~~ (Command
 Palette als universeller Einstieg, erledigt). ~~044~~ (README + Werbeseite) ist erledigt. ~~045~~ (Serien nach Staffeln gruppieren, erledigt). Unabhängig davon bleibt die CI für macOS/Windows (`TODO.md` §3) der wichtigste nicht-funktionale Punkt.
 
