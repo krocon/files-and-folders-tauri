@@ -176,8 +176,8 @@ export interface SelectIfRule {
 ### Settings-Schema (`src/app/core/settings/settings-schema.json`)
 
 ```json
-"dialogs.recent": { "type": "json", "default": {}, "maxItems": 12, "maxBytes": 32768 },
-"selectIf.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 }
+"selectIf.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
+"dialogs.recent": { "type": "json", "default": [], "maxItems": 12, "maxBytes": 16384 }
 ```
 
 ### Dialog-Aufbau, Fokus & ARIA (`SelectIfDialog`)

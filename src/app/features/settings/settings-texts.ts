@@ -142,10 +142,15 @@ export const SETTINGS_EN = {
       help: 'Templates saved in the find dialog (up to 50); delete single ones there.',
       keywords: 'search find template preset own',
     },
+    'selectIf.templates': {
+      label: 'Own “Select if” templates',
+      help: 'Templates saved in the “Select if…” dialog (up to 50); delete single ones there.',
+      keywords: 'select if mark companion sidecar template preset own',
+    },
     'dialogs.recent': {
       label: 'Last inputs of the tool dialogs',
-      help: 'Group files, Clean folders, Create several folders and Create checksums open with the values of their last run.',
-      keywords: 'remember last inputs dialog group clean folders mkdir template',
+      help: 'Select if, Group files, Clean folders, Create several folders and Create checksums open with the values of their last run.',
+      keywords: 'remember last inputs dialog select if group clean folders mkdir template',
     },
     'palette.index': {
       label: 'Name index for the palette',
@@ -452,10 +457,16 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Im Suchdialog gespeicherte Vorlagen (bis 50); einzelne dort löschen.',
       keywords: 'suche finden vorlage muster eigene',
     },
+    'selectIf.templates': {
+      label: 'Eigene „Select if“-Vorlagen',
+      help: 'Im Dialog „Markieren, wenn…“ gespeicherte Vorlagen (bis 50); einzelne dort löschen.',
+      keywords: 'select if bedingt markieren begleitdatei vorlage eigene',
+    },
     'dialogs.recent': {
       label: 'Letzte Eingaben der Werkzeug-Dialoge',
-      help: 'Dateien gruppieren, Ordner aufräumen, Mehrere Ordner anlegen und Prüfsummen erzeugen öffnen mit den Werten ihres letzten Laufs.',
-      keywords: 'merken letzte eingaben dialog gruppieren aufräumen ordner anlegen vorlage',
+      help: 'Bedingt markieren, Dateien gruppieren, Ordner aufräumen, Mehrere Ordner anlegen und Prüfsummen erzeugen öffnen mit den Werten ihres letzten Laufs.',
+      keywords:
+        'merken letzte eingaben dialog select if gruppieren aufräumen ordner anlegen vorlage',
     },
     'palette.index': {
       label: 'Namensindex für die Palette',
