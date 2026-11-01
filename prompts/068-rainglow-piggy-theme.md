@@ -1,13 +1,13 @@
-# Prompt 077: Neues Farbschema „Piggy“ (Rainglow)
+# Prompt 068: Neues Farbschema „Piggy“ (Rainglow)
 
-> **Slug:** `rainglow-piggy-theme` · **Braucht:** **076** (Rainglow-Schemata: Zuordnung, Namensgebung, ggf.
+> **Slug:** `rainglow-piggy-theme` · **Braucht:** **067** (Rainglow-Schemata: Zuordnung, Namensgebung, ggf.
 > Umrechnungs-Skript), 013, 015 · **Umfang:** XS (reines Frontend, Daten + Tests)
-> Lies zuerst `prompts/000-arbeitsweise.md`, **`prompts/076-rainglow-themes.md`** (Aufbau der Rainglow-Themes,
-> Token-Zuordnung, Kontrast-Regeln, Tests – gilt hier unverändert) und das Ergebnis von 076 (`themes/rainglow-*.json`,
+> Lies zuerst `prompts/000-arbeitsweise.md`, **`prompts/067-rainglow-themes.md`** (Aufbau der Rainglow-Themes,
+> Token-Zuordnung, Kontrast-Regeln, Tests – gilt hier unverändert) und das Ergebnis von 067 (`themes/rainglow-*.json`,
 > ggf. `scripts/rainglow-theme.mjs`). Kein Design-Dokument; Abweichungen im Bericht.
-> **Vorlage:** [`076-rainglow/piggy.json`](076-rainglow/piggy.json) (aus `github.com/ahmadawais/vscode-1`, `themes/`,
-> Stand 01.11.2026; Lizenz MIT wie 076, `076-rainglow/LICENSE`). Screenshot von Marc (01.11.2026):
-> [`077-rainglow-piggy-beispiel.png`](077-rainglow-piggy-beispiel.png) (Statuszeile pink, Keywords/Tags rot-pink).
+> **Vorlage:** [`067-rainglow/piggy.json`](067-rainglow/piggy.json) (aus `github.com/ahmadawais/vscode-1`, `themes/`,
+> Stand 01.11.2026; Lizenz MIT wie 067, `067-rainglow/LICENSE`). Screenshot von Marc (01.11.2026):
+> [`068-rainglow-piggy-beispiel.png`](068-rainglow-piggy-beispiel.png) (Statuszeile pink, Keywords/Tags rot-pink).
 
 ## Auftrag (Marc)
 
@@ -32,13 +32,13 @@ Prompt für das Theme „Piggy“.
 | Nebenfarben in `tokenColors` | Grün `#8fbe00` (mit Alpha), Gelb `#e6db74`, Grau-Rosa `#92757e` |
 
 **Bild ≠ JSON:** Der Screenshot zeigt eine ältere Rainglow-Version mit fast neutralem Dunkelgrau (`#2a2626`-artig); die
-aktuelle JSON hat einen leicht **rosa-braunen** Grundton (`#3d2f34`). Maßgeblich ist die JSON (wie in 076); im Bericht
+aktuelle JSON hat einen leicht **rosa-braunen** Grundton (`#3d2f34`). Maßgeblich ist die JSON (wie in 067); im Bericht
 beide nebeneinander zeigen und Marc fragen, falls der neutrale Ton gewünscht ist.
 
 ## Besonderheit: fast alle Akzente sind Rot/Pink
 
 Signatur, Cursor, Keywords, Strings, Funktionen und Fehler liegen alle zwischen `#ba0e2e` und `#ff5d80`. Die Zuordnung
-aus 076 („Markiert = String-Farbe“) würde Markiert, Cursor und Fehler **ununterscheidbar** machen. Deshalb hier:
+aus 067 („Markiert = String-Farbe“) würde Markiert, Cursor und Fehler **ununterscheidbar** machen. Deshalb hier:
 - **Markiert:** Gelb `#e6db74` (aus `tokenColors`), Fläche dezent; Cursor auf Markiertem: Cursorfläche + dunkle Schrift
   + gelbe Unterstreichung/Fettung – Lesbarkeit prüfen.
 - **Fehler/Gefahr:** `#ba0e2e` als Fläche mit weißer Schrift; Fehler-**Text** deutlich anders als Keywords (z. B. heller
@@ -57,8 +57,8 @@ Alle `CONTRAST_PAIRS` müssen bestehen; Abweichungen im Bericht.
 
 ## Aufgaben
 
-1. `themes/rainglow-piggy.json` wie die Schemata aus 076 (gleiche Zuordnung, gleiche Namensregel, Id `rainglow-piggy`,
-   Name „Piggy“ ggf. mit „(Rainglow)“), registrieren, Reihenfolge nach den 076-Schemata. Gibt es das Skript aus 076,
+1. `themes/rainglow-piggy.json` wie die Schemata aus 067 (gleiche Zuordnung, gleiche Namensregel, Id `rainglow-piggy`,
+   Name „Piggy“ ggf. mit „(Rainglow)“), registrieren, Reihenfolge nach den 067-Schemata. Gibt es das Skript aus 067,
    damit erzeugen und dann von Hand die Abweichungen oben einarbeiten.
 2. Kontrast prüfen und anpassen.
 3. Sichtprüfung: `pnpm screenshots --theme rainglow-piggy --scene <alle> --out <dir>`, Vergleich mit dem Beispielbild;
@@ -74,7 +74,7 @@ Alle `CONTRAST_PAIRS` müssen bestehen; Abweichungen im Bericht.
 
 ## Tests
 
-- Wie 076: `builtin-themes.spec.ts` (Schlüssel vollständig, `dark: true`, Id eindeutig), `theme-logic.spec.ts`
+- Wie 067: `builtin-themes.spec.ts` (Schlüssel vollständig, `dark: true`, Id eindeutig), `theme-logic.spec.ts`
   (Kontrast), `theme.service.spec.ts`; falls Skript: Fixture `piggy.json` ergänzen.
 
 ## Nicht in diesem Prompt

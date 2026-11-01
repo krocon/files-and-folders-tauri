@@ -1,16 +1,15 @@
-# Prompt 076: Vier neue Farbschemata aus Rainglow – „Bold“, „Earthsong“, „Legacy“, „Heroku“
+# Prompt 067: Vier neue Farbschemata aus Rainglow – „Bold“, „Earthsong“, „Legacy“, „Heroku“
 
 > **Slug:** `rainglow-themes` · **Braucht:** 013 (Farbschemata), 015 (Einstellungen), am besten nach **062–066**
 > (gleiches Vorgehen, gleiche Tests) · **Umfang:** S (reines Frontend, Daten + Tests)
 > Lies zuerst `prompts/000-arbeitsweise.md`, `CLAUDE.md` §9 „Farbschemata ändern (Rezept)“, `prompts/062-one-dark-themes.md`
 > (Aufbau, Akzeptanz, Tests gelten hier genauso), `core/theme/builtin-themes.ts`, `core/theme/themes/dark.json`,
 > `core/theme/theme-logic.ts` (`CONTRAST_PAIRS`). Kein Design-Dokument; Zuordnung und Abweichungen im Bericht.
-> **Vorlagen von Marc (01.11.2026)** in [`076-rainglow/`](076-rainglow/): die VS-Code-Themes `bold.json`,
+> **Vorlagen von Marc (01.11.2026)** in [`067-rainglow/`](067-rainglow/): die VS-Code-Themes `bold.json`,
 > `earthsong.json`, `legacy.json`, `heroku.json` (geladen aus `github.com/ahmadawais/vscode-1`, Ordner `themes/`, Stand
 > 01.11.2026) und `LICENSE`. Screenshots (VS Code, React-`App.js`):
-> [Bold](076-rainglow-bold-beispiel.png) (Statuszeile türkis), [Earthsong](076-rainglow-earthsong-beispiel.png) (grün),
-> [Legacy](076-rainglow-legacy-beispiel.png) (blau), [Heroku](076-rainglow-heroku-beispiel.png) (violett).
-> Nummer 076 auf Marcs Wunsch – 067–075 sind (noch) frei.
+> [Bold](067-rainglow-bold-beispiel.png) (Statuszeile türkis), [Earthsong](067-rainglow-earthsong-beispiel.png) (grün),
+> [Legacy](067-rainglow-legacy-beispiel.png) (blau), [Heroku](067-rainglow-heroku-beispiel.png) (violett).
 
 ## Auftrag (Marc)
 
@@ -20,7 +19,7 @@ Vier neue Themes: bold, earthsong, legacy, heroku.
 
 „Rainglow“ von Dayle Rees (Repo `rainglow/vscode`, Fork `ahmadawais/vscode-1`), **MIT** (`LICENSE`, „Copyright 2017-18
 Dayle Rees“). Wir übernehmen nur Farbwerte in unser Token-Format; Herkunft wie in 062 vermerken (Theme-Doku bzw.
-`docs/architecture.md`, Hinweis in `THIRD-PARTY-NOTICES` prüfen). `prompts/076-rainglow/` bleibt Referenz.
+`docs/architecture.md`, Hinweis in `THIRD-PARTY-NOTICES` prüfen). `prompts/067-rainglow/` bleibt Referenz.
 
 ## Aufbau der Rainglow-Themes
 
