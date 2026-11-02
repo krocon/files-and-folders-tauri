@@ -19,6 +19,9 @@ Bekanntes Risiko (nur im echten Fenster prüfbar): Das native macOS-Menü ist be
 (`set_menu_enabled`); ob AppKit ein **deaktiviertes** Menü-Kürzel (z. B. ⌘D = Favorit) trotzdem schluckt, ist im E2E zu
 prüfen. Fällt es auf, hilft ein anderer Buchstabe im Template.
 
+Hinweis: Der Prompt schlug `fnfDialogKey` vor; der Selektor heißt **`appDialogKey`** (ESLint verlangt das Präfix
+`app` für Direktiven). Screenshot-Werkzeug: neuer Schritt `{ "hold": "Mod" }`, Szene `delete-dialog-keys`.
+
 ## Dialog-Tabelle (Bestand + Rollen)
 
 P = Enter (`primary`), Esc = schließt (`cancel` am Knopf, falls vorhanden), N = Nebenknopf `Mod+L`,

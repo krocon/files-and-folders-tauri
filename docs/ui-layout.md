@@ -63,6 +63,7 @@ zwei Zeilen über die volle Breite.
 ### Zeile 2 – Tab-Reiter
 
 Von links nach rechts:
+
 1. **Menü-Button ▾**: Laufwerke/Volumes, Favoriten, zuletzt besuchte Ordner (je Gruppe getrennt, ohne Dubletten).
    `Alt+1`/`Alt+2` aktivieren die Seite und öffnen dieses Menü (mr-Verhalten).
    Seit 051 mit Icon je Eintrag (Home, Laufwerksart, Server – verbunden = Stecker –, Stern, Uhr); Favoriten und
@@ -101,20 +102,37 @@ Design 021 E1 / `CLAUDE.md` §4.
 - **Funktions-Buttons** mit Tastenkürzel-Badge links und Kurzlabel. Der Satz wechselt mit gedrückter Modifier-Taste
   (Total-Commander-Prinzip, Konfiguration wie mr `button/defaults/data.json`):
 
-  | gedrückt | Buttons |
-  | --- | --- |
-  | – | Edit, Copy, Move, MkDir, Delete |
-  | Shift | Create File, Copy, Rename, MkDir, Delete |
-  | ⌘ (macOS) bzw. Strg | View, Copy, Multi Rename, MkDir, Delete |
-  | Alt/⌥ | View, Copy, Multi Rename, MkDir, Delete |
+  | gedrückt            | Buttons                                  |
+  | ------------------- | ---------------------------------------- |
+  | –                   | Edit, Copy, Move, MkDir, Delete          |
+  | Shift               | Create File, Copy, Rename, MkDir, Delete |
+  | ⌘ (macOS) bzw. Strg | View, Copy, Multi Rename, MkDir, Delete  |
+  | Alt/⌥               | View, Copy, Multi Rename, MkDir, Delete  |
 
   Das Badge zeigt das Kürzel ohne die gerade gehaltenen Modifier (Shift gehalten → Rename zeigt `F6`). Deaktivierte
   Buttons (z. B. Rename bei Mehrfachauswahl) sind sichtbar, aber gedimmt. Die Freigaberegeln stehen in mr §3
   („Button enable states“).
+
 - **Actions ▴**: Menü in vier Spalten (Navigation/Ansicht · Auswahl/Panels/Tabs · Dateioperationen · Konfiguration und
   Tools), jeder Eintrag mit Kürzel (mr §1.8).
 - **Tasks**: Status der Job-Warteschlange (Fortschritt `fertig / gesamt`), Klick öffnet die Job-Liste (Prompt 005).
 - **🎨 Theme-Menü** (die acht Designs + eigene, Prompt 013/019) und **⌨ Tastenkürzel-Übersicht** (Prompt 002).
+
+## Dialoge: Tastenregel (Prompt 057)
+
+Alle Dialoge nutzen den gemeinsamen Rahmen `app-modal` (Fokusfalle, Autofokus) und **eine** Tastenregel; die Rolle
+steht deklarativ am Knopf (`appDialogKey`, `shared/dialog/dialog-key.ts`), der `Modal` wertet die Tasten aus:
+
+| Taste                         | Wirkung                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Enter`                       | Hauptknopf (`primary`, farbig rechts) – auch aus Textfeld, Checkbox, Radio oder Select. Nicht: Fokus auf einem anderen Knopf (der gilt), `textarea`, Listen/Grids/Comboboxen/Menüs mit eigenem Enter, IME-Eingabe, Auto-Repeat, gesperrter Knopf. |
+| `Esc`                         | Abbrechen/Schließen – ein offenes Popup im Dialog (Liste, Menü, Vorlagenname) schließt zuerst.                                                                                                                                                    |
+| `⌘`/`Strg` + Buchstabe        | Nebenknopf (`secondary:L`), Buchstabe fest je Dialog; beim Halten von `⌘`/`Strg` zeigt jeder solche Knopf seinen Buchstaben als Badge. Nie `A C V X Y Z` (Textbearbeitung) und `Q W H M` (macOS).                                                 |
+| `⌘⇧`/`Strg+Shift` + Buchstabe | Unwiderrufliches (`destructive:L`), z. B. „Endgültig löschen“ = `⌘⇧D`/`Ctrl+Shift+D`. **Enter löst nie Destruktives aus** – ein destruktiver Hauptknopf (endgültig löschen, gefährlicher Pfad, `cancelFirst`) hat nur dieses Kürzel.              |
+
+Jeder Knopf mit Rolle trägt `aria-keyshortcuts` und einen Tooltip „Tastenkürzel: …“. Ausnahme: der Konfliktdialog
+behält seine Alt-Buchstaben (005). Neue Dialoge: jeder `.btn.primary` braucht eine Rolle (`dialog-roles.spec.ts`).
+Übersicht im ⌨-Dialog, Abschnitt „In Dialogen“; Tabelle aller Dialoge: `prompts/done/057-dialog-tasten.design.md`.
 
 ## Abweichungen von der alten Version (bewusst)
 

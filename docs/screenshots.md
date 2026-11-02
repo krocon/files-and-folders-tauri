@@ -16,23 +16,23 @@ einige Minuten.
 
 ## Optionen
 
-| Option | Bedeutung |
-| --- | --- |
-| `--theme classic-norton,dark` | nur diese Farbschemata (Liste: `--list`) |
-| `--scene main,actions-menu` | nur diese Szenen |
-| `--out docs/screenshots` | anderer Zielordner (relativ zum Repo) |
-| `--flat` | ohne Unterordner je Farbschema (nur mit genau einem `--theme`) |
-| `--platform linux\|windows\|macos` | Kürzel, Badges und Menüleiste dieses Systems (Standard `linux`: Menüleiste im Fenster) |
-| `--lang en\|de` | Sprache der Oberfläche (Standard `en`) |
-| `--width 1280 --height 760` | Fenstergröße in CSS-Pixeln |
-| `--scale 2` | Retina-Auflösung (doppelte Pixel) |
-| `--jobs 4` | parallele Browser-Seiten |
-| `--no-build` | vorhandenes `dist/` nehmen statt `pnpm build` |
-| `--chrome` | installiertes Google Chrome statt Playwrights Chromium (dann ist `screenshots:install` unnötig) |
-| `--headed` | Browser sichtbar (zum Nachsehen beim Schreiben neuer Szenen) |
-| `--verbose` | Konsole des Browsers ausgeben |
-| `--docs` | die Bilder für die Doku (s. u., = `pnpm screenshots:docs`) |
-| `--readme` | je Feature der README ein Bild in Norton (s. u., = `pnpm screenshots:readme`) |
+| Option                             | Bedeutung                                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `--theme classic-norton,dark`      | nur diese Farbschemata (Liste: `--list`)                                                        |
+| `--scene main,actions-menu`        | nur diese Szenen                                                                                |
+| `--out docs/screenshots`           | anderer Zielordner (relativ zum Repo)                                                           |
+| `--flat`                           | ohne Unterordner je Farbschema (nur mit genau einem `--theme`)                                  |
+| `--platform linux\|windows\|macos` | Kürzel, Badges und Menüleiste dieses Systems (Standard `linux`: Menüleiste im Fenster)          |
+| `--lang en\|de`                    | Sprache der Oberfläche (Standard `en`)                                                          |
+| `--width 1280 --height 760`        | Fenstergröße in CSS-Pixeln                                                                      |
+| `--scale 2`                        | Retina-Auflösung (doppelte Pixel)                                                               |
+| `--jobs 4`                         | parallele Browser-Seiten                                                                        |
+| `--no-build`                       | vorhandenes `dist/` nehmen statt `pnpm build`                                                   |
+| `--chrome`                         | installiertes Google Chrome statt Playwrights Chromium (dann ist `screenshots:install` unnötig) |
+| `--headed`                         | Browser sichtbar (zum Nachsehen beim Schreiben neuer Szenen)                                    |
+| `--verbose`                        | Konsole des Browsers ausgeben                                                                   |
+| `--docs`                           | die Bilder für die Doku (s. u., = `pnpm screenshots:docs`)                                      |
+| `--readme`                         | je Feature der README ein Bild in Norton (s. u., = `pnpm screenshots:readme`)                   |
 
 ## Bilder der README und der Werbeseite (Prompt 044)
 
@@ -104,19 +104,21 @@ Schritte:
 - `{ "type": "*.jpg" }`: Text tippen.
 - `{ "wait": 500 }`: warten (ms).
 - `{ "click": "css-selector" }`: klicken.
+- `{ "hold": "Mod" }`: Modifier bis zum Bild gedrückt halten (`Mod`, `Mod+Shift`, `Alt` …; 057: Buchstaben an den
+  Dialog-Knöpfen, Szene `delete-dialog-keys`).
 
 Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf), `"ready": "text"` (der Runner wartet auf
 diesen Text statt auf `IMG_4711.jpg`, z. B. wenn die Szene in einem Archiv startet) und `"mock"` mit:
 
-| Option | Wirkung |
-| --- | --- |
-| `"jobs": true` | Task-Liste mit Beispieljobs |
-| `"bigFiles": true` | ein paar große Dateien in sonst leeren Ordnern (Szene `disk-usage`) |
-| `"duplicates": true` | Kopien unter anderen Namen (Szene `duplicate-results`) |
-| `"conflict": true` | ein Kopierjob wartet auf die Konfliktfrage (Szene `conflict-dialog`) |
-| `"photoFolders": true` | Fotos auch in `Edited`, `Panorama`, `Videos` (Szenen `flat-view`, `similar-images`) |
-| `"archive": true` | `Italy 2026 best of.zip` hat Inhalt, der Cursor steht darauf (Szene `archive-folder`) |
-| `"remote": true` | rechts ein erster Tab auf dem SFTP-Profil „My server“ (Szene `remote-panel`, kein echter Host) |
-| `"shellHeight": 200` | höhere Ausgabe der Shell-Zeile (Szene `shell-output`; `run_shell` liefert eine feste Ausgabe) | Braucht eine neue Szene einen Command, den der Mock noch nicht kennt
-(Antwort `null`), ergänzt man ihn in `mock-backend.js` mit der Form aus dem passenden `*.models.ts`.
-`pnpm scripts:test` prüft, dass jede Aktion der Szenen auf allen drei Systemen auslösbar ist.
+| Option                                                                                               | Wirkung                                                                                        |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `"jobs": true`                                                                                       | Task-Liste mit Beispieljobs                                                                    |
+| `"bigFiles": true`                                                                                   | ein paar große Dateien in sonst leeren Ordnern (Szene `disk-usage`)                            |
+| `"duplicates": true`                                                                                 | Kopien unter anderen Namen (Szene `duplicate-results`)                                         |
+| `"conflict": true`                                                                                   | ein Kopierjob wartet auf die Konfliktfrage (Szene `conflict-dialog`)                           |
+| `"photoFolders": true`                                                                               | Fotos auch in `Edited`, `Panorama`, `Videos` (Szenen `flat-view`, `similar-images`)            |
+| `"archive": true`                                                                                    | `Italy 2026 best of.zip` hat Inhalt, der Cursor steht darauf (Szene `archive-folder`)          |
+| `"remote": true`                                                                                     | rechts ein erster Tab auf dem SFTP-Profil „My server“ (Szene `remote-panel`, kein echter Host) |
+| `"shellHeight": 200`                                                                                 | höhere Ausgabe der Shell-Zeile (Szene `shell-output`; `run_shell` liefert eine feste Ausgabe)  | Braucht eine neue Szene einen Command, den der Mock noch nicht kennt |
+| (Antwort `null`), ergänzt man ihn in `mock-backend.js` mit der Form aus dem passenden `*.models.ts`. |
+| `pnpm scripts:test` prüft, dass jede Aktion der Szenen auf allen drei Systemen auslösbar ist.        |
