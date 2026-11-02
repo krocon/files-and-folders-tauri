@@ -62,7 +62,19 @@ for a in "$@"; do
 done
 exit 0
 EOF
-chmod +x "$fake/cc" "$fake/ar"
+# resource compiler for the Windows icon (tauri-winres → embed-resource): on a host without
+# llvm-rc (macOS) a placeholder that answers like LLVM-RC and writes an empty output
+cat > "$fake/rc" <<'EOF'
+#!/bin/bash
+if [ "$*" = "-V /?" ]; then echo "OVERVIEW: LLVM Resource Converter"; echo "  /no-preprocess"; exit 0; fi
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "/fo" ]; then mkdir -p "$(dirname "$a")"; : > "$a"; fi
+  prev="$a"
+done
+exit 0
+EOF
+chmod +x "$fake/cc" "$fake/ar" "$fake/rc"
 
 # 3. clippy per target (own target dir: the std of each target is built once and kept)
 status=0
@@ -70,7 +82,7 @@ for t in "${targets[@]}"; do
   v="${t//-/_}"
   echo "== $t"
   if ! env RUSTC_BOOTSTRAP=1 CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="$work/target" \
-    "CC_$v=$fake/cc" "CXX_$v=$fake/cc" "AR_$v=$fake/ar" \
+    "CC_$v=$fake/cc" "CXX_$v=$fake/cc" "AR_$v=$fake/ar" "RC_$v=$fake/rc" \
     cargo clippy --manifest-path "$root/src-tauri/Cargo.toml" --target "$t" \
     -Zbuild-std=std,panic_abort --all-targets --locked -- -D warnings; then
     status=1

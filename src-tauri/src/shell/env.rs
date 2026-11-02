@@ -57,6 +57,8 @@ impl LoginMode {
         }
     }
 
+    // only the POSIX reader starts a login shell (Windows has none – dead code there, CI)
+    #[cfg(unix)]
     fn args(self) -> &'static [&'static str] {
         match self {
             LoginMode::Login => &["-l", "-c"],
