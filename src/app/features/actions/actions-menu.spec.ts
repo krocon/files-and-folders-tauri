@@ -5,6 +5,7 @@ import { KeymapApi } from '../../core/actions/keymap-api';
 import { setLanguage } from '../../core/i18n/i18n';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { ActionsMenu } from './actions-menu';
+import { ACTIONS_MENU_COLUMNS, OPENS_DIALOG } from './actions-menu-def';
 
 describe('Actions menu ▴ (design 020)', () => {
   afterEach(() => setLanguage('en'));
@@ -65,11 +66,11 @@ describe('Actions menu ▴ (design 020)', () => {
     ]);
     expect(labels(groups[1])).toContain('Parent Dir');
     expect(labels(groups[2]).slice(0, 5)).toEqual([
-      'Copy',
-      'Move',
-      'Delete',
-      'Delete permanently',
-      'MkDir',
+      'Copy…',
+      'Move…',
+      'Delete…',
+      'Delete permanently…',
+      'Create folder…',
     ]);
     expect(labels(groups[3]).slice(0, 1)).toEqual(['Setup…']);
     // the tools after the last divider
@@ -123,6 +124,29 @@ describe('Actions menu ▴ (design 020)', () => {
     const { fixture, item } = await render();
     setLanguage('de');
     fixture.detectChanges();
-    expect(item('OPEN_MKDIR_DLG').querySelector('.label')?.textContent).toBe('Ordner anlegen');
+    expect(item('OPEN_MKDIR_DLG').querySelector('.label')?.textContent).toBe('Ordner anlegen…');
+    expect(item('OPEN_MULTIMKDIR_DLG').querySelector('.label')?.textContent).toBe(
+      'Mehrere Ordner anlegen…',
+    );
+  });
+
+  it('„…“ exactly where a dialog opens or an input is asked (055), never "..."', async () => {
+    const { fixture, el } = await render();
+    const ids = ACTIONS_MENU_COLUMNS.flat().filter((id) => id !== '-' && id !== '@tools');
+    for (const lang of ['en', 'de'] as const) {
+      setLanguage(lang);
+      fixture.detectChanges();
+      const wrong = ids
+        .map((id) => ({
+          id,
+          label: el.querySelector(`[data-id="${id}"] .label`)?.textContent ?? '',
+        }))
+        .filter(
+          ({ id, label }) =>
+            label.endsWith('…') !== OPENS_DIALOG.has(id as never) || label.includes('...'),
+        )
+        .map(({ id, label }) => `${lang} ${id}: ${label}`);
+      expect(wrong).toEqual([]);
+    }
   });
 });
