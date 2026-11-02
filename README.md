@@ -282,7 +282,7 @@ Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, 
 light and a dark one. The live editor checks every colour pair for WCAG contrast; schemes can be exported and
 imported.
 
-*Tools ▸ Colour schemes…* · `Ctrl+Alt+Shift+T` next scheme · macOS: `⌘⌃⌥T`
+*Configuration ▸ Theme Editor…* · `Ctrl+Alt+Shift+T` next scheme · macOS: `⌘⌃⌥T`
 
 ![The colour scheme editor with the Norton scheme selected and the contrast check passed](docs/screenshots/readme/themes.png)
 
@@ -410,13 +410,13 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the
   active/other side, `%S` all marked entries; every word is one argument, nothing runs through a shell. Each entry
   can have its own shortcut.
-- **Buttons** – *Button configuration…* (menu *Tools*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
+- **Buttons** – *Button configuration…* (menu *Configuration*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
   actions of the bottom bar; changed sets are kept in `buttons.json`.
 - **File types** – *File types…*: categories with extensions, icon and colour; they drive the file icons and the
   presets of *Mark by pattern* (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
 - **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language, own search
   templates …); the whole configuration can be exported and imported as one file.
-- **Coming from the previous version** – *Import from Files and Folders (old)…* (menu *Tools*, *Settings ▸
+- **Coming from the previous version** – *Import from Files and Folders (old)…* (menu *Configuration*, *Settings ▸
   Data*) reads the `assets` folder of *files-and-folders-mr* (the repository folder is enough), shows per area what
   would be imported, what conflicts and what cannot be transferred, and keeps a `.bak` of every file it changes.
 

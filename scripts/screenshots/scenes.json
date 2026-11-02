@@ -119,6 +119,14 @@
       ]
     },
     {
+      "name": "menu-commands",
+      "steps": [
+        {
+          "click": "[role='menubar'] [role='menuitem']:nth-child(5)"
+        }
+      ]
+    },
+    {
       "name": "copy-dialog",
       "steps": [
         {

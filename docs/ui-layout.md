@@ -7,7 +7,9 @@
 
 ## Aufbau
 
-Unter Windows/Linux steht darüber eine **Menüleiste** (Zeile 0: File · Edit · View · Go · Tools · Window · Help,
+Unter Windows/Linux steht darüber eine **Menüleiste** (Zeile 0: File · Edit · View · Go · Commands · Configuration · Start · Window · Help – seit 056 nach dem Vorbild
+von Total Commander: „Commands“ = Datei-Werkzeuge aus Spalte 3 des Actions-Menüs, „Configuration“ = Spalte 4; Einträge
+aus dem Actions-Menü tragen in beiden Menüs denselben Namen,
 `role="menubar"`, `Alt+M`); macOS nutzt die native Menüleiste (Prompt 014). Das Kontextmenü der Liste (Rechtsklick,
 `Shift+F10`) zeigt die Aktionen zum Eintrag bzw. zur Markierung.
 
