@@ -5,7 +5,7 @@
 > Lies zuerst `prompts/000-arbeitsweise.md`, **`prompts/067-rainglow-themes.md`** (Aufbau der Rainglow-Themes,
 > Token-Zuordnung, Kontrast-Regeln, Tests – gilt hier unverändert) und das Ergebnis von 067 (`themes/rainglow-*.json`,
 > ggf. `scripts/rainglow-theme.mjs`). Kein Design-Dokument; Abweichungen im Bericht.
-> **Vorlage:** [`067-rainglow/piggy.json`](067-rainglow/piggy.json) (aus `github.com/ahmadawais/vscode-1`, `themes/`,
+> **Vorlage:** [`067-rainglow/piggy.json`](done/067-rainglow/piggy.json) (aus `github.com/ahmadawais/vscode-1`, `themes/`,
 > Stand 01.11.2026; Lizenz MIT wie 067, `067-rainglow/LICENSE`). Screenshot von Marc (01.11.2026):
 > [`068-rainglow-piggy-beispiel.png`](068-rainglow-piggy-beispiel.png) (Statuszeile pink, Keywords/Tags rot-pink).
 

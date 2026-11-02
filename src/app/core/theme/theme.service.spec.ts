@@ -158,6 +158,10 @@ describe('ThemeService', () => {
       'matrix',
       'solarized-light',
       'mystico-c64',
+      'rainglow-bold',
+      'rainglow-earthsong',
+      'rainglow-legacy',
+      'rainglow-heroku',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();

@@ -98,6 +98,10 @@ describe('ThemeDialog', () => {
       'matrix',
       'solarized-light',
       'mystico-c64',
+      'rainglow-bold',
+      'rainglow-earthsong',
+      'rainglow-legacy',
+      'rainglow-heroku',
     ]);
     expect(el.textContent).toContain('All contrast checks pass');
     radios.find((r) => r.value === 'dark')!.click();

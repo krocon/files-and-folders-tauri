@@ -277,8 +277,8 @@ directly – never through a shell.
 ## Colour schemes
 
 **Norton blue? Paper white? Dark? Your choice – or your own.**
-Nineteen built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
-Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black, True Light, Matrix, Solarized Light and Mystico – C64. *Follow the system* switches between a
+Twenty-three built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
+Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black, True Light, Matrix, Solarized Light, Mystico – C64 and four Rainglow themes (Bold, Earthsong, Legacy, Heroku). *Follow the system* switches between a
 light and a dark one. The live editor checks every colour pair for WCAG contrast; schemes can be exported and
 imported.
 
