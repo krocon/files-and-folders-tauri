@@ -59,10 +59,10 @@ import { OpsStore } from './ops.store';
               <div id="fnf-name-help" class="help">{{ t.mkdirHelp }}</div>
               <div class="spacer"></div>
             }
-            <button type="button" class="btn" fnfDialogKey="cancel" (click)="ops.close()">
+            <button type="button" class="btn" appDialogKey="cancel" (click)="ops.close()">
               {{ t.cancel }}
             </button>
-            <button type="submit" class="btn primary" fnfDialogKey="primary" [disabled]="busy()">
+            <button type="submit" class="btn primary" appDialogKey="primary" [disabled]="busy()">
               {{ dangerous() ? t.renameAnyway : texts().confirm }}
             </button>
           </div>

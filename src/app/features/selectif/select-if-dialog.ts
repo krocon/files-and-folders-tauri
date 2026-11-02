@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { fileTypeLabel } from '../config/config-texts';
 import {
@@ -67,7 +68,7 @@ function rowClass(row: SelectIfGridRow): string | null {
  */
 @Component({
   selector: 'app-select-if-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (store.request(); as req) {
       <app-modal
@@ -664,8 +665,11 @@ function rowClass(row: SelectIfGridRow): string | null {
             <p class="summary" aria-live="polite">{{ statusMessage() }}</p>
             <p [id]="errorId" class="error" role="alert">{{ visibleErrorText() }}</p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="store.close()">{{ t.cancel }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="store.close()">
+                {{ t.cancel }}
+              </button>
               <button
+                appDialogKey="primary"
                 type="submit"
                 class="btn primary"
                 aria-keyshortcuts="Control+Enter Meta+Enter"

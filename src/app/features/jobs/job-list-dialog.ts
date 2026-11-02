@@ -13,6 +13,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { JOB_TEXTS, jobTitle } from './job-format';
 import { JobAct, jobRows } from './job-rows';
 import { JobTable } from './job-table';
@@ -27,7 +28,7 @@ const SHOWN_ERRORS = 50;
  */
 @Component({
   selector: 'app-job-list-dialog',
-  imports: [Modal, JobTable],
+  imports: [Modal, DialogKey, JobTable],
   template: `
     <app-modal [heading]="t.jobsTitle" width="96vw" [fill]="true" (closed)="dialogs.close()">
       <!-- only finished counts are announced, not the progress (10×/s) -->
@@ -81,7 +82,13 @@ const SHOWN_ERRORS = 50;
         >
           {{ t.clearFinished }}
         </button>
-        <button type="button" class="btn" data-autofocus (click)="dialogs.close()">
+        <button
+          appDialogKey="cancel"
+          type="button"
+          class="btn"
+          data-autofocus
+          (click)="dialogs.close()"
+        >
           {{ t.close }}
         </button>
       </div>

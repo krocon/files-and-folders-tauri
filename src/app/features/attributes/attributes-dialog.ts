@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { describeFsError } from '../../core/fs/fs-error';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import {
   applyOctal,
   AttrForm,
@@ -30,7 +31,7 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
  */
 @Component({
   selector: 'app-attributes-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (s.request(); as req) {
       @if (s.form(); as f) {
@@ -198,8 +199,11 @@ import type { ApplyTo } from '../../core/attributes/attributes.models';
               </p>
               <p class="error" role="alert">{{ errorText() }}</p>
               <div class="buttons">
-                <button type="button" class="btn" (click)="s.close()">{{ t.cancel }}</button>
+                <button appDialogKey="cancel" type="button" class="btn" (click)="s.close()">
+                  {{ t.cancel }}
+                </button>
                 <button
+                  appDialogKey="primary"
                   type="button"
                   class="btn primary"
                   [disabled]="!s.canRun()"

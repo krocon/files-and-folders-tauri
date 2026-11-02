@@ -119,7 +119,7 @@ export function badgeKeysFor(role: DialogKeyRole, platform: Platform): string {
 }
 
 @Directive({
-  selector: '[fnfDialogKey]',
+  selector: '[appDialogKey]',
   host: {
     '[attr.aria-keyshortcuts]': 'ariaKeys()',
     '[attr.title]': 'tooltip()',
@@ -128,9 +128,9 @@ export function badgeKeysFor(role: DialogKeyRole, platform: Platform): string {
   },
 })
 export class DialogKey {
-  readonly fnfDialogKey = input<DialogKeySpec>(null);
+  readonly appDialogKey = input<DialogKeySpec>(null);
   /** More `aria-keyshortcuts` of the button that change (the conflict dialog's Alt letters). */
-  readonly fnfDialogKeyExtra = input<string | null>(null);
+  readonly appDialogKeyExtra = input<string | null>(null);
   readonly el = inject<ElementRef<HTMLButtonElement>>(ElementRef).nativeElement;
   private readonly modal = inject(Modal, { optional: true });
   private readonly platform = inject(DIALOG_PLATFORM);
@@ -138,12 +138,12 @@ export class DialogKey {
   private readonly ownAria = this.el.getAttribute('aria-keyshortcuts');
   private readonly ownTitle = this.el.getAttribute('title');
 
-  readonly role = computed(() => parseDialogKey(this.fnfDialogKey()));
+  readonly role = computed(() => parseDialogKey(this.appDialogKey()));
 
   protected readonly ariaKeys = computed(() => {
     const r = this.role();
     const keys = r ? ariaKeysFor(r, this.platform) : null;
-    return [keys, this.ownAria, this.fnfDialogKeyExtra()].filter(Boolean).join(' ') || null;
+    return [keys, this.ownAria, this.appDialogKeyExtra()].filter(Boolean).join(' ') || null;
   });
 
   protected readonly tooltip = computed(() => {

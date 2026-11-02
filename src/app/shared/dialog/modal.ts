@@ -56,7 +56,7 @@ const CLICKABLE = [
  * goes to the first `[data-autofocus]` (or first focusable) element. The opener gets
  * the focus back through {@link DialogService.close}.
  *
- * Dialog keys (design 057): buttons carry a role ({@link DialogKey}, `fnfDialogKey`);
+ * Dialog keys (design 057): buttons carry a role ({@link DialogKey}, `appDialogKey`);
  * Enter clicks the `primary` button wherever the focus is (except E2: a focused
  * button, textarea, list/grid/combobox/menu, IME, auto-repeat, another form, a
  * disabled button), `Mod+<letter>` a `secondary`, `Mod+Shift+<letter>` a

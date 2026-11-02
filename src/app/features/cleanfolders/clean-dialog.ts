@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { CL_TEXTS } from './clean-texts';
 import { CleanFoldersStore, CleanForm } from './clean.store';
@@ -22,7 +23,7 @@ const COLUMNS: readonly GridColumn[] = [
  */
 @Component({
   selector: 'app-clean-folders-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (cl.request(); as req) {
       <app-modal [heading]="heading()" width="min(64rem, 92vw)" height="80vh" (closed)="cl.close()">
@@ -132,8 +133,11 @@ const COLUMNS: readonly GridColumn[] = [
               </label>
             </fieldset>
             <div class="buttons">
-              <button type="button" class="btn" (click)="cl.close()">{{ t.cancel }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="cl.close()">
+                {{ t.cancel }}
+              </button>
               <button
+                [appDialogKey]="cl.mode() === 'trash' ? 'primary' : 'destructive:D'"
                 type="button"
                 class="btn"
                 [class.primary]="cl.mode() === 'trash'"

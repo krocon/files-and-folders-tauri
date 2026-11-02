@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { formatSize } from '../../shared/format';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { DiffSide } from '../../core/diff/diff.models';
 import { hexLines } from './compare-files-logic';
@@ -20,7 +21,7 @@ function rowClass(r: DiffGridRow): string {
  */
 @Component({
   selector: 'app-diff-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (diff.pair(); as p) {
       <app-modal
@@ -119,11 +120,21 @@ function rowClass(r: DiffGridRow): string {
                 {{ t.next }}
               </button>
               @if (diff.externalTool(); as tool) {
-                <button type="button" class="btn" (click)="diff.openExternal()">
+                <button
+                  appDialogKey="secondary:E"
+                  type="button"
+                  class="btn"
+                  (click)="diff.openExternal()"
+                >
                   {{ t.external(tool.label) }}
                 </button>
               }
-              <button type="button" class="btn primary" (click)="diff.close()">
+              <button
+                appDialogKey="primary"
+                type="button"
+                class="btn primary"
+                (click)="diff.close()"
+              >
                 {{ t.close }}
               </button>
             </div>

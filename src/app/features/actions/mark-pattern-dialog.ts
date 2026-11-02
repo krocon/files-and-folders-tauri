@@ -2,6 +2,7 @@ import { ACT_TEXTS } from './actions-texts';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { compilePattern, defaultPattern, PatternMode } from './pattern';
 import { fileTypeGlob } from '../../core/file-icon/file-types-logic';
@@ -14,7 +15,7 @@ import { FileTypesStore } from '../config/file-types.store';
  */
 @Component({
   selector: 'app-mark-pattern-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="title()" (closed)="dialogs.close()">
       <form class="form" (submit)="apply($event)">
@@ -77,8 +78,15 @@ import { FileTypesStore } from '../config/file-types.store';
           }
         </p>
         <div class="buttons">
-          <button type="button" class="btn" (click)="dialogs.close()">{{ t.cancel }}</button>
-          <button type="submit" class="btn primary" [disabled]="!compiled().matches">
+          <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+            {{ t.cancel }}
+          </button>
+          <button
+            appDialogKey="primary"
+            type="submit"
+            class="btn primary"
+            [disabled]="!compiled().matches"
+          >
             {{ mark() ? t.mark : t.unmark }}
           </button>
         </div>

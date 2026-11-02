@@ -24,6 +24,7 @@ import { ThemeService } from '../../core/theme/theme.service';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { StarterStore } from '../starter/starter.store';
 import { RemoteStore } from '../remote/remote.store';
@@ -53,7 +54,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
  */
 @Component({
   selector: 'app-settings-dialog',
-  imports: [Modal, NgTemplateOutlet],
+  imports: [Modal, DialogKey, NgTemplateOutlet],
   template: `
     <app-modal [heading]="t.title" width="54rem" height="38rem" (closed)="dialogs.close()">
       <div class="settings">
@@ -126,7 +127,9 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
           <p class="message" role="status">{{ m }}</p>
         }
         <div class="buttons">
-          <button type="button" class="btn" (click)="dialogs.close()">{{ t.close }}</button>
+          <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+            {{ t.close }}
+          </button>
         </div>
       </div>
     </app-modal>

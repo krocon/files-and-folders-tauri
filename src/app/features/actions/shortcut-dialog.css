@@ -81,3 +81,26 @@ kbd {
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/* "In dialogs" (design 057): the key rule of every dialog, below the table */
+.in-dialogs {
+  font-size: var(--font-size-sm);
+
+  h3 {
+    margin: 0 0 var(--spacing-1);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px var(--spacing-2);
+    margin: 0;
+  }
+
+  dd {
+    margin: 0;
+  }
+}

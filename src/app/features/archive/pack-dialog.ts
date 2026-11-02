@@ -8,6 +8,7 @@ import {
 } from '../../core/archive/archive-names';
 import { ArchiveFormat, FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { dialogError } from '../ops/ops-logic';
 import { ArchiveStore } from './archive.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
@@ -20,7 +21,7 @@ const LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
  */
 @Component({
   selector: 'app-pack-dialog',
-  imports: [Modal, TargetField],
+  imports: [Modal, DialogKey, TargetField],
   template: `
     @if (req(); as r) {
       <app-modal [heading]="t.packTitle" width="min(52rem, 94vw)" (closed)="store.close()">
@@ -107,8 +108,12 @@ const LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
           <div class="buttons">
             <div class="help">{{ t.linksHint }}</div>
             <div class="spacer"></div>
-            <button type="button" class="btn" (click)="store.close()">{{ t.cancel }}</button>
-            <button type="submit" class="btn primary" [disabled]="busy()">{{ t.pack }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="store.close()">
+              {{ t.cancel }}
+            </button>
+            <button appDialogKey="primary" type="submit" class="btn primary" [disabled]="busy()">
+              {{ t.pack }}
+            </button>
           </div>
         </form>
       </app-modal>

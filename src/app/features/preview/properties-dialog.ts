@@ -3,6 +3,7 @@ import { ClipboardApi } from '../../core/os/clipboard';
 import { describeFsError } from '../../core/fs/fs-error';
 import { Properties } from '../../core/preview/preview.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { formatSize } from '../../shared/format';
 import { modeOctal, modeString } from './permissions';
 import { PV_TEXTS } from './preview-texts';
@@ -91,7 +92,7 @@ export function propertyRows(p: Properties): PropertyRow[] {
 /** Properties (Alt+Enter, design 010 E5) – read only. */
 @Component({
   selector: 'app-properties-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (s.entry(); as entry) {
       <app-modal
@@ -137,15 +138,33 @@ export function propertyRows(p: Properties): PropertyRow[] {
         }
         <div class="buttons">
           <span class="status" role="status">{{ copied() ? t.copied : '' }}</span>
-          <button type="button" class="btn" [disabled]="!s.props()" (click)="copy()">
+          <button
+            appDialogKey="secondary:O"
+            type="button"
+            class="btn"
+            [disabled]="!s.props()"
+            (click)="copy()"
+          >
             {{ t.copy }}
           </button>
           @if (canChange()) {
-            <button type="button" class="btn" [title]="t.changeAttributesHint" (click)="change()">
+            <button
+              appDialogKey="secondary:N"
+              type="button"
+              class="btn"
+              [title]="t.changeAttributesHint"
+              (click)="change()"
+            >
               {{ t.changeAttributes }}
             </button>
           }
-          <button type="button" class="btn primary" data-autofocus (click)="s.close()">
+          <button
+            appDialogKey="primary"
+            type="button"
+            class="btn primary"
+            data-autofocus
+            (click)="s.close()"
+          >
             {{ t.close }}
           </button>
         </div>

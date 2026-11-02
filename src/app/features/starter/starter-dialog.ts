@@ -12,6 +12,7 @@ import {
 } from '../../core/starter/starter.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   blank,
@@ -50,7 +51,7 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
  */
 @Component({
   selector: 'app-starter-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.title" width="54rem" (closed)="dialogs.close()">
       <div class="tool">
@@ -267,8 +268,11 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
             <span class="help path">{{ t.file(f) }}</span>
           }
           <div class="buttons">
-            <button type="button" class="btn" (click)="dialogs.close()">{{ t.cancel }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+              {{ t.cancel }}
+            </button>
             <button
+              appDialogKey="primary"
               type="button"
               class="btn primary"
               [disabled]="busy() || !changed()"

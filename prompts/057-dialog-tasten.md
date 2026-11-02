@@ -30,7 +30,7 @@ rechts), **eine andere Tastenkombination → Nebenknopf** (z. B. „Delete perma
 ## Entscheidungen fürs Design
 
 - **E1 Rollen und Markierung.** Jeder Dialog-Knopf bekommt deklarativ eine Rolle, z. B. Direktive/Attribut
-  `fnfDialogKey="primary" | "secondary" | "cancel"` (optional `fnfDialogKey="secondary:P"` für einen festen Buchstaben).
+  `appDialogKey="primary" | "secondary" | "cancel"` (optional `appDialogKey="secondary:P"` für einen festen Buchstaben).
   Der `Modal` wertet die Tasten **zentral** aus – keine eigenen `keydown`-Handler je Dialog (CLAUDE.md §4: Dialoge
   dürfen eigene Tasten haben, aber eine Mechanik für alle ist hier das Ziel).
 - **E2 Enter = Hauptknopf – wann nicht.** Enter löst den `primary`-Knopf aus, egal wo der Fokus im Dialog steht,

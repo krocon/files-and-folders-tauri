@@ -22,6 +22,7 @@ import { ThemeDraft, ThemeService } from '../../core/theme/theme.service';
 import { GROUP_LABELS, TOKENS, TokenDef, TokenGroup } from '../../core/theme/tokens';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { THEME_TEXTS } from './theme-texts';
 
@@ -66,7 +67,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
  */
 @Component({
   selector: 'app-theme-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.heading" width="min(60rem, 94vw)" height="82vh" (closed)="close()">
       <div class="themes">
@@ -227,6 +228,7 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
             {{ t.saveAs }}
           </button>
           <button
+            appDialogKey="primary"
             type="button"
             class="btn primary"
             [disabled]="!isOwn() || !(dirty() || !isActive()) || hasInvalid()"
@@ -235,7 +237,9 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
           >
             {{ t.save }}
           </button>
-          <button type="button" class="btn" (click)="close()">{{ t.close }}</button>
+          <button appDialogKey="cancel" type="button" class="btn" (click)="close()">
+            {{ t.close }}
+          </button>
         </div>
       </div>
     </app-modal>

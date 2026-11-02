@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { GROUP_MODES, GroupMode, MIN_SIZES } from './group-engine';
 import { GF_TEXTS } from './groupfiles-texts';
@@ -27,7 +28,7 @@ function rowClass(r: GroupRow): string | null {
  */
 @Component({
   selector: 'app-group-files-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (gf.request(); as req) {
       <app-modal [heading]="heading()" width="min(64rem, 92vw)" height="80vh" (closed)="gf.close()">
@@ -102,11 +103,20 @@ function rowClass(r: GroupRow): string | null {
             <p class="summary" aria-live="polite">{{ summary() }}</p>
             <p class="error" role="alert">{{ errorText() }}</p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="gf.close()">{{ t.cancel }}</button>
-              <button type="button" class="btn" [disabled]="!gf.canRun()" (click)="gf.run('copy')">
+              <button appDialogKey="cancel" type="button" class="btn" (click)="gf.close()">
+                {{ t.cancel }}
+              </button>
+              <button
+                appDialogKey="secondary:O"
+                type="button"
+                class="btn"
+                [disabled]="!gf.canRun()"
+                (click)="gf.run('copy')"
+              >
                 {{ t.copy }}
               </button>
               <button
+                appDialogKey="primary"
                 type="button"
                 class="btn primary"
                 [disabled]="!gf.canRun()"

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FsError } from '../../core/fs/fs.models';
 import { ConflictDefault } from '../../core/jobs/jobs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { dialogError } from '../ops/ops-logic';
 import { OPS_TEXTS } from '../ops/ops-texts';
 import { ArchiveStore } from './archive.store';
@@ -23,7 +24,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
  */
 @Component({
   selector: 'app-unpack-dialog',
-  imports: [Modal, TargetField],
+  imports: [Modal, DialogKey, TargetField],
   template: `
     @if (req(); as r) {
       <app-modal
@@ -84,8 +85,12 @@ const DEFAULTS: readonly ConflictDefault[] = [
           <div class="buttons">
             <div class="help">{{ t.unpackHint }}</div>
             <div class="spacer"></div>
-            <button type="button" class="btn" (click)="store.close()">{{ t.cancel }}</button>
-            <button type="submit" class="btn primary" [disabled]="busy()">{{ t.unpack }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="store.close()">
+              {{ t.cancel }}
+            </button>
+            <button appDialogKey="primary" type="submit" class="btn primary" [disabled]="busy()">
+              {{ t.unpack }}
+            </button>
           </div>
         </form>
       </app-modal>

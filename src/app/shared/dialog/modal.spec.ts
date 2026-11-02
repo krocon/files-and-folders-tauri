@@ -28,25 +28,25 @@ import { Modal } from './modal';
         </select>
         <textarea class="area"></textarea>
         <div role="listbox" tabindex="0" class="list"></div>
-        <button type="button" class="btn cancel" fnfDialogKey="cancel" (click)="log.push('cancel')">
+        <button type="button" class="btn cancel" appDialogKey="cancel" (click)="log.push('cancel')">
           Cancel
         </button>
         <button
           type="button"
           class="btn danger"
           title="Gone"
-          [fnfDialogKey]="secondary()"
+          [appDialogKey]="secondary()"
           (click)="log.push('forever')"
         >
           Delete permanently
         </button>
-        <button type="button" class="btn other" fnfDialogKey="secondary:B" (click)="log.push('b')">
+        <button type="button" class="btn other" appDialogKey="secondary:B" (click)="log.push('b')">
           Back
         </button>
         <button
           type="submit"
           class="btn primary"
-          [fnfDialogKey]="primary()"
+          [appDialogKey]="primary()"
           [disabled]="disabled()"
           aria-keyshortcuts="Control+Enter"
           (click)="log.push('primary')"

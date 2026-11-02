@@ -137,7 +137,7 @@ const SHOWN = 5;
             <button
               type="button"
               class="btn"
-              fnfDialogKey="cancel"
+              appDialogKey="cancel"
               [attr.data-autofocus]="cancelFirst() ? '' : null"
               (click)="ops.close()"
             >
@@ -148,7 +148,7 @@ const SHOWN = 5;
                 type="button"
                 class="btn danger"
                 data-testid="delete-permanent"
-                fnfDialogKey="destructive:D"
+                appDialogKey="destructive:D"
                 [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
                 (mouseenter)="armed.set(true)"
                 (mouseleave)="armed.set(false)"
@@ -166,7 +166,7 @@ const SHOWN = 5;
               [class.danger]="permanent()"
               [attr.data-autofocus]="cancelFirst() ? null : ''"
               data-testid="delete-confirm"
-              [fnfDialogKey]="confirmKey()"
+              [appDialogKey]="confirmKey()"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
               (click)="confirm()"
             >

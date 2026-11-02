@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { dialogError } from '../ops/ops-logic';
 import { ArchiveStore } from './archive.store';
 import { ARCHIVE_TEXTS } from './archive-texts';
@@ -13,7 +14,7 @@ import { ARCHIVE_TEXTS } from './archive-texts';
  */
 @Component({
   selector: 'app-archive-password-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (req(); as r) {
       <app-modal
@@ -43,10 +44,12 @@ import { ARCHIVE_TEXTS } from './archive-texts';
           <div class="buttons">
             <div id="fnf-password-help" class="help">{{ t.passwordKept }}</div>
             <div class="spacer"></div>
-            <button type="button" class="btn" (click)="store.closePassword()">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="store.closePassword()">
               {{ t.cancel }}
             </button>
-            <button type="submit" class="btn primary" [disabled]="busy()">{{ t.open }}</button>
+            <button appDialogKey="primary" type="submit" class="btn primary" [disabled]="busy()">
+              {{ t.open }}
+            </button>
           </div>
         </form>
       </app-modal>

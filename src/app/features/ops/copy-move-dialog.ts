@@ -133,13 +133,13 @@ const DEFAULTS: readonly ConflictDefault[] = [
             <div class="help">{{ t.ctrlEnter }}</div>
             <div class="spacer"></div>
 
-            <button type="button" class="btn" fnfDialogKey="cancel" (click)="ops.close()">
+            <button type="button" class="btn" appDialogKey="cancel" (click)="ops.close()">
               {{ t.cancel }}
             </button>
             <button
               type="submit"
               class="btn primary"
-              fnfDialogKey="primary"
+              appDialogKey="primary"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
             >
               {{ r.kind === 'link' ? t.linkConfirm : heading(r.kind) }}

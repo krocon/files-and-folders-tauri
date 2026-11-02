@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MAX_DUP_THRESHOLD } from '../../core/search/search.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { DupField, DuplicatesForm, DupUnit } from './duplicates-form';
 import { DUP_TEXTS } from './duplicates-texts';
 import { DuplicatesStore } from './duplicates.store';
@@ -11,7 +12,7 @@ const ERR = 'fnf-dup-error';
 /** Find duplicates (OPEN_FIND_DUPLICATES_DLG, Alt+Shift+F7, design 016 E6). Enter = find, Esc = cancel. */
 @Component({
   selector: 'app-duplicates-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (dup.request(); as req) {
       <app-modal [heading]="t.title" width="min(56rem, 96vw)" (closed)="dup.close()">
@@ -218,8 +219,17 @@ const ERR = 'fnf-dup-error';
           </div>
           <p class="error" role="alert" [id]="errId">{{ dup.error()?.message ?? '' }}</p>
           <div class="buttons">
-            <button type="button" class="btn" (click)="dup.close()">{{ t.cancel }}</button>
-            <button type="submit" class="btn primary" [disabled]="dup.busy()">{{ t.find }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="dup.close()">
+              {{ t.cancel }}
+            </button>
+            <button
+              appDialogKey="primary"
+              type="submit"
+              class="btn primary"
+              [disabled]="dup.busy()"
+            >
+              {{ t.find }}
+            </button>
           </div>
         </form>
       </app-modal>
