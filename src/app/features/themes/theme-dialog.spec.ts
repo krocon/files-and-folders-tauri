@@ -90,6 +90,8 @@ describe('ThemeDialog', () => {
       'light',
       'dark',
       'crimson',
+      'one-dark',
+      'one-dark-vivid',
     ]);
     expect(el.textContent).toContain('All contrast checks pass');
     radios.find((r) => r.value === 'dark')!.click();
