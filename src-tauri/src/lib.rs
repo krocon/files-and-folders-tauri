@@ -229,6 +229,7 @@ pub fn run() {
             commands::shell::run_shell,
             commands::shell::shell_quote,
             commands::shell::load_shell_history,
+            commands::shell::shell_login_status,
             commands::shell::clear_shell_history,
             commands::get_app_info,
             commands::load_session,

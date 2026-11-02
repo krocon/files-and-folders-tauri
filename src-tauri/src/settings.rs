@@ -140,6 +140,7 @@ pub fn sanitize(input: Map<String, Value>) -> (Map<String, Value>, Vec<SettingsW
     let mut warnings = Vec::new();
     let mut unknown = 0usize;
     for (key, value) in input {
+        let value = legacy_value(&key, value);
         match SCHEMA.get(&key) {
             Some(spec) if spec.accepts(&value) => {
                 if value != spec.default_value() {
@@ -161,6 +162,17 @@ pub fn sanitize(input: Map<String, Value>) -> (Map<String, Value>, Vec<SettingsW
         }
     }
     (out, warnings)
+}
+
+/// Values of older versions in today's form (no file version bump: older apps
+/// would otherwise refuse to write the file). Design 061 E6b: `shell.loginPath`
+/// was a switch – on (the old default) becomes the new default, off stays off.
+fn legacy_value(key: &str, value: Value) -> Value {
+    match (key, &value) {
+        ("shell.loginPath", Value::Bool(true)) => Value::from("loginInteractive"),
+        ("shell.loginPath", Value::Bool(false)) => Value::from("off"),
+        _ => value,
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -596,6 +608,33 @@ mod tests {
         );
         let text = fs::read_to_string(&file).unwrap();
         assert!(text.contains("\"version\": 1") && !text.contains("sizeFormat"));
+    }
+
+    /// Design 061 E6b: the old switch `shell.loginPath` becomes the select (load, save, import).
+    #[test]
+    fn login_path_switch_is_migrated() {
+        let (out, w) = sanitize(map(json!({ "shell.loginPath": false })));
+        assert!(w.is_empty());
+        assert_eq!(Value::Object(out), json!({"shell.loginPath": "off"}));
+        // on = the new default → not stored
+        let (out, w) = sanitize(map(json!({ "shell.loginPath": true })));
+        assert!(w.is_empty() && out.is_empty());
+        let (out, _) = sanitize(map(json!({ "shell.loginPath": "login" })));
+        assert_eq!(Value::Object(out), json!({"shell.loginPath": "login"}));
+        let (out, w) = sanitize(map(json!({ "shell.loginPath": "always" })));
+        assert!(out.is_empty());
+        assert_eq!(w[0].code, "invalid_value");
+        let t = tempfile::tempdir().unwrap();
+        let file = t.path().join(FILE_NAME);
+        fs::write(
+            &file,
+            r#"{"version":1,"settings":{"shell.loginPath":false}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            Value::Object(load(&file).settings),
+            json!({"shell.loginPath": "off"})
+        );
     }
 
     #[test]

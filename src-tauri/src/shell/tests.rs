@@ -420,7 +420,8 @@ fn login_env_is_read_and_times_out() {
         program: "/bin/sh".into(),
         fish: false,
     };
-    let env = env::read_login_env(&k, std::time::Duration::from_secs(5)).expect("sh -l works");
+    let env = env::read_login_env(&k, env::LoginMode::Login, std::time::Duration::from_secs(5))
+        .expect("sh -l works");
     assert!(env.iter().any(|(k, _)| k == "PATH"));
     // a "shell" that hangs: the timeout ends it
     let t = tempdir().unwrap();
@@ -433,7 +434,14 @@ fn login_env_is_read_and_times_out() {
         program: slow,
         fish: false,
     };
-    assert!(env::read_login_env(&k, std::time::Duration::from_millis(300)).is_none());
+    assert_eq!(
+        env::read_login_env(
+            &k,
+            env::LoginMode::Login,
+            std::time::Duration::from_millis(300)
+        ),
+        Err(env::LoginEnvError::Timeout)
+    );
     assert!(start.elapsed() < std::time::Duration::from_secs(3));
 }
 

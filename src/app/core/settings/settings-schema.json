@@ -30,7 +30,11 @@
   "diskUsage.crossFilesystems": { "type": "bool", "default": false },
   "diskUsage.chart": { "type": "enum", "values": ["sunburst", "treemap"], "default": "sunburst" },
   "shell.enabled": { "type": "bool", "default": true },
-  "shell.loginPath": { "type": "bool", "default": true },
+  "shell.loginPath": {
+    "type": "enum",
+    "values": ["off", "login", "loginInteractive"],
+    "default": "loginInteractive"
+  },
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
   "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 },
   "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
