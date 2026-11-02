@@ -135,6 +135,37 @@ Linux (gleiches Problem bei Starts aus manchen Desktop-Menüs; harmlos, wenn sch
 `shell.loginPath` (Default an) zum Abschalten. Abnahme „`which brew` aus dem Finder“ ist hier nicht prüfbar →
 Vorgehen in `docs/architecture.md`, Prüfung durch Marc auf dem Mac.
 
+### E6b – Login-`PATH` zuverlässig lesen (Nachtrag Prompt 061, 02.11.2026) ✅
+
+Auftrag `prompts/done/061-login-path-shell.md`. Ohne Haltepunkt umgesetzt (Anweisung Marc); Entscheidungen:
+
+**Ursache bei Marc (gefunden, roter Test zuerst):** Der Leser schloss stderr sofort (`drop`), um ein volles Pipe zu
+vermeiden. Schreibt das Profil eine Warnung (bei Marc meldet `.zprofile` einen Syntaxfehler in einer `export`-Zeile),
+bekommt die Shell **SIGPIPE** und stirbt, bevor `env` läuft → „could not be read“. Im Terminal fällt das nicht auf,
+weil stderr dort offen ist. Zweiter roter Test: `sleep 30 &` im Profil hielt die Pipe offen (Verdacht 1 des Prompts).
+
+| Frage | Entscheidung | Begründung |
+|---|---|---|
+| stderr | `Stdio::null()` (`spawn_group_quiet`) | kein SIGPIPE, kein volles Pipe; Inhalt wird nicht gebraucht (keine Werte ins Log) |
+| Lesen | `printf '\n%s\n' M; command env; printf '\n%s\n' M`, Marker zufällig je Aufruf (`[A-Z0-9_]`, kein Quotieren), `MarkerReader` inkrementell, fertig beim End-Marker als **ganze Zeile** (CRLF ok); dann Gruppe beenden | wie VS Code `resolveShellEnv`; Profil-Ausgabe stört nicht, Hintergrundprozesse (auch per `setsid` gelöste) halten nichts auf; `command` umgeht ein Alias `env`; geht in sh/bash/zsh/dash/ksh/yash und fish |
+| Warten | `poll()` auf stdout im aufrufenden Thread statt Leser-Thread | ein Leser-Thread bliebe bei einem Daemon mit geerbtem stdout für immer hängen |
+| Exit ≠ 0 | zählt nur, wenn der End-Marker fehlt | Profil darf nach vollständigem `env` scheitern |
+| Gründe | `Result<_, LoginEnvError>`: `timeout`, `noEof` (beendet, Pipe offen), `exitStatus`, `incomplete` (Exit 0 ohne Marker), `noPath`, `spawn`, `tooLarge` (> 1 MiB), `notPosix` | Marc kann melden, was passiert |
+| Timeout | 10 s | Vorab-Lesen beim Einblenden der Leiste (`load_shell_history`) verdeckt die Zeit meist |
+| Cache | Erfolg für die Laufzeit; Fehlschlag höchstens alle 60 s neu (`LoginCache`, Uhr als Parameter); ein laufender Versuch wird nicht verdoppelt – `run_shell` **wartet** auf den Vorab-Versuch (Condvar, höchstens 2 × Timeout + 1 s) | Abwägung: ein Befehl ohne PATH, der sofort startet, scheitert mit „command not found“ – kurzes Warten ist das kleinere Übel und passiert nur beim ersten Befehl nach dem Start |
+| `.zshrc` | Einstellung `shell.loginPath` = `off` / `login` / `loginInteractive` (Default, alle POSIX-Systeme). Geprüft: `zsh -i -l -c` und `bash -i -l -c` laufen ohne TTY sauber (Warnungen gehen nach stderr = null; Test `system_shells`); bei Marc setzt `.zshrc` u. a. `PNPM_HOME` – nur mit `-i` findbar. Scheitert `loginInteractive` aus einem anderen Grund als dem Timeout, wird einmal `login` versucht | Akzeptanzkriterium 1 (`pnpm`) braucht `.zshrc`; Rückfall schützt vor Profilen, die ohne Terminal brechen |
+| Migration | alter Wert `true` → `loginInteractive` (= neuer Default, wird nicht gespeichert), `false` → `off`; in `settings::sanitize` (`legacy_value`) – gilt für Laden, Speichern und Import (Bündel); keine Versionserhöhung der Datei | ältere App-Versionen würden eine neuere Datei sonst nicht mehr schreiben |
+| Rückfall | `PATH` = Login-PATH > Standardorte (nur vorhandene, ohne Duplikate) > App-PATH; macOS: `/usr/libexec/path_helper -s` (einmal, mit leerer Umgebung) + `/opt/homebrew/bin`, `/opt/homebrew/sbin`, `/usr/local/bin`, `~/.cargo/bin`; Linux: `~/.local/bin`, `~/.cargo/bin`. Gilt auch bei Erfolg | reine Funktionen `merge_path`/`build_env`/`fallback_dirs` mit Tests; bei Erfolg harmlos, hilft bei `login` ohne `.zshrc` |
+| Meldung | Notice `loginEnvUnavailable:<grund>`, nur einmal je Fehlschlag (erneut erst nach einem Erfolg); Text aus dem Katalog (en/de) mit Grund, ohne Pfade/Werte; Debug-Build: `eprintln!` nur Modus, Grund, Dauer | §4 Sicherheit |
+| Diagnose | Aktion `SHELL_LOGIN_STATUS` („Shell: show login PATH status“, Menü Ansicht, Palette) → Command `shell_login_status`: Zustand, Grund, Modus, Dauer, Name des Shell-Programms, Anzahl PATH-Einträge; liest vorher, falls fällig | kleinste Lösung ohne Debug-Build; kein Builtin, das einen echten Befehl verdecken könnte |
+
+Tests: `shell/tests_login.rs` (Fake-Shells als Skripte: stderr-Warnung, Hintergrundprozess, Daemon außerhalb der Gruppe,
+3,5 s langsam, Rauschen vor/nach `env`, Exit 1 nach `env`, alle Gründe, `-i` + Rückfall, echte Shells des Systems;
+Marker-Parser byteweise/CRLF/1 MiB; Cache/Drossel/Notice; `merge_path`, `path_helper`), `commands/shell.rs`
+(Einstellung, Notice einmal mit Grund, Status ohne Werte), `settings.rs` (Migration), Frontend `shell-logic.spec.ts`
+(Texte en/de), `shell.spec.ts` (Notice mit Grund nur wenn gesendet, Aktion). Offen: Abnahme aus dem Dock auf Marcs Mac
+(`TODO.md` §2), E2E unter Xvfb nicht gelaufen (Sitzung auf dem Mac ohne Fenster-Steuerung).
+
 ### E7 – Ausgabe: Kodierung, ANSI, Puffer ✅
 
 - **Kodierung (Rust):** gültiges UTF-8 bleibt; sonst Windows: OEM-Codepage (`GetOEMCP` + `MultiByteToWideChar`),

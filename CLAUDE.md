@@ -48,7 +48,7 @@
   Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) und Prompt 045 (Serien nach Staffeln
   gruppieren: Command `collect_files`, Job `group`, Aufräumen über `CleanFoldersStore.openPrepared`) und Prompt 046
   (Bedingt markieren „Select if…“: reine Engine `select-if-engine.ts` + Fallkatalog, `SelectIfStore`, Dialog,
-  `selectIf.templates`, `OPEN_SELECT_IF_DLG` `Mod+Alt+S`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
+  `selectIf.templates`, `OPEN_SELECT_IF_DLG` `Mod+Alt+S`) und Prompt 061 (Login-PATH der Shell-Leiste: Marker, stderr null, Grund, `shell.loginPath` als Auswahl, Design 021 E6b) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
