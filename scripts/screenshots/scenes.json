@@ -22,7 +22,8 @@
     "rainglow-bold",
     "rainglow-earthsong",
     "rainglow-legacy",
-    "rainglow-heroku"
+    "rainglow-heroku",
+    "rainglow-piggy"
   ],
   "prelude": [
     {
@@ -857,7 +858,8 @@
     "rainglow-bold": "Bold (Rainglow)",
     "rainglow-earthsong": "Earthsong (Rainglow)",
     "rainglow-legacy": "Legacy (Rainglow)",
-    "rainglow-heroku": "Heroku (Rainglow)"
+    "rainglow-heroku": "Heroku (Rainglow)",
+    "rainglow-piggy": "Piggy (Rainglow)"
   },
   "readme": {
     "out": "docs/screenshots/readme",

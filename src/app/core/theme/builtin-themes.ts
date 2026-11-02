@@ -23,6 +23,7 @@ import rainglowBoldJson from './themes/rainglow-bold.json';
 import rainglowEarthsongJson from './themes/rainglow-earthsong.json';
 import rainglowLegacyJson from './themes/rainglow-legacy.json';
 import rainglowHerokuJson from './themes/rainglow-heroku.json';
+import rainglowPiggyJson from './themes/rainglow-piggy.json';
 import { Theme } from './theme.models';
 
 /**
@@ -54,6 +55,7 @@ export const EXTRA_THEMES: readonly Theme[] = [
   rainglowEarthsongJson,
   rainglowLegacyJson,
   rainglowHerokuJson,
+  rainglowPiggyJson,
 ].map((t) => ({
   ...t,
   builtIn: true,

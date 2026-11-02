@@ -26,6 +26,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `rainglow-earthsong` | Earthsong (Rainglow) | Rainglow „earthsong“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
 | `rainglow-legacy` | Legacy (Rainglow) | Rainglow „legacy“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
 | `rainglow-heroku` | Heroku (Rainglow) | Rainglow „heroku“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
+| `rainglow-piggy` | Piggy (Rainglow) | Rainglow „piggy“ by Dayle Rees | MIT | 068 |
 
 ## Deviations from the originals (contrast)
 
@@ -109,3 +110,15 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   4.5:1). Marked = string colour (Bold `#f7a21b`, Earthsong `#f8bb39`, Legacy `#ff410d`, Heroku `#a6fa62`), under the
   cursor a dark mix of it.
 - Red `#ba0e2e` only as badge/area; as text a light red. Muted text from the line-number colour, lightened.
+
+**Piggy (068)**
+
+- `node scripts/rainglow-theme.mjs prompts/done/067-rainglow/piggy.json --id rainglow-piggy --name "Piggy (Rainglow)"
+  --marked "#e6db74" --symlink "#8fbe00" --hidden "#92757e"`, then four hand edits: archive icon and usage 6 yellow
+  `#e6db74`, executable icon and usage 8 green `#8fbe00` – otherwise nearly everything is pink.
+- Base tone from the current JSON (rose-brown `#3d2f34`); Marc's screenshot shows an older, neutral dark grey
+  version. If the neutral tone is wanted: `editor`/`sideBar` etc. of Bold (`#2a2626` …) with Piggy's accents.
+- Marked yellow `#e6db74`, symlinks green, hidden `#92757e` lightened to `#ad989e`, error text pale pink `#e7acb7`
+  (distinct from the pink accents); the status line is Piggy pink darkened to `#dd2958` so white reaches 4.5:1 –
+  marked values there are therefore almost white. Under the cursor (`#fd6a5d`) marked entries are dark like the
+  cursor text; the check mark in the row tells them apart (no yellow reaches 4.5:1 on that coral).

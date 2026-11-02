@@ -1,6 +1,7 @@
 // Rainglow VS Code theme → colour scheme of Files and Folders (prompt 067).
 //
 //   node scripts/rainglow-theme.mjs <rainglow.json> --id rainglow-<name> --name <Name> [--out <file>]
+//     [--marked <#colour>] [--symlink <#colour>] [--hidden <#colour>]   (default: string, tag, line-number colour)
 //
 // Rainglow themes (Dayle Rees, MIT) derive every colour from one base in five brightness steps plus three or
 // four accents. This script reads those building blocks and maps them onto all our tokens (rest = `dark.json`);
@@ -297,11 +298,14 @@ function main(argv) {
   }
   if (!file || !opt.id || !opt.name) {
     console.error(
-      'usage: node scripts/rainglow-theme.mjs <rainglow.json> --id <id> --name <name> [--out <file>]',
+      'usage: node scripts/rainglow-theme.mjs <rainglow.json> --id <id> --name <name> [--marked|--symlink|--hidden <#colour>] [--out <file>]',
     );
     process.exit(2);
   }
-  const scheme = rainglowScheme(JSON.parse(readFileSync(file, 'utf8')), opt);
+  const overrides = Object.fromEntries(
+    ['marked', 'symlink', 'hidden'].filter((k) => opt[k]).map((k) => [k, opt[k]]),
+  );
+  const scheme = rainglowScheme(JSON.parse(readFileSync(file, 'utf8')), { ...opt, overrides });
   const text = `${JSON.stringify(scheme, null, 2)}\n`;
   if (opt.out) {
     writeFileSync(opt.out, text);

@@ -54,6 +54,7 @@ describe('built-in themes', () => {
       'rainglow-earthsong',
       'rainglow-legacy',
       'rainglow-heroku',
+      'rainglow-piggy',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });
