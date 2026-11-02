@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-12 von 75 Paaren unter AA im Original, 11 Farben angepasst.
+12 von 76 Paaren unter AA im Original, 11 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -44,7 +44,7 @@
 
 ## paper (hell)
 
-44 von 75 Paaren unter AA im Original, 34 Farben angepasst.
+45 von 76 Paaren unter AA im Original, 35 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -95,6 +95,7 @@
 | `--color-status-marked` | `#ff0000` | `#c10000` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#bf002c` | Status line warning |
 | `--color-dialog-text` | `#6c6b6b` | `#666666` | Dialogs |
+| `--color-dialog-danger-text` | `#e00034` | `#cd0030` | Warning text in dialogs |
 | `--color-input-text` | `#6c6b6b` | `#666666` | Inputs |
 | `--color-button-text` | `#6c6b6b` | `#666666` | Buttons |
 | `--color-header-focus` | `#0098db` | `#0081bb` | Focus ring on the panel header |
@@ -103,7 +104,7 @@
 
 ## bitbucket (hell)
 
-31 von 75 Paaren unter AA im Original, 24 Farben angepasst.
+32 von 76 Paaren unter AA im Original, 25 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -146,13 +147,14 @@
 | `--color-favorite` | `#a87300` | `#bd953d` | Favourite star |
 | `--color-status-marked` | `#e00034` | `#f4a9ba` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#f4a9ba` | Status line warning |
+| `--color-dialog-danger-text` | `#e00034` | `#da0033` | Warning text in dialogs |
 | `--color-header-focus` | `#0098db` | `#20a5df` | Focus ring on the panel header |
 | `--color-dialog-focus` | `#0098db` | `#0092d2` | Focus ring in dialogs |
 | `--color-footer-focus` | `#0098db` | `#20a5df` | Focus ring on the status line |
 
 ## cypress (dunkel)
 
-33 von 75 Paaren unter AA im Original, 24 Farben angepasst.
+34 von 76 Paaren unter AA im Original, 25 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -194,6 +196,7 @@
 | `--color-favorite` | `#f2c14e` | `#b38e3a` | Favourite star |
 | `--color-status-marked` | `#04c38e` | `#038662` | Marked values in the status line |
 | `--color-dialog-text` | `#657786` | `#7c8c98` | Dialogs |
+| `--color-dialog-danger-text` | `#e00034` | `#ea5476` | Warning text in dialogs |
 | `--color-input-text` | `#657786` | `#7c8c98` | Inputs |
 | `--color-button-text` | `#657786` | `#7c8c98` | Buttons |
 | `--color-header-focus` | `#04c38e` | `#03a77a` | Focus ring on the panel header |
@@ -201,7 +204,7 @@
 
 ## blackboard (dunkel)
 
-15 von 75 Paaren unter AA im Original, 11 Farben angepasst.
+16 von 76 Paaren unter AA im Original, 12 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -233,11 +236,12 @@
 | `--color-shell-error-text` | `#e00034` | `#e7355f` | Shell errors |
 | `--color-shell-info-text` | `#7a7b80` | `#7c7d81` | Shell messages |
 | `--color-footer-error-text` | `#e00034` | `#ee728e` | Status line warning |
+| `--color-dialog-danger-text` | `#e00034` | `#e7355f` | Warning text in dialogs |
 | `--color-tooltip-text` | `#0c1021` | `#747780` | Tooltip |
 
 ## coffee (dunkel)
 
-7 von 75 Paaren unter AA im Original, 6 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+8 von 76 Paaren unter AA im Original, 7 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -265,10 +269,11 @@
 | `--color-active-panel-accent` | `#000000` | `#676767` | Active panel line |
 | `--color-shell-error-text` | `#e00034` | `#e8456b` | Shell errors |
 | `--color-footer-error-text` | `#e00034` | `#ef7b96` | Status line warning |
+| `--color-dialog-danger-text` | `#e00034` | `#e8456b` | Warning text in dialogs |
 
 ## combat (dunkel)
 
-9 von 75 Paaren unter AA im Original, 8 Farben angepasst.
+10 von 76 Paaren unter AA im Original, 9 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -296,12 +301,13 @@
 | `--color-active-marked-bg` | `#101010` | `#070707` | Marked, active panel |
 | `--color-shell-error-text` | `#e00034` | `#e6355e` | Shell errors |
 | `--color-footer-error-text` | `#e00034` | `#e41d4b` | Status line warning |
+| `--color-dialog-danger-text` | `#e00034` | `#e6355e` | Warning text in dialogs |
 | `--color-tooltip-text` | `#a6a4a4` | `#3b3a3a` | Tooltip |
 | `--color-tooltip-input-text` | `#a6a4a4` | `#3b3a3a` | Tooltip input |
 
 ## norton (dunkel)
 
-16 von 75 Paaren unter AA im Original, 14 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+17 von 76 Paaren unter AA im Original, 15 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -332,6 +338,7 @@
 | `--color-footer-button-bg` | `#008080` | `#058383` | Function buttons |
 | `--color-dialog-bg` | `#05a8a8` | `#048080` | Dialogs |
 | `--color-muted` | `#b3b3d9` | `#fafafc` | Muted text in dialogs |
+| `--color-dialog-danger-text` | `#fcfc54` | `#fefeb3` | Warning text in dialogs |
 | `--color-input-text` | `#a8a8a8` | `#737373` | Inputs |
 | `--color-button-text` | `#a8a8a8` | `#757575` | Buttons |
 | `--color-dialog-focus` | `#0098db` | `#9dd8f1` | Focus ring in dialogs |

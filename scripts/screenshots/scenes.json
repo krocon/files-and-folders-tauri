@@ -121,6 +121,14 @@
       ]
     },
     {
+      "name": "delete-permanent",
+      "steps": [
+        {
+          "action": "DELETE_PERMANENT"
+        }
+      ]
+    },
+    {
       "name": "mkdir-dialog",
       "steps": [
         {

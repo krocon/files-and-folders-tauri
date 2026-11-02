@@ -136,6 +136,7 @@
   --color-button-primary-bg: var(--color-accent);
   --color-button-primary-text: var(--color-accent-text);
   --color-dialog-focus: var(--color-focus);
+  --color-dialog-danger-text: var(--color-danger);
 
   /* scrollbar */
   --color-scrollbar-track: var(--color-surface);

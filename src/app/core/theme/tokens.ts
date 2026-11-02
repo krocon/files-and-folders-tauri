@@ -182,6 +182,7 @@ export const TOKENS: readonly TokenDef[] = [
   t('--color-button-primary-bg', 'dialog', 'Primary button background'),
   t('--color-button-primary-text', 'dialog', 'Primary button text'),
   t('--color-dialog-focus', 'dialog', 'Focus ring'),
+  t('--color-dialog-danger-text', 'dialog', 'Warning text in dialogs'),
 
   t('--color-scrollbar-track', 'scrollbar', 'Track'),
   t('--color-scrollbar-thumb', 'scrollbar', 'Thumb'),

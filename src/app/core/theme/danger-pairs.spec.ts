@@ -34,3 +34,15 @@ describe('danger text has its background (E2E 018: invisible "Cancel copying" in
     expect(bad).toEqual([]);
   });
 });
+
+describe('warning line in dialogs (059)', () => {
+  it('is red text on the dialog background, not a bar', () => {
+    const css = readFileSync('src/app/features/ops/ops-dialog.css', 'utf8') as string;
+    const block = css.slice(
+      css.indexOf('.danger-text {'),
+      css.indexOf('}', css.indexOf('.danger-text {')),
+    );
+    expect(block).toContain('color: var(--color-dialog-danger-text)');
+    expect(block).not.toMatch(/background|padding|border/);
+  });
+});

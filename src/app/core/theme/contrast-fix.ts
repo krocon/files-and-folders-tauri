@@ -43,6 +43,7 @@ export const ADJUST_FOREGROUND: ReadonlySet<string> = new Set([
   '--color-header-focus',
   '--color-footer-focus',
   '--color-dialog-focus',
+  '--color-dialog-danger-text',
   '--color-active-panel-accent',
   '--color-status-marked',
 ]);
