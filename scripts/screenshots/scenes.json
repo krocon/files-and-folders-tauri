@@ -16,7 +16,8 @@
     "true-dark",
     "true-black",
     "true-light",
-    "matrix"
+    "matrix",
+    "solarized-light"
   ],
   "prelude": [
     {
@@ -845,7 +846,8 @@
     "true-dark": "True Dark",
     "true-black": "True Black",
     "true-light": "True Light",
-    "matrix": "Matrix"
+    "matrix": "Matrix",
+    "solarized-light": "Solarized Light"
   },
   "readme": {
     "out": "docs/screenshots/readme",

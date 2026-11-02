@@ -17,6 +17,7 @@ import trueDarkJson from './themes/true-dark.json';
 import trueBlackJson from './themes/true-black.json';
 import trueLightJson from './themes/true-light.json';
 import matrixJson from './themes/matrix.json';
+import solarizedLightJson from './themes/solarized-light.json';
 import { Theme } from './theme.models';
 
 /**
@@ -42,6 +43,7 @@ export const EXTRA_THEMES: readonly Theme[] = [
   trueBlackJson,
   trueLightJson,
   matrixJson,
+  solarizedLightJson,
 ].map((t) => ({
   ...t,
   builtIn: true,
