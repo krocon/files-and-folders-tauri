@@ -195,7 +195,7 @@ export class DiskUsageStore {
         return { code: 'too_many', message: USAGE_TEXTS.tooManyTabs, path: null };
       }
       // the chart as a tab of its own on the other side (design 047): the list keeps the focus
-      this.openChartTab(id, otherSide(side), name, true);
+      this.openChartTab(id, otherSide(side), name, true, roots[0] ?? null);
       this.ws.setActive(side);
       this.ws.requestFocus(side);
       const named = name;
@@ -493,12 +493,19 @@ export class DiskUsageStore {
    * Opens the chart tab of `scanId` on `side` and selects it there – an old scan's chart tab
    * on that side is reused (E2). `quiet`: a full side is only reported, never an error.
    */
-  openChartTab(scanId: string, side: Side, name: string, quiet = false): boolean {
+  openChartTab(
+    scanId: string,
+    side: Side,
+    name: string,
+    quiet = false,
+    scanRoot: string | null = null,
+  ): boolean {
     const label = USAGE_TEXTS.chartTabLabel(name || USAGE_TEXTS.selection);
     const ref = { key: usageChartKey(scanId), label };
     const panel = this.ws.panels()[side];
     const old = panel.tabs.find((t) => isUsageChartKey(t.search?.key));
-    const root = this.state(scanId)?.view?.node.path ?? '';
+    // the folder the tab falls back to (never '' – review 047 #1)
+    const root = scanRoot ?? this.state(scanId)?.view?.node.path ?? null;
     const id = this.ws.openSearchTab(side, ref, root, old?.id);
     if (id === null) {
       this.jobs.report(USAGE_TEXTS.noChartTab);
@@ -528,9 +535,8 @@ export class DiskUsageStore {
     for (let open = this.chartTab(scanId); open; open = this.chartTab(scanId)) {
       const tabs = this.ws.panels()[open.side].tabs;
       if (tabs.length <= 1) {
-        // the last tab of a side stays – as a folder tab
-        this.ws.updateTab(open.tab.id, { search: undefined, title: '' });
-        return;
+        // the last tab of a side stays – a new folder tab (new id: the panel loads it) replaces it
+        this.ws.openInNewTab(open.side, open.tab.path || null);
       }
       this.ws.closeTab(
         open.side,

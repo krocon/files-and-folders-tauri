@@ -284,8 +284,12 @@ export class WorkspaceStore {
     const side = otherSide(from);
     const tab = this.activeTab(side);
     if (isUsageChartKey(tab.search?.key)) {
-      // a chart tab has no folder (design 047 E4): the nearest real folder tab of that side
-      return this.nearestFolderTab(side)?.path ?? null;
+      // a chart tab has no folder (design 047 E4): the nearest real folder tab of that side –
+      // not one inside an archive (review 047 #2: like the rule below)
+      const path = this.nearestFolderTab(side)?.path ?? null;
+      const inArchive =
+        path !== null && [...this.archiveRoots()].some((root) => path.startsWith(root));
+      return inArchive ? null : path;
     }
     const store = this.panel(side)?.store;
     if (store?.archive()) {
@@ -496,7 +500,7 @@ export class WorkspaceStore {
   }
 
   /** Strg/⌘+Enter: opens a folder in a new tab after the active one. */
-  openInNewTab(side: Side, path: string, title = '', cursor: string | null = null): void {
+  openInNewTab(side: Side, path: string | null, title = '', cursor: string | null = null): void {
     this.updatePanel(side, (p) =>
       p.tabs.length >= MAX_TABS
         ? p
@@ -508,9 +512,9 @@ export class WorkspaceStore {
    * Opens a search result tab after the active one (or turns tab `reuse` into it)
    * and selects it. `root` = folder the tab falls back to when saved. Returns the tab id.
    */
-  openSearchTab(side: Side, ref: SearchTabRef, root: string, reuse?: string): string | null {
+  openSearchTab(side: Side, ref: SearchTabRef, root: string | null, reuse?: string): string | null {
     if (reuse && this.findTab(reuse)) {
-      this.updateTab(reuse, { search: ref, title: ref.label, cursor: null });
+      this.updateTab(reuse, { search: ref, title: ref.label, cursor: null, path: root });
       return reuse;
     }
     if (this.panels()[side].tabs.length >= MAX_TABS) {

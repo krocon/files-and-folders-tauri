@@ -166,6 +166,22 @@ describe('DiskUsageStore and disk-usage tabs (design 033)', () => {
       expect(api.released).toEqual(['j1']);
     });
 
+    it('review #1: a chart that is the last tab of its side becomes a new folder tab of the scan root', async () => {
+      await usage.start('left', ['/r'], 'r');
+      expect(ws.activeTab('right').path).toBe('/r');
+      ws.closeTab('right', 0); // only the chart tab is left on the right
+      expect(ws.panels().right.tabs).toHaveLength(1);
+      const chartId = ws.panels().right.tabs[0].id;
+      ws.closeTab('left');
+      await wait();
+      const right = ws.panels().right.tabs;
+      expect(right).toHaveLength(1);
+      expect(right[0].id).not.toBe(chartId);
+      expect(right[0].search).toBeUndefined();
+      expect(right[0].path).toBe('/r');
+      expect(api.released).toEqual(['j1']);
+    });
+
     it('a full other side: the list opens anyway, the chart is reported', async () => {
       for (let i = 0; i < MAX_TABS; i++) {
         ws.openInNewTab('right', `/f${i}`);
