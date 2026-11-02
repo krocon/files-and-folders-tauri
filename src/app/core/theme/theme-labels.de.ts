@@ -107,6 +107,7 @@ export const THEME_LABELS_DE: Readonly<Record<string, string>> = {
   'Focus ring on the panel header': 'Fokusrahmen im Kopf der Seite',
   'Focus ring on the list': 'Fokusrahmen auf der Liste',
   'Focus ring in dialogs': 'Fokusrahmen in Dialogen',
+  'Warning text in dialogs': 'Warntext in Dialogen',
   'Focus ring on the status line': 'Fokusrahmen auf der Statuszeile',
   Tooltip: 'Tooltip',
   'Tooltip input': 'Tooltip-Eingabe',

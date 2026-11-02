@@ -123,11 +123,9 @@ code {
   overflow: auto;
 }
 
+/* 059: red text on the dialog background, no bar – same box as the normal line, so nothing moves */
 .danger-text {
-  padding: 0 var(--spacing-1);
-  color: var(--color-danger-text);
-  background: var(--color-danger-bg);
-  border-radius: var(--radius-sm);
+  color: var(--color-dialog-danger-text);
   font-weight: 600;
 }
 

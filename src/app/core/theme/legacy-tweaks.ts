@@ -40,6 +40,8 @@ export const LEGACY_TWEAKS: Readonly<Record<string, Readonly<Record<string, stri
     '--color-splitter': '#000',
     // Marc 24.10.2026: the progress on the Tasks button in white (the accent was hard to see)
     '--color-task-bar': '#fff',
+    // 059: no red passes AA on the teal dialogs – the warning line is Norton yellow
+    '--color-dialog-danger-text': '#fcfc54',
     '--fnf-activepanel-table-selected-row-fg-color': '#fcfc54',
     '--fnf-table-selected-row-fg-color': 'var(--fnf-table-fg-color)',
   },

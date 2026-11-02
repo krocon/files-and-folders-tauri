@@ -35,7 +35,7 @@ Größe – wie in anderen Dialogen schon.
 - **Marcs Fall (Rückfrage 01.11.2026):** normaler Ordner-Tab, 5 Unterordner, **kaum befüllt** (inzwischen gelöscht,
   nicht mehr nachstellbar). Das Zählen war also in Millisekunden fertig – passt zu Kandidat 3 (oder 2). Nachstellen mit
   ein paar fast leeren Ordnern; Netzlaufwerk/Server/Ergebnis-Tabs nur als zusätzliche Fälle prüfen.
-- **Zweiter Fall (Marc, 01.11.2026, Screenshot [`059-warntext-rot-beispiel.png`](059-warntext-rot-beispiel.png)):**
+- **Zweiter Fall (Marc, 01.11.2026, Screenshot [`059-warntext-rot-beispiel.png`](done/059-warntext-rot-beispiel.png)):**
   endgültiger Löschdialog mit `bak`, `Mac Mini M1 Model – 5242156`, `pelikan_eraser_stls` – **auch hier keine
   Größen-Zeile**, obwohl `bak` mehrere GB groß ist (vermutlich aus dem Belegungs-Tab, 033/047). Damit ist „schnell
   fertig“ (Kandidat 3) allein unwahrscheinlicher: Kandidaten 1 (Start schlägt still fehl / Job startet nie) und die

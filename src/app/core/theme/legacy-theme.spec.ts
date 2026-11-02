@@ -118,6 +118,8 @@ describe('old designs (prompt 019)', () => {
       '#ffffff',
       '#c62828',
     ]);
+    // 059: red cannot reach AA on the teal dialogs – the warning line is yellow there
+    expect(norton.tokens['--color-dialog-danger-text']).toMatch(/^#f[c-f]f[c-f]/);
     for (const other of CLASSIC_THEMES.filter((t) => t !== norton)) {
       expect(other.tokens['--color-menu-bg']).not.toBe('#028383');
     }
