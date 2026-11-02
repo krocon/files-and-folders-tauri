@@ -53,6 +53,11 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   echten Namen. Existiert eine Datei schon: Überschreiben, Überspringen (Vorgabe), Umbenennen, wenn neuer, Abbrechen –
   auch „für alle“. Verschieben benennt auf demselben Laufwerk nur um; über Laufwerke wird jede Datei erst kopiert und
   dann gelöscht.
+- **Fehlerhafte Tasks wiederholen** (Prompt 048): In der Task-Liste haben fehlgeschlagene Tasks und Tasks mit Fehlern
+  einen Knopf *Wiederholen* (auch neben der Fehlerliste). Ein ganz fehlgeschlagener Task läuft erneut; bei *Fertig mit
+  Fehlern* nur das Fehlgeschlagene – beim Kopieren/Verschieben jede Datei in ihren genauen Ziel-Unterordner, danach
+  verschwinden geleerte Quellordner; bewusst übersprungene und inzwischen ersetzte Einträge bleiben unberührt.
+  Zeitüberschreitungen (SMB, `os error 60`) heißen jetzt auch so.
 - **Löschen**: `F8`/`Entf` (macOS `⌘⌫`) in den Papierkorb, `Shift+F8`/`Shift+Entf` (macOS `⌘⌥⌫`) endgültig mit rotem
   Dialog (Enter = Abbrechen); schreibgeschützte Einträge fragen nach. Wurzel, Laufwerke, Home- und Systemordner
   brauchen eine zweite Bestätigung.

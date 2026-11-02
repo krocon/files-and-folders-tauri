@@ -95,6 +95,26 @@ ganze Spec; Move-Quelle ausgetauscht → nichts verschoben; Delete endgültig + 
 Rename/Group/Link-Stichprobe; Doppel-Aufruf, `clear_finished`; `TimedOut`-Mapping.
 Frontend: `job-rows`, `dialogs` (Tabelle + Detail), `jobs.store` (Snapshot + Event), Kataloge.
 
+## Review (separater Agent, Schwerpunkt Move/Delete)
+
+Nichts wird doppelt verschoben, nichts außerhalb der Ziel-Wurzel geschrieben, kein nicht leerer Ordner und kein Link
+beim Aufräumen entfernt. Befunde und Umgang:
+
+1. Windows: `file_id` ist dort `None` → Move-Retry ohne Identitätsprüfung. **Behoben:** Notizen und Prüfung nutzen
+   `platform::entry_id` (Volume-Serial + File-Index).
+2. Paare aus Planungsfehlern/Transfers ohne Id. **Behoben:** Id beim Notieren nachgeholt (lokal), Serverquellen tragen
+   Größe + Zeit (`RetryPair.seen`) und werden bei Abweichung nicht verschoben (Test
+   `move_retry_leaves_a_replaced_unreadable_folder_alone`).
+3. Server-Move `copied` ohne Zeitstempel → nur Größe entschied. **Behoben:** ohne Zeiten normaler Move mit Konfliktfrage.
+4. Delete: Ordner-Schnappschuss prüft nur die Art. **Behoben:** fehlgeschlagene Ordner tragen Id + Änderungszeit
+   (`RetryExtra::Cleanup.guard`), geänderte bleiben stehen (`changed_since_listing`); lokale Pfade ohne Schnappschuss
+   werden nicht wiederholt (Test `delete_retry_leaves_a_failed_folder_alone_whose_content_changed`). Rest: Neues
+   *tiefer* in einem fehlgeschlagenen Ordner ändert dessen Zeit nicht – bewusst offen (der Ordner war ausgewählt).
+5. Ziel-Wurzel selbst könnte inzwischen ein Link sein. **Offen (niedrig):** das Original folgt dem Link ebenso
+   (`fs::metadata`); der Nutzer darf in einen verlinkten Ordner kopieren.
+6. Ein unvollständig gelesener Ordner wird als Ganzes neu durchlaufen → Konfliktfragen für schon Erledigtes. **Offen
+   (niedrig):** selten, verliert nichts.
+
 ## Fortschritt
 
 - [x] Phase 1 Design
@@ -102,3 +122,4 @@ Frontend: `job-rows`, `dialogs` (Tabelle + Detail), `jobs.store` (Snapshot + Eve
 - [x] Phase 3 Frontend
 - [ ] Phase 4 Ende-zu-Ende (nicht möglich in dieser Sitzung)
 - [x] Phase 5 Doku
+- [x] Review (Befunde 1–4 behoben, 5–6 bewusst offen)
