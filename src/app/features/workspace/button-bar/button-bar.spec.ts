@@ -162,6 +162,21 @@ describe('ButtonBar', () => {
     expect(start.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('Actions ▴ shows its shortcut like Start (050); a chord only in the tooltip', async () => {
+    const { fixture, el, actions } = await render();
+    const btn = el.querySelector<HTMLButtonElement>('.actions-toggle')!;
+    expect([...btn.children].map((c) => c.textContent?.trim())).toEqual(['Alt+A', 'Actions', '']);
+    expect(btn.title).toBe('Actions (Alt+A)');
+    expect(btn.getAttribute('aria-keyshortcuts')).toBe('Alt+A');
+    actions.platform.set('macos');
+    fixture.detectChanges();
+    expect(btn.querySelector('.badge')?.textContent).toBe('⌥A');
+    actions.override.set({ OPEN_ACTIONS_MENU: ['Ctrl+K Ctrl+M'] });
+    fixture.detectChanges();
+    expect(btn.querySelector('.badge')).toBeNull();
+    expect(btn.title).toMatch(/^Actions \(.+\)$/);
+  });
+
   it('opens the Actions menu with four columns', async () => {
     const { fixture, el } = await render();
     el.querySelector<HTMLButtonElement>('.actions-toggle')!.click();
