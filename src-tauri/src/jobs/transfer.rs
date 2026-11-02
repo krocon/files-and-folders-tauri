@@ -36,7 +36,7 @@ const BLOCK: usize = 256 * 1024;
 const MAX_ITEMS: usize = 1_000_000;
 
 /// A place: local path or server path.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Loc {
     Local(PathBuf),
     Remote(RemotePath),
@@ -65,7 +65,7 @@ impl Loc {
         }
     }
 
-    fn parent(&self) -> Option<Loc> {
+    pub(crate) fn parent(&self) -> Option<Loc> {
         match self {
             Loc::Local(p) => p.parent().map(|p| Loc::Local(p.to_path_buf())),
             Loc::Remote(r) => r.parent().map(Loc::Remote),
@@ -82,7 +82,7 @@ impl Loc {
         }
     }
 
-    fn starts_with(&self, other: &Loc) -> bool {
+    pub(crate) fn starts_with(&self, other: &Loc) -> bool {
         match (self, other) {
             (Loc::Local(a), Loc::Local(b)) => a.starts_with(b),
             (Loc::Remote(a), Loc::Remote(b)) => a.starts_with(b),
@@ -206,6 +206,8 @@ struct Plan {
     bytes: u64,
     errors: Vec<ItemError>,
     more_errors: u64,
+    /// Folders that could not be listed: *source → target* for a retry (design 048).
+    retry: Vec<(Loc, Loc, usize)>,
 }
 
 impl Plan {
@@ -259,6 +261,7 @@ fn walk(hub: &Hub, tops: &[(Loc, Loc, Meta)], plan: &mut Plan, control: &Control
                         Ok(c) => c,
                         Err(e) => {
                             plan.error(s.display(), e);
+                            plan.retry.push((s.clone(), d.clone(), i));
                             continue;
                         }
                     };
@@ -349,6 +352,10 @@ struct Run<'a> {
     summary: Summary,
     asker: Asker,
     temp_seq: u64,
+    moving: bool,
+    /// The top-level sources (`Item::top`) – a failed entry of a move notes the
+    /// folders up to its top for the retry (design 048).
+    tops: Vec<Loc>,
 }
 
 impl Run<'_> {
@@ -368,6 +375,45 @@ impl Run<'_> {
             id: self.id.to_string(),
             state,
         });
+    }
+
+    /// Notes a failed pair *source → exact target* for a retry (design 048).
+    fn note(&self, src: &Loc, dst: &Loc, copied: bool, top: Option<usize>) {
+        self.note_seen(src, dst, copied, top, None);
+    }
+
+    /// [`note`](Self::note) with what the planning saw of a file (size, time): a retry
+    /// moves it only while it is still that file (review 048 #2/#3).
+    fn note_seen(
+        &self,
+        src: &Loc,
+        dst: &Loc,
+        copied: bool,
+        top: Option<usize>,
+        seen: Option<&Meta>,
+    ) {
+        let cleanup = match (self.moving, top.and_then(|t| self.tops.get(t))) {
+            (true, Some(t)) => super::retry::chain(src, t)
+                .into_iter()
+                .map(|d| (d, None))
+                .collect(),
+            _ => Vec::new(),
+        };
+        self.control.retry.pair(
+            super::retry::RetryPair {
+                src: src.clone(),
+                dst: dst.clone(),
+                id: match src {
+                    Loc::Local(p) => crate::platform::entry_id(p),
+                    Loc::Remote(_) => None,
+                },
+                seen: seen
+                    .filter(|m| m.kind == EntryKind::File)
+                    .map(|m| (m.size, m.modified_ms)),
+                copied,
+            },
+            cleanup,
+        );
     }
 
     fn temp_name(&mut self) -> String {
@@ -623,6 +669,8 @@ pub fn run(
         summary: Summary::default(),
         asker: Asker::new(options.conflict_default.decision()),
         temp_seq: 0,
+        moving,
+        tops: Vec::new(),
     };
     let failed = |run: Run<'_>, e: FsError| {
         let mut s = run.summary;
@@ -705,10 +753,200 @@ pub fn run(
                 src.display(),
                 FsError::at(FsErrorCode::NotFound, "Not found", &src.display()),
             ),
-            Err(e) => run.fail(src.display(), e),
+            Err(e) => {
+                run.fail(src.display(), e);
+                run.note(src, &dst, false, None);
+            }
         }
         let _ = i;
     }
+    execute(run, tops, control)
+}
+
+/// Retries a copy or move with a server (design 048): exactly the noted pairs
+/// *source → target path* below `root`; missing target folders are created first
+/// (never through a link). Afterwards the source folders in `cleanup` are removed
+/// when empty (deepest first; servers refuse non-empty folders).
+#[allow(clippy::too_many_arguments)]
+pub fn run_retry(
+    hub: &Hub,
+    id: &str,
+    root: &Loc,
+    pairs: &[super::retry::RetryPair],
+    cleanup: &[(Loc, super::retry::FileId)],
+    options: &CopyOptions,
+    moving: bool,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
+    let mut run = Run {
+        id,
+        hub,
+        control,
+        rep: Reporter::new(id, emit),
+        summary: Summary::default(),
+        asker: Asker::new(options.conflict_default.decision()),
+        temp_seq: 0,
+        moving,
+        tops: Vec::new(),
+    };
+    run.state(JobState::Planning);
+    match stat(hub, root) {
+        Ok(Some(m)) if m.kind == EntryKind::Directory => {}
+        Ok(_) => {
+            run.summary.error = Some(FsError::at(
+                FsErrorCode::NotADirectory,
+                "The target is no folder",
+                &root.display(),
+            ));
+            return (JobState::Failed, run.summary);
+        }
+        Err(e) => {
+            run.summary.error = Some(e);
+            return (JobState::Failed, run.summary);
+        }
+    }
+    let mut tops: Vec<(Loc, Loc, Meta)> = Vec::new();
+    for pair in pairs {
+        if control.is_cancelled() {
+            return (JobState::Cancelled, run.summary);
+        }
+        let m = match stat(hub, &pair.src) {
+            Ok(Some(m)) => m,
+            Ok(None) => {
+                let shown = pair.src.display();
+                run.fail(
+                    shown.clone(),
+                    FsError::at(FsErrorCode::NotFound, "Not found", &shown),
+                );
+                continue;
+            }
+            Err(e) => {
+                run.fail(pair.src.display(), e);
+                run.note(&pair.src, &pair.dst, pair.copied, None);
+                continue;
+            }
+        };
+        // a move retries only the entry that failed: same id (local), same size and time
+        let replaced = match &pair.src {
+            Loc::Local(p) => pair.id.is_some() && crate::platform::entry_id(p) != pair.id,
+            Loc::Remote(_) => false,
+        } || pair.seen.is_some_and(|(size, ms)| {
+            m.kind != EntryKind::File || m.size != size || (ms.is_some() && m.modified_ms != ms)
+        });
+        if moving && replaced {
+            let shown = pair.src.display();
+            run.fail(
+                shown.clone(),
+                FsError::at(
+                    FsErrorCode::NotFound,
+                    "The entry changed since the first run – left in place",
+                    &shown,
+                ),
+            );
+            continue;
+        }
+        if let Some(parent) = pair.dst.parent()
+            && let Err(e) = ensure_dir_below(hub, root, &parent)
+        {
+            run.fail(pair.dst.display(), e);
+            run.note(&pair.src, &pair.dst, pair.copied, None);
+            continue;
+        }
+        if moving
+            && pair.copied
+            && m.kind == EntryKind::File
+            && let Ok(Some(dm)) = stat(hub, &pair.dst)
+            && dm.kind == EntryKind::File
+            && dm.size == m.size
+            // without times it cannot be told: a normal move with its conflict question
+            && match (dm.modified_ms, m.modified_ms) {
+                (Some(a), Some(b)) => (a - b).abs() < 2000,
+                _ => false,
+            }
+        {
+            // the copy arrived in the first run – only the source is left to remove
+            match run.remove_file(&pair.src) {
+                Ok(()) => {
+                    run.summary.items_done += 1;
+                    if let Some(p) = pair.src.parent() {
+                        run.rep.dir_changed(p.display());
+                    }
+                }
+                Err(e) => {
+                    run.fail(pair.src.display(), e);
+                    run.note(&pair.src, &pair.dst, true, None);
+                }
+            }
+            continue;
+        }
+        tops.push((pair.src.clone(), pair.dst.clone(), m));
+    }
+    let (state, summary) = execute(run, tops, control);
+    if state == JobState::Cancelled {
+        control.retry.cleanup(cleanup.to_vec());
+        return (state, summary);
+    }
+    let (changed, left) = super::retry::remove_empty_dirs(cleanup, Some(hub));
+    if !changed.is_empty() {
+        emit(JobEvent::DirsChanged { dirs: changed });
+    }
+    if summary.items_failed > 0 {
+        control.retry.cleanup(left);
+    }
+    (state, summary)
+}
+
+/// Creates the missing folders from `root` down to `dir` (design 048); a file or
+/// link on the way is an error.
+fn ensure_dir_below(hub: &Hub, root: &Loc, dir: &Loc) -> Result<(), FsError> {
+    if let (Loc::Local(r), Loc::Local(d)) = (root, dir) {
+        return super::copy::ensure_dir_below(r, d);
+    }
+    if !dir.starts_with(root) {
+        return Err(FsError::at(
+            FsErrorCode::InvalidPath,
+            "The target lies outside the target folder",
+            &dir.display(),
+        ));
+    }
+    let mut chain = Vec::new();
+    let mut cur = Some(dir.clone());
+    while let Some(c) = cur {
+        if c == *root {
+            break;
+        }
+        cur = c.parent();
+        chain.push(c);
+    }
+    for d in chain.into_iter().rev() {
+        match stat(hub, &d)? {
+            Some(m) if m.kind == EntryKind::Directory => {}
+            Some(_) => {
+                return Err(FsError::at(
+                    FsErrorCode::NotADirectory,
+                    "A file or link with this name exists",
+                    &d.display(),
+                ));
+            }
+            None => match &d {
+                Loc::Local(p) => fs::create_dir(p).map_err(|e| FsError::from_io(&e, p))?,
+                Loc::Remote(r) => hub.with(r.profile(), |c| c.mkdir(r.server_path()))?,
+            },
+        }
+    }
+    Ok(())
+}
+
+/// Moves whole entries on one server, walks the rest and copies (moves) it item by item.
+fn execute(
+    mut run: Run<'_>,
+    tops: Vec<(Loc, Loc, Meta)>,
+    control: &Control,
+) -> (JobState, Summary) {
+    let hub: &Hub = run.hub;
+    let id: &str = run.id;
+    let moving = run.moving;
     // moving on one server: rename whole entries whose target name is free
     let mut rest = Vec::new();
     for (src, dst, m) in tops {
@@ -731,12 +969,14 @@ pub fn run(
                 }
                 Err(e) => {
                     run.fail(src.display(), e);
+                    run.note(&src, &dst, false, None);
                     continue;
                 }
             }
         }
         rest.push((src, dst, m));
     }
+    run.tops = rest.iter().map(|(s, _, _)| s.clone()).collect();
     let mut plan = Plan::default();
     if !walk(hub, &rest, &mut plan, control) {
         run.rep.flush_dirs();
@@ -745,6 +985,9 @@ pub fn run(
     run.summary.items_failed += plan.more_errors;
     for e in std::mem::take(&mut plan.errors) {
         run.fail(e.path, e.error);
+    }
+    for (s, d, top) in std::mem::take(&mut plan.retry) {
+        run.note(&s, &d, false, Some(top));
     }
     run.rep.progress.bytes_total = plan.bytes;
     run.rep.progress.items_total = plan.items.len() as u64 + run.summary.items_done;
@@ -799,6 +1042,7 @@ pub fn run(
                             &item.dst.display(),
                         ),
                     );
+                    run.note(&item.src, &item.dst, false, Some(item.top));
                     failed_dirs.push(item.dst.clone());
                     failed_tops[item.top] = true;
                 }
@@ -809,12 +1053,14 @@ pub fn run(
                     }
                     Err(e) => {
                         run.fail(item.dst.display(), e);
+                        run.note(&item.src, &item.dst, false, Some(item.top));
                         failed_dirs.push(item.dst.clone());
                         failed_tops[item.top] = true;
                     }
                 },
                 Err(e) => {
                     run.fail(item.dst.display(), e);
+                    run.note(&item.src, &item.dst, false, Some(item.top));
                     failed_dirs.push(item.dst.clone());
                     failed_tops[item.top] = true;
                 }
@@ -878,6 +1124,7 @@ pub fn run(
                             Ok(d) => dst = d,
                             Err(e) => {
                                 run.fail(item.dst.display(), e);
+                                run.note(&item.src, &item.dst, false, Some(item.top));
                                 run.rep.progress.items_done += 1;
                                 run.rep.progress.bytes_done += size;
                                 failed_tops[item.top] = true;
@@ -894,6 +1141,7 @@ pub fn run(
             }
             Err(e) => {
                 run.fail(dst.display(), e);
+                run.note(&item.src, &dst, false, Some(item.top));
                 run.rep.progress.items_done += 1;
                 run.rep.progress.bytes_done += size;
                 failed_tops[item.top] = true;
@@ -911,6 +1159,7 @@ pub fn run(
             if moving {
                 if let Err(e) = run.remove_file(&item.src) {
                     run.fail(item.src.display(), e);
+                    run.note_seen(&item.src, &dst, true, Some(item.top), Some(&item.meta));
                     failed_tops[item.top] = true;
                 } else {
                     run.summary.items_done += 1;
@@ -919,6 +1168,7 @@ pub fn run(
                 run.summary.items_done += 1;
             }
         } else {
+            run.note_seen(&item.src, &dst, false, Some(item.top), Some(&item.meta));
             failed_tops[item.top] = true;
         }
         run.rep.progress.items_done += 1;

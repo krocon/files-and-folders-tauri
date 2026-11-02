@@ -21,6 +21,8 @@ pub struct Control {
     cancelled: AtomicBool,
     steer: Mutex<Steer>,
     wake: Condvar,
+    /// What failed in a way a retry can pick up again (design 048) – filled by the runners.
+    pub retry: super::retry::Notes,
 }
 
 impl Control {

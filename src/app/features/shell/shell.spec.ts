@@ -188,6 +188,7 @@ describe('shell bar (design 021)', () => {
         summary: null,
         pauseReason: null,
         undoAvailable: false,
+        retryAvailable: false,
       },
     });
   }

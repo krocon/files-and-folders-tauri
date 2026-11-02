@@ -27,6 +27,11 @@ export class FakeJobsApi extends JobsApi {
     [];
   quitCalls = 0;
   clearCalls = 0;
+  /** Ids `retry` was called with; the retry starts a job with `retrySpec[id]` (or the old spec). */
+  readonly retried: string[] = [];
+  retrySpec: Record<string, JobSpec> = {};
+  /** `retry` rejects with this (e.g. `retry_unavailable`). */
+  refuseRetry: unknown = null;
   refuse: unknown = null;
   autoFinishDirSize = false;
   /** Runs after `added`, before `start` resolves (events that overtake the id). */
@@ -110,6 +115,17 @@ export class FakeJobsApi extends JobsApi {
     return Promise.resolve();
   }
 
+  async retry(id: string): Promise<string> {
+    this.retried.push(id);
+    if (this.refuseRetry) {
+      throw this.refuseRetry;
+    }
+    const spec = this.retrySpec[id] ?? this.started.find((s) => s.id === id)?.spec;
+    const newId = await this.start(spec ?? { kind: 'simulate', items: 0, itemMs: 0 });
+    this.emit({ type: 'retryAvailable', id, available: false });
+    return newId;
+  }
+
   cancelAllAndQuit(): Promise<void> {
     this.quitCalls++;
     return Promise.resolve();
@@ -126,6 +142,7 @@ export function job(id: string, spec: JobSpec, patch: Partial<JobInfo> = {}): Jo
     summary: null,
     pauseReason: null,
     undoAvailable: false,
+    retryAvailable: false,
     ...patch,
   };
 }

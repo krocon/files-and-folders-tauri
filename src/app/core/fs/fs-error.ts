@@ -58,6 +58,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'duplicate_changed',
   'invalid_path',
   'no_home_directory',
+  'timed_out',
+  'retry_unavailable',
   'io',
   'no_backend',
   'unknown',

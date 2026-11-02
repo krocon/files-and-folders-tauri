@@ -115,6 +115,10 @@ pub enum FsErrorCode {
     UnsupportedImage,
     /// Duplicates (design 042 E5): the kept file or a copy changed since the search – left alone.
     DuplicateChanged,
+    /// A read or write did not finish in time (network drive, SMB: `os error 60`, design 048 E4).
+    TimedOut,
+    /// The task cannot be retried (any more): retried already, removed, or nothing to retry (design 048).
+    RetryUnavailable,
     Io,
 }
 
@@ -152,6 +156,7 @@ impl FsError {
             io::ErrorKind::NotADirectory => FsErrorCode::NotADirectory,
             io::ErrorKind::StorageFull | io::ErrorKind::QuotaExceeded => FsErrorCode::DiskFull,
             io::ErrorKind::AlreadyExists => FsErrorCode::AlreadyExists,
+            io::ErrorKind::TimedOut => FsErrorCode::TimedOut,
             _ => FsErrorCode::Io,
         };
         Self::new(code, err.to_string(), Some(path))
@@ -177,6 +182,15 @@ mod tests {
         assert_eq!(e.code, FsErrorCode::NotFound);
         let e = FsError::from_io(&io::Error::from(io::ErrorKind::PermissionDenied), p);
         assert_eq!(e.code, FsErrorCode::PermissionDenied);
+        // SMB/network timeouts (`os error 60` on macOS) are named as such (design 048 E4)
+        let e = FsError::from_io(&io::Error::from(io::ErrorKind::TimedOut), p);
+        assert_eq!(e.code, FsErrorCode::TimedOut);
+        assert_eq!(serde_json::to_value(&e).unwrap()["code"], "timed_out");
+        #[cfg(target_os = "macos")]
+        assert_eq!(
+            FsError::from_io(&io::Error::from_raw_os_error(60), p).code,
+            FsErrorCode::TimedOut
+        );
         let e = FsError::from_io(&io::Error::other("boom"), p);
         assert_eq!(e.code, FsErrorCode::Io);
         assert_eq!(e.path.as_deref(), Some("x"));

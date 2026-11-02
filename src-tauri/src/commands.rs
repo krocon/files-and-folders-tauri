@@ -809,6 +809,12 @@ pub fn undo_rename<R: Runtime>(
         .undo_rename(job_id.as_deref())
 }
 
+/// Retries a failed task or the failed part of one (design 048); returns the new task's id.
+#[tauri::command(async)]
+pub fn retry_job<R: Runtime>(app: AppHandle<R>, job_id: String) -> Result<String, FsError> {
+    app.state::<JobsState>().manager.retry_job(&job_id)
+}
+
 /// Whether the presets file may be written (false after a broken file could not be moved aside).
 #[derive(Default)]
 pub struct PresetsState {

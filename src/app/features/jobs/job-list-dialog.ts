@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { JobsStore } from '../../core/jobs/jobs.store';
-import { describeFsError } from '../../core/fs/fs-error';
+import { describeFsError, errorText, toFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { MultiRenameStore } from '../multirename/multirename.store';
@@ -46,7 +46,24 @@ const SHOWN_ERRORS = 50;
             <p class="error" role="alert">{{ describe(reason) }} {{ t.diskFullHint }}</p>
           }
           @if (job.summary; as s) {
-            <p class="summary">{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</p>
+            <div class="summary-row">
+              <p class="summary">{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</p>
+              @if (job.retryAvailable) {
+                <!-- design 048: right where the errors are read -->
+                <button
+                  type="button"
+                  class="btn primary retry"
+                  [attr.aria-label]="
+                    job.state === 'failed'
+                      ? t.retryLabel(detailTitle())
+                      : t.retryFailedLabel(detailTitle())
+                  "
+                  (click)="retry(job.id)"
+                >
+                  {{ job.state === 'failed' ? t.retry : t.retryFailed }}
+                </button>
+              }
+            </div>
             @if (s.error; as e) {
               <p class="error">{{ describe(e) }} {{ e.message }}</p>
             }
@@ -105,15 +122,16 @@ export class JobListDialog {
   protected readonly detail = computed(() => {
     const all = this.jobs.visible();
     const id = this.selected();
+    const problem = (j: (typeof all)[number]): boolean =>
+      j.pauseReason !== null ||
+      j.state === 'failed' ||
+      j.state === 'doneWithErrors' ||
+      !!j.summary?.error;
     return (
       all.find((j) => j.id === id) ??
-      all.find(
-        (j) =>
-          j.pauseReason !== null ||
-          j.state === 'failed' ||
-          j.state === 'doneWithErrors' ||
-          !!j.summary?.error,
-      ) ??
+      // design 048: a problem that can still be retried first
+      all.find((j) => problem(j) && j.retryAvailable) ??
+      all.find(problem) ??
       null
     );
   });
@@ -162,9 +180,21 @@ export class JobListDialog {
       case 'undo':
         void this.mr.undo(id);
         break;
+      case 'retry':
+        void this.retry(id);
+        break;
       case 'details':
         this.selected.set(id);
         break;
+    }
+  }
+
+  /** "Retry" (design 048): the new task becomes the chosen one; the old row stays (E1). */
+  protected async retry(id: string): Promise<void> {
+    try {
+      this.selected.set(await this.jobs.retry(id));
+    } catch (err) {
+      this.jobs.report(this.t.retryRefused(errorText(toFsError(err))));
     }
   }
 

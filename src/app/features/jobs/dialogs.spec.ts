@@ -317,6 +317,94 @@ describe('job dialogs', () => {
     expect(renameApi.undos).toEqual([id]);
   });
 
+  /** A copy that ended with one failed file (design 048). */
+  async function withErrors(state: 'doneWithErrors' | 'failed' = 'doneWithErrors') {
+    const id = await store.start(copy);
+    api.emit({
+      type: 'finished',
+      id,
+      state,
+      summary: {
+        itemsDone: state === 'failed' ? 0 : 1,
+        itemsSkipped: 0,
+        itemsFailed: state === 'failed' ? 0 : 1,
+        bytesDone: 0,
+        errors:
+          state === 'failed'
+            ? []
+            : [
+                {
+                  path: '/a/x.txt',
+                  error: { code: 'timed_out', message: 'os error 60', path: '/a/x.txt' },
+                },
+              ],
+        error: state === 'failed' ? { code: 'not_found', message: 'gone', path: '/b' } : null,
+        dirSize: null,
+      },
+    });
+    api.emit({ type: 'retryAvailable', id, available: true });
+    return id;
+  }
+
+  it('job list: a task with errors offers Retry in the row and below (design 048)', async () => {
+    const id = await withErrors();
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const table = tableOf(fixture);
+    const acts = () => table.rows().find((r) => r.id === id)!.buttons;
+    expect(acts().map((b) => [b.act, b.slot, b.look])).toEqual([
+      ['retry', 'retry', 'primary'],
+      ['details', 'details', 'normal'],
+    ]);
+    expect(acts()[0].ariaLabel).toBe('Retry: Copy /a/x.txt → /b');
+    // the timeout is named as such, not as an unreadable folder (E4)
+    expect(el.querySelector('.errors li')?.textContent).toContain('timed out');
+    const below = el.querySelector<HTMLButtonElement>('.detail button.retry')!;
+    expect(below.textContent?.trim()).toBe('Retry failed');
+    below.click();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    expect(api.retried).toEqual([id]);
+    const newId = api.started[1].id;
+    // the old row stays without Retry; the new task is the chosen one (E1)
+    expect(acts().map((b) => b.act)).toEqual(['details']);
+    expect(table.selectedId()).toBe(newId);
+  });
+
+  it('job list: Retry in the row retries a failed task as a whole', async () => {
+    const id = await withErrors('failed');
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.detail button.retry')?.textContent?.trim()).toBe('Retry');
+    tableOf(fixture).act.emit({ id, act: 'retry' });
+    await new Promise((r) => setTimeout(r));
+    expect(api.retried).toEqual([id]);
+    expect(api.started[1].spec).toEqual(copy);
+  });
+
+  it('job list: a refused retry is reported', async () => {
+    const id = await withErrors();
+    api.refuseRetry = { code: 'retry_unavailable', message: 'no', path: null };
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    tableOf(fixture).act.emit({ id, act: 'retry' });
+    await new Promise((r) => setTimeout(r));
+    expect(store.messages()).toEqual([
+      'The task could not be retried: This task cannot be retried (any more). (no)',
+    ]);
+  });
+
+  it('job list: the details show a problem that can still be retried first', async () => {
+    const old = await withErrors();
+    api.emit({ type: 'retryAvailable', id: old, available: false });
+    const fresh = await withErrors();
+    const fixture = TestBed.createComponent(JobListDialog);
+    fixture.detectChanges();
+    expect(tableOf(fixture).selectedId()).toBe(fresh);
+  });
+
   it('job list: the dialog fills the window, a click on a row shows its details', async () => {
     const a = await store.start(copy);
     const b = await store.start({ kind: 'rename', items: [{ path: '/a/x', newName: 'y' }] });

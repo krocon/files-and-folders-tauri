@@ -48,7 +48,8 @@
   Live-Suche, Abfragesprache, Aktionen am Treffer, Command `palette_query`) und Prompt 045 (Serien nach Staffeln
   gruppieren: Command `collect_files`, Job `group`, Aufräumen über `CleanFoldersStore.openPrepared`) und Prompt 046
   (Bedingt markieren „Select if…“: reine Engine `select-if-engine.ts` + Fallkatalog, `SelectIfStore`, Dialog,
-  `selectIf.templates`, `OPEN_SELECT_IF_DLG` `Mod+Alt+S`) und Prompt 061 (Login-PATH der Shell-Leiste: Marker, stderr null, Grund, `shell.loginPath` als Auswahl, Design 021 E6b) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
+  `selectIf.templates`, `OPEN_SELECT_IF_DLG` `Mod+Alt+S`) und Prompt 061 (Login-PATH der Shell-Leiste: Marker, stderr null, Grund, `shell.loginPath` als Auswahl, Design 021 E6b) und Prompt 048 (Fehlerhafte Tasks wiederholen: `jobs/retry.rs`,
+  Command `retry_job`, Retry-Notizen in `Control.retry`, Fehlercode `timed_out`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
@@ -210,7 +211,8 @@ src-tauri/                   Rust (Tauri 2)
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
-  src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort),
+  src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort,
+                             Retry-Notizen), retry (048: Retry-Pläne, exakte Copy/Move-Paare, Aufräumen geleerter Ordner),
                              copy (Kopieren + Verschieben: Planung, Temp + Umbenennen, Konflikte), delete
                              (Papierkorb/endgültig), rename (Multi-Rename: Prüfung, Ketten/Zyklen, Undo-Paare),
                              group (Gruppenordner + Copy/Move-Paare), clean (Aufräumen, prüft jeden Eintrag neu),

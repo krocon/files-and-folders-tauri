@@ -20,6 +20,11 @@ export abstract class JobsApi {
     applyToAll: boolean,
   ): Promise<void>;
   abstract clearFinished(): Promise<void>;
+  /**
+   * Retries a failed task – or only what failed of one that ended with errors
+   * (design 048). Resolves with the new task's id; `retry_unavailable` otherwise.
+   */
+  abstract retry(id: string): Promise<string>;
   /** The user confirmed quitting while jobs run. */
   abstract cancelAllAndQuit(): Promise<void>;
 }
@@ -66,6 +71,10 @@ export class TauriJobsApi extends JobsApi {
 
   clearFinished(): Promise<void> {
     return call<void>('clear_finished_jobs', {});
+  }
+
+  retry(id: string): Promise<string> {
+    return call<string>('retry_job', { jobId: id });
   }
 
   cancelAllAndQuit(): Promise<void> {

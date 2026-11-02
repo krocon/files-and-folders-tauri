@@ -338,6 +338,8 @@ export interface JobInfo {
   readonly pauseReason: FsError | null;
   /** A finished rename job that can still be undone. */
   readonly undoAvailable: boolean;
+  /** A failed task (or one with errors) that can still be retried (design 048). */
+  readonly retryAvailable: boolean;
 }
 
 export type JobEvent =
@@ -355,6 +357,7 @@ export type JobEvent =
     }
   | { readonly type: 'removed'; readonly ids: readonly string[] }
   | { readonly type: 'undoAvailable'; readonly id: string; readonly available: boolean }
+  | { readonly type: 'retryAvailable'; readonly id: string; readonly available: boolean }
   | {
       readonly type: 'searchHits';
       readonly id: string;
