@@ -10,6 +10,7 @@ import {
 import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { insertAt, PreviewFilter } from './multirename-logic';
 import { MR_TEXTS } from './multirename-texts';
 import { MultiRenameStore } from './multirename.store';
@@ -45,7 +46,7 @@ const CATEGORIES = [...new Set(MACROS.map((m) => m.category))];
  */
 @Component({
   selector: 'app-multi-rename-dialog',
-  imports: [Modal, PreviewTable],
+  imports: [Modal, DialogKey, PreviewTable],
   templateUrl: './multirename-dialog.html',
   styleUrl: './multirename-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

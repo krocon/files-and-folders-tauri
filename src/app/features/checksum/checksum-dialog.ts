@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { CHECKSUM_ALGOS, ChecksumAlgo } from '../../core/checksum/checksum.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { CS_TEXTS } from './checksum-texts';
 import { ChecksumMode, ChecksumStore } from './checksum.store';
 
@@ -14,7 +15,7 @@ const ALGO_LABELS: Readonly<Record<ChecksumAlgo, string>> = {
 /** Create checksums (OPEN_CHECKSUM_CREATE_DLG, design 039): algorithm, one list or one file each. */
 @Component({
   selector: 'app-checksum-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (cs.request(); as req) {
       <app-modal [heading]="heading()" width="min(40rem, 92vw)" (closed)="cs.close()">
@@ -71,8 +72,15 @@ const ALGO_LABELS: Readonly<Record<ChecksumAlgo, string>> = {
           <div class="foot">
             <p class="error" role="alert">{{ cs.runError() ?? '' }}</p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="cs.close()">{{ t.cancel }}</button>
-              <button type="submit" class="btn primary" [disabled]="!cs.canRun()">
+              <button appDialogKey="cancel" type="button" class="btn" (click)="cs.close()">
+                {{ t.cancel }}
+              </button>
+              <button
+                appDialogKey="primary"
+                type="submit"
+                class="btn primary"
+                [disabled]="!cs.canRun()"
+              >
                 {{ t.create }}
               </button>
             </div>

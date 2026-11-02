@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { CS_TEXTS } from './checksum-texts';
 import { ChecksumStore } from './checksum.store';
@@ -15,7 +16,7 @@ interface ProblemRow {
 /** Result of verifying a checksum file (CHECKSUM_VERIFY, design 039). */
 @Component({
   selector: 'app-checksum-result-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (cs.result(); as r) {
       <app-modal
@@ -51,11 +52,22 @@ interface ProblemRow {
           <div class="foot">
             <div class="buttons">
               @if (changed() > 0) {
-                <button type="button" class="btn" (click)="cs.markChanged()">
+                <button
+                  appDialogKey="secondary:R"
+                  type="button"
+                  class="btn"
+                  (click)="cs.markChanged()"
+                >
                   {{ t.markChanged }}
                 </button>
               }
-              <button type="button" class="btn primary" data-autofocus (click)="cs.closeResult()">
+              <button
+                appDialogKey="primary"
+                type="button"
+                class="btn primary"
+                data-autofocus
+                (click)="cs.closeResult()"
+              >
                 {{ t.close }}
               </button>
             </div>

@@ -219,6 +219,17 @@
       ]
     },
     {
+      "name": "delete-dialog-keys",
+      "steps": [
+        {
+          "action": "OPEN_DELETE_DLG"
+        },
+        {
+          "hold": "Mod"
+        }
+      ]
+    },
+    {
       "name": "mkdir-dialog",
       "steps": [
         {

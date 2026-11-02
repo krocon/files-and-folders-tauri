@@ -15,6 +15,7 @@ import {
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { moveSlot, removeSlot } from './button-config-logic';
 import { CONFIG_TEXTS, fileTypeLabel } from './config-texts';
 import { FileTypesStore } from './file-types.store';
@@ -42,7 +43,7 @@ function toDraft(t: FileType): Draft {
  */
 @Component({
   selector: 'app-file-types-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.typesTitle" width="48rem" (closed)="dialogs.close()">
       <div class="tool">
@@ -165,8 +166,16 @@ function toDraft(t: FileType): Draft {
         <div class="foot">
           <button type="button" class="btn" (click)="resetDefaults()">{{ t.resetDefaults }}</button>
           <div class="buttons">
-            <button type="button" class="btn" (click)="dialogs.close()">{{ t.cancel }}</button>
-            <button type="button" class="btn primary" [disabled]="busy()" (click)="save()">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+              {{ t.cancel }}
+            </button>
+            <button
+              appDialogKey="primary"
+              type="button"
+              class="btn primary"
+              [disabled]="busy()"
+              (click)="save()"
+            >
               {{ t.save }}
             </button>
           </div>

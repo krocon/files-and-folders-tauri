@@ -1,11 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ConfirmService } from './confirm.service';
 import { Modal } from './modal';
+import { DialogKey, DialogKeySpec, letterFor } from './dialog-key';
 import { ACTION_TEXTS } from '../../core/actions/action-texts';
 
 @Component({
   selector: 'app-confirm-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (confirm.request(); as r) {
       <app-modal [heading]="r.title" width="28rem" (closed)="confirm.answer(false)">
@@ -15,17 +16,34 @@ import { ACTION_TEXTS } from '../../core/actions/action-texts';
         }
         <div class="buttons">
           @if (r.danger !== false) {
-            <button type="button" class="btn" data-autofocus (click)="confirm.answer(false)">
+            <button
+              appDialogKey="cancel"
+              type="button"
+              class="btn"
+              data-autofocus
+              (click)="confirm.answer(false)"
+            >
               {{ t.cancel }}
             </button>
-            <button type="button" class="btn danger" (click)="confirm.answer(true)">
+            <button
+              [appDialogKey]="dangerKey()"
+              type="button"
+              class="btn danger"
+              (click)="confirm.answer(true)"
+            >
               {{ r.confirmLabel }}
             </button>
           } @else {
-            <button type="button" class="btn" (click)="confirm.answer(false)">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="confirm.answer(false)">
               {{ t.cancel }}
             </button>
-            <button type="button" class="btn primary" data-autofocus (click)="confirm.answer(true)">
+            <button
+              appDialogKey="primary"
+              type="button"
+              class="btn primary"
+              data-autofocus
+              (click)="confirm.answer(true)"
+            >
               {{ r.confirmLabel }}
             </button>
           }
@@ -65,4 +83,12 @@ import { ACTION_TEXTS } from '../../core/actions/action-texts';
 export class ConfirmDialog {
   protected readonly t = ACTION_TEXTS;
   protected readonly confirm = inject(ConfirmService);
+  /**
+   * A dangerous confirmation is never Enter (design 057 E2): Mod+Shift+<first letter
+   * of its label>, e.g. ⇧⌘D for "Delete".
+   */
+  protected readonly dangerKey = computed<DialogKeySpec>(() => {
+    const letter = letterFor(this.confirm.request()?.confirmLabel ?? '');
+    return letter ? `destructive:${letter}` : null;
+  });
 }

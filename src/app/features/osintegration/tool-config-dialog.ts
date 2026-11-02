@@ -3,6 +3,7 @@ import { ActionService } from '../../core/actions/action.service';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { OS_TEXTS } from './os-texts';
 import { OsStore, TOOL_PREFIX } from './os.store';
 
@@ -12,7 +13,7 @@ import { OsStore, TOOL_PREFIX } from './os.store';
  */
 @Component({
   selector: 'app-tool-config-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.configTitle" width="40rem" (closed)="dialogs.close()">
       <p class="intro">{{ t.configIntro }}</p>
@@ -66,9 +67,19 @@ import { OsStore, TOOL_PREFIX } from './os.store';
       }
       <p class="sr-only" aria-live="polite">{{ os.status() }}</p>
       <div class="buttons">
-        <button type="button" class="btn" (click)="openFile()">{{ t.openFile }}</button>
-        <button type="button" class="btn" (click)="reload()">{{ t.reload }}</button>
-        <button type="button" class="btn primary" data-autofocus (click)="dialogs.close()">
+        <button appDialogKey="secondary:O" type="button" class="btn" (click)="openFile()">
+          {{ t.openFile }}
+        </button>
+        <button appDialogKey="secondary:R" type="button" class="btn" (click)="reload()">
+          {{ t.reload }}
+        </button>
+        <button
+          appDialogKey="primary"
+          type="button"
+          class="btn primary"
+          data-autofocus
+          (click)="dialogs.close()"
+        >
           {{ t.close }}
         </button>
       </div>

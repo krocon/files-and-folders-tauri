@@ -6,6 +6,7 @@ import { isRemotePath } from '../../core/remote/remote-path';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey, DialogKeySpec } from '../../shared/dialog/dialog-key';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
@@ -25,7 +26,7 @@ const SHOWN = 5;
  */
 @Component({
   selector: 'app-delete-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (req(); as r) {
       <app-modal
@@ -129,13 +130,14 @@ const SHOWN = 5;
             @if (!permanent()) {
               <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
               <div class="help" [style.visibility]="armed() ? 'hidden' : null">
-                {{ t.trashHint }}
+                {{ t.trashHint(r.entries.length) }}
               </div>
               <div class="spacer"></div>
             }
             <button
               type="button"
               class="btn"
+              appDialogKey="cancel"
               [attr.data-autofocus]="cancelFirst() ? '' : null"
               (click)="ops.close()"
             >
@@ -146,6 +148,7 @@ const SHOWN = 5;
                 type="button"
                 class="btn danger"
                 data-testid="delete-permanent"
+                appDialogKey="destructive:D"
                 [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
                 (mouseenter)="armed.set(true)"
                 (mouseleave)="armed.set(false)"
@@ -163,6 +166,7 @@ const SHOWN = 5;
               [class.danger]="permanent()"
               [attr.data-autofocus]="cancelFirst() ? null : ''"
               data-testid="delete-confirm"
+              [appDialogKey]="confirmKey()"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
               (click)="confirm()"
             >
@@ -195,6 +199,13 @@ export class DeleteDialog {
       this.permanent() ||
       (this.req()?.dangers.length ?? 0) > 0 ||
       (this.req()?.wholeGroups ?? 0) > 0,
+  );
+  /**
+   * Keys (design 057): Enter = "Move to trash"; never Enter when `cancelFirst` –
+   * then the button needs Mod+Shift+D (permanent) or Mod+Shift+T (trash, dangerous path).
+   */
+  protected readonly confirmKey = computed<DialogKeySpec>(() =>
+    this.permanent() ? 'destructive:D' : this.cancelFirst() ? 'destructive:T' : 'primary',
   );
   protected readonly dup = DUP_TEXTS;
   protected readonly usage = USAGE_TEXTS;

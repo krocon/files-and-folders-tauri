@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { NameMode } from '../../core/search/search.models';
 import {
   DateMode,
@@ -21,7 +22,7 @@ const ERR = 'fnf-find-error';
 /** Find dialog (OPEN_FIND_DLG, Alt+F7, design 009 E5). Enter = find, Esc = cancel. */
 @Component({
   selector: 'app-find-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (find.request(); as req) {
       <app-modal [heading]="t.title" width="min(58rem, 94vw)" (closed)="find.close()">
@@ -358,8 +359,15 @@ const ERR = 'fnf-find-error';
                   {{ t.saveTemplate }}
                 </button>
               }
-              <button type="button" class="btn" (click)="find.close()">{{ t.cancel }}</button>
-              <button type="submit" class="btn primary" [disabled]="find.busy()">
+              <button appDialogKey="cancel" type="button" class="btn" (click)="find.close()">
+                {{ t.cancel }}
+              </button>
+              <button
+                appDialogKey="primary"
+                type="submit"
+                class="btn primary"
+                [disabled]="find.busy()"
+              >
                 {{ t.find }}
               </button>
             </div>

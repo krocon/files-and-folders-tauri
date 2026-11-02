@@ -11,6 +11,7 @@ import { ActionService } from '../../core/actions/action.service';
 import { strokeFromEvent, strokeToString } from '../../core/actions/shortcut';
 import { ENCODINGS, EncodingId } from '../../core/preview/preview.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { formatSize } from '../../shared/format';
 import { PreviewContent } from './preview-content';
 import { previewNotes } from './preview-notes';
@@ -23,7 +24,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
 /** The viewer (F3, design 010 E1/E8) as a large modal over the window. */
 @Component({
   selector: 'app-viewer-dialog',
-  imports: [Modal, PreviewContent],
+  imports: [Modal, DialogKey, PreviewContent],
   template: `
     @if (v.entry(); as entry) {
       <app-modal
@@ -159,12 +160,16 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 <i class="fa fa-arrow-down" aria-hidden="true"></i>
               </button>
               <span class="spacer"></span>
-              <button type="button" class="btn" (click)="v.close()">{{ t.close }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="v.close()">
+                {{ t.close }}
+              </button>
             </div>
           } @else {
             <div class="find">
               <span class="spacer"></span>
-              <button type="button" class="btn" (click)="v.close()">{{ t.close }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="v.close()">
+                {{ t.close }}
+              </button>
             </div>
           }
         </div>

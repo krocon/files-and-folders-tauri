@@ -52,7 +52,7 @@ once, find duplicates, look into archives and servers – without reaching for t
 19. [Colour schemes](#colour-schemes)
 20. [And more](#and-more)
 
-Shortcuts are written *Windows/Linux · macOS*. All of them can be changed.
+Shortcuts are written _Windows/Linux · macOS_. All of them can be changed.
 
 ## Two panels, tabs everywhere
 
@@ -67,12 +67,16 @@ macOS: `Tab` · `⌘⌥T` / `⌘⌥W` · `⌘U` · `⌘⌥O`
 ## Keyboard first
 
 **Every function is an action with a name and a shortcut – type a few letters, press Enter.**
-The *Command Palette* finds any action by name and shows its shortcut, so you learn the keys on the way. The
-*Actions* menu lists all of them in groups. The classic keys are where you expect them: `F3` view, `F5` copy,
+The _Command Palette_ finds any action by name and shows its shortcut, so you learn the keys on the way. The
+_Actions_ menu lists all of them in groups. The classic keys are where you expect them: `F3` view, `F5` copy,
 `F6` move, `F7` new folder, `F8` delete. The button bar at the bottom changes with `Shift`, `Alt` and `Ctrl`.
 
 `Ctrl+Shift+P` palette · `Ctrl+F12` actions menu · `Ctrl+Shift+K` shortcuts ·
 macOS: `⌘⇧P` · `⌃K ⌃M` · `⌘⇧K`
+
+Every dialog works the same way: `Enter` = the main button (also from a text field or checkbox), `Esc` = cancel,
+`Ctrl`/`⌘` + letter = the other buttons (hold the key to see the letters). Irreversible buttons such as _Delete
+permanently_ need `Ctrl+Shift`/`⌘⇧` + letter – `Enter` never deletes for good.
 
 ![The Command Palette: typing "co" lists Copy, Connect to server … with their shortcuts, then matching folders](docs/screenshots/readme/keyboard.png)
 
@@ -147,7 +151,7 @@ favourite searches as templates.
 ## Flat view
 
 **Every file below a folder in one list.**
-Like Total Commander's flat view: all files of all subfolders in the same tab, with a *Path* column. Sort them,
+Like Total Commander's flat view: all files of all subfolders in the same tab, with a _Path_ column. Sort them,
 mark them, copy or delete them, rename them – across all subfolders at once. The same key brings the normal view
 back.
 
@@ -159,8 +163,8 @@ back.
 
 **Free space without fear: rules decide which copy stays.**
 Find files with the same content (SHA-256, optionally byte by byte), **similar images** (another size, quality or
-format) or similar comics. Rules like *keep the oldest*, *the shortest path*, *the higher resolution* or *not the
-one named "copy"* mark the rest; hard links are recognised as the same file. Check each group with thumbnails, then
+format) or similar comics. Rules like _keep the oldest_, _the shortest path_, _the higher resolution_ or _not the
+one named "copy"_ mark the rest; hard links are recognised as the same file. Check each group with thumbnails, then
 delete to the trash, permanently or into a folder – every copy is compared again right before.
 
 `Alt+Shift+F7` · `Alt+↓` / `Alt+↑` next / previous group · macOS: `⌥⇧F7` · `⌥↓` / `⌥↑`
@@ -208,7 +212,7 @@ checked; plain FTP is marked as unencrypted.
 
 **Look into files without opening another program.**
 `F3` shows text (with search and encoding detection), hex and images. The quick view shows the file under the
-cursor in the other panel while you move through the list. *Properties* show times, permissions and owner.
+cursor in the other panel while you move through the list. _Properties_ show times, permissions and owner.
 
 `F3` view · `Ctrl+Q` quick view · `Alt+Enter` properties · macOS: `F3` · `⌃Q` · `⌘I`
 
@@ -221,15 +225,15 @@ Line numbers, changed, added and removed lines; ignore white space or case; whol
 `F7` jumps to the next one. Binary files are compared byte by byte – or hand both files to FileMerge, WinMerge or
 Meld.
 
-Mark two files – in one panel, or one on each side – then *File ▸ Compare files…*
+Mark two files – in one panel, or one on each side – then _File ▸ Compare files…_
 
 ![Comparing tsconfig.json with tsconfig.spec.json: three differences, coloured](docs/screenshots/readme/compare.png)
 
 ## Compare and synchronise folders
 
 **Which files differ – and make both sides equal.**
-`Shift+F2` marks what is missing or newer on the other side (top level, like Total Commander). *File ▸ Synchronise
-folders…* (`Ctrl+Shift+S` / `⌘⇧S`) compares both folders with all subfolders – size and date with a tolerance (FAT/SMB:
+`Shift+F2` marks what is missing or newer on the other side (top level, like Total Commander). _File ▸ Synchronise
+folders…_ (`Ctrl+Shift+S` / `⌘⇧S`) compares both folders with all subfolders – size and date with a tolerance (FAT/SMB:
 2 s, optionally ignoring 1-hour offsets), optionally byte by byte – and suggests an action per row: copy →, copy ←,
 delete, nothing. Change them with the arrow keys, `Del` and `Space`, check the summary, start. Copies use temporary
 files, deletes go to the trash, and nothing that changed since the comparison is overwritten. Names in NFC and NFD
@@ -240,10 +244,10 @@ files, deletes go to the trash, and nothing that changed since the comparison is
 ## Group files and clean folders
 
 **Bring order into a messy folder in one step.**
-*Group files* moves or copies files into folders built from their names (the name before a running number, the
-first word, the text before a dash, the first letters) – with a preview. *Clean folders* removes empty folders and leftovers like `.DS_Store`, `Thumbs.db` or
-`*.bak` (to the trash by default). *Create folders* makes many folders from a template.
-*Group series by season* collects the episodes of one or more marked series folders – also from release
+_Group files_ moves or copies files into folders built from their names (the name before a running number, the
+first word, the text before a dash, the first letters) – with a preview. _Clean folders_ removes empty folders and leftovers like `.DS_Store`, `Thumbs.db` or
+`*.bak` (to the trash by default). _Create folders_ makes many folders from a template.
+_Group series by season_ collects the episodes of one or more marked series folders – also from release
 sub-folders – and copies (or moves) them into `S01`, `S02` … on the other side, in the series folder itself or in a
 folder named like the series, recognising `S01E01`, `1x01` and the like; samples and `.nfo` files are left out, and
 after a move the emptied release folders can go to the trash.
@@ -256,7 +260,7 @@ after a move the emptied release folders can go to the trash.
 
 **A command line below the panels – in the folder you are looking at.**
 Type a command, press `Enter`; the output streams in below, the history remembers your commands. `Ctrl+Shift+Enter`
-inserts the marked names, quoted for your shell. For interactive programs, *Open terminal here* starts your real
+inserts the marked names, quoted for your shell. For interactive programs, _Open terminal here_ starts your real
 terminal.
 
 `Shift+F11` · macOS: `⇧F11`
@@ -278,11 +282,11 @@ directly – never through a shell.
 
 **Norton blue? Paper white? Dark? Your choice – or your own.**
 Twenty-four built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
-Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black, True Light, Matrix, Solarized Light, Mystico – C64 and five Rainglow themes (Bold, Earthsong, Legacy, Heroku, Piggy). *Follow the system* switches between a
+Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black, True Light, Matrix, Solarized Light, Mystico – C64 and five Rainglow themes (Bold, Earthsong, Legacy, Heroku, Piggy). _Follow the system_ switches between a
 light and a dark one. The live editor checks every colour pair for WCAG contrast; schemes can be exported and
 imported.
 
-*Configuration ▸ Theme Editor…* · `Ctrl+Alt+Shift+T` next scheme · macOS: `⌘⌃⌥T`
+_Configuration ▸ Theme Editor…_ · `Ctrl+Alt+Shift+T` next scheme · macOS: `⌘⌃⌥T`
 
 ![The colour scheme editor with the Norton scheme selected and the contrast check passed](docs/screenshots/readme/themes.png)
 
@@ -302,10 +306,10 @@ Small things that save time every day:
   visited folders in one menu (`Alt+F1` / `Alt+F2`)
 - **History per tab** – back and forward with cursor and scroll position (`Alt+←` / `Alt+→` · `⌘[` / `⌘]`, also
   mouse buttons 4/5)
-- **Mark by pattern** – *Enhance / Reduce Selection* with wildcards or regex and one-click presets per file type
+- **Mark by pattern** – _Enhance / Reduce Selection_ with wildcards or regex and one-click presets per file type
   (images, movies, documents …; `Num+` / `Num−`)
-- **Select if…** – conditional selection by companion files in the same folder (e.g. *all movies and their cover
-  images when a cover exists*, movies without cover, RAW without JPEG), comparison with the other panel, size,
+- **Select if…** – conditional selection by companion files in the same folder (e.g. _all movies and their cover
+  images when a cover exists_, movies without cover, RAW without JPEG), comparison with the other panel, size,
   date/age and name rules, with live preview and saved templates (`Ctrl+Alt+S` · `⌘⌥S`)
 - **Clipboard** – names or full paths of the marked entries, also as JSON (`Ctrl+Alt+N` / `Ctrl+Alt+C` ·
   `⌘⌥N` / `⌘⌥C`)
@@ -319,15 +323,15 @@ Small things that save time every day:
 
 And the bigger helpers:
 
-- **Change attributes** – permissions (octal or per bit), Windows attributes, macOS *hidden*, times; for many
+- **Change attributes** – permissions (octal or per bit), Windows attributes, macOS _hidden_, times; for many
   entries at once and optionally for folder contents (`Ctrl+Shift+F2` · `⌘⇧F2`)
 - **Checksums** – create and verify SHA-256/SHA-512/SHA-1/MD5 lists (`sha256sum`-compatible)
 - **Drag & drop** between panels, from and to Finder/Explorer/your file manager; with `Ctrl+Shift` (`⌘⌥`)
   symbolic links
 - **Auto refresh** – changes by other programs appear in under a second
-- **External tools** and *Open terminal here* / *Show in Finder/Explorer* – started without a shell
+- **External tools** and _Open terminal here_ / _Show in Finder/Explorer_ – started without a shell
 - **Configurable** button bar, file types, shortcuts per OS; settings dialog with search, export and import
-- **Import from the previous version** (*files-and-folders-mr*): shortcuts, buttons, colour schemes, tools …
+- **Import from the previous version** (_files-and-folders-mr_): shortcuts, buttons, colour schemes, tools …
 - **English and German**, switchable at runtime
 - Responsive with **slow and network drives** (listing cache, nothing blocks the window)
 
@@ -338,55 +342,55 @@ The complete list with all details (in German) is in [docs/features.md](docs/fea
 **Version 1.0.0** is available on the [GitHub releases page](https://github.com/krocon/files-and-folders-tauri/releases); you can also build the app
 yourself (see [Development](#development)):
 
-| OS | Minimum | Package |
-| --- | --- | --- |
-| macOS | 12 Monterey (Apple Silicon and Intel) | `.dmg` (universal) |
-| Windows | 10 / 11 (x64) | `-setup.exe` (no admin needed) or `.msi` |
-| Linux | WebKitGTK 4.1 – Ubuntu 22.04+, Debian 12+, Fedora 36+ | `.deb`, `.rpm`, `.AppImage` |
+| OS      | Minimum                                               | Package                                  |
+| ------- | ----------------------------------------------------- | ---------------------------------------- |
+| macOS   | 12 Monterey (Apple Silicon and Intel)                 | `.dmg` (universal)                       |
+| Windows | 10 / 11 (x64)                                         | `-setup.exe` (no admin needed) or `.msi` |
+| Linux   | WebKitGTK 4.1 – Ubuntu 22.04+, Debian 12+, Fedora 36+ | `.deb`, `.rpm`, `.AppImage`              |
 
-The packages are **not signed yet**: on macOS right-click the app → *Open*; on Windows SmartScreen choose
-*More info* → *Run anyway*.
+The packages are **not signed yet**: on macOS right-click the app → _Open_; on Windows SmartScreen choose
+_More info_ → _Run anyway_.
 
 ## Keyboard shortcuts (selection)
 
 All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘⇧K`); the command palette
 (`Ctrl+Shift+P` / `⌘⇧P`) lists every action.
 
-| Action | Windows / Linux | macOS |
-| --- | --- | --- |
-| View | `F3` | `F3` |
-| Edit (tool `edit`) | `F4` | `F4` |
-| Copy / Move | `F5` / `F6` | `F5` / `F6` |
-| Create folder | `F7` | `F7` |
-| Delete (trash) / delete permanently | `F8` / `Shift+F8` | `F8`, `⌘⌫` / `⌘⌥⌫` |
-| Rename in list / dialog | `F2` / `Shift+F6` | `F2` / `⇧F6` |
-| Multi rename | `Ctrl+M` | `⌘F6` |
-| Command palette – actions, folders and files | `Ctrl+Shift+P` | `⌘⇧P` |
-| Actions menu ▴ / starter menu ▴ | `Alt+A` / `Alt+S` | `⌥A` / `⌥S` |
-| Find | `Alt+F7` | `⌥F7` |
-| Find folder (change dir) | `Alt+F10` | `⌥F10` |
-| Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S` | `⇧F2` / `⌘⇧S` |
-| Flat view (all files below) | `Ctrl+B` | `⌘B` |
-| Mark / unmark | `Space`, `Insert` | `Space` |
-| Select if… (conditional selection) | `Ctrl+Alt+S` | `⌘⌥S` |
-| Switch panel | `Tab` | `Tab` |
-| New tab / close tab | `Ctrl+T` / `Ctrl+W` | `⌘⌥T` / `⌘⌥W` |
-| Swap panels (with all tabs) | `Ctrl+U` (`Ctrl+Shift+U`) | `⌘U` (`⌘⇧U`) |
-| Target = source / open in other panel | `Ctrl+Alt+O` / `Ctrl+←`, `Ctrl+→` | `⌘⌥O` / `⌘⌥←`, `⌘⌥→` |
-| Move tab left / right | `Ctrl+Shift+PgUp` / `Ctrl+Shift+PgDn` | `⌃⇧PgUp` / `⌃⇧PgDn` |
-| Create link | `Ctrl+Shift+F5` | `⌘⇧F5` |
-| Go to path | `Ctrl+L` | `⌘L` |
-| Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
-| Quick view | `Ctrl+Q` | `⌃Q` |
-| Pack / unpack | `Alt+F5` / `Alt+F9` | `⌥F5` / `⌥F9` |
-| Group series by season | `Alt+Shift+G` | `⌥⇧G` |
-| Find duplicates / next, previous group | `Alt+Shift+F7` / `Alt+↓`, `Alt+↑` | `⌥⇧F7` / `⌥↓`, `⌥↑` |
-| Properties / change attributes | `Alt+Enter` / `Ctrl+Shift+F2` | `⌘I` / `⌘⇧F2` |
-| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
-| Connect to server | `Ctrl+K`, `Ctrl+N` | `⌘K`, `⌘N` |
-| Shell line | `Shift+F11` | `⇧F11` |
-| Full screen | `F11` | `⌃⌘F` (menu *Window*) |
-| Settings | `Ctrl+,` | `⌘,` |
+| Action                                       | Windows / Linux                       | macOS                 |
+| -------------------------------------------- | ------------------------------------- | --------------------- |
+| View                                         | `F3`                                  | `F3`                  |
+| Edit (tool `edit`)                           | `F4`                                  | `F4`                  |
+| Copy / Move                                  | `F5` / `F6`                           | `F5` / `F6`           |
+| Create folder                                | `F7`                                  | `F7`                  |
+| Delete (trash) / delete permanently          | `F8` / `Shift+F8`                     | `F8`, `⌘⌫` / `⌘⌥⌫`    |
+| Rename in list / dialog                      | `F2` / `Shift+F6`                     | `F2` / `⇧F6`          |
+| Multi rename                                 | `Ctrl+M`                              | `⌘F6`                 |
+| Command palette – actions, folders and files | `Ctrl+Shift+P`                        | `⌘⇧P`                 |
+| Actions menu ▴ / starter menu ▴              | `Alt+A` / `Alt+S`                     | `⌥A` / `⌥S`           |
+| Find                                         | `Alt+F7`                              | `⌥F7`                 |
+| Find folder (change dir)                     | `Alt+F10`                             | `⌥F10`                |
+| Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S`           | `⇧F2` / `⌘⇧S`         |
+| Flat view (all files below)                  | `Ctrl+B`                              | `⌘B`                  |
+| Mark / unmark                                | `Space`, `Insert`                     | `Space`               |
+| Select if… (conditional selection)           | `Ctrl+Alt+S`                          | `⌘⌥S`                 |
+| Switch panel                                 | `Tab`                                 | `Tab`                 |
+| New tab / close tab                          | `Ctrl+T` / `Ctrl+W`                   | `⌘⌥T` / `⌘⌥W`         |
+| Swap panels (with all tabs)                  | `Ctrl+U` (`Ctrl+Shift+U`)             | `⌘U` (`⌘⇧U`)          |
+| Target = source / open in other panel        | `Ctrl+Alt+O` / `Ctrl+←`, `Ctrl+→`     | `⌘⌥O` / `⌘⌥←`, `⌘⌥→`  |
+| Move tab left / right                        | `Ctrl+Shift+PgUp` / `Ctrl+Shift+PgDn` | `⌃⇧PgUp` / `⌃⇧PgDn`   |
+| Create link                                  | `Ctrl+Shift+F5`                       | `⌘⇧F5`                |
+| Go to path                                   | `Ctrl+L`                              | `⌘L`                  |
+| Toggle hidden files                          | `Ctrl+H`                              | `⌘⇧.`                 |
+| Quick view                                   | `Ctrl+Q`                              | `⌃Q`                  |
+| Pack / unpack                                | `Alt+F5` / `Alt+F9`                   | `⌥F5` / `⌥F9`         |
+| Group series by season                       | `Alt+Shift+G`                         | `⌥⇧G`                 |
+| Find duplicates / next, previous group       | `Alt+Shift+F7` / `Alt+↓`, `Alt+↑`     | `⌥⇧F7` / `⌥↓`, `⌥↑`   |
+| Properties / change attributes               | `Alt+Enter` / `Ctrl+Shift+F2`         | `⌘I` / `⌘⇧F2`         |
+| Open terminal here                           | `Ctrl+Shift+C`                        | `⌘⇧C`                 |
+| Connect to server                            | `Ctrl+K`, `Ctrl+N`                    | `⌘K`, `⌘N`            |
+| Shell line                                   | `Shift+F11`                           | `⇧F11`                |
+| Full screen                                  | `F11`                                 | `⌃⌘F` (menu _Window_) |
+| Settings                                     | `Ctrl+,`                              | `⌘,`                  |
 
 The full table is in [docs/features.md](docs/features.md#tastenkürzel-stand-prompt-002).
 
@@ -394,7 +398,7 @@ The full table is in [docs/features.md](docs/features.md#tastenkürzel-stand-pro
 
 Everything is stored as JSON in the app's config folder and can be edited from within the app:
 
-- **Colours** – *Colour schemes…* dialog with live preview; schemes can be exported as `<name>.theme.json` and
+- **Colours** – _Colour schemes…_ dialog with live preview; schemes can be exported as `<name>.theme.json` and
   imported again (the old `--fnf-*` format of the previous versions is understood as well).
 - **Shortcuts** – per OS (`macos`, `windows`, `linux`), overrides in `keymap.json`. An action can have several
   shortcuts, chords like `⌃K F6` are possible.
@@ -405,19 +409,19 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
-- **Starter menu** – menu *Start*, the *Start ▴* button next to *Actions ▴* or `Alt+S`: your own quick launch entries (programs, scripts, folders,
-  submenus), edited with *Change starter menu…* and kept in `starter.json`. Parameters as in Total Commander –
+- **Starter menu** – menu _Start_, the _Start ▴_ button next to _Actions ▴_ or `Alt+S`: your own quick launch entries (programs, scripts, folders,
+  submenus), edited with _Change starter menu…_ and kept in `starter.json`. Parameters as in Total Commander –
   `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the
   active/other side, `%S` all marked entries; every word is one argument, nothing runs through a shell. Each entry
   can have its own shortcut.
-- **Buttons** – *Button configuration…* (menu *Configuration*): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
+- **Buttons** – _Button configuration…_ (menu _Configuration_): per modifier set (none, `Shift`, `Ctrl`/`⌘`, `Alt`) the
   actions of the bottom bar; changed sets are kept in `buttons.json`.
-- **File types** – *File types…*: categories with extensions, icon and colour; they drive the file icons and the
-  presets of *Mark by pattern* (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
+- **File types** – _File types…_: categories with extensions, icon and colour; they drive the file icons and the
+  presets of _Mark by pattern_ (`filetypes.json`, the old `[{label, extensions}]` format is read as well).
 - **Settings** – `settings.json` (sizes, date format, row height, trash, start folder, language, own search
   templates …); the whole configuration can be exported and imported as one file.
-- **Coming from the previous version** – *Import from Files and Folders (old)…* (menu *Configuration*, *Settings ▸
-  Data*) reads the `assets` folder of *files-and-folders-mr* (the repository folder is enough), shows per area what
+- **Coming from the previous version** – _Import from Files and Folders (old)…_ (menu _Configuration_, _Settings ▸
+  Data_) reads the `assets` folder of _files-and-folders-mr_ (the repository folder is enough), shows per area what
   would be imported, what conflicts and what cannot be transferred, and keeps a `.bak` of every file it changes.
 
 ## Development
@@ -433,14 +437,14 @@ pnpm install
 pnpm tauri dev        # Angular dev server (port 1420) + desktop window
 ```
 
-| Task | Command |
-| --- | --- |
-| All checks (format, lint, tests, build, Rust) | `pnpm check` |
-| Frontend tests (Vitest) | `pnpm test` |
-| Rust tests / clippy | `pnpm rust:test` / `pnpm rust:lint` |
-| Release build (packages per OS) | `pnpm tauri build` |
+| Task                                              | Command                                                         |
+| ------------------------------------------------- | --------------------------------------------------------------- |
+| All checks (format, lint, tests, build, Rust)     | `pnpm check`                                                    |
+| Frontend tests (Vitest)                           | `pnpm test`                                                     |
+| Rust tests / clippy                               | `pnpm rust:test` / `pnpm rust:lint`                             |
+| Release build (packages per OS)                   | `pnpm tauri build`                                              |
 | Screenshots of every colour scheme × every dialog | `pnpm screenshots` ([docs/screenshots.md](docs/screenshots.md)) |
-| The pictures of this README | `pnpm screenshots:readme` |
+| The pictures of this README                       | `pnpm screenshots:readme`                                       |
 
 Architecture and rules: [docs/architecture.md](docs/architecture.md) and [CLAUDE.md](CLAUDE.md);
 release process: [docs/release.md](docs/release.md); what is done and what comes next:
@@ -460,11 +464,11 @@ FnF started in 2016 as my playground for web technologies: a file manager that r
 Node.js server doing the file work. In 2025 I rebuilt it with NestJS and Angular, and in 2026 it became a real
 desktop app – one small native program, no local web server, no browser tab.
 
-| Year | Project | Stack |
-| --- | --- | --- |
+| Year | Project                                                                | Stack                                               |
+| ---- | ---------------------------------------------------------------------- | --------------------------------------------------- |
 | 2016 | [`files-and-folders`](https://www.npmjs.com/package/files-and-folders) | Node.js, Socket.IO, AngularJS – runs in the browser |
-| 2025 | [files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) | NestJS, Angular 20 – runs in the browser |
-| 2026 | **files-and-folders-tauri** (this repo) | Tauri 2, Rust, Angular 22 – native desktop app |
+| 2025 | [files-and-folders-mr](https://github.com/krocon/files-and-folders-mr) | NestJS, Angular 20 – runs in the browser            |
+| 2026 | **files-and-folders-tauri** (this repo)                                | Tauri 2, Rust, Angular 22 – native desktop app      |
 
 ## Contributing
 

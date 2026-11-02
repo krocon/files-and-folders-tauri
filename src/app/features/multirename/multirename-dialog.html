@@ -296,8 +296,11 @@
           }
         </p>
         <div class="buttons">
-          <button type="button" class="btn" (click)="mr.close()">{{ t.cancel }}</button>
+          <button appDialogKey="cancel" type="button" class="btn" (click)="mr.close()">
+            {{ t.cancel }}
+          </button>
           <button
+            appDialogKey="primary"
             type="button"
             class="btn primary"
             [disabled]="!mr.canRun()"

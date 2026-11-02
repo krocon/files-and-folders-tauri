@@ -8,6 +8,7 @@ import {
   Injector,
 } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
 import { MAX_RULES } from './duplicates-presets';
 import { Prefer, Rule, RULE_KINDS, RuleKind, validateRuleSet } from './duplicates-rules';
@@ -25,7 +26,7 @@ const FOCUSABLE = 'select, input, button';
  */
 @Component({
   selector: 'app-duplicate-rules-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (dup.rules(); as d) {
       <app-modal [heading]="t.rulesTitle" width="min(48rem, 96vw)" (closed)="dup.closeRules()">
@@ -159,6 +160,7 @@ const FOCUSABLE = 'select, input, button';
               />
             </label>
             <button
+              appDialogKey="secondary:S"
               type="button"
               class="btn"
               [disabled]="d.name.trim() === '' || problem() !== null"
@@ -174,8 +176,15 @@ const FOCUSABLE = 'select, input, button';
           </div>
           <p class="error" role="alert">{{ problem() ?? '' }}</p>
           <div class="buttons">
-            <button type="button" class="btn" (click)="dup.closeRules()">{{ t.close }}</button>
-            <button type="submit" class="btn primary" [disabled]="problem() !== null">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="dup.closeRules()">
+              {{ t.close }}
+            </button>
+            <button
+              appDialogKey="primary"
+              type="submit"
+              class="btn primary"
+              [disabled]="problem() !== null"
+            >
               {{ t.applyAndClose }}
             </button>
           </div>

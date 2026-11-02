@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { CompareRow, CompareSide } from '../../core/sync/sync.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { formatModified, formatSize } from '../../shared/format';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { RowAction, SyncMode, ViewFilter } from './sync-logic';
@@ -58,7 +59,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
 /** Synchronise folders (OPEN_SYNC_DIRS_DLG, design 036 E5). */
 @Component({
   selector: 'app-sync-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (sync.pair(); as pair) {
       <app-modal [heading]="t.title" width="min(84rem, 97vw)" [fill]="true" (closed)="sync.close()">
@@ -160,7 +161,12 @@ const name = (row: CompareRow, side: CompareSide | null) =>
               @if (sync.running()) {
                 <button type="button" class="btn" (click)="sync.stop()">{{ t.stop }}</button>
               } @else {
-                <button type="button" class="btn primary" (click)="sync.compare()">
+                <button
+                  [appDialogKey]="sync.compared() ? 'secondary:O' : 'primary'"
+                  type="button"
+                  class="btn primary"
+                  (click)="sync.compare()"
+                >
                   {{ t.compare }}
                 </button>
               }
@@ -275,8 +281,11 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                   <input type="checkbox" [checked]="f().trash" (change)="set('trash', $event)" />
                   {{ t.trash }}
                 </label>
-                <button type="button" class="btn" (click)="sync.close()">{{ t.close }}</button>
+                <button appDialogKey="cancel" type="button" class="btn" (click)="sync.close()">
+                  {{ t.close }}
+                </button>
                 <button
+                  [appDialogKey]="sync.compared() ? 'primary' : null"
                   type="button"
                   class="btn primary"
                   [disabled]="!sync.canSync()"
@@ -306,11 +315,22 @@ const name = (row: CompareRow, side: CompareSide | null) =>
             }
             <div class="foot">
               <div class="buttons">
-                <button type="button" class="btn" (click)="sync.back()">{{ t.back }}</button>
                 <button
+                  appDialogKey="secondary:B"
                   type="button"
-                  class="btn primary"
-                  data-autofocus
+                  class="btn"
+                  [attr.data-autofocus]="deletesForever() ? '' : null"
+                  (click)="sync.back()"
+                >
+                  {{ t.back }}
+                </button>
+                <button
+                  [appDialogKey]="deletesForever() ? 'destructive:S' : 'primary'"
+                  type="button"
+                  class="btn"
+                  [class.primary]="!deletesForever()"
+                  [class.danger]="deletesForever()"
+                  [attr.data-autofocus]="deletesForever() ? null : ''"
                   [disabled]="sync.busy()"
                   (click)="sync.runSync()"
                 >
@@ -332,6 +352,14 @@ export class SyncDialog {
   protected readonly labelId = LABEL_ID;
   protected readonly helpId = HELP_ID;
   protected readonly f = computed(() => this.sync.form());
+  /**
+   * The plan deletes without the trash (design 057): Start is red, Enter stays on
+   * "Back" and only Mod+Shift+S starts.
+   */
+  protected readonly deletesForever = computed(() => {
+    const d = this.sync.deletions();
+    return !this.f().trash && d.paths.length + d.more > 0;
+  });
 
   protected get columns(): readonly GridColumn[] {
     return [

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { describeFsError } from '../../core/fs/fs-error';
 import { Remember } from '../../core/remote/remote.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { encrypted } from './remote-logic';
 import { REMOTE_TEXTS } from './remote-texts';
 import { RemoteStore } from './remote.store';
@@ -13,7 +14,7 @@ import { RemoteStore } from './remote.store';
  */
 @Component({
   selector: 'app-remote-prompt-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (store.prompt(); as p) {
       @switch (p.kind) {
@@ -61,10 +62,20 @@ import { RemoteStore } from './remote.store';
               <p id="fnf-remote-secret-error" class="error" role="alert">{{ errorText() }}</p>
               <div class="buttons">
                 <div class="spacer"></div>
-                <button type="button" class="btn" (click)="store.cancelPrompt()">
+                <button
+                  appDialogKey="cancel"
+                  type="button"
+                  class="btn"
+                  (click)="store.cancelPrompt()"
+                >
                   {{ t.cancel }}
                 </button>
-                <button type="submit" class="btn primary" [disabled]="store.busy() || !value()">
+                <button
+                  appDialogKey="primary"
+                  type="submit"
+                  class="btn primary"
+                  [disabled]="store.busy() || !value()"
+                >
                   {{ t.login }}
                 </button>
               </div>
@@ -90,10 +101,17 @@ import { RemoteStore } from './remote.store';
               <p class="error" role="alert">{{ errorText() }}</p>
               <div class="buttons">
                 <div class="spacer"></div>
-                <button type="button" class="btn" data-autofocus (click)="store.cancelPrompt()">
+                <button
+                  appDialogKey="cancel"
+                  type="button"
+                  class="btn"
+                  data-autofocus
+                  (click)="store.cancelPrompt()"
+                >
                   {{ t.cancel }}
                 </button>
                 <button
+                  appDialogKey="secondary:T"
                   type="button"
                   class="btn primary"
                   [disabled]="store.busy()"
@@ -138,10 +156,17 @@ import { RemoteStore } from './remote.store';
               <p class="error" role="alert">{{ errorText() }}</p>
               <div class="buttons">
                 <div class="spacer"></div>
-                <button type="button" class="btn" data-autofocus (click)="store.cancelPrompt()">
+                <button
+                  appDialogKey="cancel"
+                  type="button"
+                  class="btn"
+                  data-autofocus
+                  (click)="store.cancelPrompt()"
+                >
                   {{ t.cancel }}
                 </button>
                 <button
+                  appDialogKey="secondary:T"
                   type="button"
                   class="btn primary"
                   [disabled]="store.busy() || (p.hostnameMismatch && !acceptHostname())"

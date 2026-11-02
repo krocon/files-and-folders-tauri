@@ -20,7 +20,15 @@
 //          --no-build (use the existing dist/)  --headed  --chrome (installed Google Chrome)
 //          --list (print schemes and scenes)  --verbose (browser console)  --docs  --readme
 import { spawnSync } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize, relative, resolve, sep } from 'node:path';
@@ -79,21 +87,34 @@ const docs = Boolean(args.docs);
 const readme = Boolean(args.readme);
 if (docs && readme) fail('--docs and --readme are separate runs');
 if ((docs || readme) && (args.theme || args.scene || args.out || flat)) {
-  fail(`--${docs ? 'docs' : 'readme'} takes its pictures from scenes.json ("${docs ? 'docs' : 'readme'}")`);
+  fail(
+    `--${docs ? 'docs' : 'readme'} takes its pictures from scenes.json ("${docs ? 'docs' : 'readme'}")`,
+  );
 }
 const outDir = resolve(
   ROOT,
-  docs ? config.docs.out : readme ? config.readme.out : typeof args.out === 'string' ? args.out : 'screenshots',
+  docs
+    ? config.docs.out
+    : readme
+      ? config.readme.out
+      : typeof args.out === 'string'
+        ? args.out
+        : 'screenshots',
 );
 
 // ---- frontend build ------------------------------------------------------------------
 if (!args['no-build']) {
   console.log('▸ building the frontend (pnpm build) …');
   const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const res = spawnSync(pnpm, ['build'], { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
+  const res = spawnSync(pnpm, ['build'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
   if (res.status !== 0) fail('pnpm build failed');
 }
-if (!existsSync(join(DIST, 'index.html'))) fail(`no frontend build in ${relative(ROOT, DIST)} – run without --no-build`);
+if (!existsSync(join(DIST, 'index.html')))
+  fail(`no frontend build in ${relative(ROOT, DIST)} – run without --no-build`);
 
 // ---- playwright ------------------------------------------------------------------------
 let chromium;
@@ -144,7 +165,10 @@ const keymapFile = { linux: 'linux.json', windows: 'windows.json', macos: 'macos
 const keymap = JSON.parse(
   readFileSync(join(ROOT, 'src', 'app', 'core', 'actions', 'keymaps', keymapFile), 'utf8'),
 );
-const catalog = readFileSync(join(ROOT, 'src', 'app', 'core', 'actions', 'action-catalog.ts'), 'utf8');
+const catalog = readFileSync(
+  join(ROOT, 'src', 'app', 'core', 'actions', 'action-catalog.ts'),
+  'utf8',
+);
 const appVersion = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const mockScript = readFileSync(join(HERE, 'mock-backend.js'), 'utf8');
 
@@ -208,11 +232,18 @@ async function runStep(page, step) {
   if (step.action) await pressAction(page, step.action);
   else if (step.key) await page.keyboard.press(step.key);
   else if (step.type) await page.keyboard.type(step.type, { delay: 30 });
-  else if (step.wait) await page.waitForTimeout(step.wait);
+  // a modifier stays held for the shot (057: letters on dialog buttons), e.g. { "hold": "Mod" }
+  else if (step.hold) {
+    for (const key of toPlaywrightStrokes(`${step.hold}+X`, platform)[0].split('+').slice(0, -1)) {
+      await page.keyboard.down(key);
+    }
+  } else if (step.wait) await page.waitForTimeout(step.wait);
   else if (step.click) await page.click(step.click, step.button ? { button: step.button } : {});
-  else if (step.hover) await page.hover(step.hover, step.position ? { position: step.position } : {});
+  else if (step.hover)
+    await page.hover(step.hover, step.position ? { position: step.position } : {});
   // a measurement for the report (049): evaluates the expression in the page and prints the result
-  else if (step.log) console.log(`  ${step.log} → ${JSON.stringify(await page.evaluate(step.log))}`);
+  else if (step.log)
+    console.log(`  ${step.log} → ${JSON.stringify(await page.evaluate(step.log))}`);
   else throw new Error(`unknown step ${JSON.stringify(step)}`);
   await page.waitForTimeout(KEY_DELAY_MS);
 }
@@ -231,7 +262,16 @@ async function capture(browser, theme, scene, target) {
     if (msg.type() === 'error' || args.verbose) errors.push(`[${msg.type()}] ${msg.text()}`);
   });
   page.on('pageerror', (err) => errors.push(`[pageerror] ${err.message}`));
-  const cfg = { fs: demoFs, texts, theme, platform, session, settings, appVersion, mock: scene.mock ?? {} };
+  const cfg = {
+    fs: demoFs,
+    texts,
+    theme,
+    platform,
+    session,
+    settings,
+    appVersion,
+    mock: scene.mock ?? {},
+  };
   await page.addInitScript({ content: `window.__FNF_SCREENSHOT__ = ${JSON.stringify(cfg)};` });
   await page.addInitScript({ content: mockScript });
   try {
@@ -294,14 +334,25 @@ async function renderOverview(browser, dir, file) {
 function compress(files) {
   const probe = spawnSync('pngquant', ['--version'], { encoding: 'utf8' });
   if (probe.status !== 0) {
-    console.log('  ! pngquant not found – pictures stay uncompressed (brew install pngquant / apt install pngquant)');
+    console.log(
+      '  ! pngquant not found – pictures stay uncompressed (brew install pngquant / apt install pngquant)',
+    );
     return;
   }
   let before = 0;
   let after = 0;
   for (const f of files) {
     before += statSync(f).size;
-    spawnSync('pngquant', ['--force', '--skip-if-larger', '--strip', '--quality', '70-95', '--output', f, f]);
+    spawnSync('pngquant', [
+      '--force',
+      '--skip-if-larger',
+      '--strip',
+      '--quality',
+      '70-95',
+      '--output',
+      f,
+      f,
+    ]);
     after += statSync(f).size;
   }
   const kb = (n) => `${Math.round(n / 1024)} KB`;
@@ -311,7 +362,8 @@ function compress(files) {
 // ---- run ---------------------------------------------------------------------------------
 const launchOptions = { headless: !args.headed };
 if (args.chrome) launchOptions.channel = 'chrome';
-if (process.env.FNF_SCREENSHOT_CHROMIUM) launchOptions.executablePath = process.env.FNF_SCREENSHOT_CHROMIUM;
+if (process.env.FNF_SCREENSHOT_CHROMIUM)
+  launchOptions.executablePath = process.env.FNF_SCREENSHOT_CHROMIUM;
 let browser;
 try {
   browser = await chromium.launch(launchOptions);
@@ -330,19 +382,29 @@ const overviewDir = docs ? mkdtempSync(join(tmpdir(), 'fnf-overview-')) : null;
 if (docs) {
   const { images, overview } = config.docs;
   queue = [
-    ...images.map((img) => ({ theme: img.theme, scene: sceneByName.get(img.scene), file: join(outDir, img.file) })),
+    ...images.map((img) => ({
+      theme: img.theme,
+      scene: sceneByName.get(img.scene),
+      file: join(outDir, img.file),
+    })),
     ...allThemes.map((theme) => ({
       theme,
       scene: sceneByName.get(overview.scene),
       file: join(overviewDir, `${theme}.png`),
     })),
   ];
-  for (const item of queue) if (!item.scene) fail(`scenes.json "docs": unknown scene for ${item.file}`);
+  for (const item of queue)
+    if (!item.scene) fail(`scenes.json "docs": unknown scene for ${item.file}`);
 }
 if (readme) {
   const { theme, images } = config.readme;
-  queue = images.map((img) => ({ theme, scene: sceneByName.get(img.scene), file: join(outDir, img.file) }));
-  for (const item of queue) if (!item.scene) fail(`scenes.json "readme": unknown scene for ${item.file}`);
+  queue = images.map((img) => ({
+    theme,
+    scene: sceneByName.get(img.scene),
+    file: join(outDir, img.file),
+  }));
+  for (const item of queue)
+    if (!item.scene) fail(`scenes.json "readme": unknown scene for ${item.file}`);
 }
 const total = queue.length;
 let done = 0;
@@ -360,7 +422,8 @@ async function worker() {
     try {
       const { file, errors } = await capture(browser, theme, scene, item.file);
       done += 1;
-      const shown = overviewDir && file.startsWith(overviewDir) ? `(overview) ${theme}` : relative(ROOT, file);
+      const shown =
+        overviewDir && file.startsWith(overviewDir) ? `(overview) ${theme}` : relative(ROOT, file);
       console.log(`  ✓ [${done}/${total}] ${shown}`);
       for (const line of errors) console.log(`      ${line}`);
     } catch (err) {

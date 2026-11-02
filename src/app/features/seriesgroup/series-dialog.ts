@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { SeriesTarget, TARGETS, TEMPLATES } from './series-engine';
 import { SG_TEXTS } from './series-texts';
@@ -34,7 +35,7 @@ function rowClass(r: SeriesGridRow): string | null {
  */
 @Component({
   selector: 'app-series-group-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (sg.request(); as req) {
       <app-modal [heading]="heading()" width="min(72rem, 96vw)" [fill]="true" (closed)="sg.close()">
@@ -166,11 +167,20 @@ function rowClass(r: SeriesGridRow): string | null {
             <p class="summary" aria-live="polite">{{ summary() }}</p>
             <p class="error" role="alert">{{ errorText() }}</p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="sg.close()">{{ t.cancel }}</button>
-              <button type="button" class="btn" [disabled]="!sg.canRun()" (click)="sg.run('move')">
+              <button appDialogKey="cancel" type="button" class="btn" (click)="sg.close()">
+                {{ t.cancel }}
+              </button>
+              <button
+                appDialogKey="secondary:O"
+                type="button"
+                class="btn"
+                [disabled]="!sg.canRun()"
+                (click)="sg.run('move')"
+              >
                 {{ t.move }}
               </button>
               <button
+                appDialogKey="primary"
                 type="button"
                 class="btn primary"
                 [disabled]="!sg.canRun()"

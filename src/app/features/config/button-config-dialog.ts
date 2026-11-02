@@ -6,6 +6,7 @@ import { MAX_BUTTON_SLOTS } from '../../core/config/config.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { fuzzyMatch } from '../actions/fuzzy';
 import { ModifierSet, setsForPlatform } from '../workspace/button-bar/button-config';
 import {
@@ -38,7 +39,7 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
  */
 @Component({
   selector: 'app-button-config-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.buttonsTitle" width="46rem" (closed)="dialogs.close()">
       <div class="tool">
@@ -211,8 +212,16 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
             {{ t.resetAll }}
           </button>
           <div class="buttons">
-            <button type="button" class="btn" (click)="dialogs.close()">{{ t.cancel }}</button>
-            <button type="button" class="btn primary" [disabled]="busy()" (click)="save()">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+              {{ t.cancel }}
+            </button>
+            <button
+              appDialogKey="primary"
+              type="button"
+              class="btn primary"
+              [disabled]="busy()"
+              (click)="save()"
+            >
               {{ t.save }}
             </button>
           </div>

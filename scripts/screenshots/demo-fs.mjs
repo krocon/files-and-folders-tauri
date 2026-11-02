@@ -80,9 +80,7 @@ export function treeFromPaths(root, paths, sizeOf = () => 0) {
       if (!seen.has(childPath)) {
         seen.add(childPath);
         const sub = parts.slice(0, i + 1).join('/');
-        dirs[current].push(
-          isLeaf ? file(name, sizeOf(rel) ?? 0, date(sub)) : dir(name, date(sub)),
-        );
+        dirs[current].push(isLeaf ? file(name, sizeOf(rel) ?? 0, date(sub)) : dir(name, date(sub)));
         if (!isLeaf) dirs[childPath] = [];
       }
       current = childPath;
@@ -111,8 +109,8 @@ function photos() {
     dir('Videos', '2026-09-12T10:05:00'),
   ];
   const numbers = [
-    4711, 4712, 4715, 4716, 4720, 4721, 4733, 4734, 4738, 4740, 4741, 4752, 4753, 4760, 4761,
-    4768, 4770, 4777, 4781, 4790, 4792, 4801,
+    4711, 4712, 4715, 4716, 4720, 4721, 4733, 4734, 4738, 4740, 4741, 4752, 4753, 4760, 4761, 4768,
+    4770, 4777, 4781, 4790, 4792, 4801,
   ];
   numbers.forEach((n, i) => {
     const day = 1 + Math.floor(i / 3);
@@ -198,7 +196,9 @@ export function buildDemoFs(repoRoot) {
     [`${HOME}/Comics`]: comics(),
     [`${HOME}/.cache`]: [],
     [`${HOME}/.config`]: [],
-    [`${HOME}/Desktop`]: [file('Screenshot 2026-10-18.png', 1 * MB + 233 * KB, '2026-10-18T17:20:00')],
+    [`${HOME}/Desktop`]: [
+      file('Screenshot 2026-10-18.png', 1 * MB + 233 * KB, '2026-10-18T17:20:00'),
+    ],
     [`${HOME}/Documents`]: [
       dir('Invoices', '2026-10-01T09:00:00'),
       dir('Taxes 2025', '2026-05-30T14:00:00'),
@@ -229,7 +229,10 @@ export function buildDemoFs(repoRoot) {
     ],
     [`${HOME}/Music/Daft Punk - Discovery`]: [],
     [`${HOME}/Music/Moby - Play`]: [],
-    [`${HOME}/Pictures`]: [dir('Italy 2026', '2026-09-15T20:40:00'), dir('Family', '2026-04-10T12:00:00')],
+    [`${HOME}/Pictures`]: [
+      dir('Italy 2026', '2026-09-15T20:40:00'),
+      dir('Family', '2026-04-10T12:00:00'),
+    ],
     [`${HOME}/Pictures/Family`]: [],
     [PHOTOS]: photos(),
     [`${PHOTOS}/Edited`]: [],
@@ -266,7 +269,8 @@ export function demoTexts(repoRoot) {
   const texts = {
     [`${PHOTOS}/notes.txt`]:
       'Italy 2026\n==========\n\nRome – Florence – Siena – Val d’Orcia\n\n- 01.09. Rome, Trastevere\n- 03.09. Florence, Uffizi (book ahead!)\n- 05.09. Siena, Piazza del Campo\n- 07.09. Pienza, Montepulciano\n',
-    [`${HOME}/todo.md`]: '# Todo\n\n- [x] Back up the Italy photos\n- [ ] Sort the downloads\n- [ ] Screenshots for the README\n',
+    [`${HOME}/todo.md`]:
+      '# Todo\n\n- [x] Back up the Italy photos\n- [ ] Sort the downloads\n- [ ] Screenshots for the README\n',
   };
   for (const rel of ['README.md', 'package.json', 'CLAUDE.md', 'TODO.md']) {
     try {
@@ -293,7 +297,8 @@ export function demoPhotoSvg(token) {
   const sunY = 160 + Math.floor(r() * 180);
   const hill = (base, amp, color) => {
     let d = `M0 ${base}`;
-    for (let x = 0; x <= 1600; x += 100) d += ` Q${x + 50} ${base - amp * r()} ${x + 100} ${base - amp * 0.4 * r()}`;
+    for (let x = 0; x <= 1600; x += 100)
+      d += ` Q${x + 50} ${base - amp * r()} ${x + 100} ${base - amp * 0.4 * r()}`;
     return `<path d="${d} L1600 1067 L0 1067 Z" fill="${color}"/>`;
   };
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1067" viewBox="0 0 1600 1067">

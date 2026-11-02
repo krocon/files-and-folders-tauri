@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { LetterCase, MkdirTemplate } from './mkdir-engine';
 import { MM_TEXTS } from './multimkdir-texts';
@@ -21,7 +22,7 @@ function rowClass(r: MkdirRow): string | null {
 /** Multi-MkDir (OPEN_MULTIMKDIR_DLG, design 008 E4): template, counter, case, preview. */
 @Component({
   selector: 'app-multi-mkdir-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (mm.request(); as req) {
       <app-modal [heading]="heading()" width="min(46rem, 92vw)" height="70vh" (closed)="mm.close()">
@@ -75,8 +76,11 @@ function rowClass(r: MkdirRow): string | null {
           <div class="foot">
             <p class="error" role="alert">{{ mm.outcome().error ?? mm.runError() ?? '' }}</p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="mm.close()">{{ t.cancel }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="mm.close()">
+                {{ t.cancel }}
+              </button>
               <button
+                appDialogKey="primary"
                 type="button"
                 class="btn primary"
                 [disabled]="!mm.canRun()"

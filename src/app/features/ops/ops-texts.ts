@@ -48,7 +48,8 @@ export const OPS_EN = {
     `${num(files)} ${files === 1 ? 'file' : 'files'}, ${size}`,
   sizeUnknown: 'unknown – could not count',
   noCountInArchive: 'not counted inside archives',
-  trashHint: 'You can restore it from the trash.',
+  trashHint: (n: number) =>
+    n === 1 ? 'You can restore it from the trash.' : 'You can restore them from the trash.',
   moreEntries: (n: number) => `… and ${n} more`,
   deleteSize: 'Size',
   sizeAtLeast: (size: string) => `at least ${size}`,

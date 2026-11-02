@@ -11,6 +11,7 @@ import { Decision } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { formatModified, formatSize } from '../../shared/format';
 import { cancelKind, JOB_TEXTS } from './job-format';
 
@@ -22,7 +23,7 @@ import { cancelKind, JOB_TEXTS } from './job-format';
  */
 @Component({
   selector: 'app-conflict-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (job(); as j) {
       @if (j.conflict; as c) {
@@ -76,7 +77,9 @@ import { cancelKind, JOB_TEXTS } from './job-format';
                   [value]="c.suggestedName"
                 />
               </label>
-              <button type="submit" class="btn primary">{{ t.rename }}</button>
+              <button appDialogKey="primary" type="submit" class="btn primary">
+                {{ t.rename }}
+              </button>
             </form>
           }
           <label class="all">
@@ -90,11 +93,12 @@ import { cancelKind, JOB_TEXTS } from './job-format';
           <div class="buttons">
             @for (b of buttons(); track b.key) {
               <button
+                [appDialogKey]="b.action === 'skip' && !renaming() ? 'primary' : null"
+                [appDialogKeyExtra]="'Alt+' + b.key.toUpperCase()"
                 type="button"
                 class="btn"
                 [class.danger]="b.action === 'cancel'"
                 [attr.data-autofocus]="b.action === 'skip' && !renaming() ? '' : null"
-                [attr.aria-keyshortcuts]="'Alt+' + b.key.toUpperCase()"
                 (click)="press(b.key)"
               >
                 <!-- one flex item: the button's gap must not split the word -->

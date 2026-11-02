@@ -11,6 +11,7 @@ import { AppInfo } from '../../core/about/about.models';
 import { ClipboardApi } from '../../core/os/clipboard';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { ABOUT_TEXTS } from './about-texts';
 
 export interface AboutRow {
@@ -44,7 +45,7 @@ export function aboutText(info: AppInfo): string {
 /** About (action OPEN_ABOUT_DLG; on macOS also the native "About" item) – design 017. */
 @Component({
   selector: 'app-about-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.title" width="min(30rem, 92vw)" (closed)="close()">
       <div class="head">
@@ -71,9 +72,17 @@ export function aboutText(info: AppInfo): string {
       <p class="sr-only" aria-live="polite">{{ status() }}</p>
       <div class="buttons">
         @if (info()) {
-          <button type="button" class="btn" (click)="copy()">{{ t.copy }}</button>
+          <button appDialogKey="secondary:O" type="button" class="btn" (click)="copy()">
+            {{ t.copy }}
+          </button>
         }
-        <button type="button" class="btn primary" data-autofocus (click)="close()">
+        <button
+          appDialogKey="primary"
+          type="button"
+          class="btn primary"
+          data-autofocus
+          (click)="close()"
+        >
           {{ t.close }}
         </button>
       </div>

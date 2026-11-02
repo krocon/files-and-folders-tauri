@@ -38,6 +38,7 @@ import '../../features/shell/shell-texts';
 import '../../features/starter/starter-texts';
 import '../../features/themes/theme-texts';
 import '../../features/workspace/texts';
+import '../../shared/dialog/dialog-key-texts';
 
 /** Same in both languages on purpose (names, symbols, technical terms). */
 const SAME = new Set([

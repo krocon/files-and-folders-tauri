@@ -67,9 +67,25 @@
 
   function remoteProfile(id, name, kind, host, port, user, secret, startPath) {
     return {
-      id, name, kind, host, port, user, anonymous: false, auth: 'password', keyFile: null,
-      startPath, passive: true, encoding: 'auto', timeoutSecs: 20, maxConnections: 2,
-      keepaliveSecs: 60, description: '', pinnedCert: null, acceptHostnameMismatch: false, secret,
+      id,
+      name,
+      kind,
+      host,
+      port,
+      user,
+      anonymous: false,
+      auth: 'password',
+      keyFile: null,
+      startPath,
+      passive: true,
+      encoding: 'auto',
+      timeoutSecs: 20,
+      maxConnections: 2,
+      keepaliveSecs: 60,
+      description: '',
+      pinnedCert: null,
+      acceptHostnameMismatch: false,
+      secret,
     };
   }
 
@@ -82,7 +98,14 @@
     const zip = Object.keys(archives).find((a) => path === a || path.startsWith(`${a}/`));
     if (!zip) return null;
     const inner = path === zip ? '' : path.slice(zip.length + 1);
-    return { path: zip, inner, format: 'zip', unsafeEntries: 0, entries: archives[zip], encrypted: false };
+    return {
+      path: zip,
+      inner,
+      format: 'zip',
+      unsafeEntries: 0,
+      entries: archives[zip],
+      encrypted: false,
+    };
   }
 
   function remoteOf(path) {
@@ -117,9 +140,27 @@
   /** Design 034: three server profiles (no passwords – Rust keeps them in the keychain). */
   function connections() {
     return [
-      remoteProfile('k3x9a2', 'My server', 'sftp', 'example.org', 22, 'marc', 'keychain', '/var/www'),
+      remoteProfile(
+        'k3x9a2',
+        'My server',
+        'sftp',
+        'example.org',
+        22,
+        'marc',
+        'keychain',
+        '/var/www',
+      ),
       remoteProfile('n4s7b1', 'NAS', 'ftp', 'nas.local', 21, 'marc', 'none', null),
-      remoteProfile('c8w2d5', 'Customer webspace', 'ftpsExplicit', 'ftp.example.com', 21, 'web42', 'none', '/htdocs'),
+      remoteProfile(
+        'c8w2d5',
+        'Customer webspace',
+        'ftpsExplicit',
+        'ftp.example.com',
+        21,
+        'web42',
+        'none',
+        '/htdocs',
+      ),
     ];
   }
 
@@ -198,7 +239,13 @@
     remotes['remote://k3x9a2/'] = [demoDir('var', '2026-10-21T19:05:00')];
     const right = cfg.session.panels.right;
     right.tabs = [
-      { ...right.tabs[0], id: 'r0', path: site, title: 'example.org', cursor: `${site}/index.html` },
+      {
+        ...right.tabs[0],
+        id: 'r0',
+        path: site,
+        title: 'example.org',
+        cursor: `${site}/index.html`,
+      },
       ...right.tabs,
     ];
   }
@@ -290,7 +337,8 @@
         if (!includeHidden && e.hidden) continue;
         if (excludes.includes(e.name)) continue;
         out.push(e);
-        if (e.kind === 'directory' && (maxDepth == null || depth < maxDepth)) visit(e.path, depth + 1);
+        if (e.kind === 'directory' && (maxDepth == null || depth < maxDepth))
+          visit(e.path, depth + 1);
       }
     };
     visit(root, 1);
@@ -299,7 +347,10 @@
 
   const globToRegex = (glob) =>
     new RegExp(
-      `^${glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`,
+      `^${glob
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.')}$`,
       'i',
     );
 
@@ -309,7 +360,9 @@
       .map((p) => p.trim())
       .filter(Boolean);
     const matchers = patterns.map((p) =>
-      c.nameMode === 'regex' ? new RegExp(p, c.caseSensitive ? '' : 'i') : globToRegex(c.wholeName || /[*?]/.test(p) ? p : `*${p}*`),
+      c.nameMode === 'regex'
+        ? new RegExp(p, c.caseSensitive ? '' : 'i')
+        : globToRegex(c.wholeName || /[*?]/.test(p) ? p : `*${p}*`),
     );
     const kinds = c.kinds ?? { files: true, dirs: true, links: true };
     const hits = [];
@@ -320,7 +373,12 @@
         const dir = parentOf(e.path);
         const names = dir.split('/').filter(Boolean).reverse();
         const relDir = dir === root ? '' : dir.slice(root.length + 1);
-        hits.push({ ...e, dir, relDir, parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''] });
+        hits.push({
+          ...e,
+          dir,
+          relDir,
+          parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''],
+        });
       }
     }
     return hits.slice(0, c.maxHits ?? 10000);
@@ -334,7 +392,9 @@
     setTimeout(() => {
       if (spec.kind === 'search' || spec.kind === 'duplicates') {
         const hits =
-          spec.kind === 'search' ? searchHits(spec.criteria ?? {}) : duplicateHits(spec.criteria ?? {});
+          spec.kind === 'search'
+            ? searchHits(spec.criteria ?? {})
+            : duplicateHits(spec.criteria ?? {});
         const stats = {
           hits: hits.length,
           dirsScanned: 42,
@@ -346,7 +406,12 @@
         };
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         send({ type: 'searchHits', id, hits, stats });
-        send({ type: 'finished', id, state: 'done', summary: summary({ itemsDone: hits.length, search: stats }) });
+        send({
+          type: 'finished',
+          id,
+          state: 'done',
+          summary: summary({ itemsDone: hits.length, search: stats }),
+        });
       } else if (spec.kind === 'count' || spec.kind === 'dirSize') {
         const roots = spec.paths ?? [spec.path];
         let files = 0;
@@ -370,12 +435,28 @@
         const { rows, stats } = compareRows(spec.left, spec.right);
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         send({ type: 'compareRows', id, rows, stats });
-        send({ type: 'finished', id, state: 'done', summary: summary({ itemsDone: rows.length, compare: stats }) });
+        send({
+          type: 'finished',
+          id,
+          state: 'done',
+          summary: summary({ itemsDone: rows.length, compare: stats }),
+        });
       } else if (spec.kind === 'diskUsage') {
         send({ type: 'added', job: jobInfo(id, spec, 'running') });
         const entries = scans[id].length;
-        const diskUsage = { complete: true, entries, unreadable: 0, simplified: false, elapsedMs: 840 };
-        send({ type: 'finished', id, state: 'done', summary: summary({ itemsDone: entries, diskUsage }) });
+        const diskUsage = {
+          complete: true,
+          entries,
+          unreadable: 0,
+          simplified: false,
+          elapsedMs: 840,
+        };
+        send({
+          type: 'finished',
+          id,
+          state: 'done',
+          summary: summary({ itemsDone: entries, diskUsage }),
+        });
       } else {
         // copy, move, delete, …: shown as running – screenshots never wait for an end
         send({ type: 'added', job: jobInfo(id, spec, 'running', { itemsTotal: 1 }) });
@@ -411,7 +492,9 @@
       big('node_modules.tar', Math.round(980 * mb), '2026-10-15T14:00:00'),
       big('demo-recording.mov', Math.round(410 * mb), '2026-10-01T11:20:00'),
     ]);
-    add(`${home}/Downloads`, [big('ubuntu-26.04-desktop-arm64.iso', Math.round(3.4 * gb), '2026-10-19T20:00:00')]);
+    add(`${home}/Downloads`, [
+      big('ubuntu-26.04-desktop-arm64.iso', Math.round(3.4 * gb), '2026-10-19T20:00:00'),
+    ]);
   }
 
   // Scene option `mock.duplicates`: copies under other names (design 016 E6/042), so the
@@ -441,7 +524,15 @@
     const photosDir = `${home}/Pictures/Italy 2026`;
     dirs[home] = [
       ...(dirs[home] ?? []),
-      { name: 'Backup', kind: 'directory', targetKind: null, size: null, modifiedMs: Date.parse('2026-09-08T20:00:00Z'), hidden: false, lossyName: false },
+      {
+        name: 'Backup',
+        kind: 'directory',
+        targetKind: null,
+        size: null,
+        modifiedMs: Date.parse('2026-09-08T20:00:00Z'),
+        hidden: false,
+        lossyName: false,
+      },
     ];
     dirs[`${home}/Backup`] = [{ ...dirs[`${home}`].at(-1), name: 'Italy 2026' }];
     const src = dirs[photosDir] ?? [];
@@ -449,16 +540,25 @@
     const keep = files.filter((e, i) => !/\.zip$/.test(e.name) && i < files.length - 9);
     dirs[backup] = [
       ...src.filter((e) => e.kind === 'directory' && e.name !== 'Videos'),
-      ...keep.map((e, i) => (i === 4 ? { ...e, size: e.size - 120_000, modifiedMs: e.modifiedMs - 86_400_000 } : e)),
-      { ...keep[0], name: 'IMG_4709.jpg', size: 3_145_728, modifiedMs: Date.parse('2026-08-31T19:02:00Z') },
+      ...keep.map((e, i) =>
+        i === 4 ? { ...e, size: e.size - 120_000, modifiedMs: e.modifiedMs - 86_400_000 } : e,
+      ),
+      {
+        ...keep[0],
+        name: 'IMG_4709.jpg',
+        size: 3_145_728,
+        modifiedMs: Date.parse('2026-08-31T19:02:00Z'),
+      },
     ];
-    for (const d of ['Edited', 'Panorama']) dirs[`${backup}/${d}`] = [...(dirs[`${photosDir}/${d}`] ?? [])];
+    for (const d of ['Edited', 'Panorama'])
+      dirs[`${backup}/${d}`] = [...(dirs[`${photosDir}/${d}`] ?? [])];
   }
 
   /** Rows of the comparison job (design 036) – the same rules as Rust, in short. */
   function compareRows(left, right) {
     const rows = [];
-    const side = (e) => e && { path: e.path, name: e.name, kind: e.kind, size: e.size, modifiedMs: e.modifiedMs };
+    const side = (e) =>
+      e && { path: e.path, name: e.name, kind: e.kind, size: e.size, modifiedMs: e.modifiedMs };
     const visit = (l, r, rel, depth) => {
       const ls = l ? entriesOf(l).filter((e) => !e.hidden) : [];
       const rs = r ? entriesOf(r).filter((e) => !e.hidden) : [];
@@ -475,8 +575,15 @@
         if (!a) status = 'onlyRight';
         else if (!b) status = 'onlyLeft';
         else if (isDir) status = 'equal';
-        else if (Math.abs(a.modifiedMs - b.modifiedMs) <= 2000 && a.size === b.size) status = 'equal';
-        else status = a.modifiedMs > b.modifiedMs ? 'leftNewer' : b.modifiedMs > a.modifiedMs ? 'rightNewer' : 'differs';
+        else if (Math.abs(a.modifiedMs - b.modifiedMs) <= 2000 && a.size === b.size)
+          status = 'equal';
+        else
+          status =
+            a.modifiedMs > b.modifiedMs
+              ? 'leftNewer'
+              : b.modifiedMs > a.modifiedMs
+                ? 'rightNewer'
+                : 'differs';
         const path = rel ? `${rel}/${name}` : name;
         const row = {
           rel: path,
@@ -492,7 +599,11 @@
         rows.push(row);
         if (isDir) {
           visit(a?.path ?? null, b?.path ?? null, path, depth + 1);
-          if (status === 'equal' && rows.some((x) => x.rel.startsWith(`${path}/`) && x.status !== 'equal')) row.status = 'differs';
+          if (
+            status === 'equal' &&
+            rows.some((x) => x.rel.startsWith(`${path}/`) && x.status !== 'equal')
+          )
+            row.status = 'differs';
         }
       }
     };
@@ -535,7 +646,9 @@
       f('Receipts.pdf', 2 * 1024 * 1024, '2026-01-12T20:20:00'),
     ]);
     add(`${home}/Downloads`, [f('invoice_2025_03.pdf', 212 * 1024, '2025-03-31T07:58:00')]);
-    add(`${home}/Projects/website`, [f('invoice-template-2025.html', 12 * 1024, '2025-02-02T12:00:00')]);
+    add(`${home}/Projects/website`, [
+      f('invoice-template-2025.html', 12 * 1024, '2025-02-02T12:00:00'),
+    ]);
   }
 
   // ---- the universal palette (design 043): a query walks the demo tree --------------------
@@ -545,9 +658,13 @@
     const channel = a?.onEvent;
     const id = ++paletteNo;
     const text = (a?.request?.text ?? '').trim();
-    const terms = text.split(/\s+/).filter((w) => w && !w.includes(':') && !w.startsWith('>')).map(foldText);
+    const terms = text
+      .split(/\s+/)
+      .filter((w) => w && !w.includes(':') && !w.startsWith('>'))
+      .map(foldText);
     let index = 0;
-    const emit = (message) => channel && window.__TAURI_INTERNALS__.runCallback(channel.id, { index: index++, message });
+    const emit = (message) =>
+      channel && window.__TAURI_INTERNALS__.runCallback(channel.id, { index: index++, message });
     setTimeout(() => {
       const hits = [];
       if (terms.length && !text.startsWith('>')) {
@@ -635,7 +752,12 @@
       g.map((e) => {
         const dir = parentOf(e.path);
         const names = dir.split('/').filter(Boolean).reverse();
-        return { ...e, dir, parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''], group: i + 1 };
+        return {
+          ...e,
+          dir,
+          parentNames: [names[0] ?? '', names[1] ?? '', names[2] ?? ''],
+          group: i + 1,
+        };
       }),
     );
   }
@@ -692,7 +814,18 @@
     const nodes = [];
     const push = (name, path, kind, parent, modifiedMs, size = 0) => {
       const id = nodes.length;
-      nodes.push({ id, name, path, kind, parent, modifiedMs, size, files: 0, dirs: 0, children: [] });
+      nodes.push({
+        id,
+        name,
+        path,
+        kind,
+        parent,
+        modifiedMs,
+        size,
+        files: 0,
+        dirs: 0,
+        children: [],
+      });
       if (parent !== null) nodes[parent].children.push(id);
       return id;
     };
@@ -706,7 +839,14 @@
           n.files += nodes[c].files;
           n.dirs += nodes[c].dirs + 1;
         } else {
-          push(e.name, e.path, e.kind === 'symlink' ? 'link' : 'file', id, e.modifiedMs, e.size ?? 0);
+          push(
+            e.name,
+            e.path,
+            e.kind === 'symlink' ? 'link' : 'file',
+            id,
+            e.modifiedMs,
+            e.size ?? 0,
+          );
           n.size += e.size ?? 0;
           n.files += 1;
         }
@@ -754,7 +894,18 @@
         }
       }
       if (rest.count > 0) {
-        shown.push({ ...out, id, name: '', path: null, kind: 'rest', allocated: rest.size, logical: rest.size, files: rest.count, dirs: 0, modifiedMs: null });
+        shown.push({
+          ...out,
+          id,
+          name: '',
+          path: null,
+          kind: 'rest',
+          allocated: rest.size,
+          logical: rest.size,
+          files: rest.count,
+          dirs: 0,
+          modifiedMs: null,
+        });
       }
       out.children = shown;
     }
@@ -822,16 +973,64 @@
 
   // ---- viewer, quick view, properties ---------------------------------------------------
   const FORMATS = {
-    jpg: { id: 'jpeg', label: 'JPEG image', mime: 'image/jpeg', family: 'image', displayableImage: true },
-    png: { id: 'png', label: 'PNG image', mime: 'image/png', family: 'image', displayableImage: true },
-    md: { id: 'markdown', label: 'Markdown', mime: 'text/markdown', family: 'text', displayableImage: false },
+    jpg: {
+      id: 'jpeg',
+      label: 'JPEG image',
+      mime: 'image/jpeg',
+      family: 'image',
+      displayableImage: true,
+    },
+    png: {
+      id: 'png',
+      label: 'PNG image',
+      mime: 'image/png',
+      family: 'image',
+      displayableImage: true,
+    },
+    md: {
+      id: 'markdown',
+      label: 'Markdown',
+      mime: 'text/markdown',
+      family: 'text',
+      displayableImage: false,
+    },
     txt: { id: 'text', label: 'Text', mime: 'text/plain', family: 'text', displayableImage: false },
-    json: { id: 'json', label: 'JSON', mime: 'application/json', family: 'text', displayableImage: false },
-    ts: { id: 'typescript', label: 'TypeScript', mime: 'text/x-typescript', family: 'text', displayableImage: false },
-    zip: { id: 'zip', label: 'ZIP archive', mime: 'application/zip', family: 'archive', displayableImage: false },
-    mp4: { id: 'mp4', label: 'MPEG-4 video', mime: 'video/mp4', family: 'media', displayableImage: false },
+    json: {
+      id: 'json',
+      label: 'JSON',
+      mime: 'application/json',
+      family: 'text',
+      displayableImage: false,
+    },
+    ts: {
+      id: 'typescript',
+      label: 'TypeScript',
+      mime: 'text/x-typescript',
+      family: 'text',
+      displayableImage: false,
+    },
+    zip: {
+      id: 'zip',
+      label: 'ZIP archive',
+      mime: 'application/zip',
+      family: 'archive',
+      displayableImage: false,
+    },
+    mp4: {
+      id: 'mp4',
+      label: 'MPEG-4 video',
+      mime: 'video/mp4',
+      family: 'media',
+      displayableImage: false,
+    },
   };
-  const BINARY = { id: 'binary', label: 'Binary data', mime: null, family: 'binary', displayableImage: false };
+  const BINARY = {
+    id: 'binary',
+    label: 'Binary data',
+    mime: null,
+    family: 'binary',
+    displayableImage: false,
+  };
   const formatOf = (name) => FORMATS[name.slice(name.lastIndexOf('.') + 1).toLowerCase()] ?? null;
 
   function preview(path) {
@@ -844,7 +1043,14 @@
     const text = cfg.texts?.[path];
     if (text != null || format.family === 'text') {
       const body = text ?? `${e.name}\n`;
-      return { ...base, kind: 'text', encoding: 'utf-8', text: body, truncated: false, lossy: false };
+      return {
+        ...base,
+        kind: 'text',
+        encoding: 'utf-8',
+        text: body,
+        truncated: false,
+        lossy: false,
+      };
     }
     const bytes = Array.from({ length: 512 }, (_, i) => (i * 37 + e.name.length * 11) % 256);
     return { ...base, kind: 'binary', bytes, truncated: true };
@@ -878,19 +1084,14 @@
     const total = photos.slice(0, 12).reduce((n, e) => n + (e.size ?? 0), 0);
     const backup = '/Volumes/Backup/Photos';
     return [
-      jobInfo(
-        'demo-1',
-        { kind: 'copy', sources, targetDir: backup },
-        'running',
-        {
-          bytesDone: Math.round(total * 0.62),
-          bytesTotal: total,
-          itemsDone: 7,
-          itemsTotal: 12,
-          current: sources[7],
-          rateBps: 48 * mb,
-        },
-      ),
+      jobInfo('demo-1', { kind: 'copy', sources, targetDir: backup }, 'running', {
+        bytesDone: Math.round(total * 0.62),
+        bytesTotal: total,
+        itemsDone: 7,
+        itemsTotal: 12,
+        current: sources[7],
+        rateBps: 48 * mb,
+      }),
       jobInfo(
         'demo-2',
         { kind: 'move', sources: [`${home}/Downloads/setup.exe`], targetDir: `${home}/Documents` },
@@ -915,7 +1116,11 @@
     return {
       ...jobInfo(
         'demo-conflict',
-        { kind: 'copy', sources: [source, `${photoDir}/IMG_4740.jpg`], targetDir: '/Volumes/Backup/Photos' },
+        {
+          kind: 'copy',
+          sources: [source, `${photoDir}/IMG_4740.jpg`],
+          targetDir: '/Volumes/Backup/Photos',
+        },
         'waitingForDecision',
         { itemsDone: 3, itemsTotal: 12, bytesDone: 11 * mb, bytesTotal: 46 * mb, current: source },
       ),
@@ -924,8 +1129,16 @@
         kind: 'exists',
         source,
         target,
-        sourceMeta: { size: src?.size ?? 3 * mb, modifiedMs: src?.modifiedMs ?? null, isDir: false },
-        targetMeta: { size: 2 * mb + 417 * 1024, modifiedMs: Date.parse('2026-08-14T09:20:00Z'), isDir: false },
+        sourceMeta: {
+          size: src?.size ?? 3 * mb,
+          modifiedMs: src?.modifiedMs ?? null,
+          isDir: false,
+        },
+        targetMeta: {
+          size: 2 * mb + 417 * 1024,
+          modifiedMs: Date.parse('2026-08-14T09:20:00Z'),
+          isDir: false,
+        },
         suggestedName: 'IMG_4738 (1).jpg',
       },
     };
@@ -936,7 +1149,10 @@
     const id = `job-${++jobNo}`;
     const command = args?.command ?? '';
     setTimeout(() => {
-      send({ type: 'added', job: jobInfo(id, { kind: 'shell', cwd: args?.cwd ?? home, command }, 'running') });
+      send({
+        type: 'added',
+        job: jobInfo(id, { kind: 'shell', cwd: args?.cwd ?? home, command }, 'running'),
+      });
       const text = [
         'On branch main',
         'Changes not staged for commit:',
@@ -947,7 +1163,12 @@
         '\tsite/',
       ].join('\n');
       send({ type: 'shellOutput', id, chunks: [{ stream: 'stdout', text }], dropped: 0 });
-      send({ type: 'finished', id, state: 'done', summary: summary({ shell: { exitCode: 0, signal: null } }) });
+      send({
+        type: 'finished',
+        id,
+        state: 'done',
+        summary: summary({ shell: { exitCode: 0, signal: null } }),
+      });
     }, 50);
     return { type: 'started', jobId: id, notices: [] };
   }
@@ -988,14 +1209,54 @@
       debug: false,
     }),
     list_volumes: () => [
-      { path: '/', label: 'System', kind: 'fixed', fsType: 'apfs', total: 994 * gb, free: 412 * gb, reachable: true },
-      { path: '/Volumes/Backup', label: 'Backup', kind: 'removable', fsType: 'exfat', total: 2000 * gb, free: 731 * gb, reachable: true },
-      { path: '/Volumes/nas', label: 'nas', kind: 'network', fsType: 'smbfs', total: 8000 * gb, free: 3100 * gb, reachable: true },
+      {
+        path: '/',
+        label: 'System',
+        kind: 'fixed',
+        fsType: 'apfs',
+        total: 994 * gb,
+        free: 412 * gb,
+        reachable: true,
+      },
+      {
+        path: '/Volumes/Backup',
+        label: 'Backup',
+        kind: 'removable',
+        fsType: 'exfat',
+        total: 2000 * gb,
+        free: 731 * gb,
+        reachable: true,
+      },
+      {
+        path: '/Volumes/nas',
+        label: 'nas',
+        kind: 'network',
+        fsType: 'smbfs',
+        total: 8000 * gb,
+        free: 3100 * gb,
+        reachable: true,
+      },
     ],
     load_tools: () => ({
       tools: [
-        { id: 'edit', label: 'Edit', shortcut: null, perFile: false, fileLimit: 50, needsFiles: true, program: 'code' },
-        { id: 'vscode', label: 'Open in VS Code', shortcut: null, perFile: false, fileLimit: 50, needsFiles: true, program: 'code' },
+        {
+          id: 'edit',
+          label: 'Edit',
+          shortcut: null,
+          perFile: false,
+          fileLimit: 50,
+          needsFiles: true,
+          program: 'code',
+        },
+        {
+          id: 'vscode',
+          label: 'Open in VS Code',
+          shortcut: null,
+          perFile: false,
+          fileLimit: 50,
+          needsFiles: true,
+          program: 'code',
+        },
       ],
       warnings: [],
       file: `${home}/.config/files-and-folders/tools.json`,
@@ -1012,9 +1273,17 @@
         right: { size: 988, encoding: 'utf-8', eol: 'lf' },
         rows: [
           eq(1, 1, '{'),
-          { kind: 'changed', left: [2, '  "extends": "./tsconfig.json",'], right: [2, '  "compileOnSave": false,'] },
+          {
+            kind: 'changed',
+            left: [2, '  "extends": "./tsconfig.json",'],
+            right: [2, '  "compileOnSave": false,'],
+          },
           eq(3, 3, '  "compilerOptions": {'),
-          { kind: 'changed', left: [4, '    "outDir": "./out-tsc/spec",'], right: [4, '    "outDir": "./dist/out-tsc",'] },
+          {
+            kind: 'changed',
+            left: [4, '    "outDir": "./out-tsc/spec",'],
+            right: [4, '    "outDir": "./dist/out-tsc",'],
+          },
           { kind: 'added', left: null, right: [5, '    "strict": true,'] },
           { kind: 'added', left: null, right: [6, '    "noImplicitOverride": true,'] },
           eq(5, 7, '    "types": ["vitest/globals"]'),
@@ -1033,12 +1302,19 @@
     // folder memory of 027: nothing kept yet
     load_folder_memory: () => ({ value: { version: 1, tabs: [] }, warning: null }),
     run_shell: runShell,
-    duplicate_thumbnails: (a) => (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
+    duplicate_thumbnails: (a) =>
+      (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
     load_starter: () => ({
       items: [
         { id: 's1', kind: 'program', label: 'VS Code', program: 'code', params: '"%P%N"' },
         { id: 's2', kind: 'program', label: 'GIMP', program: 'gimp', params: '%S' },
-        { id: 's3', kind: 'program', label: 'Terminal here', program: 'gnome-terminal', workingDir: '%P' },
+        {
+          id: 's3',
+          kind: 'program',
+          label: 'Terminal here',
+          program: 'gnome-terminal',
+          workingDir: '%P',
+        },
         { id: 's4', kind: 'separator' },
         { id: 's5', kind: 'folder', label: 'Projects', folder: '~/Projects' },
         { id: 's6', kind: 'folder', label: 'Backup drive', folder: '/Volumes/Backup' },
@@ -1048,8 +1324,20 @@
           kind: 'submenu',
           label: 'Scripts',
           items: [
-            { id: 's9', kind: 'program', label: 'Resize photos', program: '~/bin/resize.sh', params: '%S' },
-            { id: 's10', kind: 'program', label: 'Upload to server', program: '~/bin/upload.sh', params: '"%P%N"' },
+            {
+              id: 's9',
+              kind: 'program',
+              label: 'Resize photos',
+              program: '~/bin/resize.sh',
+              params: '%S',
+            },
+            {
+              id: 's10',
+              kind: 'program',
+              label: 'Upload to server',
+              program: '~/bin/upload.sh',
+              params: '"%P%N"',
+            },
           ],
         },
       ],
@@ -1065,7 +1353,10 @@
       warning: null,
     }),
     subscribe_remote: () => null,
-    load_rename_presets: () => ({ presets: { version: 1, last: null, presets: [] }, warning: null }),
+    load_rename_presets: () => ({
+      presets: { version: 1, last: null, presets: [] },
+      warning: null,
+    }),
     plan_rename: (a) => {
       const rows = (a?.items ?? []).map((it) => ({
         status: nameOf(it.path) === it.newName ? 'unchanged' : 'ok',
@@ -1100,8 +1391,17 @@
     find_empty_dirs: (a) => {
       const roots = a?.roots ?? [];
       const below = Object.keys(dirs).filter((d) => roots.some((r) => d.startsWith(`${r}/`)));
-      const items = below.filter((d) => dirs[d].length === 0).map((path) => ({ path, kind: 'dir' }));
-      return { items, unreadable: [], unreadableMore: 0, truncated: false, cancelled: false, visited: below.length };
+      const items = below
+        .filter((d) => dirs[d].length === 0)
+        .map((path) => ({ path, kind: 'dir' }));
+      return {
+        items,
+        unreadable: [],
+        unreadableMore: 0,
+        truncated: false,
+        cancelled: false,
+        visited: below.length,
+      };
     },
     create_folders: () => ({ created: [], errors: [] }),
     get_properties: (a) => properties(a?.path),

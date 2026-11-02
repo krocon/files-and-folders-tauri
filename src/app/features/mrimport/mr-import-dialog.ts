@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { MrTool } from '../../core/mrimport/mr-import.models';
 import { AreaPlan, MrAreaId } from './mr-import-logic';
 import { MR_IMPORT_TEXTS } from './mr-import-texts';
@@ -11,7 +12,7 @@ import { MrImportStore } from './mr-import.store';
  */
 @Component({
   selector: 'app-mr-import-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.title" width="46rem" (closed)="store.close()">
       <div class="tool">
@@ -136,8 +137,11 @@ import { MrImportStore } from './mr-import.store';
         <p class="error" role="alert">{{ store.error() }}</p>
         <div class="foot">
           <div class="buttons">
-            <button type="button" class="btn" (click)="store.close()">{{ t.close }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="store.close()">
+              {{ t.close }}
+            </button>
             <button
+              appDialogKey="primary"
               type="button"
               class="btn primary"
               [disabled]="!store.canImport()"

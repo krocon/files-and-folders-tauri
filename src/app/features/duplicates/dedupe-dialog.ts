@@ -10,6 +10,7 @@ import { DedupeAction } from '../../core/jobs/jobs.models';
 import { SearchHit } from '../../core/search/search.models';
 import { formatSize } from '../../shared/format';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { DUP_TEXTS } from './duplicates-texts';
 import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
 
@@ -21,7 +22,7 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
  */
 @Component({
   selector: 'app-dedupe-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (dup.dedupe(); as r) {
       <app-modal
@@ -138,6 +139,7 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
           }
           <div class="buttons">
             <button
+              appDialogKey="cancel"
               type="button"
               class="btn"
               [attr.data-autofocus]="r.action === 'permanent' ? '' : null"
@@ -146,6 +148,7 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
               {{ t.cancel }}
             </button>
             <button
+              [appDialogKey]="r.action === 'permanent' ? 'destructive:D' : 'primary'"
               type="button"
               class="btn"
               [class.primary]="r.action !== 'permanent'"

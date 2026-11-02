@@ -4,6 +4,7 @@ import { AuthKind, NameEncoding, RemoteKind, RemoteProfile } from '../../core/re
 import { serverPath } from '../../core/remote/remote-path';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import {
   blankProfile,
@@ -33,7 +34,7 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
  */
 @Component({
   selector: 'app-connections-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.title" width="min(64rem, 96vw)" height="44rem" (closed)="close()">
       <div class="tool">
@@ -187,11 +188,25 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
             <button type="button" class="btn" [disabled]="!canUse()" (click)="favorite()">
               <i class="fa fa-star-o" aria-hidden="true"></i> {{ t.favorite }}
             </button>
-            <button type="button" class="btn" [disabled]="!canUse()" (click)="test()">
+            <button
+              appDialogKey="secondary:T"
+              type="button"
+              class="btn"
+              [disabled]="!canUse()"
+              (click)="test()"
+            >
               {{ t.test }}
             </button>
-            <button type="button" class="btn" (click)="close()">{{ t.close }}</button>
-            <button type="button" class="btn primary" [disabled]="!canUse()" (click)="connect()">
+            <button appDialogKey="cancel" type="button" class="btn" (click)="close()">
+              {{ t.close }}
+            </button>
+            <button
+              appDialogKey="primary"
+              type="button"
+              class="btn primary"
+              [disabled]="!canUse()"
+              (click)="connect()"
+            >
               {{ t.connect }}
             </button>
           </div>
@@ -403,8 +418,11 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
           </div>
           <p class="error" role="alert">{{ editError() }}</p>
           <div class="buttons">
-            <button type="button" class="btn" (click)="cancelEdit()">{{ t.cancel }}</button>
+            <button appDialogKey="cancel" type="button" class="btn" (click)="cancelEdit()">
+              {{ t.cancel }}
+            </button>
             <button
+              appDialogKey="primary"
               type="submit"
               class="btn primary"
               [disabled]="busy() || !dirty() || problem() !== null"

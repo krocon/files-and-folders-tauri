@@ -5,6 +5,8 @@ import { ACTION_IDS, ACTIONS, ActionId, CATEGORY_LABELS } from '../../core/actio
 import { formatShortcut, strokeFromEvent, strokeToString } from '../../core/actions/shortcut';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
+import { DIALOG_KEY_TEXTS } from '../../shared/dialog/dialog-key-texts';
 import { fuzzyMatch } from './fuzzy';
 
 /**
@@ -14,7 +16,7 @@ import { fuzzyMatch } from './fuzzy';
  */
 @Component({
   selector: 'app-shortcut-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     <app-modal [heading]="t.shortcutsTitle" width="48rem" (closed)="dialogs.close()">
       <input
@@ -91,6 +93,17 @@ import { fuzzyMatch } from './fuzzy';
           </tbody>
         </table>
       </div>
+      <section class="in-dialogs" aria-labelledby="fnf-shortcuts-in-dialogs">
+        <h3 id="fnf-shortcuts-in-dialogs">{{ k.inDialogs }}</h3>
+        <dl>
+          @for (row of dialogKeys(); track row.keys) {
+            <dt>
+              <kbd>{{ row.keys }}</kbd>
+            </dt>
+            <dd>{{ row.text }}</dd>
+          }
+        </dl>
+      </section>
       @if (conflicts().length) {
         <ul class="conflicts" role="status">
           @for (c of conflicts(); track c) {
@@ -99,7 +112,9 @@ import { fuzzyMatch } from './fuzzy';
         </ul>
       }
       <div class="buttons">
-        <button type="button" class="btn" (click)="dialogs.close()">{{ t.close }}</button>
+        <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
+          {{ t.close }}
+        </button>
       </div>
     </app-modal>
   `,
@@ -130,6 +145,18 @@ export class ShortcutDialog {
   });
 
   protected readonly conflicts = computed(() => this.actions.keymap().conflicts);
+
+  protected readonly k = DIALOG_KEY_TEXTS;
+  /** Section "In dialogs" (design 057): the one key rule of all dialogs. */
+  protected dialogKeys(): { keys: string; text: string }[] {
+    const p = this.actions.platform();
+    return [
+      { keys: formatShortcut('Enter', p), text: this.k.enterKey },
+      { keys: formatShortcut('Escape', p), text: this.k.escKey },
+      { keys: formatShortcut('Mod+O', p), text: this.k.modKey },
+      { keys: formatShortcut('Mod+Shift+D', p), text: this.k.modShiftKey },
+    ];
+  }
 
   protected record(id: ActionId): void {
     this.recording.set(id);

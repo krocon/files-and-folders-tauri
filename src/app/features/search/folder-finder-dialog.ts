@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { FolderFinderStore, MAX_SLIDER_DEPTH } from './folder-finder.store';
 import { SEARCH_TEXTS } from './search-texts';
@@ -16,7 +17,7 @@ const COLUMNS: readonly GridColumn[] = [
  */
 @Component({
   selector: 'app-folder-finder-dialog',
-  imports: [Modal, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (ff.request(); as req) {
       <app-modal
@@ -78,8 +79,11 @@ const COLUMNS: readonly GridColumn[] = [
               {{ ff.activeFolder()?.path ?? '' }}
             </p>
             <div class="buttons">
-              <button type="button" class="btn" (click)="ff.close()">{{ t.cancel }}</button>
+              <button appDialogKey="cancel" type="button" class="btn" (click)="ff.close()">
+                {{ t.cancel }}
+              </button>
               <button
+                appDialogKey="primary"
                 type="button"
                 class="btn primary"
                 [disabled]="!ff.activeFolder()"
