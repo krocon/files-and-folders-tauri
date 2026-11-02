@@ -118,6 +118,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_SHORTCUT_DLG: 'Tastenkürzel…',
   OPEN_SETUP_DLG: 'Einstellungen…',
   OPEN_THEMES_DLG: 'Farbschemata…',
+  OPEN_THEME_PICKER: 'Farbschema wählen…',
   NEXT_THEME: 'Nächstes Farbschema',
   THEME_FOLLOW_SYSTEM: 'Farbschema: System folgen',
   OPEN_BUTTON_CONFIG_DLG: 'Button-Konfiguration…',

@@ -9,7 +9,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tauri::menu::{
-    AboutMetadata, IsMenuItem, Menu, MenuItemBuilder, MenuItemKind, PredefinedMenuItem, Submenu,
+    AboutMetadata, CheckMenuItemBuilder, IsMenuItem, Menu, MenuItemBuilder, MenuItemKind,
+    PredefinedMenuItem, Submenu,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -32,6 +33,9 @@ pub enum MenuNode {
         #[serde(default)]
         accelerator: Option<String>,
         enabled: bool,
+        /// Set: a check item, ✓ when `true` (the colour schemes, design 070).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        checked: Option<bool>,
     },
     Submenu {
         label: String,
@@ -127,6 +131,11 @@ pub fn apply_enabled<R: Runtime>(
         for kind in items {
             match kind {
                 MenuItemKind::MenuItem(item) => {
+                    if let Some(&on) = wanted.get(item.id().as_ref()) {
+                        item.set_enabled(on)?;
+                    }
+                }
+                MenuItemKind::Check(item) => {
                     if let Some(&on) = wanted.get(item.id().as_ref()) {
                         item.set_enabled(on)?;
                     }
@@ -310,8 +319,21 @@ fn build_node<R: Runtime>(app: &AppHandle<R>, node: &MenuNode) -> tauri::Result<
         MenuNode::Item {
             id,
             label,
+            enabled,
+            checked: Some(checked),
+            ..
+        } => MenuItemKind::Check(
+            CheckMenuItemBuilder::with_id(id.clone(), label)
+                .enabled(*enabled)
+                .checked(*checked)
+                .build(app)?,
+        ),
+        MenuNode::Item {
+            id,
+            label,
             accelerator,
             enabled,
+            checked: None,
         } => {
             let accel = accelerator
                 .as_deref()
@@ -399,6 +421,7 @@ mod tests {
             label: "Copy…".into(),
             accelerator: None,
             enabled: true,
+            checked: None,
         }
     }
 
@@ -507,13 +530,15 @@ mod tests {
             id: "A".into(),
             label: "evil\u{7}".into(),
             accelerator: None,
-            enabled: true
+            enabled: true,
+            checked: None
         }])]));
         assert!(bad(vec![sub(vec![MenuNode::Item {
             id: "A".into(),
             label: "  ".into(),
             accelerator: None,
-            enabled: true
+            enabled: true,
+            checked: None
         }])]));
         // depth: File ▸ a ▸ b ▸ c
         assert!(bad(vec![sub(vec![sub(vec![sub(vec![sub(vec![])])])])]));
@@ -563,7 +588,8 @@ mod tests {
                 id: "SELECT_ALL".into(),
                 label: "Mark all".into(),
                 accelerator: Some("Mod+A".into()),
-                enabled: false
+                enabled: false,
+                checked: None
             }
         );
         assert!(matches!(
@@ -573,6 +599,20 @@ mod tests {
                 ..
             }
         ));
+        // a check item (colour schemes, design 070): `checked` only when set
+        let check: MenuNode = serde_json::from_str(
+            r#"{"kind":"item","id":"theme:dark","label":"Dark","enabled":true,"checked":true}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            check,
+            MenuNode::Item {
+                checked: Some(true),
+                ..
+            }
+        ));
+        let plain = serde_json::to_value(&items[3]).unwrap();
+        assert!(plain.get("checked").is_none());
         assert_eq!(
             serde_json::to_value(MenuEvent { id: "X".into() }).unwrap(),
             serde_json::json!({ "id": "X" })

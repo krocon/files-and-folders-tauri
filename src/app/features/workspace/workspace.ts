@@ -79,6 +79,7 @@ import { registerFlatActions } from '../flat/flat-actions';
 import { ThemeService } from '../../core/theme/theme.service';
 import { registerThemeActions } from '../themes/theme-actions';
 import { ThemeDialog } from '../themes/theme-dialog';
+import { ThemePicker } from '../themes/theme-picker';
 import { SearchStore } from '../search/search.store';
 import { CommandPalette } from '../actions/command-palette';
 import { registerPaletteActions } from '../palette/palette-actions';
@@ -174,6 +175,7 @@ import { RemoteStore } from '../remote/remote.store';
     DuplicateRulesDialog,
     DedupeDialog,
     ThemeDialog,
+    ThemePicker,
     SettingsDialog,
     AboutDialog,
     ContextMenu,

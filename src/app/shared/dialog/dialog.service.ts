@@ -32,6 +32,7 @@ export type DialogKind =
   | 'duplicate-rules'
   | 'dedupe'
   | 'themes'
+  | 'theme-picker'
   | 'settings'
   | 'about'
   | 'button-config'

@@ -33,6 +33,14 @@ export interface ExtraAction {
   run(): void | Promise<unknown>;
 }
 
+/** A radio entry of a dynamic menu (the colour schemes, design 070): chosen by id. */
+export interface MenuChoice {
+  readonly id: string;
+  readonly label: string;
+  readonly checked: boolean;
+  run(): void | Promise<unknown>;
+}
+
 /**
  * The starter menu as a tree (design 032): items point to extra actions by id,
  * submenus carry their own label.
@@ -72,6 +80,8 @@ export class ActionService {
 
   /** The starter menu (design 032); its items are extra actions of the source `starter`. */
   readonly starterTree = signal<readonly ExtraMenuNode[]>([]);
+  /** The colour schemes as radio entries of the menu bar (design 070), set by the ThemeService. */
+  readonly themeChoices = signal<readonly MenuChoice[]>([]);
 
   /** Canonical shortcut → extra action; taken or invalid shortcuts are left out (see `extraProblems`). */
   private readonly extraIndex = computed(() => {
@@ -244,6 +254,10 @@ export class ActionService {
 
   /** Runs a catalog action or an extra action (tool) by id – what every menu item does. */
   runAny(id: string): Promise<boolean> {
+    const choice = this.themeChoices().find((c) => c.id === id);
+    if (choice) {
+      return Promise.resolve(choice.run()).then(() => true);
+    }
     return isActionId(id) ? this.run(id) : this.runExtra(id);
   }
 

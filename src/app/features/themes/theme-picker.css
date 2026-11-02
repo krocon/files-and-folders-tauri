@@ -1,0 +1,105 @@
+/* Colour scheme picker (design 070): filter in the head, a grid of thumbnails, OK/Cancel. */
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .count {
+    flex: none;
+    color: var(--color-muted);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.grid {
+  max-height: min(60vh, 34rem);
+  overflow: auto;
+  padding: var(--spacing-1);
+  outline: none;
+}
+
+.section-head {
+  margin: var(--spacing-2) 0 var(--spacing-1);
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: var(--spacing-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-1);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-dialog-border);
+  }
+
+  &.chosen {
+    border-color: var(--color-dialog-focus);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-dialog-focus);
+    outline-offset: 2px;
+  }
+}
+
+.thumb,
+.split {
+  width: 100%;
+  height: 5.5rem;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+
+  app-theme-thumb {
+    height: 100%;
+  }
+}
+
+.name {
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.kind {
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+}
+
+.none,
+.hint {
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.buttons {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+
+  .spacer {
+    flex: 1;
+  }
+}

@@ -11,6 +11,7 @@ export const MENU_DE: Translation<typeof MENU_EN> = {
   commands: 'Befehle',
   tools: 'Konfiguration',
   checksums: 'Prüfsummen',
+  colourScheme: 'Farbschema',
   start: 'Start',
   window: 'Fenster',
   help: 'Hilfe',
