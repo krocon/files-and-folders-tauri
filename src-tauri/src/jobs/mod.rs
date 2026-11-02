@@ -24,6 +24,7 @@ pub mod pack;
 pub mod remote_delete;
 pub mod rename;
 pub mod report;
+pub mod retry;
 pub mod search;
 pub mod shell;
 pub mod sync;
@@ -49,6 +50,8 @@ mod tests_link;
 mod tests_ops;
 #[cfg(test)]
 mod tests_remote;
+#[cfg(test)]
+mod tests_retry;
 #[cfg(all(test, unix))]
 mod tests_shell;
 #[cfg(test)]
@@ -781,6 +784,8 @@ pub struct JobInfo {
     pub pause_reason: Option<FsError>,
     /// A finished rename job that `undo_rename` can still undo.
     pub undo_available: bool,
+    /// A failed task (or one with errors) that `retry_job` can still retry (design 048).
+    pub retry_available: bool,
 }
 
 /// Everything the frontend hears about jobs.
@@ -824,6 +829,11 @@ pub enum JobEvent {
     },
     /// A rename job can be undone (after it finished) – or no longer.
     UndoAvailable {
+        id: String,
+        available: bool,
+    },
+    /// A finished task can be retried (design 048) – or no longer.
+    RetryAvailable {
         id: String,
         available: bool,
     },
@@ -915,6 +925,13 @@ mod tests {
         })
         .unwrap();
         assert_eq!(e["type"], "undoAvailable");
+        let e = serde_json::to_value(JobEvent::RetryAvailable {
+            id: "j1".into(),
+            available: false,
+        })
+        .unwrap();
+        assert_eq!(e["type"], "retryAvailable");
+        assert_eq!(e["available"], false);
         let spec: JobSpec = serde_json::from_str(
             r#"{"kind":"group","root":"/r","items":[{"path":"/a/x 01.mp3","group":"x"}],"transfer":"move"}"#,
         )

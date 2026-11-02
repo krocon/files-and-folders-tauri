@@ -261,6 +261,7 @@ pub fn run() {
             commands::cancel_clean_scan,
             commands::collect_files,
             commands::undo_rename,
+            commands::retry_job,
             commands::load_rename_presets,
             commands::save_rename_presets,
             commands::duplicates::classify_paths,

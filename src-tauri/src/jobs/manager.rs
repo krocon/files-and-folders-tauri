@@ -6,7 +6,7 @@ use super::report::Reporter;
 use super::{
     Control, Decision, DeleteMode, ItemError, JobEvent, JobInfo, JobSpec, JobState, Progress,
     RenameItem, Summary, Transfer, attributes, clean, copy, delete, duplicates, expect, extract,
-    group, link, pack, remote_delete, rename, search, shell, transfer,
+    group, link, pack, remote_delete, rename, retry, search, shell, transfer,
 };
 use crate::dirsize::{self, DirSize};
 use crate::error::{FsError, FsErrorCode};
@@ -29,6 +29,8 @@ struct Entry {
     /// A serial job the user started at once ("Start now"): it ran past the queue,
     /// so its end must not free the serial slot.
     detached: bool,
+    /// A retry (design 048): how it runs besides its visible spec.
+    retry_extra: Option<Arc<retry::RetryExtra>>,
 }
 
 impl Entry {
@@ -82,6 +84,8 @@ pub struct JobManager {
     pub(crate) force_copy_on_move: AtomicBool,
     /// What the last rename jobs did (job id → pairs that undo it), newest last.
     undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
+    /// What failed tasks left undone (job id → retry plan), newest last (design 048).
+    retry_log: retry::RetryLog,
     fs_guard: Mutex<Option<FsGuard>>,
     /// Marks the folders a job writes into (the watcher holds their reloads; design 029 E8).
     target_guard: Mutex<Option<FsGuard>>,
@@ -101,6 +105,7 @@ impl JobManager {
             home: Mutex::new(None),
             force_copy_on_move: AtomicBool::new(false),
             undo_log: Mutex::new(VecDeque::new()),
+            retry_log: retry::RetryLog::default(),
             fs_guard: Mutex::new(None),
             target_guard: Mutex::new(None),
             disk_usage: Arc::default(),
@@ -132,6 +137,16 @@ impl JobManager {
 
     /// Validates the spec and queues (or starts) the job. Returns its id.
     pub fn start(self: &Arc<Self>, spec: JobSpec) -> Result<String, FsError> {
+        self.start_with(spec, None)
+    }
+
+    /// [`start`](Self::start) with the retry plan's extra (design 048): the spec is
+    /// validated like any other.
+    fn start_with(
+        self: &Arc<Self>,
+        spec: JobSpec,
+        retry_extra: Option<Arc<retry::RetryExtra>>,
+    ) -> Result<String, FsError> {
         let home = self.home.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let mut spec = spec;
         normalize(&mut spec)?;
@@ -166,11 +181,13 @@ impl JobManager {
                 summary: None,
                 pause_reason: None,
                 undo_available: false,
+                retry_available: false,
             };
             inner.jobs.push(Entry {
                 info: info.clone(),
                 control: Arc::new(Control::default()),
                 detached: false,
+                retry_extra,
             });
             (id, run_now, info)
         };
@@ -202,13 +219,18 @@ impl JobManager {
                 )),
                 ..Summary::default()
             };
-            self.finish(&id, JobState::Failed, summary, parallel, None);
+            self.finish(&id, JobState::Failed, summary, parallel, None, None);
         }
     }
 
     fn run(self: &Arc<Self>, id: &str) {
-        let Some((spec, control, parallel)) = self.with_job(id, |e| {
-            (e.info.spec.clone(), e.control.clone(), e.parallel())
+        let Some((spec, control, parallel, retry_extra)) = self.with_job(id, |e| {
+            (
+                e.info.spec.clone(),
+                e.control.clone(),
+                e.parallel(),
+                e.retry_extra.clone(),
+            )
         }) else {
             return;
         };
@@ -220,6 +242,10 @@ impl JobManager {
         let work = || -> (JobState, Summary) {
             if control.is_cancelled() {
                 (JobState::Cancelled, Summary::default())
+            } else if let Some(done) =
+                self.run_retry(id, &spec, retry_extra.as_deref(), &control, &emit)
+            {
+                done
             } else if let JobSpec::Rename { items, undo_of } = &spec {
                 let partial = undo_of.is_some();
                 rename::run(
@@ -601,7 +627,143 @@ impl JobManager {
                 },
             )
         });
-        self.finish(id, state, summary, parallel, is_rename.then_some(undo));
+        // what is left to retry – the runners' notes plus the error list (design 048)
+        let plan = retry::build(&spec, state, &summary, control.retry.take());
+        self.finish(
+            id,
+            state,
+            summary,
+            parallel,
+            is_rename.then_some(undo),
+            plan,
+        );
+    }
+
+    /// Runs a retry whose extra changes how it runs (design 048); `None` = run the spec
+    /// as usual.
+    fn run_retry(
+        &self,
+        id: &str,
+        spec: &JobSpec,
+        extra: Option<&retry::RetryExtra>,
+        control: &Control,
+        emit: &(dyn Fn(JobEvent) + Send + Sync),
+    ) -> Option<(JobState, Summary)> {
+        let extra = extra?;
+        Some(match (extra, spec) {
+            (
+                retry::RetryExtra::Pairs {
+                    root,
+                    pairs,
+                    cleanup,
+                },
+                JobSpec::Copy { options, .. } | JobSpec::Move { options, .. },
+            ) => {
+                let moving = matches!(spec, JobSpec::Move { .. });
+                let remote = matches!(root, transfer::Loc::Remote(_))
+                    || pairs
+                        .iter()
+                        .any(|p| matches!(p.src, transfer::Loc::Remote(_)));
+                if remote {
+                    match crate::remote::hub() {
+                        Ok(hub) => transfer::run_retry(
+                            hub, id, root, pairs, cleanup, options, moving, control, emit,
+                        ),
+                        Err(e) => failed_with(e),
+                    }
+                } else {
+                    let transfer::Loc::Local(root) = root else {
+                        return None;
+                    };
+                    let mode = if moving {
+                        copy::Mode::Move {
+                            force_copy: self.force_copy_on_move.load(Ordering::SeqCst),
+                        }
+                    } else {
+                        copy::Mode::Copy
+                    };
+                    copy::run_retry(id, root, pairs, cleanup, options, mode, control, emit)
+                }
+            }
+            (retry::RetryExtra::Cleanup { dirs }, JobSpec::Delete { .. }) => {
+                // the failed entries as a normal delete, then their emptied folders
+                let (state, summary) = self.run_plain_delete(id, spec, control, emit)?;
+                if state != JobState::Cancelled {
+                    let hub = crate::remote::hub().ok();
+                    let (changed, left) = retry::remove_empty_dirs(dirs, hub);
+                    if !changed.is_empty() {
+                        emit(JobEvent::DirsChanged { dirs: changed });
+                    }
+                    if summary.items_failed > 0 {
+                        control.retry.cleanup(left);
+                    }
+                } else {
+                    control.retry.cleanup(dirs.clone());
+                }
+                (state, summary)
+            }
+            (
+                retry::RetryExtra::ExtractOnly { inner },
+                JobSpec::Extract {
+                    archive,
+                    entries,
+                    target_dir,
+                    into_subfolder,
+                    options,
+                },
+            ) => extract::run_only(
+                id,
+                &PathBuf::from(archive),
+                entries,
+                &PathBuf::from(target_dir),
+                *into_subfolder,
+                options,
+                Some(inner),
+                control,
+                emit,
+            ),
+            _ => return None,
+        })
+    }
+
+    /// A delete (local or server) with the expected-filter, as `run` does it.
+    fn run_plain_delete(
+        &self,
+        id: &str,
+        spec: &JobSpec,
+        control: &Control,
+        emit: &(dyn Fn(JobEvent) + Send + Sync),
+    ) -> Option<(JobState, Summary)> {
+        let JobSpec::Delete {
+            paths,
+            mode,
+            expected,
+            ..
+        } = spec
+        else {
+            return None;
+        };
+        if has_remote(paths, None) {
+            return Some(match crate::remote::hub() {
+                Ok(hub) => {
+                    let (paths, skipped) = remote_filter(hub, paths, expected, control);
+                    let paths: Vec<crate::remote::RemotePath> = paths
+                        .iter()
+                        .filter_map(|p| crate::remote::RemotePath::parse(p).ok())
+                        .collect();
+                    with_skipped(skipped, paths.len(), || {
+                        remote_delete::run(hub, id, &paths, control, emit)
+                    })
+                }
+                Err(e) => failed_with(e),
+            });
+        }
+        let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+        let (paths, skipped) =
+            expect::filter(id, paths, expected, &|| control.is_cancelled(), emit);
+        Some(with_skipped(skipped, paths.len(), || {
+            delete::run(id, &paths, *mode, control, emit)
+        }))
     }
 
     /// Records the final state and starts the next queued serial job. `parallel`
@@ -613,10 +775,14 @@ impl JobManager {
         summary: Summary,
         parallel: bool,
         undo: Option<Vec<RenameItem>>,
+        retry: Option<retry::RetryPlan>,
     ) {
         // before "finished": whoever waits for the job sees whether it can be undone
         if let Some(pairs) = undo.filter(|p| !p.is_empty()) {
             self.remember_undo(id, pairs);
+        }
+        if let Some(plan) = retry {
+            self.remember_retry(id, plan);
         }
         self.record(JobEvent::Finished {
             id: id.to_string(),
@@ -806,6 +972,58 @@ impl JobManager {
         }
     }
 
+    /// Stores the retry plan of a finished task (the oldest drops out).
+    fn remember_retry(&self, id: &str, plan: retry::RetryPlan) {
+        let dropped = self.retry_log.push(id, plan);
+        self.set_retry_available(id, true);
+        for old in dropped {
+            self.set_retry_available(&old, false);
+        }
+    }
+
+    /// Tests: stores a plan built by [`retry::build`] for a finished job.
+    #[cfg(test)]
+    pub(crate) fn remember_retry_for_tests(&self, id: &str, plan: retry::RetryPlan) {
+        self.remember_retry(id, plan);
+    }
+
+    fn set_retry_available(&self, id: &str, available: bool) {
+        {
+            let mut inner = self.lock();
+            if let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) {
+                e.info.retry_available = available;
+            }
+        }
+        (self.sink)(&JobEvent::RetryAvailable {
+            id: id.to_string(),
+            available,
+        });
+    }
+
+    /// Retries a failed task (design 048): the whole task when it failed, only what
+    /// failed when it ended with errors. Returns the id of the new task; the old one
+    /// keeps its row but can no longer be retried (E1). A second call fails with
+    /// `retry_unavailable`.
+    pub fn retry_job(self: &Arc<Self>, id: &str) -> Result<String, FsError> {
+        let plan = self.retry_log.take(id).ok_or_else(|| {
+            FsError::new(
+                FsErrorCode::RetryUnavailable,
+                "This task cannot be retried",
+                None,
+            )
+        })?;
+        match self.start_with(plan.spec.clone(), plan.extra.clone()) {
+            Ok(new_id) => {
+                self.set_retry_available(id, false);
+                Ok(new_id)
+            }
+            Err(e) => {
+                self.retry_log.put_back(id, plan);
+                Err(e)
+            }
+        }
+    }
+
     fn with_job<T>(&self, id: &str, f: impl FnOnce(&Entry) -> T) -> Option<T> {
         self.lock().jobs.iter().find(|e| e.info.id == id).map(f)
     }
@@ -975,6 +1193,7 @@ impl JobManager {
             inner.jobs.retain(|e| !e.info.state.is_finished());
             ids
         };
+        self.retry_log.forget(&ids);
         if !ids.is_empty() {
             (self.sink)(&JobEvent::Removed { ids });
         }

@@ -85,6 +85,10 @@ export type FsErrorCode =
   | 'duplicate_target'
   /** Nothing to undo (anymore). */
   | 'undo_unavailable'
+  /** A read or write did not finish in time (network drive, design 048 E4). */
+  | 'timed_out'
+  /** The task cannot be retried (any more, design 048). */
+  | 'retry_unavailable'
   /** An external program (tool, terminal, file manager) is not installed. */
   | 'program_not_found'
   /** The tool id is not in the configuration (anymore). */

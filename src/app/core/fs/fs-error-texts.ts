@@ -65,8 +65,10 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   invalid_path: 'The path is invalid.',
   no_home_directory: 'Your home folder could not be determined.',
   no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
-  io: 'The folder could not be read.',
-  unknown: 'The folder could not be read.',
+  timed_out: 'The operation timed out (network drive or server too slow).',
+  retry_unavailable: 'This task cannot be retried (any more).',
+  io: 'Read or write error.',
+  unknown: 'Read or write error.',
 };
 
 const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
@@ -133,8 +135,10 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   invalid_path: 'Der Pfad ist ungültig.',
   no_home_directory: 'Ihr Home-Ordner konnte nicht ermittelt werden.',
   no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',
-  io: 'Der Ordner konnte nicht gelesen werden.',
-  unknown: 'Der Ordner konnte nicht gelesen werden.',
+  timed_out: 'Zeitüberschreitung beim Dateizugriff (Netzlaufwerk oder Server zu langsam).',
+  retry_unavailable: 'Dieser Task kann (nicht mehr) wiederholt werden.',
+  io: 'Lese- oder Schreibfehler.',
+  unknown: 'Lese- oder Schreibfehler.',
 };
 
 export const FS_ERROR_TEXTS = translatable('fsErrors', FS_ERROR_EN, { de: FS_ERROR_DE });

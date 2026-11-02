@@ -558,6 +558,33 @@ pub fn run(
     control: &Control,
     emit: &(dyn Fn(JobEvent) + Send + Sync),
 ) -> (JobState, Summary) {
+    run_only(
+        id,
+        archive_path,
+        entries,
+        target_dir,
+        into_subfolder,
+        options,
+        None,
+        control,
+        emit,
+    )
+}
+
+/// [`run`] limited to the entries at or below `only` (inner names) – the retry of the
+/// entries that failed (design 048): same selection, so each lands at its usual place.
+#[allow(clippy::too_many_arguments)]
+pub fn run_only(
+    id: &str,
+    archive_path: &Path,
+    entries: &[String],
+    target_dir: &Path,
+    into_subfolder: bool,
+    options: &CopyOptions,
+    only: Option<&[Vec<String>]>,
+    control: &Control,
+    emit: &(dyn Fn(JobEvent) + Send + Sync),
+) -> (JobState, Summary) {
     let mut run = Run {
         id,
         control,
@@ -611,7 +638,13 @@ pub fn run(
             }
         }
     }
-    let (items, missing) = plan(&index, &selections);
+    let (mut items, missing) = plan(&index, &selections);
+    if let Some(only) = only {
+        items.retain(|i| {
+            only.iter()
+                .any(|o| i.entry.name.len() >= o.len() && i.entry.name[..o.len()] == o[..])
+        });
+    }
     if run.password.is_none()
         && let Some(item) = items
             .iter()
@@ -625,7 +658,7 @@ pub fn run(
         );
         return failed(run.summary, e);
     }
-    if entries.is_empty() && index.unsafe_entries > 0 {
+    if entries.is_empty() && index.unsafe_entries > 0 && only.is_none() {
         // never extracted, and never part of the listing: one error for all of them
         let n = index.unsafe_entries;
         run.fail(
@@ -640,7 +673,7 @@ pub fn run(
         );
         run.summary.items_failed += u64::from(n) - 1;
     }
-    for i in missing {
+    for i in missing.into_iter().filter(|_| only.is_none()) {
         let p = archive::virtual_path(archive_path, &selections[i]);
         run.fail(
             &p,

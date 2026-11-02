@@ -313,7 +313,7 @@ describe('WorkspaceStore', () => {
     TestBed.tick();
     await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS + 10);
     expect(ws.notices()).toEqual([
-      'The session could not be saved: The folder could not be read. (disk full)',
+      'The session could not be saved: Read or write error. (disk full)',
     ]);
   });
 

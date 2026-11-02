@@ -317,3 +317,48 @@ fn count_and_view_on_a_server() {
     assert_eq!(again.to_string_lossy(), view);
     let _ = global_hub();
 }
+
+/// Design 048: a move from a server whose deep file failed is retried into its exact
+/// sub folder; the emptied server folders are removed afterwards.
+#[test]
+fn a_failed_download_is_retried_into_its_exact_sub_folder() {
+    let srv = start_sftp(15, None);
+    put(srv.root.path(), "S/A/B/f.txt", b"deep");
+    put(srv.root.path(), "S/A/g.txt", b"g");
+    let id = connected(RemoteKind::Sftp, srv.port);
+    let h = Harness::new();
+    let d = tempfile::tempdir().unwrap();
+    let target = d.path().join("Ziel ä");
+    let blocker = target.join("S/A/B/f.txt");
+    fs::create_dir_all(&blocker).unwrap();
+    fs::write(blocker.join("inside"), "x").unwrap();
+    let job = h
+        .mgr
+        .start(JobSpec::Move {
+            sources: vec![r(&id, "/S")],
+            target_dir: s(&target),
+            background: false,
+            options: CopyOptions {
+                conflict_default: ConflictDefault::Overwrite,
+                rename_to: None,
+            },
+            allow_dangerous: false,
+            expected: Vec::new(),
+        })
+        .unwrap();
+    let first = h.finish(&job);
+    assert_eq!(first.state, JobState::DoneWithErrors, "{:?}", first.summary);
+    assert!(first.retry_available);
+    assert_eq!(fs::read_to_string(target.join("S/A/g.txt")).unwrap(), "g");
+    assert!(srv.root.path().join("S/A/B/f.txt").is_file());
+    fs::remove_dir_all(&blocker).unwrap();
+    let again = h.mgr.retry_job(&job).unwrap();
+    let info = h.finish(&again);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert_eq!(fs::read_to_string(&blocker).unwrap(), "deep");
+    assert!(!target.join("f.txt").exists(), "never flat");
+    assert!(
+        !srv.root.path().join("S").exists(),
+        "emptied server folders are gone"
+    );
+}
