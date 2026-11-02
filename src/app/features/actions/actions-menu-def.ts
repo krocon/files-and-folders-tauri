@@ -85,3 +85,42 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     '@tools',
   ],
 ];
+
+/**
+ * Entries whose label ends in „…“ (055): „…“ = opens a dialog (also a confirmation such as Delete with the
+ * default `behavior.confirmTrash`), the command palette, or asks for an input first (Change Dir opens the
+ * path field). Everything that acts at once (toggle, reload, clipboard, marks, panels, tabs, starting the
+ * Disk Usage scan, tools) has none. `actions-menu.spec.ts` keeps the labels in line with this list.
+ */
+export const OPENS_DIALOG: ReadonlySet<ActionId> = new Set<ActionId>([
+  'OPEN_COMMAND_PALETTE',
+  'OPEN_CHDIR_DLG',
+  'OPEN_CONNECTIONS_DLG',
+  'OPEN_FIND_DLG',
+  'OPEN_MARK_PATTERN_DLG',
+  'OPEN_UNMARK_PATTERN_DLG',
+  'OPEN_SELECT_IF_DLG',
+  'OPEN_COPY_DLG',
+  'OPEN_MOVE_DLG',
+  'OPEN_DELETE_DLG',
+  'DELETE_PERMANENT',
+  'OPEN_MKDIR_DLG',
+  'OPEN_RENAME_DLG',
+  'OPEN_ATTRIBUTE_DLG',
+  'OPEN_CHANGE_ATTRIBUTES_DLG',
+  'OPEN_UNPACK_DLG',
+  'OPEN_PACK_DLG',
+  'OPEN_MULTIRENAME_DLG',
+  'OPEN_MULTIMKDIR_DLG',
+  'OPEN_GROUPFILES_DLG',
+  'OPEN_SERIES_GROUP_DLG',
+  'OPEN_DELETE_EMPTY_FOLDERS_DLG',
+  'OPEN_FIND_DUPLICATES_DLG',
+  'OPEN_SETUP_DLG',
+  'OPEN_THEMES_DLG',
+  'OPEN_BUTTON_CONFIG_DLG',
+  'OPEN_TOOL_CONFIG_DLG',
+  'OPEN_STARTER_CONFIG_DLG',
+  'OPEN_SHORTCUT_DLG',
+  'OPEN_ABOUT_DLG',
+]);
