@@ -86,6 +86,17 @@ describe('menu model', () => {
     expect(contextKind({ resultTab: false, markedCount: 2, entry: file })).toBe('marked');
     expect(contextKind({ resultTab: false, markedCount: 0, entry: null })).toBe('empty');
     expect(contextKind({ resultTab: true, markedCount: 0, entry: file })).toBe('result');
+    // 060: a folder in a result tab can open as a normal folder tab next to it
+    expect(contextKind({ resultTab: true, markedCount: 0, entry: { kind: 'directory' } })).toBe(
+      'resultFolder',
+    );
+    expect(contextMenuFor('resultFolder').slice(0, 3)).toEqual([
+      'NAVIGATE_OPEN',
+      'OPEN_IN_NEW_TAB',
+      'GOTO_FILE',
+    ]);
+    expect(contextMenuFor('resultFolder')).not.toContain('OPEN_VIEW_DLG');
+    expect(contextMenuFor('result')).not.toContain('OPEN_IN_NEW_TAB');
     expect(contextMenuFor('marked', 3)[0]).toEqual({ heading: '3 marked entries' });
     expect(ids(contextMenuFor('folder')).has('OPEN_IN_NEW_TAB')).toBe(true);
     expect(ids(contextMenuFor('file')).has('OPEN_IN_NEW_TAB')).toBe(false);

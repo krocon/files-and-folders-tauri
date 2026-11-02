@@ -328,7 +328,7 @@ export const STARTER_POPUP: readonly MenuDef[] = ['@starter', '-', 'OPEN_STARTER
 
 /** Where a context menu was opened (design 014 E2). */
 export type ContextKind =
-  'file' | 'archiveFile' | 'folder' | 'marked' | 'empty' | 'result' | 'archive';
+  'file' | 'archiveFile' | 'folder' | 'marked' | 'empty' | 'result' | 'resultFolder' | 'archive';
 
 const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
   file: [
@@ -437,6 +437,24 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'OPEN_ATTRIBUTE_DLG',
     'OPEN_CHANGE_ATTRIBUTES_DLG',
   ],
+  // a folder in a result tab (060): open it here or as a normal folder tab next to the result;
+  // no View/Edit (they do nothing on a folder)
+  resultFolder: [
+    'NAVIGATE_OPEN',
+    'OPEN_IN_NEW_TAB',
+    'GOTO_FILE',
+    WITH_TOOL,
+    '-',
+    'OPEN_COPY_DLG',
+    'OPEN_MOVE_DLG',
+    'OPEN_DELETE_DLG',
+    '-',
+    COPY_AS,
+    'REVEAL_IN_FILE_MANAGER',
+    'RERUN_SEARCH',
+    'OPEN_ATTRIBUTE_DLG',
+    'OPEN_CHANGE_ATTRIBUTES_DLG',
+  ],
   // inside an archive (read-only, design 016): extract, marks, names
   archive: [
     'NAVIGATE_OPEN',
@@ -482,7 +500,7 @@ export function contextKind(input: {
     return 'empty';
   }
   if (input.resultTab) {
-    return 'result';
+    return input.entry.kind === 'directory' ? 'resultFolder' : 'result';
   }
   if (input.entry.kind === 'directory') {
     return 'folder';
