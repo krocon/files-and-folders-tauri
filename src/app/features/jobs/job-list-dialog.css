@@ -22,6 +22,14 @@
   white-space: nowrap;
 }
 
+/* design 048: the summary with "Retry failed" beside it */
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
 .summary,
 .hint,
 .errors-title {

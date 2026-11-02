@@ -15,6 +15,7 @@ import {
   StartNowResult,
 } from './jobs.models';
 import { ACTION_TEXTS } from '../actions/action-texts';
+import { ArchivePasswordPrompt, isPasswordError } from '../archive/archive-password-prompt';
 
 /** Hits of a job without a listener are kept this long after its end (then dropped). */
 export const HIT_BUFFER_GRACE_MS = 5_000;
@@ -45,6 +46,7 @@ const MAX_BUFFERED_ROWS = 200_000;
 @Injectable({ providedIn: 'root' })
 export class JobsStore {
   private readonly api = inject(JobsApi);
+  private readonly passwords = inject(ArchivePasswordPrompt);
   private readonly waiters = new Map<string, ((job: JobInfo) => void)[]>();
   private seq = 0;
   private started = false;
@@ -347,6 +349,28 @@ export class JobsStore {
     return this.api.clearFinished();
   }
 
+  /**
+   * Tasks → "Retry" (design 048): the whole task when it failed, only what failed when
+   * it ended with errors. An extract that failed for its password asks for it first.
+   * Resolves with the new task's id; rejects with an `FsError` if Rust refuses.
+   */
+  retry(id: string): Promise<string> {
+    const job = this.find(id);
+    const error = job?.summary?.error;
+    if (job?.spec.kind === 'extract' && isPasswordError(error)) {
+      const archive = job.spec.archive;
+      return new Promise((resolve, reject) => {
+        const asked = this.passwords.askFor(error!, archive, () =>
+          this.api.retry(id).then(resolve, reject),
+        );
+        if (!asked) {
+          this.api.retry(id).then(resolve, reject);
+        }
+      });
+    }
+    return this.api.retry(id);
+  }
+
   cancelAllAndQuit(): Promise<void> {
     return this.api.cancelAllAndQuit();
   }
@@ -430,6 +454,9 @@ export class JobsStore {
       }
       case 'undoAvailable':
         this.patch(event.id, (j) => ({ ...j, undoAvailable: event.available }));
+        break;
+      case 'retryAvailable':
+        this.patch(event.id, (j) => ({ ...j, retryAvailable: event.available }));
         break;
       case 'searchHits':
         this.deliverHits(event.id, event.hits, event.stats);

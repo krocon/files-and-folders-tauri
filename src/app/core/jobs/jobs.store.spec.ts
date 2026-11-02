@@ -5,6 +5,7 @@ import { HIT_BUFFER_GRACE_MS, JobsStore } from './jobs.store';
 import { EMPTY_STATS } from '../search/search.models';
 import { entry } from '../../../testing/fs-fixtures';
 import { EMPTY_PROGRESS, Summary } from './jobs.models';
+import { ArchivePasswordPrompt, PasswordNeeded } from '../archive/archive-password-prompt';
 
 const copy = { kind: 'copy' as const, sources: ['/a'], targetDir: '/b' };
 const summary = (patch: Partial<Summary> = {}): Summary => ({
@@ -223,6 +224,54 @@ describe('JobsStore', () => {
     expect(store.find(id)?.pauseReason).toEqual(error);
     api.emit({ type: 'state', id, state: 'running' });
     expect(store.find(id)?.pauseReason).toBeNull();
+  });
+});
+
+describe('JobsStore retry (design 048)', () => {
+  it('takes retryAvailable from the snapshot and the event, and retries through the API', async () => {
+    const api = new FakeJobsApi();
+    api.snapshot = [job('j7', copy, { state: 'doneWithErrors', retryAvailable: true })];
+    TestBed.configureTestingModule({ providers: [{ provide: JobsApi, useValue: api }] });
+    const store = TestBed.inject(JobsStore);
+    await store.init();
+    expect(store.find('j7')?.retryAvailable).toBe(true);
+    api.retrySpec['j7'] = { ...copy, sources: ['/a/deep/x'] };
+    const id = await store.retry('j7');
+    expect(api.retried).toEqual(['j7']);
+    expect(store.find(id)?.spec).toEqual({ ...copy, sources: ['/a/deep/x'] });
+    expect(store.find('j7')?.retryAvailable).toBe(false);
+  });
+
+  it('asks for the password before retrying an extract that failed for it', async () => {
+    const api = new FakeJobsApi();
+    const extract = {
+      kind: 'extract' as const,
+      archive: '/a/secret.zip',
+      entries: [],
+      targetDir: '/b',
+    };
+    api.snapshot = [
+      job('j8', extract, {
+        state: 'failed',
+        retryAvailable: true,
+        summary: summary({
+          itemsDone: 0,
+          error: { code: 'archive_password_required', message: 'pw', path: '/a/secret.zip' },
+        }),
+      }),
+    ];
+    TestBed.configureTestingModule({ providers: [{ provide: JobsApi, useValue: api }] });
+    const store = TestBed.inject(JobsStore);
+    await store.init();
+    const asked: PasswordNeeded[] = [];
+    TestBed.inject(ArchivePasswordPrompt).setHandler((req) => asked.push(req));
+    api.retrySpec['j8'] = extract;
+    const pending = store.retry('j8');
+    expect(api.retried).toEqual([]);
+    expect(asked.map((a) => a.archive)).toEqual(['/a/secret.zip']);
+    asked[0].retry();
+    expect(store.find(await pending)?.spec).toEqual(extract);
+    expect(api.retried).toEqual(['j8']);
   });
 });
 

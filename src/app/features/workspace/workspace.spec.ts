@@ -114,6 +114,7 @@ describe('Workspace', () => {
         summary: null,
         pauseReason: null,
         undoAvailable: false,
+        retryAvailable: false,
       },
     });
     jobs.emit({

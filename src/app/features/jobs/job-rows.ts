@@ -2,7 +2,8 @@ import { isFinished, JobInfo, JobState } from '../../core/jobs/jobs.models';
 import { amountText, fraction, JOB_TEXTS, jobTitle, speedText, stateLabel } from './job-format';
 
 /** What a button in the last column does. */
-export type JobAct = 'answer' | 'startNow' | 'pause' | 'resume' | 'cancel' | 'undo' | 'details';
+export type JobAct =
+  'answer' | 'startNow' | 'pause' | 'resume' | 'cancel' | 'undo' | 'retry' | 'details';
 
 export interface JobButton {
   readonly act: JobAct;
@@ -53,6 +54,10 @@ function buttonsOf(job: JobInfo, title: string): JobButton[] {
     const out: JobButton[] = [];
     if (job.undoAvailable) {
       out.push({ ...b('undo', t.undo, 'undo'), ariaLabel: t.undoLabel(title) });
+    }
+    // design 048: a failed task (or the failed part of one) runs again
+    if (job.retryAvailable) {
+      out.push({ ...b('retry', t.retry, 'retry', 'primary'), ariaLabel: t.retryLabel(title) });
     }
     const failed = job.summary?.itemsFailed ?? 0;
     if (failed > 0 || job.summary?.error) {

@@ -62,6 +62,11 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
   startNowConfirm: 'Trotzdem starten',
   undo: 'Rückgängig',
   undoLabel: (title) => `Rückgängig: ${title}`,
+  retry: 'Wiederholen',
+  retryLabel: (title) => `Wiederholen: ${title}`,
+  retryFailed: 'Fehlgeschlagene wiederholen',
+  retryFailedLabel: (title) => `Fehlgeschlagene Einträge wiederholen: ${title}`,
+  retryRefused: (reason) => `Der Task konnte nicht wiederholt werden: ${reason}`,
   of: (done, total) => `${done} von ${total}`,
   conflictHint: 'Alt+Buchstabe wählt · Esc:',
   conflictKeys: {

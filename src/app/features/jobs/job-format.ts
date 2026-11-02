@@ -80,6 +80,12 @@ export const JOB_EN = {
   startNowConfirm: 'Start anyway',
   undo: 'Undo',
   undoLabel: (title: string) => `Undo: ${title}`,
+  retry: 'Retry',
+  retryLabel: (title: string) => `Retry: ${title}`,
+  /** Detail area of a task that ended with errors: only the failed entries run again. */
+  retryFailed: 'Retry failed',
+  retryFailedLabel: (title: string) => `Retry the failed entries: ${title}`,
+  retryRefused: (reason: string) => `The task could not be retried: ${reason}`,
   of: (done: string, total: string) => `${done} of ${total}`,
   conflictHint: 'Alt+letter chooses · Esc:',
   /** Button labels as [before, Alt letter, after] (the letter is the key). */
