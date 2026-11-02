@@ -13,6 +13,9 @@ import darkJson from './themes/dark.json';
 import lightJson from './themes/light.json';
 import oneDarkJson from './themes/one-dark.json';
 import oneDarkVividJson from './themes/one-dark-vivid.json';
+import trueDarkJson from './themes/true-dark.json';
+import trueBlackJson from './themes/true-black.json';
+import trueLightJson from './themes/true-light.json';
 import { Theme } from './theme.models';
 
 /**
@@ -31,7 +34,13 @@ export const CRIMSON: Theme = { ...crimsonJson, builtIn: true };
  * tokens, every contrast pair checked by hand (no automatic correction). Origin and licence:
  * `docs/themes.md`.
  */
-export const EXTRA_THEMES: readonly Theme[] = [oneDarkJson, oneDarkVividJson].map((t) => ({
+export const EXTRA_THEMES: readonly Theme[] = [
+  oneDarkJson,
+  oneDarkVividJson,
+  trueDarkJson,
+  trueBlackJson,
+  trueLightJson,
+].map((t) => ({
   ...t,
   builtIn: true,
 }));

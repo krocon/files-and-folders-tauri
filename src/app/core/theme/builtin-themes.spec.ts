@@ -44,6 +44,9 @@ describe('built-in themes', () => {
       'crimson',
       'one-dark',
       'one-dark-vivid',
+      'true-dark',
+      'true-black',
+      'true-light',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });

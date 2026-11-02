@@ -152,6 +152,9 @@ describe('ThemeService', () => {
       'crimson',
       'one-dark',
       'one-dark-vivid',
+      'true-dark',
+      'true-black',
+      'true-light',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();
