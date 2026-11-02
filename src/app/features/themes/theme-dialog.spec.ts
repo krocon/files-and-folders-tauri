@@ -97,6 +97,7 @@ describe('ThemeDialog', () => {
       'true-light',
       'matrix',
       'solarized-light',
+      'mystico-c64',
     ]);
     expect(el.textContent).toContain('All contrast checks pass');
     radios.find((r) => r.value === 'dark')!.click();

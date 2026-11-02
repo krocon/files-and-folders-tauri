@@ -105,6 +105,7 @@ describe('ButtonBar', () => {
       'True Light',
       'Matrix',
       'Solarized Light',
+      'Mystico – C64',
       'Edit colour schemes…',
     ]);
     expect(items[0].getAttribute('aria-checked')).toBe('true');

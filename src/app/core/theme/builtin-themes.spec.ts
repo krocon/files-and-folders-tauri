@@ -49,6 +49,7 @@ describe('built-in themes', () => {
       'true-light',
       'matrix',
       'solarized-light',
+      'mystico-c64',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });
