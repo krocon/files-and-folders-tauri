@@ -12,7 +12,10 @@
     "dark",
     "crimson",
     "one-dark",
-    "one-dark-vivid"
+    "one-dark-vivid",
+    "true-dark",
+    "true-black",
+    "true-light"
   ],
   "prelude": [
     {
@@ -787,7 +790,10 @@
     "dark": "Modern dark",
     "crimson": "Crimson",
     "one-dark": "One Dark",
-    "one-dark-vivid": "One Dark Vivid"
+    "one-dark-vivid": "One Dark Vivid",
+    "true-dark": "True Dark",
+    "true-black": "True Black",
+    "true-light": "True Light"
   },
   "readme": {
     "out": "docs/screenshots/readme",
