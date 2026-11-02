@@ -122,3 +122,12 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   (distinct from the pink accents); the status line is Piggy pink darkened to `#dd2958` so white reaches 4.5:1 –
   marked values there are therefore almost white. Under the cursor (`#fd6a5d`) marked entries are dark like the
   cursor text; the check mark in the row tells them apart (no yellow reaches 4.5:1 on that coral).
+
+## Gewählter Tab = Farbe der Liste (069)
+
+In allen Schemata dieser Datei hat der gewählte Tab jeder Seite die Hintergrundfarbe der Liste darunter
+(`--color-tab-selected-bg` = `var(--color-list-bg)`, `--color-active-panel-tab-bg` = `var(--color-active-list-bg)`) –
+Tab und Liste wirken aus einem Guss (Marc, 02.11.2026). Vorher hatten Mystico – C64, True Dark/Black/Light und die
+Rainglow-Schemata einen farbigen Tab auf der aktiven Seite (Signaturfarbe). Die aktive Seite bleibt an der Akzentlinie
+des Tabs, dem Cursor und der Statuszeile erkennbar. `scripts/rainglow-theme.mjs` erzeugt es ebenso; eine Regel in
+`builtin-themes.spec.ts` hält es fest.

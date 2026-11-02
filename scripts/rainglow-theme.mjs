@@ -148,7 +148,6 @@ export function rainglowTokens(p, base, overrides = {}) {
   const cursor = onColour(p.selection, p.title);
   const cursorText = contrast(p.selectionText, cursor.bg) >= 4.5 ? p.selectionText : cursor.text;
   const primary = onColour(p.button, p.title);
-  const activeTab = onColour(p.signature, p.title);
   const marked = ensure(o.marked, [list, p.section, p.hover]);
   const accent = ensure(p.signature, [p.sidebar, list], 4.5);
   const line = ensure(p.signature, [list, p.sidebar], 3);
@@ -204,8 +203,9 @@ export function rainglowTokens(p, base, overrides = {}) {
     '--color-icon-code': ensure(p.func, [list], 3),
     '--color-icon-executable': ensure(p.number, [list], 3),
     '--color-active-panel-accent': line,
-    '--color-active-panel-tab-bg': activeTab.bg,
-    '--color-active-panel-tab-text': activeTab.text,
+    // the selected tab in the colour of its list – tab and list of one piece (069)
+    '--color-active-panel-tab-bg': 'var(--color-active-list-bg)',
+    '--color-active-panel-tab-text': 'var(--color-active-list-text)',
     '--color-header-bg': p.hover,
     '--color-header-text': 'var(--color-text)',
     '--color-header-border': p.title,
@@ -213,7 +213,7 @@ export function rainglowTokens(p, base, overrides = {}) {
     '--color-header-input-text': 'var(--color-text)',
     '--color-header-input-border': p.section,
     '--color-tab-text': ensure(p.lineNumber, [p.hover]),
-    '--color-tab-selected-bg': list,
+    '--color-tab-selected-bg': 'var(--color-list-bg)',
     '--color-tab-selected-text': 'var(--color-list-text)',
     '--color-header-focus': ensure(p.signature, [p.hover], 3),
     '--color-footer-bg': status.bg,

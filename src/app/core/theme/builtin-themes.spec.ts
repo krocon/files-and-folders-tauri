@@ -1,7 +1,7 @@
 // @ts-expect-error -- node types are not part of the app's tsconfig; vitest runs in node
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { BUILT_IN_THEMES, DARK, LIGHT } from './builtin-themes';
+import { BUILT_IN_THEMES, DARK, EXTRA_THEMES, LIGHT } from './builtin-themes';
 import { checkContrast, isSafeValue, resolveColor, tokenValueOk } from './theme-logic';
 import { TOKENS } from './tokens';
 
@@ -57,6 +57,19 @@ describe('built-in themes', () => {
       'rainglow-piggy',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
+  });
+
+  it('069: the selected tab has the colour of its list (tab and list of one piece) in the new schemes', () => {
+    const wrong = EXTRA_THEMES.flatMap((theme) => {
+      const c = (name: string) => JSON.stringify(resolveColor(name, theme.tokens));
+      return [
+        ['--color-tab-selected-bg', '--color-list-bg'],
+        ['--color-active-panel-tab-bg', '--color-active-list-bg'],
+      ]
+        .filter(([tab, list]) => c(tab) !== c(list))
+        .map(([tab]) => `${theme.id}: ${tab}`);
+    });
+    expect(wrong).toEqual([]);
   });
 
   it('pass the WCAG AA contrast check (list, cursor, marked, header, footer, dialogs)', () => {
