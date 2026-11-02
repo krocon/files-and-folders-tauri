@@ -378,7 +378,44 @@ describe('operation dialogs', () => {
     await flush();
     r.fixture.detectChanges();
     expect(jobsApi.started).toEqual([]);
-    expect(r.el.querySelector('[data-testid="delete-size"]')).toBeNull();
+    // 058: a short hint instead of an empty place
+    expect(r.el.querySelector('[data-testid="delete-size"]')?.textContent).toContain(
+      'not counted inside archives',
+    );
+  });
+
+  it('delete permanently: files and size join the red question once counted (058)', async () => {
+    ops.del.set({
+      mode: 'permanent',
+      side: 'left',
+      sourceDir: '/src',
+      entries: [a, sub],
+      dangers: [],
+    });
+    TestBed.inject(DialogService).show('delete');
+    const r = await render(DeleteDialog);
+    const message = () => r.el.querySelector('#fnf-delete-message')!.textContent!.trim();
+    expect(message()).toBe('Delete 2 entries permanently? This cannot be undone.');
+    expect(r.el.querySelector('[data-testid="delete-size"]')?.textContent).toContain('counting');
+    await flush();
+    jobsApi.emit({
+      type: 'finished',
+      id: jobsApi.started[0].id,
+      state: 'done',
+      summary: {
+        itemsDone: 1235,
+        itemsSkipped: 0,
+        itemsFailed: 0,
+        bytesDone: 5 * 1024 ** 2,
+        errors: [],
+        error: null,
+        dirSize: { files: 1234, dirs: 1, bytes: 5 * 1024 ** 2, unreadable: 0, cancelled: false },
+      },
+    });
+    r.fixture.detectChanges();
+    expect(message()).toBe(
+      'Delete 2 entries permanently (1,234 files, 5.0 MB)? This cannot be undone.',
+    );
   });
 
   it('rename: selects the name without extension, offers "Rename anyway" for dangerous paths', async () => {

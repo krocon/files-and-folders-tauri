@@ -1,6 +1,9 @@
 import { Danger } from '../../core/fs/fs.models';
-import { translatable } from '../../core/i18n/i18n';
+import { locale, translatable } from '../../core/i18n/i18n';
 import { OPS_DE } from './ops-texts.de';
+
+/** A count with the thousands separator of the current language (058). */
+export const num = (n: number): string => n.toLocaleString(locale());
 
 /** Texts of the file operations (central for prompt 015). */
 export const OPS_EN = {
@@ -38,10 +41,13 @@ export const OPS_EN = {
   deletePermanentTitle: 'Delete permanently',
   deleteTrashMessage: (n: number) =>
     n === 1 ? 'Move 1 entry to the trash?' : `Move ${n} entries to the trash?`,
-  deletePermanentMessage: (n: number) =>
-    n === 1
-      ? 'Delete 1 entry permanently? This cannot be undone.'
-      : `Delete ${n} entries permanently? This cannot be undone.`,
+  /** `detail` (058): files and size once counted, e.g. "1,234 files, 4.2 GB". */
+  deletePermanentMessage: (n: number, detail = '') =>
+    `Delete ${n === 1 ? '1 entry' : `${num(n)} entries`} permanently${detail ? ` (${detail})` : ''}? This cannot be undone.`,
+  filesAndSize: (files: number, size: string) =>
+    `${num(files)} ${files === 1 ? 'file' : 'files'}, ${size}`,
+  sizeUnknown: 'unknown – could not count',
+  noCountInArchive: 'not counted inside archives',
   trashHint: 'You can restore it from the trash.',
   moreEntries: (n: number) => `… and ${n} more`,
   deleteSize: 'Size',
@@ -49,7 +55,7 @@ export const OPS_EN = {
   countedSoFar: (n: number) =>
     `${n} ${n === 1 ? 'entry' : 'entries'} counted so far – still counting, you can delete anyway`,
   filesAndDirs: (files: number, dirs: number) =>
-    `${files} ${files === 1 ? 'file' : 'files'}, ${dirs} ${dirs === 1 ? 'folder' : 'folders'}`,
+    `${num(files)} ${files === 1 ? 'file' : 'files'}, ${num(dirs)} ${dirs === 1 ? 'folder' : 'folders'}`,
   toTrash: 'Move to trash',
   deletePermanent: 'Delete permanently',
 

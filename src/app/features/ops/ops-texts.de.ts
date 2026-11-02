@@ -1,5 +1,5 @@
 import type { Translation } from '../../core/i18n/i18n';
-import type { OPS_EN } from './ops-texts';
+import { num, type OPS_EN } from './ops-texts';
 
 /** Deutsche Texte der Dateioperationen (design 015). */
 export const OPS_DE: Translation<typeof OPS_EN> = {
@@ -39,17 +39,19 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
     n === 1
       ? '1 Eintrag in den Papierkorb verschieben?'
       : `${n} Einträge in den Papierkorb verschieben?`,
-  deletePermanentMessage: (n) =>
-    n === 1
-      ? '1 Eintrag endgültig löschen? Das lässt sich nicht rückgängig machen.'
-      : `${n} Einträge endgültig löschen? Das lässt sich nicht rückgängig machen.`,
+  deletePermanentMessage: (n, detail = '') =>
+    `${n === 1 ? '1 Eintrag' : `${num(n)} Einträge`}${detail ? ` (${detail})` : ''} endgültig löschen? Das lässt sich nicht rückgängig machen.`,
+  filesAndSize: (files, size) => `${num(files)} ${files === 1 ? 'Datei' : 'Dateien'}, ${size}`,
+  sizeUnknown: 'unbekannt – Zählen nicht möglich',
+  noCountInArchive: 'in Archiven wird nicht gezählt',
   trashHint: 'Sie können es aus dem Papierkorb wiederherstellen.',
   moreEntries: (n) => `… und ${n} weitere`,
   deleteSize: 'Größe',
   sizeAtLeast: (size) => `mindestens ${size}`,
   countedSoFar: (n) =>
     `bisher ${n} ${n === 1 ? 'Eintrag' : 'Einträge'} gezählt – zähle weiter, Löschen geht trotzdem`,
-  filesAndDirs: (files, dirs) => `${files} ${files === 1 ? 'Datei' : 'Dateien'}, ${dirs} Ordner`,
+  filesAndDirs: (files, dirs) =>
+    `${num(files)} ${files === 1 ? 'Datei' : 'Dateien'}, ${num(dirs)} Ordner`,
   toTrash: 'In den Papierkorb',
   deletePermanent: 'Endgültig löschen',
   dangerTitle: 'Vorsicht',
