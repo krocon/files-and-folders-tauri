@@ -106,6 +106,10 @@ describe('ButtonBar', () => {
       'Matrix',
       'Solarized Light',
       'Mystico – C64',
+      'Bold (Rainglow)',
+      'Earthsong (Rainglow)',
+      'Legacy (Rainglow)',
+      'Heroku (Rainglow)',
       'Edit colour schemes…',
     ]);
     expect(items[0].getAttribute('aria-checked')).toBe('true');

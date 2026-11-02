@@ -50,6 +50,10 @@ describe('built-in themes', () => {
       'matrix',
       'solarized-light',
       'mystico-c64',
+      'rainglow-bold',
+      'rainglow-earthsong',
+      'rainglow-legacy',
+      'rainglow-heroku',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });

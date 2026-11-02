@@ -22,6 +22,10 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `matrix` | Matrix | own scheme after a screenshot of a green VS Code theme (colours measured from the image, no theme file) | – | 064 |
 | `solarized-light` | Solarized Light | VS Code built-in „Solarized (light)“ (`microsoft/vscode`, `extensions/theme-solarized-light`), palette by Ethan Schoonover | MIT (both) | 065 |
 | `mystico-c64` | Mystico – C64 | VS Code theme „Mystico C64“ by chibanti (`chibanti/mystico-c64-vscode-theme`); colours measured from screenshots. The Notepad++ port `MysticoNpp_C64.xml` (luk3Z, GPL-2) was only looked at, nothing copied | MIT | 066 |
+| `rainglow-bold` | Bold (Rainglow) | Rainglow „bold“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
+| `rainglow-earthsong` | Earthsong (Rainglow) | Rainglow „earthsong“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
+| `rainglow-legacy` | Legacy (Rainglow) | Rainglow „legacy“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
+| `rainglow-heroku` | Heroku (Rainglow) | Rainglow „heroku“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
 
 ## Deviations from the originals (contrast)
 
@@ -87,3 +91,21 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   status line leaves no room for a colour with 4.5:1).
 - Primary button C64 green `#b9e893` with dark blue `#2a2270`. Icons from the C64 palette, green/brown/cyan lightened
   for 3:1 (`#86c95c`, `#d9a39a`, `#8fc4d0`). No C64 font, no `READY.` texts.
+
+**Rainglow: Bold, Earthsong, Legacy, Heroku (067)**
+
+- Generated with `node scripts/rainglow-theme.mjs <rainglow.json> --id rainglow-<name> --name "<Name> (Rainglow)"
+  --out src/app/core/theme/themes/rainglow-<name>.json` (test: `scripts/rainglow-theme.test.mjs`). The script maps
+  the five base steps and the accents onto all tokens (list = editor, window = side bar, header = tab bar, menus =
+  dropdown, dialogs = panel, inputs = input) and moves a weak foreground towards white or black until its pair
+  passes – a one-time choice when the file is made, not a runtime correction. Further Rainglow themes (> 100) come
+  in the same way; check the screenshots afterwards.
+- Names carry „(Rainglow)“, so „Legacy (Rainglow)“ is not mistaken for the classic designs.
+- The signature colour fills the **status line and button bar** of both panels (the character of these themes, as
+  the VS Code status bar) and the selected tab of the active panel; the active panel line uses it too. White text
+  where it reaches 4.5:1 (Heroku), else the dark title colour (Earthsong green, Legacy blue); Bold's teal
+  `#3d8e91` is darkened slightly until white reads.
+- Cursor = `list.activeSelection*` (Earthsong/Heroku: dark title colour as text, the selection foreground misses
+  4.5:1). Marked = string colour (Bold `#f7a21b`, Earthsong `#f8bb39`, Legacy `#ff410d`, Heroku `#a6fa62`), under the
+  cursor a dark mix of it.
+- Red `#ba0e2e` only as badge/area; as text a light red. Muted text from the line-number colour, lightened.

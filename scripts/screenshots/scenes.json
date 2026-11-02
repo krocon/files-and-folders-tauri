@@ -18,7 +18,11 @@
     "true-light",
     "matrix",
     "solarized-light",
-    "mystico-c64"
+    "mystico-c64",
+    "rainglow-bold",
+    "rainglow-earthsong",
+    "rainglow-legacy",
+    "rainglow-heroku"
   ],
   "prelude": [
     {
@@ -849,7 +853,11 @@
     "true-light": "True Light",
     "matrix": "Matrix",
     "solarized-light": "Solarized Light",
-    "mystico-c64": "Mystico – C64"
+    "mystico-c64": "Mystico – C64",
+    "rainglow-bold": "Bold (Rainglow)",
+    "rainglow-earthsong": "Earthsong (Rainglow)",
+    "rainglow-legacy": "Legacy (Rainglow)",
+    "rainglow-heroku": "Heroku (Rainglow)"
   },
   "readme": {
     "out": "docs/screenshots/readme",
