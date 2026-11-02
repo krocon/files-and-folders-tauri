@@ -10,6 +10,7 @@ import {
 } from '../../core/menu/menu.models';
 import { MenuItem } from '../workspace/context-menu';
 import { MENU_TEXTS } from './menu-texts';
+import { ACT_TEXTS } from '../actions/actions-texts';
 
 /**
  * Menu definitions (design 014): every entry is an action id of the catalog – the
@@ -141,22 +142,8 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_DELETE_DLG',
       'DELETE_PERMANENT',
       '-',
-      'OPEN_MULTIRENAME_DLG',
-      'UNDO_RENAME',
-      'OPEN_GROUPFILES_DLG',
-      'OPEN_SERIES_GROUP_DLG',
-      'OPEN_DELETE_EMPTY_FOLDERS_DLG',
       'OPEN_PACK_DLG',
       'OPEN_UNPACK_DLG',
-      'OPEN_FIND_DUPLICATES_DLG',
-      'COMPARE_FILES',
-      'COMPARE_DIRS',
-      'OPEN_SYNC_DIRS_DLG',
-      'OPEN_CHECKSUM_CREATE_DLG',
-      'CHECKSUM_VERIFY',
-      'COPY_CHECKSUM',
-      'OPEN_DISK_USAGE',
-      'OPEN_DISK_USAGE_VOLUME',
       '-',
       'OPEN_ATTRIBUTE_DLG',
       'OPEN_CHANGE_ATTRIBUTES_DLG',
@@ -222,6 +209,8 @@ export const MENU_BAR: readonly TopMenu[] = [
       'NEXT_THEME',
       'THEME_FOLLOW_SYSTEM',
       'OPEN_THEMES_DLG',
+      '-',
+      'OPEN_ACTIONS_MENU',
     ],
   },
   {
@@ -250,25 +239,56 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_TERMINAL_HERE',
     ],
   },
+  // the file tools of the Actions menu's third column (056, Total Commander: "Commands")
+  {
+    id: 'commands',
+    get label() {
+      return T.commands;
+    },
+    items: [
+      'OPEN_FIND_DLG',
+      'RERUN_SEARCH',
+      '-',
+      'OPEN_MULTIRENAME_DLG',
+      'UNDO_RENAME',
+      'OPEN_GROUPFILES_DLG',
+      'OPEN_SERIES_GROUP_DLG',
+      'OPEN_DELETE_EMPTY_FOLDERS_DLG',
+      '-',
+      'COMPARE_FILES',
+      'COMPARE_DIRS',
+      'OPEN_SYNC_DIRS_DLG',
+      '-',
+      'OPEN_FIND_DUPLICATES_DLG',
+      {
+        get sub() {
+          return T.checksums;
+        },
+        items: ['OPEN_CHECKSUM_CREATE_DLG', 'CHECKSUM_VERIFY', 'COPY_CHECKSUM'],
+      },
+      'OPEN_DISK_USAGE',
+      'OPEN_DISK_USAGE_VOLUME',
+      '-',
+      WITH_TOOL,
+      'OPEN_CALL_ACTION_DLG',
+    ],
+  },
+  // the fourth column of the Actions menu: configuration (056)
   {
     id: 'tools',
     get label() {
       return T.tools;
     },
     items: [
-      'OPEN_FIND_DLG',
-      'RERUN_SEARCH',
-      '-',
-      'OPEN_TOOLS_DLG',
-      '@tools',
-      'OPEN_TOOL_CONFIG_DLG',
-      '-',
-      'OPEN_SHORTCUT_DLG',
-      'OPEN_BUTTON_CONFIG_DLG',
-      'OPEN_FILETYPE_CONFIG_DLG',
-      'OPEN_IMPORT_OLD_CONFIG_DLG',
-      'OPEN_CALL_ACTION_DLG',
       { when: 'notMacos', items: ['OPEN_SETUP_DLG'] },
+      'OPEN_THEMES_DLG',
+      'OPEN_BUTTON_CONFIG_DLG',
+      'OPEN_TOOL_CONFIG_DLG',
+      'OPEN_STARTER_CONFIG_DLG',
+      'OPEN_FILETYPE_CONFIG_DLG',
+      'OPEN_SHORTCUT_DLG',
+      '-',
+      'OPEN_IMPORT_OLD_CONFIG_DLG',
     ],
   },
   {
@@ -544,6 +564,7 @@ export function resolveMenu(
   defs: readonly MenuDef[],
   src: MenuSource,
   platform: Platform,
+  labels: Readonly<Record<string, string>> = {},
 ): MenuItem[] {
   const items: MenuItem[] = [];
   for (const d of expand(defs, platform)) {
@@ -559,13 +580,13 @@ export function resolveMenu(
       const state = src.state(d);
       items.push({
         id: d,
-        label: ACTIONS[d].label,
+        label: labels[d] ?? ACTIONS[d].label,
         shortcut: src.shortcutLabel(d),
         disabled: state !== 'ready',
         hint: state === 'unavailable' ? T.comingIn(ACTIONS[d].availableIn) : undefined,
       });
     } else if ('sub' in d) {
-      const children = resolveMenu(d.items, src, platform);
+      const children = resolveMenu(d.items, src, platform, labels);
       items.push({
         id: `sub:${d.sub}`,
         label: d.sub,
@@ -617,6 +638,14 @@ function emptyStarter(): MenuItem {
   return { id: `starter-empty:${++separatorSeq}`, label: T.starterEmpty, disabled: true };
 }
 
+/**
+ * Labels of the menu bar (056): an action of the Actions menu ▴ has the same name in both
+ * menus – the Actions menu's words (mr, curated in 054/055); all others the catalog's.
+ */
+export function menuBarLabels(): Readonly<Record<string, string>> {
+  return ACT_TEXTS.menu;
+}
+
 /** The menu bar for the HTML menus of Windows/Linux. */
 export function resolveMenuBar(
   src: MenuSource,
@@ -625,7 +654,7 @@ export function resolveMenuBar(
   return MENU_BAR.filter((m) => !m.macosOnly || platform === 'macos').map((m) => ({
     id: m.id,
     label: m.label,
-    items: resolveMenu(m.items, src, platform),
+    items: resolveMenu(m.items, src, platform, menuBarLabels()),
   }));
 }
 
@@ -654,7 +683,7 @@ export function toNativeSpec(
         out.push({
           kind: 'item',
           id: d,
-          label: nativeLabel(ACTIONS[d].label),
+          label: nativeLabel(menuBarLabels()[d] ?? ACTIONS[d].label),
           accelerator: src.shortcuts(d)[0] ?? null,
           enabled: !blocked && src.state(d) === 'ready',
         });

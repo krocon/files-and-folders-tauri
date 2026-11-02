@@ -2,7 +2,7 @@ import { afterEach } from 'vitest';
 import { HIT_ACTION_IDS } from '../palette/palette-actions';
 import { setLanguage } from '../../core/i18n/i18n';
 import { MENU_TEXTS } from './menu-texts';
-import { ACTION_IDS, ActionId } from '../../core/actions/action-catalog';
+import { ACTION_IDS, ACTIONS, ActionId } from '../../core/actions/action-catalog';
 import { ActionState, ExtraAction } from '../../core/actions/action.service';
 import { NativeMenuNode } from '../../core/menu/menu.models';
 import {
@@ -18,6 +18,9 @@ import {
   nativeStructureKey,
   toNativeSpec,
 } from './menu-model';
+import { ACTIONS_MENU_COLUMNS } from '../actions/actions-menu-def';
+import { ACT_TEXTS } from '../actions/actions-texts';
+import { MenuItem } from '../workspace/context-menu';
 
 function source(
   states: Partial<Record<ActionId, ActionState>> = {},
@@ -67,7 +70,6 @@ describe('menu model', () => {
       // keys of the old version (018 J7/J10): Space variants, the Actions menu itself
       'TOGGLE_MARK_AND_RETREAT',
       'TOGGLE_MARK',
-      'OPEN_ACTIONS_MENU',
       // the starter menu itself (Alt+S) is the menu "Start" (design 032)
       'OPEN_STARTER_MENU',
       // the actions on palette hits work only in the palette (design 043 E4)
@@ -75,6 +77,46 @@ describe('menu model', () => {
     ];
     const missing = ACTION_IDS.filter((id) => !inBar.has(id) && !keysOnly.includes(id));
     expect(missing).toEqual([]);
+  });
+
+  it('056: every entry of the Actions menu is in the menu bar under the same name (en, de)', () => {
+    const inActions = ACTIONS_MENU_COLUMNS.flat().filter(
+      (id): id is ActionId => id !== '-' && id !== '@tools',
+    );
+    for (const lang of ['en', 'de'] as const) {
+      setLanguage(lang);
+      const shown = new Map<string, string>();
+      const walk = (items: readonly MenuItem[]) =>
+        items.forEach((i) => {
+          shown.set(i.id, i.label);
+          walk(i.children ?? []);
+        });
+      resolveMenuBar(source(), 'linux').forEach((m) => walk(m.items));
+      const wrong = inActions
+        .filter((id) => shown.get(id) !== (ACT_TEXTS.menu[id] ?? ACTIONS[id].label))
+        .map((id) => `${lang} ${id}: ${shown.get(id)}`);
+      expect(wrong).toEqual([]);
+    }
+    setLanguage('en');
+  });
+
+  it('056: no top menu longer than 25 entries, no id twice in one, File without the tools', () => {
+    for (const m of MENU_BAR) {
+      const top = m.items.filter((d) => d !== '-');
+      expect(top.length, m.id).toBeLessThanOrEqual(25);
+      const all: string[] = [];
+      const walk = (defs: readonly MenuDef[]) =>
+        defs.forEach((d) =>
+          typeof d === 'string' ? d !== '-' && all.push(d) : 'items' in d && walk(d.items),
+        );
+      walk(m.items);
+      expect(all.length - new Set(all).size, m.id).toBe(0);
+    }
+    const file = ids(MENU_BAR.find((m) => m.id === 'file')!.items);
+    for (const tool of ['OPEN_MULTIRENAME_DLG', 'COMPARE_DIRS', 'OPEN_DISK_USAGE'] as const) {
+      expect(file.has(tool)).toBe(false);
+      expect(ids(MENU_BAR.find((m) => m.id === 'commands')!.items).has(tool)).toBe(true);
+    }
   });
 
   it('builds the context per situation (design 014 E2/E3)', () => {
@@ -189,14 +231,15 @@ describe('menu model', () => {
       'Edit',
       'View',
       'Go',
-      'Tools',
+      'Commands',
+      'Configuration',
       'Start',
       'Window',
       'Help',
     ]);
     expect(linux[0].items.some((i) => i.id === 'QUIT_APP')).toBe(true);
     const mac = toNativeSpec(source(), 'macos', false);
-    expect(mac.menus.length).toBe(9);
+    expect(mac.menus.length).toBe(10);
     const flat = (nodes: readonly NativeMenuNode[]): NativeMenuNode[] =>
       nodes.flatMap((n) => (n.kind === 'submenu' ? flat(n.items) : [n]));
     const all = flat(mac.menus);
