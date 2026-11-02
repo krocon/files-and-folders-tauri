@@ -11,6 +11,8 @@ import { convertLegacy } from './legacy-theme';
 import crimsonJson from './themes/crimson.json';
 import darkJson from './themes/dark.json';
 import lightJson from './themes/light.json';
+import oneDarkJson from './themes/one-dark.json';
+import oneDarkVividJson from './themes/one-dark-vivid.json';
 import { Theme } from './theme.models';
 
 /**
@@ -23,6 +25,16 @@ export const LIGHT: Theme = { ...lightJson, builtIn: true };
 export const DARK: Theme = { ...darkJson, builtIn: true };
 /** Dark scheme with a crimson accent (after the Nest.js course slides); base = `dark`. */
 export const CRIMSON: Theme = { ...crimsonJson, builtIn: true };
+
+/**
+ * Further dark/light schemes after editor themes (062 ff.) – only their colour values in our
+ * tokens, every contrast pair checked by hand (no automatic correction). Origin and licence:
+ * `docs/themes.md`.
+ */
+export const EXTRA_THEMES: readonly Theme[] = [oneDarkJson, oneDarkVividJson].map((t) => ({
+  ...t,
+  builtIn: true,
+}));
 
 interface LegacyFile {
   readonly name: string;
@@ -59,4 +71,10 @@ export const CLASSIC_THEMES: readonly Theme[] = CLASSIC_FILES.map((file) => {
   };
 });
 
-export const BUILT_IN_THEMES: readonly Theme[] = [...CLASSIC_THEMES, LIGHT, DARK, CRIMSON];
+export const BUILT_IN_THEMES: readonly Theme[] = [
+  ...CLASSIC_THEMES,
+  LIGHT,
+  DARK,
+  CRIMSON,
+  ...EXTRA_THEMES,
+];

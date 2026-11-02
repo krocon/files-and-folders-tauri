@@ -10,7 +10,9 @@
     "classic-norton",
     "light",
     "dark",
-    "crimson"
+    "crimson",
+    "one-dark",
+    "one-dark-vivid"
   ],
   "prelude": [
     {
@@ -783,7 +785,9 @@
     "classic-norton": "Norton",
     "light": "Modern light",
     "dark": "Modern dark",
-    "crimson": "Crimson"
+    "crimson": "Crimson",
+    "one-dark": "One Dark",
+    "one-dark-vivid": "One Dark Vivid"
   },
   "readme": {
     "out": "docs/screenshots/readme",

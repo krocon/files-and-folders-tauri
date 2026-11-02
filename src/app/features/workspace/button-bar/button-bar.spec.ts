@@ -98,6 +98,8 @@ describe('ButtonBar', () => {
       'Modern light',
       'Modern dark',
       'Crimson',
+      'One Dark',
+      'One Dark Vivid',
       'Edit colour schemes…',
     ]);
     expect(items[0].getAttribute('aria-checked')).toBe('true');

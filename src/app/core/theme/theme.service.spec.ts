@@ -6,7 +6,7 @@ import { ActionService } from '../actions/action.service';
 import { KeymapApi } from '../actions/keymap-api';
 // @ts-expect-error -- node types are not part of the app's tsconfig; vitest runs in node
 import { readFileSync } from 'node:fs';
-import { CLASSIC_ADJUSTMENTS, CLASSIC_THEMES, DARK, LIGHT } from './builtin-themes';
+import { CLASSIC_ADJUSTMENTS, CLASSIC_THEMES, DARK, EXTRA_THEMES, LIGHT } from './builtin-themes';
 import { LegacyThemeFileContent, ThemeApi, ThemeFileContent } from './theme-api';
 import { completeTokens } from './theme-logic';
 import { ThemeService } from './theme.service';
@@ -150,6 +150,8 @@ describe('ThemeService', () => {
       'light',
       'dark',
       'crimson',
+      'one-dark',
+      'one-dark-vivid',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();
@@ -299,6 +301,10 @@ describe('ThemeService', () => {
     expect(s.active().id).toBe('dark');
     await s.next();
     expect(s.active().id).toBe('crimson');
+    for (const extra of EXTRA_THEMES) {
+      await s.next();
+      expect(s.active().id).toBe(extra.id);
+    }
     await s.next();
     expect(s.active().id).toBe('classic-light');
     await s.next();
@@ -334,6 +340,29 @@ describe('ThemeService', () => {
     const out = api.exported[0].theme as ThemeFileContent;
     expect(out.tokens['--x']).toBe('#fff');
     expect(out.tokens['--color-bg']).toBe(LIGHT.tokens['--color-bg']);
+  });
+
+  it('selects every editor-theme scheme (062 ff.), keeps it over a restart and round-trips its export', async () => {
+    for (const theme of EXTRA_THEMES) {
+      TestBed.resetTestingModule();
+      api = new FakeThemeApi();
+      const s = create();
+      await s.init();
+      await s.select(theme.id);
+      expect(api.saved.at(-1)?.selection).toMatchObject({ mode: 'fixed', theme: theme.id });
+      TestBed.resetTestingModule();
+      const again = create();
+      await again.init();
+      expect(again.active().id, theme.id).toBe(theme.id);
+      expect(again.active().dark, theme.id).toBe(theme.dark);
+
+      const path = await again.exportTheme('/t', theme);
+      api.files.set(path, api.exported.at(-1)!.theme);
+      const imported = await again.importFile(path);
+      expect(imported.problems, theme.id).toEqual([]);
+      expect(imported.selected, theme.id).toBe(true);
+      expect(completeTokens(again.active(), LIGHT, DARK), theme.id).toEqual(theme.tokens);
+    }
   });
 
   it('reports a failed save', async () => {
