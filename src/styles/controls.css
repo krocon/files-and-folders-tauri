@@ -74,6 +74,36 @@
   }
 }
 
+/*
+ * Dialog keys (design 057 E4): while ⌘/Ctrl is held, a button with a letter shows it as
+ * a small badge on its top right corner – positioned, so nothing moves.
+ */
+.fnf-dialog-key {
+  position: relative;
+}
+
+.fnf-dialog-key[data-dialog-key]::after {
+  content: attr(data-dialog-key);
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  z-index: 1;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--color-shortcut-text);
+  background: var(--color-shortcut-bg);
+  border: var(--border-width) solid var(--color-button-border);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 /* in dialogs buttons are exactly as high as the fields next to them */
 .dialog .btn {
   min-height: var(--control-height);
