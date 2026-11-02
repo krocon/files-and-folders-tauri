@@ -277,8 +277,8 @@ directly – never through a shell.
 ## Colour schemes
 
 **Norton blue? Paper white? Dark? Your choice – or your own.**
-Sixteen built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
-Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black and True Light. *Follow the system* switches between a
+Seventeen built-in schemes: the eight classic designs of the earlier versions (Light, Paper, Bitbucket, Cypress,
+Blackboard, Coffee, Combat, Norton) plus modern light, dark, Crimson, One Dark, One Dark Vivid, True Dark, True Black, True Light and Matrix. *Follow the system* switches between a
 light and a dark one. The live editor checks every colour pair for WCAG contrast; schemes can be exported and
 imported.
 

@@ -19,6 +19,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `true-dark` | True Dark | JetBrains theme „True Dark“ by Ahmed Elshaer (`ahmed3elshaer/IntelliJ-True-Black-Theme`) | MIT (README of the repo) | 063 |
 | `true-black` | True Black | same, „True Black“ | MIT | 063 |
 | `true-light` | True Light | same, „True Light“ | MIT | 063 |
+| `matrix` | Matrix | own scheme after a screenshot of a green VS Code theme (colours measured from the image, no theme file) | – | 064 |
 
 ## Deviations from the originals (contrast)
 
@@ -48,3 +49,13 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   be expressed (the button border follows its background).
 - „Islands“ variants left out (same colours, only rounded shapes); their hover values went into the row hover.
 - *Follow the system* can pair True Light with True Dark/Black (any light and any dark scheme can be chosen).
+
+**Matrix (064)**
+
+- Muted/hidden text `#00a000` (the image's dark greens `#006600`/`#008800` reach only 2.7:1/4.2:1; they stay for
+  borders, the splitter and the archive icon). Errors and danger in light magenta `#ff5fa8` (the image's `#c70067`
+  is 3.4:1 as text; it stays as badge background with white text).
+- Cursor inverted like a terminal: `#00cc00` with black text; marked = gold `#e6b422`, under the cursor dark brown
+  `#4a3200`; inactive cursor `#0f3d0f` with `#88ff88`.
+- The list uses a monospace stack `ui-monospace, Menlo, Consolas, monospace` (only a token value of this scheme).
+- File icons in shades of green (executables gold) – the icon shape tells the type.
