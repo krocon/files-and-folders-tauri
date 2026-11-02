@@ -13,6 +13,25 @@ export type ShellRunResult =
   /** `clear` / `cls`. */
   | { readonly type: 'clear' };
 
+/** Reason codes of a failed login environment read (design 061 E6b, `LoginEnvError::code`). */
+export type LoginEnvReason =
+  'notPosix' | 'spawn' | 'timeout' | 'noEof' | 'exitStatus' | 'incomplete' | 'noPath' | 'tooLarge';
+
+/** Notice of `run_shell` when the login PATH could not be read: `loginEnvUnavailable:<reason>`. */
+export const LOGIN_ENV_NOTICE = 'loginEnvUnavailable';
+
+/** `shell_login_status` (design 061 E6b): no values, no paths. */
+export interface LoginEnvStatus {
+  readonly state: 'off' | 'notPosix' | 'running' | 'ok' | 'failed';
+  readonly reason: LoginEnvReason | null;
+  /** The mode that was used. */
+  readonly mode: 'login' | 'loginInteractive' | null;
+  readonly durationMs: number | null;
+  /** File name of the shell program (`zsh`). */
+  readonly shell: string;
+  readonly pathEntries: number | null;
+}
+
 export type ShellStream = 'stdout' | 'stderr';
 
 /** Cleaned text of one stream (no ANSI, `\n` line ends). */

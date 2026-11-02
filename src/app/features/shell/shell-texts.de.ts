@@ -32,6 +32,28 @@ export const SHELL_DE: Translation<typeof SHELL_EN> = {
   finished: (code) =>
     code === 0 || code === null ? 'Befehl beendet.' : `Befehl beendet mit Exit-Code ${code}.`,
   copied: 'Ausgabe kopiert.',
-  loginEnvUnavailable:
-    'Der PATH der Login-Shell ließ sich nicht lesen; Programme werden im PATH der App gesucht.',
+  loginEnvUnavailable: (reason) =>
+    `Der PATH der Login-Shell ließ sich nicht lesen (${reason}); verwendet wird der PATH der App plus Standardorte. Einstellungen → Shell.`,
+  loginEnvReasons: {
+    timeout: 'keine Antwort innerhalb von 10 s',
+    noEof: 'die Shell endete, aber ein von ihr gestartetes Programm hält die Ausgabe offen',
+    exitStatus: 'die Shell endete mit einem Fehler, bevor sie ihre Umgebung ausgab',
+    incomplete: 'die Shell endete, bevor sie ihre Umgebung ausgab',
+    noPath: 'ihre Umgebung enthält keinen PATH',
+    spawn: 'die Shell ließ sich nicht starten',
+    tooLarge: 'zu viel Ausgabe',
+    notPosix: 'keine POSIX-Shell',
+    unknown: 'unbekannter Grund',
+  },
+  loginModes: {
+    login: 'Login-Shell',
+    loginInteractive: 'Login-Shell mit .zshrc/.bashrc',
+  },
+  loginStatusOff: 'Login-PATH: aus (Einstellungen → Shell).',
+  loginStatusNotPosix: 'Login-PATH: auf diesem System nicht verwendet.',
+  loginStatusRunning: (shell) => `Login-PATH: ${shell} wird noch gefragt …`,
+  loginStatusOk: (shell, mode, ms, entries) =>
+    `Login-PATH: aus ${shell} (${mode}) gelesen in ${ms} ms, ${entries} Einträge.`,
+  loginStatusFailed: (shell, mode, reason, ms) =>
+    `Login-PATH: aus ${shell} (${mode}) nicht gelesen: ${reason}, nach ${ms} ms. Befehle nutzen den PATH der App plus Standardorte.`,
 };

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from '../fs/fs-error';
+import { LoginEnvStatus } from './shell.models';
 
 /**
  * Shell bar helpers that never run anything (design 021 E12/E14): quoting of
@@ -14,6 +15,8 @@ export abstract class ShellSupportApi {
   /** Newest first. */
   abstract loadHistory(): Promise<readonly string[]>;
   abstract clearHistory(): Promise<void>;
+  /** Reads the login PATH if due and tells how it went (design 061 E6b). */
+  abstract loginStatus(): Promise<LoginEnvStatus>;
 }
 
 @Injectable()
@@ -28,6 +31,10 @@ export class TauriShellSupportApi extends ShellSupportApi {
 
   clearHistory(): Promise<void> {
     return call<void>('clear_shell_history', {});
+  }
+
+  loginStatus(): Promise<LoginEnvStatus> {
+    return call<LoginEnvStatus>('shell_login_status', {});
   }
 }
 

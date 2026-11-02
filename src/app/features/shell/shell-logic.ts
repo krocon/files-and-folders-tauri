@@ -5,6 +5,9 @@
  * characters only.
  */
 
+import { LOGIN_ENV_NOTICE, LoginEnvStatus } from '../../core/shell/shell.models';
+import { SHELL_TEXTS } from './shell-texts';
+
 /** Position in the history: `-1` = the line being typed (the draft). */
 export interface HistoryNav {
   readonly index: number;
@@ -180,5 +183,39 @@ export class OutputBuffer {
         first.text = first.text.slice(cut);
       }
     }
+  }
+}
+
+// ---- login PATH (design 061 E6b) ----
+
+/** A `run_shell` notice `loginEnvUnavailable:<reason>` → its info line; `null` for other codes. */
+export function loginNoticeText(notice: string): string | null {
+  const [code, reason] = notice.split(':', 2);
+  if (code !== LOGIN_ENV_NOTICE) {
+    return null;
+  }
+  return SHELL_TEXTS.loginEnvUnavailable(reasonText(reason));
+}
+
+function reasonText(reason: string | null | undefined): string {
+  const reasons = SHELL_TEXTS.loginEnvReasons;
+  return (reason && reasons[reason]) || reasons['unknown'];
+}
+
+/** The line of `SHELL_LOGIN_STATUS`: reason, duration, shell name, entry count – no values. */
+export function loginStatusText(s: LoginEnvStatus): string {
+  const t = SHELL_TEXTS;
+  const mode = (s.mode && t.loginModes[s.mode]) || '';
+  switch (s.state) {
+    case 'off':
+      return t.loginStatusOff;
+    case 'notPosix':
+      return t.loginStatusNotPosix;
+    case 'running':
+      return t.loginStatusRunning(s.shell);
+    case 'ok':
+      return t.loginStatusOk(s.shell, mode, s.durationMs ?? 0, s.pathEntries ?? 0);
+    case 'failed':
+      return t.loginStatusFailed(s.shell, mode, reasonText(s.reason), s.durationMs ?? 0);
   }
 }
