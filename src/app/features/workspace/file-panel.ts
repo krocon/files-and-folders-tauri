@@ -486,7 +486,7 @@ export class FilePanel implements OnInit {
       untracked(() => {
         if (req?.side === this.side() && this.usageChartScan() !== null) {
           // a chart tab has no folder (design 047 E4): the folder opens in a tab next to it
-          this.ws.openInNewTab(this.side(), req.path ?? '', '', req.cursor);
+          this.ws.openInNewTab(this.side(), req.path, '', req.cursor);
         } else if (req?.side === this.side() && !this.store.navigationLocked()) {
           void this.store.load(req.path ?? undefined, req.cursor ? { cursor: req.cursor } : {});
         }
