@@ -379,6 +379,19 @@ impl Run<'_> {
 
     /// Notes a failed pair *source → exact target* for a retry (design 048).
     fn note(&self, src: &Loc, dst: &Loc, copied: bool, top: Option<usize>) {
+        self.note_seen(src, dst, copied, top, None);
+    }
+
+    /// [`note`](Self::note) with what the planning saw of a file (size, time): a retry
+    /// moves it only while it is still that file (review 048 #2/#3).
+    fn note_seen(
+        &self,
+        src: &Loc,
+        dst: &Loc,
+        copied: bool,
+        top: Option<usize>,
+        seen: Option<&Meta>,
+    ) {
         let cleanup = match (self.moving, top.and_then(|t| self.tops.get(t))) {
             (true, Some(t)) => super::retry::chain(src, t)
                 .into_iter()
@@ -390,7 +403,13 @@ impl Run<'_> {
             super::retry::RetryPair {
                 src: src.clone(),
                 dst: dst.clone(),
-                id: None,
+                id: match src {
+                    Loc::Local(p) => crate::platform::entry_id(p),
+                    Loc::Remote(_) => None,
+                },
+                seen: seen
+                    .filter(|m| m.kind == EntryKind::File)
+                    .map(|m| (m.size, m.modified_ms)),
                 copied,
             },
             cleanup,
@@ -808,6 +827,25 @@ pub fn run_retry(
                 continue;
             }
         };
+        // a move retries only the entry that failed: same id (local), same size and time
+        let replaced = match &pair.src {
+            Loc::Local(p) => pair.id.is_some() && crate::platform::entry_id(p) != pair.id,
+            Loc::Remote(_) => false,
+        } || pair.seen.is_some_and(|(size, ms)| {
+            m.kind != EntryKind::File || m.size != size || (ms.is_some() && m.modified_ms != ms)
+        });
+        if moving && replaced {
+            let shown = pair.src.display();
+            run.fail(
+                shown.clone(),
+                FsError::at(
+                    FsErrorCode::NotFound,
+                    "The entry changed since the first run – left in place",
+                    &shown,
+                ),
+            );
+            continue;
+        }
         if let Some(parent) = pair.dst.parent()
             && let Err(e) = ensure_dir_below(hub, root, &parent)
         {
@@ -821,9 +859,10 @@ pub fn run_retry(
             && let Ok(Some(dm)) = stat(hub, &pair.dst)
             && dm.kind == EntryKind::File
             && dm.size == m.size
+            // without times it cannot be told: a normal move with its conflict question
             && match (dm.modified_ms, m.modified_ms) {
                 (Some(a), Some(b)) => (a - b).abs() < 2000,
-                _ => true,
+                _ => false,
             }
         {
             // the copy arrived in the first run – only the source is left to remove
@@ -1120,7 +1159,7 @@ fn execute(
             if moving {
                 if let Err(e) = run.remove_file(&item.src) {
                     run.fail(item.src.display(), e);
-                    run.note(&item.src, &dst, true, Some(item.top));
+                    run.note_seen(&item.src, &dst, true, Some(item.top), Some(&item.meta));
                     failed_tops[item.top] = true;
                 } else {
                     run.summary.items_done += 1;
@@ -1129,7 +1168,7 @@ fn execute(
                 run.summary.items_done += 1;
             }
         } else {
-            run.note(&item.src, &dst, false, Some(item.top));
+            run.note_seen(&item.src, &dst, false, Some(item.top), Some(&item.meta));
             failed_tops[item.top] = true;
         }
         run.rep.progress.items_done += 1;

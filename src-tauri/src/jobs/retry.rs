@@ -15,7 +15,6 @@
 use super::transfer::Loc;
 use super::{DeleteMode, ItemError, JobSpec, JobState, Summary, checksum};
 use crate::error::FsErrorCode;
-use crate::platform::file_id;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -37,6 +36,9 @@ pub struct RetryPair {
     /// Device + inode of the source when it was planned (local): a move retries only
     /// while the path still names this entry.
     pub id: FileId,
+    /// Size and time of a file as planned (server sources have no id): a move retries
+    /// only while they are the same (review 048 #2).
+    pub seen: Option<(u64, Option<i64>)>,
     /// The copy arrived, only removing the source failed (move).
     pub copied: bool,
 }
@@ -139,7 +141,12 @@ pub enum RetryExtra {
         cleanup: Vec<(Loc, FileId)>,
     },
     /// Permanent delete of failed entries: afterwards remove these folders when empty.
-    Cleanup { dirs: Vec<(Loc, FileId)> },
+    /// `guard` = failed local folders as they were after the first run (id, time): one
+    /// that changed since is left alone – its content is not ours to judge (review 048 #4).
+    Cleanup {
+        dirs: Vec<(Loc, FileId)>,
+        guard: Vec<(String, FileId, Option<i64>)>,
+    },
     /// Extract: only the entries (inner names) that failed – at their usual place.
     ExtractOnly { inner: Vec<Vec<String>> },
 }
@@ -308,14 +315,43 @@ fn partial(spec: &JobSpec, summary: &Summary, noted: Noted) -> Option<RetryPlan>
                 ),
                 DeleteMode::Permanent => deep_failed(paths, &failed),
             };
+            // what is there now – a retry leaves alone whatever changes before it runs;
+            // a local entry that cannot be looked at now is not retried unchecked
+            let mut seen = Vec::new();
+            let mut kept = Vec::new();
+            for p in paths {
+                match snapshot(&p).or_else(|| find_expected(expected, &p)) {
+                    Some(e) => {
+                        seen.push(e);
+                        kept.push(p);
+                    }
+                    None if crate::remote::is_remote(&p) => kept.push(p),
+                    None => {}
+                }
+            }
+            let paths = kept;
+            let expected = seen;
             if paths.is_empty() {
                 return None;
             }
-            // what is there now – a retry leaves alone whatever changes before it runs
-            let expected = paths
-                .iter()
-                .filter_map(|p| snapshot(p).or_else(|| find_expected(expected, p)))
-                .collect();
+            let guard: Vec<(String, FileId, Option<i64>)> = if *mode == DeleteMode::Permanent {
+                paths
+                    .iter()
+                    .filter(|p| !crate::remote::is_remote(p))
+                    .filter_map(|p| {
+                        let m = std::fs::symlink_metadata(p).ok()?;
+                        m.is_dir().then(|| {
+                            (
+                                p.clone(),
+                                crate::platform::entry_id(Path::new(p)),
+                                mtime_ms(&m),
+                            )
+                        })
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
             Some(RetryPlan {
                 spec: JobSpec::Delete {
                     paths,
@@ -324,7 +360,8 @@ fn partial(spec: &JobSpec, summary: &Summary, noted: Noted) -> Option<RetryPlan>
                     allow_dangerous: *allow_dangerous,
                     expected,
                 },
-                extra: (!dirs.is_empty()).then(|| Arc::new(RetryExtra::Cleanup { dirs })),
+                extra: (!dirs.is_empty() || !guard.is_empty())
+                    .then(|| Arc::new(RetryExtra::Cleanup { dirs, guard })),
             })
         }
         JobSpec::Rename { items, undo_of } => {
@@ -585,9 +622,43 @@ fn deep_failed(selection: &[String], failed: &[&str]) -> (Vec<String>, Vec<(Loc,
 
 fn local_id(l: &Loc) -> FileId {
     match l {
-        Loc::Local(p) => std::fs::symlink_metadata(p).ok().and_then(|m| file_id(&m)),
+        Loc::Local(p) => crate::platform::entry_id(p),
         Loc::Remote(_) => None,
     }
+}
+
+fn mtime_ms(m: &std::fs::Metadata) -> Option<i64> {
+    m.modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+}
+
+/// The guarded folders of a delete retry that changed since the first run (other
+/// folder, or entries added or removed directly inside), as item errors.
+pub fn changed_dirs(guard: &[(String, FileId, Option<i64>)]) -> Vec<ItemError> {
+    guard
+        .iter()
+        .filter(|(p, id, ms)| {
+            let path = Path::new(p);
+            match std::fs::symlink_metadata(path) {
+                Ok(m) => {
+                    !m.is_dir()
+                        || (id.is_some() && crate::platform::entry_id(path) != *id)
+                        || (ms.is_some() && mtime_ms(&m) != *ms)
+                }
+                Err(_) => false, // gone: the delete reports it
+            }
+        })
+        .map(|(p, _, _)| ItemError {
+            path: p.clone(),
+            error: crate::error::FsError::new(
+                FsErrorCode::ChangedSinceListing,
+                "Left alone: the folder changed since the first run",
+                Some(Path::new(p)),
+            ),
+        })
+        .collect()
 }
 
 /// A local entry as it is now (kind always, size and time for files).
@@ -636,7 +707,7 @@ pub fn remove_empty_dirs(
                 Ok(m)
                     if m.is_dir()
                         && !m.file_type().is_symlink()
-                        && (id.is_none() || file_id(&m) == *id) =>
+                        && (id.is_none() || crate::platform::entry_id(p) == *id) =>
                 {
                     std::fs::remove_dir(p).is_ok()
                 }
@@ -725,6 +796,7 @@ mod tests {
             src: l(s),
             dst: l(d),
             id: None,
+            seen: None,
             copied: false,
         };
         let noted = Noted {
@@ -763,6 +835,7 @@ mod tests {
                 src: l("/a"),
                 dst: l("/b"),
                 id: None,
+                seen: None,
                 copied: false,
             },
             vec![(l("/x"), None), (l("/x"), None)],

@@ -389,7 +389,7 @@ fn delete_retry_removes_failed_entries_and_only_emptied_folders() {
         &vec![s(&deep.join("x.bin")), s(&other.join("c/y.bin"))]
     );
     assert_eq!(expected.len(), 2, "a snapshot of what is there now");
-    let Some(RetryExtra::Cleanup { dirs }) = plan.extra.as_deref() else {
+    let Some(RetryExtra::Cleanup { dirs, .. }) = plan.extra.as_deref() else {
         panic!("cleanup")
     };
     assert_eq!(dirs.len(), 5, "a/b, a, Auswahl, c, Zweite");
@@ -602,4 +602,75 @@ fn the_retry_log_is_bounded() {
     assert!(!info(&h, &ids[0]).retry_available, "the oldest dropped out");
     assert!(info(&h, ids.last().unwrap()).retry_available);
     let _ = PathBuf::new();
+}
+
+/// Review 048 #4: a failed folder whose content changed after the first run is not
+/// deleted by the retry (nothing foreign goes with it).
+#[test]
+fn delete_retry_leaves_a_failed_folder_alone_whose_content_changed() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let sel = d.path().join("Auswahl");
+    let failed = sel.join("hängt");
+    fs::create_dir_all(&failed).unwrap();
+    let spec = JobSpec::Delete {
+        paths: vec![s(&sel)],
+        mode: DeleteMode::Permanent,
+        background: false,
+        allow_dangerous: false,
+        expected: Vec::new(),
+    };
+    let summary = with_errors(vec![err(&failed, FsErrorCode::PermissionDenied)]);
+    let plan = retry::build(&spec, JobState::DoneWithErrors, &summary, Noted::default()).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    fs::write(failed.join("neu.txt"), "foreign").unwrap();
+    let id = h
+        .mgr
+        .start(JobSpec::Simulate {
+            items: 0,
+            item_ms: 0,
+        })
+        .unwrap();
+    h.finish(&id);
+    h.mgr.remember_retry_for_tests(&id, plan);
+    let rid = h.mgr.retry_job(&id).unwrap();
+    let done = h.finish(&rid);
+    assert_eq!(done.state, JobState::DoneWithErrors);
+    assert_eq!(
+        fs::read_to_string(failed.join("neu.txt")).unwrap(),
+        "foreign"
+    );
+}
+
+/// Review 048 #2: a folder that could not be read is retried only while it is still
+/// the same folder (its id is taken when the failure is noted).
+#[cfg(unix)]
+#[test]
+fn move_retry_leaves_a_replaced_unreadable_folder_alone() {
+    use std::os::unix::fs::PermissionsExt;
+    if unsafe { libc::geteuid() } == 0 {
+        return;
+    }
+    let h = Harness::new();
+    h.mgr.force_copy_on_move.store(true, Ordering::SeqCst);
+    let d = tempdir().unwrap();
+    let src = d.path().join("S");
+    let locked = src.join("zu");
+    fs::create_dir_all(&locked).unwrap();
+    fs::write(locked.join("f.txt"), "f").unwrap();
+    let target = d.path().join("T");
+    fs::create_dir(&target).unwrap();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let id = start_move(&h, &[&src], &target);
+    let first = h.finish(&id);
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(first.state, JobState::DoneWithErrors, "{:?}", first.summary);
+    // another folder takes the name
+    fs::create_dir(d.path().join("anderer")).unwrap();
+    fs::write(d.path().join("anderer/g.txt"), "g").unwrap();
+    fs::remove_dir_all(&locked).unwrap();
+    fs::rename(d.path().join("anderer"), &locked).unwrap();
+    let rid = h.mgr.retry_job(&id).unwrap();
+    assert_eq!(h.finish(&rid).state, JobState::DoneWithErrors);
+    assert_eq!(fs::read_to_string(locked.join("g.txt")).unwrap(), "g");
 }

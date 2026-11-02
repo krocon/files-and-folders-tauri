@@ -420,7 +420,9 @@ impl Run<'_> {
             super::retry::RetryPair {
                 src: src_loc,
                 dst: Loc::Local(dst.to_path_buf()),
-                id,
+                // Windows: the planning has no id – take it now (review 048 #1)
+                id: id.or_else(|| crate::platform::entry_id(src)),
+                seen: None,
                 copied,
             },
             cleanup,
@@ -955,7 +957,7 @@ pub fn run_retry(
                 continue;
             }
         };
-        if run.moving && pair.id.is_some() && file_id(&meta) != pair.id {
+        if run.moving && pair.id.is_some() && crate::platform::entry_id(src) != pair.id {
             // another entry has this name now: never move that one
             run.fail(src, changed_error(src));
             continue;

@@ -685,9 +685,28 @@ impl JobManager {
                     copy::run_retry(id, root, pairs, cleanup, options, mode, control, emit)
                 }
             }
-            (retry::RetryExtra::Cleanup { dirs }, JobSpec::Delete { .. }) => {
+            (retry::RetryExtra::Cleanup { dirs, guard }, JobSpec::Delete { .. }) => {
+                // failed folders that changed since the first run stay (review 048 #4)
+                let changed = retry::changed_dirs(guard);
+                for e in &changed {
+                    emit(JobEvent::ItemFailed {
+                        id: id.to_string(),
+                        error: e.clone(),
+                    });
+                }
+                let mut spec = spec.clone();
+                if let JobSpec::Delete { paths, .. } = &mut spec {
+                    paths.retain(|p| !changed.iter().any(|e| &e.path == p));
+                }
+                let left = match &spec {
+                    JobSpec::Delete { paths, .. } => paths.len(),
+                    _ => 0,
+                };
                 // the failed entries as a normal delete, then their emptied folders
-                let (state, summary) = self.run_plain_delete(id, spec, control, emit)?;
+                let (state, summary) = with_skipped(changed, left, || {
+                    self.run_plain_delete(id, &spec, control, emit)
+                        .unwrap_or_else(|| (JobState::Done, Summary::default()))
+                });
                 if state != JobState::Cancelled {
                     let hub = crate::remote::hub().ok();
                     let (changed, left) = retry::remove_empty_dirs(dirs, hub);
