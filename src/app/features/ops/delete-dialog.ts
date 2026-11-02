@@ -129,7 +129,7 @@ const SHOWN = 5;
             @if (!permanent()) {
               <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
               <div class="help" [style.visibility]="armed() ? 'hidden' : null">
-                {{ t.trashHint }}
+                {{ t.trashHint(r.entries.length) }}
               </div>
               <div class="spacer"></div>
             }

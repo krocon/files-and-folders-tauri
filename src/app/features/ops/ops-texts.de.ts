@@ -44,7 +44,10 @@ export const OPS_DE: Translation<typeof OPS_EN> = {
   filesAndSize: (files, size) => `${num(files)} ${files === 1 ? 'Datei' : 'Dateien'}, ${size}`,
   sizeUnknown: 'unbekannt – Zählen nicht möglich',
   noCountInArchive: 'in Archiven wird nicht gezählt',
-  trashHint: 'Sie können es aus dem Papierkorb wiederherstellen.',
+  trashHint: (n) =>
+    n === 1
+      ? 'Sie können den Eintrag aus dem Papierkorb wiederherstellen.'
+      : 'Sie können die Einträge aus dem Papierkorb wiederherstellen.',
   moreEntries: (n) => `… und ${n} weitere`,
   deleteSize: 'Größe',
   sizeAtLeast: (size) => `mindestens ${size}`,

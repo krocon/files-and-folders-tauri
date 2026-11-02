@@ -15,6 +15,7 @@ import { OPS_TEXTS } from './ops-texts';
 import { DeleteDialog } from './delete-dialog';
 import { NameDialog } from './name-dialog';
 import { OpsStore } from './ops.store';
+import { setLanguage } from '../../core/i18n/i18n';
 
 const flush = () => new Promise((r) => setTimeout(r));
 
@@ -265,6 +266,44 @@ describe('operation dialogs', () => {
     expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
     expect(buttons[1].disabled).toBe(true);
     expect(buttons[2].disabled).toBe(true);
+  });
+
+  it('delete (057): the trash hint speaks of one entry or of several, in en and de', async () => {
+    ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a, sub], dangers: [] });
+    TestBed.inject(DialogService).show('delete');
+    let r = await render(DeleteDialog);
+    expect(r.el.querySelector('.help')!.textContent!.trim()).toBe(
+      'You can restore them from the trash.',
+    );
+    r.fixture.destroy();
+    ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
+    r = await render(DeleteDialog);
+    expect(r.el.querySelector('.help')!.textContent!.trim()).toBe(
+      'You can restore it from the trash.',
+    );
+    r.fixture.destroy();
+    setLanguage('de');
+    try {
+      ops.del.set({
+        mode: 'trash',
+        side: 'left',
+        sourceDir: '/src',
+        entries: [a, sub],
+        dangers: [],
+      });
+      r = await render(DeleteDialog);
+      expect(r.el.querySelector('.help')!.textContent!.trim()).toBe(
+        'Sie können die Einträge aus dem Papierkorb wiederherstellen.',
+      );
+      r.fixture.destroy();
+      ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
+      r = await render(DeleteDialog);
+      expect(r.el.querySelector('.help')!.textContent!.trim()).toBe(
+        'Sie können den Eintrag aus dem Papierkorb wiederherstellen.',
+      );
+    } finally {
+      setLanguage('en');
+    }
   });
 
   it('delete: the trash dialog can delete permanently instead', async () => {
