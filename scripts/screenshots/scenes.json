@@ -97,6 +97,15 @@
       ]
     },
     {
+      "name": "tab-menu",
+      "steps": [
+        {
+          "click": ".side-left [role='tab'][aria-selected='true']",
+          "button": "right"
+        }
+      ]
+    },
+    {
       "name": "copy-dialog",
       "steps": [
         {

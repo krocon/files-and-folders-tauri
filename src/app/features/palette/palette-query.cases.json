@@ -24,20 +24,50 @@
     { "input": "ext:pdf invoice", "mode": "files", "terms": ["invoice"], "ext": ["pdf"] },
     { "input": "EXT:.PDF,docx", "mode": "files", "ext": ["pdf", "docx"] },
     { "input": "in:Projekte readme", "mode": "files", "terms": ["readme"], "inDirs": ["projekte"] },
-    { "input": "in:/home/marc/Docs x", "mode": "files", "terms": ["x"], "inPaths": ["/home/marc/Docs"] },
+    {
+      "input": "in:/home/marc/Docs x",
+      "mode": "files",
+      "terms": ["x"],
+      "inPaths": ["/home/marc/Docs"]
+    },
     { "input": "in:a/b", "mode": "files", "inDirs": ["a", "b"] },
     { "input": "size>10m", "mode": "files", "sizeMin": 10485760 },
     { "input": "size<1.5k", "mode": "files", "sizeMax": 1536 },
     { "input": "size:>2gb", "mode": "files", "sizeMin": 2147483648 },
     { "input": "size>abc", "mode": "files", "terms": ["size>abc"] },
     { "input": "size:10m", "mode": "files", "terms": ["size:10m"] },
-    { "input": "modified:2025", "mode": "files", "modifiedFrom": 1735686000000, "modifiedTo": 1767222000000 },
-    { "input": "modified:2025-03", "mode": "files", "modifiedFrom": 1740783600000, "modifiedTo": 1743462000000 },
-    { "input": "mod:2025-03-14", "mode": "files", "modifiedFrom": 1741906800000, "modifiedTo": 1741993200000 },
+    {
+      "input": "modified:2025",
+      "mode": "files",
+      "modifiedFrom": 1735686000000,
+      "modifiedTo": 1767222000000
+    },
+    {
+      "input": "modified:2025-03",
+      "mode": "files",
+      "modifiedFrom": 1740783600000,
+      "modifiedTo": 1743462000000
+    },
+    {
+      "input": "mod:2025-03-14",
+      "mode": "files",
+      "modifiedFrom": 1741906800000,
+      "modifiedTo": 1741993200000
+    },
     { "input": "modified>2025-01", "mode": "files", "modifiedFrom": 1738364400000 },
     { "input": "modified<2025", "mode": "files", "modifiedTo": 1735686000000 },
-    { "input": "modified:today", "mode": "files", "modifiedFrom": 1793055600000, "modifiedTo": 1793142000000 },
-    { "input": "modified:7d", "mode": "files", "modifiedFrom": 1792537200000, "modifiedTo": 1793142000000 },
+    {
+      "input": "modified:today",
+      "mode": "files",
+      "modifiedFrom": 1793055600000,
+      "modifiedTo": 1793142000000
+    },
+    {
+      "input": "modified:7d",
+      "mode": "files",
+      "modifiedFrom": 1792537200000,
+      "modifiedTo": 1793142000000
+    },
     { "input": "modified>7d", "mode": "files", "modifiedFrom": 1792537200000 },
     { "input": "modified<7d", "mode": "files", "modifiedTo": 1792537200000 },
     { "input": "modified>today", "mode": "files", "modifiedFrom": 1793055600000 },
@@ -84,6 +114,10 @@
       "query": "invoice",
       "order": ["invoice.pdf", "Invoice-0815.pdf", "old_invoice.pdf", "myinvoices.txt"]
     },
-    { "query": "invoice 2025", "order": ["invoice_2025_03.pdf", "Invoice-0815.pdf"], "depths": [1, 2] }
+    {
+      "query": "invoice 2025",
+      "order": ["invoice_2025_03.pdf", "Invoice-0815.pdf"],
+      "depths": [1, 2]
+    }
   ]
 }

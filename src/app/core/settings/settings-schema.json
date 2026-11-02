@@ -16,6 +16,7 @@
   "view.hideExtension": { "type": "bool", "default": false },
   "view.showHidden": { "type": "bool", "default": false },
   "view.menuBar": { "type": "bool", "default": true },
+  "folderMenu.recentOrder": { "type": "enum", "values": ["alpha", "recent"], "default": "alpha" },
   "behavior.deleteToTrash": { "type": "bool", "default": true },
   "behavior.confirmTrash": { "type": "bool", "default": true },
   "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },

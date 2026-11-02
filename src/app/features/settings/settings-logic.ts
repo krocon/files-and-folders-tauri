@@ -32,6 +32,7 @@ export const SECTIONS: readonly Section[] = [
       'view.hideExtension',
       'view.showHidden',
       'view.menuBar',
+      'folderMenu.recentOrder',
     ],
   },
   {

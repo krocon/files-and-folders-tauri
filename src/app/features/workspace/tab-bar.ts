@@ -17,7 +17,11 @@ import { tabZoneHit } from '../dnd/dnd-logic';
 import { DragStore } from '../dnd/drag.store';
 import { OS_TEXTS, volumeLabel } from '../osintegration/os-texts';
 import { VolumesStore } from '../osintegration/volumes.store';
-import { displayPath } from '../../core/remote/remote-path';
+import { displayPath, isRemotePath } from '../../core/remote/remote-path';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { ActionService } from '../../core/actions/action.service';
+import { ActionId } from '../../core/actions/action-catalog';
+import { Volume } from '../../core/os/os.models';
 import { REMOTE_TEXTS } from '../remote/remote-texts';
 import { RemoteStore } from '../remote/remote.store';
 import { SearchStore } from '../search/search.store';
@@ -67,18 +71,43 @@ export class TabBar {
   private readonly drives = inject(VolumesStore);
   private readonly remote = inject(RemoteStore);
   protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
+  private readonly settings = inject(SettingsStore);
+  private readonly actions = inject(ActionService);
+  /**
+   * Favourites and recent folders as the folder menu shows them (051): alphabetical by the shown
+   * path (natural, without case) – recent ones as most recent first when the setting says so.
+   */
+  private readonly folderLists = computed(() => {
+    const names = new Map(this.remote.profiles().map((p) => [p.id, p.name]));
+    const favs = this.ws.favorites();
+    const show = (p: string) => displayPath(p, names);
+    const byName = (list: readonly string[]) =>
+      [...list].sort((a, b) =>
+        show(a).localeCompare(show(b), undefined, { numeric: true, sensitivity: 'base' }),
+      );
+    const recent = this.ws.recent().filter((p) => !favs.has(p));
+    return {
+      names,
+      favorites: byName([...favs]),
+      recent: this.settings.get('folderMenu.recentOrder') === 'recent' ? recent : byName(recent),
+    };
+  });
   protected readonly folderMenuItems = computed<MenuItem[]>(() => {
     const t = TEXTS;
-    const favorites = [...this.ws.favorites()];
-    const recent = this.ws.recent().filter((p) => !this.ws.favorites().has(p));
-    const names = new Map(this.remote.profiles().map((p) => [p.id, p.name]));
-    const group = (prefix: string, label: string, paths: string[]): MenuItem[] => [
+    const { names, favorites, recent } = this.folderLists();
+    // ids carry the path (not an index), so a click opens exactly that folder (051)
+    const group = (prefix: string, label: string, icon: string, paths: string[]): MenuItem[] => [
       { id: `${prefix}-h`, label, heading: true },
       ...(paths.length === 0
         ? [{ id: `${prefix}-none`, label: t.menuEmpty, disabled: true }]
-        : paths.map((p, i) => ({ id: `${prefix}:${i}`, label: displayPath(p, names) }))),
+        : paths.map((p) => ({
+            id: `${prefix}:${p}`,
+            label: displayPath(p, names),
+            icon: isRemotePath(p) ? 'server' : icon,
+            hint: displayPath(p, names),
+          }))),
     ];
-    // servers (design 034 E8): connected ones first
+    // servers (design 034 E8): connected ones first, marked by the plug instead of "● "
     const connected = this.remote.connectedIds();
     const profiles = [...this.remote.profiles()]
       .sort((a, b) => Number(connected.has(b.id)) - Number(connected.has(a.id)))
@@ -87,9 +116,11 @@ export class TabBar {
       { id: 'srv-h', label: REMOTE_TEXTS.serversSection, heading: true },
       ...profiles.map((p) => ({
         id: `srv:${p.id}`,
-        label: `${connected.has(p.id) ? '● ' : ''}${p.name}`,
+        label: p.name,
+        icon: connected.has(p.id) ? 'plug' : 'server',
+        iconLabel: connected.has(p.id) ? t.menuConnected : undefined,
       })),
-      { id: 'srv-all', label: REMOTE_TEXTS.allConnections },
+      { id: 'srv-all', label: REMOTE_TEXTS.allConnections, icon: 'ellipsis-h' },
     ];
     const volumes = this.drives.volumes();
     const drives: MenuItem[] = [
@@ -98,14 +129,19 @@ export class TabBar {
         ? [{ id: 'vol-loading', label: OS_TEXTS.readingDrives, disabled: true }]
         : volumes.length === 0
           ? [{ id: 'vol-none', label: OS_TEXTS.noDrives, disabled: true }]
-          : volumes.map((v, i) => ({ id: `vol:${i}`, label: volumeLabel(v) }))),
+          : volumes.map((v) => ({
+              id: `vol:${v.path}`,
+              label: volumeLabel(v),
+              icon: volumeIcon(v),
+              iconLabel: v.reachable ? undefined : t.menuUnreachable,
+            }))),
     ];
     return [
-      { id: 'home', label: t.menuHome },
+      { id: 'home', label: t.menuHome, icon: 'home' },
       ...drives,
       ...servers,
-      ...group('fav', t.menuFavorites, favorites),
-      ...group('recent', t.menuRecent, recent),
+      ...group('fav', t.menuFavorites, 'star', favorites),
+      ...group('recent', t.menuRecent, 'history', recent),
     ];
   });
 
@@ -169,19 +205,56 @@ export class TabBar {
     const index = this.menuIndex();
     const count = this.panel().tabs.length;
     const m = TEXTS.tabMenu;
+    // icons (052): arrows point where the tab goes; badges from the keymap like the file menu
+    const toOther = this.side() === 'left' ? 'arrow-right' : 'arrow-left';
+    const key = (id: ActionId) => this.actions.shortcutLabel(id) || undefined;
     return [
-      { id: 'reload', label: m.reload },
-      { id: 'close', label: m.close, disabled: count <= 1 },
-      { id: 'moveToOther', label: m.moveToOther(this.side()), disabled: count <= 1 },
-      { id: 'cloneToOther', label: m.cloneToOther(this.side()) },
-      { id: 'moveLeft', label: m.moveLeft, disabled: index <= 0 },
-      { id: 'moveRight', label: m.moveRight, disabled: index < 0 || index >= count - 1 },
+      { id: 'reload', label: m.reload, icon: 'refresh', shortcut: key('RELOAD_DIR') },
+      {
+        id: 'close',
+        label: m.close,
+        disabled: count <= 1,
+        icon: 'times',
+        shortcut: key('CLOSE_TAB'),
+      },
+      {
+        id: 'moveToOther',
+        label: m.moveToOther(this.side()),
+        disabled: count <= 1,
+        icon: toOther,
+        shortcut: key('MOVE_TAB_TO_OTHER_SIDE'),
+      },
+      {
+        id: 'cloneToOther',
+        label: m.cloneToOther(this.side()),
+        icon: 'clone',
+        shortcut: key('COPY_TAB_TO_OTHER_SIDE'),
+      },
+      {
+        id: 'moveLeft',
+        label: m.moveLeft,
+        disabled: index <= 0,
+        icon: 'angle-left',
+        shortcut: key('MOVE_TAB_LEFT'),
+      },
+      {
+        id: 'moveRight',
+        label: m.moveRight,
+        disabled: index < 0 || index >= count - 1,
+        icon: 'angle-right',
+        shortcut: key('MOVE_TAB_RIGHT'),
+      },
       // the folders this tab visited (mr: long press on a tab, 018 J12)
       {
         id: 'history',
         label: m.history,
         disabled: this.history().length === 0,
-        children: this.history().map((p, i) => ({ id: `hist:${i}`, label: p })),
+        icon: 'history',
+        children: this.history().map((p, i) => ({
+          id: `hist:${i}`,
+          label: p,
+          icon: isRemotePath(p) ? 'server' : 'folder-o',
+        })),
       },
     ];
   });
@@ -253,17 +326,15 @@ export class TabBar {
 
   protected onFolderChosen(id: string): void {
     this.folderMenuOpen.set(null);
-    const favorites = [...this.ws.favorites()];
-    const recent = this.ws.recent().filter((p) => !this.ws.favorites().has(p));
     let path: string | null | undefined;
     if (id === 'home') {
       path = null;
     } else if (id.startsWith('fav:')) {
-      path = favorites[Number(id.slice(4))];
+      path = id.slice(4);
     } else if (id.startsWith('recent:')) {
-      path = recent[Number(id.slice(7))];
+      path = id.slice(7);
     } else if (id.startsWith('vol:')) {
-      path = this.drives.volumes()?.[Number(id.slice(4))]?.path;
+      path = id.slice(4);
     } else if (id === 'srv-all') {
       this.remote.openDialog();
       return;
@@ -626,4 +697,23 @@ function swallowNextClick(): void {
   };
   window.addEventListener('click', stop, { capture: true, once: true });
   setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 0);
+}
+
+/** Icon of a drive in the folder menu (051): kind at a glance, a broken chain when it does not answer. */
+export function volumeIcon(v: Volume): string {
+  if (!v.reachable) {
+    return 'chain-broken';
+  }
+  switch (v.kind) {
+    case 'network':
+      return 'sitemap';
+    case 'removable':
+      return 'usb';
+    case 'optical':
+      return 'dot-circle-o';
+    case 'ram':
+      return 'bolt';
+    default:
+      return 'hdd-o';
+  }
 }
