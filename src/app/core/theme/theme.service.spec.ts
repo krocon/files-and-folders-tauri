@@ -156,6 +156,7 @@ describe('ThemeService', () => {
       'true-black',
       'true-light',
       'matrix',
+      'amber',
       'solarized-light',
       'mystico-c64',
       'rainglow-bold',

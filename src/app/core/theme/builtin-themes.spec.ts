@@ -48,6 +48,7 @@ describe('built-in themes', () => {
       'true-black',
       'true-light',
       'matrix',
+      'amber',
       'solarized-light',
       'mystico-c64',
       'rainglow-bold',

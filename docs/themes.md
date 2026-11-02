@@ -20,6 +20,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `true-black` | True Black | same, „True Black“ | MIT | 063 |
 | `true-light` | True Light | same, „True Light“ | MIT | 063 |
 | `matrix` | Matrix | own scheme after a screenshot of a green VS Code theme (colours measured from the image, no theme file) | – | 064 |
+| `amber` | Amber | own scheme „Amber“ of Marc's editor *editlicious* (same author), amber monochrome monitor | MIT | – |
 | `solarized-light` | Solarized Light | VS Code built-in „Solarized (light)“ (`microsoft/vscode`, `extensions/theme-solarized-light`), palette by Ethan Schoonover | MIT (both) | 065 |
 | `mystico-c64` | Mystico – C64 | VS Code theme „Mystico C64“ by chibanti (`chibanti/mystico-c64-vscode-theme`); colours measured from screenshots. The Notepad++ port `MysticoNpp_C64.xml` (luk3Z, GPL-2) was only looked at, nothing copied | MIT | 066 |
 | `rainglow-bold` | Bold (Rainglow) | Rainglow „bold“ by Dayle Rees (`rainglow/vscode`, fork `ahmadawais/vscode-1`) | MIT | 067 |
@@ -66,6 +67,15 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   `#4a3200`; inactive cursor `#0f3d0f` with `#88ff88`.
 - The list uses a monospace stack `ui-monospace, Menlo, Consolas, monospace` (only a token value of this scheme).
 - File icons in shades of green (executables gold) – the icon shape tells the type.
+
+**Amber (editlicious)**
+
+- Colours taken from editlicious' `amber` scheme: window `#0b0804`/`#120d06`, list = editor `#0f0b05`, text `#ffb000`,
+  muted `#b07a1a`, borders `#3a2a10`/`#5c4210` (gutter), focus `#ffc640`, accents from the syntax colours.
+- Like Matrix, a monochrome terminal: list in monospace, cursor inverted (`#ffb000` with black text), inactive cursor
+  `#3a2a10` with `#ffcc33`. Marked = pale amber `#ffe0a0`, under the cursor dark rust `#7a2e00`.
+- Errors/danger in the red-orange `#ff5a1f` (`--syn-invalid`), badges orange `#ff8c1a` with dark text; all pairs pass
+  without correction.
 
 **Solarized Light (065)**
 

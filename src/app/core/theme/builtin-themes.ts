@@ -17,6 +17,7 @@ import trueDarkJson from './themes/true-dark.json';
 import trueBlackJson from './themes/true-black.json';
 import trueLightJson from './themes/true-light.json';
 import matrixJson from './themes/matrix.json';
+import amberJson from './themes/amber.json';
 import solarizedLightJson from './themes/solarized-light.json';
 import mysticoC64Json from './themes/mystico-c64.json';
 import rainglowBoldJson from './themes/rainglow-bold.json';
@@ -49,6 +50,7 @@ export const EXTRA_THEMES: readonly Theme[] = [
   trueBlackJson,
   trueLightJson,
   matrixJson,
+  amberJson,
   solarizedLightJson,
   mysticoC64Json,
   rainglowBoldJson,
