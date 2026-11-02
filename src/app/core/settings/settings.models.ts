@@ -25,7 +25,7 @@ export interface SettingsValues {
   'diskUsage.crossFilesystems': boolean;
   'diskUsage.chart': 'sunburst' | 'treemap';
   'shell.enabled': boolean;
-  'shell.loginPath': boolean;
+  'shell.loginPath': 'off' | 'login' | 'loginInteractive';
   'shell.windowsShell': 'cmd' | 'powershell';
   'search.recent': readonly unknown[];
   'search.templates': readonly unknown[];

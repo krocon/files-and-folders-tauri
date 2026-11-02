@@ -1,5 +1,10 @@
+import { afterEach } from 'vitest';
+import { setLanguage } from '../../core/i18n/i18n';
+import { LoginEnvStatus } from '../../core/shell/shell.models';
 import {
   historyStep,
+  loginNoticeText,
+  loginStatusText,
   middleEllipsis,
   NO_NAV,
   OutputBuffer,
@@ -73,5 +78,51 @@ describe('shell logic (design 021)', () => {
     expect(c.text()).toBe('x'.repeat(10));
     c.clear();
     expect(c.isEmpty && !c.trimmed).toBe(true);
+  });
+});
+
+describe('login PATH texts (design 061 E6b)', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('turns a notice code into a line with the reason (en/de)', () => {
+    expect(loginNoticeText('loginEnvUnavailable:timeout')).toBe(
+      'The PATH of the login shell could not be read (no answer within 10 s); using the app’s PATH plus standard locations. Settings → Shell.',
+    );
+    expect(loginNoticeText('loginEnvUnavailable:somethingNew')).toContain('(unknown reason)');
+    expect(loginNoticeText('loginEnvUnavailable')).toContain('(unknown reason)');
+    expect(loginNoticeText('other:timeout')).toBeNull();
+    setLanguage('de');
+    expect(loginNoticeText('loginEnvUnavailable:exitStatus')).toBe(
+      'Der PATH der Login-Shell ließ sich nicht lesen (die Shell endete mit einem Fehler, bevor sie ihre Umgebung ausgab); verwendet wird der PATH der App plus Standardorte. Einstellungen → Shell.',
+    );
+  });
+
+  it('describes the status without values', () => {
+    const base: LoginEnvStatus = {
+      state: 'ok',
+      reason: null,
+      mode: 'loginInteractive',
+      durationMs: 420,
+      shell: 'zsh',
+      pathEntries: 12,
+    };
+    expect(loginStatusText(base)).toBe(
+      'Login PATH: read from zsh (login shell with .zshrc/.bashrc) in 420 ms, 12 entries.',
+    );
+    expect(loginStatusText({ ...base, state: 'off' })).toBe('Login PATH: off (Settings → Shell).');
+    expect(loginStatusText({ ...base, state: 'notPosix' })).toContain('not used');
+    expect(loginStatusText({ ...base, state: 'running' })).toContain('zsh is still being asked');
+    setLanguage('de');
+    expect(
+      loginStatusText({
+        ...base,
+        state: 'failed',
+        reason: 'noPath',
+        mode: 'login',
+        durationMs: 80,
+      }),
+    ).toBe(
+      'Login-PATH: aus zsh (Login-Shell) nicht gelesen: ihre Umgebung enthält keinen PATH, nach 80 ms. Befehle nutzen den PATH der App plus Standardorte.',
+    );
   });
 });

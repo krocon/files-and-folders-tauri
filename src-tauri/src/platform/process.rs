@@ -19,10 +19,21 @@ pub struct GroupChild {
 }
 
 /// Starts `cmd` with stdin = null and piped stdout/stderr in its own group/job.
-pub fn spawn_group(mut cmd: Command) -> io::Result<GroupChild> {
+pub fn spawn_group(cmd: Command) -> io::Result<GroupChild> {
+    spawn_with_stderr(cmd, Stdio::piped())
+}
+
+/// Like [`spawn_group`], but stderr goes to the null device (design 061 E6b): a
+/// closed stderr pipe would kill a shell that prints a warning (SIGPIPE).
+#[cfg(unix)]
+pub fn spawn_group_quiet(cmd: Command) -> io::Result<GroupChild> {
+    spawn_with_stderr(cmd, Stdio::null())
+}
+
+fn spawn_with_stderr(mut cmd: Command, stderr: Stdio) -> io::Result<GroupChild> {
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(stderr);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;

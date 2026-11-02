@@ -129,8 +129,8 @@ export const SETTINGS_EN = {
     },
     'shell.loginPath': {
       label: 'Programs from the login shell',
-      help: 'Reads PATH and language once from your login shell, so programs from Homebrew, nvm or cargo are found.',
-      keywords: 'path homebrew brew environment login profile',
+      help: 'Reads PATH and language from your login shell, so programs from Homebrew, nvm, pnpm or cargo are found. “With .zshrc/.bashrc” also reads the interactive start file, where many tools extend PATH; “Login shell” reads only .zprofile/.bash_profile – then set PATH there.',
+      keywords: 'path homebrew brew environment login profile zshrc bashrc zprofile',
     },
     'shell.windowsShell': {
       label: 'Shell on Windows',
@@ -211,6 +211,9 @@ export const SETTINGS_EN = {
     view: 'View (F3)',
     cmd: 'cmd.exe',
     powershell: 'PowerShell',
+    off: 'Off',
+    login: 'Login shell (.zprofile)',
+    loginInteractive: 'Login shell with .zshrc/.bashrc',
     allocated: 'On disk',
     logical: 'Size',
     sunburst: 'Rings',
@@ -451,8 +454,8 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     },
     'shell.loginPath': {
       label: 'Programme aus der Login-Shell',
-      help: 'Liest PATH und Sprache einmal aus der Login-Shell, damit Programme aus Homebrew, nvm oder cargo gefunden werden.',
-      keywords: 'path homebrew brew umgebung login profil',
+      help: 'Liest PATH und Sprache aus der Login-Shell, damit Programme aus Homebrew, nvm, pnpm oder cargo gefunden werden. „Mit .zshrc/.bashrc“ liest auch die interaktive Startdatei, in der viele Werkzeuge den PATH erweitern; „Login-Shell“ liest nur .zprofile/.bash_profile – dann den PATH dort setzen.',
+      keywords: 'path homebrew brew umgebung login profil zshrc bashrc zprofile',
     },
     'shell.windowsShell': {
       label: 'Shell unter Windows',
@@ -534,6 +537,9 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     view: 'Ansehen (F3)',
     cmd: 'cmd.exe',
     powershell: 'PowerShell',
+    off: 'Aus',
+    login: 'Login-Shell (.zprofile)',
+    loginInteractive: 'Login-Shell mit .zshrc/.bashrc',
     allocated: 'Belegt',
     logical: 'Größe',
     sunburst: 'Ringe',

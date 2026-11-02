@@ -287,14 +287,60 @@ describe('shell bar (design 021)', () => {
     shellApi.answer = () =>
       new Promise<ShellRunResult>((resolve) => {
         emitOutput('s7', 'früh\n');
-        resolve({ type: 'started', jobId: 's7', notices: ['loginEnvUnavailable'] });
+        resolve({ type: 'started', jobId: 's7', notices: ['loginEnvUnavailable:timeout'] });
       });
     type('echo früh');
     key('Enter');
     await flush();
     await render();
     expect(output(el)).toContain('früh\n');
-    expect(output(el)).toContain('PATH of the login shell');
+    expect(output(el)).toContain(
+      'PATH of the login shell could not be read (no answer within 10 s)',
+    );
+  });
+
+  it('shows the login PATH notice with its reason only when Rust sends it (design 061 E6b)', async () => {
+    const { el, type, key, render } = await bar();
+    const notices = [['loginEnvUnavailable:noEof'], [], ['otherNotice']];
+    shellApi.answer = () => ({
+      type: 'started',
+      jobId: `n${notices.length}`,
+      notices: notices.shift() ?? [],
+    });
+    for (const line of ['a', 'b', 'c']) {
+      type(line);
+      key('Enter');
+      await flush();
+      finish(`n${notices.length + 1}`, 0, 'done');
+      await flush();
+    }
+    await render();
+    const text = output(el);
+    expect(text.split('could not be read').length - 1).toBe(1);
+    expect(text).toContain('a program it started keeps the output open');
+    expect(text).not.toContain('otherNotice');
+  });
+
+  it('SHELL_LOGIN_STATUS writes the status as an info line, without values (design 061 E6b)', async () => {
+    expect(shell.visible()).toBe(false);
+    await actions.run('SHELL_LOGIN_STATUS');
+    expect(shell.visible()).toBe(true);
+    expect(shell.outputOpen()).toBe(true);
+    expect(shell.announcement()).toBe(
+      'Login PATH: read from zsh (login shell with .zshrc/.bashrc) in 420 ms, 12 entries.',
+    );
+    support.status = {
+      state: 'failed',
+      reason: 'timeout',
+      mode: 'login',
+      durationMs: 10000,
+      shell: 'zsh',
+      pathEntries: null,
+    };
+    await actions.run('SHELL_LOGIN_STATUS');
+    expect(shell.announcement()).toContain(
+      'not read from zsh (login shell): no answer within 10 s',
+    );
   });
 
   it('cd navigates the active panel, cd - goes back, clear empties; errors appear in the output', async () => {

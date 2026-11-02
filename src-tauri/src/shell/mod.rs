@@ -337,3 +337,5 @@ pub fn check_cwd(cwd: &str) -> Result<PathBuf, FsError> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_login;

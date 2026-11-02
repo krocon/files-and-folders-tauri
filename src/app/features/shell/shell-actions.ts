@@ -12,6 +12,7 @@ export function registerShellActions(actions: ActionService, shell: ShellStore):
     SHELL_INSERT_NAMES: { enabled: canInsert, run: () => shell.insert(false) },
     SHELL_INSERT_PATHS: { enabled: canInsert, run: () => shell.insert(true) },
     SHELL_CLEAR_OUTPUT: { enabled: () => shell.hasOutput(), run: () => shell.clear() },
+    SHELL_LOGIN_STATUS: { enabled, run: () => shell.showLoginStatus() },
   };
   return actions.register(handlers);
 }

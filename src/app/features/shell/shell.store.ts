@@ -10,7 +10,7 @@ import { ShellSupportApi } from '../../core/shell/shell-support-api';
 import { ShellChunk, ShellRunResult } from '../../core/shell/shell.models';
 import { OsStore } from '../osintegration/os.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
-import { OutputBuffer, remember } from './shell-logic';
+import { loginNoticeText, loginStatusText, OutputBuffer, remember } from './shell-logic';
 import { SHELL_TEXTS } from './shell-texts';
 
 export const OUTPUT_MIN = 60;
@@ -174,9 +174,11 @@ export class ShellStore {
     this.starting.set(false);
     switch (result.type) {
       case 'started': {
+        // Rust sends the login PATH notice once per failure (design 061 E6b)
         for (const n of result.notices) {
-          if (n === 'loginEnvUnavailable') {
-            this.buffer.appendLine('info', SHELL_TEXTS.loginEnvUnavailable);
+          const text = loginNoticeText(n);
+          if (text !== null) {
+            this.buffer.appendLine('info', text);
           }
         }
         this.running.set(result.jobId);
@@ -228,6 +230,28 @@ export class ShellStore {
 
   clear(): void {
     this.buffer.clear();
+    this.bump();
+  }
+
+  /** `SHELL_LOGIN_STATUS` (design 061 E6b): how reading the login PATH went, as an info line. */
+  async showLoginStatus(): Promise<void> {
+    let line: string;
+    try {
+      line = loginStatusText(await this.support.loginStatus());
+    } catch (err) {
+      this.buffer.appendLine('error', errorText(toFsError(err)));
+      this.bump();
+      return;
+    }
+    if (!this.visible()) {
+      this.patch({ visible: true });
+      void this.loadHistory();
+    }
+    if (!this.outputOpen()) {
+      this.setOutputOpen(true);
+    }
+    this.buffer.appendLine('info', line);
+    this.announcement.set(line);
     this.bump();
   }
 

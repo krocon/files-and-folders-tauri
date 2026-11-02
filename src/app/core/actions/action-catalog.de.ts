@@ -20,6 +20,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   SHELL_INSERT_NAMES: 'Namen in die Shell einfügen',
   SHELL_INSERT_PATHS: 'Volle Pfade in die Shell einfügen',
   SHELL_CLEAR_OUTPUT: 'Shell-Ausgabe leeren',
+  SHELL_LOGIN_STATUS: 'Shell: Status des Login-PATH zeigen',
   COPY_2_CLIPBOARD_NAMES: 'Namen in die Zwischenablage',
   COPY_2_CLIPBOARD_FULLNAMES: 'Vollständige Pfade in die Zwischenablage',
   COPY_2_CLIPBOARD_NAMES_AS_JSON: 'Namen als JSON kopieren',

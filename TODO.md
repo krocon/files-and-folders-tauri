@@ -58,6 +58,9 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] Vorschau (010): Schnellvorschau ⌃Q, Bilder, ⌘I Eigenschaften.
 - [ ] Themes (013/019): System-Hell/Dunkel live; die acht alten Designs ansehen.
 - [ ] Einstellungen (015): App-Menü „Einstellungen…“ (⌘,), Sprache umschalten (auch natives Menü), Zeilenhöhe.
+- [ ] Login-PATH (061): App aus dem Dock starten, in der Shell-Leiste `which brew node pnpm cargo` → wie im Terminal,
+      **keine** Info-Zeile; Befehlspalette „Shell: show login PATH status“ zeigt `ok`. Falls nicht: die Zeile des
+      Status melden (Grund, Dauer, Anzahl Einträge).
 - [ ] Palette (043): Index über das echte Home (Zeit bis „bereit“, MB in den Einstellungen), FSEvents-Updates (Datei im Finder
       anlegen → nach ~2 s in der Palette), Systemsuche mit Spotlight (`mdfind`), ⌘⇧G / ⌘⇧D in der Palette.
 - [ ] Arbeitstag (018) auf macOS und Windows: markieren, F5 mit Konflikt, Multi-Rename, Gruppieren, Suchen, Tabs,

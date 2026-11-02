@@ -1,6 +1,6 @@
 import { ShellApi } from '../app/core/shell/shell-api';
 import { ShellSupportApi } from '../app/core/shell/shell-support-api';
-import { ShellRunResult } from '../app/core/shell/shell.models';
+import { LoginEnvStatus, ShellRunResult } from '../app/core/shell/shell.models';
 
 /** Records the lines; `answer` decides the result (default: a started job `s1`, `s2` …). */
 export class FakeShellApi extends ShellApi {
@@ -28,6 +28,14 @@ export class FakeShellSupportApi extends ShellSupportApi {
   readonly quoted: { items: readonly string[]; names: boolean }[] = [];
   cleared = 0;
   fail: unknown = null;
+  status: LoginEnvStatus = {
+    state: 'ok',
+    reason: null,
+    mode: 'loginInteractive',
+    durationMs: 420,
+    shell: 'zsh',
+    pathEntries: 12,
+  };
 
   quote(items: readonly string[], names: boolean): Promise<string> {
     this.quoted.push({ items, names });
@@ -47,5 +55,9 @@ export class FakeShellSupportApi extends ShellSupportApi {
     this.cleared++;
     this.history = [];
     return Promise.resolve();
+  }
+
+  loginStatus(): Promise<LoginEnvStatus> {
+    return Promise.resolve(this.status);
   }
 }

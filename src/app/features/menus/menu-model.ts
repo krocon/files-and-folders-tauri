@@ -215,6 +215,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'SHELL_INSERT_NAMES',
       'SHELL_INSERT_PATHS',
       'SHELL_CLEAR_OUTPUT',
+      'SHELL_LOGIN_STATUS',
       'SPLITTER_RESET',
       { when: 'notMacos', items: ['TOGGLE_FULLSCREEN'] },
       '-',
