@@ -304,7 +304,14 @@
     </form>
     <span class="crumbs" [id]="pathId" hidden>{{ store.path() }}</span>
   } @else {
-    <span class="crumbs" [id]="pathId" [attr.title]="store.path()">
+    <!-- the free area of the crumbs opens the path field (053); a hint on hover -->
+    <span
+      class="crumbs path-crumbs"
+      [id]="pathId"
+      [attr.title]="pathTitle()"
+      [attr.aria-keyshortcuts]="pathShortcut() || null"
+    >
+      <i class="fa fa-pencil path-hint" aria-hidden="true"></i>
       @for (seg of segments(); track seg.path; let i = $index; let last = $last) {
         @if (needsSeparator(i)) {
           <span class="sep" aria-hidden="true">/</span>

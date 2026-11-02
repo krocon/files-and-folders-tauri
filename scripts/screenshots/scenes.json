@@ -144,6 +144,24 @@
       ]
     },
     {
+      "name": "path-hover",
+      "steps": [
+        {
+          "hover": ".side-left .path-crumbs",
+          "position": {
+            "x": 20,
+            "y": 10
+          }
+        },
+        {
+          "wait": 400
+        },
+        {
+          "log": "[...document.querySelectorAll('nav.part.header')].map(h => h.getBoundingClientRect().height)"
+        }
+      ]
+    },
+    {
       "name": "delete-permanent",
       "steps": [
         {

@@ -74,6 +74,10 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   runProgramMessage: 'Diese Datei ist ein Programm. Nur ausführen, wenn Sie ihm vertrauen.',
   runProgramConfirm: 'Ausführen',
   pathInput: 'Gehe zu Pfad',
+  enterPathHint: (shortcut) =>
+    shortcut
+      ? `Klicken, um einen Pfad einzugeben (${shortcut})`
+      : 'Klicken, um einen Pfad einzugeben',
   folderMenu: 'Ordner: Home, Laufwerke, Favoriten, zuletzt',
   showHidden: 'Versteckte Dateien zeigen',
   filter: 'Filter',

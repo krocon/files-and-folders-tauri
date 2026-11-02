@@ -1,3 +1,4 @@
+import { ActionService } from '../../core/actions/action.service';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { isNotConnected, profileOf } from '../../core/remote/remote-connect-prompt';
 import { displayPath, isRemotePath, isServerUrl } from '../../core/remote/remote-path';
@@ -83,6 +84,7 @@ export class FilePanel implements OnInit {
 
   protected readonly store = inject(FileBrowserStore);
   protected readonly ws = inject(WorkspaceStore);
+  private readonly actions = inject(ActionService);
   protected readonly texts = TEXTS;
   protected readonly pathId = `fnf-path-${++panelSeq}`;
   private readonly list = viewChild(FileList);
@@ -545,6 +547,10 @@ export class FilePanel implements OnInit {
       const input = document.getElementById(`${this.pathId}-input`) as HTMLInputElement | null;
       input?.focus();
       input?.select();
+      // the end of a long path (the folder name) in view, like the right-aligned crumbs (053)
+      if (input) {
+        input.scrollLeft = input.scrollWidth;
+      }
     });
   }
 
@@ -613,11 +619,33 @@ export class FilePanel implements OnInit {
   }
 
   /** Click on the free space of the path bar (not on a segment) opens the path input (keyboard: Strg/⌘+L). */
+  /**
+   * A click into the free area of the folder breadcrumbs (also between the segments, on a
+   * separator or on the hint) opens the path field (053) – not a segment, not a double click,
+   * not the end of a text selection, never in the head of a result tab.
+   */
   protected onHeaderClick(evt: MouseEvent): void {
-    if ((evt.target as Element).classList.contains('crumbs')) {
-      this.startPathEdit();
+    const target = evt.target as Element | null;
+    if (
+      !target?.closest('.path-crumbs') ||
+      target.closest('.crumb') ||
+      evt.button !== 0 ||
+      evt.detail > 1 ||
+      (globalThis.getSelection?.()?.toString() ?? '') !== ''
+    ) {
+      return;
     }
+    this.startPathEdit();
   }
+
+  /** Shortcut of "Go to path…" from the current keymap (053). */
+  protected readonly pathShortcut = computed(() => this.actions.shortcutLabel('OPEN_CHDIR_DLG'));
+  /** Tooltip of the breadcrumbs: the full path and how to type one. */
+  protected readonly pathTitle = computed(() => {
+    const path = this.store.path();
+    const hint = this.texts.enterPathHint(this.pathShortcut());
+    return path === null ? hint : `${path}\n${hint}`;
+  });
 
   protected toggleFavorite(): void {
     const path = this.store.path();

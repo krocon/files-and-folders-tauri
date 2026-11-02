@@ -81,6 +81,9 @@ export const TEXTS_EN = {
   runProgramMessage: 'This file is a program. Run it only if you trust it.',
   runProgramConfirm: 'Run',
   pathInput: 'Go to path',
+  /** Tooltip of the breadcrumbs' free area (053). */
+  enterPathHint: (shortcut: string) =>
+    shortcut ? `Click to enter a path (${shortcut})` : 'Click to enter a path',
   folderMenu: 'Folders: home, drives, favourites, recent',
   showHidden: 'Show hidden files',
   filter: 'Filter',
