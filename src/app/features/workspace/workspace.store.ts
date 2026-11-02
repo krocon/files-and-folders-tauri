@@ -15,6 +15,7 @@ import type { FileBrowserStore } from '../browser/file-browser.store';
 import { createTabMemory, TabMemory } from '../browser/tab-memory';
 import type { FileListController } from '../browser/file-list/file-list-controller';
 import { TEXTS } from './texts';
+import { isUsageChartKey } from '../diskusage/usage-rows';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DISPLAY } from '../../core/settings/display';
 import { MAX_TABS, placeIndex, tabDropCheck } from './tab-drag-logic';
@@ -281,11 +282,30 @@ export class WorkspaceStore {
    */
   targetDir(from: Side = this.activeSide()): string | null {
     const side = otherSide(from);
+    const tab = this.activeTab(side);
+    if (isUsageChartKey(tab.search?.key)) {
+      // a chart tab has no folder (design 047 E4): the nearest real folder tab of that side
+      return this.nearestFolderTab(side)?.path ?? null;
+    }
     const store = this.panel(side)?.store;
     if (store?.archive()) {
       return null;
     }
-    return this.activeTab(side).path ?? store?.path() ?? null;
+    return tab.path ?? store?.path() ?? null;
+  }
+
+  /** The folder tab closest to the selected one on `side` (left neighbours first), if any. */
+  nearestFolderTab(side: Side): TabState | null {
+    const { tabs, activeTab } = this.panels()[side];
+    for (let d = 1; d < tabs.length; d++) {
+      for (const i of [activeTab - d, activeTab + d]) {
+        const t = tabs[i];
+        if (t && !t.search && t.path !== null) {
+          return t;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -465,6 +485,11 @@ export class WorkspaceStore {
       const original = p.tabs[index];
       if (!original || p.tabs.length >= MAX_TABS) {
         return p;
+      }
+      if (isUsageChartKey(original.search?.key)) {
+        // `+` on a chart tab (design 047): a folder tab, not a second chart
+        const near = this.nearestFolderTab(side);
+        return insertTab(p, index + 1, newTab(near?.path ?? null, near?.title ?? ''));
       }
       return insertTab(p, index + 1, { ...original, id: newId() });
     });
@@ -806,7 +831,16 @@ function clampSplitter(ratio: number): number {
  * Search tabs are not saved: they become a tab of their first folder (design 009 E4);
  * a flat view becomes its folder in the normal view (design 038 E1).
  */
-function toPanelSession(p: PanelTabs): PanelSession {
+function toPanelSession(panel: PanelTabs): PanelSession {
+  // chart tabs (design 047) belong to a scan in memory: they are not saved; the selected tab
+  // moves to a remaining one, a side with nothing else keeps a home tab
+  const chart = (t: TabState) => isUsageChartKey(t.search?.key);
+  const kept = panel.tabs.filter((t) => !chart(t));
+  if (kept.length === 0) {
+    return { activeTab: 0, tabs: [newTab(null)] };
+  }
+  const before = panel.tabs.slice(0, panel.activeTab + 1).filter((t) => !chart(t)).length;
+  const p: PanelTabs = { tabs: kept, activeTab: Math.max(0, before - 1) };
   return {
     activeTab: p.activeTab,
     tabs: p.tabs.map((t) => {

@@ -7,7 +7,7 @@ import { SettingsStore } from '../../core/settings/settings.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { DiskUsageStore } from './disk-usage.store';
 import { USAGE_TEXTS } from './disk-usage-texts';
-import { isUsageKey, scanIdOf } from './usage-rows';
+import { anyUsageScanId, isUsageKey, scanIdOf } from './usage-rows';
 
 /**
  * Off in a disk-usage tab (design 033 E8): what needs a real folder or changes
@@ -78,6 +78,8 @@ export function registerDiskUsageActions(
     const key = store()?.searchKey();
     return isUsageKey(key) ? scanIdOf(key) : null;
   };
+  /** The scan of the list or the chart tab shown on the active side (design 047). */
+  const anyScan = () => anyUsageScanId(ws.activeTab(ws.activeSide()).search?.key);
   /** A real folder is shown (no result tab, not inside an archive). */
   const realFolder = () => {
     const s = store();
@@ -94,7 +96,7 @@ export function registerDiskUsageActions(
     }
   };
   const unveto = actions.setVeto((id) =>
-    id !== null && OFF_IN_USAGE.has(id) && scanId() !== null ? USAGE_TEXTS.notHere : null,
+    id !== null && OFF_IN_USAGE.has(id) && anyScan() !== null ? USAGE_TEXTS.notHere : null,
   );
   const unregister = actions.register({
     OPEN_DISK_USAGE: {
@@ -132,8 +134,17 @@ export function registerDiskUsageActions(
         }
       },
     },
-    DISK_USAGE_TOGGLE_CHART: {
+    DISK_USAGE_SHOW_CHART: {
       enabled: () => scanId() !== null,
+      run: () => {
+        const id = scanId();
+        if (id) {
+          usage.openOrFocusChart(id, ws.activeSide());
+        }
+      },
+    },
+    DISK_USAGE_TOGGLE_CHART: {
+      enabled: () => anyScan() !== null,
       run: () =>
         settings.set(
           'diskUsage.chart',

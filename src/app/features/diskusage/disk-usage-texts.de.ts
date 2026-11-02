@@ -6,6 +6,11 @@ import type { USAGE_EN } from './disk-usage-texts';
 export const USAGE_DE: Translation<typeof USAGE_EN> = {
   header: 'Speicherbelegung',
   tabLabel: (name) => `Belegung: ${name}`,
+  chartTabLabel: (name) => `Diagramm: ${name}`,
+  showChart: 'Diagramm',
+  showChartTitle: 'Zeigt Ringe oder Kacheln und den Sammelkorb in einem eigenen Tab',
+  chartGone: 'Dieser Scan ist nicht mehr im Speicher – Speicherbelegung neu starten.',
+  noChartTab: 'Kein Platz für den Diagramm-Tab auf der anderen Seite – dort einen Tab schließen.',
   selection: 'Auswahl',
   headerTitle: 'Speicherbelegung – Enter öffnet einen Ordner, Backspace geht zurück, F8 entfernt',
   objects: (n) => (n === 1 ? '1 Objekt' : `${formatCount(n)} Objekte`),

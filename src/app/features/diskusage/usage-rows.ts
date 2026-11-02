@@ -29,6 +29,29 @@ export function scanIdOf(key: string): string {
   return key.slice(USAGE_KEY_PREFIX.length);
 }
 
+/**
+ * Prefix of the chart tab of a scan (`usage-chart:<scanId>`, design 047): rings/tiles and
+ * the basket as a tab of their own, usually on the other side of the list tab.
+ */
+export const USAGE_CHART_KEY_PREFIX = 'usage-chart:';
+
+export function usageChartKey(scanId: string): string {
+  return `${USAGE_CHART_KEY_PREFIX}${scanId}`;
+}
+
+export function isUsageChartKey(key: string | null | undefined): key is string {
+  return key != null && key.startsWith(USAGE_CHART_KEY_PREFIX);
+}
+
+export function chartScanIdOf(key: string): string {
+  return key.slice(USAGE_CHART_KEY_PREFIX.length);
+}
+
+/** The scan of a list or chart tab, `null` for any other key. */
+export function anyUsageScanId(key: string | null | undefined): string | null {
+  return isUsageKey(key) ? scanIdOf(key) : isUsageChartKey(key) ? chartScanIdOf(key) : null;
+}
+
 /** Virtual paths begin with NUL – never a real path, never sent to Rust (`isVirtualPath`). */
 const VIRTUAL = `${VIRTUAL_PATH_PREFIX}usage:`;
 

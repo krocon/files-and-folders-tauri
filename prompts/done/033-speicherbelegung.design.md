@@ -36,6 +36,9 @@
 
 ## E1 – Wo lebt die Ansicht?
 
+> **Abgelöst durch 047** (02.11.2026): Das Diagramm ist kein Overlay der anderen Seite mehr, sondern ein eigener
+> Tab `usage-chart:<scanId>` dort – siehe `047-speicherbelegung-diagramm-tab.design.md`.
+
 ```
 (a) EMPFOHLEN: Tab + Diagramm in der anderen Seite        (b) beides in einer Seite
 ┌─ links (aktiv) ───────────────┬─ rechts ──────────────┐ ┌─ links ───────────────────────┬─ rechts ─┐

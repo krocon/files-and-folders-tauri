@@ -1,4 +1,5 @@
 import { ActionService } from '../../core/actions/action.service';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { isNotConnected, profileOf } from '../../core/remote/remote-connect-prompt';
 import { displayPath, isRemotePath, isServerUrl } from '../../core/remote/remote-path';
@@ -50,7 +51,15 @@ import { MenuService } from '../menus/menu.service';
 import { DiskUsageStore, UsageState } from '../diskusage/disk-usage.store';
 import { DiskUsageChart } from '../diskusage/disk-usage-chart';
 import { USAGE_TEXTS } from '../diskusage/disk-usage-texts';
-import { isUsageKey, scanIdOf, usageKey } from '../diskusage/usage-rows';
+import {
+  anyUsageScanId,
+  chartScanIdOf,
+  isUsageChartKey,
+  isUsageKey,
+  scanIdOf,
+  usageChartKey,
+  usageKey,
+} from '../diskusage/usage-rows';
 import { formatCount } from '../../shared/format';
 import { FLAT_TEXTS } from '../flat/flat-texts';
 import { shouldRefresh } from '../flat/flat-logic';
@@ -85,6 +94,7 @@ export class FilePanel implements OnInit {
   protected readonly store = inject(FileBrowserStore);
   protected readonly ws = inject(WorkspaceStore);
   private readonly actions = inject(ActionService);
+  private readonly settings = inject(SettingsStore);
   protected readonly texts = TEXTS;
   protected readonly pathId = `fnf-path-${++panelSeq}`;
   private readonly list = viewChild(FileList);
@@ -103,13 +113,44 @@ export class FilePanel implements OnInit {
     const id = this.usageScan();
     return id ? (this.usage.state(id) ?? null) : null;
   });
-  /** This side shows the chart of the other side's disk-usage tab while that side is active. */
-  protected readonly chartScan = computed(() => {
-    const other = otherSide(this.side());
-    if (this.ws.activeSide() !== other) {
-      return null;
+  /**
+   * Scan id when the active tab is the chart tab of a scan (design 047) – only this side's own
+   * tab, never an overlay of the other side.
+   */
+  protected readonly usageChartScan = computed(() => {
+    const key = this.ws.activeTab(this.side()).search?.key;
+    return isUsageChartKey(key) ? chartScanIdOf(key) : null;
+  });
+  /** The scan the header shows: of the list tab or of the chart tab. */
+  protected readonly headScan = computed(() => this.usageScan() ?? this.usageChartScan());
+  protected readonly headState = computed<UsageState | null>(() => {
+    const id = this.headScan();
+    return id ? (this.usage.state(id) ?? null) : null;
+  });
+  /** The list tab's "Chart" button is pressed while the chart tab is shown on either side. */
+  protected readonly chartShown = computed(() => {
+    const id = this.usageScan();
+    const key = id ? usageChartKey(id) : null;
+    return (
+      key !== null &&
+      (['left', 'right'] as const).some((s) => this.ws.activeTab(s).search?.key === key)
+    );
+  });
+  protected readonly chartKind = computed(() => this.usage.chartKind());
+  /** Status line of the chart tab: shown folder and what the basket holds. */
+  protected readonly chartStatus = computed(() => {
+    const id = this.usageChartScan();
+    const st = this.headState();
+    if (id === null || !st) {
+      return id === null ? '' : USAGE_TEXTS.chartGone;
     }
-    return this.usage.stateOn(other)?.scanId ?? null;
+    const b = this.usage.basket(id);
+    const node = st.view?.node;
+    const where = node
+      ? `${node.name || USAGE_TEXTS.selection}: ${formatSize(st.view!.sizeMode === 'allocated' ? node.allocated : node.logical)} · ${this.usageObjects(st)}`
+      : '';
+    const basket = `${USAGE_TEXTS.basketTitle}: ${USAGE_TEXTS.basketSum(b.effective.length, formatSize(b.size))}`;
+    return where ? `${where} · ${basket}` : basket;
   });
   protected readonly otherSide = computed(() => otherSide(this.side()));
   /**
@@ -118,7 +159,7 @@ export class FilePanel implements OnInit {
    */
   protected readonly dupGroupOf = computed(() => {
     const other = otherSide(this.side());
-    if (this.ws.activeSide() !== other || this.chartScan() !== null) {
+    if (this.ws.activeSide() !== other || this.usageChartScan() !== null) {
       return null;
     }
     const store = this.ws.panel(other)?.store;
@@ -134,7 +175,7 @@ export class FilePanel implements OnInit {
   protected readonly quickView = computed(
     () =>
       this.quick.shownOn() === this.side() &&
-      this.chartScan() === null &&
+      this.usageChartScan() === null &&
       this.dupGroupOf() === null,
   );
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
@@ -310,7 +351,12 @@ export class FilePanel implements OnInit {
       const key = tab.search?.key ?? null;
       const result = this.searchResult();
       untracked(() => {
-        if (key !== null && !isUsageKey(key) && this.shownTabId === tab.id) {
+        if (
+          key !== null &&
+          !isUsageKey(key) &&
+          !isUsageChartKey(key) &&
+          this.shownTabId === tab.id
+        ) {
           this.store.showSearch(key, result?.hits ?? [], result?.kind ?? kindOf(tab));
           // a flat view after renaming: the cursor follows the new name (review 038 B7)
           const focus = result?.focus;
@@ -438,7 +484,10 @@ export class FilePanel implements OnInit {
     effect(() => {
       const req = this.ws.navigateRequest();
       untracked(() => {
-        if (req?.side === this.side() && !this.store.navigationLocked()) {
+        if (req?.side === this.side() && this.usageChartScan() !== null) {
+          // a chart tab has no folder (design 047 E4): the folder opens in a tab next to it
+          this.ws.openInNewTab(this.side(), req.path ?? '', '', req.cursor);
+        } else if (req?.side === this.side() && !this.store.navigationLocked()) {
           void this.store.load(req.path ?? undefined, req.cursor ? { cursor: req.cursor } : {});
         }
       });
@@ -456,9 +505,10 @@ export class FilePanel implements OnInit {
       untracked(() => {
         if (req?.side === this.side()) {
           const key = this.tab().search?.key;
+          const scan = anyUsageScanId(key);
           // a result tab "reloads" by searching again, a disk-usage tab scans the folder again
-          void (isUsageKey(key)
-            ? this.usage.rescan(scanIdOf(key))
+          void (scan !== null
+            ? this.usage.rescan(scan)
             : key
               ? this.search.rerun(key)
               : this.store.refresh());
@@ -522,13 +572,11 @@ export class FilePanel implements OnInit {
   }
 
   protected activate(evt?: Event): void {
-    // the chart of the other side's disk-usage tab works for that side (design 033 E1):
-    // clicking it must not make this side active (the chart would vanish under the pointer)
+    // the duplicate group of the other side's tab works for that side (design 042 E1): clicking
+    // it must not make this side active (it would vanish under the pointer); the disk-usage
+    // chart is a tab of its own since design 047
     const target = evt?.target;
-    if (
-      target instanceof Element &&
-      target.closest('app-disk-usage-chart, app-duplicate-group-view')
-    ) {
+    if (target instanceof Element && target.closest('app-duplicate-group-view')) {
       return;
     }
     this.ws.setActive(this.side());
@@ -787,6 +835,13 @@ export class FilePanel implements OnInit {
       return;
     }
     this.store.leaveResult();
+    if (tab.search && isUsageChartKey(tab.search.key)) {
+      // the chart tab (design 047): no folder, no watcher – an empty result under the chart; the
+      // file list stays in the DOM (hidden), so going back to a folder tab does not rebuild it
+      this.store.navigationLocked.set(false);
+      this.store.showSearch(tab.search.key, [], 'search');
+      return;
+    }
     if (tab.search) {
       this.store.navigationLocked.set(false);
       this.store.setCursor(tab.cursor);
@@ -996,7 +1051,7 @@ export class FilePanel implements OnInit {
   }
 
   protected usageProgress(): string {
-    const id = this.usageScan();
+    const id = this.headScan();
     const job = id ? this.jobs.find(id) : undefined;
     const p = job?.progress;
     return p ? USAGE_TEXTS.scanning(p.itemsDone, formatSize(p.bytesDone)) : '';
@@ -1008,21 +1063,21 @@ export class FilePanel implements OnInit {
   }
 
   protected usageCrumb(id: number): void {
-    const scan = this.usageScan();
+    const scan = this.headScan();
     if (scan) {
       void this.usage.goTo(scan, id);
     }
   }
 
   protected usageStop(): void {
-    const scan = this.usageScan();
+    const scan = this.headScan();
     if (scan) {
       this.usage.stop(scan);
     }
   }
 
   protected usageRescan(): void {
-    const scan = this.usageScan();
+    const scan = this.headScan();
     if (scan) {
       void this.usage.rescan(scan);
     }
@@ -1034,6 +1089,18 @@ export class FilePanel implements OnInit {
       void this.usage.setMode(scan, mode);
       this.ws.requestFocus(this.side());
     }
+  }
+
+  /** "Chart" in the list tab's header (design 047): its chart tab in front, opened if closed. */
+  protected showChart(): void {
+    const scan = this.usageScan();
+    if (scan) {
+      this.usage.openOrFocusChart(scan, this.side());
+    }
+  }
+
+  protected setChartKind(kind: 'sunburst' | 'treemap'): void {
+    this.settings.set('diskUsage.chart', kind);
   }
 
   protected readonly formatCount = formatCount;

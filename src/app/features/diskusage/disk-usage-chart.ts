@@ -12,7 +12,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActionService } from '../../core/actions/action.service';
+import { OpsStore } from '../ops/ops.store';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { sizeOf, UsageNode } from '../../core/diskusage/disk-usage.models';
 import { Side } from '../../core/session/session.models';
@@ -46,27 +46,9 @@ interface Drawn {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let st = state();
-    <div class="head">
-      <strong class="title" [attr.title]="st?.view?.node?.path ?? null">{{ title() }}</strong>
-      <span class="kinds" role="group" [attr.aria-label]="t.chartLabel">
-        <button
-          type="button"
-          class="btn small"
-          [attr.aria-pressed]="kind() === 'sunburst'"
-          (click)="setKind('sunburst')"
-        >
-          {{ t.sunburst }}
-        </button>
-        <button
-          type="button"
-          class="btn small"
-          [attr.aria-pressed]="kind() === 'treemap'"
-          (click)="setKind('treemap')"
-        >
-          {{ t.treemap }}
-        </button>
-      </span>
-    </div>
+    @if (!st) {
+      <p class="note gone" role="status">{{ t.chartGone }}</p>
+    }
     @if (volume(); as vol) {
       <div class="volume" [attr.title]="vol.title">
         <span class="seg used" [style.flex-grow]="vol.scanned"></span>
@@ -221,24 +203,12 @@ interface Drawn {
       color: var(--color-text);
       font-size: var(--font-size-sm);
     }
-    .head,
     .basket-head {
       display: flex;
       gap: var(--spacing-2);
       align-items: center;
       padding: var(--spacing-1) var(--spacing-2);
       border-bottom: var(--border-width) solid var(--color-border);
-    }
-    .title {
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .kinds {
-      display: flex;
-      gap: 2px;
     }
     .volume {
       display: flex;
@@ -411,13 +381,11 @@ interface Drawn {
 })
 export class DiskUsageChart {
   readonly scanId = input.required<string>();
-  /** The side of the disk-usage tab (the list). */
-  readonly side = input.required<Side>();
 
   protected readonly t = USAGE_TEXTS;
   private readonly usage = inject(DiskUsageStore);
   private readonly ws = inject(WorkspaceStore);
-  private readonly actions = inject(ActionService);
+  private readonly ops = inject(OpsStore);
   private readonly settings = inject(SettingsStore);
   private readonly theme = inject(ThemeService);
   private readonly jobs = inject(JobsStore);
@@ -440,14 +408,8 @@ export class DiskUsageChart {
     () => Math.max(8, Math.min(this.width(), this.height()) / 2 - 4) / (RING_DEPTH + 1),
   );
 
-  protected readonly title = computed(() => {
-    const v = this.state()?.view;
-    if (!v) {
-      return this.t.header;
-    }
-    const name = v.node.name || this.t.selection;
-    return `${name} · ${formatSize(sizeOf(v.node, v.sizeMode))}`;
-  });
+  /** The side whose selected tab is this scan's list, or null (hidden or closed). */
+  protected readonly listSide = computed(() => this.usage.listSide(this.scanId()));
 
   protected readonly canUp = computed(() => (this.state()?.view?.crumbs.length ?? 0) > 1);
 
@@ -462,7 +424,10 @@ export class DiskUsageChart {
     if (h) {
       return h.shape.node.id;
     }
-    const entry = this.ws.panel(this.side())?.store.cursorEntry();
+    // the cursor of the list tab, only while it is shown (design 047): after swapping sides or
+    // dragging the tab it is found wherever it is
+    const side = this.listSide();
+    const entry = side ? this.ws.panel(side)?.store.cursorEntry() : null;
     return usageOf(entry)?.id ?? null;
   });
 
@@ -701,29 +666,31 @@ export class DiskUsageChart {
   /** Click: a folder opens in the list, a file of the shown level gets the cursor. */
   protected pick(shape: Shape): void {
     const n = shape.node;
-    const side = this.side();
     if (shape.virtual) {
       return;
     }
+    const side = this.listSide();
     if (n.kind === 'dir') {
       void this.usage.goTo(this.scanId(), n.id);
-    } else if (shape.depth === 1 && n.path !== null) {
+    } else if (side && shape.depth === 1 && n.path !== null) {
       this.ws.panel(side)?.store.setCursor(n.path);
     }
-    this.ws.setActive(side);
-    this.ws.requestFocus(side);
+    this.toList(side);
   }
 
   protected up(): void {
     if (this.canUp()) {
       void this.usage.up(this.scanId());
-      this.ws.setActive(this.side());
-      this.ws.requestFocus(this.side());
+      this.toList(this.listSide());
     }
   }
 
-  protected setKind(kind: 'sunburst' | 'treemap'): void {
-    this.settings.set('diskUsage.chart', kind);
+  /** A shown list gets the focus (keys go on there); without one the chart navigates alone. */
+  private toList(side: Side | null): void {
+    if (side) {
+      this.ws.setActive(side);
+      this.ws.requestFocus(side);
+    }
   }
 
   protected unmark(id: number): void {
@@ -734,10 +701,12 @@ export class DiskUsageChart {
     this.usage.clearBasket(this.scanId());
   }
 
-  /** "Remove…": the normal delete of the disk-usage side (dialog, trash, F8 rules). */
+  /**
+   * "Remove…": the basket of this scan (dialog, trash, F8 rules) – never the selection of
+   * whatever tab the other side shows (design 047).
+   */
   protected remove(): void {
-    this.ws.setActive(this.side());
-    void this.actions.run('OPEN_DELETE_DLG');
+    void this.ops.openDeleteBasket(this.scanId(), 'trash');
   }
 }
 

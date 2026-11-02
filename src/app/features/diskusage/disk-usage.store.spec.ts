@@ -17,10 +17,11 @@ import { FileBrowserStore } from '../browser/file-browser.store';
 import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
+import { MAX_TABS } from '../workspace/tab-drag-logic';
 import { registerDiskUsageActions } from './disk-usage-actions';
 import { USAGE_TEXTS } from './disk-usage-texts';
 import { DiskUsageStore } from './disk-usage.store';
-import { isUsageKey, upPath, usageKey, UsageRow, usageOf } from './usage-rows';
+import { isUsageKey, upPath, usageChartKey, usageKey, UsageRow, usageOf } from './usage-rows';
 
 const SUMMARY: Summary = {
   itemsDone: 0,
@@ -121,6 +122,87 @@ describe('DiskUsageStore and disk-usage tabs (design 033)', () => {
     expect(usage.isRunning('j1')).toBe(true);
     // a helper job: no task of the user
     expect(jobs.visible()).toEqual([]);
+  });
+
+  describe('chart as a tab of its own (design 047)', () => {
+    const chartOn = (side: 'left' | 'right') =>
+      ws.panels()[side].tabs.find((t) => t.search?.key === usageChartKey('j1'));
+
+    it('start: list tab on the side, chart tab on the other side, the side keeps the focus', async () => {
+      ws.openInNewTab('right', '/Volumes/Media/Audiobooks', 'Audiobooks');
+      await usage.start('left', ['/r'], 'r');
+      expect(ws.activeTab('left').search?.key).toBe('usage:j1');
+      expect(ws.activeTab('right').search?.key).toBe('usage-chart:j1');
+      expect(ws.activeTab('right').title).toBe(USAGE_TEXTS.chartTabLabel('r'));
+      expect(ws.activeSide()).toBe('left');
+      // the folder tabs on the right stay
+      expect(ws.panels().right.tabs.map((t) => t.title)).toContain('Audiobooks');
+      expect(usage.listSide('j1')).toBe('left');
+    });
+
+    it('closing only the chart keeps the scan; "Chart" brings it back; closing the list closes both', async () => {
+      await usage.start('left', ['/r'], 'r');
+      const right = ws.panels().right;
+      ws.closeTab(
+        'right',
+        right.tabs.findIndex((t) => t.id === chartOn('right')!.id),
+      );
+      await wait();
+      expect(chartOn('right')).toBeUndefined();
+      expect(usage.state('j1')).toBeDefined();
+      expect(api.released).toEqual([]);
+      usage.openOrFocusChart('j1', 'left');
+      expect(ws.activeTab('right').search?.key).toBe('usage-chart:j1');
+      // selected again instead of a second one
+      ws.selectTab('right', 0);
+      usage.openOrFocusChart('j1', 'left');
+      expect(ws.panels().right.tabs.filter((t) => t.search?.key === 'usage-chart:j1')).toHaveLength(
+        1,
+      );
+      expect(ws.activeTab('right').search?.key).toBe('usage-chart:j1');
+      ws.closeTab('left');
+      await wait();
+      expect(chartOn('right')).toBeUndefined();
+      expect(api.released).toEqual(['j1']);
+    });
+
+    it('a full other side: the list opens anyway, the chart is reported', async () => {
+      for (let i = 0; i < MAX_TABS; i++) {
+        ws.openInNewTab('right', `/f${i}`);
+      }
+      const full = ws.panels().right.tabs.length;
+      expect(await usage.start('left', ['/r'], 'r')).toBeNull();
+      expect(ws.activeTab('left').search?.key).toBe('usage:j1');
+      expect(ws.panels().right.tabs).toHaveLength(full);
+      expect(jobs.messages().some((m) => m.includes(USAGE_TEXTS.noChartTab))).toBe(true);
+    });
+
+    it('F8 in the chart tab deletes the basket, even with a folder tab on the list side', async () => {
+      const actions = TestBed.inject(ActionService);
+      const ops = TestBed.inject(OpsStore);
+      registerOpsActions(actions, ops);
+      await usage.start('left', ['/r'], 'r');
+      show();
+      left.toggleMark('/r/f.iso');
+      usage.setLevelMarks('j1', left.marked());
+      // the left side shows a normal folder tab now, the chart tab is active on the right
+      ws.openInNewTab('left', '/elsewhere');
+      ws.setActive('right');
+      expect(ops.chartScan()).toBe('j1');
+      await actions.run('OPEN_DELETE_DLG');
+      expect(ops.del()).toMatchObject({
+        entries: [{ path: '/r/f.iso' }],
+        usageScan: 'j1',
+        expected: [{ path: '/r/f.iso', size: 300 }],
+      });
+      expect(ops.del()!.scanAgeMin).toBeGreaterThanOrEqual(0);
+      await ops.runDelete(ops.del()!, false);
+      const del = jobsApi.started.find((x) => x.spec.kind === 'delete')!;
+      expect(del.spec).toMatchObject({ paths: ['/r/f.iso'] });
+      jobsApi.emit({ type: 'finished', id: del.id, state: 'done', summary: SUMMARY });
+      await wait(10);
+      expect(api.calls).toContain('prune j1 /r/f.iso');
+    });
   });
 
   it('reads the level again while the scan runs and once more when it ends', async () => {

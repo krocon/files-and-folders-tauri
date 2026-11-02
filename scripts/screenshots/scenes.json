@@ -127,6 +127,25 @@
       ]
     },
     {
+      "name": "disk-usage-target",
+      "prelude": false,
+      "mock": {
+        "bigFiles": true
+      },
+      "steps": [
+        { "action": "SELECT_LEFT_PANEL" },
+        { "action": "NAVIGATE_PARENT" },
+        { "action": "NAVIGATE_PARENT" },
+        { "key": "Home" },
+        { "action": "OPEN_DISK_USAGE" },
+        { "wait": 600 },
+        { "click": ".side-right [role='tab']:first-of-type" },
+        { "click": ".side-left app-file-list" },
+        { "key": "ArrowDown" },
+        { "wait": 300 }
+      ]
+    },
+    {
       "name": "copy-dialog",
       "steps": [
         {

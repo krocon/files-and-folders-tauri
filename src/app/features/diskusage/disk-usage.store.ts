@@ -7,12 +7,14 @@ import { ExpectedEntry } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { Side } from '../../core/session/session.models';
 import { SettingsStore } from '../../core/settings/settings.store';
-import { WorkspaceStore } from '../workspace/workspace.store';
+import { otherSide, TabState, WorkspaceStore } from '../workspace/workspace.store';
 import { basketView, BasketView, withLevelMarks, withoutPaths } from './basket-logic';
 import { RING_DEPTH } from './chart-layout';
 import { USAGE_TEXTS } from './disk-usage-texts';
 import {
+  isUsageChartKey,
   isUsageKey,
+  usageChartKey,
   largestRows,
   scanIdOf,
   upPath,
@@ -112,7 +114,12 @@ export class DiskUsageStore {
       const keys = this.ws.searchKeys();
       untracked(() => {
         for (const id of this.states().keys()) {
-          if (!keys.has(usageKey(id)) && !this.fresh.has(id)) {
+          if (this.fresh.has(id)) {
+            continue;
+          }
+          if (!keys.has(usageKey(id))) {
+            // the list tab closed: its chart tab goes with it (design 047 E1), then the scan
+            this.closeChartTabs(id);
             void this.release(id);
           }
         }
@@ -187,6 +194,8 @@ export class DiskUsageStore {
         await this.release(id);
         return { code: 'too_many', message: USAGE_TEXTS.tooManyTabs, path: null };
       }
+      // the chart as a tab of its own on the other side (design 047): the list keeps the focus
+      this.openChartTab(id, otherSide(side), name, true);
       this.ws.setActive(side);
       this.ws.requestFocus(side);
       const named = name;
@@ -202,6 +211,14 @@ export class DiskUsageStore {
       if (!named && top) {
         const label = USAGE_TEXTS.tabLabel(top);
         this.ws.updateTab(tabId, { title: label, search: { key: usageKey(id), label, rootTitle } });
+        const chart = this.chartTab(id);
+        if (chart) {
+          const chartLabel = USAGE_TEXTS.chartTabLabel(top);
+          this.ws.updateTab(chart.tab.id, {
+            title: chartLabel,
+            search: { ...chart.tab.search!, label: chartLabel },
+          });
+        }
       }
     } finally {
       this.fresh.delete(id);
@@ -448,6 +465,78 @@ export class DiskUsageStore {
   canRescan(scanId: string): boolean {
     const v = this.state(scanId)?.view;
     return !!v && !v.running && v.node.path !== null;
+  }
+
+  // ---- chart tab (design 047) ----
+
+  /** The chart tab of `scanId` and its side, if one is open. */
+  chartTab(scanId: string): { side: Side; tab: TabState } | null {
+    const key = usageChartKey(scanId);
+    for (const side of ['left', 'right'] as const) {
+      const tab = this.ws.panels()[side].tabs.find((t) => t.search?.key === key);
+      if (tab) {
+        return { side, tab };
+      }
+    }
+    return null;
+  }
+
+  /** The side whose selected tab is the list of `scanId` (its cursor drives the chart). */
+  listSide(scanId: string): Side | null {
+    const key = usageKey(scanId);
+    return (
+      (['left', 'right'] as const).find((s) => this.ws.activeTab(s).search?.key === key) ?? null
+    );
+  }
+
+  /**
+   * Opens the chart tab of `scanId` on `side` and selects it there – an old scan's chart tab
+   * on that side is reused (E2). `quiet`: a full side is only reported, never an error.
+   */
+  openChartTab(scanId: string, side: Side, name: string, quiet = false): boolean {
+    const label = USAGE_TEXTS.chartTabLabel(name || USAGE_TEXTS.selection);
+    const ref = { key: usageChartKey(scanId), label };
+    const panel = this.ws.panels()[side];
+    const old = panel.tabs.find((t) => isUsageChartKey(t.search?.key));
+    const root = this.state(scanId)?.view?.node.path ?? '';
+    const id = this.ws.openSearchTab(side, ref, root, old?.id);
+    if (id === null) {
+      this.jobs.report(USAGE_TEXTS.noChartTab);
+      return false;
+    }
+    const index = this.ws.panels()[side].tabs.findIndex((t) => t.id === id);
+    this.ws.selectTab(side, index);
+    if (!quiet) {
+      this.ws.setActive(side);
+    }
+    return true;
+  }
+
+  /** The chart of `scanId` in front: its tab if open, otherwise a new one opposite `from`. */
+  openOrFocusChart(scanId: string, from: Side): void {
+    const open = this.chartTab(scanId);
+    if (open) {
+      const index = this.ws.panels()[open.side].tabs.findIndex((t) => t.id === open.tab.id);
+      this.ws.selectTab(open.side, index);
+      return;
+    }
+    const name = this.state(scanId)?.view?.node.name ?? '';
+    this.openChartTab(scanId, otherSide(from), name, true);
+  }
+
+  private closeChartTabs(scanId: string): void {
+    for (let open = this.chartTab(scanId); open; open = this.chartTab(scanId)) {
+      const tabs = this.ws.panels()[open.side].tabs;
+      if (tabs.length <= 1) {
+        // the last tab of a side stays – as a folder tab
+        this.ws.updateTab(open.tab.id, { search: undefined, title: '' });
+        return;
+      }
+      this.ws.closeTab(
+        open.side,
+        tabs.findIndex((t) => t.id === open!.tab.id),
+      );
+    }
   }
 
   async release(scanId: string): Promise<void> {

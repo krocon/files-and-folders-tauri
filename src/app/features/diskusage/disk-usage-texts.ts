@@ -6,6 +6,11 @@ import { USAGE_DE } from './disk-usage-texts.de';
 export const USAGE_EN = {
   header: 'Disk usage',
   tabLabel: (name: string) => `Disk usage: ${name}`,
+  chartTabLabel: (name: string) => `Chart: ${name}`,
+  showChart: 'Chart',
+  showChartTitle: 'Shows the rings or tiles and the basket in a tab of their own',
+  chartGone: 'This scan is no longer in memory – start Disk usage again.',
+  noChartTab: 'No room for the chart tab on the other side – close a tab there.',
   selection: 'Selection',
   headerTitle: 'Disk usage – Enter opens a folder, Backspace goes up, F8 removes',
   objects: (n: number) => (n === 1 ? '1 object' : `${formatCount(n)} objects`),

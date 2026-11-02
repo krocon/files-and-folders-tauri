@@ -82,6 +82,39 @@ describe('WorkspaceStore', () => {
     expect(ws.targetDir()).toBe('/c');
   });
 
+  describe('chart tabs of a disk-usage scan (design 047)', () => {
+    const chart = { key: 'usage-chart:j1', label: 'Chart: r' };
+
+    it('targetDir never gives the scanned folder: the nearest folder tab of that side', () => {
+      ws.selectTab('left', 1);
+      ws.openSearchTab('left', chart, '/scanned');
+      expect(ws.activeTab('left').search?.key).toBe('usage-chart:j1');
+      ws.setActive('right');
+      expect(ws.targetDir()).toBe('/b');
+    });
+
+    it('+ on a chart tab opens a folder tab, no second chart', () => {
+      ws.selectTab('left', 2);
+      ws.openSearchTab('left', chart, '/scanned');
+      ws.cloneTab('left');
+      expect(ws.activeTab('left').search).toBeUndefined();
+      expect(ws.activeTab('left').path).toBe('/c');
+    });
+
+    it('is not saved: the selected tab moves to a remaining one, a lone chart becomes home', () => {
+      ws.selectTab('left', 1);
+      ws.openSearchTab('left', chart, '/scanned'); // index 2, selected
+      const saved = ws.snapshot().panels.left;
+      expect(saved.tabs.map((t) => t.path)).toEqual(['/a', '/b', '/c']);
+      expect(saved.activeTab).toBe(1);
+      ws.openSearchTab('right', chart, '/scanned');
+      ws.closeTab('right', 0);
+      const right = ws.snapshot().panels.right;
+      expect(right.tabs).toHaveLength(1);
+      expect(right.tabs[0].path).toBeNull();
+    });
+  });
+
   it('clones the active tab next to it and selects the clone', () => {
     ws.selectTab('left', 1);
     ws.cloneTab('left');
