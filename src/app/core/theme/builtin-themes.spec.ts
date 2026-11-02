@@ -47,6 +47,7 @@ describe('built-in themes', () => {
       'true-dark',
       'true-black',
       'true-light',
+      'matrix',
     ]);
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });

@@ -15,7 +15,8 @@
     "one-dark-vivid",
     "true-dark",
     "true-black",
-    "true-light"
+    "true-light",
+    "matrix"
   ],
   "prelude": [
     {
@@ -793,7 +794,8 @@
     "one-dark-vivid": "One Dark Vivid",
     "true-dark": "True Dark",
     "true-black": "True Black",
-    "true-light": "True Light"
+    "true-light": "True Light",
+    "matrix": "Matrix"
   },
   "readme": {
     "out": "docs/screenshots/readme",
