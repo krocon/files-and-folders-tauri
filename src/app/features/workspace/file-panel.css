@@ -27,6 +27,11 @@
   grid-row: 1;
   display: flex;
   align-items: center;
+  /* fixed height for every kind of header (049): a taller child (path field, error, small
+     buttons) never moves the panel; overflow stays visible for focus rings */
+  box-sizing: border-box;
+  height: var(--panel-header-height);
+  overflow: visible;
   gap: var(--spacing-1);
   padding: var(--spacing-1) var(--spacing-2);
   color: var(--color-header-text);
@@ -210,7 +215,12 @@
 .path-input {
   flex: 1;
   min-width: 0;
-  padding: 1px var(--spacing-1);
+  /* exactly one header line incl. the border (049) */
+  box-sizing: border-box;
+  height: var(--panel-header-line);
+  margin: 0;
+  padding: 0 var(--spacing-1);
+  line-height: calc(var(--panel-header-line) - 2 * var(--border-width));
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   color: var(--color-header-input-text);
@@ -225,6 +235,7 @@
 
 .path-error {
   flex: none;
+  line-height: var(--panel-header-line);
   max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;
