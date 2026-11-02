@@ -177,7 +177,8 @@ export function rainglowTokens(p, base, overrides = {}) {
     '--color-list-bg': list,
     '--color-list-text': ensure(p.text, [list, p.hover, p.inactiveTab, p.activity]),
     '--color-list-border': p.title,
-    '--color-list-header-bg': p.activity,
+    // column header like the list and the selected tab (069)
+    '--color-list-header-bg': 'var(--color-list-bg)',
     '--color-list-header-text': muted,
     '--color-row-hover': p.hover,
     '--color-group-alt-bg': p.inactiveTab,
