@@ -1,6 +1,12 @@
 import { isWritableFormat } from '../../core/archive/archive-names';
 import { DiskUsageStore } from '../diskusage/disk-usage.store';
-import { isUsageKey, scanIdOf } from '../diskusage/usage-rows';
+import {
+  chartScanIdOf,
+  isUsageChartKey,
+  isUsageKey,
+  scanIdOf,
+  usageKey,
+} from '../diskusage/usage-rows';
 import { inject, Injectable, signal } from '@angular/core';
 import { FsApi } from '../../core/fs/fs-api';
 import { errorText, toFsError } from '../../core/fs/fs-error';
@@ -81,6 +87,8 @@ export interface DeleteRequest {
   readonly scanAgeMin?: number;
   /** Entries of an archive (design 035 E5): removed for good, job `archiveDelete`. */
   readonly inArchive?: boolean;
+  /** The basket of this disk-usage scan (design 047): its tree is corrected after the job. */
+  readonly usageScan?: string;
 }
 
 export interface NameRequest {
@@ -345,6 +353,43 @@ export class OpsStore {
       return;
     }
     this.del.set(req);
+    this.dialogs.show('delete');
+  }
+
+  /** Entries in the basket of `scanId` (design 047: F8 in its chart tab). */
+  basketCount(scanId: string): number {
+    return this.usage.basket(scanId).effective.length;
+  }
+
+  /** The scan of the chart tab shown on the active side (design 047), or null. */
+  chartScan(): string | null {
+    const key = this.ws.activeTab(this.ws.activeSide()).search?.key;
+    return isUsageChartKey(key) ? chartScanIdOf(key) : null;
+  }
+
+  /**
+   * "Remove…" in the chart tab, F8 there (design 047): deletes the basket of `scanId` – with
+   * the sizes the scan saw and its age – whatever the panels show; always asked.
+   */
+  async openDeleteBasket(scanId: string, mode: DeleteMode): Promise<void> {
+    const removing = this.jobs.removing();
+    const entries = this.usage.basket(scanId).effective.filter((e) => !removing.has(e.path));
+    if (entries.length === 0) {
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    const effective: DeleteMode =
+      mode === 'trash' && !this.settings.get('behavior.deleteToTrash') ? 'permanent' : mode;
+    const side = this.usage.listSide(scanId) ?? this.ws.activeSide();
+    this.del.set({
+      mode: effective,
+      side,
+      sourceDir: `search:${usageKey(scanId)}`,
+      entries,
+      dangers: await this.dangers(entries),
+      expected: this.usage.expected(entries),
+      scanAgeMin: this.usage.ageMinutes(scanId),
+      usageScan: scanId,
+    });
     this.dialogs.show('delete');
   }
 
@@ -676,7 +721,7 @@ export class OpsStore {
       return toFsError(e);
     }
     this.close();
-    this.afterJob(id, req.side, req.sourceDir, paths, true);
+    this.afterJob(id, req.side, req.sourceDir, paths, true, req.usageScan);
     return null;
   }
 
@@ -781,8 +826,12 @@ export class OpsStore {
     folder: string,
     paths: readonly string[],
     removes: boolean,
+    usageScan?: string,
   ): void {
-    const searchKey = this.ws.panel(side)?.store.searchKey() ?? null;
+    const searchKey =
+      usageScan !== undefined
+        ? usageKey(usageScan)
+        : (this.ws.panel(side)?.store.searchKey() ?? null);
     void this.jobs.whenFinished(id).then((job: JobInfo) => {
       const store = this.ws.panel(side)?.store;
       const ran = job.state === 'done' || job.state === 'doneWithErrors';

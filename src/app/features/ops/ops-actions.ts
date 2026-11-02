@@ -18,11 +18,23 @@ export function registerOpsActions(actions: ActionService, ops: OpsStore): () =>
   // in a ZIP/TAR/TAR.GZ (design 035): entries can be deleted and folders created there
   const inWritable = () => ops.inArchive() && ops.archiveWritable();
   const deletable = () => some() && (!ops.inArchive() || ops.archiveWritable());
+  const basket = () => ops.chartScan() !== null && ops.basketCount(ops.chartScan()!) > 0;
   const handlers: Partial<Record<ActionId, ActionHandler>> = {
     OPEN_COPY_DLG: { enabled: some, run: () => ops.openCopyMove('copy') },
     OPEN_MOVE_DLG: { enabled: writable, run: () => ops.openCopyMove('move') },
-    OPEN_DELETE_DLG: { enabled: deletable, run: () => ops.openDelete('trash') },
-    DELETE_PERMANENT: { enabled: deletable, run: () => ops.openDelete('permanent') },
+    // in the chart tab of a disk-usage scan F8 removes its basket (design 047)
+    OPEN_DELETE_DLG: {
+      enabled: () => deletable() || basket(),
+      run: () =>
+        ops.chartScan() ? ops.openDeleteBasket(ops.chartScan()!, 'trash') : ops.openDelete('trash'),
+    },
+    DELETE_PERMANENT: {
+      enabled: () => deletable() || basket(),
+      run: () =>
+        ops.chartScan()
+          ? ops.openDeleteBasket(ops.chartScan()!, 'permanent')
+          : ops.openDelete('permanent'),
+    },
     // links (design 031 E8): to real entries only – not inside an archive
     OPEN_LINK_DLG: { enabled: writable, run: () => ops.openLink() },
     OPEN_MKDIR_DLG: {

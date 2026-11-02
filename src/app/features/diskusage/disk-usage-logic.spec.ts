@@ -7,11 +7,14 @@ import { arcPath, MIN_ANGLE, sunburst, TILE_HEAD, TILE_PAD, treemap } from './ch
 import { usageStart } from './disk-usage-actions';
 import { fillOf, labelOn, UsagePalette } from './usage-colors';
 import {
+  anyUsageScanId,
+  isUsageChartKey,
   isUsageKey,
   largestRows,
   scanIdOf,
   shareText,
   upPath,
+  usageChartKey,
   usageKey,
   UsageRow,
   viewRows,
@@ -320,5 +323,17 @@ describe('what a scan starts with (design 033 E8)', () => {
     // a link to a folder is not followed – the shown folder is scanned
     expect(usageStart([], d('l', 'symlink'), '/r', 'r', 'Sel')?.roots).toEqual(['/r']);
     expect(usageStart([], null, null, '', 'Sel')).toBeNull();
+  });
+});
+
+describe('chart tab keys (design 047)', () => {
+  it('tell list and chart tabs apart and give the scan of both', () => {
+    expect(isUsageChartKey(usageChartKey('j7'))).toBe(true);
+    expect(isUsageKey(usageChartKey('j7'))).toBe(false);
+    expect(isUsageChartKey(usageKey('j7'))).toBe(false);
+    expect(anyUsageScanId(usageKey('j7'))).toBe('j7');
+    expect(anyUsageScanId(usageChartKey('j7'))).toBe('j7');
+    expect(anyUsageScanId('search:x')).toBeNull();
+    expect(anyUsageScanId(null)).toBeNull();
   });
 });

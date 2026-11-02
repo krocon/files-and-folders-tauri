@@ -104,6 +104,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_DISK_USAGE: 'Speicherbelegung…',
   OPEN_DISK_USAGE_VOLUME: 'Speicherbelegung des Laufwerks…',
   DISK_USAGE_TOGGLE_CHART: 'Speicherbelegung: Ringe oder Kacheln',
+  DISK_USAGE_SHOW_CHART: 'Speicherbelegung: Diagramm zeigen',
   DISK_USAGE_LARGEST: 'Speicherbelegung: größte Dateien',
   DUP_MARK_KEEP_NEWEST: 'Duplikate: alle außer dem neuesten markieren',
   DUP_MARK_KEEP_OLDEST: 'Duplikate: alle außer dem ältesten markieren',

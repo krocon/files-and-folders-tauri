@@ -197,6 +197,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       '-',
       'QUICK_VIEW',
       'DISK_USAGE_TOGGLE_CHART',
+      'DISK_USAGE_SHOW_CHART',
       'DISK_USAGE_LARGEST',
       'TOGGLE_SHELL',
       'SHELL_INSERT_NAMES',

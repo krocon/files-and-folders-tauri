@@ -30,6 +30,8 @@ import { modifiersAfter } from '../../core/actions/shortcut';
 import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
 import { insertionIndex, tabDragCopies } from './tab-drag-logic';
 import { TabDragStore } from './tab-drag.store';
+import { anyUsageScanId, isUsageChartKey, isUsageKey } from '../diskusage/usage-rows';
+import { DiskUsageStore } from '../diskusage/disk-usage.store';
 import { TEXTS } from './texts';
 import { TabState, WorkspaceStore } from './workspace.store';
 
@@ -73,6 +75,7 @@ export class TabBar {
   protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
   private readonly settings = inject(SettingsStore);
   private readonly actions = inject(ActionService);
+  private readonly usage = inject(DiskUsageStore);
   /**
    * Favourites and recent folders as the folder menu shows them (051): alphabetical by the shown
    * path (natural, without case) – recent ones as most recent first when the setting says so.
@@ -146,6 +149,12 @@ export class TabBar {
   });
 
   protected readonly panel = computed(() => this.ws.panels()[this.side()]);
+  protected isChartTab(tab: TabState | undefined): boolean {
+    return isUsageChartKey(tab?.search?.key);
+  }
+  protected isUsageTab(tab: TabState): boolean {
+    return isUsageKey(tab.search?.key);
+  }
   private readonly dnd = inject(DragStore);
   private readonly archives = inject(ArchiveStore);
   /** The tab a drag would drop into (its folder) – also a tab that is not open. */
@@ -412,6 +421,11 @@ export class TabBar {
 
   /** A result tab whose search runs (spinner + `aria-busy`, design 009 E4). */
   protected isSearching(tab: TabState): boolean {
+    const scan = anyUsageScanId(tab.search?.key);
+    if (scan !== null) {
+      // a running disk-usage scan spins on its list and its chart tab (design 047)
+      return this.usage.state(scan)?.view?.running ?? false;
+    }
     return tab.search ? (this.search.results().get(tab.search.key)?.running ?? false) : false;
   }
 

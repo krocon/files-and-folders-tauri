@@ -37,6 +37,11 @@
     >
       @if (tab.search?.flat) {
         <i class="fa fa-list search-icon" aria-hidden="true"></i>
+      } @else if (isChartTab(tab)) {
+        <!-- design 047: the chart tab and the list of a disk-usage scan have their own icons -->
+        <i class="fa fa-pie-chart search-icon" aria-hidden="true"></i>
+      } @else if (isUsageTab(tab)) {
+        <i class="fa fa-bar-chart search-icon" aria-hidden="true"></i>
       } @else if (tab.search) {
         <i class="fa fa-search search-icon" aria-hidden="true"></i>
       }
@@ -68,7 +73,8 @@
 </button>
 
 <span class="spacer"></span>
-@if (store; as st) {
+<!-- no list to filter in a chart tab (design 047) -->
+@if (!isChartTab(panel().tabs[panel().activeTab]) && store; as st) {
   <button
     type="button"
     class="icon-btn"

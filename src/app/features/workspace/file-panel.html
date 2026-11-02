@@ -4,8 +4,8 @@
   [class.unconfirmed]="store.cachedAt() !== null"
   [attr.aria-label]="texts.pathLabel(side())"
 >
-  @if (usageScan() !== null) {
-    @let st = usageState();
+  @if (headScan() !== null) {
+    @let st = headState();
     <span
       class="crumbs search-head usage-head"
       [id]="pathId"
@@ -54,24 +54,55 @@
     <span class="sr-only" role="status">{{
       st?.view?.running ? usageTexts.header + '…' : st ? usageObjects(st) : ''
     }}</span>
-    <span class="usage-modes" role="group" [attr.aria-label]="usageTexts.header">
+    @if (usageChartScan() !== null) {
+      <!-- the chart tab (design 047 E3): rings / tiles in the one header line -->
+      <span class="usage-modes" role="group" [attr.aria-label]="usageTexts.chartLabel">
+        <button
+          type="button"
+          class="btn small"
+          [attr.aria-pressed]="chartKind() === 'sunburst'"
+          (click)="setChartKind('sunburst')"
+        >
+          {{ usageTexts.sunburst }}
+        </button>
+        <button
+          type="button"
+          class="btn small"
+          [attr.aria-pressed]="chartKind() === 'treemap'"
+          (click)="setChartKind('treemap')"
+        >
+          {{ usageTexts.treemap }}
+        </button>
+      </span>
+    } @else {
+      <span class="usage-modes" role="group" [attr.aria-label]="usageTexts.header">
+        <button
+          type="button"
+          class="btn small"
+          [attr.aria-pressed]="st?.mode !== 'largest'"
+          (click)="usageMode('all')"
+        >
+          {{ usageTexts.everything }}
+        </button>
+        <button
+          type="button"
+          class="btn small"
+          [attr.aria-pressed]="st?.mode === 'largest'"
+          (click)="usageMode('largest')"
+        >
+          {{ usageTexts.largest }}
+        </button>
+      </span>
       <button
         type="button"
-        class="btn small"
-        [attr.aria-pressed]="st?.mode !== 'largest'"
-        (click)="usageMode('all')"
+        class="btn small chart-btn"
+        [attr.aria-pressed]="chartShown()"
+        [attr.title]="usageTexts.showChartTitle"
+        (click)="showChart()"
       >
-        {{ usageTexts.everything }}
+        <i class="fa fa-pie-chart" aria-hidden="true"></i> {{ usageTexts.showChart }}
       </button>
-      <button
-        type="button"
-        class="btn small"
-        [attr.aria-pressed]="st?.mode === 'largest'"
-        (click)="usageMode('largest')"
-      >
-        {{ usageTexts.largest }}
-      </button>
-    </span>
+    }
     @if (st?.view?.running) {
       <button type="button" class="btn small" (click)="usageStop()">
         {{ usageTexts.stop }}
@@ -404,10 +435,10 @@
   [id]="'fnf-pane-' + side()"
   [attr.aria-labelledby]="'fnf-tab-' + tab().id"
   [class.fnf-active-panel]="active()"
-  [class.quick-on]="quickView() || chartScan() !== null || dupGroupOf() !== null"
+  [class.quick-on]="quickView() || usageChartScan() !== null || dupGroupOf() !== null"
 >
-  @if (chartScan(); as cid) {
-    <app-disk-usage-chart class="quick" [scanId]="cid" [side]="otherSide()" />
+  @if (usageChartScan(); as cid) {
+    <app-disk-usage-chart class="quick" [scanId]="cid" />
   } @else if (dupGroupOf(); as dside) {
     <app-duplicate-group-view class="quick" [side]="dside" />
   } @else if (quickView()) {
@@ -461,34 +492,39 @@
 
 <!-- no live region: the table announces folder changes -->
 <footer class="part status" [class.fnf-active-panel]="active()">
-  @let s = summary();
-  <span [attr.title]="texts.bytesTitle(s.markedSize, s.totalSize)">
-    <b class="sel">{{ formatSize(s.markedSize) }}</b> / {{ formatSize(s.totalSize) }}
-  </span>
-  <span>
-    {{ texts.status.in }} <b class="sel">{{ s.markedFiles }}</b> /
-    {{ texts.status.files(s.files) }}, <b class="sel">{{ s.markedDirs }}</b> /
-    {{ texts.status.folders(s.dirs) }}
-  </span>
-  @if (store.hiddenMarkedCount(); as n) {
-    <span class="warn">· {{ texts.hiddenMarked(n) }}</span>
-  }
-  @if (sizeProgress(); as p) {
-    <span class="busy">· {{ p }}</span>
-  }
-  @if (store.listing()?.unreadableEntries; as n) {
-    <span class="warn">· {{ texts.unreadable(n) }}</span>
-  }
-  @if (cachedLabel(); as c) {
-    <!-- a listing from the cache, being checked (design 030 E3) -->
-    <span class="busy cached" [attr.title]="cachedTitle()">· {{ c }}</span>
-    <!-- announced once when the panel enters the state, not on every tick -->
-    <span class="sr-only" role="status">{{ texts.cachedAnnounce }}</span>
-  } @else if (store.refreshing()) {
-    <!-- only visible if a refresh lasts (design 029 E1): no flicker for fast folders -->
-    <span class="busy refreshing">· {{ texts.refreshing }}</span>
-  }
-  @if (watchHint(); as hint) {
-    <span class="watch" [attr.title]="texts.watchHint">· {{ hint }}</span>
+  @if (usageChartScan() !== null) {
+    <!-- the chart tab (design 047): its scan and basket, never another tab's folder -->
+    <span>{{ chartStatus() }}</span>
+  } @else {
+    @let s = summary();
+    <span [attr.title]="texts.bytesTitle(s.markedSize, s.totalSize)">
+      <b class="sel">{{ formatSize(s.markedSize) }}</b> / {{ formatSize(s.totalSize) }}
+    </span>
+    <span>
+      {{ texts.status.in }} <b class="sel">{{ s.markedFiles }}</b> /
+      {{ texts.status.files(s.files) }}, <b class="sel">{{ s.markedDirs }}</b> /
+      {{ texts.status.folders(s.dirs) }}
+    </span>
+    @if (store.hiddenMarkedCount(); as n) {
+      <span class="warn">· {{ texts.hiddenMarked(n) }}</span>
+    }
+    @if (sizeProgress(); as p) {
+      <span class="busy">· {{ p }}</span>
+    }
+    @if (store.listing()?.unreadableEntries; as n) {
+      <span class="warn">· {{ texts.unreadable(n) }}</span>
+    }
+    @if (cachedLabel(); as c) {
+      <!-- a listing from the cache, being checked (design 030 E3) -->
+      <span class="busy cached" [attr.title]="cachedTitle()">· {{ c }}</span>
+      <!-- announced once when the panel enters the state, not on every tick -->
+      <span class="sr-only" role="status">{{ texts.cachedAnnounce }}</span>
+    } @else if (store.refreshing()) {
+      <!-- only visible if a refresh lasts (design 029 E1): no flicker for fast folders -->
+      <span class="busy refreshing">· {{ texts.refreshing }}</span>
+    }
+    @if (watchHint(); as hint) {
+      <span class="watch" [attr.title]="texts.watchHint">· {{ hint }}</span>
+    }
   }
 </footer>
