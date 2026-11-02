@@ -59,17 +59,21 @@ describe('built-in themes', () => {
     expect(new Set(BUILT_IN_THEMES.map((t) => t.name)).size).toBe(BUILT_IN_THEMES.length);
   });
 
-  it('069: the selected tab has the colour of its list (tab and list of one piece) in the new schemes', () => {
-    const wrong = EXTRA_THEMES.flatMap((theme) => {
-      const c = (name: string) => JSON.stringify(resolveColor(name, theme.tokens));
+  it('069: selected tab and column header have the colour of their list – in every scheme', () => {
+    const wrong = BUILT_IN_THEMES.flatMap((theme) => {
+      const tokens = { ...(theme.dark ? DARK : LIGHT).tokens, ...theme.tokens };
+      const c = (name: string) => JSON.stringify(resolveColor(name, tokens));
       return [
         ['--color-tab-selected-bg', '--color-list-bg'],
+        ['--color-list-header-bg', '--color-list-bg'],
         ['--color-active-panel-tab-bg', '--color-active-list-bg'],
+        ['--color-active-list-header-bg', '--color-active-list-bg'],
       ]
-        .filter(([tab, list]) => c(tab) !== c(list))
-        .map(([tab]) => `${theme.id}: ${tab}`);
+        .filter(([part, list]) => c(part) !== c(list))
+        .map(([part]) => `${theme.id}: ${part}`);
     });
     expect(wrong).toEqual([]);
+    expect(EXTRA_THEMES.length).toBeGreaterThan(0);
   });
 
   it('pass the WCAG AA contrast check (list, cursor, marked, header, footer, dialogs)', () => {

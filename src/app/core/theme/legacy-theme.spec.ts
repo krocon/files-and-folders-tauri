@@ -7,7 +7,7 @@ import { formatColor } from './contrast-fix';
 import { convertLegacy, isLegacyFile, legacyColor, toLegacyFile } from './legacy-theme';
 import { LEGACY_FALLBACKS, LEGACY_VAR_NAMES, LEGACY_VARS } from './legacy-theme-map';
 import { tweakedColors, tweakedTokens } from './legacy-tweaks';
-import { checkContrast, CONTRAST_PAIRS, pairRatio } from './theme-logic';
+import { checkContrast, CONTRAST_PAIRS, pairRatio, TAB_AND_HEAD_LIKE_LIST } from './theme-logic';
 import { TOKEN_NAMES } from './tokens';
 
 declare const process: { env: Record<string, string | undefined> };
@@ -85,7 +85,8 @@ describe('old designs (prompt 019)', () => {
         lv.tokens.forEach((t) => expected.set(t, formatColor(c)));
       }
       expect(expected.size, n).toBeGreaterThan(40);
-      for (const t of Object.keys(tweakedTokens(n))) {
+      // Marc's tweaks and the rule "tab and column header like the list" (069) replace originals
+      for (const t of [...Object.keys(tweakedTokens(n)), ...Object.keys(TAB_AND_HEAD_LIKE_LIST)]) {
         expected.delete(t);
       }
       for (const [token, value] of expected) {
@@ -224,7 +225,9 @@ describe('old designs (prompt 019)', () => {
       );
       const back = convertLegacy(file.colors, LIGHT, DARK);
       expect(back.dark).toBe(theme.dark);
-      for (const lv of LEGACY_VARS.filter((l) => l.tokens.length && !l.requires)) {
+      for (const lv of LEGACY_VARS.filter(
+        (l) => l.tokens.length && !l.requires && !(l.tokens[0] in TAB_AND_HEAD_LIKE_LIST),
+      )) {
         expect(back.tokens[lv.tokens[0]], `${theme.id} ${lv.name}`).toBe(
           theme.tokens[lv.tokens[0]],
         );

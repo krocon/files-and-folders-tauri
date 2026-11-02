@@ -5,6 +5,7 @@ import { resolveValue, tokenValueOk } from './theme-logic';
 import { Theme } from './theme.models';
 import { TOKENS } from './tokens';
 import { tweakedColors, tweakedTokens } from './legacy-tweaks';
+import { TAB_AND_HEAD_LIKE_LIST } from './theme-logic';
 
 /**
  * Old scheme files `{ name, colors: { "--fnf-…": … } }` → our tokens (design
@@ -167,7 +168,8 @@ export function convertLegacy(
     }
   }
 
-  Object.assign(tokens, tweakedTokens(name));
+  // the selected tab and the column header in the colour of their list (069, Marc 02.11.2026)
+  Object.assign(tokens, TAB_AND_HEAD_LIKE_LIST, tweakedTokens(name));
 
   // flatten the colour tokens to literals (the correction changes single tokens)
   const flat: Record<string, string> = {};

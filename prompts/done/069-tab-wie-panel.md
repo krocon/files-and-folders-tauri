@@ -41,3 +41,10 @@ haben. Dann sieht man, dass Tab und Liste aus einem Guss sind und zusammengehör
 
 1. In allen Schemata 062–068 hat der gewählte Tab jeder Seite exakt die Hintergrundfarbe der Liste darunter.
 2. Kontrast-Specs (WCAG AA) grün; die aktive Seite ist weiter zu erkennen.
+
+## Nachtrag (Marc, 02.11.2026)
+
+Auch die **Spaltenkopf-Zeile** (Name ↑ Ext Size Modified) bekommt den Hintergrund des gewählten Tabs und der
+Listenzeilen – und zwar in **allen** Schemata (light, dark, crimson, die neuen und die acht alten Designs; Rückfrage:
+„Alle, Tab auch“). Umgesetzt über `TAB_AND_HEAD_LIKE_LIST` (`theme-logic.ts`), Regel-Spec über alle eingebauten
+Schemata.

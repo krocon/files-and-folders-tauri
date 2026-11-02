@@ -39,17 +39,33 @@ interface Section {
     <app-modal [heading]="t.pickerTitle" width="min(58rem, 94vw)" (closed)="cancel()">
       <div class="filter">
         <label for="fnf-theme-filter">{{ t.pickerFilter }}</label>
-        <input
-          id="fnf-theme-filter"
-          type="search"
-          spellcheck="false"
-          autocomplete="off"
-          [placeholder]="t.pickerFilterPlaceholder"
-          [value]="filter()"
-          (input)="onFilter($any($event.target).value)"
-          (keydown)="onFilterKey($event)"
-        />
-        <span class="count" role="status">{{ t.pickerCount(visible().length) }}</span>
+        <span class="field">
+          <input
+            id="fnf-theme-filter"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            [placeholder]="t.pickerFilterPlaceholder"
+            [value]="filter()"
+            (input)="onFilter($any($event.target).value)"
+            (keydown)="onFilterKey($event)"
+          />
+          @if (filter() !== '') {
+            <button
+              type="button"
+              class="clear"
+              tabindex="-1"
+              [attr.aria-label]="t.pickerClear"
+              [attr.title]="t.pickerClear"
+              (click)="clearFilter()"
+            >
+              <i class="fa fa-times" aria-hidden="true"></i>
+            </button>
+          }
+        </span>
+        <span class="count" role="status" [attr.aria-label]="t.pickerCountOf(shown(), total())">{{
+          shown() + ' / ' + total()
+        }}</span>
       </div>
       <div
         class="grid"
@@ -172,6 +188,9 @@ export class ThemePicker {
   });
 
   protected readonly visible = computed(() => this.sections().flatMap((s) => s.cards));
+  /** "2 / 16": matching schemes of all schemes ("Follow the system" is not counted). */
+  protected readonly shown = computed(() => this.visible().filter((c) => c.id !== 'system').length);
+  protected readonly total = computed(() => this.theme.themes().length);
 
   /** The light and dark scheme "Follow the system" uses (for its split thumbnail). */
   protected readonly systemPair = computed(() => {
@@ -202,6 +221,12 @@ export class ThemePicker {
     if (cards.length > 0 && !cards.some((c) => c.id === this.current())) {
       this.try(cards[0].id);
     }
+  }
+
+  /** The × in the field: empty filter, the focus stays in the field. */
+  protected clearFilter(): void {
+    this.onFilter('');
+    this.focusFilter();
   }
 
   protected onFilterKey(evt: KeyboardEvent): void {
@@ -237,6 +262,17 @@ export class ThemePicker {
     } else if (evt.key === 'Enter' && !evt.repeat) {
       evt.preventDefault();
       this.ok();
+    } else if (
+      evt.key.length === 1 &&
+      evt.key !== ' ' &&
+      !evt.ctrlKey &&
+      !evt.metaKey &&
+      !evt.altKey
+    ) {
+      // typing in the grid goes on in the filter
+      evt.preventDefault();
+      this.onFilter(this.filter() + evt.key);
+      this.focusFilter();
     }
   }
 

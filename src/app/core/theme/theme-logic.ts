@@ -585,3 +585,16 @@ export function pairRatio(
   const over = under ? (under.a < 1 ? blend(under, base) : under) : base;
   return fg && bg ? contrastRatio(fg, bg, over) : null;
 }
+
+/**
+ * Tab and list of one piece (069): the selected tab and the column header take the
+ * background of their list – in every built-in scheme and the old designs.
+ */
+export const TAB_AND_HEAD_LIKE_LIST: Readonly<Record<string, string>> = {
+  '--color-list-header-bg': 'var(--color-list-bg)',
+  '--color-active-list-header-bg': 'var(--color-active-list-bg)',
+  '--color-tab-selected-bg': 'var(--color-list-bg)',
+  '--color-tab-selected-text': 'var(--color-list-text)',
+  '--color-active-panel-tab-bg': 'var(--color-active-list-bg)',
+  '--color-active-panel-tab-text': 'var(--color-active-list-text)',
+};

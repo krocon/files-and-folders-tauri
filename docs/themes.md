@@ -125,7 +125,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 
 ## Gewählter Tab = Farbe der Liste (069)
 
-In allen Schemata dieser Datei hat der gewählte Tab jeder Seite die Hintergrundfarbe der Liste darunter
+In allen Schemata (seit dem Nachtrag zu 069 auch light, dark, crimson und die alten Designs) haben der gewählte Tab und die Spaltenkopf-Zeile jeder Seite die Hintergrundfarbe der Liste darunter
 (`--color-tab-selected-bg` = `var(--color-list-bg)`, `--color-active-panel-tab-bg` = `var(--color-active-list-bg)`) –
 Tab und Liste wirken aus einem Guss (Marc, 02.11.2026). Vorher hatten Mystico – C64, True Dark/Black/Light und die
 Rainglow-Schemata einen farbigen Tab auf der aktiven Seite (Signaturfarbe). Die aktive Seite bleibt an der Akzentlinie

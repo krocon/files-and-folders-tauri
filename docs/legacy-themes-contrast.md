@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-12 von 76 Paaren unter AA im Original, 11 Farben angepasst.
+11 von 76 Paaren unter AA im Original, 10 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -22,7 +22,7 @@
 | Panel header | 18.92 | 18.92 |
 | Tabs | 18.92 | 18.92 |
 | Selected tab | 12.63 | 12.63 |
-| Selected tab, active panel | 3.22 ⚠ | 4.56 |
+| Selected tab, active panel | 21.00 | 21.00 |
 | Status line | 18.92 | 18.92 |
 | Function buttons | 20.82 | 20.82 |
 | Dialogs | 12.63 | 12.63 |
@@ -35,7 +35,6 @@
 | `--color-cursor-bg` | `#0098db` | `#007db5` | Cursor |
 | `--color-cursor-marked-text` | `#f0809a` | `#ffffff` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#b3e0f4` | `#eaf7fc` | Marked under the inactive cursor |
-| `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
 | `--color-shell-prompt` | `#0098db` | `#007db5` | Shell prompt |
 | `--color-status-marked` | `#0098db` | `#0075a9` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#de0034` | Status line warning |
@@ -44,7 +43,7 @@
 
 ## paper (hell)
 
-45 von 76 Paaren unter AA im Original, 35 Farben angepasst.
+44 von 76 Paaren unter AA im Original, 34 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -57,8 +56,8 @@
 | Column header | 3.67 ⚠ | 4.55 |
 | Panel header | 10.93 | 10.93 |
 | Tabs | 10.93 | 10.93 |
-| Selected tab | 3.67 ⚠ | 4.55 |
-| Selected tab, active panel | 3.17 ⚠ | 4.56 |
+| Selected tab | 4.21 ⚠ | 4.55 |
+| Selected tab, active panel | 16.67 | 16.67 |
 | Status line | 11.26 | 11.26 |
 | Function buttons | 20.82 | 20.82 |
 | Dialogs | 4.21 ⚠ | 4.55 |
@@ -84,13 +83,12 @@
 | `--color-cursor-marked-text` | `#ee6d67` | `#f9cfcd` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#c2c0bc` | `#eeeeec` | Cursor, inactive panel |
 | `--color-active-marked` | `#ff0000` | `#b20000` | Marked, active panel |
-| `--color-active-panel-tab-text` | `#ff0000` | `#cf0000` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#e7e5df` | `#83827f` | Active panel line |
 | `--color-shell-text` | `#6c6b6b` | `#666666` | Shell output |
 | `--color-shell-prompt` | `#0098db` | `#006c9c` | Shell prompt |
 | `--color-shell-error-text` | `#e00034` | `#cd0030` | Shell errors |
 | `--color-shell-info-text` | `#91908e` | `#676664` | Shell messages |
-| `--color-tab-selected-text` | `#657786` | `#596875` | Selected tab |
+| `--color-tab-selected-text` | `#6c6b6b` | `#666666` | Selected tab |
 | `--color-favorite` | `#a87300` | `#a37000` | Favourite star |
 | `--color-status-marked` | `#ff0000` | `#c10000` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#bf002c` | Status line warning |
@@ -104,7 +102,7 @@
 
 ## bitbucket (hell)
 
-32 von 76 Paaren unter AA im Original, 25 Farben angepasst.
+30 von 76 Paaren unter AA im Original, 23 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -117,8 +115,8 @@
 | Column header | 11.09 | 11.09 |
 | Panel header | 8.53 | 8.53 |
 | Tabs | 8.53 | 8.53 |
-| Selected tab | 2.83 ⚠ | 4.55 |
-| Selected tab, active panel | 3.22 ⚠ | 4.56 |
+| Selected tab | 5.19 | 5.19 |
+| Selected tab, active panel | 21.00 | 21.00 |
 | Status line | 8.53 | 8.53 |
 | Function buttons | 8.53 | 8.53 |
 | Dialogs | 5.19 | 5.19 |
@@ -138,12 +136,10 @@
 | `--color-cursor-bg` | `#0098db` | `#0074a6` | Cursor |
 | `--color-cursor-marked-text` | `#e6789a` | `#fcedf1` | Marked under the cursor |
 | `--color-cursor-inactive-bg` | `#a5d6f4` | `#c9e6f8` | Cursor, inactive panel |
-| `--color-active-panel-tab-text` | `#0098db` | `#007db5` | Selected tab, active panel |
 | `--color-active-panel-accent` | `#ffffff` | `#939393` | Active panel line |
 | `--color-shell-prompt` | `#0098db` | `#0074a6` | Shell prompt |
 | `--color-shell-error-text` | `#e00034` | `#da0033` | Shell errors |
 | `--color-shell-info-text` | `#828cb7` | `#646b8d` | Shell messages |
-| `--color-tab-selected-text` | `#0098db` | `#0074a6` | Selected tab |
 | `--color-favorite` | `#a87300` | `#bd953d` | Favourite star |
 | `--color-status-marked` | `#e00034` | `#f4a9ba` | Marked values in the status line |
 | `--color-footer-error-text` | `#e00034` | `#f4a9ba` | Status line warning |
@@ -154,7 +150,7 @@
 
 ## cypress (dunkel)
 
-34 von 76 Paaren unter AA im Original, 25 Farben angepasst.
+35 von 76 Paaren unter AA im Original, 26 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -167,8 +163,8 @@
 | Column header | 3.43 ⚠ | 4.59 |
 | Panel header | 15.42 | 15.42 |
 | Tabs | 15.42 | 15.42 |
-| Selected tab | 6.96 | 6.96 |
-| Selected tab, active panel | 6.96 | 6.96 |
+| Selected tab | 3.43 ⚠ | 4.59 |
+| Selected tab, active panel | 15.90 | 15.90 |
 | Status line | 15.88 | 15.88 |
 | Function buttons | 20.82 | 20.82 |
 | Dialogs | 3.43 ⚠ | 4.59 |
@@ -193,6 +189,7 @@
 | `--color-shell-text` | `#657786` | `#7c8c98` | Shell output |
 | `--color-shell-error-text` | `#e00034` | `#ea5476` | Shell errors |
 | `--color-shell-info-text` | `#4d5e6d` | `#7e8b95` | Shell messages |
+| `--color-tab-selected-text` | `#657786` | `#7c8c98` | Selected tab |
 | `--color-favorite` | `#f2c14e` | `#b38e3a` | Favourite star |
 | `--color-status-marked` | `#04c38e` | `#038662` | Marked values in the status line |
 | `--color-dialog-text` | `#657786` | `#7c8c98` | Dialogs |
@@ -217,8 +214,8 @@
 | Column header | 8.03 | 8.03 |
 | Panel header | 12.28 | 12.28 |
 | Tabs | 12.28 | 12.28 |
-| Selected tab | 5.85 | 5.85 |
-| Selected tab, active panel | 18.88 | 18.88 |
+| Selected tab | 8.03 | 8.03 |
+| Selected tab, active panel | 8.03 | 8.03 |
 | Status line | 12.28 | 12.28 |
 | Function buttons | 12.93 | 12.93 |
 | Dialogs | 8.03 | 8.03 |
@@ -254,8 +251,8 @@
 | Column header | 7.49 | 7.49 |
 | Panel header | 12.08 | 12.08 |
 | Tabs | 12.08 | 12.08 |
-| Selected tab | 15.00 | 15.00 |
-| Selected tab, active panel | 5.39 | 5.39 |
+| Selected tab | 17.40 | 17.40 |
+| Selected tab, active panel | 17.40 | 17.40 |
 | Status line | 12.08 | 12.08 |
 | Function buttons | 13.63 | 13.63 |
 | Dialogs | 17.40 | 17.40 |
@@ -286,8 +283,8 @@
 | Column header | 9.22 | 9.22 |
 | Panel header | 8.46 | 8.46 |
 | Tabs | 8.46 | 8.46 |
-| Selected tab | 19.02 | 19.02 |
-| Selected tab, active panel | 11.70 | 11.70 |
+| Selected tab | 9.22 | 9.22 |
+| Selected tab, active panel | 14.00 | 14.00 |
 | Status line | 8.46 | 8.46 |
 | Function buttons | 6.41 | 6.41 |
 | Dialogs | 9.22 | 9.22 |
@@ -320,8 +317,8 @@
 | Column header | 8.98 | 8.98 |
 | Panel header | 11.78 | 11.78 |
 | Tabs | 11.78 | 11.78 |
-| Selected tab | 8.98 | 8.98 |
-| Selected tab, active panel | 14.91 | 14.91 |
+| Selected tab | 16.00 | 16.00 |
+| Selected tab, active panel | 16.00 | 16.00 |
 | Status line | 11.78 | 11.78 |
 | Function buttons | 4.39 ⚠ | 4.58 |
 | Dialogs | 2.82 ⚠ | 4.60 |

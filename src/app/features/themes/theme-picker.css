@@ -6,15 +6,53 @@
   gap: var(--spacing-2);
   margin-bottom: var(--spacing-2);
 
-  input {
+  /* label, field and count on one centre line (Marc 02.11.2026) */
+  label {
+    margin: 0;
+    line-height: var(--control-height);
+  }
+
+  .field {
+    position: relative;
+    display: flex;
     flex: 1;
     min-width: 0;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding-right: 2rem;
+    }
+  }
+
+  /* our own ×: same look in every WebView */
+  .clear {
+    position: absolute;
+    top: 50%;
+    right: var(--spacing-1);
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    color: var(--color-muted);
+    background: none;
+    border: 0;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-dialog-text);
+      background: color-mix(in srgb, var(--color-muted) 25%, transparent);
+    }
   }
 
   .count {
     flex: none;
     color: var(--color-muted);
     font-size: var(--font-size-sm);
+    font-variant-numeric: tabular-nums;
   }
 }
 
