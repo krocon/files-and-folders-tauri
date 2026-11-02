@@ -51,6 +51,9 @@ zwei Zeilen über die volle Breite.
 - Breadcrumb `/ Segment / Segment / …`, jedes Segment klickbar; bei langen Pfaden rechtsbündig, sodass das Ende des
   Pfads sichtbar bleibt. Daneben der **Favoriten-Stern** (an/aus).
 - Ergebnis-Tab einer Suche: statt des Pfads `Search: "<Muster>"`; Doppelklick öffnet die Suche erneut (Prompt 009).
+- **Freie Fläche = Pfad eingeben** (053): Klick links neben/zwischen die Segmente öffnet das Pfadfeld (alles markiert,
+  Ende sichtbar; Tastatur: „Go to path…“ `Mod+L`). Beim Überfahren dezent eine Feld-Andeutung mit Stift, Tooltip mit
+  vollem Pfad und Kürzel. Nur im Ordner-Kopf, nicht in Ergebnis-Köpfen.
 - **Feste Höhe** (049): `--panel-header-height` (eine Zeile `--panel-header-line` = 1,25rem + Polsterung). Pfadfeld,
   Fehlerhinweis und alle Kopf-Varianten (Suche, Flach, Dubletten, Belegung, Archiv/Server) passen in diese Zeile –
   Tab-Leiste und Liste bewegen sich nie; beide Seiten sind immer gleich hoch.

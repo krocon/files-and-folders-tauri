@@ -248,6 +248,48 @@
   cursor: text;
 }
 
+/* the hidden label of the list while the path field is open: `.crumbs` is a flex box, which
+   beat the `hidden` attribute – the path stood twice and the field had half the width (053) */
+.crumbs[hidden] {
+  display: none;
+}
+
+/* free area of the breadcrumbs = "enter a path" (053, variant c): on hover a hint of a field and
+   a pencil, after a short delay; nothing changes size, the segments stay as they are */
+.path-crumbs {
+  border-radius: var(--radius-sm);
+  transition:
+    background-color 0s 150ms,
+    box-shadow 0s 150ms;
+
+  .path-hint {
+    flex: none;
+    margin-right: auto;
+    padding-inline: var(--spacing-1);
+    font-size: var(--font-size-xs);
+    color: var(--color-muted);
+    opacity: 0;
+    transition: opacity 0s 150ms;
+  }
+
+  &:hover:not(:has(.crumb:hover)) {
+    background: color-mix(in srgb, var(--color-header-input-bg) 35%, transparent);
+    box-shadow: inset 0 0 0 var(--border-width)
+      color-mix(in srgb, var(--color-muted) 45%, transparent);
+
+    .path-hint {
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .path-crumbs,
+  .path-crumbs .path-hint {
+    transition: none;
+  }
+}
+
 .status .busy {
   color: var(--color-accent);
 }

@@ -1,3 +1,7 @@
+// @ts-expect-error – node module in a spec (vitest runs in node)
+import { readFileSync } from 'node:fs';
+import { KeymapApi } from '../../core/actions/keymap-api';
+import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { PreviewApi } from '../../core/preview/preview-api';
 import { ThemeApi } from '../../core/theme/theme-api';
@@ -87,6 +91,7 @@ describe('FilePanel', () => {
         { provide: JobsApi, useValue: new FakeJobsApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: WatchApi, useValue: watch },
+        { provide: KeymapApi, useValue: new FakeKeymapApi() },
       ],
     });
     TestBed.overrideComponent(FilePanel, {
@@ -345,6 +350,40 @@ describe('FilePanel', () => {
     expect(store.path()).toBe('/other');
     expect(store.cursorPath()).toBe('/other/x');
     expect(input()).toBeNull();
+  });
+
+  it('053: a click into the free area of the crumbs opens the field, the path stands once', async () => {
+    const { el, store, settle } = await render();
+    await store.load('/data/Übersicht');
+    await settle();
+    const click = (target: Element, detail = 1) =>
+      target.dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+    const input = () => el.querySelector<HTMLInputElement>('.path-input');
+    // a segment navigates, it does not open the field; a double click neither
+    click(el.querySelector('.crumb.current')!);
+    click(el.querySelector('.path-crumbs')!, 2);
+    await settle();
+    expect(input()).toBeNull();
+    for (const sel of ['.path-crumbs', '.sep', '.path-hint']) {
+      click(el.querySelector(sel)!);
+      await settle();
+      expect(input(), sel).not.toBeNull();
+      // only the hidden label of the list is left – no second visible path
+      const crumbs = [...el.querySelectorAll('.crumbs')];
+      expect(crumbs.every((c) => c.hasAttribute('hidden'))).toBe(true);
+      input()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+      expect(input()).toBeNull();
+    }
+    // the tooltip names the full path and the shortcut of "Go to path…"
+    expect(el.querySelector('.path-crumbs')!.getAttribute('title')).toMatch(
+      /^\/data\/Übersicht\nClick to enter a path/,
+    );
+  });
+
+  it('053: `hidden` beats the flex box of the crumbs', () => {
+    const css = readFileSync('src/app/features/workspace/file-panel.css', 'utf8') as string;
+    expect(css).toMatch(/\.crumbs\[hidden\] \{\s*display: none;/);
   });
 
   it('keeps hidden/filter per tab and opens folders from the folder menu', async () => {
