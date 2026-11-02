@@ -157,6 +157,7 @@ describe('ThemeService', () => {
       'true-light',
       'matrix',
       'solarized-light',
+      'mystico-c64',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();

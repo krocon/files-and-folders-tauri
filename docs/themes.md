@@ -21,6 +21,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `true-light` | True Light | same, „True Light“ | MIT | 063 |
 | `matrix` | Matrix | own scheme after a screenshot of a green VS Code theme (colours measured from the image, no theme file) | – | 064 |
 | `solarized-light` | Solarized Light | VS Code built-in „Solarized (light)“ (`microsoft/vscode`, `extensions/theme-solarized-light`), palette by Ethan Schoonover | MIT (both) | 065 |
+| `mystico-c64` | Mystico – C64 | VS Code theme „Mystico C64“ by chibanti (`chibanti/mystico-c64-vscode-theme`); colours measured from screenshots. The Notepad++ port `MysticoNpp_C64.xml` (luk3Z, GPL-2) was only looked at, nothing copied | MIT | 066 |
 
 ## Deviations from the originals (contrast)
 
@@ -73,3 +74,16 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 - Icons from the palette, cyan/green darkened (`#1f8a82`, `#738500`) for 3:1; diff areas lighter than suggested
   (`#fce9e2`, `#fbecdb`) so the list text keeps 4.5:1.
 - *Follow the system* offers it as light scheme; a „Solarized Dark“ would be the natural partner (own prompt).
+
+**Mystico – C64 (066)**
+
+- Header, tabs and status line `#695ece` instead of the C64 light blue `#7a70d3` (white on it: 4.1:1); `#7a70d3`
+  stays for the splitter between the panels, borders, scrollbar and dialog frames – the „border round the screen“.
+- Cursor as C64 reverse: white with C64 blue `#3c319c`; marked yellow `#d2dc7f`, under the cursor dark olive
+  `#6b5a00`; inactive cursor `#554ab2` with white.
+- Muted/hidden text `#c2bee0` (the variable colour `#8e85da` is 3.1:1, comments `#808080` 2.5:1). Selected tab of the
+  active panel `#8e85da` with dark `#1a1450` (white on it 3.2:1).
+- Errors light pink `#ffa8b8`; danger area `#7a2f5e`; the status-line warning `#ffeef2` is almost white (the
+  status line leaves no room for a colour with 4.5:1).
+- Primary button C64 green `#b9e893` with dark blue `#2a2270`. Icons from the C64 palette, green/brown/cyan lightened
+  for 3:1 (`#86c95c`, `#d9a39a`, `#8fc4d0`). No C64 font, no `READY.` texts.
