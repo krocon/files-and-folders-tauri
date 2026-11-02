@@ -20,6 +20,7 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
 | `true-black` | True Black | same, „True Black“ | MIT | 063 |
 | `true-light` | True Light | same, „True Light“ | MIT | 063 |
 | `matrix` | Matrix | own scheme after a screenshot of a green VS Code theme (colours measured from the image, no theme file) | – | 064 |
+| `solarized-light` | Solarized Light | VS Code built-in „Solarized (light)“ (`microsoft/vscode`, `extensions/theme-solarized-light`), palette by Ethan Schoonover | MIT (both) | 065 |
 
 ## Deviations from the originals (contrast)
 
@@ -59,3 +60,16 @@ version (`legacy/`, design 019), the app ships schemes modelled on popular edito
   `#4a3200`; inactive cursor `#0f3d0f` with `#88ff88`.
 - The list uses a monospace stack `ui-monospace, Menlo, Consolas, monospace` (only a token value of this scheme).
 - File icons in shades of green (executables gold) – the icon shape tells the type.
+
+**Solarized Light (065)**
+
+- Text on the cream/beige areas: chrome `#4a5d63`, list `#586e75` (base00 `#657b83` is 4.1:1 on `#fdf6e3`); muted
+  `#56676b`. Comments `#93a1a1` only for decoration (usage chart).
+- Cursor `#dfca88` with `#073642` instead of `#6c6c6c` (3.2:1); inactive cursor `#d1cbb8`.
+- Marked = dark Solarized red `#a3221a` on `#f6e3c8` (`#dc322f` is 4.3:1 and unreadable on the gold cursor).
+- Primary button `#ac9d57` with `#002b36` (white: 2.7:1); inputs/buttons `#ddd6c1` with `#3f5157`.
+- Active panel line gold `#a07800` (= `#b58900` darkened to 3:1 on the list; gold like badge and progress, blue stays
+  for folder icons); focus ring `#8f6f4c` (focusBorder `#b49471` is 2.3:1); accent as text `#7a5c00`.
+- Icons from the palette, cyan/green darkened (`#1f8a82`, `#738500`) for 3:1; diff areas lighter than suggested
+  (`#fce9e2`, `#fbecdb`) so the list text keeps 4.5:1.
+- *Follow the system* offers it as light scheme; a „Solarized Dark“ would be the natural partner (own prompt).

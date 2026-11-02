@@ -156,6 +156,7 @@ describe('ThemeService', () => {
       'true-black',
       'true-light',
       'matrix',
+      'solarized-light',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();

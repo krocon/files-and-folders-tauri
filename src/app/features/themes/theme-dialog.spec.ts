@@ -96,6 +96,7 @@ describe('ThemeDialog', () => {
       'true-black',
       'true-light',
       'matrix',
+      'solarized-light',
     ]);
     expect(el.textContent).toContain('All contrast checks pass');
     radios.find((r) => r.value === 'dark')!.click();
