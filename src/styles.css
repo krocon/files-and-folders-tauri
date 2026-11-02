@@ -181,6 +181,11 @@
   --font-size-xs: 0.875rem;
   --font-size-sm: 0.9375rem;
   --font-size-md: 1rem;
+
+  /* one line of the panel header (049): the breadcrumb line (1.25rem) + its padding – fixed, so
+     the path field, an error or another kind of tab never moves the tab bar and the list */
+  --panel-header-line: 1.25rem;
+  --panel-header-height: calc(var(--panel-header-line) + 2 * var(--spacing-1));
 }
 
 /* first frame in a dark system before the ThemeService runs (= dark.json) */

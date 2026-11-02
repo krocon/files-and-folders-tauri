@@ -51,6 +51,9 @@ zwei Zeilen über die volle Breite.
 - Breadcrumb `/ Segment / Segment / …`, jedes Segment klickbar; bei langen Pfaden rechtsbündig, sodass das Ende des
   Pfads sichtbar bleibt. Daneben der **Favoriten-Stern** (an/aus).
 - Ergebnis-Tab einer Suche: statt des Pfads `Search: "<Muster>"`; Doppelklick öffnet die Suche erneut (Prompt 009).
+- **Feste Höhe** (049): `--panel-header-height` (eine Zeile `--panel-header-line` = 1,25rem + Polsterung). Pfadfeld,
+  Fehlerhinweis und alle Kopf-Varianten (Suche, Flach, Dubletten, Belegung, Archiv/Server) passen in diese Zeile –
+  Tab-Leiste und Liste bewegen sich nie; beide Seiten sind immer gleich hoch.
 
 ### Zeile 2 – Tab-Reiter
 
