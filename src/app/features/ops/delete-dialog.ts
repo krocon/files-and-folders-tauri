@@ -39,11 +39,15 @@ const SHOWN = 5;
           <p id="fnf-delete-message" class="message" [class.danger-text]="showsPermanent()">
             {{
               showsPermanent()
-                ? t.deletePermanentMessage(r.entries.length)
+                ? t.deletePermanentMessage(r.entries.length, countDetail())
                 : t.deleteTrashMessage(r.entries.length)
             }}
           </p>
-          @if (count(); as c) {
+          @if (r.inArchive) {
+            <p class="size muted" data-testid="delete-size">
+              {{ t.deleteSize }}: {{ t.noCountInArchive }}
+            </p>
+          } @else if (count(); as c) {
             <p class="size" data-testid="delete-size">
               {{ t.deleteSize }}:
               @if (c.state === 'done') {
@@ -54,6 +58,8 @@ const SHOWN = 5;
                   · {{ t.filesAndDirs(c.size.files, c.size.dirs)
                   }}{{ c.size.unreadable > 0 ? t.unreadable(c.size.unreadable) : '' }}</span
                 >
+              } @else if (c.state === 'unknown') {
+                <span class="muted">{{ t.sizeUnknown }}</span>
               } @else {
                 <strong>{{ c.items > 0 ? t.sizeAtLeast(fmtSize(c.bytes)) : t.counting }}</strong>
                 @if (c.items > 0) {
@@ -200,6 +206,13 @@ export class DeleteDialog {
     this.req()?.inArchive ? null : (this.req()?.entries.map((e) => e.path) ?? null),
   );
   protected readonly fmtSize = formatSize;
+  /** Files and size for the red question once the count is complete (058). */
+  protected readonly countDetail = computed(() => {
+    const c = this.count();
+    return c?.state === 'done' && !c.size.cancelled
+      ? this.t.filesAndSize(c.size.files, formatSize(c.size.bytes))
+      : '';
+  });
   protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);

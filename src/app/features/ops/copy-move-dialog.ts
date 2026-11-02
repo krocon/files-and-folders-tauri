@@ -186,6 +186,9 @@ export class CopyMoveDialog {
         (size.unreadable > 0 ? this.t.unreadable(size.unreadable) : '')
       );
     }
+    if (c.state === 'unknown') {
+      return ` · ${this.t.sizeUnknown}`;
+    }
     return c.items > 0
       ? ` · ${c.items} … ${formatSize(c.bytes)} (${this.t.counting})`
       : ` · ${this.t.counting}`;

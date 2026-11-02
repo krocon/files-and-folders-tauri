@@ -88,6 +88,9 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] Startermenü (032): natives Menü „Start“ (macOS), `⌥S` in der Liste öffnet das Popup (in Textfeldern tippt es
       weiter „ß“), Eintrag mit einer `.app` (`/Applications/Preview.app`, Parameter `%P%N`), Ordner-Eintrag `~/…`;
       Windows: `.bat`/`.cmd` als Kommando, `notepad.exe "%P%N"`.
+- [ ] Löschdialog-Zähler (058): Zeile „Größe“ erscheint sofort („zähle…“) und bleibt – fast leere Ordner, großer Ordner
+      aus dem Belegungs-Tab, Netzlaufwerk; endgültig: Zahlen in der roten Frage. Die Ursache des Fehlens war im Code
+      nicht eindeutig belegbar (Kandidaten im Bericht); fehlt die Zeile noch, steht jetzt „unbekannt“ statt nichts.
 - [ ] Tabs/Links (031): Tab mit ⌥ ziehen (Kopie), ⌃⇧Bild↑/↓; Datei mit ⌘⌥ ziehen = Link; Windows ohne Entwicklermodus
       → Meldung `link_not_permitted`.
 
