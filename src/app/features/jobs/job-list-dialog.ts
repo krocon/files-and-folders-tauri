@@ -51,9 +51,11 @@ const SHOWN_ERRORS = 50;
               <p class="summary">{{ t.summary(s.itemsDone, s.itemsSkipped, s.itemsFailed) }}</p>
               @if (job.retryAvailable) {
                 <!-- design 048: right where the errors are read -->
+                <!-- one per task row: no dialog key (Enter stays with the list, 057 × 048) -->
                 <button
                   type="button"
                   class="btn primary retry"
+                  appDialogKey=""
                   [attr.aria-label]="
                     job.state === 'failed'
                       ? t.retryLabel(detailTitle())
