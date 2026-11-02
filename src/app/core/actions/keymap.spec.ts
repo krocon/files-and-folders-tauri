@@ -63,6 +63,15 @@ describe('default keymaps', () => {
   });
 });
 
+describe('Actions menu shortcut (050)', () => {
+  it('Alt+A first on every OS, the mr shortcuts stay as extra bindings', () => {
+    const extra = { macos: 'Ctrl+K Ctrl+M', windows: 'Mod+F12', linux: 'Mod+F12' } as const;
+    for (const p of ['macos', 'windows', 'linux'] as const) {
+      expect(resolveKeymap(p).bindings.OPEN_ACTIONS_MENU, p).toEqual(['Alt+A', extra[p]]);
+    }
+  });
+});
+
 describe('resolveKeymap with an override', () => {
   it('replaces the list of an action and can remove all its shortcuts', () => {
     const r = resolveKeymap('linux', { OPEN_COPY_DLG: ['Mod+Alt+C'], OPEN_DELETE_DLG: [] });

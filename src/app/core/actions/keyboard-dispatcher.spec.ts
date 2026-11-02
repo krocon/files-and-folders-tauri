@@ -32,6 +32,7 @@ describe('KeyboardDispatcher', () => {
       CLOSE_TAB: handler('CLOSE_TAB'),
       OPEN_TASK_DLG: handler('OPEN_TASK_DLG'),
       OPEN_COPY_DLG: handler('OPEN_COPY_DLG'),
+      OPEN_ACTIONS_MENU: handler('OPEN_ACTIONS_MENU'),
     });
     document.body.innerHTML =
       '<app-file-list><div tabindex="0"></div></app-file-list><button>b</button><input>';
@@ -82,6 +83,13 @@ describe('KeyboardDispatcher', () => {
   it('only lets function keys through in text inputs', () => {
     expect(press('p', 'KeyP', input, { ctrlKey: true, shiftKey: true }).id).toBeNull();
     expect(press('F5', 'F5', input).id).toBe('OPEN_COPY_DLG');
+  });
+
+  it('Alt+A opens the Actions menu (050), also as „å“ on macOS – a text field keeps the key', () => {
+    expect(press('a', 'KeyA', list, { altKey: true }).id).toBe('OPEN_ACTIONS_MENU');
+    actions.platform.set('macos');
+    expect(press('å', 'KeyA', list, { altKey: true }).id).toBe('OPEN_ACTIONS_MENU');
+    expect(press('å', 'KeyA', input, { altKey: true }).id).toBeNull();
   });
 
   it('keys inside an open menu or the menu bar belong to the menu (review 014 #3)', () => {

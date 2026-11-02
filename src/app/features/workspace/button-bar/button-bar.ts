@@ -76,8 +76,13 @@ interface ToolButton {
         class="fbtn actions-toggle"
         aria-haspopup="menu"
         [attr.aria-expanded]="menuOpen()"
+        [attr.aria-keyshortcuts]="actionsShortcut().label || null"
+        [attr.title]="actionsTitle()"
         (click)="menuOpen.set(!menuOpen())"
       >
+        @if (actionsShortcut().badge; as k) {
+          <kbd class="badge">{{ k }}</kbd>
+        }
         <span>{{ t.actions }}</span> <i class="fa fa-caret-up" aria-hidden="true"></i>
       </button>
       @for (t of tools(); track t.id) {
@@ -160,14 +165,28 @@ export class ButtonBar {
     resolveMenu(STARTER_POPUP, this.actions, this.actions.platform()),
   );
   /** Badge of the menu's own shortcut (Alt+S, keymap). */
-  protected readonly startShortcut = computed(() => {
+  protected readonly startShortcut = computed(() => this.menuShortcut('OPEN_STARTER_MENU').badge);
+  protected readonly startTitle = computed(() =>
+    this.menuTitle(MENU_TEXTS.starterMenu, 'OPEN_STARTER_MENU'),
+  );
+  /** Actions ▴ like Start (050): Alt+A as a badge, the chords of mr only in the tooltip. */
+  protected readonly actionsShortcut = computed(() => this.menuShortcut('OPEN_ACTIONS_MENU'));
+  protected readonly actionsTitle = computed(() =>
+    this.menuTitle(this.t.actions, 'OPEN_ACTIONS_MENU'),
+  );
+
+  /** First shortcut of a menu button: shown as a badge unless it is a chord (two strokes). */
+  private menuShortcut(id: ActionId): { label: string; badge: string } {
     this.actions.keymap();
-    return this.actions.shortcutLabel('OPEN_STARTER_MENU');
-  });
-  protected readonly startTitle = computed(() => {
-    const k = this.startShortcut();
-    return k ? `${MENU_TEXTS.starterMenu} (${k})` : MENU_TEXTS.starterMenu;
-  });
+    const label = this.actions.shortcutLabel(id);
+    const chord = (this.actions.shortcuts(id)[0] ?? '').includes(' ');
+    return { label, badge: chord ? '' : label };
+  }
+
+  private menuTitle(name: string, id: ActionId): string {
+    const k = this.menuShortcut(id).label;
+    return k ? `${name} (${k})` : name;
+  }
 
   /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
   protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);

@@ -362,6 +362,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Rename in list / dialog | `F2` / `Shift+F6` | `F2` / `⇧F6` |
 | Multi rename | `Ctrl+M` | `⌘F6` |
 | Command palette – actions, folders and files | `Ctrl+Shift+P` | `⌘⇧P` |
+| Actions menu ▴ / starter menu ▴ | `Alt+A` / `Alt+S` | `⌥A` / `⌥S` |
 | Find | `Alt+F7` | `⌥F7` |
 | Find folder (change dir) | `Alt+F10` | `⌥F10` |
 | Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S` | `⇧F2` / `⌘⇧S` |
