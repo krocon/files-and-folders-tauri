@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FsError } from '../../core/fs/fs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { dialogError } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { OpsStore } from './ops.store';
@@ -21,7 +22,7 @@ import { OpsStore } from './ops.store';
  */
 @Component({
   selector: 'app-name-dialog',
-  imports: [Modal],
+  imports: [Modal, DialogKey],
   template: `
     @if (req(); as r) {
       <app-modal [heading]="texts().title" (closed)="ops.close()">
@@ -58,8 +59,10 @@ import { OpsStore } from './ops.store';
               <div id="fnf-name-help" class="help">{{ t.mkdirHelp }}</div>
               <div class="spacer"></div>
             }
-            <button type="button" class="btn" (click)="ops.close()">{{ t.cancel }}</button>
-            <button type="submit" class="btn primary" [disabled]="busy()">
+            <button type="button" class="btn" fnfDialogKey="cancel" (click)="ops.close()">
+              {{ t.cancel }}
+            </button>
+            <button type="submit" class="btn primary" fnfDialogKey="primary" [disabled]="busy()">
               {{ dangerous() ? t.renameAnyway : texts().confirm }}
             </button>
           </div>

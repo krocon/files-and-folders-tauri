@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FsError } from '../../core/fs/fs.models';
 import { ConflictDefault } from '../../core/jobs/jobs.models';
 import { Modal } from '../../shared/dialog/modal';
+import { DialogKey } from '../../shared/dialog/dialog-key';
 import { formatSize } from '../../shared/format';
 import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
@@ -24,7 +25,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
  */
 @Component({
   selector: 'app-copy-move-dialog',
-  imports: [Modal, TargetField],
+  imports: [Modal, DialogKey, TargetField],
   template: `
     @if (req(); as r) {
       <app-modal [heading]="heading(r.kind)" width="min(60rem, 94vw)" (closed)="ops.close()">
@@ -132,10 +133,13 @@ const DEFAULTS: readonly ConflictDefault[] = [
             <div class="help">{{ t.ctrlEnter }}</div>
             <div class="spacer"></div>
 
-            <button type="button" class="btn" (click)="ops.close()">{{ t.cancel }}</button>
+            <button type="button" class="btn" fnfDialogKey="cancel" (click)="ops.close()">
+              {{ t.cancel }}
+            </button>
             <button
               type="submit"
               class="btn primary"
+              fnfDialogKey="primary"
               [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
             >
               {{ r.kind === 'link' ? t.linkConfirm : heading(r.kind) }}

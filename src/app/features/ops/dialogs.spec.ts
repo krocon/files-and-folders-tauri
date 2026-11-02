@@ -162,6 +162,17 @@ describe('operation dialogs', () => {
     });
   });
 
+  it('copy (057): Enter in the target field starts once – no second start by the form', async () => {
+    copyRequest();
+    const { el } = await render(CopyMoveDialog);
+    const target = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    const evt = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    target.dispatchEvent(evt);
+    await flush();
+    expect(evt.defaultPrevented).toBe(true);
+    expect(jobsApi.started.filter((j) => j.spec.kind === 'copy')).toHaveLength(1);
+  });
+
   it('copy: an error stays in the dialog; the count is cancelled when it closes early', async () => {
     copyRequest();
     const { fixture, el } = await render(CopyMoveDialog);
@@ -266,6 +277,101 @@ describe('operation dialogs', () => {
     expect(buttons[0].hasAttribute('data-autofocus')).toBe(true);
     expect(buttons[1].disabled).toBe(true);
     expect(buttons[2].disabled).toBe(true);
+  });
+
+  describe('delete (057): keys', () => {
+    function press(
+      r: { fixture: { detectChanges(): void } },
+      target: Element,
+      init: KeyboardEventInit,
+    ) {
+      const evt = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      target.dispatchEvent(evt);
+      r.fixture.detectChanges();
+      return evt;
+    }
+    const enter = { key: 'Enter', code: 'Enter' };
+    const modShiftD = { key: 'D', code: 'KeyD', ctrlKey: true, shiftKey: true };
+
+    it('Marc’s case: Enter = move to trash, Esc = cancel, Mod+D does nothing', async () => {
+      ops.del.set({
+        mode: 'trash',
+        side: 'left',
+        sourceDir: '/src',
+        entries: [a, sub],
+        dangers: [],
+      });
+      TestBed.inject(DialogService).show('delete');
+      const r = await render(DeleteDialog);
+      const dialog = r.el.querySelector('[role="dialog"]')!;
+      press(r, dialog, { key: 'd', code: 'KeyD', ctrlKey: true }); // without Shift: nothing
+      expect(jobsApi.started.filter((j) => j.spec.kind === 'delete')).toHaveLength(0);
+      const forever = r.el.querySelector('[data-testid="delete-permanent"]')!;
+      expect(forever.getAttribute('aria-keyshortcuts')).toBe('Control+Shift+D');
+      expect(forever.getAttribute('title')).toBe('Shortcut: Ctrl+Shift+D');
+      press(r, dialog, enter);
+      await flush();
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'trash' });
+    });
+
+    it('Marc’s case: Mod+Shift+D deletes permanently', async () => {
+      ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
+      TestBed.inject(DialogService).show('delete');
+      const r = await render(DeleteDialog);
+      press(r, r.el.querySelector('[role="dialog"]')!, modShiftD);
+      await flush();
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
+    });
+
+    it('Esc cancels without deleting', async () => {
+      ops.del.set({ mode: 'trash', side: 'left', sourceDir: '/src', entries: [a], dangers: [] });
+      TestBed.inject(DialogService).show('delete');
+      const r = await render(DeleteDialog);
+      press(r, r.el.querySelector('[role="dialog"]')!, { key: 'Escape', code: 'Escape' });
+      await flush();
+      expect(ops.del()).toBeNull();
+      expect(jobsApi.started.filter((j) => j.spec.kind === 'delete')).toHaveLength(0);
+    });
+
+    it('cancelFirst: Enter never deletes permanently, the explicit key does', async () => {
+      ops.del.set({
+        mode: 'permanent',
+        side: 'left',
+        sourceDir: '/src',
+        entries: [a],
+        dangers: [],
+      });
+      TestBed.inject(DialogService).show('delete');
+      const r = await render(DeleteDialog);
+      const dialog = r.el.querySelector('[role="alertdialog"]')!;
+      press(r, dialog, enter);
+      await flush();
+      expect(jobsApi.started.filter((j) => j.spec.kind === 'delete')).toHaveLength(0);
+      press(r, dialog, modShiftD);
+      await flush();
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'permanent' });
+    });
+
+    it('cancelFirst: a dangerous path – Enter on the ticked checkbox does not delete', async () => {
+      ops.del.set({
+        mode: 'trash',
+        side: 'left',
+        sourceDir: '/',
+        entries: [a],
+        dangers: [{ path: '/src/a.txt', danger: 'home' }],
+      });
+      TestBed.inject(DialogService).show('delete');
+      const r = await render(DeleteDialog);
+      const check = r.el.querySelector<HTMLInputElement>('.danger-box input[type="checkbox"]')!;
+      check.click();
+      r.fixture.detectChanges();
+      press(r, check, enter);
+      await flush();
+      expect(jobsApi.started.filter((j) => j.spec.kind === 'delete')).toHaveLength(0);
+      press(r, check, { key: 'T', code: 'KeyT', ctrlKey: true, shiftKey: true });
+      await flush();
+      expect(jobsApi.started.at(-1)!.spec).toMatchObject({ kind: 'delete', mode: 'trash' });
+    });
   });
 
   it('delete (057): the trash hint speaks of one entry or of several, in en and de', async () => {

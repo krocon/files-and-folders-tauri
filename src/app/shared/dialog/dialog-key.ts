@@ -129,6 +129,8 @@ export function badgeKeysFor(role: DialogKeyRole, platform: Platform): string {
 })
 export class DialogKey {
   readonly fnfDialogKey = input<DialogKeySpec>(null);
+  /** More `aria-keyshortcuts` of the button that change (the conflict dialog's Alt letters). */
+  readonly fnfDialogKeyExtra = input<string | null>(null);
   readonly el = inject<ElementRef<HTMLButtonElement>>(ElementRef).nativeElement;
   private readonly modal = inject(Modal, { optional: true });
   private readonly platform = inject(DIALOG_PLATFORM);
@@ -141,7 +143,7 @@ export class DialogKey {
   protected readonly ariaKeys = computed(() => {
     const r = this.role();
     const keys = r ? ariaKeysFor(r, this.platform) : null;
-    return [keys, this.ownAria].filter(Boolean).join(' ') || null;
+    return [keys, this.ownAria, this.fnfDialogKeyExtra()].filter(Boolean).join(' ') || null;
   });
 
   protected readonly tooltip = computed(() => {
