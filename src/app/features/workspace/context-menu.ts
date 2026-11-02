@@ -31,6 +31,13 @@ export interface MenuItem {
   readonly hint?: string;
   /** Entries of a submenu (→ / Enter opens it, ← / Esc closes it). */
   readonly children?: readonly MenuItem[];
+  /**
+   * Font Awesome 4.5 icon in front of the label, without `fa-` (051), e.g. `'home'`. When one
+   * entry of a menu has one, every entry gets the icon column, so the labels stay aligned.
+   */
+  readonly icon?: string;
+  /** What the icon says beyond the label, for screen readers (e.g. "connected"). */
+  readonly iconLabel?: string;
 }
 
 /**
@@ -86,6 +93,13 @@ export interface MenuItem {
           (mouseenter)="onHover($event, item)"
         >
           <span class="label">
+            @if (withIcons()) {
+              <span class="icon" aria-hidden="true">
+                @if (item.icon) {
+                  <i [class]="'fa fa-fw fa-' + item.icon"></i>
+                }
+              </span>
+            }
             @if (item.checked !== undefined) {
               <span class="radio" aria-hidden="true">
                 @if (item.checked) {
@@ -93,8 +107,11 @@ export interface MenuItem {
                 }
               </span>
             }
-            {{ item.label }}</span
-          >
+            {{ item.label }}
+            @if (item.iconLabel) {
+              <span class="sr-only">, {{ item.iconLabel }}</span>
+            }
+          </span>
           @if (item.disabled && item.hint) {
             <span class="sr-only" [id]="hintId(item)">{{ item.hint }}</span>
           }
@@ -173,6 +190,8 @@ export class ContextMenu {
   } | null>(null);
 
   /** Items split at headings into groups (`role="group"` with the heading as label). */
+  /** An icon column for all entries as soon as one has an icon (051). */
+  protected readonly withIcons = computed(() => this.items().some((i) => !!i.icon));
   protected readonly groups = computed(() => {
     const groups: { heading: string | null; items: MenuItem[] }[] = [];
     for (const item of this.items()) {

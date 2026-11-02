@@ -116,7 +116,7 @@ describe('TabBar', () => {
     };
     let items = openMenu(0);
     expect(el.querySelector('[role="menu"]')).not.toBeNull();
-    expect(items.map((i) => i.textContent?.trim())).toEqual([
+    expect(items.map((i) => i.querySelector('.label')?.textContent?.trim())).toEqual([
       'Reload',
       'Close tab',
       'Move tab to right panel',
@@ -147,6 +147,65 @@ describe('TabBar', () => {
     fixture.detectChanges();
     expect(ws.panels().left.tabs.map((t) => t.path)).toEqual(['/Users/jörg/Mein Ordner', null]);
     expect(ws.panels().right.tabs.map((t) => t.path)).toEqual(['/r', '/a', '/a']);
+  });
+
+  it('052: icons in the tab menu, the arrow points to the other side, history with folders', async () => {
+    const { fixture, el, tabs } = await render();
+    ws.updateTab(ws.panels().left.tabs[0].id, { history: ['/old/one'] });
+    fixture.detectChanges();
+    tabs()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 5 }));
+    fixture.detectChanges();
+    const icons = () =>
+      [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+        (i) =>
+          [...(i.querySelector('.icon i')?.classList ?? [])]
+            .filter((c) => c !== 'fa' && c !== 'fa-fw')
+            .map((c) => c.slice(3))[0] ?? null,
+      );
+    expect(icons()).toEqual([
+      'refresh',
+      'times',
+      'arrow-right',
+      'clone',
+      'angle-left',
+      'angle-right',
+      'history',
+    ]);
+    expect(el.querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true');
+    // the keymap's shortcuts as badges (reload, close …)
+    expect(el.querySelector('[data-id="reload"] kbd')?.textContent).toBeTruthy();
+    el.querySelector<HTMLElement>('[data-id="history"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-id="hist:0"] .icon i')?.className).toContain('fa-folder-o');
+  });
+
+  it('051: folder menu with icons, recent folders sorted, a click opens exactly that folder', async () => {
+    const { fixture, el } = await render();
+    ws.toggleFavorite('/fav/Zeta');
+    ws.toggleFavorite('/fav/alpha');
+    for (const p of ['/x/b', '/x/C', '/x/a10', '/x/a9']) {
+      ws.addRecent(p);
+    }
+    fixture.detectChanges();
+    ws.requestFolderMenu('left');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const items = () => [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const labels = (prefix: string) =>
+      items()
+        .filter((i) => i.dataset['id']?.startsWith(prefix))
+        .map((i) => i.querySelector('.label')?.textContent?.trim());
+    expect(labels('fav:')).toEqual(['/fav/alpha', '/fav/Zeta']);
+    expect(labels('recent:')).toEqual(['/x/a9', '/x/a10', '/x/b', '/x/C']);
+    expect(el.querySelector('[data-id="home"] .icon i')?.className).toContain('fa-home');
+    expect(el.querySelector('[data-id="fav:/fav/Zeta"] .icon i')?.className).toContain('fa-star');
+    expect(el.querySelector('[data-id="recent:/x/b"] .icon i')?.className).toContain('fa-history');
+    // every entry has the icon column, so the labels stand aligned
+    expect(items().every((i) => i.querySelector('.icon'))).toBe(true);
+    el.querySelector<HTMLElement>('[data-id="recent:/x/b"]')!.click();
+    fixture.detectChanges();
+    expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/x/b' });
   });
 
   it('Shift+click closes a tab (old version, 018 J13)', async () => {

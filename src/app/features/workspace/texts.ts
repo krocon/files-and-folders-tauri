@@ -91,6 +91,8 @@ export const TEXTS_EN = {
   menuHome: 'Home',
   menuFavorites: 'Favourites',
   menuRecent: 'Recent',
+  menuConnected: 'connected',
+  menuUnreachable: 'not reachable',
   menuEmpty: '(none)',
   emptyFolder: 'This folder is empty.',
   noHits: 'No hits (yet).',

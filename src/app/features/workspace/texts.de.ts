@@ -85,6 +85,8 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   menuHome: 'Home',
   menuFavorites: 'Favoriten',
   menuRecent: 'Zuletzt',
+  menuConnected: 'verbunden',
+  menuUnreachable: 'nicht erreichbar',
   menuEmpty: '(keine)',
   emptyFolder: 'Dieser Ordner ist leer.',
   noHits: 'Keine Treffer (bisher).',

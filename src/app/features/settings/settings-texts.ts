@@ -72,6 +72,11 @@ export const SETTINGS_EN = {
       help: 'Windows and Linux; without it the menu bar shows up while you use it (Alt+M).',
       keywords: 'menu bar',
     },
+    'folderMenu.recentOrder': {
+      label: 'Recent folders in the folder menu ▾',
+      help: 'Alphabetical (folders of the same place stand together) or the most recent first.',
+      keywords: 'folder menu recent history order sort',
+    },
     'behavior.deleteToTrash': {
       label: 'Delete moves to the trash',
       help: 'Off: Delete (F8) deletes permanently – always with a question.',
@@ -210,6 +215,8 @@ export const SETTINGS_EN = {
     logical: 'Size',
     sunburst: 'Rings',
     treemap: 'Tiles',
+    alpha: 'Alphabetical',
+    recent: 'Most recent first',
   } as Readonly<Record<string, string>>,
   on: 'On',
   clearRecent: 'Clear',
@@ -387,6 +394,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Windows und Linux; ohne sie erscheint die Menüleiste, während Sie sie benutzen (Alt+M).',
       keywords: 'menü leiste',
     },
+    'folderMenu.recentOrder': {
+      label: 'Zuletzt besuchte Ordner im Ordnermenü ▾',
+      help: 'Alphabetisch (Ordner am selben Ort stehen beieinander) oder die zuletzt besuchten zuerst.',
+      keywords: 'ordnermenü zuletzt verlauf reihenfolge sortieren',
+    },
     'behavior.deleteToTrash': {
       label: 'Löschen verschiebt in den Papierkorb',
       help: 'Aus: Löschen (F8) löscht endgültig – immer mit Rückfrage.',
@@ -526,6 +538,8 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     logical: 'Größe',
     sunburst: 'Ringe',
     treemap: 'Kacheln',
+    alpha: 'Alphabetisch',
+    recent: 'Zuletzt besuchte zuerst',
   },
   on: 'An',
   clearRecent: 'Leeren',

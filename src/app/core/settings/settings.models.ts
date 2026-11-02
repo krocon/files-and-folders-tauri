@@ -14,6 +14,7 @@ export interface SettingsValues {
   'view.hideExtension': boolean;
   'view.showHidden': boolean;
   'view.menuBar': boolean;
+  'folderMenu.recentOrder': 'alpha' | 'recent';
   'behavior.deleteToTrash': boolean;
   'behavior.confirmTrash': boolean;
   'behavior.doubleClick': 'open' | 'view';

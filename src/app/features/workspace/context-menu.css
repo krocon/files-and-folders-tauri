@@ -50,11 +50,23 @@
   text-overflow: ellipsis;
 }
 
+/* icon column (051): fixed width, text colour of the entry (also hover/focus and dimmed) */
+.icon {
+  display: inline-block;
+  width: 1.3em;
+  margin-right: var(--spacing-2);
+  text-align: center;
+}
+
 kbd,
 .arrow {
-  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   opacity: 0.8;
+}
+
+/* not on the submenu arrow: it is a Font Awesome glyph (showed as a box, seen in 052) */
+kbd {
+  font-family: var(--font-mono);
 }
 
 .separator {

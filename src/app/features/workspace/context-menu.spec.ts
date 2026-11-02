@@ -135,4 +135,25 @@ describe('ContextMenu', () => {
     await key('Tab');
     expect(host.closed).toEqual(['tab']);
   });
+
+  it('051: an icon column only when an entry has an icon; labels and typeahead unchanged', async () => {
+    const { fixture, el, host, key } = await render();
+    expect(el.querySelector('.icon')).toBeNull();
+    host.items.set([
+      { id: 'home', label: 'Home', icon: 'home' },
+      { id: 'srv', label: 'NAS', icon: 'plug', iconLabel: 'connected' },
+      { id: 'plain', label: 'Plain' },
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const items = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.map((i) => !!i.querySelector('.icon'))).toEqual([true, true, true]);
+    expect(items[2].querySelector('.icon i')).toBeNull();
+    expect(items[0].querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(items[1].querySelector('.sr-only')?.textContent).toBe(', connected');
+    expect(items[0].querySelector('.label')?.textContent?.trim()).toBe('Home');
+    items[0].focus();
+    await key('p');
+    expect(document.activeElement).toBe(items[2]);
+  });
 });

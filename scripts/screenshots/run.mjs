@@ -209,7 +209,7 @@ async function runStep(page, step) {
   else if (step.key) await page.keyboard.press(step.key);
   else if (step.type) await page.keyboard.type(step.type, { delay: 30 });
   else if (step.wait) await page.waitForTimeout(step.wait);
-  else if (step.click) await page.click(step.click);
+  else if (step.click) await page.click(step.click, step.button ? { button: step.button } : {});
   else if (step.hover) await page.hover(step.hover, step.position ? { position: step.position } : {});
   // a measurement for the report (049): evaluates the expression in the page and prints the result
   else if (step.log) console.log(`  ${step.log} → ${JSON.stringify(await page.evaluate(step.log))}`);

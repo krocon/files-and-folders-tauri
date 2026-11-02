@@ -63,9 +63,12 @@ zwei Zeilen über die volle Breite.
 Von links nach rechts:
 1. **Menü-Button ▾**: Laufwerke/Volumes, Favoriten, zuletzt besuchte Ordner (je Gruppe getrennt, ohne Dubletten).
    `Alt+1`/`Alt+2` aktivieren die Seite und öffnen dieses Menü (mr-Verhalten).
+   Seit 051 mit Icon je Eintrag (Home, Laufwerksart, Server – verbunden = Stecker –, Stern, Uhr); Favoriten und
+   „Zuletzt“ alphabetisch (Einstellung „Zuletzt besuchte Ordner“: alphabetisch / zuletzt zuerst).
 2. **Tabs** mit dem letzten Pfadsegment als Titel (Such-Tabs mit Lupe). Rechtsklick: Neu laden, Schließen, In anderes
    Panel verschieben, In anderes Panel klonen, Nach links/rechts verschieben. Langer Druck oder eigener Eintrag:
    Verlauf des Tabs. Doppelklick: neu laden.
+   Das Tab-Menü zeigt Icons (Pfeil in Richtung der anderen Seite) und die Kürzel der Tab-Aktionen (052).
 3. **+ / −**: Tab klonen / aktuellen Tab schließen (letzter bleibt).
 4. Rechtsbündig: **versteckte Dateien** ein/aus (👁), **Filter** ein/aus (⏷) und das Filter-Eingabefeld (nur sichtbar,
    wenn aktiv). Beide Einstellungen gelten **je Tab**.
