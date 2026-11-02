@@ -13,12 +13,10 @@ import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
 import { badgeFor } from '../../../core/actions/shortcut';
 import { isFinished } from '../../../core/jobs/jobs.models';
 import { JobsStore } from '../../../core/jobs/jobs.store';
-import { ThemeService } from '../../../core/theme/theme.service';
 import { ActionsMenu } from '../../actions/actions-menu';
-import { THEME_TEXTS } from '../../themes/theme-texts';
 import { resolveMenu, STARTER_POPUP } from '../../menus/menu-model';
 import { MENU_TEXTS } from '../../menus/menu-texts';
-import { ContextMenu, MenuCloseReason, MenuItem } from '../context-menu';
+import { ContextMenu, MenuCloseReason } from '../context-menu';
 import { TEXTS } from '../texts';
 import { modifierSet } from './button-config';
 import { ButtonConfigStore } from '../../config/button-config.store';
@@ -92,10 +90,9 @@ interface ToolButton {
           [attr.aria-disabled]="t.ready ? null : 'true'"
           [attr.aria-label]="t.label"
           [attr.title]="t.title"
-          [attr.aria-haspopup]="t.id === 'OPEN_THEMES_DLG' ? 'menu' : null"
-          [attr.aria-expanded]="t.id === 'OPEN_THEMES_DLG' ? themeMenu() !== null : null"
-          [class.theme-toggle]="t.id === 'OPEN_THEMES_DLG'"
-          (click)="t.id === 'OPEN_THEMES_DLG' ? openThemeMenu($event) : run(t.id, t.ready)"
+          [attr.aria-haspopup]="t.id === 'OPEN_THEME_PICKER' ? 'dialog' : null"
+          [class.theme-toggle]="t.id === 'OPEN_THEME_PICKER'"
+          (click)="run(t.id, t.ready)"
           [class.attention]="t.status?.waiting"
         >
           <i [class]="t.icon" [class.fa-spin]="t.status?.spinning" aria-hidden="true"></i>
@@ -127,17 +124,6 @@ interface ToolButton {
         (closed)="onStartMenuClosed($event)"
       />
     }
-    @if (themeMenu(); as pos) {
-      <app-context-menu
-        [items]="themeItems()"
-        [x]="pos.x"
-        [y]="pos.y"
-        [label]="themeTexts.menuLabel"
-        [anchor]="pos.anchor"
-        (chosen)="onThemeChosen($event)"
-        (closed)="onThemeMenuClosed($event)"
-      />
-    }
   `,
   styleUrl: './button-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -147,7 +133,6 @@ export class ButtonBar {
   private readonly actions = inject(ActionService);
   private readonly keys = inject(KeyboardDispatcher);
   private readonly jobs = inject(JobsStore);
-  private readonly theme = inject(ThemeService);
   private readonly config = inject(ButtonConfigStore);
   protected readonly menuOpen = signal(false);
 
@@ -188,27 +173,9 @@ export class ButtonBar {
     return k ? `${name} (${k})` : name;
   }
 
-  /** 🎨 menu (mr: L&F <name>, own schemes first): position or closed. */
-  protected readonly themeMenu = signal<{ x: number; y: number; anchor: Element } | null>(null);
-  protected readonly themeTexts = THEME_TEXTS;
-
-  protected readonly themeItems = computed<MenuItem[]>(() => {
-    const system = this.theme.selection().mode === 'system';
-    const active = this.theme.active().id;
-    return [
-      { id: 'system', label: THEME_TEXTS.menuFollow, checked: system },
-      ...this.theme.themes().map((t) => ({
-        id: `theme:${t.id}`,
-        label: t.name,
-        checked: !system && t.id === active,
-      })),
-      { id: 'edit', label: THEME_TEXTS.menuEdit },
-    ];
-  });
-
   private readonly toolDefs: readonly Omit<ToolButton, 'label'>[] = [
     { id: 'OPEN_TASK_DLG', icon: 'fa fa-cog', showLabel: true },
-    { id: 'OPEN_THEMES_DLG', icon: 'fa fa-paint-brush', showLabel: false },
+    { id: 'OPEN_THEME_PICKER', icon: 'fa fa-paint-brush', showLabel: false },
     { id: 'OPEN_SHORTCUT_DLG', icon: 'fa fa-keyboard-o', showLabel: false },
   ];
 
@@ -297,40 +264,6 @@ export class ButtonBar {
     if (reason !== 'outside') {
       setTimeout(() => document.querySelector<HTMLElement>('.start-toggle')?.focus());
     }
-  }
-
-  protected openThemeMenu(evt: MouseEvent): void {
-    if (this.themeMenu()) {
-      this.themeMenu.set(null);
-      return;
-    }
-    const anchor = evt.currentTarget as HTMLElement;
-    const rect = anchor.getBoundingClientRect();
-    this.themeMenu.set({ x: rect.left, y: rect.top, anchor });
-  }
-
-  protected onThemeChosen(id: string): void {
-    this.themeMenu.set(null);
-    if (id === 'system') {
-      void this.theme.followSystem();
-    } else if (id === 'edit') {
-      void this.actions.run('OPEN_THEMES_DLG');
-      return;
-    } else if (id.startsWith('theme:')) {
-      void this.theme.select(id.slice('theme:'.length));
-    }
-    this.focusThemeToggle();
-  }
-
-  protected onThemeMenuClosed(reason: MenuCloseReason): void {
-    this.themeMenu.set(null);
-    if (reason !== 'outside') {
-      this.focusThemeToggle();
-    }
-  }
-
-  private focusThemeToggle(): void {
-    setTimeout(() => document.querySelector<HTMLElement>('.theme-toggle')?.focus());
   }
 
   protected onMenuClosed(reason: 'key' | 'outside' | 'chosen'): void {

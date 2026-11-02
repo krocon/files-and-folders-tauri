@@ -146,6 +146,16 @@
       ]
     },
     {
+      "name": "theme-picker",
+      "steps": [
+        { "action": "OPEN_THEME_PICKER" },
+        { "wait": 300 },
+        { "key": "ArrowRight" },
+        { "key": "ArrowRight" },
+        { "wait": 200 }
+      ]
+    },
+    {
       "name": "copy-dialog",
       "steps": [
         {

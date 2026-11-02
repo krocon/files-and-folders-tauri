@@ -9,6 +9,8 @@ export type NativeMenuNode =
       readonly label: string;
       readonly accelerator: string | null;
       readonly enabled: boolean;
+      /** Set: a check item (✓ when true) – the colour schemes, design 070. */
+      readonly checked?: boolean;
     }
   | { readonly kind: 'submenu'; readonly label: string; readonly items: readonly NativeMenuNode[] }
   | { readonly kind: 'separator' }

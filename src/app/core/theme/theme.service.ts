@@ -22,6 +22,12 @@ import { DEFAULT_SELECTION, Theme, ThemeSelection, ThemesFile } from './theme.mo
 import { ACTION_TEXTS } from '../actions/action-texts';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/**
+ * Label of „Follow the system“ in the menu bar; the themes feature sets the translated getter
+ * (core must not import feature texts).
+ */
+export const THEME_CHOICE_LABELS = { follow: (): string => 'Follow the system' };
 /** Below this luminance white text beats black text (WCAG): a dark frame. */
 const DARK_FRAME_LUMINANCE = 0.179;
 
@@ -104,6 +110,28 @@ export class ThemeService {
       inject(DestroyRef).onDestroy(() => media.removeEventListener?.('change', onChange));
     }
     effect(() => this.apply(this.applied()));
+    // the schemes as radio entries of the menu bar (design 070): follow the system, then all
+    effect(() => {
+      const system = this.selection().mode === 'system';
+      const active = this.activeId();
+      this.actions.themeChoices.set([
+        {
+          id: 'theme:system',
+          // a getter: the menu reads it in the language of the moment
+          get label() {
+            return THEME_CHOICE_LABELS.follow();
+          },
+          checked: system,
+          run: () => this.followSystem(),
+        },
+        ...this.themes().map((t) => ({
+          id: `theme:${t.id}`,
+          label: t.name,
+          checked: !system && t.id === active,
+          run: () => this.select(t.id),
+        })),
+      ]);
+    });
   }
 
   find(id: string): Theme | undefined {

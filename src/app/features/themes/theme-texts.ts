@@ -53,6 +53,22 @@ export const THEME_EN = {
   menuEdit: 'Edit colour schemes…',
   menuFollow: 'Follow the system',
   paletteEntry: (name: string) => `Colour scheme: ${name}`,
+  // picker (design 070)
+  pickerTitle: 'Colour scheme',
+  pickerOpen: 'Colour scheme…',
+  pickerFilter: 'Filter',
+  pickerFilterPlaceholder: 'Name, light, dark …',
+  pickerList: 'Colour schemes',
+  pickerHint: 'Arrow keys try a scheme, Enter keeps it, Esc goes back.',
+  pickerCount: (n: number) => (n === 1 ? '1 scheme' : `${n} schemes`),
+  pickerNone: 'No scheme matches the filter.',
+  groupOwn: 'Own schemes',
+  groupBuiltIn: 'Built-in',
+  groupClassic: 'Designs of the old version',
+  wordLight: 'light',
+  wordDark: 'dark',
+  ok: 'OK',
+  cancel: 'Cancel',
 } as const;
 
 export const THEME_TEXTS = translatable('themes', THEME_EN, { de: THEME_DE });

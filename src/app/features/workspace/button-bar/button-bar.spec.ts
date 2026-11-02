@@ -2,6 +2,7 @@ import { JobsApi } from '../../../core/jobs/jobs-api';
 import { JobsStore } from '../../../core/jobs/jobs.store';
 import { FakeJobsApi } from '../../../../testing/fake-jobs-api';
 import { TestBed } from '@angular/core/testing';
+import { DialogService } from '../../../shared/dialog/dialog.service';
 import { ActionService } from '../../../core/actions/action.service';
 import { KeymapApi } from '../../../core/actions/keymap-api';
 import { ThemeApi } from '../../../core/theme/theme-api';
@@ -9,7 +10,6 @@ import { KeyboardDispatcher } from '../../../core/actions/keyboard-dispatcher';
 import { NO_MODIFIERS } from '../../../core/actions/shortcut';
 import { FakeKeymapApi } from '../../../../testing/fake-keymap-api';
 import { FakeThemeApi } from '../../../../testing/fake-theme-api';
-import { ThemeService } from '../../../core/theme/theme.service';
 import { ButtonBar } from './button-bar';
 
 describe('ButtonBar', () => {
@@ -71,67 +71,16 @@ describe('ButtonBar', () => {
     expect(copies).toBe(1);
   });
 
-  it('opens the colour scheme menu (radio items, own first) and selects a scheme', async () => {
-    const { fixture, el } = await render();
-    const theme = TestBed.inject(ThemeService);
-    await theme.saveTheme({ name: 'Mine', dark: false, tokens: {} });
-    await theme.followSystem();
+  it('🎨 opens the colour scheme picker (design 070)', async () => {
+    const { fixture, el, actions } = await render();
+    const dialogs = TestBed.inject(DialogService);
+    actions.register({ OPEN_THEME_PICKER: { run: () => dialogs.show('theme-picker') } });
     fixture.detectChanges();
     const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
-    expect(toggle.getAttribute('aria-haspopup')).toBe('menu');
+    expect(toggle.getAttribute('aria-haspopup')).toBe('dialog');
     toggle.click();
-    fixture.detectChanges();
-    const items = [
-      ...el.querySelectorAll<HTMLElement>('[role="menuitemradio"], [role="menuitem"]'),
-    ];
-    expect(items.map((i) => i.textContent?.replace('✓', '').trim())).toEqual([
-      'Follow the system',
-      'Mine',
-      'Light',
-      'Paper',
-      'Bitbucket',
-      'Cypress',
-      'Blackboard',
-      'Coffee',
-      'Combat',
-      'Norton',
-      'Modern light',
-      'Modern dark',
-      'Crimson',
-      'One Dark',
-      'One Dark Vivid',
-      'True Dark',
-      'True Black',
-      'True Light',
-      'Matrix',
-      'Solarized Light',
-      'Mystico – C64',
-      'Bold (Rainglow)',
-      'Earthsong (Rainglow)',
-      'Legacy (Rainglow)',
-      'Heroku (Rainglow)',
-      'Piggy (Rainglow)',
-      'Edit colour schemes…',
-    ]);
-    expect(items[0].getAttribute('aria-checked')).toBe('true');
-    items[11].click();
-    fixture.detectChanges();
-    expect(theme.active().id).toBe('dark');
-    expect(theme.selection().mode).toBe('fixed');
-    expect(el.querySelector('[role="menu"]')).toBeNull();
-  });
-
-  it('closes the colour scheme menu with a second click on its button (review 013 #10)', async () => {
-    const { fixture, el } = await render();
-    const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
-    toggle.click();
-    fixture.detectChanges();
-    expect(el.querySelector('[role="menu"]')).not.toBeNull();
-    toggle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-    toggle.click();
-    fixture.detectChanges();
-    expect(el.querySelector('[role="menu"]')).toBeNull();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await new Promise((r) => setTimeout(r));
+    expect(dialogs.open()).toBe('theme-picker');
   });
 
   it('Start ▴ left of Actions: badge Alt+S, starter entries above the button (design 032)', async () => {

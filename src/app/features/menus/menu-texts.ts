@@ -10,6 +10,7 @@ export const MENU_EN = {
   commands: 'Commands',
   tools: 'Configuration',
   checksums: 'Checksums',
+  colourScheme: 'Colour scheme',
   start: 'Start',
   window: 'Window',
   help: 'Help',

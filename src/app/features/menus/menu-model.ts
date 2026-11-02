@@ -1,5 +1,10 @@
 import { ACTIONS, ActionId } from '../../core/actions/action-catalog';
-import { ActionState, ExtraAction, ExtraMenuNode } from '../../core/actions/action.service';
+import {
+  ActionState,
+  ExtraAction,
+  ExtraMenuNode,
+  MenuChoice,
+} from '../../core/actions/action.service';
 import { Platform } from '../../core/actions/platform';
 import { canonicalShortcut } from '../../core/actions/shortcut';
 import {
@@ -23,6 +28,7 @@ export type MenuDef =
   | '-'
   | '@tools'
   | '@starter'
+  | '@themes'
   | { readonly sub: string; readonly items: readonly MenuDef[] }
   | { readonly native: PredefinedItem }
   | { readonly heading: string }
@@ -47,6 +53,8 @@ export interface MenuSource {
   extraReady(id: string): boolean;
   /** The starter menu (design 032); absent = empty. */
   starterTree?(): readonly ExtraMenuNode[];
+  /** The colour schemes as radio entries (design 070); absent = none. */
+  themeChoices?(): readonly MenuChoice[];
 }
 
 /** Extra actions of the tools (`tool:<id>`), not those of the starter menu. */
@@ -207,9 +215,21 @@ export const MENU_BAR: readonly TopMenu[] = [
       'SPLITTER_RESET',
       { when: 'notMacos', items: ['TOGGLE_FULLSCREEN'] },
       '-',
-      'NEXT_THEME',
-      'THEME_FOLLOW_SYSTEM',
-      'OPEN_THEMES_DLG',
+      // the colour schemes by name (design 070), the picker with thumbnails on top
+      {
+        get sub() {
+          return T.colourScheme;
+        },
+        items: [
+          'OPEN_THEME_PICKER',
+          '-',
+          '@themes',
+          '-',
+          'NEXT_THEME',
+          'THEME_FOLLOW_SYSTEM',
+          'OPEN_THEMES_DLG',
+        ],
+      },
       '-',
       'OPEN_ACTIONS_MENU',
     ],
@@ -577,6 +597,10 @@ export function resolveMenu(
       }
     } else if (d === '@starter') {
       items.push(...starterItems(src.starterTree?.() ?? [], src));
+    } else if (d === '@themes') {
+      for (const c of src.themeChoices?.() ?? []) {
+        items.push({ id: c.id, label: c.label, checked: c.checked });
+      }
     } else if (typeof d === 'string') {
       const state = src.state(d);
       items.push({
@@ -680,6 +704,17 @@ export function toNativeSpec(
         }
       } else if (d === '@starter') {
         out.push(...starterNodes(src.starterTree?.() ?? []));
+      } else if (d === '@themes') {
+        for (const c of src.themeChoices?.() ?? []) {
+          out.push({
+            kind: 'item',
+            id: c.id,
+            label: nativeLabel(c.label),
+            accelerator: null,
+            enabled: !blocked,
+            checked: c.checked,
+          });
+        }
       } else if (typeof d === 'string') {
         out.push({
           kind: 'item',
