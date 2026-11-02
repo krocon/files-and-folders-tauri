@@ -150,7 +150,8 @@
       "steps": [
         { "action": "OPEN_THEME_PICKER" },
         { "wait": 300 },
-        { "key": "ArrowRight" },
+        { "type": "one" },
+        { "key": "ArrowDown" },
         { "key": "ArrowRight" },
         { "wait": 200 }
       ]

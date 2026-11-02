@@ -91,7 +91,12 @@ describe('colour scheme picker (design 070)', () => {
     fixture.detectChanges();
     const names = [...el.querySelectorAll('[role="option"] .name')].map((n) => n.textContent);
     expect(names).toHaveLength(5);
-    expect(el.querySelector('.count')!.textContent).toBe('5 schemes');
+    expect(el.querySelector('.count')!.textContent?.trim()).toBe(`5 / ${theme.themes().length}`);
+    // the × empties the filter
+    el.querySelector<HTMLButtonElement>('.clear')!.click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('[role="option"]')).toHaveLength(theme.themes().length + 1);
+    expect(el.querySelector('.clear')).toBeNull();
     input.value = 'nothing-like-this';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
