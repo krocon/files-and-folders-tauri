@@ -217,7 +217,7 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
 - Unicode, Umlaute, Leerzeichen; Pfadlogik ausschließlich über `std::path`.
 - **Farbschemata** (Prompt 013, 019): die acht Designs der alten Version (**Light** – Standard beim ersten Start –,
   Paper, Bitbucket, Cypress, Blackboard, Coffee, Combat, Norton) plus „Modern light/dark“, Crimson und Schemata nach
-  Editor-Themes (One Dark, One Dark Vivid, True Dark/Black/Light, Matrix, Solarized Light, Mystico – C64, Rainglow Bold/Earthsong/Legacy/Heroku; Herkunft: [themes.md](themes.md)); „Follow the system“ (folgt
+  Editor-Themes (One Dark, One Dark Vivid, True Dark/Black/Light, Matrix, Solarized Light, Mystico – C64, Rainglow Bold/Earthsong/Legacy/Heroku/Piggy; Herkunft: [themes.md](themes.md)); „Follow the system“ (folgt
   `prefers-color-scheme` live, Paar Light/Coffee) oder ein festes Schema – über 🎨 in der Button-Leiste, die Befehlspalette
   („Colour scheme: …“) oder `Strg+Alt+Shift+T` / `⌘⌃⌥T` (nächstes Schema). Der Dialog **Colour schemes…** ist ein
   Live-Editor: jede Farbe (Liste, Cursor aktiv/inaktiv, markiert, versteckt, Symlink, Kopf, Tabs, Statuszeile,

@@ -90,7 +90,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 065 ✅ | [065-solarized-light-theme.md](done/065-solarized-light-theme.md) | Neues Farbschema „Solarized Light“ nach dem VS-Code-Theme (MIT, Vorlage in `065-solarized-light/`): Creme `#fdf6e3`, Seitenteile `#eee8d5`, goldene Auswahl `#dfca88`; Kontrast AA (Solarized-Text `#657b83` zu schwach → `#586e75`) | 013, 015, 062–064 | XS–S |
 | 066 ✅ | [066-mystico-c64-theme.md](done/066-mystico-c64-theme.md) | Neues Farbschema „Mystico – C64“: C64-Blau `#3c319c` mit hellblauem Rahmen `#7a70d3`, weiße Schrift, Gelb/Grün/Türkis als Akzente (aus den Screenshots gemessen; N++-XML nur Referenz, GPL-2), Cursor als C64-„Reverse“, Kontrast AA | 013, 015, 062–065 | XS–S |
 | 067 ✅ | [067-rainglow-themes.md](done/067-rainglow-themes.md) | Vier Farbschemata aus Rainglow (Dayle Rees, MIT; Vorlagen in `067-rainglow/`): Bold (türkis), Earthsong (grün), Legacy (blau), Heroku (violett); Signaturfarbe an der Statuszeile, Kontrast AA (weiße Schrift auf den Akzenten oft zu schwach), optional Umrechnungs-Skript für weitere Rainglow-Themes | 013, 015, 062–066 | S |
-| 068    | [068-rainglow-piggy-theme.md](068-rainglow-piggy-theme.md) | Farbschema „Piggy“ (Rainglow, wie 067): rosa-braune Flächen, pinke Statuszeile `#f52e62`; da fast alle Akzente rot sind, Markiert gelb `#e6db74`, Symlink grün, Kontrast AA | 067 | XS |
+| 068 ✅ | [068-rainglow-piggy-theme.md](done/068-rainglow-piggy-theme.md) | Farbschema „Piggy“ (Rainglow, wie 067): rosa-braune Flächen, pinke Statuszeile `#f52e62`; da fast alle Akzente rot sind, Markiert gelb `#e6db74`, Symlink grün, Kontrast AA | 067 | XS |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 

@@ -110,6 +110,7 @@ describe('ButtonBar', () => {
       'Earthsong (Rainglow)',
       'Legacy (Rainglow)',
       'Heroku (Rainglow)',
+      'Piggy (Rainglow)',
       'Edit colour schemes…',
     ]);
     expect(items[0].getAttribute('aria-checked')).toBe('true');

@@ -162,6 +162,7 @@ describe('ThemeService', () => {
       'rainglow-earthsong',
       'rainglow-legacy',
       'rainglow-heroku',
+      'rainglow-piggy',
     ]);
     expect(s.active().id).toBe(id);
     TestBed.tick();
