@@ -170,6 +170,13 @@ describe('starter menu (design 032)', () => {
     ]);
   });
 
+  it('a server folder on the other side is no target folder (034)', async () => {
+    await ws.panel('right')!.store.load('remote://p1/html');
+    left.setCursor('/src/c d.txt');
+    expect(await actions.runExtra('starter:code')).toBe(true);
+    expect(api.runs.at(-1)!.context.targetDir).toBeNull();
+  });
+
   it('runs a program with the cursor file, %S with all marked entries – by id only', async () => {
     left.setCursor('/src/c d.txt');
     expect(await actions.runExtra('starter:code')).toBe(true);

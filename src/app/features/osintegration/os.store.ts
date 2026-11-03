@@ -9,6 +9,7 @@ import {
   clipboardText,
 } from '../../core/os/clipboard';
 import { OsApi } from '../../core/os/os-api';
+import { isRemotePath } from '../../core/remote/remote-path';
 import { ToolContext, ToolInfo } from '../../core/os/os.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionForAction } from '../ops/ops-logic';
@@ -93,13 +94,21 @@ export class OsStore {
   }
 
   context(): ToolContext {
-    // a folder inside an archive is no target for a tool (virtual path, review 016 #7)
-    const other = this.ws.targetDir();
     return {
       files: this.selection().map((e) => e.path),
       dir: this.folder(),
-      targetDir: other,
+      targetDir: this.toolTargetDir(),
     };
+  }
+
+  /**
+   * The other side's folder for `{targetDir}` – none inside an archive (virtual path,
+   * review 016 #7) or on a server (`remote://…`, design 034): Rust refuses both as local
+   * paths, and F4 must still work with a server tab on the other side.
+   */
+  toolTargetDir(): string | null {
+    const other = this.ws.targetDir();
+    return isRemotePath(other) ? null : other;
   }
 
   async runTool(id: string): Promise<void> {
@@ -139,7 +148,7 @@ export class OsStore {
     const n = await this.api.runTool(id, {
       files,
       dir: this.folder(),
-      targetDir: this.ws.targetDir(),
+      targetDir: this.toolTargetDir(),
     });
     this.status.set(OS_TEXTS.toolStarted(tool.label, n));
   }

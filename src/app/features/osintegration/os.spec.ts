@@ -206,6 +206,22 @@ describe('OS integration (design 011)', () => {
     expect(actions.messages().at(-1)).toContain('was not found');
   });
 
+  it('a server folder on the other side is no target folder for a local tool', async () => {
+    osApi.tools = { tools: [tool('edit')], warnings: [], file: null };
+    await os.loadTools();
+    const right = TestBed.inject(WorkspaceStore).panel('right')!.store;
+    await right.load('remote://p1/html');
+    left.setCursor('/src/b.txt');
+    expect(await actions.run('OPEN_EDIT_DLG')).toBe(true);
+    expect(osApi.runs.at(-1)!.context).toEqual({
+      files: ['/src/b.txt'],
+      dir: '/src',
+      targetDir: null,
+    });
+    await os.runToolWith('edit', ['/src/b.txt']);
+    expect(osApi.runs.at(-1)!.context.targetDir).toBeNull();
+  });
+
   it('F4 (default app) asks before running a program, like Enter (review 011 #1)', async () => {
     osApi.tools = { tools: [tool('edit')], warnings: [], file: null };
     await os.loadTools();

@@ -108,7 +108,7 @@ export class StarterStore {
       files: this.os.selection().map((e) => e.path),
       cursor: cursor && !isParentRow(cursor) ? cursor.path : null,
       dir: this.os.folder(),
-      targetDir: this.ws.targetDir(),
+      targetDir: this.os.toolTargetDir(),
     };
   }
 
