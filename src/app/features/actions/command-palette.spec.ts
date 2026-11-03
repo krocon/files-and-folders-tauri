@@ -10,6 +10,8 @@ import { CommandPalette } from './command-palette';
 import { SessionApi } from '../../core/session/session-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { newTab, WorkspaceStore } from '../workspace/workspace.store';
+import { PaletteApi } from '../../core/palette/palette-api';
+import { FakePaletteApi } from '../../../testing/fake-palette-api';
 
 describe('CommandPalette', () => {
   async function render() {
@@ -19,6 +21,8 @@ describe('CommandPalette', () => {
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
         { provide: ThemeApi, useValue: new FakeThemeApi() },
         { provide: SessionApi, useValue: new FakeSessionApi() },
+        // a debounced file query may fire after the test: never the real Tauri channel
+        { provide: PaletteApi, useValue: new FakePaletteApi() },
       ],
     });
     const actions = TestBed.inject(ActionService);
