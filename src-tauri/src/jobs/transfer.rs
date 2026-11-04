@@ -1156,6 +1156,11 @@ fn execute(
         }
         run.rep.progress.bytes_done = before + size;
         if outcome == Outcome::Done {
+            // again now that the file is in place: the progress ticks of the transfer may
+            // have flushed the mark from before, while only the hidden part file was there
+            if let Some(p) = dst.parent() {
+                run.rep.dir_changed(p.display());
+            }
             if moving {
                 if let Err(e) = run.remove_file(&item.src) {
                     run.fail(item.src.display(), e);
@@ -1163,6 +1168,9 @@ fn execute(
                     failed_tops[item.top] = true;
                 } else {
                     run.summary.items_done += 1;
+                    if let Some(p) = item.src.parent() {
+                        run.rep.dir_changed(p.display());
+                    }
                 }
             } else {
                 run.summary.items_done += 1;

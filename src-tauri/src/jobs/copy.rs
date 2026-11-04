@@ -1288,6 +1288,18 @@ fn execute(
             let arrived = if outcome == Outcome::Done { size } else { 0 };
             run.rep.progress.dest_bytes.insert(td, top_before + arrived);
         }
+        if outcome == Outcome::Done {
+            // again now that the file is in place: the progress ticks of a long copy may
+            // have flushed the mark from before, while only the temp file was there
+            if let Some(parent) = dst.parent() {
+                run.rep.dir_changed(path_string(parent));
+            }
+            if run.moving
+                && let Some(parent) = item.src.parent()
+            {
+                run.rep.dir_changed(path_string(parent));
+            }
+        }
         run.rep.progress.items_done += 1;
         run.rep.tick(false);
     }
