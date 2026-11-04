@@ -93,6 +93,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 068 ✅ | [068-rainglow-piggy-theme.md](done/068-rainglow-piggy-theme.md) | Farbschema „Piggy“ (Rainglow, wie 067): rosa-braune Flächen, pinke Statuszeile `#f52e62`; da fast alle Akzente rot sind, Markiert gelb `#e6db74`, Symlink grün, Kontrast AA | 067 | XS |
 | 069 ✅ | [069-tab-wie-panel.md](done/069-tab-wie-panel.md) | Gewählter Tab in der Hintergrundfarbe seiner Liste („aus einem Guss“) für alle neuen Farbschemata 062–068, Regel-Spec, Rainglow-Skript angepasst | 013, 019, 062–068 | XS |
 | 070 ✅ | [070-theme-picker.md](done/070-theme-picker.md) | Farbschema-Auswahl mit Vorschaubildern wie editlicious: 🎨 öffnet einen Picker (Raster aus Token-Thumbs, Live-Vorschau, Enter behält, Esc zurück, Filterfeld im Kopf); Hauptmenü „Colour scheme ▸“ mit allen Namen und ✓ | 013, 014/056, 022, 057, 062–069 | M |
+| 071    | [071-mcp-schnittstelle.md](071-mcp-schnittstelle.md) | MCP-Schnittstelle: Agenten (Claude Desktop/Code) sehen Panels, Tabs und Markierung der laufenden App, nutzen Suche/Palette/Belegung/Dubletten/Vergleich lesend, steuern die Ansicht und **schlagen** Kopieren/Verschieben/Löschen/Umbenennen nur vor – Ausführung erst nach Bestätigung im normalen Dialog; aus per Default, nur lokal, Kopplung sichtbar, keine Shell/Tools/Geheimnisse | 002, 004–007, 009, 010, 015, 016/025, 029/030, 033, 034, 036, 042, 043, 057 | L |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 
