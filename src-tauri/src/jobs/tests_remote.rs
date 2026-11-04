@@ -362,3 +362,43 @@ fn a_failed_download_is_retried_into_its_exact_sub_folder() {
         "emptied server folders are gone"
     );
 }
+
+/// The target folder is reported as changed *after* the file is in place: a "folders
+/// changed" event flushed during the upload (here: the answer to a conflict question
+/// came after the interval) showed the panel only the hidden part file, and nothing
+/// followed for the finished file (bug: the last file of an upload was missing).
+#[test]
+fn the_target_is_reported_after_the_last_file_is_in_place() {
+    let srv = start_ftp(false);
+    fs::create_dir_all(srv.root.path().join("t")).unwrap();
+    fs::write(srv.root.path().join("t/a.txt"), "old").unwrap();
+    let h = Harness::new();
+    let id = connected(RemoteKind::Ftp, srv.port);
+    let d = tempfile::tempdir().unwrap();
+    let src = d.path().join("a.txt");
+    fs::write(&src, "new").unwrap();
+    let job = h.copy_any(&[s(&src)], &r(&id, "/t"), CopyOptions::default());
+    let c = h.conflict(&job);
+    std::thread::sleep(super::report::DIRS_INTERVAL + std::time::Duration::from_millis(100));
+    h.mgr
+        .resolve_conflict(&job, c.conflict_id, Decision::Overwrite, false);
+    assert_eq!(h.finish(&job).state, JobState::Done);
+    assert_eq!(
+        fs::read_to_string(srv.root.path().join("t/a.txt")).unwrap(),
+        "new"
+    );
+    let target = r(&id, "/t");
+    let events = h.events.lock().unwrap();
+    let last_dirs = events
+        .iter()
+        .rposition(|e| matches!(e, JobEvent::DirsChanged { dirs } if dirs.contains(&target)))
+        .expect("target reported");
+    let last_progress = events
+        .iter()
+        .rposition(|e| matches!(e, JobEvent::Progress { .. }))
+        .unwrap();
+    assert!(
+        last_dirs > last_progress,
+        "target reported before the file was in place"
+    );
+}
