@@ -9,7 +9,7 @@
 
 use crate::error::{FsError, FsErrorCode};
 use crate::fs_atomic::{keep_broken_file, write_atomic};
-use crate::{buttons, filetypes, keymap, rename_presets, starter, themes, tools};
+use crate::{buttons, file_actions, filetypes, keymap, rename_presets, starter, themes, tools};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -33,7 +33,7 @@ pub const BUNDLE_FORMAT: &str = "files-and-folders-settings";
 pub const BUNDLE_VERSION: u32 = 1;
 pub const BUNDLE_FILE_STEM: &str = "files-and-folders-settings";
 /// Parts of a bundle (`import_settings` takes a subset).
-pub const PARTS: [&str; 9] = [
+pub const PARTS: [&str; 10] = [
     "settings",
     "keymap",
     "themes",
@@ -42,6 +42,7 @@ pub const PARTS: [&str; 9] = [
     "buttons",
     "fileTypes",
     "starter",
+    "fileActions",
     "connections",
 ];
 
@@ -285,6 +286,7 @@ pub struct ConfigFiles {
     pub buttons: PathBuf,
     pub file_types: PathBuf,
     pub starter: PathBuf,
+    pub file_actions: PathBuf,
     /// Server profiles (design 034) – exported without secrets.
     pub connections: PathBuf,
 }
@@ -300,6 +302,7 @@ impl ConfigFiles {
             "buttons" => &self.buttons,
             "fileTypes" => &self.file_types,
             "starter" => &self.starter,
+            "fileActions" => &self.file_actions,
             "connections" => &self.connections,
             _ => &self.settings,
         }
@@ -315,6 +318,7 @@ impl ConfigFiles {
             buttons: dir.join(buttons::FILE_NAME),
             file_types: dir.join(filetypes::FILE_NAME),
             starter: dir.join(starter::FILE_NAME),
+            file_actions: dir.join(file_actions::FILE_NAME),
             connections: dir.join(crate::remote::profiles::FILE_NAME),
         }
     }
@@ -379,6 +383,16 @@ pub fn bundle(files: &ConfigFiles) -> Value {
         "starter".into(),
         if files.starter.exists() {
             serde_json::to_value(starter::load(&files.starter).value).unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+    );
+    // design 072: the double-click actions, null without a user file
+    out.insert(
+        "fileActions".into(),
+        if files.file_actions.exists() {
+            serde_json::to_value(file_actions::load(&files.file_actions).value)
+                .unwrap_or(Value::Null)
         } else {
             Value::Null
         },
@@ -540,6 +554,12 @@ pub fn import(
                 Ok(items) => starter::save(&files.starter, items).map(|_| true),
                 Err(_) => Ok(false),
             },
+            "fileActions" => {
+                match serde_json::from_value::<Vec<file_actions::FileActionRule>>(value) {
+                    Ok(rules) => file_actions::save(&files.file_actions, rules).map(|_| true),
+                    Err(_) => Ok(false),
+                }
+            }
             "connections" => match crate::remote::profiles::from_import(&value) {
                 Ok(list) => crate::remote::profiles::save(&files.connections, &list).map(|_| true),
                 Err(_) => Ok(false),
@@ -995,6 +1015,7 @@ mod tests {
                 "buttons",
                 "fileTypes",
                 "starter",
+                "fileActions",
                 "connections"
             ]
         );
@@ -1003,6 +1024,30 @@ mod tests {
             Value::Object(load(&dst.settings).settings),
             json!({"view.menuBar": false})
         );
+    }
+
+    /// Design 072: the double-click actions travel with the bundle (null without a user file).
+    #[test]
+    fn the_file_actions_are_exported_and_imported() {
+        let dir = tempdir().unwrap();
+        let src = ConfigFiles::in_dir(&dir.path().join("a"));
+        let dst = ConfigFiles::in_dir(&dir.path().join("b"));
+        fs::create_dir_all(src.settings.parent().unwrap()).unwrap();
+        fs::create_dir_all(dst.settings.parent().unwrap()).unwrap();
+        assert_eq!(bundle(&src)["fileActions"], Value::Null);
+        let rule = file_actions::FileActionRule {
+            id: "a".into(),
+            trigger: file_actions::Trigger::DoubleClick,
+            pattern: "*.js".into(),
+            confirm: false,
+            command: "node %N".into(),
+        };
+        file_actions::save(&src.file_actions, vec![rule.clone()]).unwrap();
+        let b = bundle(&src);
+        assert_eq!(b["fileActions"][0]["command"], "node %N");
+        let report = import(&dst, b.as_object().unwrap(), &["fileActions".into()]).unwrap();
+        assert_eq!(report.imported, ["fileActions"]);
+        assert_eq!(file_actions::load(&dst.file_actions).value, vec![rule]);
     }
 
     /// Design 032: the starter menu travels with the bundle (null without a user file).

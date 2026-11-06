@@ -127,6 +127,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_TOOLS_DLG: 'Mit Tool öffnen…',
   OPEN_STARTER_MENU: 'Startermenü',
   OPEN_STARTER_CONFIG_DLG: 'Startermenü ändern…',
+  OPEN_FILE_ACTIONS_DLG: 'Doppelklick-Aktionen…',
   OPEN_IMPORT_OLD_CONFIG_DLG: 'Aus Files and Folders (alt) importieren…',
   OPEN_TASK_DLG: 'Tasks…',
   OPEN_ABOUT_DLG: 'Über…',

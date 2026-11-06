@@ -4,6 +4,7 @@
 pub mod config;
 pub mod disk_usage;
 pub mod duplicates;
+pub mod file_actions;
 pub mod mr_import;
 pub mod os_drag;
 pub mod palette;
@@ -1034,6 +1035,18 @@ pub(crate) async fn launch_tool<R: Runtime>(
     context: ToolContextInput,
     allow_executable: bool,
 ) -> Result<usize, FsError> {
+    launch_tool_with_env(app, tool, context, allow_executable, Vec::new()).await
+}
+
+/// [`launch_tool`] with extra environment variables for the started process (`PATH` also
+/// decides where a bare program name is found, design 072).
+pub(crate) async fn launch_tool_with_env<R: Runtime>(
+    app: &AppHandle<R>,
+    tool: crate::tools::Tool,
+    context: ToolContextInput,
+    allow_executable: bool,
+    env: Vec<(String, String)>,
+) -> Result<usize, FsError> {
     let app = app.clone();
     if context.files.len() > crate::tools::MAX_FILE_LIMIT as usize {
         return Err(FsError::new(
@@ -1080,7 +1093,9 @@ pub(crate) async fn launch_tool<R: Runtime>(
             }
         }
         for inv in &plan {
-            crate::tools::spawn_detached(crate::tools::command(inv), &inv.program)?;
+            let mut command = crate::tools::command(inv);
+            command.envs(env.iter().map(|(k, v)| (k, v)));
+            crate::tools::spawn_detached(command, &inv.program)?;
         }
         Ok(plan.len())
     })
@@ -1323,6 +1338,12 @@ pub(crate) fn unblock_imported<R: Runtime>(app: &AppHandle<R>, imported: &[Strin
                 unblock(&state.write_blocked);
                 // the next run reads the imported file
                 *state.items.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            }
+            "fileActions" => {
+                let state = app.state::<file_actions::FileActionsState>();
+                unblock(&state.write_blocked);
+                // the next run reads the imported file
+                *state.rules.lock().unwrap_or_else(|e| e.into_inner()) = None;
             }
             // design 034: the imported profiles replace the old ones – their connections close
             "connections" => {
@@ -1643,7 +1664,7 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 11] = [
+    const SOURCES: [(&str, &str); 12] = [
         (
             "commands/duplicates.rs",
             include_str!("commands/duplicates.rs"),
@@ -1659,6 +1680,10 @@ mod command_rules {
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
         ("commands/starter.rs", include_str!("commands/starter.rs")),
+        (
+            "commands/file_actions.rs",
+            include_str!("commands/file_actions.rs"),
+        ),
         ("commands/remote.rs", include_str!("commands/remote.rs")),
         (
             "commands/mr_import.rs",

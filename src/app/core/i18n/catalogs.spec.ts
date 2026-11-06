@@ -35,6 +35,7 @@ import '../../features/search/search-texts';
 import '../../features/seriesgroup/series-texts';
 import '../../features/settings/settings-texts';
 import '../../features/shell/shell-texts';
+import '../../features/fileactions/file-actions-texts';
 import '../../features/starter/starter-texts';
 import '../../features/themes/theme-texts';
 import '../../features/workspace/texts';

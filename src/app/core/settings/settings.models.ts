@@ -126,6 +126,7 @@ export type SettingsPart =
   | 'buttons'
   | 'fileTypes'
   | 'starter'
+  | 'fileActions'
   | 'connections';
 export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'settings',
@@ -136,6 +137,7 @@ export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'buttons',
   'fileTypes',
   'starter',
+  'fileActions',
   'connections',
 ];
 

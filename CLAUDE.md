@@ -53,7 +53,7 @@
   Speicherbelegung als eigener Tab `usage-chart:<scanId>`), 049–060 (Header-Höhe `--panel-header-height`, `Alt+A`,
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
-  Ergebnis-Tabs) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
+  Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
   Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
@@ -160,6 +160,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/diskusage/    DiskUsageStore (Root: Scans, Ebene/Verlauf/Korb je Scan, Tab `usage:<scanId>`), usage-rows.ts,
                              basket-logic.ts, chart-layout.ts (Ringe/Kacheln, rein), usage-colors.ts, DiskUsageChart
                              (andere Seite), Spalten-Renderer, Aktionen OPEN_DISK_USAGE(_VOLUME) + Veto im Tab
+  app/core/fileactions/, features/fileactions/  Doppelklick-Aktionen (072): FileActionsApi, file-actions-logic.ts (rein: Muster,
+                             erste Regel), FileActionsStore (Root, `handleDoubleClick` aus `file-list.ts`), Dialog,
+                             OPEN_FILE_ACTIONS_DLG
   app/core/remote/           Server-Verbindungen (034): RemoteApi, DTOs, remote-path.ts (Präfix-Test, Anzeige),
                              RemoteConnectPrompt (Brücke Panel → Verbinden)
   app/features/remote/       RemoteStore (Root: Profile, Zustände, Ablauf Passwort/Host-Key/Zertifikat), Dialog
@@ -280,6 +283,8 @@ src-tauri/                   Rust (Tauri 2)
   src/rename_presets.rs      Multi-Rename-Vorlagen (`rename-presets.json`, nur Form/Größe geprüft)
   src/themes.rs              Farbschemata (`themes.json`, harmlose CSS-Werte), Import/Export von `.theme.json`
   src/tools.rs               externe Tools: `tools.json` (Defaults je OS, mr-Import), Platzhalter je Argument, Start ohne Shell
+  src/file_actions.rs        Doppelklick-Aktionen (072): `file-actions.json`, Kommandozeile → `Tool`; Commands
+                             `commands/file_actions.rs` (Start über `launch_tool_with_env` mit Login-`PATH`)
   src/starter.rs             Startermenü (032): `starter.json`, `sanitize`/`problems`, TC-Platzhalter → Tool-Platzhalter,
                              `to_tool`; Commands `commands/starter.rs` (Start über `commands::launch_tool`)
   src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)

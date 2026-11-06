@@ -90,6 +90,8 @@ import { registerShellActions } from '../shell/shell-actions';
 import { ShellStore } from '../shell/shell.store';
 import { OsStore } from '../osintegration/os.store';
 import { ToolConfigDialog } from '../osintegration/tool-config-dialog';
+import { FileActionsDialog } from '../fileactions/file-actions-dialog';
+import { FileActionsStore } from '../fileactions/file-actions.store';
 import { StarterDialog } from '../starter/starter-dialog';
 import { registerStarterActions } from '../starter/starter-actions';
 import { StarterStore } from '../starter/starter.store';
@@ -163,6 +165,7 @@ import { RemoteStore } from '../remote/remote.store';
     MultiMkdirDialog,
     ToolConfigDialog,
     StarterDialog,
+    FileActionsDialog,
     ViewerDialog,
     PropertiesDialog,
     AttributesDialog,
@@ -233,6 +236,7 @@ export class Workspace implements OnInit {
   private readonly fileTypes = inject(FileTypesStore);
   private readonly mrImport = inject(MrImportStore);
   private readonly starter = inject(StarterStore);
+  private readonly fileActions = inject(FileActionsStore);
   private readonly remote = inject(RemoteStore);
   private readonly selectIf = inject(SelectIfStore);
   private readonly menuApi = inject(MenuApi);
@@ -305,6 +309,13 @@ export class Workspace implements OnInit {
     // starter entry started (design 032)
     effect(() => {
       const text = this.starter.status();
+      if (text) {
+        untracked(() => this.announcement.set(text));
+      }
+    });
+    // double-click action started (design 072)
+    effect(() => {
+      const text = this.fileActions.status();
       if (text) {
         untracked(() => this.announcement.set(text));
       }
@@ -392,6 +403,7 @@ export class Workspace implements OnInit {
     void this.actions.init().then(() => Promise.all([this.os.init(), this.starter.init()]));
     void this.theme.init();
     void this.buttonConfig.init();
+    void this.fileActions.init();
     void this.fileTypes.init();
   }
 

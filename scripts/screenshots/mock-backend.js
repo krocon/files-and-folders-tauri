@@ -1304,6 +1304,19 @@
     run_shell: runShell,
     duplicate_thumbnails: (a) =>
       (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
+    load_file_actions: () => ({
+      rules: [
+        { id: 'a1', trigger: 'doubleClick', pattern: '*.jpg', confirm: true, command: 'node %N' },
+        { id: 'a2', trigger: 'doubleClick', pattern: '*.py', confirm: false, command: 'python3 %N' },
+      ],
+      warning: null,
+      problems: [],
+    }),
+    save_file_actions: (a) => ({ saved: true, rules: a?.rules ?? [], problems: [] }),
+    run_file_action: (a) => {
+      (window.__fnfActionRuns ??= []).push({ id: a?.id, file: a?.file });
+      return 1;
+    },
     load_starter: () => ({
       items: [
         { id: 's1', kind: 'program', label: 'VS Code', program: 'code', params: '"%P%N"' },

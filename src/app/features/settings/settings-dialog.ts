@@ -26,6 +26,7 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { DialogKey } from '../../shared/dialog/dialog-key';
 import { MultiRenameStore } from '../multirename/multirename.store';
+import { FileActionsStore } from '../fileactions/file-actions.store';
 import { StarterStore } from '../starter/starter.store';
 import { RemoteStore } from '../remote/remote.store';
 import { OsStore } from '../osintegration/os.store';
@@ -389,7 +390,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                 </label>
               }
             </fieldset>
-            @if (parts().has('tools') || parts().has('starter')) {
+            @if (parts().has('tools') || parts().has('starter') || parts().has('fileActions')) {
               <p class="warn" role="note">{{ t.toolsWarning }}</p>
             }
             <div class="row">
@@ -430,6 +431,7 @@ export class SettingsDialog {
   protected readonly theme = inject(ThemeService);
   protected readonly os = inject(OsStore);
   private readonly starter = inject(StarterStore);
+  private readonly fileActions = inject(FileActionsStore);
   private readonly remote = inject(RemoteStore);
   private readonly api = inject(SettingsApi);
   private readonly ws = inject(WorkspaceStore);
@@ -483,8 +485,8 @@ export class SettingsDialog {
   protected readonly exportDir = signal(this.panel?.store.path() ?? '');
   protected readonly importPath = signal(suggestedImport(this.panel?.store.cursorEntry() ?? null));
   protected readonly parts = signal<ReadonlySet<SettingsPart>>(
-    // tools and starter entries start programs: only on purpose (design 032)
-    new Set(SETTINGS_PARTS.filter((p) => p !== 'tools' && p !== 'starter')),
+    // tools, starter entries and double-click actions start programs: only on purpose (032, 072)
+    new Set(SETTINGS_PARTS.filter((p) => p !== 'tools' && p !== 'starter' && p !== 'fileActions')),
   );
 
   protected async clearShellHistory(): Promise<void> {
@@ -703,6 +705,9 @@ export class SettingsDialog {
           break;
         case 'starter':
           tasks.push(this.starter.init());
+          break;
+        case 'fileActions':
+          tasks.push(this.fileActions.init());
           break;
         case 'connections':
           tasks.push(this.remote.reload());

@@ -37,6 +37,7 @@ import {
 } from '../../dnd/dnd-logic';
 import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
+import { FileActionsStore } from '../../fileactions/file-actions.store';
 import { FileBrowserStore } from '../file-browser.store';
 import { DuplicatesStore } from '../../duplicates/duplicates.store';
 import { DUP_TEXTS } from '../../duplicates/duplicates-texts';
@@ -280,6 +281,10 @@ export class FileList implements OnDestroy {
     const controller = new FileListController(bridge, this.store, {
       openInNewTab: (entry) => this.openInNewTab.emit(entry),
       doubleClick: (entry) => {
+        // a rule of the double-click actions goes first (design 072)
+        if (this.injector.get(FileActionsStore).handleDoubleClick(entry, this.store)) {
+          return true;
+        }
         if (
           this.settings.get('behavior.doubleClick') !== 'view' ||
           isNavigableDir(entry) ||

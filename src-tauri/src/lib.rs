@@ -17,6 +17,7 @@
 //! - [`properties`]   properties of an entry (times, permissions/attributes, owner, link)
 //! - [`rename_presets`] multi-rename presets file
 //! - [`themes`]       colour schemes file, import/export of scheme files
+//! - [`file_actions`] double-click rules (`file-actions.json`, pattern → command, design 072)
 //! - [`starter`]      starter menu (`starter.json`, TC placeholders, design 032)
 //! - [`tools`]        external tools: config (`tools.json`), placeholders, start without a shell
 //! - [`platform`]     per-OS code: no-replace rename, volumes, file manager, terminal
@@ -52,6 +53,7 @@ pub mod dirsize;
 pub mod disk_usage;
 pub mod duplicates;
 pub mod error;
+pub mod file_actions;
 pub mod fileops;
 pub mod filetypes;
 pub mod folder_memory;
@@ -108,6 +110,7 @@ pub fn run() {
         .manage(commands::config::FileTypesState::default())
         .manage(commands::config::FolderMemoryState::default())
         .manage(commands::starter::StarterState::default())
+        .manage(commands::file_actions::FileActionsState::default())
         .manage(commands::remote::RemoteState::default())
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
@@ -308,6 +311,9 @@ pub fn run() {
             commands::starter::load_starter,
             commands::starter::save_starter,
             commands::starter::run_starter,
+            commands::file_actions::load_file_actions,
+            commands::file_actions::save_file_actions,
+            commands::file_actions::run_file_action,
             commands::mr_import::scan_old_config,
             commands::mr_import::apply_old_config,
             commands::remote::load_connections,

@@ -13,6 +13,7 @@ export function registerConfigActions(
   return actions.register({
     OPEN_BUTTON_CONFIG_DLG: { run: () => dialogs.show('button-config') },
     OPEN_FILETYPE_CONFIG_DLG: { run: () => dialogs.show('file-types') },
+    OPEN_FILE_ACTIONS_DLG: { run: () => dialogs.show('file-actions') },
     TOGGLE_FULLSCREEN: {
       run: async () => {
         try {

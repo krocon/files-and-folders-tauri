@@ -239,6 +239,7 @@ async function runStep(page, step) {
     }
   } else if (step.wait) await page.waitForTimeout(step.wait);
   else if (step.click) await page.click(step.click, step.button ? { button: step.button } : {});
+  else if (step.dblclick) await page.dblclick(step.dblclick);
   else if (step.hover)
     await page.hover(step.hover, step.position ? { position: step.position } : {});
   // a measurement for the report (049): evaluates the expression in the page and prints the result

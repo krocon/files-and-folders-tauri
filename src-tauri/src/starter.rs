@@ -247,7 +247,7 @@ pub fn convert_params(params: &str) -> Result<Vec<String>, &'static str> {
 }
 
 /// Expands a leading `~` (`~`, `~/…`); other text stays as it is.
-fn with_home(raw: &str, home: Option<&Path>) -> String {
+pub(crate) fn with_home(raw: &str, home: Option<&Path>) -> String {
     let t = raw.trim();
     match (home, t.strip_prefix('~')) {
         (Some(h), Some(rest))
@@ -355,14 +355,10 @@ pub fn to_tool(item: &StarterItem, home: Option<&Path>) -> Result<Tool, &'static
     if let Some(code) = check(item, home) {
         return Err(code);
     }
-    let mut program = with_home(&item.program, home);
-    let mut args = convert_params(&item.params)?;
-    if cfg!(target_os = "macos") && is_app_bundle(&program) {
-        let mut open = vec!["-a".to_string(), program];
-        open.append(&mut args);
-        args = open;
-        program = "open".into();
-    }
+    let (program, args) = app_launch(
+        with_home(&item.program, home),
+        convert_params(&item.params)?,
+    );
     let working_dir = Some(item.working_dir.trim())
         .filter(|w| !w.is_empty())
         .map(|w| convert_word(&with_home(w, home)));
@@ -377,6 +373,16 @@ pub fn to_tool(item: &StarterItem, home: Option<&Path>) -> Result<Tool, &'static
         working_dir,
         default_app: false,
     })
+}
+
+/// On macOS an `.app` bundle starts as `open -a <app> …`; everything else stays as it is.
+pub(crate) fn app_launch(program: String, mut args: Vec<String>) -> (String, Vec<String>) {
+    if cfg!(target_os = "macos") && is_app_bundle(&program) {
+        let mut open = vec!["-a".to_string(), program];
+        open.append(&mut args);
+        return ("open".into(), open);
+    }
+    (program, args)
 }
 
 fn is_app_bundle(program: &str) -> bool {

@@ -306,6 +306,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_BUTTON_CONFIG_DLG',
       'OPEN_TOOL_CONFIG_DLG',
       'OPEN_STARTER_CONFIG_DLG',
+      'OPEN_FILE_ACTIONS_DLG',
       'OPEN_FILETYPE_CONFIG_DLG',
       'OPEN_SHORTCUT_DLG',
       '-',

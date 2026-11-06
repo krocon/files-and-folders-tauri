@@ -78,6 +78,21 @@ fn read_settings(config: &Path) -> ShellSettings {
     shell_settings(&settings::load(&config.join(settings::FILE_NAME)).settings)
 }
 
+/// The environment for a program started from a rule (design 072): login pairs and merged
+/// `PATH` as for the shell bar, honouring `shell.loginPath`. Blocks (first read of the login
+/// shell); empty on Windows, where a started program inherits what it needs.
+pub(crate) fn tool_env(config: &Path) -> Vec<(String, String)> {
+    let cfg = read_settings(config);
+    let kind = shell::choose(&cfg.windows_shell);
+    if kind.is_windows_style() {
+        return Vec::new();
+    }
+    let login = cfg
+        .login_path
+        .and_then(|mode| shell::env::login_env(&kind, mode).ok());
+    shell::env::launch_env(login.as_ref())
+}
+
 fn main_only<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), FsError> {
     if window.label() == MAIN_WINDOW {
         Ok(())

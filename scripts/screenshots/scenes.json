@@ -58,6 +58,42 @@
       "steps": []
     },
     {
+      "name": "file-actions-dialog",
+      "steps": [
+        {
+          "action": "OPEN_FILE_ACTIONS_DLG"
+        }
+      ]
+    },
+    {
+      "name": "file-action-confirm",
+      "steps": [
+        {
+          "dblclick": "text=IMG_4711.jpg"
+        },
+        {
+          "log": "document.querySelector('app-confirm-dialog')?.innerText"
+        },
+        {
+          "log": "window.__fnfActionRuns ?? 'no run yet'"
+        }
+      ]
+    },
+    {
+      "name": "file-action-run",
+      "steps": [
+        {
+          "dblclick": "text=IMG_4711.jpg"
+        },
+        {
+          "key": "Enter"
+        },
+        {
+          "log": "window.__fnfActionRuns"
+        }
+      ]
+    },
+    {
       "name": "actions-menu",
       "steps": [
         {
