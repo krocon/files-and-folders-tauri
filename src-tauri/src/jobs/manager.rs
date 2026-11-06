@@ -1052,7 +1052,7 @@ impl JobManager {
     /// that touch the same paths (one path inside or equal to the other) and only
     /// reports them – the frontend asks and calls again with `force`.
     pub fn start_now(self: &Arc<Self>, id: &str, force: bool) -> StartNow {
-        {
+        let left_waiting = {
             let mut inner = self.lock();
             let Some(pos) = inner.queue.iter().position(|q| q == id) else {
                 return StartNow::NotQueued;
@@ -1082,9 +1082,22 @@ impl JobManager {
                 }
             }
             inner.queue.remove(pos);
+            let mut left_waiting = false;
             if let Some(e) = inner.jobs.iter_mut().find(|e| e.info.id == id) {
                 e.detached = true;
+                // not "waiting" any more: its first own event can be late (checks on a slow drive)
+                if e.info.state == JobState::Queued {
+                    e.info.state = JobState::Planning;
+                    left_waiting = true;
+                }
             }
+            left_waiting
+        };
+        if left_waiting {
+            (self.sink)(&JobEvent::State {
+                id: id.to_string(),
+                state: JobState::Planning,
+            });
         }
         self.spawn(id.to_string());
         StartNow::Started
