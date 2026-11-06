@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -239,6 +240,8 @@ class JobBodyModel extends AreaModelObjectArrayWithColumndefs<JobRow> {
  * The task list as a GuiExpert Table (Marc, 2026-10-24): status | amount + speed |
  * progress bar | task + current file | buttons. Rows are swapped in with `setRows`
  * (10×/s while copying); a focused button gets its focus back after each repaint.
+ * A repaint rebuilds all cells, and a button replaced between press and release gets no
+ * `click` – so new rows wait while a button is held (`holdWhilePressed`).
  */
 @Component({
   selector: 'app-job-table',
@@ -270,8 +273,13 @@ export class JobTable {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly model: TableModelIf;
   protected readonly options: TableOptionsIf;
+  /** A button is held down: its element must survive until the click. */
+  private held = false;
+  /** Rows arrived while held. */
+  private stale = false;
 
   constructor() {
+    this.holdWhilePressed();
     const t = JOB_TEXTS;
     const start = ['ge-table-text-align-start'];
     const columnDefs = [
@@ -370,8 +378,69 @@ export class JobTable {
     });
   }
 
+  /**
+   * Mouse: `click` needs press and release on the same element. Space: the button activates
+   * on key up. Listens in the capture phase: the table core must not be able to hide it.
+   */
+  private holdWhilePressed(): void {
+    const el = this.host.nativeElement;
+    const onWindow = (events: readonly string[], fn: (evt: Event) => void, add: boolean) =>
+      events.forEach((e) =>
+        add ? window.addEventListener(e, fn, true) : window.removeEventListener(e, fn, true),
+      );
+    let stopHolding = (): void => undefined;
+    const hold = (target: EventTarget | null, releaseOn: readonly string[]): void => {
+      if (this.held || !(target instanceof Element) || !target.closest('button[data-job]')) {
+        return;
+      }
+      this.held = true;
+      const release = (evt: Event): void => {
+        // pressing moves the focus: the old element's blur passes here in the capture phase
+        if (evt.type === 'blur' && evt.target instanceof Node) {
+          return;
+        }
+        stopHolding();
+        // after the click, which follows the release in the same input event
+        setTimeout(() => this.releaseRows());
+      };
+      stopHolding = () => {
+        onWindow(releaseOn, release, false);
+        stopHolding = () => undefined;
+      };
+      onWindow(releaseOn, release, true);
+    };
+    const onPointerDown = (evt: Event): void =>
+      hold(evt.target, ['pointerup', 'pointercancel', 'blur']);
+    const onKeyDown = (evt: KeyboardEvent): void => {
+      if (evt.key === ' ') {
+        hold(evt.target, ['keyup', 'blur']);
+      }
+    };
+    el.addEventListener('pointerdown', onPointerDown, true);
+    el.addEventListener('keydown', onKeyDown, true);
+    inject(DestroyRef).onDestroy(() => {
+      stopHolding();
+      el.removeEventListener('pointerdown', onPointerDown, true);
+      el.removeEventListener('keydown', onKeyDown, true);
+    });
+  }
+
+  /** The hold ended: show what came in the meantime. */
+  private releaseRows(): void {
+    this.held = false;
+    const api = this.api();
+    if (this.stale && api) {
+      this.swapRows(api, this.rows());
+    }
+    this.stale = false;
+  }
+
   /** New rows, the keyboard focus stays on "the same" button (job + slot, Pause ⇄ Resume). */
   private swapRows(api: TableApi, rows: readonly JobRow[]): void {
+    if (this.held) {
+      this.stale = true;
+      return;
+    }
     const el = this.host.nativeElement;
     const focused = document.activeElement as HTMLElement | null;
     const keep =

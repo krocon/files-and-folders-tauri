@@ -437,6 +437,31 @@ fn start_now_runs_a_waiting_job_beside_the_running_one() {
 }
 
 #[test]
+fn start_now_leaves_the_waiting_state_at_once() {
+    // its first own event can be late (checks on a slow drive): "Start now" must not stay
+    let h = Harness::new();
+    let (dir, _f, _d1, first, c) = blocked_queue(&h);
+    let g = dir.path().join("g");
+    fs::write(&g, "g").unwrap();
+    let d2 = dir.path().join("2");
+    fs::create_dir(&d2).unwrap();
+    let second = h.copy(&[&g], &d2, false);
+    h.wait_state(&second, JobState::Queued);
+    assert_eq!(h.mgr.start_now(&second, false), StartNow::Started);
+    let state = h.mgr.list().iter().find(|j| j.id == second).unwrap().state;
+    assert_ne!(state, JobState::Queued);
+    assert!(h.events.lock().unwrap().iter().any(|e| matches!(
+        e,
+        JobEvent::State { id, state: JobState::Planning } if *id == second
+    )));
+    assert_eq!(h.finish(&second).state, JobState::Done);
+    h.mgr
+        .resolve_conflict(&first, c.conflict_id, Decision::Skip, false);
+    assert_eq!(h.finish(&first).state, JobState::Done);
+    assert!(h.mgr.wait_idle(WAIT));
+}
+
+#[test]
 fn start_now_reports_jobs_on_the_same_paths_and_starts_with_force() {
     let h = Harness::new();
     let (dir, f, _d1, first, c) = blocked_queue(&h);
