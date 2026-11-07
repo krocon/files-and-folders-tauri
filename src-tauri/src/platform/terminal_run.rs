@@ -60,30 +60,56 @@ fn posix_quote(text: &std::ffi::OsStr) -> Vec<u8> {
     out
 }
 
-/// The script for `/bin/sh`. Ctrl+C stops the program, not the script (a trap is reset in
-/// the child): the window stays usable either way.
+/// A word as it would be typed: plain when nothing in it is special, else [`posix_quote`].
+#[cfg(unix)]
+fn posix_word(text: &std::ffi::OsStr) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    let bytes = text.as_bytes();
+    let plain = !bytes.is_empty()
+        && !bytes.starts_with(b"=")
+        && !bytes.starts_with(b"%")
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric() || b"_@%+=:,./-".contains(b));
+    if plain {
+        bytes.to_vec()
+    } else {
+        posix_quote(text)
+    }
+}
+
+/// The script for `/bin/sh`: shows the command line (`$ node 'a b.js'`), runs it in the folder
+/// and shows the exit code. Ctrl+C stops the program, not the script (a trap is reset in the
+/// child): the window stays usable either way.
 #[cfg(unix)]
 pub fn posix_script(inv: &Invocation, env: &[(String, String)]) -> Vec<u8> {
     use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
     let mut s = b"#!/bin/sh\nrm -f -- \"$0\"\n".to_vec();
     for (key, value) in env.iter().filter(|(k, _)| valid_env_name(k)) {
         s.extend_from_slice(format!("{key}=").as_bytes());
         s.extend(posix_quote(OsStr::new(value)));
         s.extend_from_slice(format!("\nexport {key}\n").as_bytes());
     }
-    s.extend_from_slice(b"trap : INT\n");
-    let mut line = posix_quote(OsStr::new(&inv.program));
+    let mut line = posix_word(OsStr::new(&inv.program));
     for a in &inv.args {
         line.push(b' ');
-        line.extend(posix_quote(a));
+        line.extend(posix_word(a));
     }
+    let mut shown = b"$ ".to_vec();
+    shown.extend_from_slice(&line);
+    s.extend_from_slice(b"printf '%s\\n' ");
+    s.extend(posix_quote(OsStr::from_bytes(&shown)));
+    s.extend_from_slice(b"\ntrap : INT\n");
     if let Some(cwd) = &inv.cwd {
         s.extend_from_slice(b"cd -- ");
         s.extend(posix_quote(cwd.as_os_str()));
         s.extend_from_slice(b" && ");
     }
     s.extend(line);
-    s.extend_from_slice(b"\ntrap - INT\nexec \"${SHELL:-/bin/sh}\" -l\n");
+    s.extend_from_slice(
+        b"\ncode=$?\ntrap - INT\nprintf '\\n[exit code %s]\\n' \"$code\"\nexec \"${SHELL:-/bin/sh}\" -l\n",
+    );
     s
 }
 
@@ -125,15 +151,14 @@ pub fn batch_script(inv: &Invocation, env: &[(String, String)]) -> Result<String
     if let Some(cwd) = &inv.cwd {
         s.push_str(&format!("cd /d \"{}\"\r\n", batch_text(cwd.as_os_str())?));
     }
-    s.push_str(&format!(
-        "\"{}\"",
-        batch_text(std::ffi::OsStr::new(&inv.program))?
-    ));
+    let mut line = format!("\"{}\"", batch_text(std::ffi::OsStr::new(&inv.program))?);
     for a in &inv.args {
-        s.push(' ');
-        s.push_str(&batch_arg(a)?);
+        line.push(' ');
+        line.push_str(&batch_arg(a)?);
     }
-    s.push_str("\r\n(goto) 2>nul & del \"%~f0\"\r\n");
+    // every word is in quotes: `&`, `|`, `>` stay text for `echo` as well
+    s.push_str(&format!("echo $ {line}\r\n{line}\r\n"));
+    s.push_str("echo.\r\necho [exit code %errorlevel%]\r\n(goto) 2>nul & del \"%~f0\"\r\n");
     Ok(s)
 }
 
@@ -161,9 +186,12 @@ pub fn linux_exec_args(program: &str, script: &Path) -> Vec<OsString> {
     }
 }
 
-/// Opens the system's terminal window with `inv` running in it; `env` as for a direct start.
+/// Opens the system's terminal window with `inv` running in it. Of `env` only `PATH` is set:
+/// the terminal brings the user's own language and locale (a `LANG` from the app would
+/// replace them).
 pub fn run_in_terminal(inv: &Invocation, env: &[(String, String)]) -> Result<(), FsError> {
-    run_impl(inv, env)
+    let env: Vec<(String, String)> = env.iter().filter(|(k, _)| k == "PATH").cloned().collect();
+    run_impl(inv, &env)
 }
 
 #[cfg(target_os = "macos")]
@@ -293,14 +321,19 @@ mod tests {
             ("BAD NAME; touch pwned4".to_string(), "x".to_string()),
         ];
         let script = write_script(&posix_script(&run, &env), "sh").unwrap();
-        let status = std::process::Command::new("/bin/sh")
+        let out = std::process::Command::new("/bin/sh")
             .arg(&script)
             .env("SHELL", "/bin/sh")
             .current_dir(bin.path())
             .stdin(std::process::Stdio::null())
-            .status()
+            .output()
             .unwrap();
-        assert!(status.success());
+        assert!(out.status.success());
+        let quoted = hostile.replace('\'', r"'\''");
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            format!("$ fnf-probe-072 '{quoted}' 'two words'\n\n[exit code 0]\n")
+        );
         assert!(!script.exists());
         assert_eq!(
             std::fs::read_to_string(work.path().join("args.txt")).unwrap(),
@@ -314,13 +347,24 @@ mod tests {
         assert!(!bin.path().join("pwned4").exists());
     }
 
-    /// A program that is not found must not close the window either.
+    /// A program that is not found must not close the window either; its code is shown.
     #[cfg(unix)]
     #[test]
     fn the_window_stays_when_the_program_fails() {
-        let script = String::from_utf8(posix_script(&inv("no-such", &[], Some("/")), &[])).unwrap();
-        assert!(script.ends_with("exec \"${SHELL:-/bin/sh}\" -l\n"));
-        assert!(script.contains("cd -- '/' && 'no-such'\n"));
+        let script = posix_script(&inv("fnf-no-such-072", &[], Some("/")), &[]);
+        let text = String::from_utf8(script.clone()).unwrap();
+        assert!(text.ends_with("exec \"${SHELL:-/bin/sh}\" -l\n"));
+        assert!(text.contains("cd -- '/' && fnf-no-such-072\n"));
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("s.sh");
+        std::fs::write(&file, script).unwrap();
+        let out = std::process::Command::new("/bin/sh")
+            .arg(&file)
+            .env("SHELL", "/bin/sh")
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert!(String::from_utf8_lossy(&out.stdout).ends_with("\n[exit code 127]\n"));
     }
 
     #[test]
@@ -336,10 +380,12 @@ mod tests {
         .unwrap();
         assert!(text.contains("set \"FOO=x%%y\"\r\n"), "{text}");
         assert!(text.contains("cd /d \"C:\\my dir\"\r\n"), "{text}");
+        let line = "\"C:\\Program Files\\node.exe\" \"100%% a&b.js\" \"C:\\dir\\\\\"";
         assert!(
-            text.contains("\"C:\\Program Files\\node.exe\" \"100%% a&b.js\" \"C:\\dir\\\\\"\r\n"),
+            text.contains(&format!("echo $ {line}\r\n{line}\r\necho.\r\n")),
             "{text}"
         );
+        assert!(text.contains("echo [exit code %errorlevel%]\r\n"), "{text}");
         for bad in ["a\"b", "a\nb", "a\rb"] {
             let e = batch_script(&inv("p", &[bad], None), &[]).unwrap_err();
             assert_eq!(e.code, FsErrorCode::UnquotableName, "{bad:?}");
@@ -372,7 +418,7 @@ mod tests {
         let work = tempfile::tempdir().unwrap();
         let run = Invocation {
             cwd: Some(work.path().to_path_buf()),
-            ..inv("/bin/sh", &["-c", "pwd > marker.txt"], None)
+            ..inv("/bin/sh", &["-c", "pwd > marker.txt; echo hello"], None)
         };
         run_in_terminal(&run, &[]).unwrap();
         let marker = work.path().join("marker.txt");

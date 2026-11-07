@@ -37,7 +37,8 @@ Auftrag (Marc, 06.11.2026): Dialog, mit dem ein Doppelklick auf eine passende Da
   kein einheitliches Argument-Array an (Terminal.app gar keins), also schreibt `platform/terminal_run.rs` ein Skript mit
   einmaligem Namen in den Temp-Ordner (`create_new`, Unix 0700), das sich beim Start selbst löscht: jedes Wort quotiert
   (POSIX `'…'` auf Bytes; Batch mit `%%`, `"`/Steuerzeichen abgelehnt), danach bleibt die Shell des Nutzers offen (`cmd /K`).
-  Die Regel „nichts aus Dateinamen wird Shell-Syntax“ bleibt so erhalten; Test mit feindlichem Namen. macOS: `open -a
+  Das Fenster zeigt vorher die Kommandozeile (`$ node 'a b.js'`) und danach `[exit code N]`; vom Login-Environment wird
+  nur `PATH` gesetzt (das Terminal bringt Sprache/Locale des Nutzers selbst mit, Marc 2026-11-07). Die Regel „nichts aus Dateinamen wird Shell-Syntax“ bleibt so erhalten; Test mit feindlichem Namen. macOS: `open -a
   Terminal`, Linux: `$TERMINAL`, dann die Liste von 011, Windows: `cmd.exe` in neuer Konsole. Ein eigenes `terminal` aus
   `tools.json` gilt hier nicht (dort fehlt ein Platzhalter für den Befehl). Windows und Linux sind nur per Unit-Test geprüft.
 - **E9 gilt auch im Startermenü** (`StarterItem.terminal`, nur `program`, in `starter.json` nur wenn an): gleicher Start,
