@@ -1041,6 +1041,7 @@ mod tests {
             pattern: "*.js".into(),
             confirm: false,
             command: "node %N".into(),
+            terminal: false,
         };
         file_actions::save(&src.file_actions, vec![rule.clone()]).unwrap();
         let b = bundle(&src);

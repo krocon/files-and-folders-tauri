@@ -1035,17 +1035,19 @@ pub(crate) async fn launch_tool<R: Runtime>(
     context: ToolContextInput,
     allow_executable: bool,
 ) -> Result<usize, FsError> {
-    launch_tool_with_env(app, tool, context, allow_executable, Vec::new()).await
+    launch_tool_with_env(app, tool, context, allow_executable, Vec::new(), false).await
 }
 
 /// [`launch_tool`] with extra environment variables for the started process (`PATH` also
-/// decides where a bare program name is found, design 072).
+/// decides where a bare program name is found, design 072); `in_terminal` shows it in a
+/// terminal window that stays open (E9).
 pub(crate) async fn launch_tool_with_env<R: Runtime>(
     app: &AppHandle<R>,
     tool: crate::tools::Tool,
     context: ToolContextInput,
     allow_executable: bool,
     env: Vec<(String, String)>,
+    in_terminal: bool,
 ) -> Result<usize, FsError> {
     let app = app.clone();
     if context.files.len() > crate::tools::MAX_FILE_LIMIT as usize {
@@ -1093,6 +1095,10 @@ pub(crate) async fn launch_tool_with_env<R: Runtime>(
             }
         }
         for inv in &plan {
+            if in_terminal {
+                crate::platform::terminal_run::run_in_terminal(inv, &env)?;
+                continue;
+            }
             let mut command = crate::tools::command(inv);
             command.envs(env.iter().map(|(k, v)| (k, v)));
             crate::tools::spawn_detached(command, &inv.program)?;

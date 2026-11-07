@@ -255,6 +255,19 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
                       </span>
                     </label>
                   }
+                  @if (it.kind === 'program') {
+                    <label class="check">
+                      <input
+                        type="checkbox"
+                        class="terminal"
+                        [checked]="it.terminal === true"
+                        [attr.aria-describedby]="'fnf-starter-terminal-help'"
+                        (change)="setTerminal($event)"
+                      />
+                      <span>{{ t.terminal }}</span>
+                    </label>
+                    <span class="help" id="fnf-starter-terminal-help">{{ t.terminalHelp }}</span>
+                  }
                 }
               } @else {
                 <p class="help">{{ t.noSelection }}</p>
@@ -404,6 +417,14 @@ export class StarterDialog {
     this.draft.update((d) => update(d, id, { [field]: value }));
     // the problem of this entry is checked again on save
     this.problems.update((p) => p.filter((x) => x.id !== id));
+  }
+
+  protected setTerminal(evt: Event): void {
+    const id = this.selected();
+    if (id !== null) {
+      const terminal = (evt.target as HTMLInputElement).checked;
+      this.draft.update((d) => update(d, id, { terminal }));
+    }
   }
 
   protected add(kind: StarterKind, patch: Partial<StarterItem> = {}): void {

@@ -272,6 +272,9 @@ export function normalize(items: readonly StarterItem[]): StarterItem[] {
     if (it.shortcut) {
       out['shortcut'] = it.shortcut;
     }
+    if (it.terminal) {
+      out['terminal'] = true;
+    }
     if (it.kind === 'submenu') {
       out['items'] = normalize(it.items ?? []);
     }

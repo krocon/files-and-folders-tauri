@@ -289,7 +289,7 @@ src-tauri/                   Rust (Tauri 2)
                              `to_tool`; Commands `commands/starter.rs` (Start über `commands::launch_tool`)
   src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
-                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `os_drag.rs` (nativer Drag:
+                             `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `terminal_run.rs` (Programm im Terminalfenster über ein quotiertes Skript, 072), `os_drag.rs` (nativer Drag:
                              Crate `drag` auf macOS/Windows, eigenes GTK unter Linux), `origin_mark.rs` (Mark-of-the-Web/
                              Quarantäne aufs Entpackte, 025), `clock.rs`; `make_symlink`, `entry_id` in platform.rs
   capabilities/default.json  nur core:default

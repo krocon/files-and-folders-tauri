@@ -1306,8 +1306,21 @@
       (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
     load_file_actions: () => ({
       rules: [
-        { id: 'a1', trigger: 'doubleClick', pattern: '*.jpg', confirm: true, command: 'node %N' },
-        { id: 'a2', trigger: 'doubleClick', pattern: '*.py', confirm: false, command: 'python3 %N' },
+        {
+          id: 'a1',
+          trigger: 'doubleClick',
+          pattern: '*.jpg',
+          confirm: true,
+          command: 'node %N',
+          terminal: true,
+        },
+        {
+          id: 'a2',
+          trigger: 'doubleClick',
+          pattern: '*.py',
+          confirm: false,
+          command: 'python3 %N',
+        },
       ],
       warning: null,
       problems: [],

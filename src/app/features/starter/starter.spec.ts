@@ -258,8 +258,15 @@ describe('starter menu (design 032)', () => {
     key(tree, 'Home');
     fixture.detectChanges();
     const params = () =>
-      [...el.querySelectorAll<HTMLInputElement>('.details input')].map((i) => i.value);
+      [...el.querySelectorAll<HTMLInputElement>('.details input[type=text]')].map((i) => i.value);
     expect(params()).toEqual(['VS Code', 'code', '"%P%N"', '', 'Alt+Shift+1']);
+    // the terminal option counts as a change and is saved with the entry
+    const terminal = el.querySelector<HTMLInputElement>('.details input.terminal')!;
+    expect(terminal.checked).toBe(false);
+    terminal.checked = true;
+    terminal.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(el.querySelector<HTMLInputElement>('.details input.terminal')!.checked).toBe(true);
     // a shortcut that an action uses is refused before saving
     const inputs = [...el.querySelectorAll<HTMLInputElement>('.details input')];
     type(inputs[4], 'F5');
@@ -300,7 +307,7 @@ describe('starter menu (design 032)', () => {
     await flush();
     expect(dialogs.open()).toBeNull();
     const saved = api.saved.at(-1)!;
-    expect(saved[0]).toMatchObject({ id: 'code', shortcut: 'Alt+Shift+2' });
+    expect(saved[0]).toMatchObject({ id: 'code', shortcut: 'Alt+Shift+2', terminal: true });
     expect(saved.find((i) => i.id === 'm')!.items!.map((i) => i.folder)).toEqual([
       '~/Projekte ä',
       '/data/Fotos 📷',

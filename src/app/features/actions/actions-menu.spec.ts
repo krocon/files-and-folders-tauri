@@ -73,6 +73,7 @@ describe('Actions menu ▴ (design 020)', () => {
       'Create folder…',
     ]);
     expect(labels(groups[3]).slice(0, 1)).toEqual(['Setup…']);
+    expect(labels(groups[3])).toContain('Double-click actions…');
     // the tools after the last divider
     expect(labels(groups[3]).slice(-2)).toEqual(['-', 'Edit']);
     expect(el.querySelectorAll('[role="separator"]').length).toBeGreaterThanOrEqual(8);

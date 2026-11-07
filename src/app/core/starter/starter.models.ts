@@ -17,6 +17,8 @@ export interface StarterItem {
   readonly params?: string;
   /** Start folder (placeholders, `~`); empty = folder of the active panel. */
   readonly workingDir?: string;
+  /** Programs: show it in a terminal window that stays open (left out when off). */
+  readonly terminal?: boolean;
   /** Folder entries: where the active panel goes. */
   readonly folder?: string;
   /** Keymap notation (`Alt+1`). */

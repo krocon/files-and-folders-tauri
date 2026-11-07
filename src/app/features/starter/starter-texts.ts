@@ -40,6 +40,8 @@ export const STARTER_EN = {
     '%P%N file under the cursor (full path) · %N its name · %O name without extension · %E extension · %P / %T folder of the active / other panel · %S all marked entries · %% a percent sign. Quotes group words.',
   workingDir: 'Start folder',
   workingDirHelp: 'Empty = folder of the active panel. %P, %T and ~ are allowed.',
+  terminal: 'Run in a terminal window',
+  terminalHelp: 'Shows the output; the window stays open afterwards.',
   folder: 'Folder',
   folderHelp: 'Absolute path or ~/… – the active panel goes there.',
   shortcut: 'Shortcut',

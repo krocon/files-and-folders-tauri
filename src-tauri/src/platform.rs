@@ -10,6 +10,7 @@ pub mod io_hints;
 pub mod origin_mark;
 pub mod os_drag;
 pub mod process;
+pub mod terminal_run;
 pub mod volumes;
 
 use std::fs::{self, Metadata};

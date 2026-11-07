@@ -65,6 +65,9 @@ pub struct StarterItem {
     /// Start folder (placeholders and `~` allowed); empty = folder of the active panel.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub working_dir: String,
+    /// Programs: show it in a terminal window that stays open (design 072 E9).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub terminal: bool,
     /// Folder entries: where the active panel goes (absolute or `~`).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub folder: String,
@@ -169,6 +172,7 @@ pub fn sanitize(items: Vec<StarterItem>) -> Vec<StarterItem> {
                     it.program.clear();
                     it.params.clear();
                     it.working_dir.clear();
+                    it.terminal = false;
                     it.items.clear();
                 }
                 StarterKind::Program => {
@@ -179,6 +183,7 @@ pub fn sanitize(items: Vec<StarterItem>) -> Vec<StarterItem> {
                     it.program.clear();
                     it.params.clear();
                     it.working_dir.clear();
+                    it.terminal = false;
                     it.folder.clear();
                     it.shortcut = None;
                     let children = std::mem::take(&mut it.items);
@@ -662,6 +667,30 @@ mod tests {
         assert_eq!(l.warning.unwrap().code, "broken");
         fs::write(&file, r#"{"version": 9, "items": []}"#).unwrap();
         assert_eq!(load(&file).warning.unwrap().code, "broken");
+    }
+
+    #[test]
+    fn only_programs_keep_the_terminal_option_and_it_is_written_only_when_on() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join(FILE_NAME);
+        let mut on = prog("a", "node", "%N");
+        on.terminal = true;
+        let folder = StarterItem {
+            id: "f".into(),
+            kind: StarterKind::Folder,
+            label: "F".into(),
+            folder: "/x".into(),
+            terminal: true,
+            ..StarterItem::default()
+        };
+        let mut submenu = sub("m", vec![]);
+        submenu.terminal = true;
+        let saved = save(&file, vec![on, prog("b", "node", ""), folder, submenu]).unwrap();
+        let flags: Vec<bool> = saved.iter().map(|i| i.terminal).collect();
+        assert_eq!(flags, [true, false, false, false]);
+        assert_eq!(load(&file).value, saved);
+        let text = fs::read_to_string(&file).unwrap();
+        assert_eq!(text.matches("\"terminal\"").count(), 1);
     }
 
     #[cfg(target_os = "macos")]

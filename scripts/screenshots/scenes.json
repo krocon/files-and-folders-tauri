@@ -66,30 +66,21 @@
       ]
     },
     {
-      "name": "file-action-confirm",
+      "name": "file-actions-help",
       "steps": [
         {
-          "dblclick": "text=IMG_4711.jpg"
+          "action": "OPEN_FILE_ACTIONS_DLG"
         },
         {
-          "log": "document.querySelector('app-confirm-dialog')?.innerText"
-        },
-        {
-          "log": "window.__fnfActionRuns ?? 'no run yet'"
+          "click": ".help-button"
         }
       ]
     },
     {
-      "name": "file-action-run",
+      "name": "file-action-confirm",
       "steps": [
         {
           "dblclick": "text=IMG_4711.jpg"
-        },
-        {
-          "key": "Enter"
-        },
-        {
-          "log": "window.__fnfActionRuns"
         }
       ]
     },

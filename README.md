@@ -272,7 +272,7 @@ terminal.
 **Your own launcher for programs, scripts and folders.**
 Build a menu with submenus and give entries their own shortcuts. Parameters work like in Total Commander:
 `%P%N` the file under the cursor, `%S` all marked files, `%T` the folder of the other side. Programs are started
-directly – never through a shell.
+directly – never through a shell – or, per entry, in a terminal window that shows the output and stays open.
 
 `Alt+S` · macOS: `⌥S`
 
@@ -409,9 +409,9 @@ Everything is stored as JSON in the app's config folder and can be edited from w
   { "id": "edit", "label": "Edit", "program": "code", "args": ["{files}"] }
   ```
 
-- **Double-click actions** – menu _Configuration_ → _Double-click actions…_: rules with a file pattern, an optional yes/no question and a command
-  (`*.js` → `node %N`) decide what a double click on a matching file does instead of opening it. Nothing goes through a shell;
-  the program runs in the background in the file's folder, its output is not shown. Kept in `file-actions.json`.
+- **Double-click actions** – menu _Configuration_ or the _Actions_ menu → _Double-click actions…_: rules with a file pattern, an optional yes/no question and a command
+  (`*.js` → `node %N`) decide what a double click on a matching file does instead of opening it. The program runs in the file's folder, either in the
+  background or in a terminal window that shows its output and stays open; file names never become shell syntax. The dialog has its own help. Kept in `file-actions.json`.
 - **Starter menu** – menu _Start_, the _Start ▴_ button next to _Actions ▴_ or `Alt+S`: your own quick launch entries (programs, scripts, folders,
   submenus), edited with _Change starter menu…_ and kept in `starter.json`. Parameters as in Total Commander –
   `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the

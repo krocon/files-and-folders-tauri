@@ -39,6 +39,8 @@ export const STARTER_DE: Translation<typeof STARTER_EN> = {
     '%P%N Datei unter dem Cursor (voller Pfad) · %N ihr Name · %O Name ohne Endung · %E Endung · %P / %T Ordner der aktiven / anderen Seite · %S alle markierten Einträge · %% ein Prozentzeichen. Anführungszeichen fassen Wörter zusammen.',
   workingDir: 'Startordner',
   workingDirHelp: 'Leer = Ordner der aktiven Seite. %P, %T und ~ sind erlaubt.',
+  terminal: 'In einem Terminalfenster ausführen',
+  terminalHelp: 'Zeigt die Ausgabe; das Fenster bleibt danach offen.',
   folder: 'Ordner',
   folderHelp: 'Absoluter Pfad oder ~/… – die aktive Seite wechselt dorthin.',
   shortcut: 'Tastenkürzel',

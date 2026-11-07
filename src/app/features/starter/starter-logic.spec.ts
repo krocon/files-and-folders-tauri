@@ -101,6 +101,12 @@ describe('starter logic (design 032)', () => {
     const next = update(base, 'c', { params: '"%P%N"' });
     expect(rows(next).find((r) => r.item.id === 'c')!.item.params).toBe('"%P%N"');
     expect(sameItems(base, next)).toBe(false);
+    expect(
+      sameItems([{ id: 'p', kind: 'program' }], [{ id: 'p', kind: 'program', terminal: true }]),
+    ).toBe(false);
+    expect(
+      sameItems([{ id: 'p', kind: 'program' }], [{ id: 'p', kind: 'program', terminal: false }]),
+    ).toBe(true);
     // empty optional fields equal missing ones (Rust leaves them out)
     expect(
       sameItems(

@@ -11,7 +11,8 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * Configuration (no such configuration yet). Added: Find Duplicates, Shortcuts,
  * Connect to Server (034, next to Change Dir – it is a way to go somewhere), Swap Panels and
  * Target = Source (040, next to the panel entries), Toggle Flat View (038, under Toggle Hidden Files),
- * Quick View (010, under Toggle Shell – Marc, 2026-10-24).
+ * Quick View (010, under Toggle Shell – Marc, 2026-10-24), Double-click actions (072, next to the starter
+ * menu – Marc, 2026-11-07).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
@@ -79,6 +80,7 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_BUTTON_CONFIG_DLG',
     'OPEN_TOOL_CONFIG_DLG',
     'OPEN_STARTER_CONFIG_DLG',
+    'OPEN_FILE_ACTIONS_DLG',
     'OPEN_SHORTCUT_DLG',
     'OPEN_ABOUT_DLG',
     '-',
@@ -121,6 +123,7 @@ export const OPENS_DIALOG: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_BUTTON_CONFIG_DLG',
   'OPEN_TOOL_CONFIG_DLG',
   'OPEN_STARTER_CONFIG_DLG',
+  'OPEN_FILE_ACTIONS_DLG',
   'OPEN_SHORTCUT_DLG',
   'OPEN_ABOUT_DLG',
 ]);

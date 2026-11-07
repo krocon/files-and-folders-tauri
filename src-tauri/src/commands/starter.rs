@@ -2,7 +2,8 @@
 //! entry by id. Program and arguments come only from the file – the frontend never
 //! sends a program to run.
 
-use crate::commands::{ToolContextInput, blocking, config_dir, home_dir, launch_tool};
+use crate::commands::shell::tool_env;
+use crate::commands::{ToolContextInput, blocking, config_dir, home_dir, launch_tool_with_env};
 use crate::config_file::ConfigWarning;
 use crate::error::{FsError, FsErrorCode};
 use crate::starter::{self, StarterItem, StarterKind, StarterProblem};
@@ -195,7 +196,25 @@ pub async fn run_starter<R: Runtime>(
                 dir: context.dir,
                 target_dir: context.target_dir,
             };
-            let count = launch_tool(&app, tool, ctx, allow_executable.unwrap_or(false)).await?;
+            // like a double-click action: a terminal window also finds what the login shell finds
+            let env = if item.terminal {
+                let config = config_dir(&app)?;
+                blocking("Reading the login environment", move || {
+                    Ok(tool_env(&config))
+                })
+                .await?
+            } else {
+                Vec::new()
+            };
+            let count = launch_tool_with_env(
+                &app,
+                tool,
+                ctx,
+                allow_executable.unwrap_or(false),
+                env,
+                item.terminal,
+            )
+            .await?;
             Ok(StarterRun::Started { count })
         }
         StarterKind::Submenu | StarterKind::Separator => Err(unknown()),
