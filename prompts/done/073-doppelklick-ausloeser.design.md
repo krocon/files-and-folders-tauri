@@ -179,5 +179,5 @@ Klein: Phase 2 (Rust) und 3 (Frontend) getrennt committen, 4–6 zusammen.
   Knöpfe in der Fußzeile, Überschrift der Regel. Dabei gefunden: der globale `label { margin-top: 24px }` und die
   Mindesthöhe der Checkbox-Labels machten die rechte Spalte unnötig hoch – im Dialog zurückgesetzt. Bei 760 px
   Fensterhöhe scrollt die rechte Spalte noch um eine Zeile (Modal max. 80vh).
-- [ ] E2E in der echten App (Shift-/⌘-Doppelklick, Markierung) – offen, bei Marc auf dem Mac.
+- [x] E2E in der echten App (Shift-/⌘-Doppelklick, Markierung, Dialog) – von Marc auf dem Mac geprüft (09.11.2026).
 - [x] Doku, Prompt nach `done/`
