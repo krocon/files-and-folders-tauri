@@ -37,13 +37,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-1) var(--spacing-3);
-  margin: 0;
-  padding: 0;
-  border: 0;
+}
 
-  legend {
-    width: 100%;
-    margin-bottom: var(--spacing-1);
-    padding: 0;
+/* compact right column (073 E22/E23): no top margin of labels above a field (styles.css),
+   checkboxes only as high as their text */
+.side {
+  label.field {
+    margin-top: 0;
+  }
+
+  label.check {
+    min-height: 0;
   }
 }

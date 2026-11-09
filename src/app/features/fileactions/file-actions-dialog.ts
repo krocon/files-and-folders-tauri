@@ -91,20 +91,22 @@ import { FileActionsStore } from './file-actions.store';
                     }
                   </select>
                 </label>
-                <fieldset class="keys-held">
-                  <legend>{{ t.keysHeld }}</legend>
-                  @for (m of modifiers(); track m) {
-                    <label class="check">
-                      <input
-                        type="checkbox"
-                        [attr.data-modifier]="m"
-                        [checked]="r.modifiers.includes(m)"
-                        (change)="setModifier(m, checked($event))"
-                      />
-                      <span>{{ modifierText(m) }}</span>
-                    </label>
-                  }
-                </fieldset>
+                <div class="field" role="group" [attr.aria-labelledby]="keysLabelId">
+                  <span [id]="keysLabelId">{{ t.keysHeld }}</span>
+                  <div class="keys-held">
+                    @for (m of modifiers(); track m) {
+                      <label class="check">
+                        <input
+                          type="checkbox"
+                          [attr.data-modifier]="m"
+                          [checked]="r.modifiers.includes(m)"
+                          (change)="setModifier(m, checked($event))"
+                        />
+                        <span>{{ modifierText(m) }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
                 <label class="field">
                   <span>{{ t.pattern }}</span>
                   <input
@@ -239,6 +241,7 @@ export class FileActionsDialog {
   protected readonly commandHelpId = 'fnf-fa-command-help';
   protected readonly problemId = 'fnf-fa-problem';
   protected readonly headingId = 'fnf-fa-rule-heading';
+  protected readonly keysLabelId = 'fnf-fa-keys-label';
   protected readonly triggerKinds = FILE_ACTION_TRIGGERS;
   private readonly platform = inject(ActionService).platform;
   protected readonly modifiers = computed(() => availableModifiers(this.platform()));
