@@ -7,10 +7,24 @@ import { ConfigWarning } from '../config/config.models';
 /** What sets a rule off – for now only the double click on a file. */
 export type FileActionTrigger = 'doubleClick';
 
+/** The kinds the dialog offers (catalog, design 073 E18). */
+export const FILE_ACTION_TRIGGERS: readonly FileActionTrigger[] = ['doubleClick'];
+
+/**
+ * A key held with the trigger (design 073 E11): `mod` is ⌘ on macOS and Ctrl elsewhere.
+ * No own `ctrl`: on macOS Ctrl+click is the context menu (E12).
+ */
+export type FileActionModifier = 'mod' | 'alt' | 'shift';
+
+/** Canonical order, as in Rust (`Mod+Alt+Shift`). */
+export const MODIFIER_ORDER: readonly FileActionModifier[] = ['mod', 'alt', 'shift'];
+
 /** One rule as stored in `file-actions.json`. */
 export interface FileActionRule {
   readonly id: string;
   readonly trigger: FileActionTrigger;
+  /** Keys held with the trigger, canonical order; empty = no key (design 073). */
+  readonly modifiers: readonly FileActionModifier[];
   /** Globs on the file name, separated by `;` or spaces (`*.js *.mjs`). */
   readonly pattern: string;
   /** Ask before running. */
@@ -22,7 +36,7 @@ export interface FileActionRule {
 }
 
 export type FileActionProblemCode =
-  'pattern' | 'program' | 'params_quote' | 'params_files' | 'too_long';
+  'trigger' | 'pattern' | 'program' | 'params_quote' | 'params_files' | 'too_long';
 
 export interface FileActionProblem {
   readonly id: string;

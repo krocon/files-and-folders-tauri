@@ -76,7 +76,7 @@ const CLICKABLE = [
         [style.height]="fill() ? null : height()"
         [style.max-height]="!fill() && height() ? '90vh' : null"
       >
-        <h2 class="title" [id]="titleId">{{ heading() }}</h2>
+        <h2 class="title" [class.compact]="compact()" [id]="titleId">{{ heading() }}</h2>
         <ng-content />
       </div>
     </div>
@@ -96,6 +96,8 @@ export class Modal {
   readonly height = input<string | null>(null);
   /** The full height of the window (a small margin): large tool dialogs with a preview table. */
   readonly fill = input(false);
+  /** Less space under the title (design 073 E23): dialogs whose content starts with an intro. */
+  readonly compact = input(false);
   /** `alertdialog` for questions that interrupt work (conflicts). */
   readonly dialogRole = input<'dialog' | 'alertdialog'>('dialog');
   /** Id of the element that explains the question (`aria-describedby`). */

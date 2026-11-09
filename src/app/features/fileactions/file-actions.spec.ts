@@ -30,6 +30,7 @@ const flush = () => new Promise((r) => setTimeout(r));
 const NODE: FileActionRule = {
   id: 'node',
   trigger: 'doubleClick',
+  modifiers: [],
   pattern: '*.js',
   confirm: true,
   command: 'node %N',
@@ -38,6 +39,7 @@ const NODE: FileActionRule = {
 const QUIET: FileActionRule = {
   id: 'py',
   trigger: 'doubleClick',
+  modifiers: [],
   pattern: '*.py',
   confirm: false,
   command: 'python3 %N',
@@ -88,9 +90,24 @@ describe('double-click actions (design 072)', () => {
     await store.init();
   });
 
+  it('runs only the rule with exactly the keys held (design 073)', async () => {
+    api.loaded = {
+      rules: [{ ...QUIET, id: 'shift', pattern: '*.js', modifiers: ['shift'] }, QUIET],
+      warning: null,
+      problems: [],
+    };
+    await store.init();
+    expect(store.handleDoubleClick(entry('a.js'), ['shift'], left)).toBe(true);
+    expect(store.handleDoubleClick(entry('a.js'), [], left)).toBe(false);
+    expect(store.handleDoubleClick(entry('a.js'), ['mod'], left)).toBe(false);
+    expect(store.handleDoubleClick(entry('a.py'), ['shift'], left)).toBe(false);
+    await flush();
+    expect(api.runs.map((r) => r.id)).toEqual(['shift']);
+  });
+
   it('asks first if the rule says so and runs only on yes', async () => {
     const file = entry('a.js', { path: '/src/a.js' });
-    expect(store.handleDoubleClick(file, left)).toBe(true);
+    expect(store.handleDoubleClick(file, [], left)).toBe(true);
     await flush();
     expect(confirm.request()?.message).toBe('node %N');
     expect(confirm.request()?.detail).toBe('/src/a.js');
@@ -104,7 +121,7 @@ describe('double-click actions (design 072)', () => {
   });
 
   it('does not run on no, and the double click stays taken', async () => {
-    expect(store.handleDoubleClick(entry('a.js'), left)).toBe(true);
+    expect(store.handleDoubleClick(entry('a.js'), [], left)).toBe(true);
     await flush();
     confirm.answer(false);
     await flush();
@@ -113,16 +130,18 @@ describe('double-click actions (design 072)', () => {
   });
 
   it('runs at once without the question', async () => {
-    expect(store.handleDoubleClick(entry('a.py'), left)).toBe(true);
+    expect(store.handleDoubleClick(entry('a.py'), [], left)).toBe(true);
     await flush();
     expect(confirm.request()).toBeNull();
     expect(api.runs.map((r) => r.id)).toEqual(['py']);
   });
 
   it('leaves everything else to the normal double click', () => {
-    expect(store.handleDoubleClick(entry('a.txt'), left)).toBe(false);
-    expect(store.handleDoubleClick(dir('b.js'), left)).toBe(false);
-    expect(store.handleDoubleClick(entry('c.js', { path: 'remote://p/c.js' }), left)).toBe(false);
+    expect(store.handleDoubleClick(entry('a.txt'), [], left)).toBe(false);
+    expect(store.handleDoubleClick(dir('b.js'), [], left)).toBe(false);
+    expect(store.handleDoubleClick(entry('c.js', { path: 'remote://p/c.js' }), [], left)).toBe(
+      false,
+    );
     expect(api.runs).toEqual([]);
   });
 
@@ -133,12 +152,12 @@ describe('double-click actions (design 072)', () => {
       problems: [{ id: 'py', code: 'program' }],
     };
     await store.init();
-    expect(store.handleDoubleClick(entry('a.py'), left)).toBe(false);
+    expect(store.handleDoubleClick(entry('a.py'), [], left)).toBe(false);
   });
 
   it('shows a failed start in the panel', async () => {
     api.fail = { code: 'program_not_found', message: 'no python3', path: null };
-    store.handleDoubleClick(entry('a.py'), left);
+    store.handleDoubleClick(entry('a.py'), [], left);
     await flush();
     expect(left.error()?.code).toBe('program_not_found');
     expect(store.status()).toBe('');
@@ -148,7 +167,7 @@ describe('double-click actions (design 072)', () => {
     const answers: boolean[] = [];
     left.confirmExecutable = () => (answers.push(true), Promise.resolve(true));
     api.fail = { code: 'executable', message: 'exe', path: '/root/a.py' };
-    store.handleDoubleClick(entry('a.py'), left);
+    store.handleDoubleClick(entry('a.py'), [], left);
     await flush();
     expect(answers).toEqual([true]);
     expect(api.runs.map((r) => r.allowExecutable)).toEqual([false, true]);
@@ -180,7 +199,7 @@ describe('double-click actions (design 072)', () => {
       buttons(el, 'Add').click();
       fixture.detectChanges();
       expect(el.querySelector('select')?.value).toBe('doubleClick');
-      const ask = el.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+      const ask = el.querySelector<HTMLInputElement>('input.confirm')!;
       expect(ask.checked).toBe(true);
       type(el, 'input.pattern', '*.js');
       type(el, 'input.command', 'node %N');
@@ -198,6 +217,7 @@ describe('double-click actions (design 072)', () => {
           {
             id: expect.any(String),
             trigger: 'doubleClick',
+            modifiers: [],
             pattern: '*.js',
             confirm: false,
             command: 'node %N',
@@ -207,6 +227,91 @@ describe('double-click actions (design 072)', () => {
       ]);
       expect(store.rules()[0].command).toBe('node %N');
       expect(TestBed.inject(DialogService).open()).toBeNull();
+    });
+
+    it('keys held: checkboxes ↔ rule, shown before the pattern and in the heading (073)', async () => {
+      const { fixture, el } = open();
+      expect(el.querySelector('.rule-heading')?.textContent?.trim()).toBe('Double click on *.js');
+      const shift = el.querySelector<HTMLInputElement>('input[data-modifier=shift]')!;
+      const mod = el.querySelector<HTMLInputElement>('input[data-modifier=mod]')!;
+      expect([shift.checked, mod.checked]).toEqual([false, false]);
+      shift.checked = true;
+      shift.dispatchEvent(new Event('change'));
+      mod.checked = true;
+      mod.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(el.querySelector('[aria-selected="true"] .keys')?.textContent).toBe('Ctrl+Shift');
+      expect(el.querySelector('.rule-heading')?.textContent?.trim()).toBe(
+        'Ctrl+Shift Double click on *.js',
+      );
+      buttons(el, 'Save').click();
+      await flush();
+      expect(api.saved[0][0].modifiers).toEqual(['mod', 'shift']);
+    });
+
+    it('has all buttons in the footer, Add/Remove/Up/Down with Mod+letter', () => {
+      const { fixture, el } = open();
+      const foot = el.querySelector('.foot')!;
+      expect([...foot.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual([
+        'Help',
+        'Add',
+        'Remove',
+        'Up',
+        'Down',
+        'Cancel',
+        'Save',
+      ]);
+      expect(buttons(el, 'Up').disabled).toBe(true);
+      expect(buttons(el, 'Down').disabled).toBe(false);
+      const key = (k: string) =>
+        el
+          .querySelector('.dialog')!
+          .dispatchEvent(
+            new KeyboardEvent('keydown', { key: k, ctrlKey: true, metaKey: true, bubbles: true }),
+          );
+      key('d'); // Down
+      fixture.detectChanges();
+      expect(el.querySelectorAll('[role=option]')[1].textContent).toContain('*.js');
+      key('n'); // Add
+      fixture.detectChanges();
+      expect(el.querySelectorAll('[role=option]').length).toBe(3);
+    });
+
+    it('marks a rule that an identical one above hides, but saves it', async () => {
+      api.loaded = {
+        rules: [NODE, { ...NODE, id: 'copy', command: 'code %N' }],
+        warning: null,
+        problems: [],
+      };
+      await store.init();
+      const { fixture, el } = open();
+      const rows = el.querySelectorAll('[role=option]');
+      expect(rows[1].classList.contains('shadowed')).toBe(true);
+      expect(rows[0].classList.contains('shadowed')).toBe(false);
+      el.querySelector('[role=listbox]')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+      );
+      fixture.detectChanges();
+      expect(el.querySelector('.shadowed-hint')).not.toBeNull();
+      buttons(el, 'Save').click();
+      await flush();
+      expect(api.saved[0].length).toBe(2);
+    });
+
+    it('shows an unknown trigger of a newer file as a problem', async () => {
+      api.loaded = {
+        rules: [{ ...NODE, trigger: 'middleClick' as 'doubleClick' }],
+        warning: null,
+        problems: [{ id: 'node', code: 'trigger' }],
+      };
+      await store.init();
+      const { fixture, el } = open();
+      expect(el.querySelector('#fnf-fa-problem')?.textContent).toContain('unknown');
+      const select = el.querySelector<HTMLSelectElement>('select.trigger')!;
+      select.value = 'doubleClick';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(el.querySelector('#fnf-fa-problem')?.textContent).toBe('');
     });
 
     it('opens the help on top of the dialog and Esc only closes the help', async () => {

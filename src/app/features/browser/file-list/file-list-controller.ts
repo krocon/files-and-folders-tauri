@@ -1,6 +1,8 @@
 import type { TableStateIf } from '@guiexpert/table';
 import { stemLength } from '../../ops/ops-logic';
+import { FileActionModifier } from '../../../core/fileactions/file-actions.models';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
+import { modifiersOf } from '../../fileactions/file-actions-logic';
 import { FileBrowserStore } from '../file-browser.store';
 import { TableBridge } from './table-bridge';
 
@@ -8,9 +10,15 @@ import { TableBridge } from './table-bridge';
 export interface FileListHooks {
   /** Strg/⌘+Enter on a folder. */
   openInNewTab?(entry: DirEntry): void;
-  /** Double-click on an entry; `true` = handled (e.g. "view" instead of "open", design 015). */
-  doubleClick?(entry: DirEntry): boolean;
+  /**
+   * Double-click on an entry with the keys held. `rule`: a double-click action took it
+   * (design 073 – the marks of the first click are undone); `handled`: something else
+   * took it (e.g. "view" instead of "open", design 015); `open`: open as usual.
+   */
+  doubleClick?(entry: DirEntry, modifiers: readonly FileActionModifier[]): DoubleClickResult;
 }
+
+export type DoubleClickResult = 'rule' | 'handled' | 'open';
 
 /** The store API the controller uses (keeps tests independent of Angular DI). */
 export type FileListStore = Pick<
@@ -27,6 +35,8 @@ export type FileListStore = Pick<
   | 'replaceMarks'
   | 'invertMarks'
   | 'isMarked'
+  | 'marked'
+  | 'restoreMarks'
 >;
 
 export interface ClickInput {
@@ -36,6 +46,8 @@ export interface ClickInput {
   shiftKey: boolean;
   /** Ctrl (Windows/Linux) or ⌘ (macOS). */
   toggleKey: boolean;
+  /** Alt / ⌥ (design 073). */
+  altKey?: boolean;
 }
 
 /**
@@ -56,6 +68,15 @@ function fold(text: string): string {
 export class FileListController {
   /** Cursor before the latest focus change – anchor for Shift+click. */
   private previousCursor: string | null = null;
+  /**
+   * Marks before a Mod/Shift click changed them, for the row clicked: the double click
+   * that follows may be a rule, which leaves the marks as they were (design 073 E15).
+   */
+  private marksBeforeClick: {
+    readonly path: string;
+    readonly marks: ReadonlySet<string>;
+    readonly anchor: string | null;
+  } | null = null;
 
   constructor(
     private readonly bridge: TableBridge,
@@ -115,12 +136,23 @@ export class FileListController {
     if (!row) {
       return;
     }
+    const modifiers = modifiersOf({ ...click, altKey: click.altKey ?? false });
     if (click.clickCount >= 2) {
-      if (!this.hooks.doubleClick?.(row)) {
+      const before = this.marksBeforeClick;
+      this.marksBeforeClick = null;
+      const result = this.hooks.doubleClick?.(row, modifiers) ?? 'open';
+      if (result === 'open') {
         void this.store.open(row);
+      } else if (result === 'rule' && before?.path === row.path) {
+        this.store.restoreMarks(before.marks);
+        this.previousCursor = before.anchor;
       }
       return;
     }
+    this.marksBeforeClick =
+      click.toggleKey || click.shiftKey
+        ? { path: row.path, marks: this.store.marked(), anchor: this.previousCursor }
+        : null;
     if (click.toggleKey) {
       this.store.toggleMark(row.path);
     } else if (click.shiftKey && this.previousCursor !== null) {

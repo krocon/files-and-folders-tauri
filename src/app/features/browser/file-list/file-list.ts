@@ -280,21 +280,21 @@ export class FileList implements OnDestroy {
     const bridge = createTableBridge(api, table.body, table.columnDefs);
     const controller = new FileListController(bridge, this.store, {
       openInNewTab: (entry) => this.openInNewTab.emit(entry),
-      doubleClick: (entry) => {
-        // a rule of the double-click actions goes first (design 072)
-        if (this.injector.get(FileActionsStore).handleDoubleClick(entry, this.store)) {
-          return true;
+      doubleClick: (entry, modifiers) => {
+        // a rule of the double-click actions goes first (designs 072, 073)
+        if (this.injector.get(FileActionsStore).handleDoubleClick(entry, modifiers, this.store)) {
+          return 'rule';
         }
         if (
           this.settings.get('behavior.doubleClick') !== 'view' ||
           isNavigableDir(entry) ||
           isParentRow(entry)
         ) {
-          return false;
+          return 'open';
         }
         // the click put the cursor on the entry: the viewer opens it
         void this.injector.get(ActionService).run('OPEN_VIEW_DLG');
-        return true;
+        return 'handled';
       },
     });
     this.bridge = bridge;
@@ -356,6 +356,7 @@ export class FileList implements OnDestroy {
           clickCount: evt.clickCount,
           shiftKey: evt.originalEvent?.shiftKey ?? false,
           toggleKey: (IS_MAC ? evt.originalEvent?.metaKey : evt.originalEvent?.ctrlKey) ?? false,
+          altKey: evt.originalEvent?.altKey ?? false,
         }),
     });
 

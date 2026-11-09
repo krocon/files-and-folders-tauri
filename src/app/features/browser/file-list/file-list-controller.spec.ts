@@ -165,6 +165,56 @@ describe('FileListController', () => {
     expect([...store.marked()].sort()).toEqual(['/h/a.txt', '/h/b.txt', '/h/c.txt']);
   });
 
+  describe('double click with keys held (design 073)', () => {
+    let seen: (readonly string[])[];
+    let result: 'rule' | 'handled' | 'open';
+
+    beforeEach(() => {
+      seen = [];
+      result = 'rule';
+      ctrl = new FileListController(bridge, store, {
+        doubleClick: (_entry, modifiers) => (seen.push(modifiers), result),
+      });
+      store.setMarked(['/h/c.txt'], true);
+    });
+
+    it('hands the keys held to the hook (⌘/Ctrl = mod, canonical order)', () => {
+      ctrl.onClick(click(1, { clickCount: 2 }));
+      ctrl.onClick(click(1, { clickCount: 2, shiftKey: true, altKey: true, toggleKey: true }));
+      expect(seen).toEqual([[], ['mod', 'alt', 'shift']]);
+    });
+
+    it('a rule after Mod+click leaves the marks as they were', () => {
+      focusRow(1);
+      ctrl.onClick(click(1, { toggleKey: true }));
+      expect(store.isMarked('/h/a.txt')).toBe(true); // the first click marks …
+      ctrl.onClick(click(1, { clickCount: 2, toggleKey: true }));
+      expect([...store.marked()]).toEqual(['/h/c.txt']); // … the rule undoes it
+    });
+
+    it('a rule after Shift+click leaves the marks as they were', () => {
+      focusRow(0);
+      focusRow(2);
+      ctrl.onClick(click(2, { shiftKey: true }));
+      expect(store.marked().size).toBe(4);
+      ctrl.onClick(click(2, { clickCount: 2, shiftKey: true }));
+      expect([...store.marked()]).toEqual(['/h/c.txt']);
+    });
+
+    it('without a rule the marks of the first click stay, as before', async () => {
+      result = 'open';
+      focusRow(1);
+      ctrl.onClick(click(1, { toggleKey: true }));
+      ctrl.onClick(click(1, { clickCount: 2, toggleKey: true }));
+      expect([...store.marked()].sort()).toEqual(['/h/a.txt', '/h/c.txt']);
+      result = 'handled';
+      focusRow(2);
+      ctrl.onClick(click(2, { toggleKey: true }));
+      ctrl.onClick(click(2, { clickCount: 2, toggleKey: true }));
+      expect([...store.marked()].sort()).toEqual(['/h/a.txt', '/h/b.txt', '/h/c.txt']);
+    });
+  });
+
   it('does nothing on an empty folder', () => {
     bridge.setRows([]);
     bridge.focus = -1;
