@@ -33,6 +33,10 @@ const EXAMPLES = ['node %N', 'python3 %N --verbose', 'ffmpeg -i %N %O.mp3', 'cp 
           }
         </dl>
 
+        <h3>{{ t.helpContent.keysHeading }}</h3>
+        <p>{{ t.helpContent.keysExample }}</p>
+        <p>{{ t.helpContent.keysNote }}</p>
+
         <h3>{{ t.helpContent.placeholdersHeading }}</h3>
         <p>{{ t.helpContent.placeholdersIntro }}</p>
         <table>

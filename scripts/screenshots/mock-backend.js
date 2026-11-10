@@ -1309,6 +1309,7 @@
         {
           id: 'a1',
           trigger: 'doubleClick',
+          modifiers: [],
           pattern: '*.jpg',
           confirm: true,
           command: 'node %N',
@@ -1317,9 +1318,11 @@
         {
           id: 'a2',
           trigger: 'doubleClick',
+          modifiers: ['shift'],
           pattern: '*.py',
           confirm: false,
           command: 'python3 %N',
+          terminal: false,
         },
       ],
       warning: null,

@@ -1037,7 +1037,8 @@ mod tests {
         assert_eq!(bundle(&src)["fileActions"], Value::Null);
         let rule = file_actions::FileActionRule {
             id: "a".into(),
-            trigger: file_actions::Trigger::DoubleClick,
+            trigger: file_actions::DOUBLE_CLICK.into(),
+            modifiers: vec!["shift".into()],
             pattern: "*.js".into(),
             confirm: false,
             command: "node %N".into(),

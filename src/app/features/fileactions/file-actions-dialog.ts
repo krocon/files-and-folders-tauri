@@ -1,7 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ActionService } from '../../core/actions/action.service';
 import {
+  FILE_ACTION_TRIGGERS,
+  FileActionModifier,
   FileActionProblem,
   FileActionRule,
+  FileActionTrigger,
   MAX_FILE_ACTIONS,
 } from '../../core/fileactions/file-actions.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
@@ -10,18 +14,26 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { moveSlot, removeSlot } from '../config/button-config-logic';
 import { FileActionsHelp } from './file-actions-help';
+import {
+  availableModifiers,
+  modifierLabel,
+  modifierName,
+  normalizeModifiers,
+  shadowedRules,
+} from './file-actions-logic';
 import { FILE_ACTIONS_TEXTS } from './file-actions-texts';
 import { FileActionsStore } from './file-actions.store';
 
 /**
- * Double-click actions (OPEN_FILE_ACTIONS_DLG, design 072): rules with trigger, file pattern,
- * yes/no question and command; a draft that "Save" writes to `file-actions.json`.
+ * Double-click actions (OPEN_FILE_ACTIONS_DLG, design 072): rules with trigger (kind + keys
+ * held, design 073), file pattern, yes/no question and command; a draft that "Save" writes
+ * to `file-actions.json`.
  */
 @Component({
   selector: 'app-file-actions-dialog',
   imports: [Modal, DialogKey, FileActionsHelp],
   template: `
-    <app-modal [heading]="t.title" width="48rem" (closed)="dialogs.close()">
+    <app-modal [heading]="t.title" width="62rem" [compact]="true" (closed)="dialogs.close()">
       <div class="tool">
         <div class="body">
           <p class="intro">{{ t.intro }}</p>
@@ -29,7 +41,7 @@ import { FileActionsStore } from './file-actions.store';
             <div class="field side">
               <span [id]="listLabelId">{{ t.rules }}</span>
               <ul
-                class="listbox"
+                class="listbox rules"
                 role="listbox"
                 tabindex="0"
                 data-autofocus
@@ -45,11 +57,17 @@ import { FileActionsStore } from './file-actions.store';
                     [id]="rowId(i)"
                     [attr.aria-selected]="i === cursor()"
                     [attr.aria-invalid]="problemOf(r) ? 'true' : null"
+                    [attr.aria-description]="shadowed().has(r.id) ? t.shadowed : null"
                     [class.invalid]="problemOf(r) !== null"
+                    [class.shadowed]="shadowed().has(r.id)"
                     [attr.data-index]="i"
                   >
+                    <span class="keys">{{ keysOf(r) }}</span>
                     <span class="grow">{{ r.pattern || t.newPattern }}</span>
                     <span class="muted">{{ r.command }}</span>
+                    @if (shadowed().has(r.id)) {
+                      <span class="fa fa-exclamation-triangle" aria-hidden="true"></span>
+                    }
                   </li>
                 } @empty {
                   <li class="empty" role="option" aria-selected="false" aria-disabled="true">
@@ -58,39 +76,37 @@ import { FileActionsStore } from './file-actions.store';
                 }
               </ul>
               <p class="help" [id]="listHelpId">{{ t.listHelp }}</p>
-              <div class="stack">
-                <button
-                  type="button"
-                  class="btn"
-                  [disabled]="rows().length >= maxRules"
-                  (click)="add()"
-                >
-                  {{ t.add }}
-                </button>
-                <button type="button" class="btn" [disabled]="!current()" (click)="remove()">
-                  {{ t.remove }}
-                </button>
-                <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
-                  {{ t.moveUp }}
-                </button>
-                <button
-                  type="button"
-                  class="btn"
-                  [disabled]="cursor() >= rows().length - 1"
-                  (click)="move(1)"
-                >
-                  {{ t.moveDown }}
-                </button>
-              </div>
             </div>
             @if (current(); as r) {
-              <div class="side" role="group" [attr.aria-label]="r.pattern || t.newPattern">
+              <div class="side" role="group" [attr.aria-labelledby]="headingId">
+                <h3 class="rule-heading" [id]="headingId">{{ heading() }}</h3>
                 <label class="field">
                   <span>{{ t.trigger }}</span>
-                  <select>
-                    <option value="doubleClick" selected>{{ t.triggers.doubleClick }}</option>
+                  <select class="trigger" (change)="setTrigger(value($event))">
+                    @for (k of triggerKinds; track k) {
+                      <option [value]="k" [selected]="r.trigger === k">{{ t.triggers[k] }}</option>
+                    }
+                    @if (!knownTrigger(r)) {
+                      <option [value]="r.trigger" selected disabled>{{ r.trigger }}</option>
+                    }
                   </select>
                 </label>
+                <div class="field" role="group" [attr.aria-labelledby]="keysLabelId">
+                  <span [id]="keysLabelId">{{ t.keysHeld }}</span>
+                  <div class="keys-held">
+                    @for (m of modifiers(); track m) {
+                      <label class="check">
+                        <input
+                          type="checkbox"
+                          [attr.data-modifier]="m"
+                          [checked]="r.modifiers.includes(m)"
+                          (change)="setModifier(m, checked($event))"
+                        />
+                        <span>{{ modifierText(m) }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
                 <label class="field">
                   <span>{{ t.pattern }}</span>
                   <input
@@ -107,6 +123,7 @@ import { FileActionsStore } from './file-actions.store';
                 <label class="check">
                   <input
                     type="checkbox"
+                    class="confirm"
                     [checked]="r.confirm"
                     (change)="patch({ confirm: checked($event) })"
                   />
@@ -134,6 +151,9 @@ import { FileActionsStore } from './file-actions.store';
                   />
                 </label>
                 <p class="help" [id]="commandHelpId">{{ t.commandHelp }}</p>
+                @if (shadowed().has(r.id)) {
+                  <p class="help shadowed-hint">{{ t.shadowedHint }}</p>
+                }
                 <p class="error" [id]="problemId" aria-live="polite">{{ problemText() }}</p>
               </div>
             } @else {
@@ -145,6 +165,42 @@ import { FileActionsStore } from './file-actions.store';
         <div class="foot">
           <button type="button" class="btn help-button" (click)="help.set(true)">
             {{ t.help }}
+          </button>
+          <button
+            appDialogKey="secondary:N"
+            type="button"
+            class="btn"
+            [disabled]="rows().length >= maxRules"
+            (click)="add()"
+          >
+            {{ t.add }}
+          </button>
+          <button
+            appDialogKey="secondary:R"
+            type="button"
+            class="btn"
+            [disabled]="!current()"
+            (click)="remove()"
+          >
+            {{ t.remove }}
+          </button>
+          <button
+            appDialogKey="secondary:U"
+            type="button"
+            class="btn"
+            [disabled]="cursor() <= 0"
+            (click)="move(-1)"
+          >
+            {{ t.moveUp }}
+          </button>
+          <button
+            appDialogKey="secondary:D"
+            type="button"
+            class="btn"
+            [disabled]="cursor() >= rows().length - 1"
+            (click)="move(1)"
+          >
+            {{ t.moveDown }}
           </button>
           <div class="buttons">
             <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
@@ -167,7 +223,11 @@ import { FileActionsStore } from './file-actions.store';
       <app-file-actions-help (closed)="closeHelp()" />
     }
   `,
-  styleUrls: ['../../shared/dialog/tool-dialog.css', '../config/config-dialog.css'],
+  styleUrls: [
+    '../../shared/dialog/tool-dialog.css',
+    '../config/config-dialog.css',
+    './file-actions-dialog.css',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FileActionsDialog {
@@ -180,6 +240,11 @@ export class FileActionsDialog {
   protected readonly patternHelpId = 'fnf-fa-pattern-help';
   protected readonly commandHelpId = 'fnf-fa-command-help';
   protected readonly problemId = 'fnf-fa-problem';
+  protected readonly headingId = 'fnf-fa-rule-heading';
+  protected readonly keysLabelId = 'fnf-fa-keys-label';
+  protected readonly triggerKinds = FILE_ACTION_TRIGGERS;
+  private readonly platform = inject(ActionService).platform;
+  protected readonly modifiers = computed(() => availableModifiers(this.platform()));
 
   protected readonly rows = signal<readonly FileActionRule[]>(this.store.rules());
   protected readonly cursor = signal(0);
@@ -196,7 +261,46 @@ export class FileActionsDialog {
     return code ? this.t.problems[code] : '';
   });
 
+  /** Rules an identical one above hides (E20): a hint, no error. */
+  protected readonly shadowed = computed(() => shadowedRules(this.rows()));
+  /** Heading of the right column (E24): "⇧ Double click on *.js". */
+  protected readonly heading = computed(() => {
+    const r = this.current();
+    if (!r) {
+      return '';
+    }
+    const kind = this.knownTrigger(r) ? this.t.triggers[r.trigger] : r.trigger;
+    return this.t.ruleHeading(this.keysOf(r), kind, r.pattern);
+  });
+
   private nextId = 1;
+
+  protected knownTrigger(r: FileActionRule): boolean {
+    return this.triggerKinds.includes(r.trigger);
+  }
+
+  protected keysOf(r: FileActionRule): string {
+    return modifierLabel(r.modifiers, this.platform());
+  }
+
+  protected modifierText(m: FileActionModifier): string {
+    const platform = this.platform();
+    return `${modifierName(m, platform)} ${this.t.modifierNames[platform === 'macos' ? 'macos' : 'other'][m]}`.trim();
+  }
+
+  protected setTrigger(kind: string): void {
+    this.patch({ trigger: kind as FileActionTrigger });
+  }
+
+  /** Only known keys are written: unchecking clears an unknown one from a newer file. */
+  protected setModifier(m: FileActionModifier, on: boolean): void {
+    const r = this.current();
+    if (!r) {
+      return;
+    }
+    const rest = r.modifiers.filter((x) => x !== m);
+    this.patch({ modifiers: normalizeModifiers(on ? [...rest, m] : rest) });
+  }
 
   protected closeHelp(): void {
     this.help.set(false);
@@ -258,8 +362,14 @@ export class FileActionsDialog {
     }
     evt.preventDefault();
     this.cursor.set(next);
+    this.revealCursor();
+  }
+
+  /** The cursor row stays visible in the list of ten rows (E16). */
+  private revealCursor(): void {
+    const i = this.cursor();
     setTimeout(() =>
-      document.getElementById(this.rowId(next))?.scrollIntoView?.({ block: 'nearest' }),
+      document.getElementById(this.rowId(i))?.scrollIntoView?.({ block: 'nearest' }),
     );
   }
 
@@ -287,6 +397,7 @@ export class FileActionsDialog {
     const rule: FileActionRule = {
       id: this.newId(),
       trigger: 'doubleClick',
+      modifiers: [],
       pattern: '',
       // running something is what the user has to switch off, not on
       confirm: true,
@@ -295,6 +406,7 @@ export class FileActionsDialog {
     };
     this.rows.set([...rows.slice(0, at), rule, ...rows.slice(at)]);
     this.cursor.set(at);
+    this.revealCursor();
     // the pattern is the next thing to type
     setTimeout(() =>
       document.querySelector<HTMLInputElement>('app-file-actions-dialog input.pattern')?.focus(),
@@ -317,6 +429,7 @@ export class FileActionsDialog {
     if (moved !== rows) {
       this.rows.set(moved);
       this.cursor.update((c) => c + delta);
+      this.revealCursor();
     }
   }
 

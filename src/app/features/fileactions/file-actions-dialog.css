@@ -1,0 +1,52 @@
+/* Double-click actions (design 073): a rule list of ten rows, keys before the pattern. */
+.listbox.rules {
+  --fa-row-h: calc(var(--control-height) - 4px);
+  /* ten rows + padding; smaller windows: the body scrolls (config-dialog.css) */
+  height: min(calc(10 * var(--fa-row-h) + 6px), 45vh);
+  max-height: none;
+
+  [role='option'] {
+    height: var(--fa-row-h);
+    box-sizing: border-box;
+  }
+
+  .keys {
+    flex: none;
+    min-width: 2.5em;
+    color: var(--color-muted);
+  }
+
+  [aria-selected='true'] .keys {
+    color: inherit;
+  }
+
+  .shadowed .grow,
+  .shadowed .muted {
+    text-decoration: line-through;
+  }
+}
+
+.rule-heading {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.keys-held {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1) var(--spacing-3);
+}
+
+/* compact right column (073 E22/E23): no top margin of labels above a field (styles.css),
+   checkboxes only as high as their text */
+.side {
+  label.field {
+    margin-top: 0;
+  }
+
+  label.check {
+    min-height: 0;
+  }
+}

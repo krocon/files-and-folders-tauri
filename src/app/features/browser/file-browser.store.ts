@@ -939,6 +939,14 @@ export class FileBrowserStore implements OnDestroy {
     this.marked.set(next.size === 0 ? EMPTY_MARKS : next);
   }
 
+  /**
+   * Puts back marks remembered earlier (a double-click action undoes the marks of its
+   * first Mod/Shift click, design 073 E15).
+   */
+  restoreMarks(marks: ReadonlySet<string>): void {
+    this.marked.set(marks.size === 0 ? EMPTY_MARKS : marks);
+  }
+
   invertMarks(displayed: readonly string[]): void {
     const current = this.marked();
     this.marked.set(new Set(displayed.filter((p) => !current.has(p) && !this.isParentPath(p))));

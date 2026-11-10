@@ -22,12 +22,18 @@ pub const MAX_ID: usize = 64;
 pub const MAX_PATTERN: usize = 512;
 pub const MAX_FILE_BYTES: u64 = 256 * 1024;
 
-/// What sets a rule off – for now only the double click on a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Trigger {
-    #[default]
-    DoubleClick,
+/// Kinds of triggers this version knows – for now only the double click on a file.
+/// Unknown kinds (a newer file) stay in the rule and are a problem (design 073 E13).
+pub const TRIGGERS: &[&str] = &["doubleClick"];
+/// Keys that may be held with a trigger, in canonical order (`Mod+Alt+Shift`, 073 E11):
+/// `mod` is ⌘ on macOS and Ctrl elsewhere. No own `ctrl`: on macOS Ctrl+click is the
+/// context menu (E12).
+pub const MODIFIERS: &[&str] = &["mod", "alt", "shift"];
+pub const MAX_MODIFIERS: usize = 8;
+pub const DOUBLE_CLICK: &str = "doubleClick";
+
+fn double_click() -> String {
+    DOUBLE_CLICK.into()
 }
 
 fn yes() -> bool {
@@ -40,8 +46,12 @@ fn yes() -> bool {
 pub struct FileActionRule {
     #[serde(default)]
     pub id: String,
+    /// Kind of trigger (`doubleClick`); a file of 072 may lack it.
+    #[serde(default = "double_click")]
+    pub trigger: String,
+    /// Keys held with it, canonical order, empty = no key (073 E11); missing in files of 072.
     #[serde(default)]
-    pub trigger: Trigger,
+    pub modifiers: Vec<String>,
     /// Globs on the file name, separated by `;` or spaces (`*.js *.mjs`).
     #[serde(default)]
     pub pattern: String,
@@ -68,7 +78,7 @@ struct RulesFile {
 #[serde(rename_all = "camelCase")]
 pub struct FileActionProblem {
     pub id: String,
-    /// `pattern` | `program` | `params_quote` | `params_files` | `too_long`
+    /// `trigger` | `pattern` | `program` | `params_quote` | `params_files` | `too_long`
     pub code: String,
 }
 
@@ -79,8 +89,35 @@ fn valid_id(id: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
 }
 
+/// Known modifiers in canonical order without doubles, unknown ones after them in their
+/// order (kept, so nothing is lost silently – they are a problem, 073 E13).
+fn normalize_modifiers(mods: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = MODIFIERS
+        .iter()
+        .filter(|m| mods.iter().any(|x| x == *m))
+        .map(|m| (*m).to_string())
+        .collect();
+    for m in mods {
+        if !out.contains(&m) {
+            out.push(m);
+        }
+    }
+    out.truncate(MAX_MODIFIERS);
+    out
+}
+
+/// A trigger this version can fire: known kind and only known keys.
+fn trigger_ok(rule: &FileActionRule) -> bool {
+    TRIGGERS.contains(&rule.trigger.as_str())
+        && rule
+            .modifiers
+            .iter()
+            .all(|m| MODIFIERS.contains(&m.as_str()))
+}
+
 /// Brings the rules into shape (never fails): ids valid and unique (missing ones get
-/// `r<n>`), texts trimmed, overlong ones cleared, at most [`MAX_RULES`].
+/// `r<n>`), texts trimmed, overlong ones cleared, modifiers normalized, at most
+/// [`MAX_RULES`].
 pub fn sanitize(rules: Vec<FileActionRule>) -> Vec<FileActionRule> {
     let mut seen = HashSet::new();
     let mut next = 1usize;
@@ -105,6 +142,12 @@ pub fn sanitize(rules: Vec<FileActionRule>) -> Vec<FileActionRule> {
         if r.command.len() > tools::MAX_TEXT || r.command.contains('\0') {
             r.command.clear();
         }
+        if r.trigger.len() > MAX_ID || r.trigger.contains('\0') {
+            r.trigger.clear();
+        }
+        r.modifiers
+            .retain(|m| m.len() <= MAX_ID && !m.contains('\0'));
+        r.modifiers = normalize_modifiers(std::mem::take(&mut r.modifiers));
         out.push(r);
     }
     out
@@ -123,6 +166,9 @@ fn convert_arg(word: &str) -> String {
 /// macOS an `.app` bundle becomes `open -a <app> …`. The working folder is `{dir}`, which
 /// the command layer sets to the folder of the file.
 pub fn to_tool(rule: &FileActionRule, home: Option<&Path>) -> Result<Tool, &'static str> {
+    if !trigger_ok(rule) {
+        return Err("trigger");
+    }
     if rule.pattern.is_empty() {
         return Err("pattern");
     }
@@ -206,7 +252,8 @@ mod tests {
     fn rule(id: &str, pattern: &str, command: &str) -> FileActionRule {
         FileActionRule {
             id: id.into(),
-            trigger: Trigger::DoubleClick,
+            trigger: DOUBLE_CLICK.into(),
+            modifiers: Vec::new(),
             pattern: pattern.into(),
             confirm: true,
             command: command.into(),
@@ -377,7 +424,74 @@ mod tests {
         let rules = load(&file).value;
         assert!(rules[0].confirm);
         assert!(!rules[0].terminal);
-        assert_eq!(rules[0].trigger, Trigger::DoubleClick);
+        assert_eq!(rules[0].trigger, DOUBLE_CLICK);
+        assert!(rules[0].modifiers.is_empty());
+    }
+
+    /// 073: a file written by 072 (trigger, no modifiers) loads as "no key" and is
+    /// written back with an empty list.
+    #[test]
+    fn a_file_of_072_loads_as_no_key() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join(FILE_NAME);
+        fs::write(
+            &file,
+            r#"{"version":1,"rules":[{"id":"a","trigger":"doubleClick","pattern":"*.js","confirm":false,"command":"node %N","terminal":true}]}"#,
+        )
+        .unwrap();
+        let rules = load(&file).value;
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].trigger, DOUBLE_CLICK);
+        assert!(rules[0].modifiers.is_empty());
+        assert!(problems(&rules, None).is_empty());
+        save(&file, rules.clone()).unwrap();
+        assert!(
+            fs::read_to_string(&file)
+                .unwrap()
+                .contains(r#""modifiers": []"#)
+        );
+        assert_eq!(load(&file).value, rules);
+    }
+
+    #[test]
+    fn modifiers_are_sorted_and_doubles_removed() {
+        let mut r = rule("a", "*.js", "node %N");
+        r.modifiers = vec!["shift".into(), "mod".into(), "shift".into(), "alt".into()];
+        let out = sanitize(vec![r]);
+        assert_eq!(out[0].modifiers, ["mod", "alt", "shift"]);
+        assert!(problems(&out, None).is_empty());
+    }
+
+    #[test]
+    fn unknown_kinds_and_keys_are_a_problem_and_are_kept() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join(FILE_NAME);
+        fs::write(
+            &file,
+            r#"{"version":1,"rules":[
+                {"id":"a","trigger":"middleClick","pattern":"*.js","command":"node %N"},
+                {"id":"b","modifiers":["hyper","shift"],"pattern":"*.js","command":"node %N"},
+                {"id":"c","modifiers":["shift"],"pattern":"*.js","command":"node %N"}]}"#,
+        )
+        .unwrap();
+        let rules = load(&file).value;
+        assert_eq!(rules.len(), 3, "a newer file is no broken file");
+        assert_eq!(rules[0].trigger, "middleClick");
+        assert_eq!(rules[1].modifiers, ["shift", "hyper"]);
+        let codes: Vec<_> = problems(&rules, None)
+            .into_iter()
+            .map(|p| (p.id, p.code))
+            .collect();
+        assert_eq!(
+            codes,
+            [
+                ("a".into(), "trigger".into()),
+                ("b".into(), "trigger".into())
+            ]
+        );
+        // round trip: nothing of the unknown values is lost
+        save(&file, rules.clone()).unwrap();
+        assert_eq!(load(&file).value, rules);
     }
 
     #[test]

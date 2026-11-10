@@ -2,6 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { FileActionsApi } from '../../core/fileactions/file-actions-api';
 import {
+  FileActionModifier,
   FileActionProblem,
   FileActionRule,
   SavedFileActions,
@@ -66,10 +67,15 @@ export class FileActionsStore {
   }
 
   /**
-   * A double click on `entry`: true if a rule took it over (else the caller opens the entry
-   * as usual). A rule that still has a problem does not run: the file opens as usual.
+   * A double click on `entry` with `modifiers` held: true if a rule took it over (else the
+   * caller opens the entry as usual, design 073 E14). A rule that still has a problem does
+   * not run: the file opens as usual.
    */
-  handleDoubleClick(entry: DirEntry, panel: FileBrowserStore): boolean {
+  handleDoubleClick(
+    entry: DirEntry,
+    modifiers: readonly FileActionModifier[],
+    panel: FileBrowserStore,
+  ): boolean {
     // inside an archive, on a server or in the group view a click means something else
     if (
       panel.navigationLocked() ||
@@ -80,7 +86,7 @@ export class FileActionsStore {
     ) {
       return false;
     }
-    const rule = findRule(this.rules(), 'doubleClick', entry);
+    const rule = findRule(this.rules(), 'doubleClick', modifiers, entry);
     if (!rule || this.problems().some((p) => p.id === rule.id)) {
       return false;
     }
