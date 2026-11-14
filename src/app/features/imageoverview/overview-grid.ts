@@ -33,7 +33,7 @@ import {
 } from './grid-math';
 import { ImageOverviewStore } from './image-overview.store';
 import { IMAGE_OVERVIEW_TEXTS } from './image-overview-texts';
-import { thumbStep, tileHeight } from './overview-logic';
+import { FOOT_HEIGHT, rowCountWithSpare, thumbStep, tileHeight } from './overview-logic';
 import { TileRenderer } from './tile-renderer';
 import { TileRetries } from './tile-retries';
 
@@ -164,12 +164,22 @@ export class OverviewGrid {
     );
   });
 
+  /** The height in view above the half transparent status line. */
+  private readonly visibleHeight = computed(() => Math.max(0, this.viewHeight() - FOOT_HEIGHT));
+
   private repaintPending = false;
   private lastLayoutKey = '';
   private typed = '';
   private typedAt = 0;
 
   constructor() {
+    // one spare row below the last (instead of the model's floor + 1, which adds an empty row
+    // only when the last row is full), so the last images scroll above the status line
+    const body = this.model.bodyModel;
+    body.getRowCount = () =>
+      rowCountWithSpare(body.filteredItems?.length ?? 0, body.getColumnCount());
+    body.getUnfilteredRowCount = () =>
+      rowCountWithSpare(body.items?.length ?? 0, body.getColumnCount());
     const el = this.host.nativeElement;
     const destroyRef = inject(DestroyRef);
     if (typeof ResizeObserver !== 'undefined') {
@@ -223,7 +233,6 @@ export class OverviewGrid {
     if (!api || this.hostWidth() === 0) {
       return;
     }
-    // TODO(guiexpert): CoverGridBodyModel.getRowCount() adds an empty row when the last row is full
     api.repaintHard();
     const key = `${layout.cols}x${layout.rowHeight}`;
     if (key !== this.lastLayoutKey && this.lastLayoutKey !== '') {
@@ -252,7 +261,7 @@ export class OverviewGrid {
       return;
     }
     const l = this.layout();
-    const top = scrollToShow(index, l.cols, l.rowHeight, 0, this.viewHeight(), this.scrollTop);
+    const top = scrollToShow(index, l.cols, l.rowHeight, 0, this.visibleHeight(), this.scrollTop);
     if (top !== null) {
       this.scrollTo(top);
     }
@@ -320,7 +329,7 @@ export class OverviewGrid {
     const l = this.layout();
     const move = MOVES[e.key];
     if (move && !mod) {
-      this.store.move(move, l.cols, pageRows(this.viewHeight(), l.rowHeight, 0), e.shiftKey);
+      this.store.move(move, l.cols, pageRows(this.visibleHeight(), l.rowHeight, 0), e.shiftKey);
     } else if (mod && (e.key === '+' || e.key === '=')) {
       this.store.zoom(1);
     } else if (mod && e.key === '-') {

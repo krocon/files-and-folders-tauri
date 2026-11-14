@@ -14,7 +14,7 @@ import { FolderTree } from './folder-tree';
 import { ImageOverviewStore } from './image-overview.store';
 import { IMAGE_OVERVIEW_TEXTS } from './image-overview-texts';
 import { LargeView } from './large-view';
-import { MAX_TILE, MIN_TILE, OverviewSort } from './overview-logic';
+import { MAX_TILE, FOOT_HEIGHT, MIN_TILE, OverviewSort } from './overview-logic';
 import { OverviewGrid } from './overview-grid';
 
 const SORTS: readonly OverviewSort[] = ['name', 'date', 'size', 'type'];
@@ -37,6 +37,7 @@ export class ImageOverview {
   private readonly settings = inject(SettingsStore);
   protected readonly t = IMAGE_OVERVIEW_TEXTS;
   protected readonly sorts = SORTS;
+  protected readonly footHeight = FOOT_HEIGHT;
   protected readonly minTile = MIN_TILE;
   protected readonly maxTile = MAX_TILE;
   private readonly grid = viewChild(OverviewGrid);

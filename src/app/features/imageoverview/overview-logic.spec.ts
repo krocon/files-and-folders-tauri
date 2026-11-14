@@ -6,6 +6,7 @@ import {
   MAX_TILE,
   MIN_TILE,
   rangePaths,
+  rowCountWithSpare,
   sortItems,
   thumbStep,
   tileHeight,
@@ -116,5 +117,13 @@ describe('image overview logic (design 074)', () => {
     });
     expect(withoutPaths(items, new Set(['/nope']))).toBe(items);
     expect(names([...withoutPaths(items, new Set(['/fotos/b.NEF']))])).toHaveLength(3);
+  });
+
+  it('counts one spare row below the last one, so it can scroll above the footer', () => {
+    expect(rowCountWithSpare(0, 4)).toBe(0);
+    expect(rowCountWithSpare(3, 4)).toBe(2);
+    expect(rowCountWithSpare(4, 4)).toBe(2);
+    expect(rowCountWithSpare(5, 4)).toBe(3);
+    expect(rowCountWithSpare(5, 0)).toBe(6); // no width yet: one column
   });
 });

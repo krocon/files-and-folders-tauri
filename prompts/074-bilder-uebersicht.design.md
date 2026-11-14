@@ -226,3 +226,4 @@ Commands waren in Ordnung. Behoben, je mit rotem Test zuerst:
 - Kopf und Fuß halbtransparent (`color-mix` der Fläche, `backdrop-filter`) über dem dunklen Hintergrund;
   Kopf vertikal ausgerichtet (globales `label { margin-top }` aufgehoben), Fuß links mit mehr Abstand.
 - Kopf trägt die Klasse `dialog`: Suchfeld, Auswahl und Knöpfe haben die gemeinsame `--control-height`.
+- Statuszeile liegt halbtransparent über dem unteren Rand des Rasters (`FOOT_HEIGHT` 28 px, `pointer-events: none`); das Raster hat dafür eine leere Reserve-Zeile (`rowCountWithSpare`, ersetzt `getRowCount` des Modells), Cursor-Sichtbarkeit und Bild ab/auf rechnen ohne die Statuszeile.

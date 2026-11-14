@@ -1,6 +1,8 @@
 :host {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* the status line lies over the bottom of the body (row 2), the grid shows through */
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   background: var(--color-overview-bg);
@@ -21,7 +23,14 @@
 }
 
 .foot {
+  z-index: 1;
+  grid-area: 2 / 1; /* the same cell as the body, not an implicit second column */
+  align-self: end;
+  box-sizing: border-box;
+  padding-block: 0;
   padding-inline-start: 16px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  pointer-events: none; /* clicks and the wheel reach the tiles below */
 }
 
 .head {
@@ -99,6 +108,7 @@
 }
 
 .body {
+  grid-area: 2 / 1;
   position: relative;
   display: grid;
   grid-template-columns: var(--io-tree-width, 0) auto minmax(0, 1fr);

@@ -119,7 +119,7 @@
   }
 </div>
 
-<footer class="foot">
+<footer class="foot" [style.height.px]="footHeight">
   <span class="count">{{ countText() }}</span>
   @if (markedText(); as m) {
     <span class="marked">{{ m }}</span>

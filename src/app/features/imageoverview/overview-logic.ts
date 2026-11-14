@@ -47,6 +47,17 @@ export function filterItems(items: readonly OverviewItem[], filter: string): Ove
   return f === '' ? [...items] : items.filter((i) => fold(i.name).includes(f));
 }
 
+/** Height of the status line that lies half transparent over the bottom of the grid (px). */
+export const FOOT_HEIGHT = 28;
+
+/**
+ * Rows of the grid for `count` images in `cols` columns, plus one empty spare row: the last
+ * images can be scrolled above the status line that covers the bottom of the grid.
+ */
+export function rowCountWithSpare(count: number, cols: number): number {
+  return count === 0 ? 0 : Math.ceil(count / Math.max(1, cols)) + 1;
+}
+
 /** The tile width, kept within the limits. */
 export function clampTile(width: number): number {
   return Math.round(Math.min(MAX_TILE, Math.max(MIN_TILE, width)));
