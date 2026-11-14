@@ -114,6 +114,7 @@ export const MENU_BAR: readonly TopMenu[] = [
     macosOnly: true,
     items: [
       { native: 'about' },
+      'CHECK_FOR_UPDATES',
       '-',
       'OPEN_SETUP_DLG',
       'OPEN_SHORTCUT_DLG',
@@ -361,7 +362,7 @@ export const MENU_BAR: readonly TopMenu[] = [
     items: [
       'OPEN_SHORTCUT_DLG',
       'OPEN_COMMAND_PALETTE',
-      { when: 'notMacos', items: ['-', 'OPEN_ABOUT_DLG'] },
+      { when: 'notMacos', items: ['-', 'CHECK_FOR_UPDATES', 'OPEN_ABOUT_DLG'] },
     ],
   },
 ];

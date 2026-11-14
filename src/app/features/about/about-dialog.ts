@@ -13,6 +13,9 @@ import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
 import { DialogKey } from '../../shared/dialog/dialog-key';
 import { ABOUT_TEXTS } from './about-texts';
+import { openUpdateCheck } from '../update/update-actions';
+import { UPDATE_TEXTS } from '../update/update-texts';
+import { UpdateStore } from '../update/update.store';
 
 export interface AboutRow {
   readonly label: string;
@@ -72,6 +75,15 @@ export function aboutText(info: AppInfo): string {
       <p class="sr-only" aria-live="polite">{{ status() }}</p>
       <div class="buttons">
         @if (info()) {
+          <button
+            appDialogKey="secondary:U"
+            type="button"
+            class="btn"
+            data-testid="about-check-updates"
+            (click)="checkForUpdates()"
+          >
+            {{ ut.aboutCheck }}
+          </button>
           <button appDialogKey="secondary:O" type="button" class="btn" (click)="copy()">
             {{ t.copy }}
           </button>
@@ -133,6 +145,8 @@ export function aboutText(info: AppInfo): string {
 })
 export class AboutDialog implements OnInit {
   protected readonly t = ABOUT_TEXTS;
+  protected readonly ut = UPDATE_TEXTS;
+  private readonly update = inject(UpdateStore);
   private readonly api = inject(AboutApi);
   private readonly clipboard = inject(ClipboardApi);
   private readonly dialogs = inject(DialogService);
@@ -161,6 +175,11 @@ export class AboutDialog implements OnInit {
     } catch {
       // clipboard not available – nothing to report beyond the visible text
     }
+  }
+
+  /** Replaces About by the update dialog (one modal at a time, design 075 E11). */
+  protected checkForUpdates(): void {
+    openUpdateCheck(this.update, this.dialogs);
   }
 
   protected close(): void {

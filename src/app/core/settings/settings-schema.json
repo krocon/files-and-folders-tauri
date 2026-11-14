@@ -1,6 +1,7 @@
 {
   "general.language": { "type": "enum", "values": ["system", "en", "de"], "default": "system" },
   "general.startFolder": { "type": "enum", "values": ["session", "home"], "default": "session" },
+  "general.checkForUpdates": { "type": "bool", "default": false },
   "view.sizeFormat": {
     "type": "enum",
     "values": ["binary", "decimal", "bytes"],

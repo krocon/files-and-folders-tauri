@@ -37,6 +37,11 @@ export const SETTINGS_EN = {
       help: 'What both panels show when the app starts.',
       keywords: 'start folder session tabs home',
     },
+    'general.checkForUpdates': {
+      label: 'Check for updates automatically',
+      help: 'Once a day, sends one request to GitHub (no personal data) and shows a hint when a newer version is published.',
+      keywords: 'update version release new github internet network',
+    },
     'view.sizeFormat': {
       label: 'File sizes',
       help: 'Binary (1 KB = 1024 bytes), decimal (1 kB = 1000 bytes) or exact bytes.',
@@ -393,6 +398,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       label: 'Beim Start',
       help: 'Was beide Seiten beim Start der App zeigen.',
       keywords: 'start ordner sitzung tabs home',
+    },
+    'general.checkForUpdates': {
+      label: 'Automatisch nach Updates suchen',
+      help: 'Einmal am Tag eine Anfrage an GitHub (ohne persönliche Daten); ein Hinweis erscheint, wenn eine neuere Version veröffentlicht ist.',
+      keywords: 'update aktualisierung version neu github internet netzwerk',
     },
     'view.sizeFormat': {
       label: 'Dateigrößen',

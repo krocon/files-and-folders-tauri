@@ -21,7 +21,7 @@ export interface Section {
 }
 
 export const SECTIONS: readonly Section[] = [
-  { id: 'general', keys: ['general.language', 'general.startFolder'] },
+  { id: 'general', keys: ['general.language', 'general.startFolder', 'general.checkForUpdates'] },
   {
     id: 'view',
     keys: [

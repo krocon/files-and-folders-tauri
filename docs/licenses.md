@@ -7,11 +7,11 @@
 
 ## Rust crates (Cargo.lock)
 
-677 packages.
+682 packages.
 
 | Licence | Count |
 |---|---|
-| MIT OR Apache-2.0 | 323 |
+| MIT OR Apache-2.0 | 327 |
 | MIT | 128 |
 | Apache-2.0 OR MIT | 72 |
 | MIT/Apache-2.0 | 21 |
@@ -24,9 +24,9 @@
 | ISC | 5 |
 | MPL-2.0 | 5 |
 | MIT OR Apache-2.0 OR Zlib | 4 |
+| Apache-2.0 OR ISC OR MIT | 3 |
 | Apache-2.0/MIT | 3 |
 | MPL-2.0 OR MIT OR Apache-2.0 | 3 |
-| Apache-2.0 OR ISC OR MIT | 2 |
 | Apache-2.0 WITH LLVM-exception | 2 |
 | BSD-2-Clause OR Apache-2.0 OR MIT | 2 |
 | BSD-3-Clause OR Apache-2.0 | 2 |
@@ -94,5 +94,5 @@
 
 ## npm – development tooling (not shipped)
 
-354 packages; not purely permissive: 6
+348 packages; not purely permissive: 5
 (build tools only, not part of the distributed app).

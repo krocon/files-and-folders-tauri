@@ -119,6 +119,16 @@ pub enum FsErrorCode {
     TimedOut,
     /// The task cannot be retried (any more): retried already, removed, or nothing to retry (design 048).
     RetryUnavailable,
+    /// Update check (design 075 E6): GitHub not reachable (network, DNS, timeout, TLS).
+    UpdateOffline,
+    /// GitHub's rate limit for anonymous requests is used up.
+    UpdateRateLimited,
+    /// No published release (404, or only a draft/pre-release).
+    UpdateNoRelease,
+    /// The answer is no release (no JSON, no version tag, too large).
+    UpdateInvalidResponse,
+    /// Another HTTP status.
+    UpdateHttp,
     Io,
 }
 

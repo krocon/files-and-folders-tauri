@@ -330,6 +330,8 @@ Small things that save time every day:
   suggests `S03`
 - **Private** – no account, no telemetry, nothing phones home; server passwords live in your system keychain,
   archive passwords only in memory
+- **Check for updates** – asks GitHub for the latest release only when you choose _Help → Check for updates…_
+  (macOS: app menu), or once a day if you switch it on in the settings; you download the new version yourself
 - **Built with accessibility in mind** – every dialog, menu and list works with the keyboard alone; ARIA roles and
   announcements are in place, but the app has not been tested with a screen reader yet
 

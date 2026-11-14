@@ -132,6 +132,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_IMPORT_OLD_CONFIG_DLG: 'Aus Files and Folders (alt) importieren…',
   OPEN_TASK_DLG: 'Tasks…',
   OPEN_ABOUT_DLG: 'Über…',
+  CHECK_FOR_UPDATES: 'Nach Updates suchen…',
   QUIT_APP: 'Beenden',
   PALETTE_OPEN_HIT: 'Treffer öffnen',
   PALETTE_PREVIEW_HIT: 'Vorschau des Treffers',

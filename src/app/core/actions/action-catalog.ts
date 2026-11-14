@@ -142,6 +142,7 @@ export const ACTION_IDS = [
   'OPEN_IMPORT_OLD_CONFIG_DLG',
   'OPEN_TASK_DLG',
   'OPEN_ABOUT_DLG',
+  'CHECK_FOR_UPDATES',
   'QUIT_APP',
   // hits of the universal palette (design 043): only while it shows a hit
   'PALETTE_OPEN_HIT',
@@ -321,6 +322,7 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_IMPORT_OLD_CONFIG_DLG: m('Import from Files and Folders (old)…', 'config', '026'),
   OPEN_TASK_DLG: m('Tasks…', 'config', '005'),
   OPEN_ABOUT_DLG: m('About…', 'config', '017'),
+  CHECK_FOR_UPDATES: m('Check for updates…', 'config', '075'),
   QUIT_APP: m('Quit', 'config', '014'),
   PALETTE_OPEN_HIT: m('Open hit', 'navigation', '043', true),
   PALETTE_PREVIEW_HIT: m('Preview hit', 'navigation', '043', true),

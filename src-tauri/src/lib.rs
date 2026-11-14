@@ -11,6 +11,7 @@
 //! - [`fs_atomic`]    atomic writes of config files
 //! - [`dirsize`]      recursive folder size (no symlinks, cancellable)
 //! - [`opener`]       open files with the default app (checked)
+//! - [`update_check`] newer version on GitHub? (fixed URL, no updater, design 075)
 //! - [`fileops`]      create folder/file, rename (never overwrite)
 //! - [`jobs`]         job engine: copy, move, delete, multi-rename (+ undo), count, folder size; queue, progress, conflicts, cancel/pause
 //! - [`preview`]      bounded file preview (type by content, encodings), image scheme `fnfpreview`
@@ -86,6 +87,7 @@ pub mod test_paths;
 pub mod test_slow;
 pub mod themes;
 pub mod tools;
+pub mod update_check;
 pub mod watch;
 pub mod window_state;
 
@@ -249,6 +251,10 @@ pub fn run() {
             commands::shell::shell_login_status,
             commands::shell::clear_shell_history,
             commands::get_app_info,
+            commands::update::check_for_update,
+            commands::update::load_update_state,
+            commands::update::skip_update_version,
+            commands::update::open_release_page,
             commands::load_session,
             commands::save_session,
             commands::load_settings,

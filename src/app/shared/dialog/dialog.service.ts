@@ -35,6 +35,7 @@ export type DialogKind =
   | 'theme-picker'
   | 'settings'
   | 'about'
+  | 'update'
   | 'button-config'
   | 'file-types'
   | 'mr-import'

@@ -39,6 +39,7 @@ import '../../features/shell/shell-texts';
 import '../../features/fileactions/file-actions-texts';
 import '../../features/starter/starter-texts';
 import '../../features/themes/theme-texts';
+import '../../features/update/update-texts';
 import '../../features/workspace/texts';
 import '../../shared/dialog/dialog-key-texts';
 

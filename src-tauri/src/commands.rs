@@ -12,6 +12,7 @@ pub mod palette;
 pub mod remote;
 pub mod shell;
 pub mod starter;
+pub mod update;
 pub mod watch;
 
 use crate::error::{FsError, FsErrorCode};
@@ -1671,7 +1672,8 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 13] = [
+    const SOURCES: [(&str, &str); 14] = [
+        ("commands/update.rs", include_str!("commands/update.rs")),
         (
             "commands/image_overview.rs",
             include_str!("commands/image_overview.rs"),

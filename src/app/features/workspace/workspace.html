@@ -46,6 +46,17 @@
 
 <!-- always rendered: a live region that appears together with its text is often not read -->
 <div class="notices" role="status" [attr.inert]="modalOpen() ? '' : null">
+  @if (update.hint(); as h) {
+    <div class="notice" data-testid="update-hint">
+      <span>{{ updateTexts.hint(h.latest) }}</span>
+      <button type="button" class="btn" (click)="showUpdateHint()">
+        {{ updateTexts.details }}
+      </button>
+      <button type="button" class="btn" (click)="update.dismissHint()">
+        {{ updateTexts.dismiss }}
+      </button>
+    </div>
+  }
   @for (n of ws.notices(); track $index; let i = $index) {
     <div class="notice">
       <span>{{ n }}</span>
@@ -69,6 +80,9 @@
 @switch (dialogs.open()) {
   @case ('about') {
     <app-about-dialog />
+  }
+  @case ('update') {
+    <app-update-dialog />
   }
   @case ('palette') {
     <app-command-palette />

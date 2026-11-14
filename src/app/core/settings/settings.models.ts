@@ -7,6 +7,7 @@ import schemaJson from './settings-schema.json';
 export interface SettingsValues {
   'general.language': 'system' | 'en' | 'de';
   'general.startFolder': 'session' | 'home';
+  'general.checkForUpdates': boolean;
   'view.sizeFormat': 'binary' | 'decimal' | 'bytes';
   'view.dateFormat': 'locale' | 'iso';
   'view.density': 'condensed' | 'normal' | 'spacious';

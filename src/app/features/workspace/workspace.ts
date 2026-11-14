@@ -107,6 +107,10 @@ import { registerWorkspaceActions } from '../actions/workspace-actions';
 import { registerMenuActions } from '../menus/menu-actions';
 import { AboutDialog } from '../about/about-dialog';
 import { registerAboutActions } from '../about/about-actions';
+import { UpdateDialog } from '../update/update-dialog';
+import { openUpdateHint, registerUpdateActions } from '../update/update-actions';
+import { UpdateStore } from '../update/update.store';
+import { UPDATE_TEXTS } from '../update/update-texts';
 import { MenuService } from '../menus/menu.service';
 import { ContextMenu } from './context-menu';
 import { ButtonBar } from './button-bar/button-bar';
@@ -184,6 +188,7 @@ import { RemoteStore } from '../remote/remote.store';
     ThemePicker,
     SettingsDialog,
     AboutDialog,
+    UpdateDialog,
     ContextMenu,
     ShellBar,
     ButtonConfigDialog,
@@ -255,6 +260,12 @@ export class Workspace implements OnInit {
 
   protected readonly dragging = signal(false);
   protected readonly modalOpen = computed(() => this.dialogs.open() !== null);
+  protected readonly update = inject(UpdateStore);
+  protected readonly updateTexts = UPDATE_TEXTS;
+
+  protected showUpdateHint(): void {
+    openUpdateHint(this.update, this.dialogs);
+  }
   protected readonly splitPercent = computed(() => Math.round(this.ws.splitter() * 100));
   /** Live region text: "Left panel, /Users/marc". */
   protected readonly announcement = signal('');
@@ -399,6 +410,8 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerThemeActions(this.actions, this.theme, this.dialogs));
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
+    this.destroyRef.onDestroy(registerUpdateActions(this.actions, this.update, this.dialogs));
+    this.destroyRef.onDestroy(this.update.startAuto());
     this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
     this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));
     this.destroyRef.onDestroy(registerStarterActions(this.actions, this.starter, this.menus));

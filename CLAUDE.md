@@ -53,13 +53,13 @@
   Speicherbelegung als eigener Tab `usage-chart:<scanId>`), 049–060 (Header-Höhe `--panel-header-height`, `Alt+A`,
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
-  Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
+  Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und Prompt 075 (Nach Updates suchen: feste GitHub-URL in `update_check.rs`, `reqwest` mit eigener rustls-Konfiguration, `update-check.json`, `general.checkForUpdates` Default aus, Aktion `CHECK_FOR_UPDATES`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
   Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–070, 072–074 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–070, 072–075 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -187,6 +187,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              (`PALETTE_*`, Tasten = Panel-Aktionen über `HIT_ACTIONS.via`); die Palette selbst bleibt
                              `features/actions/command-palette.ts`
   app/core/about/, features/about/  AboutApi (get_app_info), About-Dialog (Version, Plattform, Kopieren)
+  app/core/update/, features/update/  Nach Updates suchen (075): UpdateApi (`check_for_update`, `load_update_state`,
+                             `skip_update_version`, `open_release_page`), UpdateStore (Root: Dialog-Zustand, Hinweis,
+                             tägliche Prüfung nur mit `general.checkForUpdates`), Dialog, Aktion CHECK_FOR_UPDATES
   app/core/shell/            ShellApi (nur `run_shell`, einziger Importeur: ShellBar), ShellSupportApi (Quotieren, Verlauf)
   app/features/shell/        ShellStore (Root: Sichtbarkeit, Verlauf, laufender Job, Ausgabepuffer), ShellBar (Zeile 5,
                              Combobox), shell-logic.ts (rein: Verlauf, Vorschläge, Puffer, Kürzung), Aktionen
@@ -221,6 +224,8 @@ src-tauri/                   Rust (Tauri 2)
   src/keymap.rs, fs_atomic.rs  Kürzel-Override-Datei; atomares Schreiben / kaputte Dateien beiseitelegen
   src/settings.rs            settings.json (Schema, sanitize, .bad, neuere Version), Export/Import-Bündel aller Teile
   src/about.rs               Daten für About (Version aus tauri.conf.json → package.json, Plattform)
+  src/update_check.rs        Nach Updates suchen (075): feste URL, `reqwest` + rustls/ring, SemVer-Vergleich, Antwort
+                             feindlich, `update-check.json`; Commands `commands/update.rs`
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)

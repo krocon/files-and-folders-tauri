@@ -32,7 +32,7 @@ Danach in GitHub:
 ## Was die Vorlagen bewusst nicht tun
 
 - keine Tags, keine automatische Veröffentlichung (Entwurf; Tag-Build prüft nur, dass Tag = `package.json`-Version)
-- keinen Updater (bewertet in `docs/release.md`, nicht aktiviert)
+- keinen Updater (bewertet in `docs/release.md`, nicht aktiviert; „Nach Updates suchen“ (075) braucht nur veröffentlichte Releases)
 - keine Release-Builds in der normalen CI (zu langsam; Pakete baut nur `release.yml`)
 
 ## Stand 22.10.2026

@@ -89,6 +89,12 @@ export type FsErrorCode =
   | 'timed_out'
   /** The task cannot be retried (any more, design 048). */
   | 'retry_unavailable'
+  /** Update check (design 075 E6). */
+  | 'update_offline'
+  | 'update_rate_limited'
+  | 'update_no_release'
+  | 'update_invalid_response'
+  | 'update_http'
   /** An external program (tool, terminal, file manager) is not installed. */
   | 'program_not_found'
   /** The tool id is not in the configuration (anymore). */

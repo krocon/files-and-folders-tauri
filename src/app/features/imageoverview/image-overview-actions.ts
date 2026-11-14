@@ -26,6 +26,7 @@ export const OVERVIEW_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
   'NEXT_THEME',
   'THEME_FOLLOW_SYSTEM',
   'OPEN_ABOUT_DLG',
+  'CHECK_FOR_UPDATES',
   'QUIT_APP',
 ]);
 

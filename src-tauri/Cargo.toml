@@ -56,6 +56,9 @@ rustls-platform-verifier = "0.7"
 russh = { version = "0.64", default-features = false, features = ["ring", "flate2", "rsa"] }
 russh-sftp = "3"
 keyring-core = "1"
+# design 075 E2: update check – reqwest is in the tree already (tauri, same version); only TLS
+# (our rustls/ring config, no aws-lc, no OpenSSL) and the system proxy are added
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "net", "sync", "io-util", "macros"] }
 
 [features]

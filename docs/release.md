@@ -97,6 +97,14 @@ jedem neuen Build einmal „… möchte auf den Schlüsselbund zugreifen“ („
 Build). Mit Developer-ID-Signatur bleibt die Erlaubnis über Updates erhalten. Windows (Credential Manager) und Linux
 (Secret Service) prüfen keine Signatur.
 
+## Nach Updates suchen (075) – umgesetzt, ohne Updater
+
+Die App fragt `api.github.com/repos/krocon/files-and-folders-tauri/releases/latest` (manuell über „Nach Updates
+suchen…“, automatisch nur mit `general.checkForUpdates`) und verlinkt die Release-Seite. **Erkannt werden nur
+veröffentlichte Releases**: Entwürfe (Schritt 4 oben) und Pre-Releases liefert GitHub dort nicht – ein neues Release
+erreicht die Nutzer also erst mit „Veröffentlichen“. Der Tag muss SemVer sein (`vX.Y.Z`, wie `pnpm version:set`).
+Herunterladen und Installieren bleibt beim Nutzer; der echte Updater (unten) bleibt offen.
+
 ## Updater (`tauri-plugin-updater`) – bewertet, **nicht aktiviert**
 
 | Punkt | Bewertung |

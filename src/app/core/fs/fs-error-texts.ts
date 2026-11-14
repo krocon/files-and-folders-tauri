@@ -67,6 +67,11 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   no_backend: 'The desktop backend is not available. Start the app with "pnpm tauri dev".',
   timed_out: 'The operation timed out (network drive or server too slow).',
   retry_unavailable: 'This task cannot be retried (any more).',
+  update_offline: 'GitHub cannot be reached. Check the internet connection.',
+  update_rate_limited: 'GitHub refuses further requests for now. Try again in an hour.',
+  update_no_release: 'No published release was found.',
+  update_invalid_response: 'The answer from GitHub cannot be read.',
+  update_http: 'GitHub answered with an error.',
   io: 'Read or write error.',
   unknown: 'Read or write error.',
 };
@@ -137,6 +142,12 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   no_backend: 'Das Desktop-Backend ist nicht verfügbar. Die App mit „pnpm tauri dev“ starten.',
   timed_out: 'Zeitüberschreitung beim Dateizugriff (Netzlaufwerk oder Server zu langsam).',
   retry_unavailable: 'Dieser Task kann (nicht mehr) wiederholt werden.',
+  update_offline: 'GitHub ist nicht erreichbar. Bitte die Internetverbindung prüfen.',
+  update_rate_limited:
+    'GitHub lehnt weitere Anfragen vorerst ab. In einer Stunde erneut versuchen.',
+  update_no_release: 'Es wurde keine veröffentlichte Version gefunden.',
+  update_invalid_response: 'Die Antwort von GitHub ist nicht lesbar.',
+  update_http: 'GitHub hat mit einem Fehler geantwortet.',
   io: 'Lese- oder Schreibfehler.',
   unknown: 'Lese- oder Schreibfehler.',
 };

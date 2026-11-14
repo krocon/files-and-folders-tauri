@@ -360,7 +360,10 @@ GitHub-Releases:
   kompiliert und testet, s. `docs/ci/`).
 - **Linux:** braucht WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 36+). AppImage benötigt FUSE
   (`libfuse2`) oder `--appimage-extract-and-run`.
-- Keine automatischen Updates (Updater bewertet, nicht aktiviert).
+- **Nach Updates suchen** (075): Menü Hilfe bzw. macOS-App-Menü „Nach Updates suchen…“, Knopf im About-Dialog oder
+  Befehlspalette – eine Anfrage an GitHub (feste URL, ohne persönliche Daten), Hinweis mit Link zur Release-Seite,
+  „Diese Version überspringen“. Automatisch einmal am Tag nur, wenn in den Einstellungen (Allgemein) eingeschaltet.
+  Herunterladen und Installieren macht man selbst (kein Updater, s. `docs/release.md`).
 
 Die Version steht im Dialog **About** (Menü Hilfe bzw. macOS „Über Files and Folders“, oder Befehlspalette).
 
