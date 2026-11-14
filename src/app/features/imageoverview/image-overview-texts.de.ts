@@ -8,7 +8,7 @@ const images = (n: number) => (n === 1 ? '1 Bild' : `${formatCount(n)} Bilder`);
 export const IMAGE_OVERVIEW_DE: Translation<typeof IMAGE_OVERVIEW_EN> = {
   region: 'Bilder-Übersicht',
   gridLabel: (folder) => `Bilder in ${folder}`,
-  back: 'Zu den Panels',
+  back: 'Schließen',
   backTitle: 'Zurück zu den Panels (Mod+Umschalt+I oder Esc)',
   tree: 'Ordnerbaum',
   treeTitle: 'Ordnerbaum ein- oder ausblenden',

@@ -222,6 +222,7 @@ Commands waren in Ordnung. Behoben, je mit rotem Test zuerst:
 
 - Kacheln zeigen nur das Bild (4 : 3, `tileHeight = w·3/4`); der Name steht nur im Tooltip, markierte
   Bilder tragen eine Haken-Plakette (`.io-check`) statt des Hakens in der Namenszeile.
-- Größe (−, Slider, +) sitzt im Kopf vor „Zu den Panels“; −/+ als dezente Icon-Knöpfe ohne Rahmen.
+- Größe (−, Slider, +) sitzt im Kopf vor „Close“ (früher „Panels“, Knopf mit ✕); −/+ als dezente Icon-Knöpfe ohne Rahmen.
 - Kopf und Fuß halbtransparent (`color-mix` der Fläche, `backdrop-filter`) über dem dunklen Hintergrund;
   Kopf vertikal ausgerichtet (globales `label { margin-top }` aufgehoben), Fuß links mit mehr Abstand.
+- Kopf trägt die Klasse `dialog`: Suchfeld, Auswahl und Knöpfe haben die gemeinsame `--control-height`.

@@ -8,7 +8,7 @@ const images = (n: number) => (n === 1 ? '1 image' : `${formatCount(n)} images`)
 export const IMAGE_OVERVIEW_EN = {
   region: 'Image overview',
   gridLabel: (folder: string) => `Images in ${folder}`,
-  back: 'Panels',
+  back: 'Close',
   backTitle: 'Back to the panels (Mod+Shift+I or Esc)',
   tree: 'Folder tree',
   treeTitle: 'Show or hide the folder tree',
