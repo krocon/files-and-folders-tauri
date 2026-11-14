@@ -18,6 +18,7 @@ import '../../features/config/config-texts';
 import '../../features/dnd/dnd-logic';
 import '../../features/diskusage/disk-usage-texts';
 import '../../features/duplicates/duplicates-texts';
+import '../../features/imageoverview/image-overview-texts';
 import '../../features/groupfiles/groupfiles-texts';
 import '../../features/jobs/job-format';
 import '../../features/menus/menu-texts';

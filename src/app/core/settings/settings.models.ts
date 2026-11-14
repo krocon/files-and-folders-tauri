@@ -38,6 +38,11 @@ export interface SettingsValues {
   'palette.includeHidden': boolean;
   'palette.systemSearch': boolean;
   'palette.maxHits': number;
+  'imageOverview.tileSize': number;
+  'imageOverview.sort': 'name' | 'date' | 'size' | 'type';
+  'imageOverview.tree': boolean;
+  'imageOverview.treeWidth': number;
+  'imageOverview.largeMode': 'window' | 'screen';
 }
 
 export type SettingKey = keyof SettingsValues;

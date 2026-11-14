@@ -21,7 +21,8 @@ export class WatchService {
   /** Optional: specs without a backend simply do not watch. */
   private readonly api = inject(WatchApi, { optional: true });
   private readonly settings = inject(SettingsStore);
-  private readonly dirs = new Map<Side, string | null>();
+  /** Both panels and the image overview (design 074 E16). */
+  private readonly dirs = new Map<Side | 'overview', string | null>();
   /** When the panels' listings were requested (for the first watch of a folder). */
   private readonly listedAt = new Map<string, number>();
   private inFlight = false;
@@ -53,7 +54,7 @@ export class WatchService {
    * The folder a panel shows now (`null`: none / panel gone); `listedAt`: when
    * its listing was requested – a change between listing and watch triggers one reload.
    */
-  setPanelDir(side: Side, folder: string | null, listedAt?: number): void {
+  setPanelDir(side: Side | 'overview', folder: string | null, listedAt?: number): void {
     // server folders are not watched (design 034 §4.3): Ctrl+R reloads them
     const dir = isRemotePath(folder) ? null : folder;
     if (this.dirs.get(side) === dir) {

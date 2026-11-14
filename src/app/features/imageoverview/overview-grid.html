@@ -1,0 +1,9 @@
+<guiexpert-table-signal
+  class="table"
+  [tableModel]="model"
+  [tableOptions]="options"
+  [(tableApi)]="tableApi"
+  (mouseClicked)="onClick($event)"
+  (scroll)="onScroll($event)"
+/>
+<div class="sr-only" aria-live="polite">{{ announcement() }}</div>

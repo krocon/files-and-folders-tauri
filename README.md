@@ -159,6 +159,18 @@ back.
 
 ![Flat view of the photo folder: 36 entries from the folder and its subfolders Edited, Panorama and Videos](docs/screenshots/readme/flat-view.png)
 
+## Image overview
+
+**Find a picture by looking at it.**
+One key turns the window from two panels into a grid of thumbnails, like a photo browser: a folder tree on the left,
+tiles you make larger or smaller with a slider (or `Ctrl` + mouse wheel), optionally every image of all subfolders.
+A double click shows the image large – in the window or on the whole screen (`F` switches), arrows page through.
+Mark images and copy, move or delete them as usual; the same key (or `Esc`) brings the panels back exactly as they
+were. Thumbnails are made in the background (newest request first) and kept in a cache; camera raw files show their
+embedded preview.
+
+`Ctrl+Shift+I` · macOS: `⌘⇧I`
+
 ## Duplicates and similar images
 
 **Free space without fear: rules decide which copy stays.**
@@ -371,6 +383,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Find folder (change dir)                     | `Alt+F10`                             | `⌥F10`                |
 | Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S`           | `⇧F2` / `⌘⇧S`         |
 | Flat view (all files below)                  | `Ctrl+B`                              | `⌘B`                  |
+| Image overview (tiles, large view)           | `Ctrl+Shift+I`                        | `⌘⇧I`                 |
 | Mark / unmark                                | `Space`, `Insert`                     | `Space`               |
 | Select if… (conditional selection)           | `Ctrl+Alt+S`                          | `⌘⌥S`                 |
 | Switch panel                                 | `Tab`                                 | `Tab`                 |

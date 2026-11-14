@@ -1,0 +1,156 @@
+:host {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-overview-bg);
+  color: var(--color-text);
+}
+
+.head,
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.head {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.foot {
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9em;
+}
+
+.btn.icon.on {
+  background: var(--color-selection);
+  color: var(--color-selection-text);
+}
+
+.path {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.seg {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &::after {
+    content: ' /';
+    color: var(--color-muted);
+  }
+
+  &.last {
+    font-weight: 600;
+
+    &::after {
+      content: '';
+    }
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+}
+
+.check,
+.sort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.filter {
+  width: 12em;
+}
+
+.back {
+  white-space: nowrap;
+}
+
+.body {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--io-tree-width, 0) auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.tree {
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+}
+
+.resize {
+  width: 5px;
+  cursor: col-resize;
+  background: var(--color-splitter);
+  touch-action: none;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-splitter-active);
+    outline: none;
+  }
+}
+
+.grid {
+  grid-column: 3;
+  min-width: 0;
+}
+
+.note {
+  position: absolute;
+  inset: 40% 0 auto;
+  margin: 0;
+  color: var(--color-overview-text);
+  text-align: center;
+  pointer-events: none;
+}
+
+.count,
+.marked,
+.flags {
+  white-space: nowrap;
+}
+
+.marked {
+  color: var(--color-marked);
+}
+
+.cursor {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  & input {
+    width: 140px;
+  }
+}

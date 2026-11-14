@@ -1,6 +1,6 @@
 # Design 074: Bilder-Übersicht
 
-> **Status: Entwurf – wartet auf Freigabe 🛑** · Datum: 14.11.2026 · Branch `feat/bilder-uebersicht` (von
+> **Status: freigegeben (Marc, 14.11.2026), umgesetzt** · Datum: 14.11.2026 · Branch `feat/bilder-uebersicht` (von
 > `feat/doppelklick-ausloeser`, weil Prompt und Index nur dort liegen; 073 ist noch nicht in `main`)
 > Auftrag: [`074-bilder-uebersicht.md`](074-bilder-uebersicht.md) · Regeln: [`000-arbeitsweise.md`](000-arbeitsweise.md)
 > Vorgabe von Marc (14.11.2026): **das Cover-Grid der GuiExpert Table nutzen, analog zu Comic Commander**
@@ -177,7 +177,27 @@ OverviewItem { index: u32, path: String, name: String, size: u64, modifiedMs: Op
 - Abschnittsköpfe (Gruppen) im Cover-Grid (für „rekursiv“ mit Ordnerüberschriften).
 - Fokus-/Auswahlmodell und ARIA im Cover-Grid (schon CC 004 → `mono/TODO.md`).
 
+## Abweichungen bei der Umsetzung
+
+- **`images/`** nimmt nur die Erkennung (`kind_of`, RAW-Endungen), `decode_upright` und `raw.rs` auf; der Decoder
+  selbst bleibt in `duplicates/images.rs` (er hängt am pHash der Dubletten). Neu dort: `decode_oriented`,
+  `decode_bytes_oriented`, `with_permit` – beide Features teilen die vier Decode-Plätze.
+- **Kein Fehlercode `unsupported_location`**: Serverpfade lehnt `image_overview_open` mit `remote_unsupported` ab,
+  Archive und Ergebnis-Tabs sperrt schon das Frontend (`overviewOrigin`).
+- **Liste nicht gestreamt beim Sammeln**: `collect_files` sammelt erst (schnell, Grenzen wie 045), dann gehen die
+  Teile ≤ 2000 über den Channel. Netzlaufwerke bekommen keinen eigenen Faden (der Pool hat `min(4, Kerne − 1)`, die
+  vier Decode-Plätze gelten app-weit).
+- **Keine Wiederholungen** (`CoverRetries` aus CC nicht übernommen): Rust antwortet nie 503, Fehler (404/415/422) sind
+  endgültig und werden in Rust je Übersicht gemerkt; der Renderer merkt sich fehlgeschlagene URLs.
+- **RAF** (Fuji) wird gelesen (fester Kopf mit JPEG-Offset), nicht nur Platzhalter.
+- **Auswahlquelle**: `OpsStore` fragt den Root-Store `ImageOverviewStore` direkt (kein Signal im `WorkspaceStore`).
+- **Tokens** `--color-overview-bg/-tile/-text` gehören zur Gruppe „Allgemein“, in allen eingebauten Schemata gleich
+  dunkel; Kontrastpaar „Image overview names“.
+- **Noch nicht drin**: Kontextmenü auf Kacheln, Mod+A (Mod+A ist eine Panel-Aktion → in der Übersicht gesperrt),
+  Ziehen ins System, Screenshot-Szene. „Im Panel zeigen“ geschieht beim Schließen (Cursor des Panels auf das Bild,
+  wenn es im Ordner des Panels liegt).
+
 ## Fortschritt
 
-- [x] Phase 1: Design (14.11.2026) – wartet auf Freigabe
-- [ ] 2a · [ ] 2b · [ ] 3a · [ ] 3b · [ ] 4 · [ ] 5 · [ ] 6
+- [x] Phase 1: Design (14.11.2026), freigegeben
+- [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [ ] 4 E2E auf dem Mac · [ ] 5 Doku · [ ] 6 Review

@@ -1,0 +1,35 @@
+<ul role="tree" class="tree" [attr.aria-label]="t.treeLabel">
+  @for (row of rows(); track row.path) {
+    <li
+      role="treeitem"
+      class="row"
+      [class.current]="row.level === 1"
+      [attr.data-path]="row.path"
+      [attr.aria-level]="row.level"
+      [attr.aria-expanded]="hasChildren(row) ? row.expanded : null"
+      [attr.aria-selected]="row.path === store.folder()"
+      [attr.tabindex]="row.path === active() ? 0 : -1"
+      [style.padding-inline-start.px]="(row.level - 1) * 14 + 4"
+      [title]="row.name"
+      (click)="choose(row)"
+      (keydown)="onKey($event)"
+    >
+      <span class="twisty" aria-hidden="true" (click)="toggle(row, $event)">
+        @if (hasChildren(row) && row.level > 1) {
+          <i
+            class="fa"
+            [class.fa-caret-down]="row.expanded"
+            [class.fa-caret-right]="!row.expanded"
+          ></i>
+        }
+      </span>
+      <i
+        class="fa"
+        [class.fa-folder-open]="row.level === 1"
+        [class.fa-folder]="row.level > 1"
+        aria-hidden="true"
+      ></i>
+      <span class="name">{{ row.name }}</span>
+    </li>
+  }
+</ul>

@@ -1,9 +1,10 @@
 @if (ws.ready()) {
   <!-- while a dialog is open, the window behind it is inert (no focus, no clicks) -->
-  <app-file-panel side="left" [attr.inert]="modalOpen() ? '' : null" />
+  <!-- the image overview covers both panels (design 074 E1); the panels stay alive below it -->
+  <app-file-panel side="left" [attr.inert]="modalOpen() || overview.isOpen() ? '' : null" />
   <div
     class="splitter"
-    [attr.inert]="modalOpen() ? '' : null"
+    [attr.inert]="modalOpen() || overview.isOpen() ? '' : null"
     role="separator"
     tabindex="0"
     aria-orientation="vertical"
@@ -20,7 +21,10 @@
     (dblclick)="resetSplitter()"
     (keydown)="onSplitterKey($event)"
   ></div>
-  <app-file-panel side="right" [attr.inert]="modalOpen() ? '' : null" />
+  <app-file-panel side="right" [attr.inert]="modalOpen() || overview.isOpen() ? '' : null" />
+  @if (overview.isOpen()) {
+    <app-image-overview class="image-overview" [attr.inert]="modalOpen() ? '' : null" />
+  }
   @if (shell.visible()) {
     <app-shell-bar class="shell" [attr.inert]="modalOpen() ? '' : null" />
   }
