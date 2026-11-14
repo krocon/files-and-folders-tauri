@@ -1,0 +1,31 @@
+:host {
+  position: relative;
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-overview-bg);
+}
+
+.table {
+  position: absolute;
+  inset: 0;
+  /* the table only lays out – colours come from the tiles (design 074 E11) */
+  --ge-table-bg: transparent;
+  --ge-table-body-center-bg: transparent;
+  --ge-table-row-even-bg: transparent;
+  --ge-table-row-odd-bg: transparent;
+  --ge-table-hover-row-bg: transparent;
+  --ge-table-body-center-text: var(--color-overview-text);
+  /* the tile shows the cursor; the table's focus cell frame would span a whole row */
+  --ge-table-focus-border: transparent;
+  --ge-table-focus-outline-color: transparent;
+  --ge-table-border: transparent;
+  --ge-table-body-center-horizontal-border: transparent;
+  --ge-table-body-center-vertical-border: transparent;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+/* the cells of the renderer (plain DOM, no Angular attributes) are styled globally: .io-tile */

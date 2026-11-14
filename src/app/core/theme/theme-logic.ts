@@ -443,6 +443,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   p('--color-text', '--color-bg', 'Text on the window'),
   p('--color-text', '--color-surface', 'Text on surfaces'),
   p('--color-menu-text', '--color-menu-bg', 'Menus (Actions menu, folder menu)'),
+  p('--color-overview-text', '--color-overview-tile', 'Image overview names'),
   p('--color-muted', '--color-surface', 'Muted text'),
   p('--color-muted', '--color-bg', 'Muted text on the window'),
   p('--color-accent', '--color-surface', 'Accent as text'),

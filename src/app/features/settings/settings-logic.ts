@@ -33,6 +33,11 @@ export const SECTIONS: readonly Section[] = [
       'view.showHidden',
       'view.menuBar',
       'folderMenu.recentOrder',
+      'imageOverview.tileSize',
+      'imageOverview.sort',
+      'imageOverview.tree',
+      'imageOverview.treeWidth',
+      'imageOverview.largeMode',
     ],
   },
   {

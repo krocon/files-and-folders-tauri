@@ -28,6 +28,7 @@ import { ARCHIVE_TEXTS } from '../archive/archive-texts';
 import { isRemotePath } from '../../core/remote/remote-path';
 import { wholeGroups } from '../duplicates/duplicates-logic';
 import { DuplicatesStore } from '../duplicates/duplicates.store';
+import { ImageOverviewStore } from '../imageoverview/image-overview.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { jobTitle } from '../jobs/job-format';
 import { otherSide, WorkspaceStore } from '../workspace/workspace.store';
@@ -119,6 +120,7 @@ function err(code: FsError['code'], message: string): FsError {
 @Injectable({ providedIn: 'root' })
 export class OpsStore {
   private readonly ws = inject(WorkspaceStore);
+  private readonly overview = inject(ImageOverviewStore);
   private readonly jobs = inject(JobsStore);
   private readonly fs = inject(FsApi);
   private readonly dialogs = inject(DialogService);
@@ -134,11 +136,18 @@ export class OpsStore {
 
   /** The entries an operation of the active panel works on. */
   selection(): readonly DirEntry[] {
+    // the image overview covers the panels: its marks are the selection (design 074 E15)
+    if (this.overview.isOpen()) {
+      return selectionForAction(this.overview);
+    }
     return selectionForAction(this.ws.panel()?.store);
   }
 
   /** The real folder of the active panel – null for result tabs and inside archives (read-only). */
   folder(): string | null {
+    if (this.overview.isOpen()) {
+      return this.overview.folder();
+    }
     const store = this.ws.panel()?.store;
     return store && store.archive() === null ? store.path() : null;
   }
@@ -158,6 +167,9 @@ export class OpsStore {
    * the hit's own folder – null inside an archive (read-only).
    */
   private renameParent(side: Side, entry: DirEntry): string | null {
+    if (this.overview.isOpen()) {
+      return this.overview.dirOf(entry.path);
+    }
     const store = this.ws.panel(side)?.store;
     if (!store || store.archive() !== null) {
       return null;
@@ -173,6 +185,9 @@ export class OpsStore {
 
   /** The folder, or the result tab (`search:<key>`) of the active panel. */
   location(): string | null {
+    if (this.overview.isOpen()) {
+      return this.overview.folder();
+    }
     return this.ws.panel()?.store.locationKey() ?? null;
   }
 
@@ -854,6 +869,9 @@ export class OpsStore {
       }
       if (ran && store?.locationKey() === folder) {
         store.setMarked(done, false);
+      }
+      if (ran) {
+        this.overview.afterJob(folder, done, removes);
       }
       const summary = job.summary;
       if (job.state === 'failed' && summary?.error) {

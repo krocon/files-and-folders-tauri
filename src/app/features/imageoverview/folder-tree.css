@@ -1,0 +1,58 @@
+:host {
+  display: block;
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.tree {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding-inline-end: 8px;
+  cursor: default;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--color-row-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+  }
+
+  &.current {
+    font-weight: 600;
+  }
+}
+
+.twisty {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  flex: none;
+}
+
+.fa-folder,
+.fa-folder-open {
+  color: var(--color-icon-folder, currentColor);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[aria-selected='true'] {
+  background: var(--color-selection);
+  color: var(--color-selection-text);
+}

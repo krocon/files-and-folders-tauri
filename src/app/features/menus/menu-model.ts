@@ -202,6 +202,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       'CALC_DIR_SIZES',
       'TOGGLE_FLAT_VIEW',
       'TOGGLE_FLAT_VIEW_DIRS',
+      'TOGGLE_IMAGE_OVERVIEW',
       '-',
       'QUICK_VIEW',
       'DISK_USAGE_TOGGLE_CHART',

@@ -1,0 +1,50 @@
+<div class="bar top" [class.hidden]="idle()">
+  <span class="name">{{ item()?.name }}</span>
+  <span class="pos">{{ position() }}</span>
+  <button
+    type="button"
+    class="btn"
+    [title]="t.previous"
+    [attr.aria-label]="t.previous"
+    (click)="store.step(-1)"
+  >
+    <i class="fa fa-chevron-left" aria-hidden="true"></i>
+  </button>
+  <button
+    type="button"
+    class="btn"
+    [title]="t.next"
+    [attr.aria-label]="t.next"
+    (click)="store.step(1)"
+  >
+    <i class="fa fa-chevron-right" aria-hidden="true"></i>
+  </button>
+  <button
+    type="button"
+    class="btn"
+    [title]="actual() ? t.fit : t.actual"
+    (click)="actual.set(!actual())"
+  >
+    {{ actual() ? t.fit : t.actual }}
+  </button>
+  <button type="button" class="btn" [title]="t.toggleMode" (click)="toggleMode()">
+    <i
+      class="fa"
+      [class.fa-expand]="mode() === 'window'"
+      [class.fa-compress]="mode() === 'screen'"
+      aria-hidden="true"
+    ></i>
+    {{ mode() === 'window' ? t.modeWindow : t.modeScreen }}
+  </button>
+  <button type="button" class="btn" [title]="t.close" [attr.aria-label]="t.close" (click)="close()">
+    <i class="fa fa-times" aria-hidden="true"></i>
+  </button>
+</div>
+<div class="stage" [class.actual]="actual()" (dblclick)="actual.set(!actual())">
+  @if (failed()) {
+    <p class="note">{{ t.cannotShow }}</p>
+  } @else if (src(); as s) {
+    <img [src]="s" alt="" (load)="onLoad($event)" (error)="onError()" />
+  }
+</div>
+<div class="bar bottom" [class.hidden]="idle()">{{ info() }}</div>

@@ -65,7 +65,7 @@ fn limits() -> Limits {
 }
 
 /// Reads the file (bounded) – regular files only, no devices or FIFOs.
-fn read_file(path: &Path) -> Result<Vec<u8>, FsError> {
+pub(crate) fn read_file(path: &Path) -> Result<Vec<u8>, FsError> {
     let mut f = open_regular_file(path).map_err(|e| FsError::from_io(&e, path))?;
     let len = f.metadata().map_err(|e| FsError::from_io(&e, path))?.len();
     if len > MAX_BYTES {
@@ -87,6 +87,15 @@ fn read_file(path: &Path) -> Result<Vec<u8>, FsError> {
 
 /// Decodes bytes of an image with all limits (`path` only for the messages).
 pub fn decode_bytes(data: &[u8], path: &Path) -> Result<DynamicImage, FsError> {
+    decode_bytes_with(data, path, false)
+}
+
+/// Like [`decode_bytes`], turned upright by the EXIF orientation (design 074 E6).
+pub fn decode_bytes_oriented(data: &[u8], path: &Path) -> Result<DynamicImage, FsError> {
+    decode_bytes_with(data, path, true)
+}
+
+fn decode_bytes_with(data: &[u8], path: &Path, upright: bool) -> Result<DynamicImage, FsError> {
     let reader = || -> Result<ImageReader<Cursor<&[u8]>>, FsError> {
         let mut r = ImageReader::new(Cursor::new(data))
             .with_guessed_format()
@@ -110,9 +119,18 @@ pub fn decode_bytes(data: &[u8], path: &Path) -> Result<DynamicImage, FsError> {
                 path,
             ));
         }
-        reader()?
-            .decode()
-            .map_err(|e| bad(format!("The image cannot be read ({e})"), path))
+        let cannot = |e: image::ImageError| bad(format!("The image cannot be read ({e})"), path);
+        if !upright {
+            return reader()?.decode().map_err(cannot);
+        }
+        let mut decoder = reader()?.into_decoder().map_err(cannot)?;
+        use image::ImageDecoder as _;
+        let orientation = decoder
+            .orientation()
+            .unwrap_or(image::metadata::Orientation::NoTransforms);
+        let mut img = DynamicImage::from_decoder(decoder).map_err(cannot)?;
+        img.apply_orientation(orientation);
+        Ok(img)
     }));
     outcome.unwrap_or_else(|_| Err(bad("The image cannot be read (decoder failure)", path)))
 }
@@ -162,6 +180,18 @@ impl Drop for Permit {
 pub fn decode(path: &Path) -> Result<DynamicImage, FsError> {
     let _permit = Permit::take();
     decode_bytes(&read_file(path)?, path)
+}
+
+/// Decodes the image file at `path` with all limits, upright (design 074 E6).
+pub fn decode_oriented(path: &Path) -> Result<DynamicImage, FsError> {
+    let _permit = Permit::take();
+    decode_bytes_oriented(&read_file(path)?, path)
+}
+
+/// Runs `f` while holding one of the app-wide decode permits ([`MAX_DECODES`]).
+pub fn with_permit<T>(f: impl FnOnce() -> T) -> T {
+    let _permit = Permit::take();
+    f()
 }
 
 /// Grey values vary less than this (standard deviation of the 32 × 32 image): the picture

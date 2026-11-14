@@ -58,6 +58,8 @@ pub mod fileops;
 pub mod filetypes;
 pub mod folder_memory;
 pub mod fs_atomic;
+pub mod image_overview;
+pub mod images;
 pub mod jobs;
 pub mod keymap;
 pub mod listing;
@@ -112,6 +114,16 @@ pub fn run() {
         .manage(commands::starter::StarterState::default())
         .manage(commands::file_actions::FileActionsState::default())
         .manage(commands::remote::RemoteState::default())
+        // thumbnails of the image overview (design 074 E3): a LIFO pool answers
+        .register_asynchronous_uri_scheme_protocol(
+            image_overview::SCHEME,
+            |_ctx, request, responder| {
+                let path = request.uri().path().to_owned();
+                image_overview::request(&path, move |answer| {
+                    responder.respond(commands::image_overview::thumb_response(&answer));
+                });
+            },
+        )
         .register_asynchronous_uri_scheme_protocol(preview::SCHEME, |ctx, request, responder| {
             let state = ctx.app_handle().state::<commands::PreviewState>();
             // at most MAX_CONCURRENT_IMAGES reads (and threads) at once, else 503
@@ -132,6 +144,8 @@ pub fn run() {
             // files opened from archives: private cache folder, stale runs removed (design 025 E5)
             if let Ok(dir) = app.path().app_cache_dir() {
                 archive::view::init(&dir.join("archive-view"));
+                // thumbnails of the image overview, kept below 1 GiB (design 074 E4)
+                image_overview::init(&dir);
             }
             app.state::<commands::JobsState>()
                 .manager
@@ -270,6 +284,8 @@ pub fn run() {
             commands::save_rename_presets,
             commands::duplicates::classify_paths,
             commands::duplicates::duplicate_thumbnails,
+            commands::image_overview::image_overview_open,
+            commands::image_overview::image_overview_close,
             commands::duplicates::load_duplicate_rules,
             commands::duplicates::save_duplicate_rules,
             commands::list_volumes,

@@ -41,6 +41,20 @@
   background: var(--color-splitter-active);
 }
 
+.image-overview {
+  grid-column: 1 / -1;
+  grid-row: 1 / 5;
+  /* above the panels and the splitter (z-index 1) */
+  position: relative;
+  z-index: 2;
+}
+
+/* the panels stay in the DOM under the overview (their stores keep cursor, marks, scroll) */
+:host(.overview) app-file-panel,
+:host(.overview) .splitter {
+  visibility: hidden;
+}
+
 .shell {
   grid-column: 1 / -1;
   grid-row: 5;

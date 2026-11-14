@@ -1,0 +1,138 @@
+<!-- `dialog`: the shared field look of controls.css – fields, select and buttons one height -->
+<header class="head dialog">
+  <button
+    type="button"
+    class="btn icon"
+    [class.on]="store.treeVisible()"
+    [attr.aria-pressed]="store.treeVisible()"
+    [title]="t.treeTitle"
+    [attr.aria-label]="t.tree"
+    (click)="store.toggleTree()"
+  >
+    <i class="fa fa-sitemap" aria-hidden="true"></i>
+  </button>
+  <button
+    type="button"
+    class="btn icon"
+    [disabled]="store.parent() === null"
+    [title]="t.up"
+    [attr.aria-label]="t.up"
+    (click)="goTo(store.parent()!)"
+  >
+    <i class="fa fa-level-up" aria-hidden="true"></i>
+  </button>
+  <nav class="path" [attr.aria-label]="t.region">
+    @for (seg of store.segments(); track seg.path; let last = $last) {
+      <button
+        type="button"
+        class="seg"
+        [class.last]="last"
+        [attr.aria-current]="last ? 'page' : null"
+        (click)="goTo(seg.path)"
+      >
+        {{ seg.name }}
+      </button>
+    }
+  </nav>
+  <label class="check">
+    <input type="checkbox" [checked]="store.recursive()" (change)="setRecursive($event)" />
+    {{ t.subfolders }}
+  </label>
+  <label class="sort">
+    <span>{{ t.sortLabel }}</span>
+    <select [value]="store.sort()" (change)="setSort($event)">
+      @for (s of sorts; track s) {
+        <option [value]="s" [selected]="s === store.sort()">{{ t.sorts[s] }}</option>
+      }
+    </select>
+  </label>
+  <input
+    type="search"
+    class="filter"
+    [placeholder]="t.filterPlaceholder"
+    [attr.aria-label]="t.filter"
+    [value]="store.filter()"
+    (input)="setFilter($event)"
+    (keydown)="filterKey($event)"
+  />
+  <span class="zoom">
+    <button
+      type="button"
+      class="quiet"
+      [title]="t.smaller"
+      [attr.aria-label]="t.smaller"
+      (click)="store.zoom(-1)"
+    >
+      <i class="fa fa-minus" aria-hidden="true"></i>
+    </button>
+    <input
+      type="range"
+      [min]="minTile"
+      [max]="maxTile"
+      step="8"
+      [value]="store.tileSize()"
+      [attr.aria-label]="t.sizeLabel"
+      (input)="setTile($event)"
+    />
+    <button
+      type="button"
+      class="quiet"
+      [title]="t.larger"
+      [attr.aria-label]="t.larger"
+      (click)="store.zoom(1)"
+    >
+      <i class="fa fa-plus" aria-hidden="true"></i>
+    </button>
+  </span>
+  <button type="button" class="btn back" [title]="t.backTitle" (click)="back()">
+    <i class="fa fa-times" aria-hidden="true"></i>
+    {{ t.back }}
+  </button>
+</header>
+
+<div class="body" [style.--io-tree-width.px]="store.treeVisible() ? treeWidth() : 0">
+  @if (store.treeVisible()) {
+    <app-folder-tree class="tree" />
+    <div
+      class="resize"
+      role="separator"
+      tabindex="0"
+      aria-orientation="vertical"
+      [attr.aria-label]="t.treeResize"
+      [attr.aria-valuenow]="treeWidth()"
+      aria-valuemin="120"
+      aria-valuemax="600"
+      (pointerdown)="resizeDown($event)"
+      (pointermove)="resizeMove($event)"
+      (pointerup)="resizeUp()"
+      (pointercancel)="resizeUp()"
+      (keydown)="resizeKey($event)"
+    ></div>
+  }
+  <app-overview-grid
+    class="grid"
+    [attr.aria-label]="t.gridLabel(store.folder() ?? '')"
+    (escape)="back()"
+  />
+  @if (note(); as n) {
+    <p class="note" role="status">{{ n }}</p>
+  }
+</div>
+
+<footer class="foot" [style.height.px]="footHeight">
+  <span class="count">{{ countText() }}</span>
+  @if (markedText(); as m) {
+    <span class="marked">{{ m }}</span>
+  }
+  @if (flags(); as f) {
+    <span class="flags">{{ f }}</span>
+  }
+  @if (store.load().loading && store.items().length > 0) {
+    <span class="spinner" aria-hidden="true"></span>
+  }
+  <span class="cursor">{{ cursorText() }}</span>
+</footer>
+
+@if (store.large() !== null) {
+  <app-large-view />
+}

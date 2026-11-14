@@ -32,6 +32,10 @@
   --color-search-hit: #ffe58a;
   --color-splitter: rgb(128 128 128 / 10%);
   --color-splitter-active: #7fb2ff;
+  /* image overview (design 074): dark in every scheme – photos look best on dark */
+  --color-overview-bg: #1b1b1d;
+  --color-overview-tile: #2a2a2e;
+  --color-overview-text: #e4e4e7;
   --color-backdrop: rgb(0 0 0 / 25%);
   --shadow-popup: 0 4px 16px rgb(0 0 0 / 18%);
   /* Actions menu and folder menu of the tab row */
@@ -374,4 +378,74 @@ div.ge-table-header-border,
 }
 label {
   margin-top: 24px;
+}
+
+/*
+ * Tiles of the image overview (design 074 E11): rendered as plain DOM by `TileRenderer`
+ * inside the GuiExpert table, so they are styled here, not in the component.
+ */
+.io-tile {
+  position: absolute;
+  inset: 3px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: var(--color-overview-tile);
+  color: var(--color-overview-text);
+  overflow: hidden;
+
+  &.io-marked {
+    border-color: var(--color-marked);
+  }
+
+  &.io-cursor {
+    border-color: var(--color-cursor-bg);
+    box-shadow: 0 0 0 2px var(--color-cursor-bg);
+  }
+
+  &.io-cursor.io-marked {
+    box-shadow: 0 0 0 2px var(--color-marked);
+  }
+}
+
+.io-picture {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+
+  & img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+.io-placeholder {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  font-size: 0.8em;
+  opacity: 0.7;
+
+  & b {
+    font-size: 1.3em;
+    letter-spacing: 0.05em;
+  }
+}
+
+.io-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-marked);
+  color: var(--color-overview-tile);
+  font-size: 12px;
 }

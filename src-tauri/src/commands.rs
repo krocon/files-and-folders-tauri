@@ -5,6 +5,7 @@ pub mod config;
 pub mod disk_usage;
 pub mod duplicates;
 pub mod file_actions;
+pub mod image_overview;
 pub mod mr_import;
 pub mod os_drag;
 pub mod palette;
@@ -1670,7 +1671,11 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 12] = [
+    const SOURCES: [(&str, &str); 13] = [
+        (
+            "commands/image_overview.rs",
+            include_str!("commands/image_overview.rs"),
+        ),
         (
             "commands/duplicates.rs",
             include_str!("commands/duplicates.rs"),

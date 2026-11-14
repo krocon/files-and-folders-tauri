@@ -43,12 +43,16 @@ pub struct CollectOptions {
     /// 1 = only the files of the start folder; clamped to `1..=MAX_DEPTH`.
     #[serde(default = "default_depth")]
     pub max_depth: u32,
+    /// Only image files (design 074 E10: `images::kind_of`); the file limit then counts images.
+    #[serde(default)]
+    pub only_images: bool,
 }
 
 impl Default for CollectOptions {
     fn default() -> Self {
         CollectOptions {
             max_depth: DEFAULT_DEPTH,
+            only_images: false,
         }
     }
 }
@@ -91,6 +95,7 @@ struct Limits {
 struct Walk<'a> {
     root: &'a Path,
     depth: u32,
+    only_images: bool,
     dev: Option<u64>,
     cancel: &'a AtomicBool,
     limits: Limits,
@@ -165,6 +170,9 @@ impl Walk<'_> {
                     dirs.pop();
                 }
             } else if meta.is_file() {
+                if self.only_images && crate::images::kind_of(&name).is_none() {
+                    continue;
+                }
                 if self.tree.files.len() >= self.limits.files {
                     self.tree.truncated = true;
                     return;
@@ -225,6 +233,7 @@ fn collect_with(
     let mut walk = Walk {
         root,
         depth: o.max_depth.clamp(1, MAX_DEPTH),
+        only_images: o.only_images,
         dev: file_id(&meta).map(|f| f.0),
         cancel,
         limits,
@@ -270,6 +279,49 @@ mod tests {
     }
 
     #[test]
+    fn only_images_counts_images_against_the_limit() {
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().join("Fotos 📷");
+        fs::create_dir_all(root.join("Tag 1")).unwrap();
+        for n in ["a.txt", "b.txt", "c.txt", "Bild ä.JPG", "raw.NEF", "x.heic"] {
+            fs::write(root.join(n), "x").unwrap();
+        }
+        fs::write(root.join("Tag 1/d.png"), "x").unwrap();
+        fs::write(root.join(".hidden.jpg"), "x").unwrap();
+        let o = CollectOptions {
+            max_depth: 1,
+            only_images: true,
+        };
+        let only = collect_files(&root, &o).unwrap();
+        assert_eq!(rels(&only), ["Bild ä.JPG", "raw.NEF", "x.heic"]);
+        let deep = collect_files(
+            &root,
+            &CollectOptions {
+                max_depth: 4,
+                only_images: true,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            rels(&deep),
+            ["Bild ä.JPG", "Tag 1/d.png", "raw.NEF", "x.heic"]
+        );
+        // three text files do not use up a limit of three images
+        let few = collect_with(
+            &root,
+            &o,
+            &AtomicBool::new(false),
+            Limits {
+                files: 3,
+                visited: 100,
+            },
+        )
+        .unwrap();
+        assert!(!few.truncated);
+        assert_eq!(few.files.len(), 3);
+    }
+
+    #[test]
     fn files_with_folder_names_top_and_rel() {
         let (_t, root) = tree();
         let t = collect_files(&root, &CollectOptions::default()).unwrap();
@@ -305,12 +357,33 @@ mod tests {
     #[test]
     fn depth_limits_the_folders() {
         let (_t, root) = tree();
-        let t = collect_files(&root, &CollectOptions { max_depth: 1 }).unwrap();
+        let t = collect_files(
+            &root,
+            &CollectOptions {
+                max_depth: 1,
+                only_images: false,
+            },
+        )
+        .unwrap();
         assert_eq!(rels(&t), ["direkt.mkv"]);
-        let t = collect_files(&root, &CollectOptions { max_depth: 2 }).unwrap();
+        let t = collect_files(
+            &root,
+            &CollectOptions {
+                max_depth: 2,
+                only_images: false,
+            },
+        )
+        .unwrap();
         assert_eq!(t.files.len(), 3, "{:?}", rels(&t)); // not the Sample folder
         // 0 is clamped to 1, huge values to MAX_DEPTH
-        let t = collect_files(&root, &CollectOptions { max_depth: 0 }).unwrap();
+        let t = collect_files(
+            &root,
+            &CollectOptions {
+                max_depth: 0,
+                only_images: false,
+            },
+        )
+        .unwrap();
         assert_eq!(t.files.len(), 1);
     }
 

@@ -8,7 +8,7 @@
 
 ## light (hell)
 
-11 von 76 Paaren unter AA im Original, 10 Farben angepasst.
+11 von 77 Paaren unter AA im Original, 10 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -43,7 +43,7 @@
 
 ## paper (hell)
 
-44 von 76 Paaren unter AA im Original, 34 Farben angepasst.
+44 von 77 Paaren unter AA im Original, 34 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -102,7 +102,7 @@
 
 ## bitbucket (hell)
 
-30 von 76 Paaren unter AA im Original, 23 Farben angepasst.
+30 von 77 Paaren unter AA im Original, 23 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -150,7 +150,7 @@
 
 ## cypress (dunkel)
 
-35 von 76 Paaren unter AA im Original, 26 Farben angepasst.
+35 von 77 Paaren unter AA im Original, 26 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -201,7 +201,7 @@
 
 ## blackboard (dunkel)
 
-16 von 76 Paaren unter AA im Original, 12 Farben angepasst.
+16 von 77 Paaren unter AA im Original, 12 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -238,7 +238,7 @@
 
 ## coffee (dunkel)
 
-8 von 76 Paaren unter AA im Original, 7 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+8 von 77 Paaren unter AA im Original, 7 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -270,7 +270,7 @@
 
 ## combat (dunkel)
 
-10 von 76 Paaren unter AA im Original, 9 Farben angepasst.
+10 von 77 Paaren unter AA im Original, 9 Farben angepasst.
 
 | Paar | Original | App |
 |---|---:|---:|
@@ -304,7 +304,7 @@
 
 ## norton (dunkel)
 
-17 von 76 Paaren unter AA im Original, 15 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
+17 von 77 Paaren unter AA im Original, 15 Farben angepasst, aus Fallbacks: `--fnf-tooltip-bg-color`, `--fnf-tooltip-color`, `--fnf-tooltip-background-input-color`, `--fnf-tooltip-input-color`.
 
 | Paar | Original | App |
 |---|---:|---:|

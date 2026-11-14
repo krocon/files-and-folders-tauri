@@ -52,5 +52,14 @@
   "palette.maxMemoryMb": { "type": "int", "min": 8, "max": 2048, "default": 256 },
   "palette.includeHidden": { "type": "bool", "default": false },
   "palette.systemSearch": { "type": "bool", "default": false },
-  "palette.maxHits": { "type": "int", "min": 50, "max": 2000, "default": 300 }
+  "palette.maxHits": { "type": "int", "min": 50, "max": 2000, "default": 300 },
+  "imageOverview.tileSize": { "type": "int", "min": 96, "max": 640, "default": 200 },
+  "imageOverview.sort": {
+    "type": "enum",
+    "values": ["name", "date", "size", "type"],
+    "default": "name"
+  },
+  "imageOverview.tree": { "type": "bool", "default": true },
+  "imageOverview.treeWidth": { "type": "int", "min": 120, "max": 600, "default": 220 },
+  "imageOverview.largeMode": { "type": "enum", "values": ["window", "screen"], "default": "window" }
 }

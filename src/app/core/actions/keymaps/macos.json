@@ -56,6 +56,7 @@
   "RERUN_SEARCH": ["Mod+Shift+F7"],
   "GOTO_FILE": ["Mod+Shift+G"],
   "TOGGLE_FLAT_VIEW": ["Mod+B"],
+  "TOGGLE_IMAGE_OVERVIEW": ["Mod+Shift+I"],
   "OPEN_VIEW_DLG": ["F3"],
   "QUICK_VIEW": ["Ctrl+Q"],
   "OPEN_EDIT_DLG": ["F4"],

@@ -1,0 +1,72 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--color-overview-bg);
+  color: var(--color-overview-text);
+  outline: none;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--color-overview-tile);
+  transition: opacity 0.3s;
+
+  &.hidden {
+    opacity: 0;
+  }
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+  }
+}
+
+.top .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom {
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0.85em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+
+  & img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  &.actual {
+    place-items: start center;
+    overflow: auto;
+
+    & img {
+      max-width: none;
+      max-height: none;
+    }
+  }
+}
+
+.note {
+  opacity: 0.8;
+}

@@ -76,6 +76,9 @@ import { FolderFinderDialog } from '../search/folder-finder-dialog';
 import { FolderFinderStore } from '../search/folder-finder.store';
 import { registerSearchActions } from '../search/search-actions';
 import { registerFlatActions } from '../flat/flat-actions';
+import { ImageOverview } from '../imageoverview/image-overview';
+import { registerImageOverviewActions } from '../imageoverview/image-overview-actions';
+import { ImageOverviewStore } from '../imageoverview/image-overview.store';
 import { ThemeService } from '../../core/theme/theme.service';
 import { registerThemeActions } from '../themes/theme-actions';
 import { ThemeDialog } from '../themes/theme-dialog';
@@ -188,6 +191,7 @@ import { RemoteStore } from '../remote/remote.store';
     MrImportDialog,
     ConnectionsDialog,
     RemotePromptDialog,
+    ImageOverview,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -195,6 +199,7 @@ import { RemoteStore } from '../remote/remote.store';
   host: {
     '[style.--fnf-split]': 'ws.splitter()',
     '[class.resizing]': 'dragging()',
+    '[class.overview]': 'overview.isOpen()',
     '(document:visibilitychange)': 'onVisibility()',
     '(window:pagehide)': 'onPageHide()',
     '(document:contextmenu)': 'onContextMenu($event)',
@@ -205,6 +210,8 @@ export class Workspace implements OnInit {
   private readonly settings = inject(SettingsStore);
   private readonly diskUsage = inject(DiskUsageStore);
   protected readonly ws = inject(WorkspaceStore);
+  /** The image overview over both panels (design 074 E1). */
+  protected readonly overview = inject(ImageOverviewStore);
   protected readonly actions = inject(ActionService);
   protected readonly dialogs = inject(DialogService);
   protected readonly jobs = inject(JobsStore);
@@ -382,6 +389,7 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerFlatActions(this.actions, this.ws));
+    this.destroyRef.onDestroy(registerImageOverviewActions(this.actions, this.ws, this.overview));
     this.destroyRef.onDestroy(registerPaletteActions(this.actions, this.palette, this.dialogs));
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));
     this.destroyRef.onDestroy(
