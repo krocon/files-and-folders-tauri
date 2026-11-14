@@ -45,9 +45,8 @@ pub struct Version {
 }
 
 fn number(s: &str) -> Option<u64> {
-    let ok = !s.is_empty()
-        && s.bytes().all(|b| b.is_ascii_digit())
-        && (s == "0" || !s.starts_with('0'));
+    let ok =
+        !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()) && (s == "0" || !s.starts_with('0'));
     if ok { s.parse().ok() } else { None }
 }
 
@@ -249,8 +248,7 @@ pub fn evaluate(current: &str, body: &[u8], now_ms: u64) -> Result<UpdateInfo, F
             "The release tag is no version",
         )
     })?;
-    let (notes, notes_truncated) = match release.body.as_deref().map(|b| clean_text(b, MAX_NOTES))
-    {
+    let (notes, notes_truncated) = match release.body.as_deref().map(|b| clean_text(b, MAX_NOTES)) {
         Some((n, cut)) if !n.is_empty() => (Some(n), cut),
         _ => (None, false),
     };
@@ -305,7 +303,10 @@ fn net_error(e: &reqwest::Error) -> FsError {
     } else {
         "request"
     };
-    err(FsErrorCode::UpdateOffline, format!("No connection ({kind})"))
+    err(
+        FsErrorCode::UpdateOffline,
+        format!("No connection ({kind})"),
+    )
 }
 
 /// `GET url` and the body (at most 256 KiB). `https_only` is false only in tests (local

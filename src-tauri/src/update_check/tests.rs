@@ -38,8 +38,18 @@ fn versions_follow_semver_precedence() {
 #[test]
 fn invalid_versions_are_refused() {
     for bad in [
-        "", "v", "1", "1.2", "1.2.3.4", "01.2.3", "1.2.x", "1.2.3-", "1.2.3-a..b", "1.2.3-ä",
-        "latest", "-1.2.3",
+        "",
+        "v",
+        "1",
+        "1.2",
+        "1.2.3.4",
+        "01.2.3",
+        "1.2.x",
+        "1.2.3-",
+        "1.2.3-a..b",
+        "1.2.3-ä",
+        "latest",
+        "-1.2.3",
     ] {
         assert!(Version::parse(bad).is_none(), "{bad:?}");
     }
@@ -67,8 +77,16 @@ fn a_newer_release_is_found() {
 
 #[test]
 fn same_or_older_release_is_not_newer() {
-    assert!(!evaluate("1.5.0", GITHUB_ANSWER.as_bytes(), 0).unwrap().newer);
-    assert!(!evaluate("1.6.0", GITHUB_ANSWER.as_bytes(), 0).unwrap().newer);
+    assert!(
+        !evaluate("1.5.0", GITHUB_ANSWER.as_bytes(), 0)
+            .unwrap()
+            .newer
+    );
+    assert!(
+        !evaluate("1.6.0", GITHUB_ANSWER.as_bytes(), 0)
+            .unwrap()
+            .newer
+    );
     // a pre-release of our own ranks below the release
     assert!(
         evaluate("1.5.0-beta.1", GITHUB_ANSWER.as_bytes(), 0)
@@ -80,7 +98,8 @@ fn same_or_older_release_is_not_newer() {
 #[test]
 fn drafts_and_prereleases_are_no_release() {
     for flag in ["draft", "prerelease"] {
-        let body = GITHUB_ANSWER.replace(&format!("\"{flag}\": false"), &format!("\"{flag}\": true"));
+        let body =
+            GITHUB_ANSWER.replace(&format!("\"{flag}\": false"), &format!("\"{flag}\": true"));
         assert_eq!(
             evaluate("1.4.0", body.as_bytes(), 0).unwrap_err().code,
             FsErrorCode::UpdateNoRelease
@@ -90,7 +109,13 @@ fn drafts_and_prereleases_are_no_release() {
 
 #[test]
 fn hostile_answers_are_refused_or_tamed() {
-    for body in ["", "<html>", "[]", r#"{"tag_name": 5}"#, r#"{"tag_name": "nightly"}"#] {
+    for body in [
+        "",
+        "<html>",
+        "[]",
+        r#"{"tag_name": 5}"#,
+        r#"{"tag_name": "nightly"}"#,
+    ] {
         assert_eq!(
             evaluate("1.4.0", body.as_bytes(), 0).unwrap_err().code,
             FsErrorCode::UpdateInvalidResponse,
@@ -104,13 +129,17 @@ fn hostile_answers_are_refused_or_tamed() {
         "javascript:alert(1)",
         "https://github.com/krocon/files-and-folders-tauri/releasesX",
     ] {
-        let body = format!(r#"{{"tag_name": "v9.0.0", "html_url": {}}}"#, serde_json::json!(url));
+        let body = format!(
+            r#"{{"tag_name": "v9.0.0", "html_url": {}}}"#,
+            serde_json::json!(url)
+        );
         let info = evaluate("1.4.0", body.as_bytes(), 0).unwrap();
         assert_eq!(info.release_url, RELEASES_URL, "{url}");
     }
     // control characters go, long notes are cut at a character boundary
     let notes = format!("a\u{7}b\u{1b}[31m{}", "ä".repeat(5000));
-    let body = serde_json::json!({ "tag_name": "1.5.0", "body": notes, "name": "x\ny" }).to_string();
+    let body =
+        serde_json::json!({ "tag_name": "1.5.0", "body": notes, "name": "x\ny" }).to_string();
     let info = evaluate("1.4.0", body.as_bytes(), 0).unwrap();
     let n = info.notes.unwrap();
     assert!(n.starts_with("ab[31m"));
@@ -123,7 +152,9 @@ fn hostile_answers_are_refused_or_tamed() {
 #[test]
 fn own_version_must_be_semver() {
     assert_eq!(
-        evaluate("dev", GITHUB_ANSWER.as_bytes(), 0).unwrap_err().code,
+        evaluate("dev", GITHUB_ANSWER.as_bytes(), 0)
+            .unwrap_err()
+            .code,
         FsErrorCode::UpdateInvalidResponse
     );
 }
@@ -131,7 +162,10 @@ fn own_version_must_be_semver() {
 #[test]
 fn status_codes_map_to_errors() {
     assert_eq!(status_error(404, false).code, FsErrorCode::UpdateNoRelease);
-    assert_eq!(status_error(429, false).code, FsErrorCode::UpdateRateLimited);
+    assert_eq!(
+        status_error(429, false).code,
+        FsErrorCode::UpdateRateLimited
+    );
     assert_eq!(status_error(403, true).code, FsErrorCode::UpdateRateLimited);
     assert_eq!(status_error(403, false).code, FsErrorCode::UpdateHttp);
     assert_eq!(status_error(500, false).code, FsErrorCode::UpdateHttp);
@@ -178,7 +212,10 @@ fn state_round_trip_and_bad_files() {
 #[test]
 fn skip_version_normalises() {
     assert_eq!(skip_version(None).unwrap(), None);
-    assert_eq!(skip_version(Some("v1.5.0")).unwrap().as_deref(), Some("1.5.0"));
+    assert_eq!(
+        skip_version(Some("v1.5.0")).unwrap().as_deref(),
+        Some("1.5.0")
+    );
     assert_eq!(
         skip_version(Some("../x")).unwrap_err().code,
         FsErrorCode::UpdateInvalidResponse
@@ -188,7 +225,10 @@ fn skip_version_normalises() {
 /// A local HTTP server that answers one request with `response` and hands back the request.
 fn serve_once(response: Vec<u8>) -> (String, std::thread::JoinHandle<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let url = format!("http://{}/repos/x/releases/latest", listener.local_addr().unwrap());
+    let url = format!(
+        "http://{}/repos/x/releases/latest",
+        listener.local_addr().unwrap()
+    );
     let handle = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
         let mut buf = [0u8; 4096];
@@ -265,7 +305,11 @@ async fn fetch_refuses_plain_http_in_production_mode_and_unreachable_hosts() {
         FsErrorCode::UpdateOffline
     );
     // nobody listens on the port
-    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     assert_eq!(
         fetch(&format!("http://127.0.0.1:{port}/x"), "1.4.0", false)
             .await
