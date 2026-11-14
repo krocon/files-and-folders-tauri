@@ -290,7 +290,9 @@ mod tests {
     #[test]
     fn hostile_names_are_no_options_and_no_shell_syntax() {
         let (_, args, _) = args_for("node %N", "/d/-rf; rm x.js");
-        assert_eq!(args, [OsString::from("./-rf; rm x.js")]);
+        // `./` (Windows `.\`): a leading `-` is no option
+        let dashed = format!(".{}-rf; rm x.js", std::path::MAIN_SEPARATOR);
+        assert_eq!(args, [OsString::from(dashed)]);
     }
 
     #[test]
@@ -370,15 +372,14 @@ mod tests {
 
     #[test]
     fn home_is_expanded_in_the_program() {
-        let tool = to_tool(
-            &rule("a", "*", "~/bin/run %N"),
-            Some(Path::new("/home/marc")),
-        )
-        .unwrap();
-        assert_eq!(
-            Path::new(&tool.program),
-            Path::new("/home/marc").join("bin/run")
-        );
+        // an absolute home of this OS (`/home/marc` has no drive on Windows)
+        let home = if cfg!(windows) {
+            Path::new(r"C:\Users\marc")
+        } else {
+            Path::new("/home/marc")
+        };
+        let tool = to_tool(&rule("a", "*", "~/bin/run %N"), Some(home)).unwrap();
+        assert_eq!(Path::new(&tool.program), home.join("bin/run"));
     }
 
     #[test]
