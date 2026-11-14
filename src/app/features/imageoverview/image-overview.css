@@ -1,7 +1,7 @@
 :host {
   display: grid;
-  /* the status line lies over the bottom of the body (row 2), the grid shows through */
-  grid-template-rows: auto minmax(0, 1fr);
+  /* header and status line lie over the top and bottom of the body, the grid shows through */
+  grid-template-rows: minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
@@ -24,7 +24,7 @@
 
 .foot {
   z-index: 1;
-  grid-area: 2 / 1; /* the same cell as the body, not an implicit second column */
+  grid-area: 1 / 1; /* the same cell as the body, not an implicit second column */
   align-self: end;
   box-sizing: border-box;
   padding-block: 0;
@@ -34,7 +34,12 @@
 }
 
 .head {
+  z-index: 1;
+  gap: 12px; /* clear groups: path · subfolders · order · filter · size · close */
+  grid-area: 1 / 1; /* over the top of the body, like the status line at the bottom */
+  align-self: start;
   border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
 }
 
 .foot {
@@ -90,7 +95,7 @@
 .sort {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin: 0; /* the general `label { margin-top }` is for labels above a field */
   white-space: nowrap;
 
@@ -108,7 +113,7 @@
 }
 
 .body {
-  grid-area: 2 / 1;
+  grid-area: 1 / 1;
   position: relative;
   display: grid;
   grid-template-columns: var(--io-tree-width, 0) auto minmax(0, 1fr);
@@ -117,6 +122,7 @@
 
 .tree {
   min-width: 0;
+  padding-top: var(--io-head-height, 0); /* the first folders below the header */
   border-right: 1px solid var(--color-border);
 }
 
@@ -169,7 +175,7 @@
 .zoom {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 
   & input {
     width: 110px;

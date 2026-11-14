@@ -31,6 +31,19 @@ describe('TileRenderer (design 074 E11)', () => {
     expect(cell.querySelector('img')?.getAttribute('onerror')).toBeNull();
   });
 
+  it('puts the tiles of row 0 below the header lying over the grid (firstRowPaddingTop)', () => {
+    const item = overviewItem(2, 'b.jpg');
+    const model = { firstRowPaddingTop: 48 } as unknown as AreaModelIf;
+    const tileAt = (row: number) => {
+      const cell = document.createElement('div');
+      renderer.render(cell, row, 0, 'body', model, item);
+      return cell.querySelector<HTMLElement>('.io-tile');
+    };
+    expect(tileAt(0)?.style.top).toBe('51px');
+    expect(tileAt(1)?.style.top).toBe('');
+    expect(render(item).querySelector<HTMLElement>('.io-tile')?.style.top).toBe('');
+  });
+
   it('marks cursor and marked tiles; empty cells stay empty', () => {
     const item = overviewItem(1, 'a.jpg');
     cursor.add(item.path);

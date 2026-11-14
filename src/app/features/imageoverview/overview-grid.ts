@@ -6,6 +6,7 @@ import {
   effect,
   ElementRef,
   inject,
+  input,
   output,
   signal,
   untracked,
@@ -91,6 +92,8 @@ export class OverviewGrid {
 
   /** Esc without a filter: close the overview. */
   readonly escape = output<void>();
+  /** Height of the half transparent header over the top: row 0 starts below it. */
+  readonly topInset = input(0);
 
   protected readonly tableApi = signal<TableApi | undefined>(undefined);
   private readonly hostWidth = signal(0);
@@ -200,9 +203,10 @@ export class OverviewGrid {
       const list = this.store.items();
       const layout = this.layout();
       const api = this.tableApi();
+      const inset = this.topInset();
       this.store.overviewId();
       this.step();
-      untracked(() => this.applyModel(list as OverviewItem[], layout, api));
+      untracked(() => this.applyModel(list as OverviewItem[], layout, inset, api));
     });
     // cursor and marks: repaint once per frame
     effect(() => {
@@ -220,9 +224,13 @@ export class OverviewGrid {
   private applyModel(
     list: OverviewItem[],
     layout: { cols: number; cellWidth: number; rowHeight: number },
+    inset: number,
     api: TableApi | undefined,
   ): void {
     const body = this.model.bodyModel;
+    // row 0 is `inset` higher, its tile sits at the bottom (TileRenderer), as Comic Commander
+    body.firstRowPaddingTop = inset;
+    this.model.paddingTop = inset;
     body.items = list;
     body.filteredItems = list;
     body.coverWidth = layout.cellWidth;
@@ -261,7 +269,14 @@ export class OverviewGrid {
       return;
     }
     const l = this.layout();
-    const top = scrollToShow(index, l.cols, l.rowHeight, 0, this.visibleHeight(), this.scrollTop);
+    const top = scrollToShow(
+      index,
+      l.cols,
+      l.rowHeight,
+      this.topInset(),
+      this.visibleHeight(),
+      this.scrollTop,
+    );
     if (top !== null) {
       this.scrollTo(top);
     }
@@ -329,7 +344,12 @@ export class OverviewGrid {
     const l = this.layout();
     const move = MOVES[e.key];
     if (move && !mod) {
-      this.store.move(move, l.cols, pageRows(this.visibleHeight(), l.rowHeight, 0), e.shiftKey);
+      this.store.move(
+        move,
+        l.cols,
+        pageRows(this.visibleHeight(), l.rowHeight, this.topInset()),
+        e.shiftKey,
+      );
     } else if (mod && (e.key === '+' || e.key === '=')) {
       this.store.zoom(1);
     } else if (mod && e.key === '-') {

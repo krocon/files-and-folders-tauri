@@ -1,5 +1,5 @@
 <!-- `dialog`: the shared field look of controls.css – fields, select and buttons one height -->
-<header class="head dialog">
+<header #head class="head dialog">
   <button
     type="button"
     class="btn icon"
@@ -38,9 +38,9 @@
     <input type="checkbox" [checked]="store.recursive()" (change)="setRecursive($event)" />
     {{ t.subfolders }}
   </label>
+  <!-- no visible label (Marc, 074 feedback): the select names itself, the label is for screen readers -->
   <label class="sort">
-    <span>{{ t.sortLabel }}</span>
-    <select [value]="store.sort()" (change)="setSort($event)">
+    <select [value]="store.sort()" [attr.aria-label]="t.sortLabel" (change)="setSort($event)">
       @for (s of sorts; track s) {
         <option [value]="s" [selected]="s === store.sort()">{{ t.sorts[s] }}</option>
       }
@@ -90,7 +90,11 @@
   </button>
 </header>
 
-<div class="body" [style.--io-tree-width.px]="store.treeVisible() ? treeWidth() : 0">
+<div
+  class="body"
+  [style.--io-tree-width.px]="store.treeVisible() ? treeWidth() : 0"
+  [style.--io-head-height.px]="headHeight()"
+>
   @if (store.treeVisible()) {
     <app-folder-tree class="tree" />
     <div
@@ -111,6 +115,7 @@
   }
   <app-overview-grid
     class="grid"
+    [topInset]="headHeight()"
     [attr.aria-label]="t.gridLabel(store.folder() ?? '')"
     (escape)="back()"
   />

@@ -26,10 +26,10 @@ export class TileRenderer implements CellRendererIf {
 
   render(
     cellDiv: HTMLDivElement,
-    _rowIndex: number,
+    rowIndex: number,
     _columnIndex: number,
     _areaIdent: AreaIdent,
-    _areaModel: AreaModelIf,
+    areaModel: AreaModelIf,
     cellValue: unknown,
   ): RendererCleanupFnType | undefined {
     const item = cellValue as OverviewItem | undefined;
@@ -39,6 +39,11 @@ export class TileRenderer implements CellRendererIf {
     const doc = cellDiv.ownerDocument;
     const tile = doc.createElement('div');
     tile.className = 'io-tile';
+    // row 0 is higher by the header lying over it (`firstRowPaddingTop`): the tile at its bottom
+    const inset = rowIndex === 0 ? firstRowInset(areaModel) : 0;
+    if (inset > 0) {
+      tile.style.top = `${inset + 3}px`; // 3px = the gap of `.io-tile`
+    }
     if (this.ctx.isCursor(item)) {
       tile.classList.add('io-cursor');
     }
@@ -91,4 +96,9 @@ export class TileRenderer implements CellRendererIf {
     cellDiv.appendChild(tile);
     return () => img?.removeEventListener('error', onError);
   }
+}
+
+function firstRowInset(model: AreaModelIf): number {
+  const pad = (model as { firstRowPaddingTop?: unknown }).firstRowPaddingTop;
+  return typeof pad === 'number' && pad > 0 ? pad : 0;
 }

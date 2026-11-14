@@ -3,7 +3,9 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
@@ -41,6 +43,9 @@ export class ImageOverview {
   protected readonly minTile = MIN_TILE;
   protected readonly maxTile = MAX_TILE;
   private readonly grid = viewChild(OverviewGrid);
+  private readonly head = viewChild<ElementRef<HTMLElement>>('head');
+  /** Height of the half transparent header over the top of the tiles and the tree. */
+  protected readonly headHeight = signal(0);
 
   protected readonly treeWidth = computed(() => this.settings.get('imageOverview.treeWidth'));
 
@@ -94,6 +99,16 @@ export class ImageOverview {
   });
 
   constructor() {
+    // the header lies over the grid: its height (it may wrap) is the grid's top inset
+    effect((onCleanup) => {
+      const el = this.head()?.nativeElement;
+      if (!el || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const ro = new ResizeObserver(() => this.headHeight.set(Math.ceil(el.offsetHeight)));
+      ro.observe(el);
+      onCleanup(() => ro.disconnect());
+    });
     // open and back from the large view: the tiles get the focus
     effect(() => {
       const open = this.store.isOpen();
