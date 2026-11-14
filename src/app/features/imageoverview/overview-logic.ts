@@ -10,8 +10,6 @@ export const MIN_TILE = 96;
 export const MAX_TILE = 640;
 /** One step of Mod+= / Mod+- / Mod+wheel (E12). */
 export const TILE_FACTOR = 1.25;
-/** Height of the name line below the picture. */
-export const NAME_LINE = 24;
 /** The picture is 4 : 3 (landscape photos fill it, portraits sit in the middle). */
 export const PICTURE_RATIO = 3 / 4;
 
@@ -59,9 +57,9 @@ export function zoomTile(width: number, direction: 1 | -1): number {
   return clampTile(direction > 0 ? width * TILE_FACTOR : width / TILE_FACTOR);
 }
 
-/** Height of a tile of `width` px: the 4 : 3 picture and the name line. */
+/** Height of a tile of `width` px: only the 4 : 3 picture, the name is the tooltip. */
 export function tileHeight(width: number): number {
-  return Math.round(width * PICTURE_RATIO) + NAME_LINE;
+  return Math.round(width * PICTURE_RATIO);
 }
 
 /**

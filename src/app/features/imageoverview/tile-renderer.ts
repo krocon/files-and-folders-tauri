@@ -9,9 +9,7 @@ export interface TileContext {
   failed(item: OverviewItem): void;
   isCursor(item: OverviewItem): boolean;
   isMarked(item: OverviewItem): boolean;
-  /** Height of the picture part of a tile (px). */
-  pictureHeight(): number;
-  /** Tooltip (relative path, size). */
+  /** Tooltip (name with the relative path, size) – the tile itself shows no text. */
   title(item: OverviewItem): string;
   /** Text of a tile without a picture. */
   noPreview(): string;
@@ -19,7 +17,7 @@ export interface TileContext {
 
 /**
  * One tile in a cell of the GuiExpert cover grid (design 074 E2/E11, as Comic Commander's
- * `CoverRenderer`): plain DOM, no Angular. File names are user data – only `textContent` and
+ * `CoverRenderer`): plain DOM, no Angular. Only the picture – the name is the tooltip. File names are user data – only `textContent` and
  * attributes, never `innerHTML`. A picture that cannot be loaded shows the extension and
  * "no preview"; the grid asks for it again a few times (`TileRetries`).
  */
@@ -51,7 +49,6 @@ export class TileRenderer implements CellRendererIf {
     tile.title = this.ctx.title(item);
     const picture = doc.createElement('div');
     picture.className = 'io-picture';
-    picture.style.height = `${this.ctx.pictureHeight()}px`;
     const src = this.ctx.src(item);
     let img: HTMLImageElement | null = null;
     const showPlaceholder = () => {
@@ -82,16 +79,15 @@ export class TileRenderer implements CellRendererIf {
       picture.appendChild(img);
     }
     tile.appendChild(picture);
-    const name = doc.createElement('span');
-    name.className = 'io-name';
     if (marked) {
+      const badge = doc.createElement('span');
+      badge.className = 'io-check';
       const check = doc.createElement('i');
       check.className = 'fa fa-check';
       check.setAttribute('aria-hidden', 'true');
-      name.appendChild(check);
+      badge.appendChild(check);
+      tile.appendChild(badge);
     }
-    name.appendChild(doc.createTextNode(item.name));
-    tile.appendChild(name);
     cellDiv.appendChild(tile);
     return () => img?.removeEventListener('error', onError);
   }

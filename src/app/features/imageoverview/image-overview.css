@@ -14,8 +14,14 @@
   gap: 8px;
   min-width: 0;
   padding: 4px 8px;
-  background: var(--color-surface);
+  /* half transparent over the dark overview (Marc, 074 feedback a) */
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(10px);
   color: var(--color-text);
+}
+
+.foot {
+  padding-inline-start: 16px;
 }
 
 .head {
@@ -76,7 +82,12 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  margin: 0; /* the general `label { margin-top }` is for labels above a field */
   white-space: nowrap;
+
+  & input[type='checkbox'] {
+    margin: 0;
+  }
 }
 
 .filter {
@@ -148,9 +159,34 @@
 .zoom {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 
   & input {
-    width: 140px;
+    width: 110px;
+    margin: 0;
+  }
+}
+
+/* −/+ beside the slider: only the icon, a light background on hover */
+.quiet {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-muted);
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
   }
 }

@@ -79,7 +79,7 @@ describe('image overview logic (design 074)', () => {
     expect(zoomTile(200, 1)).toBe(250);
     expect(zoomTile(200, -1)).toBe(160);
     expect(zoomTile(MAX_TILE, 1)).toBe(MAX_TILE);
-    expect(tileHeight(200)).toBe(174);
+    expect(tileHeight(200)).toBe(150);
   });
 
   it('loads the smallest thumbnail step that is sharp enough', () => {

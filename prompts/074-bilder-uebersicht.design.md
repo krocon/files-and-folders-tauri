@@ -217,3 +217,11 @@ Commands waren in Ordnung. Behoben, je mit rotem Test zuerst:
 
 - [x] Phase 1: Design (14.11.2026), freigegeben
 - [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [ ] 4 E2E auf dem Mac · [x] 5 Doku · [x] 6 Review (separater Agent, Befunde behoben)
+
+## Feedback nach dem ersten Test (Marc, 2026-11-14)
+
+- Kacheln zeigen nur das Bild (4 : 3, `tileHeight = w·3/4`); der Name steht nur im Tooltip, markierte
+  Bilder tragen eine Haken-Plakette (`.io-check`) statt des Hakens in der Namenszeile.
+- Größe (−, Slider, +) sitzt im Kopf vor „Zu den Panels“; −/+ als dezente Icon-Knöpfe ohne Rahmen.
+- Kopf und Fuß halbtransparent (`color-mix` der Fläche, `backdrop-filter`) über dem dunklen Hintergrund;
+  Kopf vertikal ausgerichtet (globales `label { margin-top }` aufgehoben), Fuß links mit mehr Abstand.

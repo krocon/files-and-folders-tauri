@@ -54,6 +54,35 @@
     (input)="setFilter($event)"
     (keydown)="filterKey($event)"
   />
+  <span class="zoom">
+    <button
+      type="button"
+      class="quiet"
+      [title]="t.smaller"
+      [attr.aria-label]="t.smaller"
+      (click)="store.zoom(-1)"
+    >
+      <i class="fa fa-minus" aria-hidden="true"></i>
+    </button>
+    <input
+      type="range"
+      [min]="minTile"
+      [max]="maxTile"
+      step="8"
+      [value]="store.tileSize()"
+      [attr.aria-label]="t.sizeLabel"
+      (input)="setTile($event)"
+    />
+    <button
+      type="button"
+      class="quiet"
+      [title]="t.larger"
+      [attr.aria-label]="t.larger"
+      (click)="store.zoom(1)"
+    >
+      <i class="fa fa-plus" aria-hidden="true"></i>
+    </button>
+  </span>
   <button type="button" class="btn back" [title]="t.backTitle" (click)="back()">
     <i class="fa fa-columns" aria-hidden="true"></i>
     {{ t.back }}
@@ -101,35 +130,6 @@
     <span class="spinner" aria-hidden="true"></span>
   }
   <span class="cursor">{{ cursorText() }}</span>
-  <span class="zoom">
-    <button
-      type="button"
-      class="btn icon"
-      [title]="t.smaller"
-      [attr.aria-label]="t.smaller"
-      (click)="store.zoom(-1)"
-    >
-      <i class="fa fa-minus" aria-hidden="true"></i>
-    </button>
-    <input
-      type="range"
-      [min]="minTile"
-      [max]="maxTile"
-      step="8"
-      [value]="store.tileSize()"
-      [attr.aria-label]="t.sizeLabel"
-      (input)="setTile($event)"
-    />
-    <button
-      type="button"
-      class="btn icon"
-      [title]="t.larger"
-      [attr.aria-label]="t.larger"
-      (click)="store.zoom(1)"
-    >
-      <i class="fa fa-plus" aria-hidden="true"></i>
-    </button>
-  </span>
 </footer>
 
 @if (store.large() !== null) {

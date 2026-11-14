@@ -12,7 +12,6 @@ describe('TileRenderer (design 074 E11)', () => {
     failed: (i) => failed.add(i.path),
     isCursor: (i) => cursor.has(i.path),
     isMarked: (i) => marks.has(i.path),
-    pictureHeight: () => 150,
     title: (i) => i.rel,
     noPreview: () => 'no preview',
   });
@@ -22,10 +21,11 @@ describe('TileRenderer (design 074 E11)', () => {
     return cell;
   };
 
-  it('shows a hostile name as text, never as HTML', () => {
+  it('shows only the picture, the hostile name only as tooltip, never as HTML', () => {
     const evil = '<img src=x onerror=alert(1)>.jpg';
     const cell = render(overviewItem(0, evil));
-    expect(cell.querySelector('.io-name')?.textContent).toBe(evil);
+    expect(cell.querySelector('.io-name')).toBeNull();
+    expect(cell.querySelector<HTMLElement>('.io-tile')?.title).toBe(evil);
     expect(cell.querySelectorAll('img')).toHaveLength(1);
     expect(cell.querySelector('img')?.getAttribute('src')).toBe('fnfthumb://localhost/x.0.0');
     expect(cell.querySelector('img')?.getAttribute('onerror')).toBeNull();
@@ -38,7 +38,7 @@ describe('TileRenderer (design 074 E11)', () => {
     const tile = render(item).querySelector('.io-tile');
     expect(tile?.classList.contains('io-cursor')).toBe(true);
     expect(tile?.classList.contains('io-marked')).toBe(true);
-    expect(tile?.querySelector('.fa-check')).not.toBeNull();
+    expect(tile?.querySelector('.io-check .fa-check')).not.toBeNull();
     expect(render(undefined).childElementCount).toBe(0);
   });
 

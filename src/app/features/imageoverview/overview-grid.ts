@@ -33,7 +33,7 @@ import {
 } from './grid-math';
 import { ImageOverviewStore } from './image-overview.store';
 import { IMAGE_OVERVIEW_TEXTS } from './image-overview-texts';
-import { NAME_LINE, thumbStep, tileHeight } from './overview-logic';
+import { thumbStep, tileHeight } from './overview-logic';
 import { TileRenderer } from './tile-renderer';
 import { TileRetries } from './tile-retries';
 
@@ -125,7 +125,6 @@ export class OverviewGrid {
     failed: (i) => this.retries.failed(this.thumbUrl(i)),
     isCursor: (i) => i.path === untracked(this.store.cursorPath),
     isMarked: (i) => untracked(this.store.marked).has(i.path),
-    pictureHeight: () => untracked(this.layout).rowHeight - NAME_LINE,
     title: (i) => `${i.rel}\n${formatSize(i.size)}`,
     noPreview: () => this.t.noPreview,
   });
