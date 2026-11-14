@@ -2,7 +2,7 @@
 
 > **Status: freigegeben (Marc, 14.11.2026), umgesetzt** · Datum: 14.11.2026 · Branch `feat/bilder-uebersicht` (von
 > `feat/doppelklick-ausloeser`, weil Prompt und Index nur dort liegen; 073 ist noch nicht in `main`)
-> Auftrag: [`074-bilder-uebersicht.md`](074-bilder-uebersicht.md) · Regeln: [`000-arbeitsweise.md`](000-arbeitsweise.md)
+> Auftrag: [`074-bilder-uebersicht.md`](074-bilder-uebersicht.md) · Regeln: [`000-arbeitsweise.md`](../000-arbeitsweise.md)
 > Vorgabe von Marc (14.11.2026): **das Cover-Grid der GuiExpert Table nutzen, analog zu Comic Commander**
 > (`~/WebstormProjects/comic-commander-tauri`, MIT, gleicher Autor: Designs 003 „Cover“ und 004 „Cover-Grid“).
 > Vorher-Check: `pnpm check` grün (14.11.2026, auf diesem Branch vor jeder Änderung).
@@ -216,7 +216,7 @@ Commands waren in Ordnung. Behoben, je mit rotem Test zuerst:
 ## Fortschritt
 
 - [x] Phase 1: Design (14.11.2026), freigegeben
-- [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [ ] 4 E2E auf dem Mac · [x] 5 Doku · [x] 6 Review (separater Agent, Befunde behoben)
+- [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [x] 4 E2E auf dem Mac (Marc, Sichtprüfung mit Feedback unten) · [x] 5 Doku · [x] 6 Review (separater Agent, Befunde behoben)
 
 ## Feedback nach dem ersten Test (Marc, 2026-11-14)
 
