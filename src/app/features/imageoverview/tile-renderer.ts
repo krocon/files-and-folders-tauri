@@ -3,8 +3,10 @@ import { OverviewItem } from '../../core/imageoverview/image-overview.models';
 
 /** What the renderer asks the grid (design 074 E11). */
 export interface TileContext {
-  /** Thumbnail URL of the item. */
-  src(item: OverviewItem): string;
+  /** `src` of the item's thumbnail, `null` = placeholder (failed, waiting for a retry). */
+  src(item: OverviewItem): string | null;
+  /** The thumbnail could not be loaded. */
+  failed(item: OverviewItem): void;
   isCursor(item: OverviewItem): boolean;
   isMarked(item: OverviewItem): boolean;
   /** Height of the picture part of a tile (px). */
@@ -15,18 +17,13 @@ export interface TileContext {
   noPreview(): string;
 }
 
-/** Failed URLs remembered at most (errors are final: Rust remembers them too). */
-const MAX_FAILED = 20_000;
-
 /**
  * One tile in a cell of the GuiExpert cover grid (design 074 E2/E11, as Comic Commander's
  * `CoverRenderer`): plain DOM, no Angular. File names are user data – only `textContent` and
- * attributes, never `innerHTML`. A picture that cannot be made (415/422/404) shows the
- * extension and "no preview" instead; the URL is not asked for again.
+ * attributes, never `innerHTML`. A picture that cannot be loaded shows the extension and
+ * "no preview"; the grid asks for it again a few times (`TileRetries`).
  */
 export class TileRenderer implements CellRendererIf {
-  private readonly failed = new Set<string>();
-
   constructor(private readonly ctx: TileContext) {}
 
   render(
@@ -70,13 +67,10 @@ export class TileRenderer implements CellRendererIf {
       picture.appendChild(ph);
     };
     const onError = () => {
-      if (this.failed.size >= MAX_FAILED) {
-        this.failed.clear();
-      }
-      this.failed.add(src);
       showPlaceholder();
+      this.ctx.failed(item);
     };
-    if (item.kind === 'unsupported' || this.failed.has(src)) {
+    if (item.kind === 'unsupported' || src === null) {
       showPlaceholder();
     } else {
       img = doc.createElement('img');

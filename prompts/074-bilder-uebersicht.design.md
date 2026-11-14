@@ -187,8 +187,7 @@ OverviewItem { index: u32, path: String, name: String, size: u64, modifiedMs: Op
 - **Liste nicht gestreamt beim Sammeln**: `collect_files` sammelt erst (schnell, Grenzen wie 045), dann gehen die
   Teile ≤ 2000 über den Channel. Netzlaufwerke bekommen keinen eigenen Faden (der Pool hat `min(4, Kerne − 1)`, die
   vier Decode-Plätze gelten app-weit).
-- **Keine Wiederholungen** (`CoverRetries` aus CC nicht übernommen): Rust antwortet nie 503, Fehler (404/415/422) sind
-  endgültig und werden in Rust je Übersicht gemerkt; der Renderer merkt sich fehlgeschlagene URLs.
+- **Wiederholungen**: `TileRetries` = `CoverRetries` aus CC (seit Review #4, weil der volle Pool jetzt 503 antwortet).
 - **RAF** (Fuji) wird gelesen (fester Kopf mit JPEG-Offset), nicht nur Platzhalter.
 - **Auswahlquelle**: `OpsStore` fragt den Root-Store `ImageOverviewStore` direkt (kein Signal im `WorkspaceStore`).
 - **Tokens** `--color-overview-bg/-tile/-text` gehören zur Gruppe „Allgemein“, in allen eingebauten Schemata gleich
@@ -197,7 +196,24 @@ OverviewItem { index: u32, path: String, name: String, size: u64, modifiedMs: Op
   Ziehen ins System, Screenshot-Szene. „Im Panel zeigen“ geschieht beim Schließen (Cursor des Panels auf das Bild,
   wenn es im Ordner des Panels liegt).
 
+## Review (separater Agent) und Fixes
+
+Nichts Kritisches; das Schema `fnfthumb` (nur gelistete Bilder offener Übersichten), die Grenzen des RAW-Lesers und die
+Commands waren in Ordnung. Behoben, je mit rotem Test zuerst:
+
+1. **RAW: bis zu 128 Decode-Versuche je Datei** – gleiche Spannen werden zusammengelegt, nur die drei größten
+   versucht (`raw.rs` `candidates`, `MAX_TRIES`; Test `spans_are_deduplicated_and_only_the_largest_few_tried`).
+2. **Gemeinsamer Temp-Name zweier Worker / kaputte Cache-Datei** – Temp-Name mit Zähler, eine leere oder
+   abgeschnittene Datei (ohne `FF D9`) gilt als Miss und wird neu erzeugt (`a_broken_cache_file_is_a_miss`,
+   `temp_names_differ_per_write`).
+3. **Fallback auf `/tmp/fnf-thumbs`** – entfällt: ohne App-Cache-Ordner nur im Speicher. `clean` steigt nur in echte
+   `<xx>`-Ordner (keine Links) und löscht nur eigene Dateien (`clean_touches_only_its_own_files`).
+4. **Unbegrenzte Warteschlange, Panic im Worker** – höchstens 1 000 wartende Vorschaubilder, die ältesten bekommen 503
+   (das Raster fragt per `TileRetries` später erneut), eine Panic antwortet 500-artig statt den Worker zu töten
+   (`a_full_queue_drops_the_oldest_with_the_fallback`, `a_panic_answers_with_the_fallback_and_the_key_works_again`).
+5. **Klein**: Cache-Schlüssel SHA-256 statt FNV-64 (keine konstruierbaren Kollisionen).
+
 ## Fortschritt
 
 - [x] Phase 1: Design (14.11.2026), freigegeben
-- [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [ ] 4 E2E auf dem Mac · [ ] 5 Doku · [ ] 6 Review
+- [x] 2a + 2b Rust (`142fc49`) · [x] 3a + 3b Frontend · [ ] 4 E2E auf dem Mac · [x] 5 Doku · [x] 6 Review (separater Agent, Befunde behoben)

@@ -23,6 +23,8 @@ use std::path::Path;
 pub const MAX_IFDS: usize = 64;
 /// Entries of one IFD.
 pub const MAX_ENTRIES: u16 = 1000;
+/// Embedded JPEGs tried per file, largest first (review 074 #1).
+pub const MAX_TRIES: usize = 3;
 /// SubIFD offsets taken from one entry.
 const MAX_SUB_IFDS: u32 = 16;
 /// An embedded JPEG smaller than this is no preview worth showing.
@@ -217,6 +219,9 @@ pub fn inspect(path: &Path) -> Result<RawInfo, FsError> {
     }
     info.jpegs
         .retain(|s| s.len >= MIN_JPEG && s.offset + u64::from(s.len) <= len);
+    // several IFDs may point at the same bytes: each span once (review 074 #1)
+    let mut unique = HashSet::new();
+    info.jpegs.retain(|s| unique.insert((s.offset, s.len)));
     Ok(info)
 }
 
@@ -265,13 +270,19 @@ fn orientation(v: Option<u8>) -> Orientation {
         .unwrap_or(Orientation::NoTransforms)
 }
 
+/// The spans worth a try: the [`MAX_TRIES`] largest (a broken one costs a full decode).
+pub fn candidates(info: &RawInfo) -> Vec<Span> {
+    let mut spans = info.jpegs.clone();
+    spans.sort_by_key(|s| std::cmp::Reverse(s.len));
+    spans.truncate(MAX_TRIES);
+    spans
+}
+
 /// Decodes the largest embedded JPEG of a raw file, turned like the raw (IFD0).
 pub fn decode_preview(path: &Path) -> Result<DynamicImage, FsError> {
     let info = inspect(path)?;
-    let mut spans = info.jpegs.clone();
-    spans.sort_by_key(|s| std::cmp::Reverse(s.len));
     let mut last = bad("The raw file has no embedded preview", path);
-    for span in spans {
+    for span in candidates(&info) {
         let attempt = read_jpeg(path, span)
             .and_then(|data| decode::with_permit(|| decode::decode_bytes(&data, path)));
         match attempt {
@@ -412,5 +423,38 @@ mod tests {
         fs::write(&p, &b).unwrap();
         let img = decode_preview(&p).unwrap();
         assert_eq!((img.width(), img.height()), (80, 60));
+    }
+
+    #[test]
+    fn spans_are_deduplicated_and_only_the_largest_few_tried() {
+        // review 074 #1: 64 IFDs pointing at the same bytes must not mean 128 decodes
+        let jpg = jpeg(&photo(64, 48, 5), 80);
+        let mut b = tiff(&jpg, 1);
+        // IFD0 points at the same JPEG too: patch its SubIFD entry into a JPEG offset …
+        b[22..24].copy_from_slice(&TAG_JPEG_OFFSET.to_le_bytes());
+        b[30..34].copy_from_slice(&68u32.to_le_bytes());
+        // … and add the length right after (replaces the orientation entry)
+        b[10..12].copy_from_slice(&TAG_JPEG_BYTES.to_le_bytes());
+        b[12..14].copy_from_slice(&4u16.to_le_bytes());
+        b[18..22].copy_from_slice(&(jpg.len() as u32).to_le_bytes());
+        // the old SubIFD (same JPEG) is now the next IFD of IFD0
+        b[34..38].copy_from_slice(&38u32.to_le_bytes());
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("twice.nef");
+        fs::write(&p, &b).unwrap();
+        let info = inspect(&p).unwrap();
+        assert_eq!(info.jpegs.len(), 1, "same span once: {:?}", info.jpegs);
+        let many = RawInfo {
+            jpegs: (0..10)
+                .map(|i| Span {
+                    offset: 1000 + i,
+                    len: 200 + i as u32,
+                })
+                .collect(),
+            orientation: None,
+        };
+        let tried = candidates(&many);
+        assert_eq!(tried.len(), MAX_TRIES);
+        assert_eq!(tried[0].len, 209, "largest first");
     }
 }

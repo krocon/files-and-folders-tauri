@@ -6,8 +6,10 @@ import { TileRenderer } from './tile-renderer';
 describe('TileRenderer (design 074 E11)', () => {
   const cursor = new Set<string>();
   const marks = new Set<string>();
+  const failed = new Set<string>();
   const renderer = new TileRenderer({
-    src: (i) => `fnfthumb://localhost/x.${i.index}.0`,
+    src: (i) => (failed.has(i.path) ? null : `fnfthumb://localhost/x.${i.index}.0`),
+    failed: (i) => failed.add(i.path),
     isCursor: (i) => cursor.has(i.path),
     isMarked: (i) => marks.has(i.path),
     pictureHeight: () => 150,
@@ -40,7 +42,7 @@ describe('TileRenderer (design 074 E11)', () => {
     expect(render(undefined).childElementCount).toBe(0);
   });
 
-  it('shows a placeholder for unsupported images and after a failed load (remembered)', () => {
+  it('shows a placeholder for unsupported images and after a failed load', () => {
     const heic = render(overviewItem(2, 'x.heic', { kind: 'unsupported' }));
     expect(heic.querySelector('img')).toBeNull();
     expect(heic.querySelector('.io-placeholder')?.textContent).toBe('HEICno preview');
@@ -49,6 +51,7 @@ describe('TileRenderer (design 074 E11)', () => {
     cell.querySelector('img')!.dispatchEvent(new Event('error'));
     expect(cell.querySelector('img')).toBeNull();
     expect(cell.querySelector('.io-placeholder')).not.toBeNull();
-    expect(render(broken).querySelector('img')).toBeNull(); // not asked for again
+    expect(failed.has(broken.path)).toBe(true);
+    expect(render(broken).querySelector('img')).toBeNull(); // waits for the retry
   });
 });

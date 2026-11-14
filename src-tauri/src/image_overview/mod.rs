@@ -26,6 +26,8 @@ use thumbs::{Cache, MAX_CACHE_BYTES, STEPS, Source};
 pub const SCHEME: &str = "fnfthumb";
 /// Overviews kept open (one shown, one being replaced).
 pub const MAX_OPEN: usize = 2;
+/// Thumbnails waiting at most (review 074 #4).
+pub const MAX_QUEUED: usize = 1000;
 /// Items per event (Comic Commander 004: one big IPC message is slow).
 pub const CHUNK: usize = 2000;
 /// Folder levels when "include subfolders" is on.
@@ -102,11 +104,11 @@ pub fn init(app_cache: &Path) {
 fn hub() -> &'static Hub {
     static HUB: OnceLock<Hub> = OnceLock::new();
     HUB.get_or_init(|| {
-        let dir = CACHE_DIR
+        // no shared temp folder as a fallback (review 074 #3): without the app's cache folder
+        // thumbnails are made in memory only
+        let cache = CACHE_DIR
             .get()
-            .cloned()
-            .unwrap_or_else(|| std::env::temp_dir().join("fnf-thumbs"));
-        let cache = Arc::new(Cache::new(dir, MAX_CACHE_BYTES));
+            .map(|dir| Arc::new(Cache::new(dir.clone(), MAX_CACHE_BYTES)));
         // leave cores for the UI and the other jobs (E5)
         let threads = std::thread::available_parallelism()
             .map_or(2, |n| n.get().saturating_sub(1))
@@ -114,7 +116,10 @@ fn hub() -> &'static Hub {
         Hub {
             open: Mutex::new(VecDeque::new()),
             counter: AtomicU64::new(0),
-            pool: Pool::new(threads, move |key: &Key| Arc::new(make(&cache, key))),
+            // fast scrolling: tiles no longer on screen are answered 503 (the grid asks again)
+            pool: Pool::with_limit(threads, MAX_QUEUED, Arc::new(Err(503)), move |key: &Key| {
+                Arc::new(make(cache.as_deref(), key))
+            }),
         }
     })
 }
@@ -138,7 +143,7 @@ fn status_of(e: &FsError, kind: ImageKind) -> u16 {
 }
 
 /// Work of the pool: one thumbnail.
-fn make(cache: &Cache, (id, index, step): &Key) -> Result<Vec<u8>, u16> {
+fn make(cache: Option<&Cache>, (id, index, step): &Key) -> Result<Vec<u8>, u16> {
     let Some(o) = find(id) else {
         return Err(404);
     };
@@ -160,7 +165,11 @@ fn make(cache: &Cache, (id, index, step): &Key) -> Result<Vec<u8>, u16> {
     if src.kind == ImageKind::Unsupported {
         return Err(415);
     }
-    cache.get(&src, usize::from(*step)).map_err(|e| {
+    let made = match cache {
+        Some(c) => c.get(&src, usize::from(*step)),
+        None => thumbs::make(&src, usize::from(*step)),
+    };
+    made.map_err(|e| {
         let status = status_of(&e, src.kind);
         o.failed
             .lock()

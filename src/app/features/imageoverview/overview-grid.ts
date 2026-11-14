@@ -35,6 +35,7 @@ import { ImageOverviewStore } from './image-overview.store';
 import { IMAGE_OVERVIEW_TEXTS } from './image-overview-texts';
 import { NAME_LINE, thumbStep, tileHeight } from './overview-logic';
 import { TileRenderer } from './tile-renderer';
+import { TileRetries } from './tile-retries';
 
 /** Pause after which a typed prefix starts again (like the list's type-ahead). */
 const TYPE_AHEAD_MS = 1000;
@@ -107,14 +108,21 @@ export class OverviewGrid {
   });
   private readonly step = computed(() => thumbStep(this.layout().cellWidth, this.dpr));
 
+  /** Thumbnails dropped by the busy pool (503) or not readable yet are asked for again. */
+  private readonly retries = new TileRetries(2000, () => this.repaintSoon());
+
+  private thumbUrl(i: OverviewItem): string {
+    return this.api.thumbUrl(
+      untracked(this.store.overviewId) ?? '',
+      i.index,
+      untracked(this.step),
+      i.modifiedMs,
+    );
+  }
+
   private readonly renderer = new TileRenderer({
-    src: (i) =>
-      this.api.thumbUrl(
-        untracked(this.store.overviewId) ?? '',
-        i.index,
-        untracked(this.step),
-        i.modifiedMs,
-      ),
+    src: (i) => this.retries.src(this.thumbUrl(i)),
+    failed: (i) => this.retries.failed(this.thumbUrl(i)),
     isCursor: (i) => i.path === untracked(this.store.cursorPath),
     isMarked: (i) => untracked(this.store.marked).has(i.path),
     pictureHeight: () => untracked(this.layout).rowHeight - NAME_LINE,
@@ -176,6 +184,8 @@ export class OverviewGrid {
       ro.observe(el);
       destroyRef.onDestroy(() => ro.disconnect());
     }
+    destroyRef.onDestroy(() => this.retries.dispose());
+    destroyRef.onDestroy(() => this.retries.dispose());
     // images, size, width → the model (no new table)
     effect(() => {
       const list = this.store.items();
