@@ -6,9 +6,8 @@ import {
   inject,
   input,
   output,
-  signal,
 } from '@angular/core';
-import { modifiersAfter, strokeFromEvent } from '../../core/actions/shortcut';
+import { strokeFromEvent } from '../../core/actions/shortcut';
 import type { DialogKey } from './dialog-key';
 import { DIALOG_PLATFORM } from './dialog-key';
 
@@ -85,8 +84,6 @@ const CLICKABLE = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(keydown)': 'onKeydown($event)',
-    '(document:keyup)': 'onKeyup($event)',
-    '(window:blur)': 'modHeld.set(false)',
   },
 })
 export class Modal {
@@ -108,8 +105,6 @@ export class Modal {
   private readonly platform = inject(DIALOG_PLATFORM);
   /** Buttons with a key role in this dialog (design 057). */
   private readonly keys = new Set<DialogKey>();
-  /** ⌘ (macOS) / Ctrl is held: the buttons show their letters (E4). */
-  readonly modHeld = signal(false);
 
   constructor() {
     afterNextRender(() => {
@@ -136,13 +131,7 @@ export class Modal {
     this.keys.delete(key);
   }
 
-  protected onKeyup(evt: KeyboardEvent): void {
-    const m = modifiersAfter(evt, 'keyup');
-    this.modHeld.set(this.platform === 'macos' ? m.metaKey : m.ctrlKey);
-  }
-
   protected onKeydown(evt: KeyboardEvent): void {
-    this.modHeld.set(this.platform === 'macos' ? evt.metaKey : evt.ctrlKey);
     if (evt.key === 'Escape') {
       // an inner popup (combobox list, menu, template name) closes first
       if (evt.defaultPrevented || this.inside(evt.target, '[role="menu"]')) {

@@ -112,7 +112,12 @@ export function propertyRows(p: Properties): PropertyRow[] {
                 @switch (s.size().state) {
                   @case ('running') {
                     <span aria-live="polite">{{ t.calculating }}</span>
-                    <button type="button" class="btn" (click)="s.cancelSize()">
+                    <button
+                      appDialogKey="secondary:S"
+                      type="button"
+                      class="btn"
+                      (click)="s.cancelSize()"
+                    >
                       {{ t.cancel }}
                     </button>
                   }
@@ -120,7 +125,12 @@ export function propertyRows(p: Properties): PropertyRow[] {
                     <span aria-live="polite">{{ sizeText() }}</span>
                   }
                   @default {
-                    <button type="button" class="btn" (click)="s.calcSize()">
+                    <button
+                      appDialogKey="secondary:S"
+                      type="button"
+                      class="btn"
+                      (click)="s.calcSize()"
+                    >
                       {{ t.calcSize }}
                     </button>
                     @if (sizeError(); as e) {

@@ -7,6 +7,7 @@ import {
   DIALOG_PLATFORM,
   DialogKey,
   DialogKeySpec,
+  displayKeysFor,
   letterFor,
   parseDialogKey,
   RESERVED_DIALOG_LETTERS,
@@ -195,18 +196,37 @@ describe('Modal: dialog keys (057)', () => {
     setLanguage('en');
   });
 
-  it('holding Mod shows the letters on the buttons, releasing hides them', () => {
-    const { q, key, fixture } = setup('linux');
-    expect(q('.other').hasAttribute('data-dialog-key')).toBe(false);
-    key(q('.text'), { key: 'Control', code: 'ControlLeft', ctrlKey: true });
-    expect(q('.other').dataset['dialogKey']).toBe('B');
-    expect(q('.danger').dataset['dialogKey']).toBe('Shift+D');
-    expect(q('.primary').hasAttribute('data-dialog-key')).toBe(false);
-    document.dispatchEvent(
-      new KeyboardEvent('keyup', { key: 'Control', code: 'ControlLeft', ctrlKey: true }),
-    );
-    fixture.detectChanges();
-    expect(q('.other').hasAttribute('data-dialog-key')).toBe(false);
+  it('every button with a role shows its key permanently (076 E1)', () => {
+    const { q } = setup('linux');
+    expect(q('.other').dataset['dialogKey']).toBe('Ctrl+B');
+    expect(q('.danger').dataset['dialogKey']).toBe('Ctrl+Shift+D');
+    expect(q('.primary').dataset['dialogKey']).toBe('Enter');
+    expect(q('.cancel').dataset['dialogKey']).toBe('Esc');
+  });
+
+  it('shows the keys in the Apple notation on macOS', () => {
+    const { q } = setup('macos');
+    expect(q('.other').dataset['dialogKey']).toBe('⌘B');
+    expect(q('.danger').dataset['dialogKey']).toBe('⇧⌘D');
+  });
+});
+
+describe('hint role (076 E3)', () => {
+  it('parses keys the dialog handles itself, rejects bad notation', () => {
+    expect(parseDialogKey('hint:Shift+F7')).toEqual({
+      role: 'hint',
+      letter: null,
+      keys: 'Shift+F7',
+    });
+    expect(parseDialogKey('hint:0')?.role).toBe('hint');
+    expect(parseDialogKey('hint:')).toBeNull();
+    expect(parseDialogKey('hint:Foo+Bar')).toBeNull();
+  });
+
+  it('shows the keys in the platform notation', () => {
+    const role = parseDialogKey('hint:Shift+F7')!;
+    expect(displayKeysFor(role, 'macos')).toBe('⇧F7');
+    expect(displayKeysFor(role, 'windows')).toBe('Shift+F7');
   });
 });
 

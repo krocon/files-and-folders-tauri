@@ -94,6 +94,7 @@ const SHOWN_ERRORS = 50;
       </section>
       <div class="buttons">
         <button
+          appDialogKey="secondary:L"
           type="button"
           class="btn"
           [disabled]="!hasFinished()"

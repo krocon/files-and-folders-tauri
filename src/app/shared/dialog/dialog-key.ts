@@ -7,7 +7,7 @@ import {
   InjectionToken,
   input,
 } from '@angular/core';
-import { formatStroke } from '../../core/actions/shortcut';
+import { formatShortcut, formatStroke, parseShortcut } from '../../core/actions/shortcut';
 import { detectPlatform, Platform } from '../../core/actions/platform';
 import { DIALOG_KEY_TEXTS } from './dialog-key-texts';
 import { Modal } from './modal';
@@ -20,18 +20,31 @@ import { Modal } from './modal';
  * - `cancel` – marker for Esc (the modal's `closed` does the work): tooltip and ARIA only.
  * - `secondary:<L>` – `Mod+<L>` (⌘ on macOS, Ctrl elsewhere).
  * - `destructive:<L>` – `Mod+Shift+<L>`: irreversible actions (delete permanently). Never Enter.
+ * - `hint:<keys>` – display only (design 076 E3): the dialog handles the keys itself
+ *   (`F7`, `Shift+F7`, `0`); the button just shows them.
  * - `null`/`''` – no role (a role that only applies in some states).
+ *
+ * Every button with a role shows its key permanently as a small keycap after the label
+ * (design 076 E1) – `↩`/`Enter`, `Esc`, `⌘D`/`Ctrl+D`, `⇧⌘D`/`Ctrl+Shift+D`.
  *
  * The letter is fixed in the template (language independent, design 057 E3) and must
  * not be one of {@link RESERVED_DIALOG_LETTERS}.
  */
 export type DialogKeySpec =
-  'primary' | 'cancel' | `secondary:${string}` | `destructive:${string}` | '' | null;
+  | 'primary'
+  | 'cancel'
+  | `secondary:${string}`
+  | `destructive:${string}`
+  | `hint:${string}`
+  | ''
+  | null;
 
 export interface DialogKeyRole {
-  readonly role: 'primary' | 'cancel' | 'secondary' | 'destructive';
+  readonly role: 'primary' | 'cancel' | 'secondary' | 'destructive' | 'hint';
   /** `A`–`Z` for secondary/destructive. */
   readonly letter: string | null;
+  /** The keys of a `hint` in keymap notation (`Shift+F7`). */
+  readonly keys?: string;
 }
 
 /**
@@ -55,6 +68,11 @@ export const RESERVED_DIALOG_LETTERS: ReadonlySet<string> = new Set([
 export function parseDialogKey(spec: DialogKeySpec | undefined): DialogKeyRole | null {
   if (spec === 'primary' || spec === 'cancel') {
     return { role: spec, letter: null };
+  }
+  if (spec?.startsWith('hint:')) {
+    const keys = spec.slice(5);
+    // any platform will do – this only checks the notation
+    return parseShortcut(keys, 'linux') ? { role: 'hint', letter: null, keys } : null;
   }
   const m = /^(secondary|destructive):([A-Za-z])$/.exec(spec ?? '');
   if (!m) {
@@ -93,6 +111,8 @@ export function ariaKeysFor(role: DialogKeyRole, platform: Platform): string {
       return 'Enter';
     case 'cancel':
       return 'Escape';
+    case 'hint':
+      return ''; // the template states its own aria-keyshortcuts
     default: {
       const mod = platform === 'macos' ? 'Meta' : 'Control';
       return `${mod}+${role.role === 'destructive' ? 'Shift+' : ''}${role.letter}`;
@@ -102,18 +122,13 @@ export function ariaKeysFor(role: DialogKeyRole, platform: Platform): string {
 
 /** Display of a role's key: `⌘⇧D` / `Ctrl+Shift+D`, `↩`/`Enter`, `Esc`. */
 export function displayKeysFor(role: DialogKeyRole, platform: Platform): string {
+  if (role.role === 'hint') {
+    return formatShortcut(role.keys ?? '', platform);
+  }
   const key = role.role === 'primary' ? 'Enter' : role.role === 'cancel' ? 'Escape' : role.letter!;
   const command = role.role === 'secondary' || role.role === 'destructive';
   return formatStroke(
     { mod: command, ctrl: false, alt: false, shift: role.role === 'destructive', key },
-    platform,
-  );
-}
-
-/** Badge while the modifier is held: the rest of the shortcut (`D`, `⇧D`, `Shift+D`). */
-export function badgeKeysFor(role: DialogKeyRole, platform: Platform): string {
-  return formatStroke(
-    { mod: false, ctrl: false, alt: false, shift: role.role === 'destructive', key: role.letter! },
     platform,
   );
 }
@@ -155,12 +170,10 @@ export class DialogKey {
     return this.ownTitle ? `${this.ownTitle} (${keys})` : keys;
   });
 
+  /** The keycap after the label (design 076 E1), always shown. */
   protected readonly badge = computed(() => {
     const r = this.role();
-    if (!r?.letter || !this.modal?.modHeld()) {
-      return null;
-    }
-    return badgeKeysFor(r, this.platform);
+    return r ? displayKeysFor(r, this.platform) : null;
   });
 
   constructor() {

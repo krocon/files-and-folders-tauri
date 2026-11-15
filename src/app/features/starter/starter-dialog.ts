@@ -104,19 +104,40 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
               </ul>
               <p class="help" [id]="listHelpId">{{ t.listHelp }}</p>
               <div class="stack" role="group" [attr.aria-label]="t.addGroup">
-                <button type="button" class="btn" (click)="add('program')">
+                <button
+                  appDialogKey="secondary:P"
+                  type="button"
+                  class="btn"
+                  (click)="add('program')"
+                >
                   <i class="fa fa-plus" aria-hidden="true"></i> {{ t.kinds.program }}
                 </button>
-                <button type="button" class="btn" (click)="add('folder')">
+                <button
+                  appDialogKey="secondary:F"
+                  type="button"
+                  class="btn"
+                  (click)="add('folder')"
+                >
                   <i class="fa fa-plus" aria-hidden="true"></i> {{ t.addFolder }}
                 </button>
-                <button type="button" class="btn" (click)="add('submenu')">
+                <button
+                  appDialogKey="secondary:S"
+                  type="button"
+                  class="btn"
+                  (click)="add('submenu')"
+                >
                   <i class="fa fa-plus" aria-hidden="true"></i> {{ t.addSubmenu }}
                 </button>
-                <button type="button" class="btn" (click)="add('separator')">
+                <button
+                  appDialogKey="secondary:E"
+                  type="button"
+                  class="btn"
+                  (click)="add('separator')"
+                >
                   <i class="fa fa-plus" aria-hidden="true"></i> {{ t.addSeparator }}
                 </button>
                 <button
+                  appDialogKey="secondary:O"
                   type="button"
                   class="btn"
                   [disabled]="currentFolder() === null"
@@ -125,6 +146,7 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
                   <i class="fa fa-plus" aria-hidden="true"></i> {{ t.addCurrentFolder }}
                 </button>
                 <button
+                  appDialogKey="secondary:I"
                   type="button"
                   class="btn"
                   [disabled]="cursorFile() === null"
@@ -134,19 +156,44 @@ const ICONS: Readonly<Record<StarterKind, string>> = {
                 </button>
               </div>
               <div class="stack" role="group" [attr.aria-label]="t.arrangeGroup">
-                <button type="button" class="btn" [disabled]="!selected()" (click)="moveBy(-1)">
+                <button
+                  appDialogKey="secondary:U"
+                  type="button"
+                  class="btn"
+                  [disabled]="!selected()"
+                  (click)="moveBy(-1)"
+                >
                   <i class="fa fa-arrow-up" aria-hidden="true"></i> {{ t.moveUp }}
                 </button>
-                <button type="button" class="btn" [disabled]="!selected()" (click)="moveBy(1)">
+                <button
+                  appDialogKey="secondary:D"
+                  type="button"
+                  class="btn"
+                  [disabled]="!selected()"
+                  (click)="moveBy(1)"
+                >
                   <i class="fa fa-arrow-down" aria-hidden="true"></i> {{ t.moveDown }}
                 </button>
-                <button type="button" class="btn" [disabled]="!indentable()" (click)="doIndent()">
+                <button
+                  appDialogKey="secondary:N"
+                  type="button"
+                  class="btn"
+                  [disabled]="!indentable()"
+                  (click)="doIndent()"
+                >
                   <i class="fa fa-indent" aria-hidden="true"></i> {{ t.indent }}
                 </button>
-                <button type="button" class="btn" [disabled]="!outdentable()" (click)="doOutdent()">
+                <button
+                  appDialogKey="secondary:T"
+                  type="button"
+                  class="btn"
+                  [disabled]="!outdentable()"
+                  (click)="doOutdent()"
+                >
                   <i class="fa fa-outdent" aria-hidden="true"></i> {{ t.outdent }}
                 </button>
                 <button
+                  appDialogKey="secondary:R"
                   type="button"
                   class="btn"
                   [disabled]="!selected()"

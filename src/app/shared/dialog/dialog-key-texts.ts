@@ -9,7 +9,7 @@ export const DIALOG_KEY_EN = {
   inDialogs: 'In dialogs',
   enterKey: 'Main button (the coloured one on the right) – also from a text field or checkbox',
   escKey: 'Cancel or close; an open list or menu inside closes first',
-  modKey: 'Other buttons: hold the key to see the letters on the buttons',
+  modKey: 'Other buttons: each one shows its shortcut',
   modShiftKey: 'Irreversible buttons such as "Delete permanently" – never with Enter',
 };
 

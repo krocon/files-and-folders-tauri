@@ -200,6 +200,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                         : t.templateCount(listCount(key))
                   }}</span>
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn"
                     [disabled]="listCount(key) === 0"
@@ -237,10 +238,16 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
               </ul>
             }
             <div class="row">
-              <button type="button" class="btn" (click)="dialogs.show('shortcuts')">
+              <button
+                appDialogKey="secondary:K"
+                type="button"
+                class="btn"
+                (click)="dialogs.show('shortcuts')"
+              >
                 {{ t.editShortcuts }}
               </button>
               <button
+                appDialogKey="destructive:K"
                 type="button"
                 class="btn"
                 [disabled]="overrideCount() === 0"
@@ -276,6 +283,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
             }
             <div class="row">
               <button
+                appDialogKey="secondary:I"
                 type="button"
                 class="btn"
                 [disabled]="!settings.get('palette.index')"
@@ -284,6 +292,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                 {{ t.rebuildIndex }}
               </button>
               <button
+                appDialogKey="secondary:L"
                 type="button"
                 class="btn"
                 [disabled]="palette.status().state === 'off'"
@@ -296,7 +305,12 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
           @case ('shell') {
             <p>{{ t.shellIntro }}</p>
             <div class="row">
-              <button type="button" class="btn" (click)="clearShellHistory()">
+              <button
+                appDialogKey="secondary:S"
+                type="button"
+                class="btn"
+                (click)="clearShellHistory()"
+              >
                 {{ t.clearShellHistory }}
               </button>
             </div>
@@ -305,7 +319,12 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
             <p>{{ t.toolsIntro }}</p>
             <p>{{ t.toolCount(os.tools().length) }}</p>
             <div class="row">
-              <button type="button" class="btn" (click)="dialogs.show('tool-config')">
+              <button
+                appDialogKey="secondary:T"
+                type="button"
+                class="btn"
+                (click)="dialogs.show('tool-config')"
+              >
                 {{ t.editTools }}
               </button>
             </div>
@@ -318,7 +337,12 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
               }}</strong>
             </p>
             <div class="row">
-              <button type="button" class="btn" (click)="dialogs.show('themes')">
+              <button
+                appDialogKey="secondary:O"
+                type="button"
+                class="btn"
+                (click)="dialogs.show('themes')"
+              >
                 {{ t.editColors }}
               </button>
             </div>
@@ -328,10 +352,20 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
             <p>{{ t.buttonSetsChanged(buttonSetsChanged()) }}</p>
             <p>{{ t.fileTypesInfo(fileTypes.categories().length, fileTypes.user() !== null) }}</p>
             <div class="row">
-              <button type="button" class="btn" (click)="dialogs.show('button-config')">
+              <button
+                appDialogKey="secondary:B"
+                type="button"
+                class="btn"
+                (click)="dialogs.show('button-config')"
+              >
                 {{ t.editButtons }}
               </button>
-              <button type="button" class="btn" (click)="dialogs.show('file-types')">
+              <button
+                appDialogKey="secondary:F"
+                type="button"
+                class="btn"
+                (click)="dialogs.show('file-types')"
+              >
                 {{ t.editFileTypes }}
               </button>
             </div>
@@ -350,6 +384,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                 />
               </label>
               <button
+                appDialogKey="secondary:E"
                 type="button"
                 class="btn"
                 [disabled]="!exportDir().trim() || busy()"
@@ -369,6 +404,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                 />
               </label>
               <button
+                appDialogKey="secondary:P"
                 type="button"
                 class="btn"
                 [disabled]="!importPath().trim() || parts().size === 0 || busy()"
@@ -394,12 +430,22 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
               <p class="warn" role="note">{{ t.toolsWarning }}</p>
             }
             <div class="row">
-              <button type="button" class="btn" (click)="actions.run('OPEN_IMPORT_OLD_CONFIG_DLG')">
+              <button
+                appDialogKey="secondary:D"
+                type="button"
+                class="btn"
+                (click)="actions.run('OPEN_IMPORT_OLD_CONFIG_DLG')"
+              >
                 {{ importOldLabel }}
               </button>
             </div>
             <div class="row">
-              <button type="button" class="btn danger" (click)="resetAll()">
+              <button
+                appDialogKey="destructive:R"
+                type="button"
+                class="btn danger"
+                (click)="resetAll()"
+              >
                 {{ t.resetAll }}
               </button>
             </div>
@@ -409,6 +455,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
       @if (!search && resettable(id)) {
         <div class="row end">
           <button
+            appDialogKey="secondary:R"
             type="button"
             class="btn"
             [attr.aria-label]="t.resetSectionOf(catLabel(id))"

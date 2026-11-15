@@ -341,7 +341,12 @@ const ERR = 'fnf-find-error';
             </label>
             <div class="buttons">
               @if (chosenTemplate(); as name) {
-                <button type="button" class="btn" (click)="deleteTemplate(name)">
+                <button
+                  appDialogKey="secondary:D"
+                  type="button"
+                  class="btn"
+                  (click)="deleteTemplate(name)"
+                >
                   {{ t.deleteTemplate(name) }}
                 </button>
               }
@@ -355,7 +360,12 @@ const ERR = 'fnf-find-error';
                   (keydown.escape)="$event.stopPropagation(); naming.set(false)"
                 />
               } @else {
-                <button type="button" class="btn" (click)="startNaming()">
+                <button
+                  appDialogKey="secondary:S"
+                  type="button"
+                  class="btn"
+                  (click)="startNaming()"
+                >
                   {{ t.saveTemplate }}
                 </button>
               }

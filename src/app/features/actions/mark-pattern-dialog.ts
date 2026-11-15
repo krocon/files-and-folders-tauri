@@ -23,6 +23,7 @@ import { FileTypesStore } from '../config/file-types.store';
         <div class="presets" role="group" aria-labelledby="fnf-pattern-presets">
           @for (p of presets(); track $index) {
             <button
+              data-no-dialog-key
               type="button"
               class="btn"
               [attr.title]="p.pattern"

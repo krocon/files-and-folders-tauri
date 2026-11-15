@@ -7,6 +7,6 @@ export const DIALOG_KEY_DE: Translation<typeof DIALOG_KEY_EN> = {
   inDialogs: 'In Dialogen',
   enterKey: 'Hauptknopf (der farbige rechts) – auch aus einem Textfeld oder einer Checkbox',
   escKey: 'Abbrechen bzw. Schließen; eine offene Liste oder ein Menü im Dialog schließt zuerst',
-  modKey: 'Weitere Knöpfe: Taste gedrückt halten zeigt die Buchstaben an den Knöpfen',
+  modKey: 'Weitere Knöpfe: das Kürzel steht jeweils am Knopf',
   modShiftKey: 'Unwiderrufliche Knöpfe wie „Endgültig löschen“ – nie mit Enter',
 };

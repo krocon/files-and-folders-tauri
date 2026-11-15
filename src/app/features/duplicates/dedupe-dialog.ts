@@ -81,10 +81,17 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
               <strong>{{ t.groupsTitle }}</strong>
               <span class="muted">{{ pageText() }}</span>
               <span class="grow"></span>
-              <button type="button" class="btn small" [disabled]="r.page === 0" (click)="page(-1)">
+              <button
+                appDialogKey="secondary:P"
+                type="button"
+                class="btn small"
+                [disabled]="r.page === 0"
+                (click)="page(-1)"
+              >
                 {{ t.previous }}
               </button>
               <button
+                appDialogKey="secondary:N"
                 type="button"
                 class="btn small"
                 [disabled]="(r.page + 1) * pageSize >= r.plan.groups.length"

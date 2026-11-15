@@ -37,6 +37,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
         <div class="viewer">
           <div class="toolbar" role="toolbar" [attr.aria-label]="t.viewTitle(entry.name)">
             <button
+              data-no-dialog-key
               type="button"
               class="btn"
               [attr.aria-label]="t.previous"
@@ -48,6 +49,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
             </button>
             <span class="pos">{{ t.position(v.position().index, v.position().count) }}</span>
             <button
+              data-no-dialog-key
               type="button"
               class="btn"
               [attr.aria-label]="t.next"
@@ -83,9 +85,14 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
               </label>
             }
             @if (isImage()) {
-              <button type="button" class="btn" (click)="v.zoom.set('fit')">{{ t.fit }}</button>
-              <button type="button" class="btn" (click)="v.zoom.set(1)">{{ t.actual }}</button>
+              <button appDialogKey="hint:0" type="button" class="btn" (click)="v.zoom.set('fit')">
+                {{ t.fit }}
+              </button>
+              <button appDialogKey="hint:1" type="button" class="btn" (click)="v.zoom.set(1)">
+                {{ t.actual }}
+              </button>
               <button
+                data-no-dialog-key
                 type="button"
                 class="btn"
                 [attr.aria-label]="t.zoomOut"
@@ -94,6 +101,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 <i class="fa fa-minus" aria-hidden="true"></i>
               </button>
               <button
+                data-no-dialog-key
                 type="button"
                 class="btn"
                 [attr.aria-label]="t.zoomIn"
@@ -144,6 +152,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
               </label>
               <span class="count" aria-live="polite">{{ matchText() }}</span>
               <button
+                appDialogKey="hint:Shift+F3"
                 type="button"
                 class="btn"
                 [attr.aria-label]="t.findPrev"
@@ -152,6 +161,7 @@ const MODES: readonly ViewMode[] = ['auto', 'text', 'hex'];
                 <i class="fa fa-arrow-up" aria-hidden="true"></i>
               </button>
               <button
+                appDialogKey="hint:F3"
                 type="button"
                 class="btn"
                 [attr.aria-label]="t.findNext"

@@ -82,6 +82,7 @@ const FOCUSABLE = 'select, input, button';
                     (input)="patch(i, { folder: $any($event.target).value })"
                   />
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn"
                     [disabled]="otherFolder() === null"
@@ -105,6 +106,7 @@ const FOCUSABLE = 'select, input, button';
                 }
                 <span class="tools">
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn icon"
                     [attr.aria-label]="t.moveUp"
@@ -115,6 +117,7 @@ const FOCUSABLE = 'select, input, button';
                     <i class="fa fa-arrow-up" aria-hidden="true"></i>
                   </button>
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn icon"
                     [attr.aria-label]="t.moveDown"
@@ -125,6 +128,7 @@ const FOCUSABLE = 'select, input, button';
                     <i class="fa fa-arrow-down" aria-hidden="true"></i>
                   </button>
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn icon"
                     [attr.aria-label]="t.removeRule"
@@ -139,6 +143,7 @@ const FOCUSABLE = 'select, input, button';
           </ol>
           <div class="row">
             <button
+              appDialogKey="secondary:N"
               type="button"
               class="btn"
               [disabled]="d.set.rules.length >= maxRules"
@@ -169,7 +174,12 @@ const FOCUSABLE = 'select, input, button';
               {{ t.save }}
             </button>
             @if (d.from.startsWith('u:')) {
-              <button type="button" class="btn danger" (click)="dup.deleteUserSet(d.from.slice(2))">
+              <button
+                appDialogKey="destructive:D"
+                type="button"
+                class="btn danger"
+                (click)="dup.deleteUserSet(d.from.slice(2))"
+              >
                 {{ t.deletePreset }}
               </button>
             }

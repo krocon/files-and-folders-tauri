@@ -121,10 +121,17 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
                 </ul>
                 <p class="help" [id]="slotsHelpId">{{ t.slotsHelp }}</p>
                 <div class="stack">
-                  <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
+                  <button
+                    appDialogKey="secondary:U"
+                    type="button"
+                    class="btn"
+                    [disabled]="cursor() <= 0"
+                    (click)="move(-1)"
+                  >
                     {{ t.moveUp }}
                   </button>
                   <button
+                    appDialogKey="secondary:D"
                     type="button"
                     class="btn"
                     [disabled]="cursor() >= slots().length - 1"
@@ -133,6 +140,7 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
                     {{ t.moveDown }}
                   </button>
                   <button
+                    appDialogKey="secondary:R"
                     type="button"
                     class="btn"
                     [disabled]="slots().length === 0"
@@ -187,6 +195,7 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
                 </label>
                 <div class="stack">
                   <button
+                    appDialogKey="secondary:N"
                     type="button"
                     class="btn"
                     [disabled]="addBlocked() !== null"
@@ -194,7 +203,13 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
                   >
                     {{ t.add }}
                   </button>
-                  <button type="button" class="btn" [disabled]="!canReplace()" (click)="replace()">
+                  <button
+                    appDialogKey="secondary:P"
+                    type="button"
+                    class="btn"
+                    [disabled]="!canReplace()"
+                    (click)="replace()"
+                  >
                     {{ t.replace }}
                   </button>
                 </div>
@@ -205,10 +220,22 @@ const HELD: Readonly<Record<ModifierSet, HeldModifiers>> = {
         </div>
         <p class="error" role="alert">{{ error() }}</p>
         <div class="foot">
-          <button type="button" class="btn" [disabled]="!changed(current())" (click)="resetSet()">
+          <button
+            appDialogKey="secondary:E"
+            type="button"
+            class="btn"
+            [disabled]="!changed(current())"
+            (click)="resetSet()"
+          >
             {{ t.resetSet }}
           </button>
-          <button type="button" class="btn" [disabled]="!anyChanged()" (click)="resetAll()">
+          <button
+            appDialogKey="destructive:E"
+            type="button"
+            class="btn"
+            [disabled]="!anyChanged()"
+            (click)="resetAll()"
+          >
             {{ t.resetAll }}
           </button>
           <div class="buttons">

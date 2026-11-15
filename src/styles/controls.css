@@ -75,31 +75,23 @@
 }
 
 /*
- * Dialog keys (design 057 E4): while ⌘/Ctrl is held, a button with a letter shows it as
- * a small badge on its top right corner – positioned, so nothing moves.
+ * Dialog keys (design 076 E1): every button with a key role shows it permanently as a
+ * quiet keycap after its label (`⌘D`, `↩`, `Esc`). `currentColor` keeps it readable on
+ * every button (normal, primary, danger) in every colour scheme; the `.btn` gap spaces it.
  */
-.fnf-dialog-key {
-  position: relative;
-}
-
 .fnf-dialog-key[data-dialog-key]::after {
   content: attr(data-dialog-key);
-  position: absolute;
-  top: -8px;
-  right: -6px;
-  z-index: 1;
-  min-width: 16px;
-  height: 16px;
+  flex: none;
+  margin-inline-start: 2px;
   padding: 0 4px;
-  box-sizing: border-box;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-  color: var(--color-shortcut-text);
-  background: var(--color-shortcut-bg);
-  border: var(--border-width) solid var(--color-button-border);
+  font-size: 0.75em;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: nowrap;
+  color: inherit;
+  opacity: 0.7;
+  border: var(--border-width) solid color-mix(in srgb, currentColor 45%, transparent);
   border-radius: 3px;
   pointer-events: none;
 }

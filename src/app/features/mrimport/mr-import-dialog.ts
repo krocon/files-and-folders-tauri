@@ -33,6 +33,7 @@ import { MrImportStore } from './mr-import.store';
               />
             </label>
             <button
+              appDialogKey="secondary:S"
               type="button"
               class="btn"
               [disabled]="store.busy() || !store.path().trim()"

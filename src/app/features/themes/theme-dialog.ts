@@ -214,17 +214,41 @@ const GROUP_ORDER = Object.keys(GROUP_LABELS) as TokenGroup[];
         <p class="msg" role="status">{{ message() }}</p>
         <div class="buttons">
           <span class="help">{{ t.importHelp }}</span>
-          <button type="button" class="btn" (click)="importFile()">{{ t.import }}</button>
-          <button type="button" class="btn" (click)="exportFile()">{{ t.export }}</button>
-          <button type="button" class="btn" (click)="exportFile(true)">{{ t.exportLegacy }}</button>
+          <button appDialogKey="secondary:I" type="button" class="btn" (click)="importFile()">
+            {{ t.import }}
+          </button>
+          <button appDialogKey="secondary:E" type="button" class="btn" (click)="exportFile()">
+            {{ t.export }}
+          </button>
+          <button appDialogKey="secondary:L" type="button" class="btn" (click)="exportFile(true)">
+            {{ t.exportLegacy }}
+          </button>
           <span class="spacer"></span>
-          <button type="button" class="btn" [disabled]="!isOwn()" (click)="remove()">
+          <button
+            appDialogKey="destructive:D"
+            type="button"
+            class="btn"
+            [disabled]="!isOwn()"
+            (click)="remove()"
+          >
             {{ t.delete }}
           </button>
-          <button type="button" class="btn" [disabled]="!dirty()" (click)="reset()">
+          <button
+            appDialogKey="secondary:R"
+            type="button"
+            class="btn"
+            [disabled]="!dirty()"
+            (click)="reset()"
+          >
             {{ t.reset }}
           </button>
-          <button type="button" class="btn" [disabled]="hasInvalid()" (click)="saveAs()">
+          <button
+            appDialogKey="secondary:S"
+            type="button"
+            class="btn"
+            [disabled]="hasInvalid()"
+            (click)="saveAs()"
+          >
             {{ t.saveAs }}
           </button>
           <button

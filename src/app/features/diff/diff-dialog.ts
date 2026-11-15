@@ -102,6 +102,7 @@ function rowClass(r: DiffGridRow): string {
             <p class="error" role="alert">{{ diff.error() ?? '' }}</p>
             <div class="buttons">
               <button
+                appDialogKey="hint:Shift+F7"
                 type="button"
                 class="btn"
                 aria-keyshortcuts="Shift+F7"
@@ -111,6 +112,7 @@ function rowClass(r: DiffGridRow): string {
                 {{ t.previous }}
               </button>
               <button
+                appDialogKey="hint:F7"
                 type="button"
                 class="btn"
                 aria-keyshortcuts="F7"

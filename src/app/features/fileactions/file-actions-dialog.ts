@@ -163,7 +163,12 @@ import { FileActionsStore } from './file-actions.store';
         </div>
         <p class="error" role="alert">{{ error() }}</p>
         <div class="foot">
-          <button type="button" class="btn help-button" (click)="help.set(true)">
+          <button
+            appDialogKey="secondary:L"
+            type="button"
+            class="btn help-button"
+            (click)="help.set(true)"
+          >
             {{ t.help }}
           </button>
           <button

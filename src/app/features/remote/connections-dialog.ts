@@ -53,7 +53,12 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
                 (input)="address.set($any($event.target).value)"
               />
             </label>
-            <button type="submit" class="btn" [disabled]="!address().trim()">
+            <button
+              appDialogKey="secondary:K"
+              type="submit"
+              class="btn"
+              [disabled]="!address().trim()"
+            >
               {{ t.quickConnect }}
             </button>
             <p class="help wide" id="fnf-remote-address-help">{{ t.addressHelp }}</p>
@@ -167,13 +172,20 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
         <p class="help" role="status">{{ testInfo() || info() }}</p>
         <div class="foot">
           <div class="stack">
-            <button type="button" class="btn" (click)="addNew()">
+            <button appDialogKey="secondary:N" type="button" class="btn" (click)="addNew()">
               <i class="fa fa-plus" aria-hidden="true"></i> {{ t.newProfile }}
             </button>
-            <button type="button" class="btn" [disabled]="!current()" (click)="duplicate()">
+            <button
+              appDialogKey="secondary:U"
+              type="button"
+              class="btn"
+              [disabled]="!current()"
+              (click)="duplicate()"
+            >
               <i class="fa fa-clone" aria-hidden="true"></i> {{ t.duplicate }}
             </button>
             <button
+              appDialogKey="secondary:R"
               type="button"
               class="btn"
               [class.danger]="confirmRemove()"
@@ -185,7 +197,13 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
             </button>
           </div>
           <div class="buttons">
-            <button type="button" class="btn" [disabled]="!canUse()" (click)="favorite()">
+            <button
+              appDialogKey="secondary:F"
+              type="button"
+              class="btn"
+              [disabled]="!canUse()"
+              (click)="favorite()"
+            >
               <i class="fa fa-star-o" aria-hidden="true"></i> {{ t.favorite }}
             </button>
             <button
@@ -328,7 +346,7 @@ type NumField = 'port' | 'timeoutSecs' | 'maxConnections' | 'keepaliveSecs';
                 <span class="label">{{ t.password }}:</span>
                 <span class="muted grow">{{ secretState(f) }}</span>
                 @if (f.secret === 'keychain' || store.sessionSecrets().has(f.id)) {
-                  <button type="button" class="btn small" (click)="forget(f.id)">
+                  <button data-no-dialog-key type="button" class="btn small" (click)="forget(f.id)">
                     {{ t.forgetPassword }}
                   </button>
                 }

@@ -44,6 +44,17 @@ describe('dialog keys (057): every dialog', () => {
     expect(missing).toEqual([]);
   });
 
+  it('gives every text button a key, or marks it as exempt (076 E2)', () => {
+    // exempt (`data-no-dialog-key`): buttons repeated per row, icon-only tool buttons
+    const missing = dialogs.flatMap((f) =>
+      buttonTags(f.text)
+        .filter((tag) => /class="(?:[^"]*\s)?btn[\s"]/.test(tag))
+        .filter((tag) => !tag.includes('appDialogKey') && !tag.includes('data-no-dialog-key'))
+        .map((tag) => `${f.path}: ${tag.replace(/\s+/g, ' ').slice(0, 100)}`),
+    );
+    expect(missing).toEqual([]);
+  });
+
   it('never uses a reserved letter and no letter twice in one dialog', () => {
     const problems: string[] = [];
     for (const f of dialogs) {

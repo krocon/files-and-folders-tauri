@@ -70,6 +70,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                 <span class="lbl">{{ t.left }}</span> <span class="path">{{ pair.left }}</span>
               </p>
               <button
+                appDialogKey="secondary:P"
                 type="button"
                 class="btn"
                 [attr.aria-label]="t.swap"
@@ -159,7 +160,9 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                 />
               </label>
               @if (sync.running()) {
-                <button type="button" class="btn" (click)="sync.stop()">{{ t.stop }}</button>
+                <button appDialogKey="secondary:S" type="button" class="btn" (click)="sync.stop()">
+                  {{ t.stop }}
+                </button>
               } @else {
                 <button
                   [appDialogKey]="sync.compared() ? 'secondary:O' : 'primary'"
@@ -248,6 +251,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
               <div class="row">
                 <span class="lbl">{{ t.allTo }}</span>
                 <button
+                  appDialogKey="secondary:R"
                   type="button"
                   class="btn"
                   [disabled]="!sync.canEdit()"
@@ -257,6 +261,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                   {{ t.setRight }}
                 </button>
                 <button
+                  appDialogKey="secondary:L"
                   type="button"
                   class="btn"
                   [disabled]="!sync.canEdit()"
@@ -266,6 +271,7 @@ const name = (row: CompareRow, side: CompareSide | null) =>
                   {{ t.setLeft }}
                 </button>
                 <button
+                  appDialogKey="secondary:N"
                   type="button"
                   class="btn"
                   [disabled]="!sync.canEdit()"

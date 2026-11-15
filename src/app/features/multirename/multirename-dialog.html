@@ -13,7 +13,9 @@
           </select>
         </label>
         @if (presetName() === null) {
-          <button type="button" class="btn" (click)="presetName.set('')">{{ t.presetSave }}</button>
+          <button appDialogKey="secondary:S" type="button" class="btn" (click)="presetName.set('')">
+            {{ t.presetSave }}
+          </button>
         } @else {
           <label class="inline">
             <span class="sr-only">{{ t.presetName }}</span>
@@ -27,6 +29,7 @@
             />
           </label>
           <button
+            appDialogKey="secondary:S"
             type="button"
             class="btn"
             [disabled]="!presetName()?.trim()"
@@ -36,6 +39,7 @@
           </button>
         }
         <button
+          appDialogKey="secondary:D"
           type="button"
           class="btn"
           [disabled]="selectedPreset() === null"
@@ -43,7 +47,9 @@
         >
           {{ t.presetDelete }}
         </button>
-        <button type="button" class="btn" (click)="mr.reset()">{{ t.presetReset }}</button>
+        <button appDialogKey="secondary:E" type="button" class="btn" (click)="mr.reset()">
+          {{ t.presetReset }}
+        </button>
       </div>
 
       <!-- pattern -->
@@ -66,6 +72,7 @@
           @for (tok of tokens; track tok) {
             <button
               type="button"
+              data-no-dialog-key
               class="btn token"
               [attr.aria-label]="t.insertToken(tok)"
               (click)="insertToken(tok)"

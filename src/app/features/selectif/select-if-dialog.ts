@@ -100,7 +100,12 @@ function rowClass(row: SelectIfGridRow): string | null {
               </select>
             </label>
             @if (chosenUserTemplate(); as tplName) {
-              <button type="button" class="btn" (click)="deleteTemplate(tplName)">
+              <button
+                appDialogKey="secondary:D"
+                type="button"
+                class="btn"
+                (click)="deleteTemplate(tplName)"
+              >
                 {{ t.deleteTemplate(tplName) }}
               </button>
             }
@@ -116,11 +121,16 @@ function rowClass(row: SelectIfGridRow): string | null {
                 [placeholder]="t.templateName"
                 (keydown)="onTemplateNameKeydown($event)"
               />
-              <button type="button" class="btn" (click)="confirmTemplateName()">
+              <button
+                appDialogKey="secondary:S"
+                type="button"
+                class="btn"
+                (click)="confirmTemplateName()"
+              >
                 {{ t.saveTemplateConfirm }}
               </button>
             } @else {
-              <button type="button" class="btn" (click)="startNaming()">
+              <button appDialogKey="secondary:S" type="button" class="btn" (click)="startNaming()">
                 {{ t.saveTemplate }}
               </button>
             }
@@ -215,6 +225,7 @@ function rowClass(row: SelectIfGridRow): string | null {
                 }
               </div>
               <button
+                appDialogKey="secondary:N"
                 type="button"
                 class="btn"
                 [disabled]="r().conditions.length >= maxConditions"
@@ -578,6 +589,7 @@ function rowClass(row: SelectIfGridRow): string | null {
 
                     @if (r().conditions.length > 1) {
                       <button
+                        data-no-dialog-key
                         type="button"
                         class="btn cond-remove"
                         [attr.aria-label]="t.removeCondition(idx + 1)"

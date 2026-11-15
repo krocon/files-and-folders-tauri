@@ -83,6 +83,7 @@ function toDraft(t: FileType): Draft {
               <p class="help" [id]="listHelpId">{{ t.categoriesHelp }}</p>
               <div class="stack">
                 <button
+                  appDialogKey="secondary:N"
                   type="button"
                   class="btn"
                   [disabled]="rows().length >= maxTypes"
@@ -90,13 +91,26 @@ function toDraft(t: FileType): Draft {
                 >
                   {{ t.add }}
                 </button>
-                <button type="button" class="btn" [disabled]="!current()" (click)="remove()">
+                <button
+                  appDialogKey="secondary:R"
+                  type="button"
+                  class="btn"
+                  [disabled]="!current()"
+                  (click)="remove()"
+                >
                   {{ t.remove }}
                 </button>
-                <button type="button" class="btn" [disabled]="cursor() <= 0" (click)="move(-1)">
+                <button
+                  appDialogKey="secondary:U"
+                  type="button"
+                  class="btn"
+                  [disabled]="cursor() <= 0"
+                  (click)="move(-1)"
+                >
                   {{ t.moveUp }}
                 </button>
                 <button
+                  appDialogKey="secondary:D"
                   type="button"
                   class="btn"
                   [disabled]="cursor() >= rows().length - 1"
@@ -164,7 +178,9 @@ function toDraft(t: FileType): Draft {
         </div>
         <p class="error" role="alert">{{ error() }}</p>
         <div class="foot">
-          <button type="button" class="btn" (click)="resetDefaults()">{{ t.resetDefaults }}</button>
+          <button appDialogKey="secondary:E" type="button" class="btn" (click)="resetDefaults()">
+            {{ t.resetDefaults }}
+          </button>
           <div class="buttons">
             <button appDialogKey="cancel" type="button" class="btn" (click)="dialogs.close()">
               {{ t.cancel }}

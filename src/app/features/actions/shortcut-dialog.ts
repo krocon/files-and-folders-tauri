@@ -62,6 +62,7 @@ import { fuzzyMatch } from './fuzzy';
                 </td>
                 <td class="actions">
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn"
                     [attr.aria-label]="t.recordFor(row.label)"
@@ -70,6 +71,7 @@ import { fuzzyMatch } from './fuzzy';
                     {{ t.record }}
                   </button>
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn"
                     [attr.aria-label]="t.removeFor(row.label)"
@@ -79,6 +81,7 @@ import { fuzzyMatch } from './fuzzy';
                     {{ t.remove }}
                   </button>
                   <button
+                    data-no-dialog-key
                     type="button"
                     class="btn"
                     [attr.aria-label]="t.resetFor(row.label)"
