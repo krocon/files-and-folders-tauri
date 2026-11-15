@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { setLanguage } from '../../core/i18n/i18n';
 import { Platform } from '../../core/actions/platform';
 import {
+  DIALOG_KEY_STYLE,
   DIALOG_PLATFORM,
+  DialogKeyStyle,
   DialogKey,
   DialogKeySpec,
   displayKeysFor,
@@ -70,8 +73,13 @@ class TestDialog {
   }
 }
 
-function setup(platform: Platform = 'linux') {
-  TestBed.configureTestingModule({ providers: [{ provide: DIALOG_PLATFORM, useValue: platform }] });
+function setup(platform: Platform = 'linux', style: DialogKeyStyle = 'keycap') {
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: DIALOG_PLATFORM, useValue: platform },
+      { provide: DIALOG_KEY_STYLE, useValue: signal(style) },
+    ],
+  });
   const fixture = TestBed.createComponent(TestDialog);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
@@ -82,7 +90,8 @@ function setup(platform: Platform = 'linux') {
     fixture.detectChanges();
     return evt;
   };
-  return { fixture, el, q, key, cmp: fixture.componentInstance };
+  const modal = fixture.debugElement.query(By.directive(Modal)).componentInstance as Modal;
+  return { fixture, el, q, key, modal, cmp: fixture.componentInstance };
 }
 
 describe('Modal: dialog keys (057)', () => {
@@ -208,6 +217,57 @@ describe('Modal: dialog keys (057)', () => {
     const { q } = setup('macos');
     expect(q('.other').dataset['dialogKey']).toBe('⌘B');
     expect(q('.danger').dataset['dialogKey']).toBe('⇧⌘D');
+  });
+});
+
+describe('Modal: underlined letters (076 E4)', () => {
+  beforeEach(() => setLanguage('en'));
+
+  function underlined() {
+    const t = setup('macos', 'underline');
+    t.modal.refreshMnemonics();
+    t.fixture.detectChanges();
+    return t;
+  }
+
+  it('main button and Cancel first, destructive keeps its keycap', () => {
+    const { q } = underlined();
+    expect(q('.primary').dataset['mnemonic']).toBe('O');
+    expect(q('.cancel').dataset['mnemonic']).toBe('C');
+    expect(q('.other').dataset['mnemonic']).toBe('B');
+    expect(q('.danger').hasAttribute('data-mnemonic')).toBe(false);
+    expect(q('.danger').dataset['dialogKey']).toBe('⇧⌘D');
+    expect(q('.other').hasAttribute('data-dialog-key')).toBe(false);
+    expect(q('.other').title).toBe('Shortcut: ⌥B');
+    expect(q('.other').getAttribute('aria-keyshortcuts')).toBe('Meta+B Alt+B');
+  });
+
+  it('Alt+letter clicks the button, also from a text field (⌥ changes the key on macOS)', () => {
+    const { q, key, cmp } = underlined();
+    const evt = key(q('.text'), { key: '∫', code: 'KeyB', altKey: true });
+    expect(evt.defaultPrevented).toBe(true);
+    key(q('.text'), { key: 'ç', code: 'KeyC', altKey: true });
+    expect(cmp.log).toEqual(['b', 'cancel']);
+  });
+
+  it('Alt+letter does nothing with keycaps', () => {
+    const { q, key, cmp } = setup('macos', 'keycap');
+    expect(key(q('.text'), { key: '∫', code: 'KeyB', altKey: true }).defaultPrevented).toBe(false);
+    expect(cmp.log).toEqual([]);
+  });
+
+  it('Alt+letter nobody has is left alone', () => {
+    const { q, key, cmp } = underlined();
+    expect(key(q('.text'), { key: 'j', code: 'KeyJ', altKey: true }).defaultPrevented).toBe(false);
+    expect(cmp.log).toEqual([]);
+  });
+
+  it('follows the language of the labels', () => {
+    const { q, modal, fixture } = underlined();
+    q('.other').firstChild!.textContent = ' Zurück ';
+    modal.refreshMnemonics();
+    fixture.detectChanges();
+    expect(q('.other').dataset['mnemonic']).toBe('Z');
   });
 });
 

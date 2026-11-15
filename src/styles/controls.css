@@ -96,6 +96,25 @@
   pointer-events: none;
 }
 
+/*
+ * Underlined letter (design 076 E4, setting `view.dialogKeys = underline`): the modal
+ * measures the character and passes its place as variables – the label's text stays
+ * Angular's, nothing is wrapped.
+ */
+.fnf-dialog-key[data-mnemonic] {
+  position: relative;
+}
+
+.fnf-dialog-key[data-mnemonic]::before {
+  content: '';
+  position: absolute;
+  left: var(--fnf-mn-left, -9999px);
+  top: var(--fnf-mn-top, 0);
+  width: var(--fnf-mn-width, 0);
+  border-bottom: 1px solid currentColor;
+  pointer-events: none;
+}
+
 /* in dialogs buttons are exactly as high as the fields next to them */
 .dialog .btn {
   min-height: var(--control-height);

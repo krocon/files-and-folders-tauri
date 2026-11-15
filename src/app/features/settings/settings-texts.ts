@@ -77,6 +77,11 @@ export const SETTINGS_EN = {
       help: 'Windows and Linux; without it the menu bar shows up while you use it (Alt+M).',
       keywords: 'menu bar',
     },
+    'view.dialogKeys': {
+      label: 'Shortcuts on dialog buttons',
+      help: 'Keycap: the shortcut after the label (⌘D, Enter, Esc). Underlined letter: Alt (⌥ on the Mac) + the underlined letter, chosen from the label in the current language; Enter and Esc keep working, irreversible buttons keep their keycap.',
+      keywords: 'dialog button shortcut key mnemonic underline alt keycap',
+    },
     'folderMenu.recentOrder': {
       label: 'Recent folders in the folder menu ▾',
       help: 'Alphabetical (folders of the same place stand together) or the most recent first.',
@@ -255,6 +260,8 @@ export const SETTINGS_EN = {
     name: 'Name',
     date: 'Date',
     size: 'Size',
+    keycap: 'Keycap',
+    underline: 'Underlined letter',
     type: 'Type',
   } as Readonly<Record<string, string>>,
   on: 'On',
@@ -439,6 +446,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Windows und Linux; ohne sie erscheint die Menüleiste, während Sie sie benutzen (Alt+M).',
       keywords: 'menü leiste',
     },
+    'view.dialogKeys': {
+      label: 'Tastenkürzel an Dialog-Knöpfen',
+      help: 'Tastenkappe: das Kürzel steht hinter der Beschriftung (⌘D, Enter, Esc). Unterstrichener Buchstabe: Alt (⌥ auf dem Mac) + der unterstrichene Buchstabe, gewählt aus der Beschriftung in der aktuellen Sprache; Enter und Esc gelten weiter, nicht umkehrbare Knöpfe behalten ihre Tastenkappe.',
+      keywords: 'dialog knopf taste kürzel unterstrichen buchstabe alt tastenkappe',
+    },
     'folderMenu.recentOrder': {
       label: 'Zuletzt besuchte Ordner im Ordnermenü ▾',
       help: 'Alphabetisch (Ordner am selben Ort stehen beieinander) oder die zuletzt besuchten zuerst.',
@@ -618,6 +630,8 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     name: 'Name',
     date: 'Datum',
     size: 'Größe',
+    keycap: 'Tastenkappe',
+    underline: 'Unterstrichener Buchstabe',
     type: 'Typ',
   },
   on: 'An',

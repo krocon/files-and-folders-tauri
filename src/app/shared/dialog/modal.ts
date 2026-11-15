@@ -2,14 +2,20 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
   output,
 } from '@angular/core';
-import { strokeFromEvent } from '../../core/actions/shortcut';
+import { eventKey, strokeFromEvent } from '../../core/actions/shortcut';
 import type { DialogKey } from './dialog-key';
-import { DIALOG_PLATFORM } from './dialog-key';
+import { DIALOG_KEY_STYLE, DIALOG_PLATFORM, takesMnemonic } from './dialog-key';
+import { assignMnemonics } from './mnemonic';
+
+/** Order of the underlined letters: main button and Cancel get theirs first. */
+const MNEMONIC_RANK = { primary: 0, cancel: 1, secondary: 2 } as Readonly<Record<string, number>>;
 
 let modalSeq = 0;
 
@@ -99,14 +105,43 @@ export class Modal {
   readonly dialogRole = input<'dialog' | 'alertdialog'>('dialog');
   /** Id of the element that explains the question (`aria-describedby`). */
   readonly describedBy = input<string | null>(null);
+  /**
+   * Underlined letters with the setting `view.dialogKeys = underline` (design 076 E4);
+   * off for a dialog with its own Alt letters (the conflict dialog).
+   */
+  readonly mnemonics = input(true);
   readonly closed = output<void>();
   protected readonly titleId = `fnf-modal-${++modalSeq}`;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly platform = inject(DIALOG_PLATFORM);
+  private readonly keyStyle = inject(DIALOG_KEY_STYLE);
+  private refreshPending = false;
   /** Buttons with a key role in this dialog (design 057). */
   private readonly keys = new Set<DialogKey>();
 
   constructor() {
+    // labels change (language, state), buttons come and go: letters follow
+    effect(() => {
+      this.keyStyle();
+      this.mnemonics();
+      this.scheduleMnemonics();
+    });
+    if (typeof MutationObserver !== 'undefined') {
+      const mo = new MutationObserver(() => this.scheduleMnemonics());
+      mo.observe(this.host.nativeElement, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: ['hidden', 'disabled', 'class'],
+      });
+      inject(DestroyRef).onDestroy(() => mo.disconnect());
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => this.scheduleMnemonics());
+      ro.observe(this.host.nativeElement);
+      inject(DestroyRef).onDestroy(() => ro.disconnect());
+    }
     afterNextRender(() => {
       const el = this.host.nativeElement;
       const target = el.querySelector<HTMLElement>('[data-autofocus]') ?? this.focusables()[0];
@@ -125,10 +160,67 @@ export class Modal {
 
   register(key: DialogKey): void {
     this.keys.add(key);
+    this.scheduleMnemonics();
   }
 
   unregister(key: DialogKey): void {
     this.keys.delete(key);
+    this.scheduleMnemonics();
+  }
+
+  private scheduleMnemonics(): void {
+    if (this.refreshPending) {
+      return;
+    }
+    this.refreshPending = true;
+    const run = (): void => {
+      this.refreshPending = false;
+      this.refreshMnemonics();
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(run);
+    } else {
+      setTimeout(run);
+    }
+  }
+
+  /** Gives the visible buttons their underlined letters (design 076 E4). */
+  refreshMnemonics(): void {
+    const all = [...this.keys];
+    if (this.keyStyle() !== 'underline' || !this.mnemonics()) {
+      for (const k of all) {
+        if (k.mnemonic()) {
+          k.setMnemonic(null);
+        }
+      }
+      return;
+    }
+    const chosen = all
+      .filter((k) => takesMnemonic(k.role()) && this.visible(k))
+      .sort(
+        (a, b) =>
+          MNEMONIC_RANK[a.role()!.role] - MNEMONIC_RANK[b.role()!.role] ||
+          (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1),
+      );
+    const texts = chosen.map((k) => textNodes(k.el));
+    const letters = assignMnemonics(texts.map((nodes) => nodes.map((n) => n.data).join('')));
+    for (const k of all) {
+      const i = chosen.indexOf(k);
+      const m = i < 0 ? null : letters[i];
+      if (!m) {
+        k.setMnemonic(null);
+        continue;
+      }
+      let offset = m.index;
+      const node = texts[i].find((n) => {
+        if (offset < n.data.length) {
+          return true;
+        }
+        offset -= n.data.length;
+        return false;
+      });
+      k.setMnemonic(m, node ?? null, offset);
+    }
   }
 
   protected onKeydown(evt: KeyboardEvent): void {
@@ -160,6 +252,9 @@ export class Modal {
     }
     if (evt.key === 'Enter') {
       this.onEnter(evt);
+      return;
+    }
+    if (this.onMnemonic(evt)) {
       return;
     }
     this.onLetter(evt);
@@ -203,6 +298,27 @@ export class Modal {
     if (!evt.repeat) {
       primary.trigger();
     }
+  }
+
+  /** `Alt+<letter>` → the button with that underlined letter (design 076 E4). */
+  private onMnemonic(evt: KeyboardEvent): boolean {
+    if (!evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey || evt.defaultPrevented) {
+      return false;
+    }
+    if (this.keyStyle() !== 'underline' || !this.mnemonics()) {
+      return false;
+    }
+    const key = eventKey(evt);
+    const hit = [...this.keys].find((k) => k.mnemonic()?.letter === key && this.visible(k));
+    if (!hit) {
+      return false;
+    }
+    evt.preventDefault(); // no ∂ etc. in a text field on macOS
+    evt.stopPropagation();
+    if (!evt.repeat) {
+      hit.trigger();
+    }
+    return true;
   }
 
   /** `Mod+<letter>` → secondary, `Mod+Shift+<letter>` → destructive (design 057 E3). */
@@ -256,4 +372,14 @@ export class Modal {
       ),
     ];
   }
+}
+
+/** The text nodes of a button's label, in order (the keycap is CSS, not text). */
+function textNodes(el: HTMLElement): Text[] {
+  const out: Text[] = [];
+  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    out.push(n as Text);
+  }
+  return out;
 }

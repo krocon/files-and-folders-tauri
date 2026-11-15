@@ -15,6 +15,8 @@ export interface SettingsValues {
   'view.hideExtension': boolean;
   'view.showHidden': boolean;
   'view.menuBar': boolean;
+  /** How dialog buttons show their keys (design 076 E4). */
+  'view.dialogKeys': 'keycap' | 'underline';
   'folderMenu.recentOrder': 'alpha' | 'recent';
   'behavior.deleteToTrash': boolean;
   'behavior.confirmTrash': boolean;

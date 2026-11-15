@@ -97,7 +97,7 @@ direkt nach 001; die Nummern bleiben, damit Verweise stabil sind).
 | 073 ✅ | [073-doppelklick-ausloeser.md](done/073-doppelklick-ausloeser.md) | Doppelklick-Aktionen: Auslöser mit Modifier (Shift/⌘·Strg/Alt oder ohne Taste) als erweiterbares Modell, Markierung bleibt bei Treffer, Regelliste ~10 Zeilen hoch, Add/Remove/Up/Down in die Fußzeile | 002, 015, 057, 072 | S–M |
 | 074 ✅ | [074-bilder-uebersicht.md](done/074-bilder-uebersicht.md) | Bilder-Übersicht wie ACDSee: Fenster schaltet von zwei Panels in ein Kachelraster mit Ordnerbaum (ein-/ausblendbar), Kachelgröße per Slider/−/+, Großansicht im Fenster oder ganzer Bildschirm, optional alle Bilder rekursiv; mit einer Taste/Esc zurück, Panels unverändert | 002, 004, 010, 015, 022, 038, 042, 045, 057 | M–L |
 | 075 ✅ | [075-update-pruefen.md](done/075-update-pruefen.md) | Nach Updates suchen (Variante 1, ohne Updater): Rust fragt die feste GitHub-URL `releases/latest` ab, SemVer-Vergleich, Dialog „Version X ist verfügbar“ mit Link zur Release-Seite, „Skip this version“; Aktion im Menü Help/App-Menü + Knopf im About; automatische Prüfung optional, Default aus | 002, 014/056, 015, 017, 057 | S–M |
-| 076 ✅ | [076-dialog-tasten-sichtbar.md](done/076-dialog-tasten-sichtbar.md) | Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf (↩, Esc, ⌘D), jeder `.btn` mit Rolle oder `data-no-dialog-key`, Anzeige-Rolle `hint:` | 057 | S–M |
+| 076 ✅ | [076-dialog-tasten-sichtbar.md](done/076-dialog-tasten-sichtbar.md) | Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf (↩, Esc, ⌘D), jeder `.btn` mit Rolle oder `data-no-dialog-key`, Anzeige-Rolle `hint:`; Option `view.dialogKeys` = unterstrichener Buchstabe mit Alt/⌥ | 057 | S–M |
 
 Umfang: S ≈ 1 Sitzung, M ≈ 2–3, L ≈ 3–5. Grobe Schätzung, nur zum Planen.
 

@@ -30,6 +30,7 @@ import { cancelKind, JOB_TEXTS } from './job-format';
         <app-modal
           dialogRole="alertdialog"
           describedBy="fnf-conflict-intro"
+          [mnemonics]="false"
           [heading]="readOnly() ? t.readOnlyTitle : t.conflictTitle"
           width="36rem"
           (closed)="later()"

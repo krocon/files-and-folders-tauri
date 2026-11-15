@@ -6,7 +6,11 @@ import {
   inject,
   InjectionToken,
   input,
+  Signal,
+  signal,
 } from '@angular/core';
+import { SettingsStore } from '../../core/settings/settings.store';
+import type { Mnemonic } from './mnemonic';
 import { formatShortcut, formatStroke, parseShortcut } from '../../core/actions/shortcut';
 import { detectPlatform, Platform } from '../../core/actions/platform';
 import { DIALOG_KEY_TEXTS } from './dialog-key-texts';
@@ -104,6 +108,25 @@ export const DIALOG_PLATFORM = new InjectionToken<Platform>('DIALOG_PLATFORM', {
   factory: () => detectPlatform(),
 });
 
+/**
+ * How buttons show their keys (setting `view.dialogKeys`, design 076 E4): a keycap
+ * after the label, or an underlined letter for `Alt+<letter>`. A token so tests can
+ * switch without the settings store.
+ */
+export type DialogKeyStyle = 'keycap' | 'underline';
+export const DIALOG_KEY_STYLE = new InjectionToken<Signal<DialogKeyStyle>>('DIALOG_KEY_STYLE', {
+  providedIn: 'root',
+  factory: () => {
+    const settings = inject(SettingsStore);
+    return computed(() => settings.get('view.dialogKeys'));
+  },
+});
+
+/** Roles that get an underlined letter; destructive and hint buttons keep the keycap. */
+export function takesMnemonic(role: DialogKeyRole | null): boolean {
+  return role?.role === 'primary' || role?.role === 'cancel' || role?.role === 'secondary';
+}
+
 /** `aria-keyshortcuts` value of a role (ARIA names: `Meta`, `Control`, `Shift`). */
 export function ariaKeysFor(role: DialogKeyRole, platform: Platform): string {
   switch (role.role) {
@@ -139,6 +162,7 @@ export function displayKeysFor(role: DialogKeyRole, platform: Platform): string 
     '[attr.aria-keyshortcuts]': 'ariaKeys()',
     '[attr.title]': 'tooltip()',
     '[attr.data-dialog-key]': 'badge()',
+    '[attr.data-mnemonic]': 'mnemonic()?.letter ?? null',
     '[class.fnf-dialog-key]': 'true',
   },
 })
@@ -149,6 +173,9 @@ export class DialogKey {
   readonly el = inject<ElementRef<HTMLButtonElement>>(ElementRef).nativeElement;
   private readonly modal = inject(Modal, { optional: true });
   private readonly platform = inject(DIALOG_PLATFORM);
+  private readonly style = inject(DIALOG_KEY_STYLE);
+  /** The underlined letter, set by the {@link Modal} (design 076 E4). */
+  readonly mnemonic = signal<Mnemonic | null>(null);
   /** What the template set statically (kept, the key is added). */
   private readonly ownAria = this.el.getAttribute('aria-keyshortcuts');
   private readonly ownTitle = this.el.getAttribute('title');
@@ -158,7 +185,9 @@ export class DialogKey {
   protected readonly ariaKeys = computed(() => {
     const r = this.role();
     const keys = r ? ariaKeysFor(r, this.platform) : null;
-    return [keys, this.ownAria, this.appDialogKeyExtra()].filter(Boolean).join(' ') || null;
+    const m = this.mnemonic();
+    const alt = m ? `Alt+${m.letter}` : null;
+    return [keys, alt, this.ownAria, this.appDialogKeyExtra()].filter(Boolean).join(' ') || null;
   });
 
   protected readonly tooltip = computed(() => {
@@ -166,14 +195,24 @@ export class DialogKey {
     if (!r) {
       return this.ownTitle;
     }
-    const keys = DIALOG_KEY_TEXTS.shortcut(displayKeysFor(r, this.platform));
+    const m = this.mnemonic();
+    const shown = m
+      ? formatStroke(
+          { mod: false, ctrl: false, alt: true, shift: false, key: m.letter },
+          this.platform,
+        )
+      : displayKeysFor(r, this.platform);
+    const keys = DIALOG_KEY_TEXTS.shortcut(shown);
     return this.ownTitle ? `${this.ownTitle} (${keys})` : keys;
   });
 
   /** The keycap after the label (design 076 E1), always shown. */
   protected readonly badge = computed(() => {
     const r = this.role();
-    return r ? displayKeysFor(r, this.platform) : null;
+    if (!r || (this.style() === 'underline' && takesMnemonic(r))) {
+      return null;
+    }
+    return displayKeysFor(r, this.platform);
   });
 
   constructor() {
@@ -181,6 +220,33 @@ export class DialogKey {
       this.modal.register(this);
       inject(DestroyRef).onDestroy(() => this.modal?.unregister(this));
     }
+  }
+
+  /**
+   * Sets the underlined letter; `node`/`offset` is its character in the label. The line
+   * is drawn by CSS (`::before`) at the place the layout gives the character – the
+   * label's text nodes belong to Angular and stay untouched.
+   */
+  setMnemonic(m: Mnemonic | null, node: Text | null = null, offset = 0): void {
+    this.mnemonic.set(m);
+    const style = this.el.style;
+    if (!m || !node || typeof document.createRange !== 'function') {
+      style.removeProperty('--fnf-mn-left');
+      style.removeProperty('--fnf-mn-top');
+      style.removeProperty('--fnf-mn-width');
+      return;
+    }
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.setEnd(node, offset + 1);
+    const ch = range.getBoundingClientRect?.();
+    const box = this.el.getBoundingClientRect();
+    if (!ch || ch.width === 0) {
+      return; // no layout (tests, hidden): only the letter counts
+    }
+    style.setProperty('--fnf-mn-left', `${ch.left - box.left - this.el.clientLeft}px`);
+    style.setProperty('--fnf-mn-top', `${ch.bottom - box.top - this.el.clientTop - 1}px`);
+    style.setProperty('--fnf-mn-width', `${ch.width}px`);
   }
 
   /** Clicks the button unless it is disabled or hidden; true if clicked. */
