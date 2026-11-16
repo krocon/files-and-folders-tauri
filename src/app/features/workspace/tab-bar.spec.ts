@@ -208,6 +208,33 @@ describe('TabBar', () => {
     expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/x/b' });
   });
 
+  it("folder menu lists the folders of the other side's tabs above the favourites", async () => {
+    const { fixture, el } = await render();
+    const right = ws.panels().right.tabs;
+    ws.updateTab(right[0].id, { path: '/other/one' });
+    ws.toggleFavorite('/fav/alpha');
+    fixture.detectChanges();
+    ws.requestFolderMenu('left');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const ids = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+      (i) => i.dataset['id'] ?? '',
+    );
+    const expected = [...new Set(right.filter((t) => !t.search).map((t) => t.path))]
+      .filter((p) => p !== null)
+      .map((p) => `tab:${p === right[0].path ? '/other/one' : p}`);
+    expect(ids.filter((i) => i.startsWith('tab:'))).toEqual(expected);
+    expect(ids).toContain('tab:/other/one');
+    expect(ids.indexOf('tab:/other/one')).toBeLessThan(ids.indexOf('fav:/fav/alpha'));
+    expect(el.querySelector('[data-id="tab:/other/one"] .icon i')?.className).toContain(
+      'fa-folder-o',
+    );
+    el.querySelector<HTMLElement>('[data-id="tab:/other/one"]')!.click();
+    fixture.detectChanges();
+    expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: '/other/one' });
+  });
+
   it('Shift+click closes a tab (old version, 018 J13)', async () => {
     const { fixture, tabs } = await render();
     tabs()[0].dispatchEvent(new MouseEvent('click', { shiftKey: true, bubbles: true }));

@@ -139,10 +139,16 @@ export class TabBar {
               iconLabel: v.reachable ? undefined : t.menuUnreachable,
             }))),
     ];
+    // folders open in the tabs of the other side, in tab order, each once; no section without any
+    const other = this.side() === 'left' ? 'right' : 'left';
+    const otherPanel = this.ws.panels()[other];
+    const folderTabs = otherPanel.tabs.filter((tab) => !tab.search && tab.path !== null);
+    const otherTabs = [...new Set(folderTabs.map((tab) => tab.path as string))];
     return [
       { id: 'home', label: t.menuHome, icon: 'home' },
       ...drives,
       ...servers,
+      ...(otherTabs.length ? group('tab', t.menuOtherTabs(other), 'folder-o', otherTabs) : []),
       ...group('fav', t.menuFavorites, 'star', favorites),
       ...group('recent', t.menuRecent, 'history', recent),
     ];
@@ -339,6 +345,8 @@ export class TabBar {
     if (id === 'home') {
       path = null;
     } else if (id.startsWith('fav:')) {
+      path = id.slice(4);
+    } else if (id.startsWith('tab:')) {
       path = id.slice(4);
     } else if (id.startsWith('recent:')) {
       path = id.slice(7);

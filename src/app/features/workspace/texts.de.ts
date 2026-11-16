@@ -78,11 +78,12 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
     shortcut
       ? `Klicken, um einen Pfad einzugeben (${shortcut})`
       : 'Klicken, um einen Pfad einzugeben',
-  folderMenu: 'Ordner: Home, Laufwerke, Favoriten, zuletzt',
+  folderMenu: 'Ordner: Home, Laufwerke, Tabs der anderen Seite, Favoriten, zuletzt',
   showHidden: 'Versteckte Dateien zeigen',
   filter: 'Filter',
   filterPlaceholder: '*.txt -entwurf',
   menuHome: 'Home',
+  menuOtherTabs: (side) => (side === 'left' ? 'Tabs der linken Seite' : 'Tabs der rechten Seite'),
   menuFavorites: 'Favoriten',
   menuRecent: 'Zuletzt',
   menuConnected: 'verbunden',

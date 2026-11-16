@@ -84,11 +84,13 @@ export const TEXTS_EN = {
   /** Tooltip of the breadcrumbs' free area (053). */
   enterPathHint: (shortcut: string) =>
     shortcut ? `Click to enter a path (${shortcut})` : 'Click to enter a path',
-  folderMenu: 'Folders: home, drives, favourites, recent',
+  folderMenu: 'Folders: home, drives, tabs of the other panel, favourites, recent',
   showHidden: 'Show hidden files',
   filter: 'Filter',
   filterPlaceholder: '*.txt -draft',
   menuHome: 'Home',
+  menuOtherTabs: (side: 'left' | 'right') =>
+    side === 'left' ? 'Tabs of the left panel' : 'Tabs of the right panel',
   menuFavorites: 'Favourites',
   menuRecent: 'Recent',
   menuConnected: 'connected',
