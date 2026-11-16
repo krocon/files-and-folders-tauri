@@ -2070,6 +2070,7 @@ fn run_dir_size(
                 progress: Progress {
                     bytes_done: p.bytes,
                     items_done: p.files + p.dirs,
+                    dirs_done: p.dirs,
                     ..Progress::default()
                 },
             });

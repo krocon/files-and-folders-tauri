@@ -669,6 +669,9 @@ pub struct Progress {
     pub bytes_total: u64,
     pub items_done: u64,
     pub items_total: u64,
+    /// Folders among `items_done` – only the job `dirSize` sets it, so the
+    /// properties dialog can show files and folders apart while it counts.
+    pub dirs_done: u64,
     /// Item being processed (full path).
     pub current: Option<String>,
     /// Bytes per second over the job so far.

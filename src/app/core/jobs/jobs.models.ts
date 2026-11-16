@@ -254,6 +254,8 @@ export interface Progress {
   readonly bytesTotal: number;
   readonly itemsDone: number;
   readonly itemsTotal: number;
+  /** Folders among `itemsDone` (only the job `dirSize`): files = itemsDone − dirsDone. */
+  readonly dirsDone?: number;
   /** Full path of the item being processed. */
   readonly current: string | null;
   readonly rateBps: number;

@@ -65,6 +65,8 @@ export const PV_DE: Translation<typeof PV_EN> = {
   calcSize: 'Berechnen',
   calculating: 'Berechne…',
   cancel: 'Abbrechen',
+  dirSizeSoFar: (bytes, files, dirs) =>
+    `${formatSize(bytes)} in ${formatCount(files)} Dateien, ${formatCount(dirs)} Ordnern …`,
   dirSize: (bytes, files, dirs, unreadable) =>
     `${formatSize(bytes)} (${formatCount(bytes)} Bytes) in ${files} Dateien, ${dirs} Ordnern` +
     (unreadable ? `, ${unreadable} nicht lesbar` : ''),

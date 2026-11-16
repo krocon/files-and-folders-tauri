@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, DirSize, FsError, isParentRow } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
@@ -15,7 +15,8 @@ export type SizeState =
 
 /**
  * Properties (Alt+Enter, design 010 E5): read only. A folder's size comes from
- * the `dirSize` job (003) on request.
+ * the `dirSize` job (003): it starts by itself once the properties are there,
+ * `counted` grows while it runs, closing the dialog cancels it.
  */
 @Injectable({ providedIn: 'root' })
 export class PropertiesStore {
@@ -28,7 +29,18 @@ export class PropertiesStore {
   readonly props = signal<Properties | null>(null);
   readonly error = signal<FsError | null>(null);
   readonly size = signal<SizeState>({ state: 'idle' });
+  /** Running totals of the size job (files, folders, bytes so far); null when none runs. */
+  readonly counted = computed(() => {
+    const s = this.size();
+    const p = s.state === 'running' ? this.jobs.find(s.jobId)?.progress : undefined;
+    if (!p) {
+      return null;
+    }
+    const dirs = p.dirsDone ?? 0;
+    return { bytes: p.bytesDone, files: Math.max(0, p.itemsDone - dirs), dirs };
+  });
   private seq = 0;
+  private starting = false;
 
   canOpen(): boolean {
     const e = this.ws.panel()?.store.cursorEntry();
@@ -50,6 +62,9 @@ export class PropertiesStore {
       const p = await this.api.getProperties(entry.path);
       if (seq === this.seq) {
         this.props.set(p);
+        if (p.kind === 'directory') {
+          void this.calcSize();
+        }
       }
     } catch (err) {
       if (seq === this.seq) {
@@ -60,15 +75,24 @@ export class PropertiesStore {
 
   async calcSize(): Promise<void> {
     const p = this.props();
-    if (!p || p.kind !== 'directory' || this.size().state === 'running') {
+    if (!p || p.kind !== 'directory' || this.starting || this.size().state === 'running') {
       return;
     }
     const seq = this.seq;
     let id: string;
+    this.starting = true;
     try {
       id = await this.jobs.start({ kind: 'dirSize', path: p.path });
     } catch (err) {
-      this.size.set({ state: 'failed', error: toFsError(err) });
+      if (seq === this.seq) {
+        this.size.set({ state: 'failed', error: toFsError(err) });
+      }
+      return;
+    } finally {
+      this.starting = false;
+    }
+    if (seq !== this.seq) {
+      void this.jobs.cancel(id); // the dialog closed before the job started
       return;
     }
     this.size.set({ state: 'running', jobId: id });

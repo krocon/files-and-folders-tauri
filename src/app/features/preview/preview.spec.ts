@@ -246,17 +246,32 @@ describe('viewer, quick view and properties (design 010)', () => {
     expect(api.reads.map((r) => r.path)).toEqual(['/src/a.txt', '/src/bild.txt']);
   });
 
-  it('properties: loads and calculates a folder size as a job', async () => {
+  it('properties: counts a folder by itself and shows the running totals', async () => {
     api.properties = (path) => ({ ...props_(path), kind: 'directory', size: null, format: null });
     left.setCursor('/src/Ordner');
     await actions.run('OPEN_ATTRIBUTE_DLG');
     await flush();
     expect(dialogs.open()).toBe('properties');
     expect(props.props()?.path).toBe('/src/Ordner');
-    const done = props.calcSize();
     await flush();
     expect(jobsApi.started[0].spec).toEqual({ kind: 'dirSize', path: '/src/Ordner' });
     expect(props.size().state).toBe('running');
+    await props.calcSize(); // already running: no second job
+    expect(jobsApi.started.length).toBe(1);
+    jobsApi.emit({
+      type: 'progress',
+      id: jobsApi.started[0].id,
+      progress: {
+        bytesDone: 1024,
+        bytesTotal: 0,
+        itemsDone: 5,
+        itemsTotal: 0,
+        dirsDone: 2,
+        current: null,
+        rateBps: 0,
+      },
+    });
+    expect(props.counted()).toEqual({ bytes: 1024, files: 3, dirs: 2 });
     jobsApi.emit({
       type: 'finished',
       id: jobsApi.started[0].id,
@@ -271,7 +286,8 @@ describe('viewer, quick view and properties (design 010)', () => {
         dirSize: { files: 2, dirs: 1, bytes: 2048, unreadable: 0, cancelled: false },
       },
     });
-    await done;
+    await flush();
+    expect(props.counted()).toBeNull();
     expect(props.size()).toEqual({
       state: 'done',
       size: { files: 2, dirs: 1, bytes: 2048, unreadable: 0, cancelled: false },

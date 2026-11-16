@@ -111,7 +111,7 @@ export function propertyRows(p: Properties): PropertyRow[] {
               <dd class="size">
                 @switch (s.size().state) {
                   @case ('running') {
-                    <span aria-live="polite">{{ t.calculating }}</span>
+                    <span class="counting">{{ countingText() }}</span>
                     <button
                       appDialogKey="secondary:S"
                       type="button"
@@ -202,6 +202,9 @@ export function propertyRows(p: Properties): PropertyRow[] {
       align-items: center;
       gap: var(--spacing-2);
     }
+    .counting {
+      font-variant-numeric: tabular-nums;
+    }
     .hint {
       margin: 0;
       font-size: var(--font-size-xs);
@@ -274,6 +277,11 @@ export class PropertiesDialog {
     return st.state === 'done'
       ? this.t.dirSize(st.size.bytes, st.size.files, st.size.dirs, st.size.unreadable)
       : '';
+  });
+  /** While the job runs: the totals so far, growing about every 100 ms. */
+  protected readonly countingText = computed(() => {
+    const c = this.s.counted();
+    return c ? this.t.dirSizeSoFar(c.bytes, c.files, c.dirs) : this.t.calculating;
   });
   protected readonly sizeError = computed(() => {
     const st = this.s.size();

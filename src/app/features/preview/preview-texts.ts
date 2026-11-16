@@ -66,6 +66,8 @@ export const PV_EN = {
   calcSize: 'Calculate',
   calculating: 'Calculating…',
   cancel: 'Cancel',
+  dirSizeSoFar: (bytes: number, files: number, dirs: number) =>
+    `${formatSize(bytes)} in ${formatCount(files)} files, ${formatCount(dirs)} folders …`,
   dirSize: (bytes: number, files: number, dirs: number, unreadable: number) =>
     `${formatSize(bytes)} (${formatCount(bytes)} bytes) in ${files} files, ${dirs} folders` +
     (unreadable ? `, ${unreadable} unreadable` : ''),
