@@ -7,6 +7,7 @@ import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
 import { PreviewApi } from '../../core/preview/preview-api';
 import { Format, Properties } from '../../core/preview/preview.models';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { SessionApi } from '../../core/session/session-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
@@ -21,6 +22,7 @@ import { registerPreviewActions } from './preview-actions';
 import { previewNotes } from './preview-notes';
 import { PREVIEW_PROVIDERS, providerFor } from './preview-providers';
 import { propertiesText, propertyRows } from './properties-dialog';
+import { PV_TEXTS } from './preview-texts';
 import { PropertiesStore } from './properties.store';
 import { QuickViewStore } from './quick-view.store';
 import { QuickView } from './quick-view';
@@ -296,6 +298,21 @@ describe('viewer, quick view and properties (design 010)', () => {
     expect(dialogs.open()).toBeNull();
   });
 
+  it('properties: without the setting a folder is counted only on request', async () => {
+    TestBed.inject(SettingsStore).set('behavior.propertiesAutoCount', false);
+    api.properties = (path) => ({ ...props_(path), kind: 'directory', size: null, format: null });
+    left.setCursor('/src/Ordner');
+    await actions.run('OPEN_ATTRIBUTE_DLG');
+    await flush();
+    expect(props.props()?.path).toBe('/src/Ordner');
+    expect(jobsApi.started.length).toBe(0);
+    expect(props.size().state).toBe('idle');
+    void props.calcSize();
+    await flush();
+    expect(jobsApi.started.length).toBe(1);
+    props.close();
+  });
+
   it('Copy in the properties dialog: name, path and every row as plain text', () => {
     const rows = propertyRows(props_('/x/f.png'));
     const text = propertiesText('f.png', rows, null);
@@ -305,6 +322,10 @@ describe('viewer, quick view and properties (design 010)', () => {
     expect(lines.length).toBe(rows.length + 1);
     // a folder size calculated in the dialog is part of it
     expect(propertiesText('d', [], '3 files')).toBe('d\nSize: 3 files');
+    // counts are grouped, the size breaks after the bytes (one line in the clipboard)
+    const size = PV_TEXTS.dirSize(2048, 1127837, 69241, 6);
+    expect(size).toBe('2.0 KB (2,048 bytes)\nin 1,127,837 files, 69,241 folders, 6 unreadable');
+    expect(propertiesText('d', [], size).split('\n').length).toBe(2);
   });
 
   it('rows of the properties dialog are platform-specific', () => {

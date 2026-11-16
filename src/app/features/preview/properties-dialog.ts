@@ -26,7 +26,8 @@ export function propertiesText(
 ): string {
   const lines = [name, ...rows.map((r) => `${r.label}: ${r.value}`)];
   if (folderSize) {
-    lines.push(`${PV_TEXTS.size}: ${folderSize}`);
+    // two lines in the dialog, one in the clipboard
+    lines.push(`${PV_TEXTS.size}: ${folderSize.replace(/\n/g, ' ')}`);
   }
   return lines.join('\n');
 }
@@ -185,7 +186,8 @@ export function propertyRows(p: Properties): PropertyRow[] {
     .props {
       display: grid;
       grid-template-columns: max-content 1fr;
-      gap: var(--spacing-1) var(--spacing-3);
+      gap: var(--spacing-2) var(--spacing-3);
+      align-items: baseline;
       margin: 0;
       font-size: var(--font-size-sm);
     }
@@ -197,10 +199,13 @@ export function propertyRows(p: Properties): PropertyRow[] {
       overflow-wrap: anywhere;
       user-select: text;
     }
+    /* two lines of text or one button: the row keeps its height in every state */
     .size {
       display: flex;
       align-items: center;
       gap: var(--spacing-2);
+      min-height: max(var(--control-height), 2lh);
+      white-space: pre-line;
     }
     .counting {
       font-variant-numeric: tabular-nums;
@@ -219,6 +224,7 @@ export function propertyRows(p: Properties): PropertyRow[] {
       justify-content: flex-end;
       align-items: center;
       gap: var(--spacing-2);
+      margin-top: var(--spacing-4);
     }
     .status {
       margin-right: auto;

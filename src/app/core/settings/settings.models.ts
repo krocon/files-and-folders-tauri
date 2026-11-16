@@ -22,6 +22,8 @@ export interface SettingsValues {
   'behavior.confirmTrash': boolean;
   'behavior.doubleClick': 'open' | 'view';
   'behavior.spaceCalcSize': boolean;
+  /** Properties of a folder count files, subfolders and size by themselves. */
+  'behavior.propertiesAutoCount': boolean;
   'behavior.rememberFolders': boolean;
   'watch.pollNetwork': boolean;
   'diskUsage.sizeMode': 'allocated' | 'logical';

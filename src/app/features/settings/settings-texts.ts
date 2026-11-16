@@ -107,6 +107,11 @@ export const SETTINGS_EN = {
       help: 'Marking a folder with Space also calculates its size.',
       keywords: 'space mark folder size',
     },
+    'behavior.propertiesAutoCount': {
+      label: 'Count automatically in Properties',
+      help: 'The properties of a folder count its files, subfolders and size right away. Off: only after "Calculate".',
+      keywords: 'properties folder size count files subfolders calculate automatic',
+    },
     'behavior.rememberFolders': {
       label: 'Remember cursor and marks per folder',
       help: 'Each tab remembers cursor, marks and scroll position of its last 50 folders, also across restarts (folder-memory.json). Switching it off forgets what was kept.',
@@ -475,6 +480,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       label: 'Leertaste berechnet Ordnergrößen',
       help: 'Markieren eines Ordners mit der Leertaste berechnet auch seine Größe.',
       keywords: 'leertaste markieren ordner größe',
+    },
+    'behavior.propertiesAutoCount': {
+      label: 'Automatisch zählen in den Eigenschaften',
+      help: 'Die Eigenschaften eines Ordners zählen Dateien, Unterordner und Größe sofort. Aus: erst nach „Berechnen“.',
+      keywords: 'eigenschaften ordner größe zählen dateien unterordner berechnen automatisch',
     },
     'behavior.rememberFolders': {
       label: 'Cursor und Markierung je Ordner merken',

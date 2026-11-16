@@ -67,10 +67,11 @@ export const PV_EN = {
   calculating: 'Calculating…',
   cancel: 'Cancel',
   dirSizeSoFar: (bytes: number, files: number, dirs: number) =>
-    `${formatSize(bytes)} in ${formatCount(files)} files, ${formatCount(dirs)} folders …`,
+    `${formatSize(bytes)}\nin ${formatCount(files)} files, ${formatCount(dirs)} folders …`,
   dirSize: (bytes: number, files: number, dirs: number, unreadable: number) =>
-    `${formatSize(bytes)} (${formatCount(bytes)} bytes) in ${files} files, ${dirs} folders` +
-    (unreadable ? `, ${unreadable} unreadable` : ''),
+    `${formatSize(bytes)} (${formatCount(bytes)} bytes)\n` +
+    `in ${formatCount(files)} files, ${formatCount(dirs)} folders` +
+    (unreadable ? `, ${formatCount(unreadable)} unreadable` : ''),
   kinds: {
     file: 'File',
     directory: 'Folder',

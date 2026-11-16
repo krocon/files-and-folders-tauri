@@ -2,6 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, DirSize, FsError, isParentRow } from '../../core/fs/fs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { SettingsStore } from '../../core/settings/settings.store';
 import { PreviewApi } from '../../core/preview/preview-api';
 import { Properties } from '../../core/preview/preview.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
@@ -24,6 +25,7 @@ export class PropertiesStore {
   private readonly ws = inject(WorkspaceStore);
   private readonly jobs = inject(JobsStore);
   private readonly dialogs = inject(DialogService);
+  private readonly settings = inject(SettingsStore);
 
   readonly entry = signal<DirEntry | null>(null);
   readonly props = signal<Properties | null>(null);
@@ -62,7 +64,7 @@ export class PropertiesStore {
       const p = await this.api.getProperties(entry.path);
       if (seq === this.seq) {
         this.props.set(p);
-        if (p.kind === 'directory') {
+        if (p.kind === 'directory' && this.settings.get('behavior.propertiesAutoCount')) {
           void this.calcSize();
         }
       }

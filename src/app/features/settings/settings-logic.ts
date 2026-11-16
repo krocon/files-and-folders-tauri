@@ -48,6 +48,7 @@ export const SECTIONS: readonly Section[] = [
       'behavior.confirmTrash',
       'behavior.doubleClick',
       'behavior.spaceCalcSize',
+      'behavior.propertiesAutoCount',
       'behavior.rememberFolders',
       'watch.pollNetwork',
       'diskUsage.sizeMode',

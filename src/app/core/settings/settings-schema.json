@@ -23,6 +23,7 @@
   "behavior.confirmTrash": { "type": "bool", "default": true },
   "behavior.doubleClick": { "type": "enum", "values": ["open", "view"], "default": "open" },
   "behavior.spaceCalcSize": { "type": "bool", "default": true },
+  "behavior.propertiesAutoCount": { "type": "bool", "default": true },
   "behavior.rememberFolders": { "type": "bool", "default": true },
   "watch.pollNetwork": { "type": "bool", "default": false },
   "diskUsage.sizeMode": {
