@@ -57,8 +57,10 @@ describe('Actions menu ▴ (design 020)', () => {
       [...g.children].map((c) =>
         c.getAttribute('role') === 'separator' ? '-' : c.querySelector('.label')?.textContent,
       );
-    expect(labels(groups[0]).slice(0, 5)).toEqual([
+    expect(labels(groups[0]).slice(0, 7)).toEqual([
       'Command Palette…',
+      'Go to Anything…',
+      'Do Anything…',
       '-',
       'Reload',
       'Change Dir…',
@@ -95,7 +97,12 @@ describe('Actions menu ▴ (design 020)', () => {
       const { item, key, ran, closed } = await render();
       expect(document.activeElement).toBe(item('OPEN_COMMAND_PALETTE'));
       key('ArrowDown');
+      key('ArrowDown');
+      key('ArrowDown');
       expect(document.activeElement).toBe(item('RELOAD_DIR'));
+      key('ArrowUp');
+      key('ArrowUp');
+      expect(document.activeElement).toBe(item('OPEN_GOTO_ANYTHING_DLG'));
       key('ArrowRight');
       expect(document.activeElement).toBe(item('OPEN_MARK_PATTERN_DLG'));
       key('ArrowUp');

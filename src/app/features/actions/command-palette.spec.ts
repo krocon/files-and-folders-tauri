@@ -1,3 +1,4 @@
+import { PaletteStore } from '../palette/palette.store';
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../core/actions/action.service';
 import { KeymapApi } from '../../core/actions/keymap-api';
@@ -14,7 +15,7 @@ import { PaletteApi } from '../../core/palette/palette-api';
 import { FakePaletteApi } from '../../../testing/fake-palette-api';
 
 describe('CommandPalette', () => {
-  async function render() {
+  async function render(start: 'all' | 'go' | 'do' = 'all') {
     TestBed.configureTestingModule({
       imports: [CommandPalette],
       providers: [
@@ -30,6 +31,7 @@ describe('CommandPalette', () => {
     let reloaded = 0;
     actions.register({ RELOAD_DIR: { run: () => void reloaded++ } });
     const dialogs = TestBed.inject(DialogService);
+    TestBed.inject(PaletteStore).startAs(start);
     dialogs.show('palette');
     const fixture = TestBed.createComponent(CommandPalette);
     fixture.detectChanges();
@@ -55,6 +57,29 @@ describe('CommandPalette', () => {
     const options = el.querySelectorAll('[role="option"]');
     expect(options.length).toBeGreaterThan(20);
     expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+  });
+
+  it('"Go to anything" lists places only, actions still come with ">"', async () => {
+    const { el, input, type } = await render('go');
+    expect(el.querySelector('[role="dialog"]')?.textContent).toContain('Go to anything');
+    expect(input.value).toBe('');
+    type('reload');
+    expect(el.querySelector('[role="listbox"]')?.textContent).not.toContain('Reload');
+    type('>reload');
+    expect(el.querySelector('[role="option"]')?.textContent).toContain('Reload');
+  });
+
+  it('"Do anything" starts with ">" and lists actions only; the next palette is the normal one', async () => {
+    const { el, input, type } = await render('do');
+    expect(el.querySelector('[role="dialog"]')?.textContent).toContain('Do anything');
+    expect(input.value).toBe('>');
+    expect(el.querySelectorAll('[role="option"]').length).toBeGreaterThan(20);
+    type('>reload');
+    expect(el.querySelector('[role="option"]')?.textContent).toContain('Reload');
+    const store = TestBed.inject(PaletteStore);
+    store.opened();
+    expect(store.start()).toBe('all');
+    expect(store.text()).toBe('');
   });
 
   it('lists the colour schemes and switches to one (design 013 E3)', async () => {

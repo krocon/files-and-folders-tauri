@@ -3,6 +3,7 @@ import { translatable, Translation } from '../../core/i18n/i18n';
 /** Texts of the universal palette (design 043). */
 const PALETTE_EN = {
   placeholder: 'Files, folders, actions… (> actions only, ~/ path, ext:pdf, in:, size>, modified:)',
+  placeholderGo: 'Files and folders… (~/ path, ext:pdf, in:, size>, modified:)',
   groupActions: 'Actions',
   groupFolders: 'Folders',
   groupFiles: 'Files',
@@ -44,6 +45,7 @@ const PALETTE_EN = {
 const PALETTE_DE: Translation<typeof PALETTE_EN> = {
   placeholder:
     'Dateien, Ordner, Aktionen… (> nur Aktionen, ~/ Pfad, ext:pdf, in:, size>, modified:)',
+  placeholderGo: 'Dateien und Ordner… (~/ Pfad, ext:pdf, in:, size>, modified:)',
   groupActions: 'Aktionen',
   groupFolders: 'Ordner',
   groupFiles: 'Dateien',

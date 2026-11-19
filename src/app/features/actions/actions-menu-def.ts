@@ -12,11 +12,14 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * Connect to Server (034, next to Change Dir – it is a way to go somewhere), Swap Panels and
  * Target = Source (040, next to the panel entries), Toggle Flat View (038, under Toggle Hidden Files),
  * Quick View (010, under Toggle Shell – Marc, 2026-10-24), Double-click actions (072, next to the starter
- * menu – Marc, 2026-11-07).
+ * menu – Marc, 2026-11-07), Go to anything / Do anything (the palette with files and folders only / with
+ * actions only, under Command Palette – Marc, 2026-11-19).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
     'OPEN_COMMAND_PALETTE',
+    'OPEN_GOTO_ANYTHING_DLG',
+    'OPEN_DO_ANYTHING_DLG',
     '-',
     'RELOAD_DIR',
     'OPEN_CHDIR_DLG',
@@ -96,6 +99,8 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
  */
 export const OPENS_DIALOG: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_COMMAND_PALETTE',
+  'OPEN_GOTO_ANYTHING_DLG',
+  'OPEN_DO_ANYTHING_DLG',
   'OPEN_CHDIR_DLG',
   'OPEN_CONNECTIONS_DLG',
   'OPEN_FIND_DLG',

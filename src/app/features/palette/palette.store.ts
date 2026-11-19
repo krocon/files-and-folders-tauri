@@ -28,6 +28,8 @@ import { PALETTE_TEXTS } from './palette-texts';
 
 /** Settings changes reach Rust after this pause (typing a folder). */
 export const CONFIGURE_DEBOUNCE_MS = 400;
+export type PaletteStart = 'all' | 'go' | 'do';
+
 /** A query starts this long after the last key (pasting several characters is one query). */
 export const QUERY_DEBOUNCE_MS = 25;
 /** While the index is built the status is read this often (palette open). */
@@ -83,6 +85,12 @@ export class PaletteStore {
   }
 
   readonly text = signal('');
+  /**
+   * How the open palette started: everything, "Go to anything" (files and folders, no
+   * actions unless `>` is typed) or "Do anything" (starts with `>`, actions only).
+   */
+  readonly start = signal<PaletteStart>('all');
+  private nextStart: PaletteStart = 'all';
   /** File and folder hits from Rust, best first. */
   readonly hits = signal<readonly PaletteHit[]>([]);
   /** A query runs (the old hits stay until the first new ones come – no jumping list). */
@@ -165,10 +173,18 @@ export class PaletteStore {
 
   // ---- open / close ----
 
-  /** The palette opens: an empty query, the index status (read again while it is built). */
+  /** The next palette opens in this way (set right before the dialog is shown). */
+  startAs(start: PaletteStart): void {
+    this.nextStart = start;
+  }
+
+  /** The palette opens: an empty query (`>` for "Do anything"), the index status (read again while it is built). */
   opened(): void {
     this.seq++;
-    this.text.set('');
+    const start = this.nextStart;
+    this.nextStart = 'all';
+    this.start.set(start);
+    this.text.set(start === 'do' ? '>' : '');
     this.hits.set([]);
     this.stats.set(null);
     this.loading.set(false);

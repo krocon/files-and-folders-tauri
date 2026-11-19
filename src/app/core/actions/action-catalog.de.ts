@@ -31,6 +31,8 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   REMOTE_RECONNECT: 'Server dieses Tabs verbinden',
   OPEN_TERMINAL_HERE: 'Terminal hier öffnen',
   OPEN_COMMAND_PALETTE: 'Befehlspalette…',
+  OPEN_GOTO_ANYTHING_DLG: 'Gehe zu allem…',
+  OPEN_DO_ANYTHING_DLG: 'Alles ausführen…',
   OPEN_CALL_ACTION_DLG: 'Aktion aufrufen…',
   OPEN_CONTEXT_MENU: 'Kontextmenü',
   OPEN_ACTIONS_MENU: 'Actions-Menü',

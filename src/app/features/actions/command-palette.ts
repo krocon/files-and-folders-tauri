@@ -1,5 +1,6 @@
 import { ACT_TEXTS } from './actions-texts';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -67,7 +68,7 @@ const TOOLS_CATEGORY = 'Tools';
   imports: [Modal, PreviewContent],
   template: `
     <app-modal
-      [heading]="heading() ?? t.commandPalette"
+      [heading]="title()"
       [width]="universal() && palette.previewOn() ? '64rem' : '44rem'"
       (closed)="close()"
     >
@@ -82,7 +83,13 @@ const TOOLS_CATEGORY = 'Tools';
         [attr.aria-activedescendant]="activeDescendant()"
         [attr.aria-describedby]="universal() ? hintId : null"
         [placeholder]="
-          scope() === 'tools' ? t.searchTools : universal() ? p.placeholder : t.searchActions
+          scope() === 'tools'
+            ? t.searchTools
+            : !universal()
+              ? t.searchActions
+              : palette.start() === 'go'
+                ? p.placeholderGo
+                : p.placeholder
         "
         spellcheck="false"
         autocomplete="off"
@@ -296,6 +303,7 @@ export class CommandPalette implements OnInit, OnDestroy {
     compact: true,
     wrap: true,
   };
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly list = viewChild<ElementRef<HTMLElement>>('list');
   /** Without a palette query (F10, tools) the text lives here. */
   private readonly localQuery = signal('');
@@ -312,7 +320,30 @@ export class CommandPalette implements OnInit, OnDestroy {
     this.universal() ? this.palette.text() : this.localQuery(),
   );
 
+  /** "Go to anything" / "Do anything" are the same palette under their own name. */
+  protected readonly title = computed(() => {
+    const heading = this.heading();
+    if (heading !== null) {
+      return heading;
+    }
+    const start = this.palette.start();
+    return start === 'go'
+      ? this.t.goToAnything
+      : start === 'do'
+        ? this.t.doAnything
+        : this.t.commandPalette;
+  });
+
   constructor() {
+    // "Do anything" starts with `>`: the caret goes behind it (the modal selects the text)
+    afterNextRender(() => {
+      setTimeout(() => {
+        const input = this.host.nativeElement.querySelector<HTMLInputElement>('input.query');
+        if (input?.value) {
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      });
+    });
     // the store's active hit follows the list (preview, hit actions)
     effect(() => {
       const row = this.activeRow();
@@ -348,10 +379,16 @@ export class CommandPalette implements OnInit, OnDestroy {
         ? parsed.actionText
         : parsed.plain;
     const rows: ItemRow[] = [];
+    // "Go to anything": places only – actions still come with `>`
+    if (universal && this.palette.start() === 'go' && parsed.mode !== 'actions') {
+      return rows;
+    }
     const ids = this.scope() === 'tools' ? [] : ACTION_IDS;
     for (const id of ids) {
       if (
         id === 'OPEN_COMMAND_PALETTE' ||
+        id === 'OPEN_GOTO_ANYTHING_DLG' ||
+        id === 'OPEN_DO_ANYTHING_DLG' ||
         id === 'OPEN_CALL_ACTION_DLG' ||
         HIT_ACTION_IDS.has(id)
       ) {

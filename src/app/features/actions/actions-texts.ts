@@ -12,6 +12,8 @@ export const ACT_EN = {
   /** Short labels of the Actions menu ▴, as in the old version (design 020 E1). */
   menu: {
     OPEN_COMMAND_PALETTE: 'Command Palette…',
+    OPEN_GOTO_ANYTHING_DLG: 'Go to Anything…',
+    OPEN_DO_ANYTHING_DLG: 'Do Anything…',
     RELOAD_DIR: 'Reload',
     OPEN_CHDIR_DLG: 'Change Dir…',
     OPEN_CONNECTIONS_DLG: 'Connect to Server…',
@@ -66,6 +68,8 @@ export const ACT_EN = {
   } as Readonly<Record<string, string>>,
   // palette
   commandPalette: 'Command Palette',
+  goToAnything: 'Go to anything',
+  doAnything: 'Do anything',
   callAction: 'Call action',
   openWithTool: 'Open with tool',
   searchTools: 'Type to search tools…',
@@ -112,6 +116,8 @@ const ACT_DE: Translation<typeof ACT_EN> = {
   folders: 'Ordner',
   menu: {
     OPEN_COMMAND_PALETTE: 'Befehlspalette…',
+    OPEN_GOTO_ANYTHING_DLG: 'Gehe zu allem…',
+    OPEN_DO_ANYTHING_DLG: 'Alles ausführen…',
     RELOAD_DIR: 'Neu laden',
     OPEN_CHDIR_DLG: 'Ordner wechseln…',
     OPEN_CONNECTIONS_DLG: 'Mit Server verbinden…',
@@ -165,6 +171,8 @@ const ACT_DE: Translation<typeof ACT_EN> = {
     OPEN_ABOUT_DLG: 'Über…',
   },
   commandPalette: 'Befehlspalette',
+  goToAnything: 'Gehe zu allem',
+  doAnything: 'Alles ausführen',
   callAction: 'Aktion aufrufen',
   openWithTool: 'Mit Tool öffnen',
   searchTools: 'Tippen, um Tools zu suchen…',

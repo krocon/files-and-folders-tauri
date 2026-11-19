@@ -258,83 +258,84 @@ Befehlspalette (`Strg+Shift+P` / `⌘⇧P`). Aktionen späterer Prompts sind sch
 Einfache Tasten (Leertaste, Enter, Tab, Buchstaben) wirken nur, wenn die Dateiliste den Fokus hat; die
 Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 
-| Aktion                                | Windows / Linux                       | macOS                    |
-| ------------------------------------- | ------------------------------------- | ------------------------ |
-| Open                                  | `Enter`                               | `Enter`                  |
-| Parent folder                         | `Backspace`                           | `Backspace`              |
-| Open folder in new tab                | `Ctrl+Enter`                          | `⌘Enter`                 |
-| Reload                                | `Ctrl+R`                              | `⌘R`                     |
-| History back                          | `Alt+ArrowLeft`                       | `⌘[`                     |
-| History forward                       | `Alt+ArrowRight`                      | `⌘]`                     |
-| Go to path…                           | `Ctrl+L`, `Ctrl+Alt+D`                | `⌘L`, `⌃⌥D`              |
-| Find folder (change dir)…             | `Alt+F10`                             | `⌥F10`                   |
-| Go to file (search result)            | `Ctrl+Shift+G`                        | `⌘⇧G`                    |
-| Flat view (all files below)           | `Ctrl+B`                              | `⌘B`                     |
-| Folder menu, left panel               | `Alt+F1`                              | `⌥F1`                    |
-| Folder menu, right panel              | `Alt+F2`                              | `⌥F2`                    |
-| Calculate folder sizes                | `Alt+Shift+Enter`                     | `⌥⇧Enter`                |
-| Context menu                          | `Shift+F10`, Kontextmenü-Taste        | `⇧F10`                   |
-| Menu bar                              | `Alt+M`                               | – (nativ)                |
-| Einstellungen…                        | `Ctrl+,`                              | `⌘,`                     |
-| Toggle filter                         | `Ctrl+Alt+F`                          | `⌘⌥F`                    |
-| Toggle hidden files                   | `Ctrl+H`                              | `⌘⇧.`                    |
-| Toggle shell                          | `Shift+F11`                           | `⇧F11`                   |
-| Namen in die Shell einfügen           | `Ctrl+Shift+Enter`                    | `⌘⇧Enter`                |
-| Volle Pfade in die Shell einfügen     | `Ctrl+Alt+Enter`                      | `⌘⌥Enter`                |
-| Copy names to clipboard               | `Ctrl+Alt+N`                          | `⌘⌥N`                    |
-| Copy full paths to clipboard          | `Ctrl+Alt+C`                          | `⌘⌥C`                    |
-| Show in file manager                  | `Ctrl+Shift+F`                        | `⌘⇧F`                    |
-| Open terminal here                    | `Ctrl+Shift+C`                        | `⌘⇧C`                    |
-| Command Palette…                      | `Ctrl+Shift+P`                        | `⌘⇧P`, `⌘⌃G`             |
-| Actions menu ▴                        | `Ctrl+F12`                            | `⌃K ⌃M`                  |
-| Toggle mark and move up / in place    | `Shift+Space` / `Ctrl+Shift+Space`    | `⇧Space` / `⌘⇧Space`     |
-| Call action…                          | `F10`                                 | `F10`                    |
-| Toggle mark and move down             | `Space`, `Insert`                     | `Space`, `⌃0`            |
-| Mark and move down                    | `Shift+ArrowDown`                     | `⇧ArrowDown`             |
-| Mark and move up                      | `Shift+ArrowUp`                       | `⇧ArrowUp`               |
-| Mark to the first entry               | `Shift+Home`                          | `⇧Home`                  |
-| Mark to the last entry                | `Shift+End`                           | `⇧End`                   |
-| Mark all                              | `Ctrl+A`, `Ctrl+NumpadAdd`            | `⌘A`, `⌘NumpadAdd`       |
-| Unmark all                            | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract` | `⌘⇧A`, `⌘NumpadSubtract` |
-| Invert marks                          | `NumpadMultiply`                      | `NumpadMultiply`         |
-| Mark by pattern…                      | `NumpadAdd`                           | `NumpadAdd`              |
-| Unmark by pattern…                    | `NumpadSubtract`                      | `NumpadSubtract`         |
-| Switch panel                          | `Tab`                                 | `Tab`                    |
-| Left panel                            | `Alt+1`                               | `⌥1`                     |
-| Right panel                           | `Alt+2`                               | `⌥2`                     |
-| Swap panels / with all tabs (040)     | `Ctrl+U` / `Ctrl+Shift+U`             | `⌘U` / `⌘⇧U`             |
-| Target = source (040)                 | `Ctrl+Alt+O`                          | `⌘⌥O`                    |
-| Open in the left / right panel (040)  | `Ctrl+←` / `Ctrl+→`                   | `⌘⌥←` / `⌘⌥→`            |
-| Next tab                              | `Ctrl+Tab`                            | `⌃Tab`                   |
-| Previous tab                          | `Ctrl+Shift+Tab`                      | `⌃⇧Tab`                  |
-| Clone tab                             | `Ctrl+T`                              | `⌘⌥T`                    |
-| Close tab                             | `Ctrl+W`                              | `⌘⌥W`                    |
-| Toggle favourite                      | `Ctrl+D`                              | `⌘D`                     |
-| Find…                                 | `Alt+F7`, `Ctrl+F`                    | `⌥F7`, `⌘F`              |
-| Search again                          | `Ctrl+Shift+F7`                       | `⌘⇧F7`                   |
-| View                                  | `F3`                                  | `F3`                     |
-| Quick view in the other panel         | `Ctrl+Q`                              | `⌃Q`                     |
-| Edit (default app until 011)          | `F4`                                  | `F4`                     |
-| Create file…                          | `Shift+F4`                            | `⇧F4`                    |
-| Copy…                                 | `F5`                                  | `F5`                     |
-| Move…                                 | `F6`                                  | `F6`                     |
-| Rename…                               | `Shift+F6`                            | `⇧F6`                    |
-| Create folder…                        | `F7`, `Shift+F7`                      | `F7`, `⇧F7`              |
-| Delete…                               | `F8`, `Delete`                        | `F8`, `⌘Backspace`       |
-| Multi rename…                         | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M`     | `⌘F6`                    |
-| Create several folders…               | `Ctrl+F7`                             | `⌘F7`                    |
-| Group files…                          | `Alt+G`, `Ctrl+Alt+G`                 | `⌥G`, `⌘⌥G`              |
-| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D`      | `⌘⌥R`, `⌘⌥⇧D`            |
-| Properties…                           | `Alt+Enter`                           | `⌥Enter`, `⌘I`           |
-| Change attributes…                    | `Ctrl+Shift+F2`                       | `⌘⇧F2`                   |
-| Pack…                                 | `Alt+F5`                              | `⌥F5`                    |
-| Unpack…                               | `Alt+F9`                              | `⌥F9`                    |
-| Find duplicates…                      | `Alt+Shift+F7`                        | `⌥⇧F7`                   |
-| Disk usage…                           | `Ctrl+Shift+D`                        | `⌘⇧D`                    |
-| Keyboard shortcuts…                   | `Ctrl+Shift+K`                        | `⌘⇧K`                    |
-| Open with tool…                       | `Ctrl+Shift+X`                        | `⌘⇧X`                    |
-| Tasks…                                | `Ctrl+F11`                            | `⌃K F6`                  |
-| Next colour scheme                    | `Ctrl+Alt+Shift+T`                    | `⌘⌃⌥T`                   |
+| Aktion                                | Windows / Linux                                               | macOS                    |
+| ------------------------------------- | ------------------------------------------------------------- | ------------------------ |
+| Open                                  | `Enter`                                                       | `Enter`                  |
+| Parent folder                         | `Backspace`                                                   | `Backspace`              |
+| Open folder in new tab                | `Ctrl+Enter`                                                  | `⌘Enter`                 |
+| Reload                                | `Ctrl+R`                                                      | `⌘R`                     |
+| History back                          | `Alt+ArrowLeft`                                               | `⌘[`                     |
+| History forward                       | `Alt+ArrowRight`                                              | `⌘]`                     |
+| Go to path…                           | `Ctrl+L`, `Ctrl+Alt+D`                                        | `⌘L`, `⌃⌥D`              |
+| Find folder (change dir)…             | `Alt+F10`                                                     | `⌥F10`                   |
+| Go to file (search result)            | `Ctrl+Shift+G`                                                | `⌘⇧G`                    |
+| Flat view (all files below)           | `Ctrl+B`                                                      | `⌘B`                     |
+| Folder menu, left panel               | `Alt+F1`                                                      | `⌥F1`                    |
+| Folder menu, right panel              | `Alt+F2`                                                      | `⌥F2`                    |
+| Calculate folder sizes                | `Alt+Shift+Enter`                                             | `⌥⇧Enter`                |
+| Context menu                          | `Shift+F10`, Kontextmenü-Taste                                | `⇧F10`                   |
+| Menu bar                              | `Alt+M`                                                       | – (nativ)                |
+| Einstellungen…                        | `Ctrl+,`                                                      | `⌘,`                     |
+| Toggle filter                         | `Ctrl+Alt+F`                                                  | `⌘⌥F`                    |
+| Toggle hidden files                   | `Ctrl+H`                                                      | `⌘⇧.`                    |
+| Toggle shell                          | `Shift+F11`                                                   | `⇧F11`                   |
+| Namen in die Shell einfügen           | `Ctrl+Shift+Enter`                                            | `⌘⇧Enter`                |
+| Volle Pfade in die Shell einfügen     | `Ctrl+Alt+Enter`                                              | `⌘⌥Enter`                |
+| Copy names to clipboard               | `Ctrl+Alt+N`                                                  | `⌘⌥N`                    |
+| Copy full paths to clipboard          | `Ctrl+Alt+C`                                                  | `⌘⌥C`                    |
+| Show in file manager                  | `Ctrl+Shift+F`                                                | `⌘⇧F`                    |
+| Open terminal here                    | `Ctrl+Shift+C`                                                | `⌘⇧C`                    |
+| Command Palette…                      | `Ctrl+Shift+P`                                                | `⌘⇧P`, `⌘⌃G`             |
+| Go to anything… / Do anything…        | – (Palette nur mit Dateien/Ordnern bzw. mit `>` nur Aktionen) | –                        |
+| Actions menu ▴                        | `Ctrl+F12`                                                    | `⌃K ⌃M`                  |
+| Toggle mark and move up / in place    | `Shift+Space` / `Ctrl+Shift+Space`                            | `⇧Space` / `⌘⇧Space`     |
+| Call action…                          | `F10`                                                         | `F10`                    |
+| Toggle mark and move down             | `Space`, `Insert`                                             | `Space`, `⌃0`            |
+| Mark and move down                    | `Shift+ArrowDown`                                             | `⇧ArrowDown`             |
+| Mark and move up                      | `Shift+ArrowUp`                                               | `⇧ArrowUp`               |
+| Mark to the first entry               | `Shift+Home`                                                  | `⇧Home`                  |
+| Mark to the last entry                | `Shift+End`                                                   | `⇧End`                   |
+| Mark all                              | `Ctrl+A`, `Ctrl+NumpadAdd`                                    | `⌘A`, `⌘NumpadAdd`       |
+| Unmark all                            | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract`                         | `⌘⇧A`, `⌘NumpadSubtract` |
+| Invert marks                          | `NumpadMultiply`                                              | `NumpadMultiply`         |
+| Mark by pattern…                      | `NumpadAdd`                                                   | `NumpadAdd`              |
+| Unmark by pattern…                    | `NumpadSubtract`                                              | `NumpadSubtract`         |
+| Switch panel                          | `Tab`                                                         | `Tab`                    |
+| Left panel                            | `Alt+1`                                                       | `⌥1`                     |
+| Right panel                           | `Alt+2`                                                       | `⌥2`                     |
+| Swap panels / with all tabs (040)     | `Ctrl+U` / `Ctrl+Shift+U`                                     | `⌘U` / `⌘⇧U`             |
+| Target = source (040)                 | `Ctrl+Alt+O`                                                  | `⌘⌥O`                    |
+| Open in the left / right panel (040)  | `Ctrl+←` / `Ctrl+→`                                           | `⌘⌥←` / `⌘⌥→`            |
+| Next tab                              | `Ctrl+Tab`                                                    | `⌃Tab`                   |
+| Previous tab                          | `Ctrl+Shift+Tab`                                              | `⌃⇧Tab`                  |
+| Clone tab                             | `Ctrl+T`                                                      | `⌘⌥T`                    |
+| Close tab                             | `Ctrl+W`                                                      | `⌘⌥W`                    |
+| Toggle favourite                      | `Ctrl+D`                                                      | `⌘D`                     |
+| Find…                                 | `Alt+F7`, `Ctrl+F`                                            | `⌥F7`, `⌘F`              |
+| Search again                          | `Ctrl+Shift+F7`                                               | `⌘⇧F7`                   |
+| View                                  | `F3`                                                          | `F3`                     |
+| Quick view in the other panel         | `Ctrl+Q`                                                      | `⌃Q`                     |
+| Edit (default app until 011)          | `F4`                                                          | `F4`                     |
+| Create file…                          | `Shift+F4`                                                    | `⇧F4`                    |
+| Copy…                                 | `F5`                                                          | `F5`                     |
+| Move…                                 | `F6`                                                          | `F6`                     |
+| Rename…                               | `Shift+F6`                                                    | `⇧F6`                    |
+| Create folder…                        | `F7`, `Shift+F7`                                              | `F7`, `⇧F7`              |
+| Delete…                               | `F8`, `Delete`                                                | `F8`, `⌘Backspace`       |
+| Multi rename…                         | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M`                             | `⌘F6`                    |
+| Create several folders…               | `Ctrl+F7`                                                     | `⌘F7`                    |
+| Group files…                          | `Alt+G`, `Ctrl+Alt+G`                                         | `⌥G`, `⌘⌥G`              |
+| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D`                              | `⌘⌥R`, `⌘⌥⇧D`            |
+| Properties…                           | `Alt+Enter`                                                   | `⌥Enter`, `⌘I`           |
+| Change attributes…                    | `Ctrl+Shift+F2`                                               | `⌘⇧F2`                   |
+| Pack…                                 | `Alt+F5`                                                      | `⌥F5`                    |
+| Unpack…                               | `Alt+F9`                                                      | `⌥F9`                    |
+| Find duplicates…                      | `Alt+Shift+F7`                                                | `⌥⇧F7`                   |
+| Disk usage…                           | `Ctrl+Shift+D`                                                | `⌘⇧D`                    |
+| Keyboard shortcuts…                   | `Ctrl+Shift+K`                                                | `⌘⇧K`                    |
+| Open with tool…                       | `Ctrl+Shift+X`                                                | `⌘⇧X`                    |
+| Tasks…                                | `Ctrl+F11`                                                    | `⌃K F6`                  |
+| Next colour scheme                    | `Ctrl+Alt+Shift+T`                                            | `⌘⌃⌥T`                   |
 
 Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
 Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,

@@ -251,6 +251,8 @@ export const MENU_BAR: readonly TopMenu[] = [
       'OPEN_FOLDER_MENU_RIGHT',
       'OPEN_FOLDER_FINDER_DLG',
       'OPEN_COMMAND_PALETTE',
+      'OPEN_GOTO_ANYTHING_DLG',
+      'OPEN_DO_ANYTHING_DLG',
       'GOTO_FILE',
       'TOGGLE_FAVORITE',
       '-',

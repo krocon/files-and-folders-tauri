@@ -1,7 +1,7 @@
 import { ActionId } from '../../core/actions/action-catalog';
 import { ActionService } from '../../core/actions/action.service';
 import { DialogService } from '../../shared/dialog/dialog.service';
-import { HitAction, PaletteStore } from './palette.store';
+import { HitAction, PaletteStart, PaletteStore } from './palette.store';
 
 /**
  * The actions on palette hits (design 043 E4). They are catalog actions, enabled only
@@ -39,12 +39,18 @@ export function registerPaletteActions(
   dialogs: DialogService,
 ): () => void {
   const open = () => dialogs.open() === 'palette';
-  return actions.register(
-    Object.fromEntries(
+  const show = (start: PaletteStart) => () => {
+    palette.startAs(start);
+    dialogs.show('palette');
+  };
+  return actions.register({
+    OPEN_GOTO_ANYTHING_DLG: { run: show('go') },
+    OPEN_DO_ANYTHING_DLG: { run: show('do') },
+    ...Object.fromEntries(
       HIT_ACTIONS.map((a) => [
         a.id,
         { enabled: () => open() && palette.can(a.action), run: () => palette.runAction(a.action) },
       ]),
     ),
-  );
+  });
 }
