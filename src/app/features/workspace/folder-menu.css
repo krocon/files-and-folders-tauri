@@ -1,0 +1,137 @@
+/* no box in the flex row of the tab bar */
+:host {
+  display: contents;
+}
+
+/* folder menu ▾: colours of the Actions menu (--color-menu-*), not of the context menus */
+.panel {
+  position: fixed;
+  z-index: 99999;
+  top: var(--folder-menu-top, 0);
+  left: 4px;
+  right: 4px;
+  /* a very wide window: no wider than two columns of paths need, on the side of the panel */
+  max-width: 90rem;
+  max-height: calc(100vh - var(--folder-menu-top, 0px) - 4px);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  color: var(--color-menu-text);
+  background: var(--color-menu-bg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+
+  &.right {
+    margin-left: auto;
+  }
+}
+
+.search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: var(--border-width) solid color-mix(in srgb, currentColor 35%, transparent);
+
+  input {
+    flex: 1;
+  }
+}
+
+.columns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  /* nothing matches: only the note below */
+  &.empty {
+    display: none;
+  }
+}
+
+/* each column scrolls on its own when a list is longer than the window */
+.column {
+  min-height: 0;
+  padding: var(--spacing-1) 0;
+  overflow-y: auto;
+
+  & + & {
+    border-left: var(--border-width) solid color-mix(in srgb, currentColor 35%, transparent);
+  }
+}
+
+/* sections apart by a thin line; their headings are for screen readers (aria-label) */
+.group + .group {
+  margin-top: var(--spacing-1);
+  padding-top: var(--spacing-1);
+  border-top: var(--border-width) solid color-mix(in srgb, currentColor 35%, transparent);
+}
+
+[role='option'] {
+  display: flex;
+  align-items: baseline;
+  padding: 6px var(--spacing-4);
+  cursor: pointer;
+
+  /* highlight as in the Actions menu: --color-selection may equal the menu colour (Norton) */
+  &.active {
+    background: var(--color-row-hover);
+  }
+
+  &[aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.icon {
+  flex: none;
+  width: 1.3em;
+  margin-right: var(--spacing-2);
+  text-align: center;
+}
+
+/* a long path keeps its end: the head takes the ellipsis, the tail stays whole */
+.label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.head {
+  flex: 0 1 auto;
+  min-width: 3ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tail {
+  flex: none;
+}
+
+.no-match {
+  padding: var(--spacing-3) var(--spacing-4);
+  opacity: 0.75;
+}
+
+/* narrow window: one column, scrolled as a whole (same value as ONE_COLUMN_QUERY) */
+@media (max-width: 720px) {
+  .columns {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .column {
+    overflow-y: visible;
+
+    & + & {
+      border-left: 0;
+      border-top: var(--border-width) solid color-mix(in srgb, currentColor 35%, transparent);
+    }
+  }
+}

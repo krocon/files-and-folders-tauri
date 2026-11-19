@@ -16,9 +16,9 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   (`markiert / gesamt in Dateien / Ordner`); ein Splitter für alle Zeilen; darunter die Button-Leiste (noch
   fehlende Funktionen gedimmt, „kommt in Prompt …“).
 - **Aktive Seite** = Quelle, andere = Ziel; Klick in eine Seite oder `Tab` wechselt, Ansage für Screenreader.
-- **Panel-Aktionen** (Prompt 040, wie Total Commander): *Seiten tauschen* (`Strg+U` / `⌘U`; der gewählte Tab wandert
-  mit Verlauf, Cursor und Filter), *mit allen Tabs* (`Strg+Shift+U` / `⌘⇧U`), *Ziel = Quelle* (`Strg+Alt+O` / `⌘⌥O`)
-  und *in der linken/rechten Seite öffnen* (`Strg+←/→` / `⌘⌥←/→`): Ordner, „..“ oder Archiv unter dem Cursor öffnet
+- **Panel-Aktionen** (Prompt 040, wie Total Commander): _Seiten tauschen_ (`Strg+U` / `⌘U`; der gewählte Tab wandert
+  mit Verlauf, Cursor und Filter), _mit allen Tabs_ (`Strg+Shift+U` / `⌘⇧U`), _Ziel = Quelle_ (`Strg+Alt+O` / `⌘⌥O`)
+  und _in der linken/rechten Seite öffnen_ (`Strg+←/→` / `⌘⌥←/→`): Ordner, „..“ oder Archiv unter dem Cursor öffnet
   sich dort, bei einer Datei der aktuelle Ordner; der Fokus bleibt auf der aktiven Seite.
 - **Tabs je Seite**: klonen (`+`), schließen (`−`, der letzte bleibt), Kontextmenü (Neu laden, Schließen, ins andere
   Panel verschieben/klonen, nach links/rechts), Doppelklick lädt neu, Mittelklick schließt; jeder Tab behält Pfad,
@@ -28,8 +28,8 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   nächster existierender Elternordner mit Hinweis; kaputte Datei → Defaults + Warnung (alte Datei als `.bad`).
 - **Ordnergedächtnis** (Prompt 027): jeder Tab merkt sich Cursor, Markierung und Scrollposition seiner letzten 50
   Ordner auch über einen Neustart (`folder-memory.json`; nur noch vorhandene Einträge werden wieder markiert; Archive,
-  Server und Ergebnis-Tabs nie). Einstellung *Cursor und Markierung je Ordner merken* (aus = vergessen).
-  *Dateien gruppieren*, *Ordner aufräumen*, *Mehrere Ordner anlegen* und *Bedingt markieren* öffnen mit den Werten ihres letzten Laufs
+  Server und Ergebnis-Tabs nie). Einstellung _Cursor und Markierung je Ordner merken_ (aus = vergessen).
+  _Dateien gruppieren_, _Ordner aufräumen_, _Mehrere Ordner anlegen_ und _Bedingt markieren_ öffnen mit den Werten ihres letzten Laufs
   (Aufräumen startet trotzdem immer mit Papierkorb).
 - **Bedingt markieren („Select if…“)** (`Strg+Alt+S`, macOS `⌘⌥S`, Prompt 046): markiert Einträge nach Beziehungen und
   Eigenschaften – etwa alle Filme samt Cover-Bild, wenn ein gleichnamiges Bild im selben Ordner existiert, Filme ohne
@@ -54,8 +54,8 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   auch „für alle“. Verschieben benennt auf demselben Laufwerk nur um; über Laufwerke wird jede Datei erst kopiert und
   dann gelöscht.
 - **Fehlerhafte Tasks wiederholen** (Prompt 048): In der Task-Liste haben fehlgeschlagene Tasks und Tasks mit Fehlern
-  einen Knopf *Wiederholen* (auch neben der Fehlerliste). Ein ganz fehlgeschlagener Task läuft erneut; bei *Fertig mit
-  Fehlern* nur das Fehlgeschlagene – beim Kopieren/Verschieben jede Datei in ihren genauen Ziel-Unterordner, danach
+  einen Knopf _Wiederholen_ (auch neben der Fehlerliste). Ein ganz fehlgeschlagener Task läuft erneut; bei _Fertig mit
+  Fehlern_ nur das Fehlgeschlagene – beim Kopieren/Verschieben jede Datei in ihren genauen Ziel-Unterordner, danach
   verschwinden geleerte Quellordner; bewusst übersprungene und inzwischen ersetzte Einträge bleiben unberührt.
   Zeitüberschreitungen (SMB, `os error 60`) heißen jetzt auch so.
 - **Löschen**: `F8`/`Entf` (macOS `⌘⌫`) in den Papierkorb, `Shift+F8`/`Shift+Entf` (macOS `⌘⌥⌫`) endgültig mit rotem
@@ -79,11 +79,11 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Staffel/Folge im Namen (`S01E01`, `s1e1`, `S01.E01`, Doppelfolgen, `1x01`, „Staffel 1 Folge 2“, sonst aus dem
   Release-Ordner) – `x264`, `1080p`, `1920x1080` zählen nie. Serienordner = die markierten Ordner, sonst der
   angezeigte. Ziel `S01`, `S02` … (Vorlage `S{nn}`, `Staffel {n}` …) wahlweise im Ordner der anderen Seite (Standard),
-  im Serienordner selbst oder in *andere Seite + Ordner mit dem Seriennamen*; mehrere Serien in einen gemeinsamen
+  im Serienordner selbst oder in _andere Seite + Ordner mit dem Seriennamen_; mehrere Serien in einen gemeinsamen
   Zielordner sind gesperrt. **Kopieren** als Standard (`Strg/⌘+Enter`), Verschieben als Knopf;
   Beiwerk (`Sample/`, `*-sample.*`, `*.nfo` …) wird ignoriert, Untertitel auf Wunsch mitgenommen. Vorschau mit Status
   je Datei, Hinweisen zu doppelten/fehlenden Folgen und mehreren Serien. Nach dem Verschieben öffnet sich auf Wunsch
-  *Ordner aufräumen* mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).
+  _Ordner aufräumen_ mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).
 - **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`): leere Ordner (optional mit Systemmüll wie `.DS_Store` – Namen
   oder Muster wie `*.nfo`, seit 045) und
   Dateien nach Muster (`*.bak`) unterhalb des aktuellen bzw. der markierten Ordner – Vorschau, Papierkorb als Standard,
@@ -105,25 +105,25 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Markierung, `Alt+F9` entpackt markierte Archive (optional in einen Unterordner ihres Namens), `Alt+F5` packt die
   Markierung als ZIP, TAR oder TAR.GZ. Zip-Slip (`../`, absolute Pfade, Laufwerke), Links im Archiv und Zip-Bomben
   werden abgewiesen; vorhandene Dateien lösen die Konfliktfrage aus.
-- **Dateien vergleichen** (Prompt 037, Menü *Datei*, Kontextmenü bei Markierung): genau zwei markierte Dateien oder
+- **Dateien vergleichen** (Prompt 037, Menü _Datei_, Kontextmenü bei Markierung): genau zwei markierte Dateien oder
   die Cursor-Dateien beider Seiten; nebeneinander mit Zeilennummern, hinzugefügt/entfernt/geändert farbig, gleiche
-  Zeilen bis auf 3 Zeilen Kontext ausgeblendet (*Ganze Datei* zeigt alles), *Leerraum ignorieren*, *Groß/klein
-  ignorieren*, `F7`/`Shift+F7` springen zum nächsten/vorigen Unterschied; Kodierung und Zeilenende je Seite (UTF-8 und
+  Zeilen bis auf 3 Zeilen Kontext ausgeblendet (_Ganze Datei_ zeigt alles), _Leerraum ignorieren_, _Groß/klein
+  ignorieren_, `F7`/`Shift+F7` springen zum nächsten/vorigen Unterschied; Kodierung und Zeilenende je Seite (UTF-8 und
   Latin-1 gleichen Inhalts sind gleich). Binärdateien: Anzahl abweichender Bytes, Bereiche, Hex um die erste
-  Abweichung. *In … öffnen* übergibt beide Dateien an das Tool `diff` (FileMerge, WinMerge, Meld).
-- **Prüfsummen** (Prompt 039, Menü *Datei*): *Prüfsummen erzeugen…* für Markierung oder Cursor (Ordner rekursiv,
+  Abweichung. _In … öffnen_ übergibt beide Dateien an das Tool `diff` (FileMerge, WinMerge, Meld).
+- **Prüfsummen** (Prompt 039, Menü _Datei_): _Prüfsummen erzeugen…_ für Markierung oder Cursor (Ordner rekursiv,
   Verknüpfungen nie) – SHA-256/SHA-512/SHA-1/MD5 als eine Liste (`CHECKSUMS.sha256`, Format wie `sha256sum`, Namen
-  relativ) oder je Datei (`x.iso.sha256`); *Prüfsummen prüfen* auf einer `.md5/.sha1/.sha256/.sha512`- oder
+  relativ) oder je Datei (`x.iso.sha256`); _Prüfsummen prüfen_ auf einer `.md5/.sha1/.sha256/.sha512`- oder
   `*SUMS`-Datei (auch BSD-Format) zeigt OK/geändert/fehlt/nicht lesbar, Namen außerhalb des Ordners werden nicht
-  gelesen, „Geänderte Dateien markieren“; *SHA-256 in die Zwischenablage* für die Datei unter dem Cursor.
-- **Flache Ansicht** (Prompt 038, `Strg+B` / `⌘B`, Menü *Ansicht*): zeigt im selben Tab alle Dateien unterhalb des
-  Ordners mit Spalte „Pfad“ (relativ, „.“ = der Ordner selbst, sortiert Ordner für Ordner), *Ordner zeigen* nimmt
-  die Ordner dazu, *Hidden* betritt auch versteckte Ordner. Verknüpfungen werden gezeigt, nie betreten (kein Zyklus);
+  gelesen, „Geänderte Dateien markieren“; _SHA-256 in die Zwischenablage_ für die Datei unter dem Cursor.
+- **Flache Ansicht** (Prompt 038, `Strg+B` / `⌘B`, Menü _Ansicht_): zeigt im selben Tab alle Dateien unterhalb des
+  Ordners mit Spalte „Pfad“ (relativ, „.“ = der Ordner selbst, sortiert Ordner für Ordner), _Ordner zeigen_ nimmt
+  die Ordner dazu, _Hidden_ betritt auch versteckte Ordner. Verknüpfungen werden gezeigt, nie betreten (kein Zyklus);
   Obergrenze 100 000 Einträge mit Hinweis, `Esc` hält die Auflistung an. Markieren, Kopieren/Verschieben (gleiche
   Namen aus verschiedenen Unterordnern fragt die Konfliktfrage), Löschen, Umbenennen, Multi-Rename (im jeweiligen
   Unterordner), F3, Packen, Prüfsummen usw. wie im Ordner; Ordner anlegen ist aus. Nach eigenen Operationen, bei
   Änderungen im Wurzelordner und mit `Strg+R` wird im Hintergrund neu aufgelistet (Cursor und Marken bleiben);
-  Änderungen anderer Programme in Unterordnern erst nach `Strg+R`. Nochmals `Strg+B`, *Normale Ansicht* oder
+  Änderungen anderer Programme in Unterordnern erst nach `Strg+R`. Nochmals `Strg+B`, _Normale Ansicht_ oder
   `Alt+←` kehrt zurück (Cursor wie vorher); `Enter` auf einem Ordner geht hinein, `Backspace` in den Elternordner.
 - **Duplikate** (`Alt+Shift+F7`): gleicher Inhalt (Größe → SHA-256 von Anfang/Ende → voller SHA-256) oder nur gleiche
   Größe, optional gleicher Name; Ergebnis-Tab mit Spalte „Group“, „Keep: newest / oldest / first“ markiert alle bis auf
@@ -131,16 +131,16 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
 - **Speicherbelegung** (Prompt 033, `Strg+Umschalt+D` / `⌘⇧D`; „Speicherbelegung des Laufwerks…“ aus Palette und
   Menü): scannt die markierten Ordner, sonst den Ordner unter dem Cursor bzw. das ganze Laufwerk, als Job im
   Hintergrund (Ergebnis wächst sichtbar, Stopp behält den Teil). Tab „Belegung“ mit der normalen Liste – nach Größe,
-  Spalten *Anteil* (Balken) und *Objekte* –, daneben in der anderen Seite Ringe oder Kacheln und der Sammelkorb.
-  Enter/Klick geht in einen Ordner, Backspace/Mitte/Brotkrume hinaus, *Größte Dateien* zeigt die größten Dateien
-  des Teilbaums. Markierungen gelten über alle Ebenen; `F8` bzw. *Entfernen…* löscht sie (Papierkorb, Gefahrenprüfung
+  Spalten _Anteil_ (Balken) und _Objekte_ –, daneben in der anderen Seite Ringe oder Kacheln und der Sammelkorb.
+  Enter/Klick geht in einen Ordner, Backspace/Mitte/Brotkrume hinaus, _Größte Dateien_ zeigt die größten Dateien
+  des Teilbaums. Markierungen gelten über alle Ebenen; `F8` bzw. _Entfernen…_ löscht sie (Papierkorb, Gefahrenprüfung
   wie immer, was sich seit dem Scan geändert hat, bleibt liegen), danach stimmen die Summen ohne neuen Scan. Belegte
   Größe (Blöcke) als Standard, Hardlinks einmal, Links nie verfolgt, andere Laufwerke nur gezeigt.
 - **Server-Verbindungen** (Prompt 034, `Strg+K`/`Strg+N` / `⌘K`/`⌘N`, Menü „Gehe zu“, Ordnermenü ▾ Abschnitt
   „Server“, `sftp://…`/`ftp://…` im Pfadfeld): FTP, FTPS (explizit/implizit) und SFTP als Ordner im Panel – Tabs,
   Verlauf, Favoriten, Cache wie bei Netzlaufwerken. Dialog „Mit Server verbinden“ mit Profilliste und Formular
   (Art, Server, Port, Benutzer, anonym, Schlüsseldatei/SSH-Agent, Startordner, Zeitlimit, Verbindungen, Keepalive),
-  *Testen*, *Als Favorit*. Passwörter/Passphrasen werden beim Verbinden abgefragt und **nur im Schlüsselbund des
+  _Testen_, _Als Favorit_. Passwörter/Passphrasen werden beim Verbinden abgefragt und **nur im Schlüsselbund des
   Systems** gespeichert (ohne Schlüsselbund nur für die Sitzung); `connections.json` enthält nie ein Geheimnis.
   Unbekannte SSH-Host-Keys und nicht vertraute FTPS-Zertifikate zeigen den Fingerabdruck zur Bestätigung; ein
   geänderter Host-Key wird abgelehnt; Klartext-FTP ist rot markiert. `F5`/`F6` in beide Richtungen und zwischen
@@ -149,14 +149,19 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   zeigen „Verbinden“. Gesperrt auf Servern: Attribute, Shell, Terminal/Finder, Packen/Entpacken, Suche,
   Speicherbelegung, Multi-Rename, Ziehen ins System.
 - **Wird entfernt**: Solange ein Lösch-, Verschiebe- oder Aufräum-Job läuft, sind seine Einträge in der Liste
-  durchgestrichen, kursiv, gedämpft und schraffiert; in der Spalte *Größe* dreht ein kleiner Kreisel mit dem
+  durchgestrichen, kursiv, gedämpft und schraffiert; in der Spalte _Größe_ dreht ein kleiner Kreisel mit dem
   Fortschritt des Jobs (`…` solange er plant bzw. beim Papierkorb für einen einzelnen Eintrag). Im Diagramm der
   Speicherbelegung pulsieren die betroffenen Segmente samt Inhalt, im Sammelkorb sind sie durchgestrichen.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
-- Meldungen unten rechts verschwinden nach 60 Sekunden von selbst (oder vorher mit *Dismiss*).
+- Meldungen unten rechts verschwinden nach 60 Sekunden von selbst (oder vorher mit _Dismiss_).
 - **Laufwerke** (Prompt 011): das Ordnermenü ▾ (`Alt+F1`/`Alt+F2`) zeigt die Laufwerke mit Dateisystem und freiem
   Platz – Linux Mountpoints (ohne `proc`, `tmpfs`, Snaps …), macOS `/Volumes`, Windows Laufwerksbuchstaben. Ein totes
   Netzlaufwerk erscheint nach 1,5 s als „not reachable“, die Oberfläche blockiert nicht.
+- **Ordnermenü ▾ zweispaltig mit Filter**: über die Fensterbreite, links Home, Laufwerke, Server, Tabs der anderen
+  Seite und Favoriten, rechts die zuletzt besuchten Ordner (unter 720 px Fensterbreite eine Spalte). Der Fokus steht im
+  Filterfeld: Tippen filtert alle Abschnitte (jedes Wort, ohne Groß-/Kleinschreibung), `↑`/`↓` gehen durch beide
+  Spalten, `→`/`←` wechseln die Spalte, `Enter` öffnet, `Esc` schließt. Lange Pfade werden in der Mitte gekürzt (Ende
+  bleibt lesbar), der Tooltip zeigt alles. Code: `features/workspace/folder-menu.ts`, `folder-menu-logic.ts`.
 - **Im Dateimanager zeigen** (`Strg/⌘+Shift+F`: Finder `open -R`, Explorer `/select`, Linux über D-Bus
   `FileManager1`, sonst der Ordner) und **Terminal hier** (`Strg/⌘+Shift+C`: macOS Terminal, Windows Terminal bzw.
   `cmd`, Linux `$TERMINAL` → `x-terminal-emulator` → konsole/gnome-terminal/… je Desktop; eigenes Terminal in
@@ -253,83 +258,83 @@ Befehlspalette (`Strg+Shift+P` / `⌘⇧P`). Aktionen späterer Prompts sind sch
 Einfache Tasten (Leertaste, Enter, Tab, Buchstaben) wirken nur, wenn die Dateiliste den Fokus hat; die
 Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 
-| Aktion | Windows / Linux | macOS |
-| --- | --- | --- |
-| Open | `Enter` | `Enter` |
-| Parent folder | `Backspace` | `Backspace` |
-| Open folder in new tab | `Ctrl+Enter` | `⌘Enter` |
-| Reload | `Ctrl+R` | `⌘R` |
-| History back | `Alt+ArrowLeft` | `⌘[` |
-| History forward | `Alt+ArrowRight` | `⌘]` |
-| Go to path… | `Ctrl+L`, `Ctrl+Alt+D` | `⌘L`, `⌃⌥D` |
-| Find folder (change dir)… | `Alt+F10` | `⌥F10` |
-| Go to file (search result) | `Ctrl+Shift+G` | `⌘⇧G` |
-| Flat view (all files below) | `Ctrl+B` | `⌘B` |
-| Folder menu, left panel | `Alt+F1` | `⌥F1` |
-| Folder menu, right panel | `Alt+F2` | `⌥F2` |
-| Calculate folder sizes | `Alt+Shift+Enter` | `⌥⇧Enter` |
-| Context menu | `Shift+F10`, Kontextmenü-Taste | `⇧F10` |
-| Menu bar | `Alt+M` | – (nativ) |
-| Einstellungen… | `Ctrl+,` | `⌘,` |
-| Toggle filter | `Ctrl+Alt+F` | `⌘⌥F` |
-| Toggle hidden files | `Ctrl+H` | `⌘⇧.` |
-| Toggle shell | `Shift+F11` | `⇧F11` |
-| Namen in die Shell einfügen | `Ctrl+Shift+Enter` | `⌘⇧Enter` |
-| Volle Pfade in die Shell einfügen | `Ctrl+Alt+Enter` | `⌘⌥Enter` |
-| Copy names to clipboard | `Ctrl+Alt+N` | `⌘⌥N` |
-| Copy full paths to clipboard | `Ctrl+Alt+C` | `⌘⌥C` |
-| Show in file manager | `Ctrl+Shift+F` | `⌘⇧F` |
-| Open terminal here | `Ctrl+Shift+C` | `⌘⇧C` |
-| Command Palette… | `Ctrl+Shift+P` | `⌘⇧P`, `⌘⌃G` |
-| Actions menu ▴ | `Ctrl+F12` | `⌃K ⌃M` |
-| Toggle mark and move up / in place | `Shift+Space` / `Ctrl+Shift+Space` | `⇧Space` / `⌘⇧Space` |
-| Call action… | `F10` | `F10` |
-| Toggle mark and move down | `Space`, `Insert` | `Space`, `⌃0` |
-| Mark and move down | `Shift+ArrowDown` | `⇧ArrowDown` |
-| Mark and move up | `Shift+ArrowUp` | `⇧ArrowUp` |
-| Mark to the first entry | `Shift+Home` | `⇧Home` |
-| Mark to the last entry | `Shift+End` | `⇧End` |
-| Mark all | `Ctrl+A`, `Ctrl+NumpadAdd` | `⌘A`, `⌘NumpadAdd` |
-| Unmark all | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract` | `⌘⇧A`, `⌘NumpadSubtract` |
-| Invert marks | `NumpadMultiply` | `NumpadMultiply` |
-| Mark by pattern… | `NumpadAdd` | `NumpadAdd` |
-| Unmark by pattern… | `NumpadSubtract` | `NumpadSubtract` |
-| Switch panel | `Tab` | `Tab` |
-| Left panel | `Alt+1` | `⌥1` |
-| Right panel | `Alt+2` | `⌥2` |
-| Swap panels / with all tabs (040) | `Ctrl+U` / `Ctrl+Shift+U` | `⌘U` / `⌘⇧U` |
-| Target = source (040) | `Ctrl+Alt+O` | `⌘⌥O` |
-| Open in the left / right panel (040) | `Ctrl+←` / `Ctrl+→` | `⌘⌥←` / `⌘⌥→` |
-| Next tab | `Ctrl+Tab` | `⌃Tab` |
-| Previous tab | `Ctrl+Shift+Tab` | `⌃⇧Tab` |
-| Clone tab | `Ctrl+T` | `⌘⌥T` |
-| Close tab | `Ctrl+W` | `⌘⌥W` |
-| Toggle favourite | `Ctrl+D` | `⌘D` |
-| Find… | `Alt+F7`, `Ctrl+F` | `⌥F7`, `⌘F` |
-| Search again | `Ctrl+Shift+F7` | `⌘⇧F7` |
-| View | `F3` | `F3` |
-| Quick view in the other panel | `Ctrl+Q` | `⌃Q` |
-| Edit (default app until 011) | `F4` | `F4` |
-| Create file… | `Shift+F4` | `⇧F4` |
-| Copy… | `F5` | `F5` |
-| Move… | `F6` | `F6` |
-| Rename… | `Shift+F6` | `⇧F6` |
-| Create folder… | `F7`, `Shift+F7` | `F7`, `⇧F7` |
-| Delete… | `F8`, `Delete` | `F8`, `⌘Backspace` |
-| Multi rename… | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M` | `⌘F6` |
-| Create several folders… | `Ctrl+F7` | `⌘F7` |
-| Group files… | `Alt+G`, `Ctrl+Alt+G` | `⌥G`, `⌘⌥G` |
-| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D` | `⌘⌥R`, `⌘⌥⇧D` |
-| Properties… | `Alt+Enter` | `⌥Enter`, `⌘I` |
-| Change attributes… | `Ctrl+Shift+F2` | `⌘⇧F2` |
-| Pack… | `Alt+F5` | `⌥F5` |
-| Unpack… | `Alt+F9` | `⌥F9` |
-| Find duplicates… | `Alt+Shift+F7` | `⌥⇧F7` |
-| Disk usage… | `Ctrl+Shift+D` | `⌘⇧D` |
-| Keyboard shortcuts… | `Ctrl+Shift+K` | `⌘⇧K` |
-| Open with tool… | `Ctrl+Shift+X` | `⌘⇧X` |
-| Tasks… | `Ctrl+F11` | `⌃K F6` |
-| Next colour scheme | `Ctrl+Alt+Shift+T` | `⌘⌃⌥T` |
+| Aktion                                | Windows / Linux                       | macOS                    |
+| ------------------------------------- | ------------------------------------- | ------------------------ |
+| Open                                  | `Enter`                               | `Enter`                  |
+| Parent folder                         | `Backspace`                           | `Backspace`              |
+| Open folder in new tab                | `Ctrl+Enter`                          | `⌘Enter`                 |
+| Reload                                | `Ctrl+R`                              | `⌘R`                     |
+| History back                          | `Alt+ArrowLeft`                       | `⌘[`                     |
+| History forward                       | `Alt+ArrowRight`                      | `⌘]`                     |
+| Go to path…                           | `Ctrl+L`, `Ctrl+Alt+D`                | `⌘L`, `⌃⌥D`              |
+| Find folder (change dir)…             | `Alt+F10`                             | `⌥F10`                   |
+| Go to file (search result)            | `Ctrl+Shift+G`                        | `⌘⇧G`                    |
+| Flat view (all files below)           | `Ctrl+B`                              | `⌘B`                     |
+| Folder menu, left panel               | `Alt+F1`                              | `⌥F1`                    |
+| Folder menu, right panel              | `Alt+F2`                              | `⌥F2`                    |
+| Calculate folder sizes                | `Alt+Shift+Enter`                     | `⌥⇧Enter`                |
+| Context menu                          | `Shift+F10`, Kontextmenü-Taste        | `⇧F10`                   |
+| Menu bar                              | `Alt+M`                               | – (nativ)                |
+| Einstellungen…                        | `Ctrl+,`                              | `⌘,`                     |
+| Toggle filter                         | `Ctrl+Alt+F`                          | `⌘⌥F`                    |
+| Toggle hidden files                   | `Ctrl+H`                              | `⌘⇧.`                    |
+| Toggle shell                          | `Shift+F11`                           | `⇧F11`                   |
+| Namen in die Shell einfügen           | `Ctrl+Shift+Enter`                    | `⌘⇧Enter`                |
+| Volle Pfade in die Shell einfügen     | `Ctrl+Alt+Enter`                      | `⌘⌥Enter`                |
+| Copy names to clipboard               | `Ctrl+Alt+N`                          | `⌘⌥N`                    |
+| Copy full paths to clipboard          | `Ctrl+Alt+C`                          | `⌘⌥C`                    |
+| Show in file manager                  | `Ctrl+Shift+F`                        | `⌘⇧F`                    |
+| Open terminal here                    | `Ctrl+Shift+C`                        | `⌘⇧C`                    |
+| Command Palette…                      | `Ctrl+Shift+P`                        | `⌘⇧P`, `⌘⌃G`             |
+| Actions menu ▴                        | `Ctrl+F12`                            | `⌃K ⌃M`                  |
+| Toggle mark and move up / in place    | `Shift+Space` / `Ctrl+Shift+Space`    | `⇧Space` / `⌘⇧Space`     |
+| Call action…                          | `F10`                                 | `F10`                    |
+| Toggle mark and move down             | `Space`, `Insert`                     | `Space`, `⌃0`            |
+| Mark and move down                    | `Shift+ArrowDown`                     | `⇧ArrowDown`             |
+| Mark and move up                      | `Shift+ArrowUp`                       | `⇧ArrowUp`               |
+| Mark to the first entry               | `Shift+Home`                          | `⇧Home`                  |
+| Mark to the last entry                | `Shift+End`                           | `⇧End`                   |
+| Mark all                              | `Ctrl+A`, `Ctrl+NumpadAdd`            | `⌘A`, `⌘NumpadAdd`       |
+| Unmark all                            | `Ctrl+Shift+A`, `Ctrl+NumpadSubtract` | `⌘⇧A`, `⌘NumpadSubtract` |
+| Invert marks                          | `NumpadMultiply`                      | `NumpadMultiply`         |
+| Mark by pattern…                      | `NumpadAdd`                           | `NumpadAdd`              |
+| Unmark by pattern…                    | `NumpadSubtract`                      | `NumpadSubtract`         |
+| Switch panel                          | `Tab`                                 | `Tab`                    |
+| Left panel                            | `Alt+1`                               | `⌥1`                     |
+| Right panel                           | `Alt+2`                               | `⌥2`                     |
+| Swap panels / with all tabs (040)     | `Ctrl+U` / `Ctrl+Shift+U`             | `⌘U` / `⌘⇧U`             |
+| Target = source (040)                 | `Ctrl+Alt+O`                          | `⌘⌥O`                    |
+| Open in the left / right panel (040)  | `Ctrl+←` / `Ctrl+→`                   | `⌘⌥←` / `⌘⌥→`            |
+| Next tab                              | `Ctrl+Tab`                            | `⌃Tab`                   |
+| Previous tab                          | `Ctrl+Shift+Tab`                      | `⌃⇧Tab`                  |
+| Clone tab                             | `Ctrl+T`                              | `⌘⌥T`                    |
+| Close tab                             | `Ctrl+W`                              | `⌘⌥W`                    |
+| Toggle favourite                      | `Ctrl+D`                              | `⌘D`                     |
+| Find…                                 | `Alt+F7`, `Ctrl+F`                    | `⌥F7`, `⌘F`              |
+| Search again                          | `Ctrl+Shift+F7`                       | `⌘⇧F7`                   |
+| View                                  | `F3`                                  | `F3`                     |
+| Quick view in the other panel         | `Ctrl+Q`                              | `⌃Q`                     |
+| Edit (default app until 011)          | `F4`                                  | `F4`                     |
+| Create file…                          | `Shift+F4`                            | `⇧F4`                    |
+| Copy…                                 | `F5`                                  | `F5`                     |
+| Move…                                 | `F6`                                  | `F6`                     |
+| Rename…                               | `Shift+F6`                            | `⇧F6`                    |
+| Create folder…                        | `F7`, `Shift+F7`                      | `F7`, `⇧F7`              |
+| Delete…                               | `F8`, `Delete`                        | `F8`, `⌘Backspace`       |
+| Multi rename…                         | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M`     | `⌘F6`                    |
+| Create several folders…               | `Ctrl+F7`                             | `⌘F7`                    |
+| Group files…                          | `Alt+G`, `Ctrl+Alt+G`                 | `⌥G`, `⌘⌥G`              |
+| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D`      | `⌘⌥R`, `⌘⌥⇧D`            |
+| Properties…                           | `Alt+Enter`                           | `⌥Enter`, `⌘I`           |
+| Change attributes…                    | `Ctrl+Shift+F2`                       | `⌘⇧F2`                   |
+| Pack…                                 | `Alt+F5`                              | `⌥F5`                    |
+| Unpack…                               | `Alt+F9`                              | `⌥F9`                    |
+| Find duplicates…                      | `Alt+Shift+F7`                        | `⌥⇧F7`                   |
+| Disk usage…                           | `Ctrl+Shift+D`                        | `⌘⇧D`                    |
+| Keyboard shortcuts…                   | `Ctrl+Shift+K`                        | `⌘⇧K`                    |
+| Open with tool…                       | `Ctrl+Shift+X`                        | `⌘⇧X`                    |
+| Tasks…                                | `Ctrl+F11`                            | `⌃K F6`                  |
+| Next colour scheme                    | `Ctrl+Alt+Shift+T`                    | `⌘⌃⌥T`                   |
 
 Maus: Doppelklick öffnet, `Strg/⌘+Klick` schaltet die Markierung um, `Shift+Klick` markiert einen Bereich,
 Doppelklick auf einen Spaltenkopf sortiert. Tab-Leiste: `←` `→` `Pos1` `Ende`, `Entf`, `Shift+F10`; Splitter: Ziehen,
@@ -342,17 +347,17 @@ Noch gibt es **kein veröffentlichtes Release**. Pakete entstehen über den Rele
 [`docs/ci/release.yml`](ci/release.yml), Ablauf: [docs/release.md](release.md)) als Entwurf eines
 GitHub-Releases:
 
-| OS | Paket | Installation |
-| --- | --- | --- |
-| macOS 12+ (Apple Silicon und Intel) | `Files and Folders_<v>_universal.dmg` | DMG öffnen, App nach „Programme“ ziehen |
-| Windows 10/11 | `Files and Folders_<v>_x64-setup.exe` (ohne Admin) oder `.msi` | Installer starten; WebView2 wird bei Bedarf nachgeladen |
-| Linux (x86_64) | `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE), `.AppImage` | `sudo apt install ./files-and-folders_<v>_amd64.deb` bzw. `sudo dnf install ./….rpm`; AppImage: `chmod +x` und starten |
+| OS                                  | Paket                                                          | Installation                                                                                                           |
+| ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| macOS 12+ (Apple Silicon und Intel) | `Files and Folders_<v>_universal.dmg`                          | DMG öffnen, App nach „Programme“ ziehen                                                                                |
+| Windows 10/11                       | `Files and Folders_<v>_x64-setup.exe` (ohne Admin) oder `.msi` | Installer starten; WebView2 wird bei Bedarf nachgeladen                                                                |
+| Linux (x86_64)                      | `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE), `.AppImage`  | `sudo apt install ./files-and-folders_<v>_amd64.deb` bzw. `sudo dnf install ./….rpm`; AppImage: `chmod +x` und starten |
 
 **Bekannte Einschränkungen je Plattform**
 
 - **Unsignierte Pakete** (solange keine Zertifikate eingerichtet sind): macOS meldet „nicht verifizierter
-  Entwickler“ → im Finder Rechtsklick → *Öffnen* (bzw. Systemeinstellungen → Datenschutz & Sicherheit → *Trotzdem
-  öffnen*); Windows SmartScreen → *Weitere Informationen* → *Trotzdem ausführen*.
+  Entwickler“ → im Finder Rechtsklick → _Öffnen_ (bzw. Systemeinstellungen → Datenschutz & Sicherheit → _Trotzdem
+  öffnen_); Windows SmartScreen → _Weitere Informationen_ → _Trotzdem ausführen_.
 - **macOS:** Zugriff auf Schreibtisch, Dokumente, Downloads, externe/Netz-Volumes fragt das System beim ersten
   Mal ab. Papierkorb über den Finder (einmalige Erlaubnis „Finder steuern“). Praktisch erst wenig getestet.
 - **Windows:** Auf Laufwerken ohne Papierkorb (Netz, manche USB-Sticks) kann Windows beim „Löschen in den
@@ -369,12 +374,12 @@ Die Version steht im Dialog **About** (Menü Hilfe bzw. macOS „Über Files and
 
 ## Voraussetzungen (Entwicklung)
 
-| Werkzeug | Version                                                                                   |
-| -------- | ----------------------------------------------------------------------------------------- |
-| Node.js  | `^22.22.3`, `^24.15.0` oder `>=26` (Vorgabe von Angular 22)                              |
-| pnpm     | 10.x (siehe `packageManager` in `package.json`; z. B. `corepack enable`)                  |
-| Rust     | stable ≥ 1.90 (`rustup`)                                                                  |
-| System   | [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/) je Betriebssystem      |
+| Werkzeug | Version                                                                              |
+| -------- | ------------------------------------------------------------------------------------ |
+| Node.js  | `^22.22.3`, `^24.15.0` oder `>=26` (Vorgabe von Angular 22)                          |
+| pnpm     | 10.x (siehe `packageManager` in `package.json`; z. B. `corepack enable`)             |
+| Rust     | stable ≥ 1.90 (`rustup`)                                                             |
+| System   | [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/) je Betriebssystem |
 
 - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
 - **Windows:** Microsoft C++ Build Tools und WebView2 (bei Windows 10/11 meist vorhanden).

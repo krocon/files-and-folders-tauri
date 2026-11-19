@@ -5,7 +5,7 @@
   [attr.aria-expanded]="folderMenuOpen() !== null"
   [attr.aria-label]="texts.folderMenu"
   [attr.title]="texts.folderMenu"
-  (click)="openFolderMenu()"
+  (click)="toggleFolderMenu()"
 >
   <i class="fa fa-caret-down" aria-hidden="true"></i>
 </button>
@@ -118,13 +118,13 @@
 }
 
 @if (folderMenuOpen(); as fm) {
-  <app-context-menu
-    class="folder-dropdown"
-    [headingLines]="true"
+  <app-folder-menu
     [items]="folderMenuItems()"
-    [x]="fm.x"
+    columnBreak="recent-h"
     [y]="fm.y"
+    [side]="side()"
     [label]="texts.folderMenu"
+    [anchor]="fm.anchor"
     (chosen)="onFolderChosen($event)"
     (closed)="onFolderMenuClosed($event)"
   />

@@ -191,7 +191,7 @@ describe('TabBar', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const items = () => [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const items = () => [...el.querySelectorAll<HTMLElement>('[role="option"]')];
     const labels = (prefix: string) =>
       items()
         .filter((i) => i.dataset['id']?.startsWith(prefix))
@@ -218,7 +218,7 @@ describe('TabBar', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const ids = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+    const ids = [...el.querySelectorAll<HTMLElement>('[role="option"]')].map(
       (i) => i.dataset['id'] ?? '',
     );
     const expected = [...new Set(right.filter((t) => !t.search).map((t) => t.path))]

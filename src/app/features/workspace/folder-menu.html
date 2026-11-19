@@ -1,0 +1,69 @@
+<div
+  class="panel"
+  [class.right]="side() === 'right'"
+  [style.--folder-menu-top.px]="y()"
+  (mousedown)="keepFocus($event)"
+>
+  <div class="search">
+    <i class="fa fa-search" aria-hidden="true"></i>
+    <input
+      type="search"
+      role="combobox"
+      aria-expanded="true"
+      aria-autocomplete="list"
+      autocomplete="off"
+      spellcheck="false"
+      [attr.aria-controls]="uid + '-list'"
+      [attr.aria-activedescendant]="active() ? optionId(active()!) : null"
+      [attr.aria-label]="texts.folderMenuFilter"
+      [placeholder]="texts.folderMenuFilter"
+      [value]="filter()"
+      (input)="onInput($any($event.target).value)"
+      (keydown)="onKeydown($event)"
+    />
+  </div>
+  <div
+    class="columns"
+    role="listbox"
+    [class.empty]="empty()"
+    [id]="uid + '-list'"
+    [attr.aria-label]="label()"
+  >
+    @for (column of columns(); track $index) {
+      <div class="column" role="presentation">
+        @for (group of column; track group.key) {
+          <div class="group" role="group" [attr.aria-label]="group.heading">
+            @for (item of group.items; track item.id) {
+              @let p = parts(item);
+              <div
+                role="option"
+                [id]="optionId(item)"
+                [class.active]="active() === item"
+                [attr.aria-selected]="active() === item"
+                [attr.aria-disabled]="item.disabled ? 'true' : null"
+                [attr.title]="item.hint || item.label"
+                [attr.data-id]="item.id"
+              >
+                <span class="icon" aria-hidden="true">
+                  @if (item.icon) {
+                    <i [class]="'fa fa-fw fa-' + item.icon"></i>
+                  }
+                </span>
+                <span class="label"
+                  ><span class="head">{{ p.head }}</span
+                  ><span class="tail">{{ p.tail }}</span></span
+                >
+                @if (item.iconLabel) {
+                  <span class="sr-only">, {{ item.iconLabel }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+  @if (empty()) {
+    <div class="no-match" role="status">{{ texts.folderMenuNoMatch }}</div>
+  }
+</div>

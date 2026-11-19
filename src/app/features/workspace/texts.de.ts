@@ -82,6 +82,8 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   showHidden: 'Versteckte Dateien zeigen',
   filter: 'Filter',
   filterPlaceholder: '*.txt -entwurf',
+  folderMenuFilter: 'Ordner filtern…',
+  folderMenuNoMatch: 'Keine Treffer',
   menuHome: 'Home',
   menuOtherTabs: (side) => (side === 'left' ? 'Tabs der linken Seite' : 'Tabs der rechten Seite'),
   menuFavorites: 'Favoriten',

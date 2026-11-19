@@ -88,6 +88,8 @@ export const TEXTS_EN = {
   showHidden: 'Show hidden files',
   filter: 'Filter',
   filterPlaceholder: '*.txt -draft',
+  folderMenuFilter: 'Filter folders…',
+  folderMenuNoMatch: 'No matches',
   menuHome: 'Home',
   menuOtherTabs: (side: 'left' | 'right') =>
     side === 'left' ? 'Tabs of the left panel' : 'Tabs of the right panel',

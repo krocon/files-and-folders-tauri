@@ -408,7 +408,7 @@ describe('FilePanel', () => {
     ws.toggleFavorite('/other');
     (el.querySelector('.folder-menu') as HTMLButtonElement).click();
     await settle();
-    const items = [...el.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const items = [...el.querySelectorAll<HTMLElement>('[role="option"]')];
     expect(items.map((i) => i.textContent?.trim())).toContain('/other');
     items.find((i) => i.textContent?.trim() === '/other')!.click();
     await settle();

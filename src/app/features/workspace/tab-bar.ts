@@ -28,6 +28,7 @@ import { SearchStore } from '../search/search.store';
 import { FLAT_TEXTS } from '../flat/flat-texts';
 import { modifiersAfter } from '../../core/actions/shortcut';
 import { ContextMenu, MenuCloseReason, MenuItem } from './context-menu';
+import { FolderMenu } from './folder-menu';
 import { insertionIndex, tabDragCopies } from './tab-drag-logic';
 import { TabDragStore } from './tab-drag.store';
 import { anyUsageScanId, isUsageChartKey, isUsageKey } from '../diskusage/usage-rows';
@@ -56,7 +57,7 @@ const HISTORY_IN_MENU = 15;
 
 @Component({
   selector: 'app-tab-bar',
-  imports: [ContextMenu],
+  imports: [ContextMenu, FolderMenu],
   templateUrl: './tab-bar.html',
   styleUrl: './tab-bar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +73,7 @@ export class TabBar {
   protected readonly store = inject(FileBrowserStore, { optional: true });
   private readonly drives = inject(VolumesStore);
   private readonly remote = inject(RemoteStore);
-  protected readonly folderMenuOpen = signal<{ x: number; y: number } | null>(null);
+  protected readonly folderMenuOpen = signal<{ y: number; anchor: Element | null } | null>(null);
   private readonly settings = inject(SettingsStore);
   private readonly actions = inject(ActionService);
   private readonly usage = inject(DiskUsageStore);
@@ -336,7 +337,16 @@ export class TabBar {
     const rect = button?.getBoundingClientRect();
     this.ws.setActive(this.side());
     void this.drives.refresh();
-    this.folderMenuOpen.set({ x: rect?.left ?? 0, y: rect?.bottom ?? 0 });
+    this.folderMenuOpen.set({ y: rect?.bottom ?? 0, anchor: button });
+  }
+
+  /** The ▾ button: a second click closes the menu again. */
+  protected toggleFolderMenu(): void {
+    if (this.folderMenuOpen()) {
+      this.folderMenuOpen.set(null);
+    } else {
+      this.openFolderMenu();
+    }
   }
 
   protected onFolderChosen(id: string): void {
