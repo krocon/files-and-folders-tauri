@@ -21,13 +21,15 @@ import { ACT_TEXTS } from '../actions/actions-texts';
  * Menu definitions (design 014): every entry is an action id of the catalog – the
  * menus only arrange them. `'-'` = separator, `'@tools'` = the tools of
  * `tools.json` (extra actions, design 011 E4), `'@starter'` = the user's starter menu
- * (`starter.json`, design 032).
+ * (`starter.json`, design 032), `'@fileActions'` = the double-click actions whose pattern
+ * matches the file under the cursor (`file-actions.json`, design 072; HTML menus only).
  */
 export type MenuDef =
   | ActionId
   | '-'
   | '@tools'
   | '@starter'
+  | '@fileActions'
   | '@themes'
   | { readonly sub: string; readonly items: readonly MenuDef[] }
   | { readonly native: PredefinedItem }
@@ -59,6 +61,21 @@ export interface MenuSource {
 
 /** Extra actions of the tools (`tool:<id>`), not those of the starter menu. */
 export const TOOL_ID_PREFIX = 'tool:';
+
+/** Extra actions of the double-click rules (`fileaction:<id>`). */
+export const FILE_ACTION_ID_PREFIX = 'fileaction:';
+
+/** The rules that can run on the file under the cursor – one entry per command. */
+function fileActionExtras(src: MenuSource): readonly ExtraAction[] {
+  const labels = new Set<string>();
+  return src.extras().filter((x) => {
+    if (!x.id.startsWith(FILE_ACTION_ID_PREFIX) || !src.extraReady(x.id) || labels.has(x.label)) {
+      return false;
+    }
+    labels.add(x.label);
+    return true;
+  });
+}
 
 function toolExtras(src: MenuSource): readonly ExtraAction[] {
   return src.extras().filter((x) => x.id.startsWith(TOOL_ID_PREFIX));
@@ -379,6 +396,7 @@ export type ContextKind =
 const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
   file: [
     'NAVIGATE_OPEN',
+    '@fileActions',
     'OPEN_VIEW_DLG',
     'OPEN_EDIT_DLG',
     WITH_TOOL,
@@ -468,6 +486,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
   result: [
     'GOTO_FILE',
     'NAVIGATE_OPEN',
+    '@fileActions',
     'OPEN_VIEW_DLG',
     'OPEN_EDIT_DLG',
     WITH_TOOL,
@@ -600,6 +619,10 @@ export function resolveMenu(
       for (const x of toolExtras(src)) {
         items.push(extraItem(x, src));
       }
+    } else if (d === '@fileActions') {
+      for (const x of fileActionExtras(src)) {
+        items.push(extraItem(x, src));
+      }
     } else if (d === '@starter') {
       items.push(...starterItems(src.starterTree?.() ?? [], src));
     } else if (d === '@themes') {
@@ -707,6 +730,8 @@ export function toNativeSpec(
         for (const x of toolExtras(src)) {
           out.push(extraNode(x));
         }
+      } else if (d === '@fileActions') {
+        // depends on the cursor row: only in the context menus
       } else if (d === '@starter') {
         out.push(...starterNodes(src.starterTree?.() ?? []));
       } else if (d === '@themes') {

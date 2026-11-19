@@ -223,9 +223,28 @@ fn parse(text: &str) -> Result<Vec<FileActionRule>, String> {
     Ok(sanitize(file.rules))
 }
 
-/// Missing file → no rules; broken → no rules + the file kept as `.bad` (design 022 E2).
+/// The rules of a fresh installation: `node` for JavaScript files in a terminal window, on
+/// ⌘/Ctrl+double click (a plain double click still opens the file) and in the context menu.
+pub fn defaults() -> Vec<FileActionRule> {
+    vec![FileActionRule {
+        id: "node".into(),
+        trigger: DOUBLE_CLICK.into(),
+        modifiers: vec!["mod".into()],
+        pattern: "*.js *.mjs *.cjs".into(),
+        confirm: false,
+        command: "node %N".into(),
+        terminal: true,
+    }]
+}
+
+/// Missing file → the [`defaults`] (a saved file without rules stays empty); broken → no
+/// rules + the file kept as `.bad` (design 022 E2).
 pub fn load(file: &Path) -> Loaded<Vec<FileActionRule>> {
-    read_config(file, MAX_FILE_BYTES, Vec::new, parse)
+    let mut loaded = read_config(file, MAX_FILE_BYTES, Vec::new, parse);
+    if loaded.warning.is_none() && !file.exists() {
+        loaded.value = defaults();
+    }
+    loaded
 }
 
 /// Writes the (sanitized) rules atomically; returns what was written.
@@ -401,10 +420,25 @@ mod tests {
     }
 
     #[test]
+    fn a_fresh_installation_runs_node_and_an_emptied_file_stays_empty() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join(FILE_NAME);
+        let rules = load(&file).value;
+        assert_eq!(rules, sanitize(defaults()));
+        assert!(problems(&rules, None).is_empty());
+        assert_eq!(rules[0].command, "node %N");
+        assert!(rules[0].terminal);
+        // not on a plain double click: that still opens the file
+        assert_eq!(rules[0].modifiers, vec!["mod".to_string()]);
+        assert!(save(&file, Vec::new()).unwrap().is_empty());
+        assert!(load(&file).value.is_empty());
+    }
+
+    #[test]
     fn save_and_load_keep_the_order() {
         let dir = tempdir().unwrap();
         let file = dir.path().join(FILE_NAME);
-        assert!(load(&file).value.is_empty());
+        assert_eq!(load(&file).value, defaults());
         let mut second = rule("b", "*.py", "python3 %N");
         second.confirm = false;
         second.terminal = true;

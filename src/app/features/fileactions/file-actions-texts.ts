@@ -10,7 +10,7 @@ import { FILE_ACTIONS_DE } from './file-actions-texts.de';
 export const FILE_ACTIONS_EN = {
   title: 'Double-click actions',
   intro:
-    'What a double click on a matching file does instead of opening it – with or without keys held (Shift, ⌘/Ctrl, Alt). The first rule from the top with the same keys and a matching pattern wins. Nothing runs through a shell – every word of the command is one argument. It runs in the background unless you choose a terminal window.',
+    'What a double click on a matching file does instead of opening it – with or without keys held (Shift, ⌘/Ctrl, Alt). The first rule from the top with the same keys and a matching pattern wins. Nothing runs through a shell – every word of the command is one argument. It runs in the background unless you choose a terminal window. Matching rules are also in the context menu of the file (right click).',
   rules: 'Rules',
   noRules: 'No rules yet – add one with the button below.',
   listHelp: 'Alt+↑/↓ move, Delete removes.',
@@ -59,6 +59,8 @@ export const FILE_ACTIONS_EN = {
   confirmTitle: 'Run command?',
   confirmRun: 'Run',
   started: (command: string, name: string) => `${command} started for ${name}`,
+  /** Entry of a rule in the context menu of a matching file and in the command palette. */
+  menuRun: (command: string) => `Run: ${command}`,
   helpContent: {
     title: 'Help: double-click actions',
     close: 'Close',

@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { ActionService } from '../../core/actions/action.service';
+import { ActionService, ExtraAction } from '../../core/actions/action.service';
 import { FileActionsApi } from '../../core/fileactions/file-actions-api';
 import {
   FileActionModifier,
@@ -14,8 +14,12 @@ import { ConfirmService } from '../../shared/dialog/confirm.service';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { CONFIG_TEXTS } from '../config/config-texts';
 import { OsStore } from '../osintegration/os.store';
-import { findRule } from './file-actions-logic';
+import { WorkspaceStore } from '../workspace/workspace.store';
+import { canHaveAction, findRule, patternMatches } from './file-actions-logic';
 import { FILE_ACTIONS_TEXTS } from './file-actions-texts';
+
+/** Extra actions of the rules (`fileaction:<id>`), listed by `'@fileActions'` in the menus. */
+export const FILE_ACTION_PREFIX = 'fileaction:';
 
 /**
  * Double-click actions (design 072): rules from `file-actions.json` decide what a double
@@ -27,6 +31,7 @@ export class FileActionsStore {
   private readonly actions = inject(ActionService);
   private readonly confirm = inject(ConfirmService);
   private readonly os = inject(OsStore);
+  private readonly ws = inject(WorkspaceStore);
 
   readonly rules = signal<readonly FileActionRule[]>([]);
   readonly problems = signal<readonly FileActionProblem[]>([]);
@@ -38,6 +43,7 @@ export class FileActionsStore {
       const loaded = await this.api.load();
       this.rules.set(loaded.rules);
       this.problems.set(loaded.problems);
+      this.publish();
       const w = loaded.warning;
       if (w) {
         const name = 'file-actions.json';
@@ -52,6 +58,7 @@ export class FileActionsStore {
     } catch (err) {
       this.rules.set([]);
       this.problems.set([]);
+      this.publish();
       this.actions.report(FILE_ACTIONS_TEXTS.loadFailed(errorText(toFsError(err))));
     }
   }
@@ -62,6 +69,7 @@ export class FileActionsStore {
     if (result.saved) {
       this.rules.set(result.rules);
       this.problems.set([]);
+      this.publish();
     }
     return result;
   }
@@ -76,14 +84,7 @@ export class FileActionsStore {
     modifiers: readonly FileActionModifier[],
     panel: FileBrowserStore,
   ): boolean {
-    // inside an archive, on a server or in the group view a click means something else
-    if (
-      panel.navigationLocked() ||
-      panel.archive() !== null ||
-      panel.remote() !== null ||
-      panel.searchKind() === 'duplicates' ||
-      isRemotePath(entry.path)
-    ) {
+    if (!this.allowedIn(panel, entry)) {
       return false;
     }
     const rule = findRule(this.rules(), 'doubleClick', modifiers, entry);
@@ -92,6 +93,63 @@ export class FileActionsStore {
     }
     void this.run(rule, entry, panel);
     return true;
+  }
+
+  /** Inside an archive, on a server or in the group view the rules do not apply. */
+  private allowedIn(panel: FileBrowserStore, entry: DirEntry): boolean {
+    return !(
+      panel.navigationLocked() ||
+      panel.archive() !== null ||
+      panel.remote() !== null ||
+      panel.searchKind() === 'duplicates' ||
+      isRemotePath(entry.path)
+    );
+  }
+
+  /** The file under the cursor of the active panel, if `rule` can run on it. */
+  private cursorTarget(rule: FileActionRule): { entry: DirEntry; panel: FileBrowserStore } | null {
+    const active = this.ws.panel();
+    const entry = active?.controller()?.cursorEntry() ?? null;
+    if (
+      !active ||
+      !entry ||
+      !canHaveAction(entry) ||
+      !patternMatches(rule.pattern, entry.name) ||
+      !this.allowedIn(active.store, entry) ||
+      this.problems().some((p) => p.id === rule.id)
+    ) {
+      return null;
+    }
+    return { entry, panel: active.store };
+  }
+
+  /**
+   * Every rule as an extra action `fileaction:<id>` for the context menu of a file and the
+   * command palette: ready while the cursor is on a file its pattern matches, whatever keys
+   * the rule wants for the double click.
+   */
+  private publish(): void {
+    this.actions.setExtras(
+      this.rules().map((rule) => this.extra(rule)),
+      'fileActions',
+    );
+  }
+
+  private extra(rule: FileActionRule): ExtraAction {
+    const cursorTarget = () => this.cursorTarget(rule);
+    const run = (entry: DirEntry, panel: FileBrowserStore) => this.run(rule, entry, panel);
+    return {
+      id: FILE_ACTION_PREFIX + rule.id,
+      get label() {
+        return FILE_ACTIONS_TEXTS.menuRun(rule.command);
+      },
+      shortcut: null,
+      enabled: () => cursorTarget() !== null,
+      run: () => {
+        const target = cursorTarget();
+        return target ? run(target.entry, target.panel) : undefined;
+      },
+    };
   }
 
   private async run(rule: FileActionRule, entry: DirEntry, panel: FileBrowserStore): Promise<void> {

@@ -205,6 +205,27 @@ describe('menu model', () => {
     });
   });
 
+  it('lists the double-click actions that match the cursor file, one per command', () => {
+    const rule = (id: string, label: string, enabled: boolean): ExtraAction => ({
+      ...tool(id, enabled),
+      label,
+    });
+    const src = source({}, [
+      rule('fileaction:a', 'Run: node %N', true),
+      rule('fileaction:b', 'Run: node %N', true),
+      rule('fileaction:c', 'Run: python3 %N', false),
+      tool('tool:edit'),
+    ]);
+    for (const kind of ['file', 'result'] as const) {
+      const items = resolveMenu(contextMenuFor(kind), src, 'linux');
+      const open = items.findIndex((i) => i.id === 'NAVIGATE_OPEN');
+      expect(items[open + 1]).toMatchObject({ id: 'fileaction:a', label: 'Run: node %N' });
+      expect(items.filter((i) => i.id.startsWith('fileaction:')).length).toBe(1);
+    }
+    const folder = resolveMenu(contextMenuFor('folder'), src, 'linux');
+    expect(folder.some((i) => i.id.startsWith('fileaction:'))).toBe(false);
+  });
+
   it('drops separators that would stand first, last or doubled (no tools)', () => {
     const items = resolveMenu(
       ['-', 'RELOAD_DIR', '-', '@tools', '-', 'OPEN_COPY_DLG', '-'],

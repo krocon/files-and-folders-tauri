@@ -5,7 +5,7 @@ import type { FILE_ACTIONS_EN } from './file-actions-texts';
 export const FILE_ACTIONS_DE: Translation<typeof FILE_ACTIONS_EN> = {
   title: 'Doppelklick-Aktionen',
   intro:
-    'Was ein Doppelklick auf eine passende Datei statt des Öffnens tut – mit oder ohne gehaltene Taste (Umschalt, ⌘/Strg, Alt). Die erste Regel von oben mit denselben Tasten und passendem Muster gilt. Nichts läuft über eine Shell – jedes Wort des Kommandos ist ein Argument. Es läuft im Hintergrund, außer du wählst ein Terminalfenster.',
+    'Was ein Doppelklick auf eine passende Datei statt des Öffnens tut – mit oder ohne gehaltene Taste (Umschalt, ⌘/Strg, Alt). Die erste Regel von oben mit denselben Tasten und passendem Muster gilt. Nichts läuft über eine Shell – jedes Wort des Kommandos ist ein Argument. Es läuft im Hintergrund, außer du wählst ein Terminalfenster. Passende Regeln stehen auch im Kontextmenü der Datei (Rechtsklick).',
   rules: 'Regeln',
   noRules: 'Noch keine Regeln – unten eine hinzufügen.',
   listHelp: 'Alt+↑/↓ verschieben, Entf entfernt.',
@@ -54,6 +54,7 @@ export const FILE_ACTIONS_DE: Translation<typeof FILE_ACTIONS_EN> = {
   confirmTitle: 'Kommando ausführen?',
   confirmRun: 'Ausführen',
   started: (command, name) => `${command} für ${name} gestartet`,
+  menuRun: (command) => `Ausführen: ${command}`,
   helpContent: {
     title: 'Hilfe: Doppelklick-Aktionen',
     close: 'Schließen',

@@ -427,7 +427,7 @@ Everything is stored as JSON in the app's config folder and can be edited from w
 - **Double-click actions** – menu _Configuration_ or the _Actions_ menu → _Double-click actions…_: rules with a file pattern, an optional yes/no question and a command
   (`*.js` → `node %N`) decide what a double click on a matching file does instead of opening it – with or without keys held, so Shift+double click
   can run `node %N` while a plain double click still opens the file (a rule needs exactly its keys; marks of the first click are put back). The program runs in the file's folder, either in the
-  background or in a terminal window that shows its output and stays open; file names never become shell syntax. The dialog has its own help. Kept in `file-actions.json`.
+  background or in a terminal window that shows its output and stays open; file names never become shell syntax. Every matching rule is also an entry of the file's context menu (_Run: node %N_) and of the command palette. Preinstalled: `node %N` for `*.js *.mjs *.cjs` in a terminal window (⌘/Ctrl+double click). The dialog has its own help. Kept in `file-actions.json`.
 - **Starter menu** – menu _Start_, the _Start ▴_ button next to _Actions ▴_ or `Alt+S`: your own quick launch entries (programs, scripts, folders,
   submenus), edited with _Change starter menu…_ and kept in `starter.json`. Parameters as in Total Commander –
   `%P%N` file under the cursor, `%N` name, `%O`/`%E` name without/only the extension, `%P`/`%T` folder of the

@@ -105,6 +105,36 @@ describe('double-click actions (design 072)', () => {
     expect(api.runs.map((r) => r.id)).toEqual(['shift']);
   });
 
+  it('offers every rule as an action for the file under the cursor (context menu)', async () => {
+    const actions = TestBed.inject(ActionService);
+    let cursor = entry('a.js', { path: '/src/a.js' });
+    TestBed.inject(WorkspaceStore).registerPanel('left', {
+      store: left,
+      controller: () => ({ cursorEntry: () => cursor }) as never,
+    });
+    api.loaded = {
+      rules: [{ ...QUIET, id: 'mod', pattern: '*.js', modifiers: ['mod'] }, QUIET],
+      warning: null,
+      problems: [],
+    };
+    await store.init();
+    const extras = actions.extras().filter((x) => x.id.startsWith('fileaction:'));
+    expect(extras.map((x) => [x.id, x.label])).toEqual([
+      ['fileaction:mod', 'Run: python3 %N'],
+      ['fileaction:py', 'Run: python3 %N'],
+    ]);
+    // whatever keys the double click wants; only the pattern counts
+    expect(actions.extraReady('fileaction:mod')).toBe(true);
+    expect(actions.extraReady('fileaction:py')).toBe(false);
+    expect(await actions.runAny('fileaction:mod')).toBe(true);
+    await flush();
+    expect(api.runs).toEqual([
+      { id: 'mod', file: '/src/a.js', targetDir: '/target', allowExecutable: false },
+    ]);
+    cursor = dir('lib.js');
+    expect(actions.extraReady('fileaction:mod')).toBe(false);
+  });
+
   it('asks first if the rule says so and runs only on yes', async () => {
     const file = entry('a.js', { path: '/src/a.js' });
     expect(store.handleDoubleClick(file, [], left)).toBe(true);
