@@ -121,6 +121,9 @@
 .dialog .btn {
   min-height: var(--control-height);
   padding-block: 0;
+  /* `.btn` sets a min-width, so a flex row would squeeze a button below its label and
+     keycap (long keys like `Ctrl+Shift+D` on Windows) – the neighbours give way instead */
+  flex-shrink: 0;
 }
 
 /* ------------------------------------------------------ fields in dialogs */

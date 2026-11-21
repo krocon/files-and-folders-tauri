@@ -69,8 +69,18 @@ code {
 
 .buttons {
   display: flex;
+  flex-wrap: wrap; /* a narrow window: the buttons go below the hint, never over each other */
   justify-content: flex-end;
+  align-items: center; /* a hint of several lines must not stretch the buttons */
   gap: var(--spacing-2);
+
+  /* the hint takes what the buttons leave and wraps its text; the spacer is then idle */
+  > .help {
+    flex: 1 1 12rem;
+  }
+  > .help + .spacer {
+    display: none;
+  }
 }
 
 .check {
