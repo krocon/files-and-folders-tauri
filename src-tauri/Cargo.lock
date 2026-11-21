@@ -1530,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "files-and-folders-tauri"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "aes 0.9.3",
  "apple-native-keyring-store",
