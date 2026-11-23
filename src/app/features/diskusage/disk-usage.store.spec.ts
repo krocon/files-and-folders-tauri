@@ -103,6 +103,15 @@ describe('DiskUsageStore and disk-usage tabs (design 033)', () => {
   const names = () => usage.state('j1')!.rows.map((r) => r.name);
   const row = (name: string) => usage.state('j1')!.rows.find((r) => r.name === name)! as UsageRow;
 
+  it('stops polling a running scan when the injector goes (no timer leaks into other specs)', async () => {
+    await usage.start('left', ['/r'], 'r');
+    expect(usage.isRunning('j1')).toBe(true);
+    TestBed.resetTestingModule();
+    const spy = vi.spyOn(api, 'view');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('starts a scan job and opens a disk-usage tab with the first level', async () => {
     const settings = TestBed.inject(SettingsStore);
     settings.set('diskUsage.sizeMode', 'logical');

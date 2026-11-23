@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { DiskUsageApi } from '../../core/diskusage/disk-usage-api';
 import { DiskUsageView, SizeMode, UsageNode } from '../../core/diskusage/disk-usage.models';
 import { errorText, toFsError } from '../../core/fs/fs-error';
@@ -105,11 +105,20 @@ export class DiskUsageStore {
   private readonly seqs = new Map<string, number>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   pollMs = POLL_MS;
+  /** The injector is gone: no poll may be scheduled any more. */
+  private destroyed = false;
 
   /** The chart kind (settings, toggled in the chart head). */
   readonly chartKind = computed(() => this.settings.get('diskUsage.chart'));
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
+      for (const t of this.timers.values()) {
+        clearTimeout(t);
+      }
+      this.timers.clear();
+    });
     effect(() => {
       const keys = this.ws.searchKeys();
       untracked(() => {
@@ -285,7 +294,7 @@ export class DiskUsageStore {
       clearTimeout(old);
       this.timers.delete(scanId);
     }
-    if (running) {
+    if (running && !this.destroyed) {
       this.timers.set(
         scanId,
         setTimeout(() => {
