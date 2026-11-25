@@ -89,10 +89,11 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Urteil**: _Rückstand_ (nur leere Ordner und Beiwerk – geht als Ganzes, als **ein** Papierkorb-Eintrag),
   _teilweise_ (hat Inhalt, darunter gehen wirklich leere Unterordner) oder _bleibt_ – mit Grund („3 Dateien · 1,8 GB
   (.cbr)“, „Sample größer als 300 MiB“). Profile: _Nur leere Ordner_ (Standard beim ersten Mal, plus `.DS_Store`,
-  `Thumbs.db`, `desktop.ini`), _Release-Reste_ (zusätzlich `*.nfo`, `*.sfv`, `*.srr`, `*.md5`, `*.url`, `*-proof.*`
-  bis 1 MiB und Samples bis 300 MiB – Grenzen änderbar), _Eigene_ (Namen/Muster, „Dateien nach Muster löschen“ wie
-  `*.bak`). Alles, was nicht ausdrücklich Beiwerk ist, ist Inhalt; versteckte Dateien, Links, fremde Dateisysteme und
-  unlesbare Ordner halten ihren Ordner fest; ein Ordner mit Inhalt wird nicht ausgeweidet (Option). Ordner lassen
+  `Thumbs.db`, `desktop.ini`), _Release-Reste_ (zusätzlich `*.nfo`, `*.sfv`, `*.srr`, `*.md5`, `*-proof.jpg/jpeg/png`
+  bis 1 MiB und Samples **nur von Videos** – `*-sample.mkv`, `sample.mp4` … – bis 300 MiB; Grenzen änderbar, gelockerte
+  Werte klappen die Regeln auf und werden benannt), _Eigene_ (Namen/Muster, „Dateien nach Muster löschen“ wie
+  `*.bak`). Alles, was nicht ausdrücklich Beiwerk ist, ist Inhalt; versteckte Dateien und Ordner (`.git` wird nie betreten), Pakete (`.app`,
+  `.photoslibrary` …), Links, fremde Dateisysteme und unlesbare Ordner halten ihren Ordner fest; ein Ordner mit Inhalt wird nicht ausgeweidet (Option). Ordner lassen
   sich mit der Leertaste abwählen, Details zeigen, was geht und was bleibt. Papierkorb als Standard, nie oberhalb
   eines Startordners, der Home-Ordner oder ein Laufwerk nie als Ganzes; der Job entscheidet jeden Ordner unmittelbar
   vor dem Löschen neu (Datei dazugekommen → der Ordner bleibt ganz stehen).

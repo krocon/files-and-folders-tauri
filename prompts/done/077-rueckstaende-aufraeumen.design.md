@@ -1,6 +1,6 @@
 # Design 077: Cleaning Folders – Rückstände in markierten Ordnern aufräumen
 
-> **Status:** umgesetzt (Phasen 1–6), externes Review steht aus (veranlasst Marc) · **Datum:** 25.11.2026 ·
+> **Status:** umgesetzt (Phasen 1–6), externes Review eingearbeitet (§9) · **Datum:** 25.11.2026 ·
 > **Branch:** `feat/rueckstaende-aufraeumen` · Auftrag: [`077-rueckstaende-aufraeumen.md`](077-rueckstaende-aufraeumen.md)
 > **Kein Haltepunkt nach Phase 1** (Marc, 25.11.2026): alle Fragen sind hier entschieden, Empfehlung = umgesetzt.
 
@@ -79,8 +79,10 @@ leere Ordner“ nichts, obwohl in den Ordnern Dateien liegen, zeigt der Dialog e
 probieren“ (kein zweiter Scan auf Verdacht).
 
 **Eine Quelle** `core/folders/release-extras.ts` (045 importiert von dort):
-`RELEASE_EXTRAS = *.nfo, *.sfv, *.srr, *.md5, *.url, *-proof.*` (neu: `*.url`, `*-proof.*`),
-`RELEASE_SAMPLES = *-sample.*, *.sample.*, sample-*, sample.*`. Die Serien-Engine (045) nutzt weiter beide
+`RELEASE_EXTRAS = *.nfo, *.sfv, *.srr, *.md5, *-proof.jpg, *-proof.jpeg, *-proof.png`,
+`RELEASE_SAMPLES` = die vier Formen `*-sample`, `*.sample`, `sample-*`, `sample` **je Video-Endung** (mkv, mp4,
+avi, m4v, mov, wmv, ts, mpg, mpeg, webm – 40 Muster, weil die Mustersprache nur `*`/`?` kennt).
+*(Nach dem Review enger gefasst, s. §9 Befund 1: vorher `*.url`, `*-proof.*` und Samples jeder Endung.)* Die Serien-Engine (045) nutzt weiter beide
 zusammen als „Extras“ ihres Dialogs.
 **Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner), Untertitel und ein Ordner `Subs`,
 Archivteile (`*.rar`, `*.r00`: groß und unwiederbringlich – auch nicht als Option; wer das will, nimmt „Eigene“ und
@@ -244,7 +246,7 @@ Fehlercodes. Job `clean`: `JobSpec::Clean` unverändert in der Form.
 
 ## 7. Offen
 
-- Externes Review (000 Phase 6) – veranlasst Marc. Schwerpunkte: `clean.rs` `Ctx::walk`/`Ctx::dir`
+- ~~Externes Review~~ – erledigt, s. §9. Schwerpunkte waren: `clean.rs` `Ctx::walk`/`Ctx::dir`
   (Entfernbarkeit, Filter „nicht ausweiden“), `Matcher::classify`, `plan_tree`, `jobs/clean.rs` `locate`,
   `remove_tree`, `run` (Reihenfolge Eltern → Kinder, `Outcome`).
 - Echter macOS-/Windows-Papierkorb mit einem Rückstands-Ordner; Klick-Durchlauf im echten Fenster.
@@ -263,3 +265,33 @@ Fehlercodes. Job `clean`: `JobSpec::Clean` unverändert in der Form.
 - [x] Phase 4: Debug-Build, Start mit eigenem `HOME`, Screenshots light/dark/Norton – Klick-Durchlauf offen (s. §6)
 - [x] Phase 5 Doku, Prompt nach `prompts/done/`
 - [x] Phase 6 `pnpm check`
+
+## 9. Externes Review (separater Agent, 25.11.2026) – Befunde und Behebung
+
+Kein kritischer Befund (kein Weg, auf dem der Job regelwidrig Inhalt löscht). Sieben Punkte, alle behoben; je
+Befund ein Test, der vor dem Fix rot lief.
+
+| # | Befund | Behebung | Test (vorher rot) |
+|---|---|---|---|
+| 1 | „Release-Reste“ traf normale Dokumente: `sample-vertrag.docx` (bis 300 MiB!), `config.sample.json`, `Abnahme-proof.pdf`, `Bank.url` → Ordner `Vorlagen` = Rückstand, vorgewählt | Sample-Muster nur noch für Video-Endungen (je Endung ein Muster), `*.url` gestrichen, `*-proof.*` nur jpg/jpeg/png. Rust nimmt in `largeJunk` jetzt auch exakte Namen (`sample.mkv`) – sie haben dort die Sample-Grenze. Der Ordnername `Sample` ist weiter kein Freibrief. 045 nutzt dieselbe Quelle nur für den vorbelegten Clean-Dialog; ihre eigene Liste zum **Überspringen** beim Gruppieren (`series-engine.ts` `DEFAULT_JUNK`) ist unberührt. Marcs Fixture liefert weiter die Akzeptanzzahlen. | `clean-logic.spec.ts` › „the release lists reach what a release leaves behind – and no ordinary document“; Rust `clean::tests::documents_named_like_samples_are_content` |
+| 2 | „Nur leere Ordner“ betrat versteckte Ordner: `.git/refs/heads`, `.git/objects/pack` nach `git pack-refs` galten als leer (Verhalten seit 008) | Versteckte Ordner (Punkt-Name, unter Windows Attribut) und Pakete (`PACKAGE_EXTENSIONS`: app, bundle, framework, plugin, kext, xcodeproj, xcworkspace, playground, lproj, photoslibrary, musiclibrary, tvlibrary, imovielibrary, fcpbundle, sparsebundle, rtfd – was der Finder als eine Datei zeigt und was „leere“ Ordner als Teil seines Formats hat) werden **nie betreten** und sind Inhalt (`KeepReason::Hidden`/`Package`). `plan_tree` lehnt jeden Ordner ab, auf dessen Weg unterhalb der Wurzel etwas Verstecktes oder ein Paket liegt. Eine **Wurzel**, die der Nutzer selbst markiert hat, darf versteckt sein (seine Wahl). | Rust `hidden_and_package_folders_are_content_and_never_entered`; Job `clean_never_enters_hidden_or_package_folders` |
+| 3 | Papierkorb: zwischen `plan_tree` und `trash_one` kann eine Datei dazukommen | `TreePlan::unchanged()` unmittelbar vor dem Löschen (beide Zweige): je geplantem Ordner Zeitstempel (vor dem Lesen genommen) und Eintragszahl. Abweichung → „changed while it was checked“, nichts wird angefasst. Kein Umbenennen auf einen Temp-Namen. | Job `clean_notices_a_file_that_arrives_after_the_plan` (Hook zwischen Plan und Prüfung); `plan_tree_decides_again` |
+| 4 | Endgültig: Beiwerk wurde nur per Name gelöscht | `platform::remove_below` bekommt je Beiwerk-Datei die geplante Größe und prüft vor `unlinkat` per `fstatat(AT_SYMLINK_NOFOLLOW)`: reguläre Datei genau dieser Größe, sonst Fehler und der Ordner bleibt (Nicht-Unix: `symlink_metadata` per Pfad). | Job `clean_does_not_delete_an_extra_that_grew_after_the_plan` (Datei wächst an Ort und Stelle, Ordner-Zeitstempel unverändert); `platform::tests::remove_below_never_follows_a_link_on_the_way` |
+| 5 | Teilweise gescheiterter Endgültig-Lauf: Entferntes fehlte in den Zählern, gelistete Kinder danach „nicht gefunden“ | `remove_tree` meldet, was vor dem Fehler ging (`Failure.removed`/`bytes`): `bytes_done` zählt es, die gelisteten Ordner gelten als erledigt, die Meldung des obersten Ordners beginnt mit „Partly removed (n of m folders)“. | Job `clean_counts_what_a_failed_run_removed` |
+| 6 | Gelockerte Schutzwerte werden gemerkt und waren bei zugeklappten Regeln unsichtbar | `loosened(form)` (rein): höhere Grenze oder „Beiwerk-Unterordner neben Inhalt“, soweit das Profil den Wert benutzt → Regeln sind aufgeklappt, und neben „Regeln“ steht rot „weiter gefasst als die Vorgaben“ (auch wenn der Nutzer wieder zuklappt). Strengere Werte zählen nicht. | `clean-logic.spec.ts` › „rules that were loosened are never hidden“; `tools-dialogs.spec.ts` › „clean folders: loosened rules open the rules and are named“ |
+| 7 | Exakte Müll-Namen aus Nutzereingabe (`sample`) ohne Größenschutz | Nur der eingebaute Systemmüll (`clean::SYSTEM_JUNK`) ist grenzenlos; jeder andere exakte Name gilt bis `junkMaxBytes` und macht seinen Ordner „soft“ (wie ein Muster). **Bewusst nicht** geändert: ein exakt eingetippter versteckter Name (`.localized`) trifft weiter – das ist eine ausdrückliche Eingabe, und die Größengrenze gilt auch dort. | Rust `only_the_built_in_system_junk_has_no_size_limit` |
+
+**Rest-Risiken (benannt):**
+- **Papierkorb:** Zwischen `TreePlan::unchanged()` und `trash_one` bleibt ein Augenblick (zwei Systemaufrufe), in
+  dem eine Datei dazukommen kann – sie wandert dann mit in den Papierkorb (wiederherstellbar). Die Gegenprüfung
+  sieht keine Änderung **an Ort und Stelle** (eine Beiwerk-Datei wächst, ohne dass sich der Ordner ändert); im
+  Papierkorb-Zweig landet sie mit im Papierkorb, im Endgültig-Zweig fängt Befund 4 sie ab.
+- **Endgültig:** Zwischen `fstatat` und `unlinkat` derselben Datei bleibt ein Augenblick; und bevor `rmdir`
+  scheitert, sind die Beiwerk-Dateien dieses einen Ordners schon entfernt (nur geprüftes Beiwerk).
+- Zeitstempel mit grober Auflösung (FAT: 2 s) können eine Änderung im selben Intervall verdecken – die
+  Eintragszahl fängt Hinzugekommenes trotzdem.
+- Die Paket-Liste ist kurz und fest; ein unbekanntes Paketformat mit sichtbarem Namen wird wie ein Ordner behandelt.
+
+**Verhaltensänderungen durch das Review:** leere versteckte Ordner (`.Trashes`, `.cache/leer`) werden unterhalb
+einer Wurzel nicht mehr aufgeräumt; nach „Serien nach Staffeln“ gelten `*.url` und Nicht-Video-„Samples“ nicht
+mehr als Beiwerk (der Release-Ordner bleibt dann stehen – sichtbar mit Grund).
