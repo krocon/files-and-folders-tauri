@@ -6,8 +6,10 @@ import { ACTION_IDS, ACTIONS, ActionId } from '../../core/actions/action-catalog
 import { ActionState, ExtraAction } from '../../core/actions/action.service';
 import { NativeMenuNode } from '../../core/menu/menu.models';
 import {
+  COLUMN_MENU,
   contextKind,
   contextMenuFor,
+  HEADER_MENU,
   MENU_BAR,
   MenuDef,
   MenuSource,
@@ -203,6 +205,44 @@ describe('menu model', () => {
       disabled: true,
       hint: 'Coming in prompt 016',
     });
+  });
+
+  // design 041 E8
+  it('lists the columns as check entries: header menu, View → Columns, native menu', () => {
+    const src: MenuSource = {
+      ...source(),
+      columnChoices: () => [
+        { id: 'column:ext', label: 'Extension', checked: true, run: () => undefined },
+        { id: 'column:createdMs', label: 'Created', checked: false, run: () => undefined },
+      ],
+    };
+    const header = resolveMenu(HEADER_MENU, src, 'linux');
+    expect(header.map((i) => (i.separator ? '-' : i.id))).toEqual([
+      'column:ext',
+      'column:createdMs',
+      '-',
+      'OPEN_COLUMNS_DLG',
+      '-',
+      'VIEW_MODE_FULL',
+      'VIEW_MODE_BRIEF',
+      'VIEW_MODE_THUMBNAILS',
+    ]);
+    expect(header.slice(0, 2).map((i) => [i.label, i.checked])).toEqual([
+      ['Extension', true],
+      ['Created', false],
+    ]);
+    const view = resolveMenuBar(src, 'linux').find((m) => m.id === 'view')!;
+    const columns = view.items.find((i) => i.label === 'Columns')!;
+    expect(columns.children?.map((c) => c.id).slice(0, 2)).toEqual([
+      'column:ext',
+      'column:createdMs',
+    ]);
+    const native = JSON.stringify(toNativeSpec(src, 'macos', false));
+    expect(native).toContain('"id":"column:createdMs","label":"Created","accelerator":null');
+    // without a source of columns (tests, start) the menus just have the dialog
+    expect(resolveMenu(COLUMN_MENU, source(), 'linux').map((i) => i.id)).toEqual([
+      'OPEN_COLUMNS_DLG',
+    ]);
   });
 
   it('lists the double-click actions that match the cursor file, one per command', () => {

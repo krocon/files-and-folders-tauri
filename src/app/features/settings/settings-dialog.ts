@@ -33,6 +33,8 @@ import { OsStore } from '../osintegration/os.store';
 import { ShellStore } from '../shell/shell.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { ButtonConfigStore } from '../config/button-config.store';
+import { ColumnsStore } from '../columns/columns.store';
+import { COLUMNS_TEXTS } from '../columns/columns-texts';
 import { FileTypesStore } from '../config/file-types.store';
 import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings-logic';
 import { describeSettingsWarning } from './settings-warnings';
@@ -187,6 +189,23 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                   (change)="setInt(key, $event)"
                 />
               </label>
+            }
+            @case ('columns') {
+              <div class="field">
+                <span>{{ label(key) }}</span>
+                <span class="row">
+                  <span>{{ columnNames() }}</span>
+                  <button
+                    data-no-dialog-key
+                    type="button"
+                    class="btn"
+                    [attr.aria-describedby]="helpId(key)"
+                    (click)="columns.open()"
+                  >
+                    {{ t.editColumns }}
+                  </button>
+                </span>
+              </div>
             }
             @case ('json') {
               <div class="field">
@@ -526,6 +545,14 @@ export class SettingsDialog {
   protected readonly overrideCount = computed(() => Object.keys(this.actions.override()).length);
   private readonly buttonConfig = inject(ButtonConfigStore);
   protected readonly fileTypes = inject(FileTypesStore);
+  protected readonly columns = inject(ColumnsStore);
+  /** The shown columns by name, in their order (design 041). */
+  protected readonly columnNames = computed(() =>
+    this.columns
+      .chosen()
+      .map((c) => COLUMNS_TEXTS.names[c])
+      .join(', '),
+  );
   protected readonly buttonSetsChanged = this.buttonConfig.changedCount;
 
   private readonly panel = this.ws.panel();
@@ -569,6 +596,9 @@ export class SettingsDialog {
   }
 
   protected kindOf(key: SettingKey): string {
+    if (key === 'view.columns') {
+      return 'columns'; // an own dialog (design 041 E9)
+    }
     return LINE_LISTS.has(key) ? 'lines' : SCHEMA[key].type;
   }
 

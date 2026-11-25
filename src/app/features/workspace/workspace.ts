@@ -76,6 +76,9 @@ import { FolderFinderDialog } from '../search/folder-finder-dialog';
 import { FolderFinderStore } from '../search/folder-finder.store';
 import { registerSearchActions } from '../search/search-actions';
 import { registerFlatActions } from '../flat/flat-actions';
+import { registerColumnActions } from '../columns/columns-actions';
+import { ColumnsDialog } from '../columns/columns-dialog';
+import { ColumnsStore } from '../columns/columns.store';
 import { ImageOverview } from '../imageoverview/image-overview';
 import { registerImageOverviewActions } from '../imageoverview/image-overview-actions';
 import { ImageOverviewStore } from '../imageoverview/image-overview.store';
@@ -173,6 +176,7 @@ import { RemoteStore } from '../remote/remote.store';
     ToolConfigDialog,
     StarterDialog,
     FileActionsDialog,
+    ColumnsDialog,
     ViewerDialog,
     PropertiesDialog,
     AttributesDialog,
@@ -249,6 +253,7 @@ export class Workspace implements OnInit {
   private readonly mrImport = inject(MrImportStore);
   private readonly starter = inject(StarterStore);
   private readonly fileActions = inject(FileActionsStore);
+  private readonly columns = inject(ColumnsStore);
   private readonly remote = inject(RemoteStore);
   private readonly selectIf = inject(SelectIfStore);
   private readonly menuApi = inject(MenuApi);
@@ -400,6 +405,7 @@ export class Workspace implements OnInit {
       registerSearchActions(this.actions, this.ws, this.find, this.search, this.finder),
     );
     this.destroyRef.onDestroy(registerFlatActions(this.actions, this.ws));
+    this.destroyRef.onDestroy(registerColumnActions(this.actions, this.ws, this.columns));
     this.destroyRef.onDestroy(registerImageOverviewActions(this.actions, this.ws, this.overview));
     this.destroyRef.onDestroy(registerPaletteActions(this.actions, this.palette, this.dialogs));
     this.destroyRef.onDestroy(registerArchiveActions(this.actions, this.archive, this.dup));

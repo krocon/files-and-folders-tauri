@@ -484,6 +484,8 @@
   <app-file-list
     [labelledBy]="pathId"
     [side]="side()"
+    [viewMode]="viewMode()"
+    (headerMenu)="onHeaderMenu($event)"
     (openInNewTab)="openInNewTab($event)"
     (tableStateChanged)="onTableState($event)"
     (contextMenu)="onListContextMenu($event)"

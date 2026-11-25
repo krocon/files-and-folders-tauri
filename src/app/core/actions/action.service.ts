@@ -82,6 +82,8 @@ export class ActionService {
   readonly starterTree = signal<readonly ExtraMenuNode[]>([]);
   /** The colour schemes as radio entries of the menu bar (design 070), set by the ThemeService. */
   readonly themeChoices = signal<readonly MenuChoice[]>([]);
+  /** The columns of the file list as check entries (design 041 E8); set by the `ColumnsStore`. */
+  readonly columnChoices = signal<readonly MenuChoice[]>([]);
 
   /** Canonical shortcut → extra action; taken or invalid shortcuts are left out (see `extraProblems`). */
   private readonly extraIndex = computed(() => {
@@ -254,7 +256,8 @@ export class ActionService {
 
   /** Runs a catalog action or an extra action (tool) by id – what every menu item does. */
   runAny(id: string): Promise<boolean> {
-    const choice = this.themeChoices().find((c) => c.id === id);
+    const choice =
+      this.themeChoices().find((c) => c.id === id) ?? this.columnChoices().find((c) => c.id === id);
     if (choice) {
       return Promise.resolve(choice.run()).then(() => true);
     }

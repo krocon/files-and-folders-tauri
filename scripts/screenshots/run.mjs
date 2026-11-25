@@ -269,7 +269,8 @@ async function capture(browser, theme, scene, target) {
     theme,
     platform,
     session,
-    settings,
+    // a scene may set its own settings (041: date format, columns)
+    settings: { ...settings, ...(scene.settings ?? {}) },
     appVersion,
     mock: scene.mock ?? {},
   };

@@ -11,6 +11,8 @@ export const MENU_EN = {
   tools: 'Configuration',
   checksums: 'Checksums',
   colourScheme: 'Colour scheme',
+  columns: 'Columns',
+  columnsMenu: 'Columns and view',
   start: 'Start',
   window: 'Window',
   help: 'Help',

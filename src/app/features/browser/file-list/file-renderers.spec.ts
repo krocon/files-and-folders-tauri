@@ -1,7 +1,15 @@
 import { AreaModelIf, SimpleDomService } from '@guiexpert/table';
 import { DirEntry } from '../../../core/fs/fs.models';
 import { dir, entry } from '../../../../testing/fs-fixtures';
-import { DateCellRenderer, iconFor, NameCellRenderer, SizeCellRenderer } from './file-renderers';
+import {
+  attrsText,
+  DateCellRenderer,
+  iconFor,
+  NameCellRenderer,
+  SizeCellRenderer,
+  typeText,
+} from './file-renderers';
+import { parentRow } from '../../../core/fs/fs.models';
 
 function render(
   renderer: { render: NameCellRenderer['render'] },
@@ -99,5 +107,37 @@ describe('file renderers', () => {
     expect(iconFor(entry('video.mp4'))).toBe('fa fa-file-video-o');
     expect(iconFor(entry('track.mp3'))).toBe('fa fa-file-audio-o');
     expect(iconFor(entry('f.unknown'))).toBe('fa fa-file-o');
+  });
+
+  // design 041 E2
+  it('shows permissions (Unix) or attributes (Windows), nothing where they are unknown', () => {
+    expect(attrsText(entry('a', { mode: 0o640 }))).toBe('rw-r-----');
+    expect(attrsText(entry('a', { mode: 0o4755 }))).toBe('rwsr-xr-x');
+    expect(attrsText(entry('a', { winAttrs: 0x21 }))).toBe('R--A');
+    expect(attrsText(entry('a', { winAttrs: 0x6 }))).toBe('-HS-');
+    expect(attrsText(entry('in-archive.txt'))).toBe('');
+  });
+
+  it('names the type: folder, link, the category of the file types, else the extension', () => {
+    expect(typeText(dir('src'))).toBe('Folder');
+    expect(typeText(entry('l', { kind: 'symlink', targetKind: 'directory' }))).toBe('Link');
+    expect(typeText(entry('README'))).toBe('File');
+    expect(typeText(entry('x.unknownext'))).toBe('UNKNOWNEXT');
+    expect(typeText(entry('.bashrc'))).toBe('File');
+    expect(typeText(parentRow('/'))).toBe('');
+    // a known extension shows its category, whatever the case of the name
+    const category = typeText(entry('film.MKV'));
+    expect(category).not.toBe('MKV');
+    expect(category).toBe(typeText(entry('film.mkv')));
+  });
+
+  it('renders any date of the entry; an unknown one stays empty', () => {
+    const created = new DateCellRenderer((e) => e.createdMs ?? null);
+    const known = render(created, entry('a', { createdMs: Date.UTC(2026, 0, 2, 3, 4) }), null);
+    expect(known.textContent).toMatch(/2026/);
+    expect(known.title).not.toBe('');
+    const unknown = render(created, entry('a'), null);
+    expect(unknown.textContent).toBe('');
+    expect(unknown.title).toBe('');
   });
 });

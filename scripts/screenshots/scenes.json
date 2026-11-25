@@ -729,6 +729,80 @@
       "prelude": false
     },
     {
+      "name": "columns-dialog",
+      "steps": [
+        { "action": "OPEN_COLUMNS_DLG" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "key": "ArrowDown" },
+        { "key": "Space" },
+        { "key": "ArrowDown" },
+        { "key": "ArrowDown" },
+        { "key": "Space" },
+        { "key": "Alt+ArrowUp" },
+        { "key": "Alt+ArrowUp" },
+        { "wait": 300 }
+      ]
+    },
+    {
+      "name": "columns-menu",
+      "steps": [
+        { "click": "#fnf-pane-right .ge-table-header-center .ge-table-row-div", "button": "right" },
+        { "wait": 300 }
+      ]
+    },
+    {
+      "name": "columns-us-dates",
+      "settings": {
+        "view.dateFormat": "locale",
+        "view.columns": ["name", "modifiedMs", "createdMs", "attrs", "type"]
+      },
+      "steps": []
+    },
+    {
+      "name": "view-brief",
+      "steps": [{ "action": "VIEW_MODE_BRIEF" }, { "wait": 500 }]
+    },
+    {
+      "name": "view-thumbnails",
+      "steps": [
+        { "action": "VIEW_MODE_THUMBNAILS" },
+        { "wait": 800 },
+        { "key": "ArrowDown" },
+        { "key": "ArrowRight" },
+        { "wait": 300 }
+      ]
+    },
+    {
+      "name": "view-thumbnails-2000",
+      "mock": { "manyPhotos": 2000 },
+      "steps": [
+        { "action": "VIEW_MODE_THUMBNAILS" },
+        { "wait": 800 },
+        { "key": "End" },
+        { "wait": 300 },
+        { "key": "PageUp" },
+        { "key": "PageUp" },
+        { "action": "TOGGLE_MARK_AND_ADVANCE" },
+        { "wait": 300 },
+        {
+          "log": "(async () => { const vp = [...document.querySelectorAll('#fnf-pane-right app-file-grid *')].find((e) => e.scrollHeight > e.clientHeight + 1000); const frames = []; let last = performance.now(); for (let i = 0; i < 60; i++) { vp.scrollTop = i * 700; await new Promise((r) => requestAnimationFrame(r)); const now = performance.now(); frames.push(now - last); last = now; } frames.sort((a, b) => a - b); return { rows: 2027, tilesInDom: document.querySelectorAll('#fnf-pane-right .fg-tile').length, imagesInDom: document.querySelectorAll('#fnf-pane-right .fg-tile img').length, frameMedianMs: Math.round(frames[30] * 10) / 10, frameMaxMs: Math.round(frames[59] * 10) / 10, cursor: (document.querySelector('#fnf-pane-right .fg-tile.fnf-cursor .fg-name') || {}).textContent ?? 'scrolled away' }; })()"
+        }
+      ]
+    },
+    {
+      "name": "view-thumbnails-back",
+      "steps": [
+        { "action": "VIEW_MODE_THUMBNAILS" },
+        { "wait": 500 },
+        { "key": "ArrowDown" },
+        { "key": "ArrowRight" },
+        { "action": "TOGGLE_MARK_AND_ADVANCE" },
+        { "action": "VIEW_MODE_FULL" },
+        { "wait": 500 }
+      ]
+    },
+    {
       "name": "flat-view",
       "mock": {
         "photoFolders": true

@@ -82,6 +82,16 @@ export const SETTINGS_EN = {
       help: 'Keycap: the shortcut after the label (⌘D, Enter, Esc). Underlined letter: Alt (⌥ on the Mac) + the underlined letter, chosen from the label in the current language; Enter and Esc keep working, irreversible buttons keep their keycap.',
       keywords: 'dialog button shortcut key mnemonic underline alt keycap',
     },
+    'view.columns': {
+      label: 'Columns of the file list',
+      help: 'Which columns the list shows and in which order, for both panels and all tabs. Also: right click on the column header, menu View → Columns. Widths are kept per tab.',
+      keywords: 'columns created accessed permissions attributes type order hide show',
+    },
+    'view.thumbnailSize': {
+      label: 'Thumbnail view: tile size',
+      help: 'Width of a tile in pixels (64–320) in the thumbnail view of a tab (View → Thumbnails).',
+      keywords: 'thumbnails tiles size pictures photos preview view mode',
+    },
     'folderMenu.recentOrder': {
       label: 'Recent folders in the folder menu ▾',
       help: 'Alphabetical (folders of the same place stand together) or the most recent first.',
@@ -315,6 +325,7 @@ export const SETTINGS_EN = {
     'The buttons of the bottom bar (buttons.json) and the file types for icons and marking (filetypes.json).',
   editButtons: 'Button configuration…',
   editFileTypes: 'File types…',
+  editColumns: 'Columns…',
   buttonSetsChanged: (n: number) =>
     n === 0
       ? 'Buttons: built in.'
@@ -455,6 +466,16 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       label: 'Tastenkürzel an Dialog-Knöpfen',
       help: 'Tastenkappe: das Kürzel steht hinter der Beschriftung (⌘D, Enter, Esc). Unterstrichener Buchstabe: Alt (⌥ auf dem Mac) + der unterstrichene Buchstabe, gewählt aus der Beschriftung in der aktuellen Sprache; Enter und Esc gelten weiter, nicht umkehrbare Knöpfe behalten ihre Tastenkappe.',
       keywords: 'dialog knopf taste kürzel unterstrichen buchstabe alt tastenkappe',
+    },
+    'view.columns': {
+      label: 'Spalten der Dateiliste',
+      help: 'Welche Spalten die Liste zeigt und in welcher Reihenfolge, für beide Seiten und alle Tabs. Auch: Rechtsklick auf den Spaltenkopf, Menü Ansicht → Spalten. Die Breiten gelten je Tab.',
+      keywords: 'spalten erstellt zugriff rechte attribute typ reihenfolge ausblenden einblenden',
+    },
+    'view.thumbnailSize': {
+      label: 'Miniaturansicht: Kachelgröße',
+      help: 'Breite einer Kachel in Pixeln (64–320) in der Miniaturansicht eines Tabs (Ansicht → Miniaturen).',
+      keywords: 'miniaturen kacheln größe bilder fotos vorschau ansicht',
     },
     'folderMenu.recentOrder': {
       label: 'Zuletzt besuchte Ordner im Ordnermenü ▾',
@@ -685,6 +706,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     'Die Buttons der unteren Leiste (buttons.json) und die Dateitypen für Symbole und Markieren (filetypes.json).',
   editButtons: 'Button-Konfiguration…',
   editFileTypes: 'Dateitypen…',
+  editColumns: 'Spalten…',
   buttonSetsChanged: (n) =>
     n === 0
       ? 'Buttons: eingebaut.'

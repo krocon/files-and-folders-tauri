@@ -34,7 +34,7 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { WatchService } from '../../core/watch/watch.service';
 import { WatchEvent } from '../../core/watch/watch.models';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
-import { Side } from '../../core/session/session.models';
+import { Side, ViewMode } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { SearchStore } from '../search/search.store';
@@ -179,6 +179,15 @@ export class FilePanel implements OnInit {
       this.dupGroupOf() === null,
   );
   protected readonly tab = computed(() => this.ws.activeTab(this.side()));
+  /**
+   * How the list shows the tab (design 041 E4). The tabs of the disk usage stay in the
+   * full view: their columns (share, objects) are the content.
+   */
+  protected readonly viewMode = computed<ViewMode>(() => {
+    const tab = this.tab();
+    const key = tab.search?.key;
+    return isUsageKey(key) || isUsageChartKey(key) ? 'full' : (tab.view ?? 'full');
+  });
   private readonly tabId = computed(() => this.tab().id);
   protected readonly search = inject(SearchStore);
   private readonly find = inject(FindStore);
@@ -766,6 +775,11 @@ export class FilePanel implements OnInit {
   /** Right click in the list (design 014 E3); the menu service is root-wide, fetched lazily. */
   protected onListContextMenu(evt: { rowIndex: number; x: number; y: number }): void {
     this.injector.get(MenuService).openFromPointer(this.side(), evt.rowIndex, evt.x, evt.y);
+  }
+
+  /** Right click on the column header (design 041 E8). */
+  protected onHeaderMenu(evt: { x: number; y: number }): void {
+    this.injector.get(MenuService).openHeader(this.side(), evt.x, evt.y);
   }
 
   protected onTableState(state: Partial<TableStateIf>): void {

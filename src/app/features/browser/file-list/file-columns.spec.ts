@@ -137,6 +137,56 @@ describe('fileComparators', () => {
     ]);
   });
 
+  // design 041 E2: the chosen columns sort like the others – folders first, unknown values last
+  it('sorts by creation and access time; entries without one (archives, servers) come last', () => {
+    const rows = [
+      entry('late', { createdMs: 300, accessedMs: 10 }),
+      entry('unknown'),
+      dir('folder', { createdMs: 900, accessedMs: 900 }),
+      entry('early', { createdMs: 100, accessedMs: 30 }),
+    ];
+    expect(sortLikeTable(rows, fileComparators.createdMs, 'asc')).toEqual([
+      'folder',
+      'early',
+      'late',
+      'unknown',
+    ]);
+    expect(sortLikeTable(rows, fileComparators.createdMs, 'desc')).toEqual([
+      'folder',
+      'late',
+      'early',
+      'unknown',
+    ]);
+    expect(sortLikeTable(rows, fileComparators.accessedMs, 'asc')).toEqual([
+      'folder',
+      'late',
+      'early',
+      'unknown',
+    ]);
+  });
+
+  it('sorts by permissions and by type, ties by name', () => {
+    const rows = [
+      entry('b.txt', { mode: 0o644 }),
+      entry('a.txt', { mode: 0o644 }),
+      entry('run.sh', { mode: 0o755 }),
+      entry('none'),
+    ];
+    expect(sortLikeTable(rows, fileComparators.attrs, 'asc')).toEqual([
+      'a.txt',
+      'b.txt',
+      'run.sh',
+      'none',
+    ]);
+    const typed = [entry('z.zzunknown'), entry('a.aaunknown'), entry('b.aaunknown'), dir('d')];
+    expect(sortLikeTable(typed, fileComparators.type, 'asc')).toEqual([
+      'd',
+      'a.aaunknown',
+      'b.aaunknown',
+      'z.zzunknown',
+    ]);
+  });
+
   it('returns 0 without rows', () => {
     expect(fileComparators.name('a', 'b')).toBe(0);
   });
@@ -150,6 +200,10 @@ describe('createFileColumns', () => {
       'ext',
       'size',
       'modifiedMs',
+      'createdMs',
+      'accessedMs',
+      'attrs',
+      'type',
       'group',
       'decision',
       'pixels',
@@ -161,7 +215,8 @@ describe('createFileColumns', () => {
     // the group, decision and pixels columns belong to duplicate tabs (design 016, 042),
     // share/objects to disk-usage tabs (design 033), the folder column to search result tabs
     // (design 009), the path column to the flat view (design 038) – all hidden
-    for (const i of [4, 5, 6, 7, 8, 9, 10]) {
+    // created, accessed, permissions and type are chosen by the user (design 041) – hidden at first
+    for (const i of [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
       expect(cols[i].isVisible?.()).toBe(false);
     }
     // the decision follows the marks: not sortable (rows would move under the cursor)

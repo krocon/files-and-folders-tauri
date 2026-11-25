@@ -1,0 +1,24 @@
+:host {
+  position: relative;
+  display: block;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.table {
+  position: absolute;
+  inset: 0;
+  /* the tile shows the cursor; the table's focus cell frame is not wanted */
+  --ge-table-focus-border: transparent;
+  --ge-table-focus-outline-color: transparent;
+  --ge-table-body-center-horizontal-border: transparent;
+  --ge-table-body-center-vertical-border: transparent;
+  --ge-table-row-even-bg: transparent;
+  --ge-table-row-odd-bg: transparent;
+  --ge-table-hover-row-bg: transparent;
+
+  &:focus-visible {
+    outline: none;
+  }
+}

@@ -17,6 +17,10 @@ export interface SettingsValues {
   'view.menuBar': boolean;
   /** How dialog buttons show their keys (design 076 E4). */
   'view.dialogKeys': 'keycap' | 'underline';
+  /** The columns of the file list in their order (design 041 E1) – read with `sanitizeColumns`. */
+  'view.columns': readonly unknown[];
+  /** Tile width of the thumbnail view in px (design 041 E6). */
+  'view.thumbnailSize': number;
   'folderMenu.recentOrder': 'alpha' | 'recent';
   'behavior.deleteToTrash': boolean;
   'behavior.confirmTrash': boolean;

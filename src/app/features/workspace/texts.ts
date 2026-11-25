@@ -111,7 +111,13 @@ export const TEXTS_EN = {
     folder: 'Folder',
     path: 'Path',
     group: 'Group',
+    created: 'Created',
+    accessed: 'Accessed',
+    attrs: 'Attr',
+    type: 'Type',
   },
+  /** The "Type" column (design 041 E2). */
+  types: { folder: 'Folder', link: 'Link', file: 'File' },
   bytesTitle: (marked: number, total: number) =>
     `${formatCount(marked)} / ${formatCount(total)} bytes`,
   status: {

@@ -15,6 +15,14 @@ export interface DirEntry {
   readonly modifiedMs: number | null;
   readonly hidden: boolean;
   readonly lossyName: boolean;
+  /** Creation time (design 041 E2); missing where it is unknown, in archives and on servers. */
+  readonly createdMs?: number;
+  /** Last access. */
+  readonly accessedMs?: number;
+  /** Unix permission bits (`st_mode & 0o7777`). */
+  readonly mode?: number;
+  /** Windows `FILE_ATTRIBUTE_*` bits. */
+  readonly winAttrs?: number;
 }
 
 export interface PathSegment {

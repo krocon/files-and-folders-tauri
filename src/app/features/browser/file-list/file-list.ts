@@ -12,9 +12,10 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { TableSignalComponent } from '@guiexpert/angular-table';
-import { TableApi, TableStateIf } from '@guiexpert/table';
+import { TableApi, TableColumnStateIf, TableStateIf } from '@guiexpert/table';
 import {
   DirEntry,
   DirectoryListing,
@@ -23,7 +24,9 @@ import {
   parentRow,
 } from '../../../core/fs/fs.models';
 import { ActionService } from '../../../core/actions/action.service';
-import { Side } from '../../../core/session/session.models';
+import { Side, ViewMode } from '../../../core/session/session.models';
+import { ImageOverviewApi } from '../../../core/imageoverview/image-overview-api';
+import { formatModified } from '../../../shared/format';
 import { modifiersAfter } from '../../../core/actions/shortcut';
 import {
   DRAG_THRESHOLD,
@@ -54,6 +57,19 @@ import { FILE_TYPES } from '../../../core/file-icon/file-icon.service';
 import { locale } from '../../../core/i18n/i18n';
 import { inPlaceUpdate } from './row-update';
 import {
+  ColumnContext,
+  columnLayout,
+  dateColumnWidth,
+  roughTextWidth,
+  sanitizeColumns,
+  stripAutoWidths,
+  WIDE_DATE_MS,
+  widthsOf,
+} from './column-layout';
+import { FileGrid, GridClick } from '../file-grid/file-grid';
+import { GridMode, listingStamp } from '../file-grid/grid-logic';
+import { PanelThumbs } from '../file-grid/panel-thumbs';
+import {
   createTableBridge,
   Presentation,
   removeConflictingShortcuts,
@@ -69,15 +85,34 @@ const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(naviga
  */
 @Component({
   selector: 'app-file-list',
-  imports: [TableSignalComponent],
+  imports: [TableSignalComponent, FileGrid],
   template: `
+    <!-- brief / thumbnails (design 041 E7): the table stays behind the grid and keeps
+         order, filter and cursor – the grid shows its rows -->
     <guiexpert-table-signal
       class="table"
+      [class.covered]="gridMode() !== null"
+      [attr.inert]="gridMode() !== null ? '' : null"
       [tableModel]="table().model"
       [tableOptions]="table().options"
       [loading]="store.loading()"
       [(tableApi)]="api"
     />
+    @if (gridMode(); as mode) {
+      <app-file-grid
+        class="grid"
+        [mode]="mode"
+        [rows]="displayed()"
+        [rowHeight]="rowHeight()"
+        [labelledBy]="labelledBy()"
+        [dropPath]="dropRow()"
+        [thumbs]="thumbs"
+        (ready)="onGridReady()"
+        (cursorMoved)="onGridMove($event)"
+        (tileClicked)="onGridClick($event)"
+        (menuWanted)="onGridMenu($event)"
+      />
+    }
   `,
   styleUrl: './file-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -106,6 +141,25 @@ export class FileList implements OnDestroy {
   readonly labelledBy = input.required<string>();
   /** The panel side (drag and drop); without it the list is no drag source or drop zone. */
   readonly side = input<Side | null>(null);
+  /** How the tab shows its folder (design 041 E4). */
+  readonly viewMode = input<ViewMode>('full');
+  /** The tile view shown instead of the table, null in the full view. */
+  protected readonly gridMode = computed<GridMode | null>(() => {
+    const mode = this.viewMode();
+    return mode === 'full' ? null : mode;
+  });
+  /** The rows the table displays (sorted, filtered) – what the tile views show. */
+  protected readonly displayed = signal<readonly DirEntry[]>([]);
+  private readonly grid = viewChild(FileGrid);
+  /** Thumbnails of the folder for the thumbnail view (design 041 E6). */
+  protected readonly thumbs = new PanelThumbs(inject(ImageOverviewApi));
+  private thumbTimer: ReturnType<typeof setTimeout> | null = null;
+  private thumbRoot: string | null = null;
+  /** Measured widths of the date columns in the current format (design 041 E3). */
+  private autoWidths: Readonly<Record<string, number>> = {};
+  /** The column layout applied last, and what the shown tab needs. */
+  private layoutKey = '';
+  private columnContext: ColumnContext = {};
 
   private readonly dnd = inject(DragStore);
   private readonly dup = inject(DuplicatesStore);
@@ -117,7 +171,7 @@ export class FileList implements OnDestroy {
     readonly groups: ReadonlySet<number>;
   } | null = null;
   /** The folder row of this list a drag would drop into. */
-  private readonly dropRow = computed(() => {
+  protected readonly dropRow = computed(() => {
     const t = this.dnd.drag()?.target;
     return t && t.side === this.side() && !t.tabId ? t.rowPath : null;
   });
@@ -135,6 +189,8 @@ export class FileList implements OnDestroy {
   readonly openInNewTab = output<DirEntry>();
   /** Right click in the body (`rowIndex` -1 = free space), design 014 E3. */
   readonly contextMenu = output<{ rowIndex: number; x: number; y: number }>();
+  /** Right click on the column header: the column menu (design 041 E8). */
+  readonly headerMenu = output<{ x: number; y: number }>();
   /** Column layout, sort or scroll changed by the user (debounced by the table). */
   readonly tableStateChanged = output<Partial<TableStateIf>>();
 
@@ -161,7 +217,11 @@ export class FileList implements OnDestroy {
     // Capture phase + setTimeout: runs after the table's handler – keep the cursor on its entry.
     this.host.nativeElement.addEventListener(
       'dblclick',
-      () => setTimeout(() => this.controller?.restoreCursor()),
+      () =>
+        setTimeout(() => {
+          this.controller?.restoreCursor();
+          this.syncDisplayed();
+        }),
       { capture: true },
     );
     // a (new) table: wire bridge, controller and listeners; released with the table or the list
@@ -217,9 +277,186 @@ export class FileList implements OnDestroy {
         if (this.bridge && this.controller) {
           this.bridge.filterChanged();
           this.controller.restoreCursor();
+          this.syncDisplayed();
         }
       });
     });
+    // the chosen columns (design 041 E1): order and visibility live, no new table
+    effect(() => {
+      this.settings.get('view.columns');
+      untracked(() => this.reapplyLayout());
+    });
+    // full ↔ brief ↔ thumbnails (design 041 E7): cursor, marks, order and filter stay
+    effect(() => {
+      const mode = this.gridMode();
+      untracked(() => this.onViewMode(mode));
+    });
+  }
+
+  private onViewMode(mode: GridMode | null): void {
+    const switched = !!this.bridge; // not the first run, before there is a table
+    this.bridge?.setCovered(mode !== null);
+    this.syncDisplayed();
+    this.syncThumbs();
+    if (mode === null) {
+      // back in the table: the cursor row in view again
+      requestAnimationFrame(() => this.controller?.restoreCursor());
+    }
+    if (switched) {
+      // The element that had the focus is covered or gone – also the one a closing palette
+      // or menu wants to give it back to. Whoever has no focus then, or one in this list,
+      // lands in the view shown now (the view changes in the active panel only).
+      const refocus = () => {
+        const active = document.activeElement;
+        if (!active || active === document.body || this.host.nativeElement.contains(active)) {
+          this.focus();
+        }
+      };
+      setTimeout(refocus);
+      setTimeout(refocus, 80);
+    }
+  }
+
+  /** The tile view has its table: a focus that waited for it moves in. */
+  protected onGridReady(): void {
+    if (this.focusWanted) {
+      this.focus();
+    }
+  }
+
+  /** The tile views show what the table displays: call after rows, sort or filter changed. */
+  private syncDisplayed(): void {
+    this.displayed.set(
+      this.gridMode() !== null && this.bridge ? [...this.bridge.displayedRows()] : [],
+    );
+  }
+
+  /** Thumbnails only for a local folder in the thumbnail view (design 041 E6). */
+  private syncThumbs(): void {
+    const l = this.shownListing;
+    const local =
+      this.gridMode() === 'thumbnails' &&
+      l !== null &&
+      this.store.searchKey() === null &&
+      !l.archive &&
+      !l.remote;
+    const root = local ? l.path : null;
+    const stamp = local ? listingStamp(l.path, l.entries) : '';
+    if (this.thumbTimer !== null) {
+      clearTimeout(this.thumbTimer);
+      this.thumbTimer = null;
+    }
+    if (root !== null && root === this.thumbRoot) {
+      // the same folder again (a copy writes into it): not a new list per change
+      this.thumbTimer = setTimeout(() => {
+        this.thumbTimer = null;
+        this.thumbs.show(root, stamp);
+      }, 400);
+      return;
+    }
+    this.thumbRoot = root;
+    this.thumbs.show(root, stamp);
+  }
+
+  protected onGridMove(index: number): void {
+    this.controller?.moveCursorToIndex(index);
+  }
+
+  protected onGridClick(click: GridClick): void {
+    const controller = this.controller;
+    if (!controller) {
+      return;
+    }
+    // as in the table: the focus moves first, then the click marks or opens
+    controller.moveCursorToIndex(click.index);
+    controller.onClick({
+      area: 'body',
+      rowIndex: click.index,
+      clickCount: click.clickCount,
+      shiftKey: click.shiftKey,
+      toggleKey: click.toggleKey,
+      altKey: click.altKey,
+    });
+  }
+
+  protected onGridMenu(evt: { index: number; x: number; y: number }): void {
+    if (this.dragging) {
+      return;
+    }
+    this.endPress();
+    this.contextMenu.emit({ rowIndex: evt.index, x: evt.x, y: evt.y });
+  }
+
+  /** Displayed index of the row (or tile) containing `element`, -1 if none. */
+  private rowIndexAt(element: Element): number {
+    if (this.gridMode() !== null) {
+      return this.grid()?.indexAt(element) ?? -1;
+    }
+    return this.bridge?.rowIndexAt(element) ?? -1;
+  }
+
+  /** While rows, state or layout are applied, state events are ours, not the user's. */
+  private guarded(apply: () => void): void {
+    const seq = ++this.applySeq;
+    this.applying = true;
+    try {
+      apply();
+    } finally {
+      // the table reports state changes debounced (300 ms)
+      setTimeout(() => {
+        if (seq === this.applySeq) {
+          this.applying = false;
+        }
+      }, 400);
+    }
+  }
+
+  /**
+   * The column layout for the shown tab (design 041 E1): the chosen columns, what the
+   * kind of tab adds, the widths of the tab (`pending` on a tab switch, else those the
+   * table has) and the measured date widths. Null = as applied last.
+   */
+  private layoutFor(pending: Partial<TableStateIf> | null): TableColumnStateIf[] | null {
+    if (!this.bridge) {
+      return null;
+    }
+    const widths = pending?.columns
+      ? widthsOf(pending)
+      : widthsOf(stripAutoWidths(this.bridge.getTableState(), this.autoWidths));
+    const layout = columnLayout(
+      sanitizeColumns(untracked(() => this.settings.get('view.columns'))),
+      this.columnContext,
+      widths,
+      this.autoWidths,
+    );
+    const key = JSON.stringify(layout);
+    if (key === this.layoutKey && !pending?.columns) {
+      return null;
+    }
+    this.layoutKey = key;
+    return layout;
+  }
+
+  private reapplyLayout(): void {
+    const layout = this.layoutFor(null);
+    if (layout && this.bridge) {
+      const bridge = this.bridge;
+      this.guarded(() => bridge.applyColumns(layout));
+    }
+  }
+
+  /** Width of `text` in the font of the list; a guess where nothing is laid out (tests). */
+  private textWidth(text: string): number {
+    const el = this.host.nativeElement;
+    const probe = el.ownerDocument.createElement('span');
+    probe.style.cssText =
+      'position:absolute;visibility:hidden;white-space:nowrap;' +
+      'font-family:var(--font-list);font-size:var(--font-size-list)';
+    probe.textContent = text;
+    el.appendChild(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    return width > 0 ? width : roughTextWidth(text);
   }
 
   /** Column titles and row height from language and settings (read reactively). */
@@ -233,6 +470,10 @@ export class FileList implements OnDestroy {
       dir: c.folder,
       relDir: c.path,
       group: c.group,
+      createdMs: c.created,
+      accessedMs: c.accessed,
+      attrs: c.attrs,
+      type: c.type,
       decision: DUP_TEXTS.decisionColumn,
       pixels: DUP_TEXTS.resolutionColumn,
       share: USAGE_TEXTS.shareColumn,
@@ -253,6 +494,13 @@ export class FileList implements OnDestroy {
   private applyPresentation(p: Presentation): void {
     if (this.bridge) {
       this.bridge.setPresentation(p);
+      // the date format may have changed: its columns follow (design 041 E3)
+      const width = dateColumnWidth(
+        untracked(() => formatModified(WIDE_DATE_MS)),
+        (text) => this.textWidth(text),
+      );
+      this.autoWidths = { modifiedMs: width, createdMs: width, accessedMs: width };
+      this.reapplyLayout();
       const l = this.shownListing;
       this.applyEmptyText(!!l && l.parent === null && l.entries.length === 0);
     }
@@ -316,7 +564,7 @@ export class FileList implements OnDestroy {
       this.unregisterZone = this.dnd.registerZone({
         element: this.host.nativeElement,
         hit: (el) => {
-          const index = bridge.rowIndexAt(el);
+          const index = this.rowIndexAt(el);
           const row = index >= 0 ? (bridge.displayedRows()[index] ?? null) : null;
           // a result tab is no folder to drop into (review 012 #4a)
           return panelZoneHit(side, this.store, row);
@@ -327,16 +575,20 @@ export class FileList implements OnDestroy {
       onFocusChanged: (model) => controller.onFocusChanged(model.getFocus()[0]),
       onStateChanged: (evt) => {
         if (!this.applying) {
-          this.tableStateChanged.emit(evt.state);
+          this.tableStateChanged.emit(stripAutoWidths(evt.state, this.autoWidths));
         }
       },
       onContextmenu: (evt) => {
         const e = evt.originalEvent;
-        if (evt.areaIdent === 'header' || !e) {
-          return; // the header has no menu (the WebView's is suppressed globally)
+        if (!e) {
+          return;
         }
         e.preventDefault();
         e.stopPropagation();
+        if (evt.areaIdent === 'header') {
+          this.headerMenu.emit({ x: e.clientX, y: e.clientY }); // design 041 E8
+          return;
+        }
         if (this.dragging) {
           return; // no menu in the middle of a drag (012 × 014)
         }
@@ -361,6 +613,8 @@ export class FileList implements OnDestroy {
     });
 
     this.store.scrollTop = () => bridge.getTableState().scroll?.top ?? 0;
+    this.layoutKey = '';
+    bridge.setCovered(this.gridMode() !== null);
     const listing = this.store.listing();
     if (listing) {
       this.show(listing);
@@ -426,7 +680,7 @@ export class FileList implements OnDestroy {
     ) {
       return;
     }
-    const index = this.bridge.rowIndexAt(target);
+    const index = this.rowIndexAt(target);
     const row = index >= 0 ? this.bridge.displayedRows()[index] : undefined;
     if (!row) {
       return;
@@ -575,12 +829,18 @@ export class FileList implements OnDestroy {
 
   /** The table state of the current tab (columns, sort, scroll). */
   captureTableState(): Partial<TableStateIf> | null {
-    return this.bridge?.getTableState() ?? null;
+    return this.bridge ? stripAutoWidths(this.bridge.getTableState(), this.autoWidths) : null;
   }
 
-  /** Moves the keyboard focus into the table (now, or as soon as it exists). */
+  /** Moves the keyboard focus into the table or the tile view (now, or as soon as it exists). */
   focus(): void {
-    const target = this.host.nativeElement.querySelector<HTMLElement>('[tabindex="0"]');
+    if (this.gridMode() !== null) {
+      // false until the grid's table is built: `onGridReady` tries again
+      this.focusWanted = !this.grid()?.focus();
+      return;
+    }
+    // the table's host is the tab stop (not the grid's, which lies beside it)
+    const target = this.host.nativeElement.querySelector<HTMLElement>('.table[tabindex="0"]');
     this.focusWanted = !target;
     target?.focus();
   }
@@ -599,6 +859,8 @@ export class FileList implements OnDestroy {
       return false;
     }
     this.shownListing = listing;
+    this.syncDisplayed();
+    this.syncThumbs();
     return true;
   }
 
@@ -610,6 +872,8 @@ export class FileList implements OnDestroy {
     this.applying = true;
     try {
       this.bridge?.setRows([]);
+      this.syncDisplayed();
+      this.syncThumbs();
     } finally {
       setTimeout(() => {
         if (seq === this.applySeq) {
@@ -632,44 +896,40 @@ export class FileList implements OnDestroy {
         ? (listing.segments.at(-1)?.name ?? listing.path)
         : undefined;
     this.shownPath = listing.path;
-    const state = this.store.takePendingTableState() ?? undefined;
+    const pending = this.store.takePendingTableState();
+    // which columns this kind of tab shows (design 041 E1; rules of 009, 033, 038, 042)
+    const usage = this.store.isUsage();
+    const flat = this.store.flat();
+    const result = this.store.searchKey() !== null;
+    const dupTab = result && this.store.searchKind() === 'duplicates';
+    this.columnContext = {
+      usage,
+      duplicates: dupTab,
+      // decisions only where contents (or looks) were compared (design 042 E1)
+      decision: dupTab && !this.dup.sizeOnlyKey(this.store.searchKey()),
+      pixels: dupTab && rows.some((r) => (r as SearchHit).width !== undefined),
+      // the folder column belongs to result tabs; the flat view shows the folder
+      // relative to its root instead (design 038 E3)
+      dir:
+        result && !flat && (!usage || rows.some((r) => (r as { dir?: string }).dir !== undefined)),
+      relDir: flat,
+    };
+    const layout = this.layoutFor(pending);
+    let state: Partial<TableStateIf> | undefined;
+    if (pending || layout) {
+      // order and visibility of a stored tab state do not count: the layout does
+      const rest = { ...pending };
+      delete rest.columns;
+      state = layout ? { ...rest, columns: layout } : rest;
+    }
 
     const seq = ++this.applySeq;
     this.applying = true;
     try {
       this.controller?.showRows(rows, label, state);
-      // the folder column belongs to result tabs (after the state: it may carry column widths)
-      const usage = this.store.isUsage();
-      const flat = this.store.flat();
-      this.bridge?.setColumnVisible(
-        'dir',
-        this.store.searchKey() !== null &&
-          !flat &&
-          (!usage || rows.some((r) => (r as { dir?: string }).dir !== undefined)),
-      );
-      // the flat view shows the folder relative to its root instead (design 038 E3)
-      this.bridge?.setColumnVisible('relDir', flat);
-      this.bridge?.setColumnVisible('share', usage);
-      this.bridge?.setColumnVisible('items', usage);
-      // disk usage: the name needs the room the share bar takes (design 033)
-      // duplicates (design 042): the decision needs the room – the name shows the extension
-      this.bridge?.setColumnVisible(
-        'ext',
-        !usage && !(this.store.searchKey() !== null && this.store.searchKind() === 'duplicates'),
-      );
-      this.bridge?.setColumnVisible('modifiedMs', !usage);
-      const dupTab = this.store.searchKey() !== null && this.store.searchKind() === 'duplicates';
-      this.bridge?.setColumnVisible('group', dupTab);
-      // decisions only where contents (or looks) were compared (design 042 E1)
-      this.bridge?.setColumnVisible(
-        'decision',
-        dupTab && !this.dup.sizeOnlyKey(this.store.searchKey()),
-      );
-      this.bridge?.setColumnVisible(
-        'pixels',
-        dupTab && rows.some((r) => (r as SearchHit).width !== undefined),
-      );
       this.applyEmptyText(rows.length === 0);
+      this.syncDisplayed();
+      this.syncThumbs();
     } finally {
       // the table reports state changes debounced (300 ms) – ignore the ones caused by applying
       setTimeout(() => {
@@ -722,6 +982,10 @@ export class FileList implements OnDestroy {
 
   ngOnDestroy(): void {
     this.releaseTable();
+    if (this.thumbTimer !== null) {
+      clearTimeout(this.thumbTimer);
+    }
+    this.thumbs.dispose();
     if (this.dragging) {
       this.dnd.cancel();
     }

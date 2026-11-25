@@ -266,6 +266,16 @@ export class FileListController {
     return true;
   }
 
+  /** Moves the cursor to a displayed row (the tile views, design 041 E7); false if there is none. */
+  moveCursorToIndex(index: number): boolean {
+    if (index < 0 || index >= this.bridge.displayedRows().length) {
+      return false;
+    }
+    this.bridge.setFocusedRow(index);
+    this.onFocusChanged(index);
+    return true;
+  }
+
   /**
    * F2: edit the name of `entry` in place, the name without extension selected
    * (design 006 E3). False if the list cannot edit it now (the caller opens the dialog).

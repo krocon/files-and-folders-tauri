@@ -1,4 +1,10 @@
-import { ColumnDefIf, TableApi, TableStateIf, TableStatePart } from '@guiexpert/table';
+import {
+  ColumnDefIf,
+  TableApi,
+  TableColumnStateIf,
+  TableStateIf,
+  TableStatePart,
+} from '@guiexpert/table';
 import { DirEntry } from '../../../core/fs/fs.models';
 import { FileBodyModel } from './file-table-model';
 import { RenameEditor } from './rename-editor';
@@ -30,6 +36,18 @@ export interface TableBridge {
   announce(text: string): void;
   /** Shows or hides a column (the folder column of a result tab, design 009). */
   setColumnVisible(property: string, visible: boolean): void;
+  /**
+   * Order, visibility and widths of all columns in one step (design 041 E1) – no new
+   * table. Columns without a width get the width of the code back.
+   */
+  applyColumns(columns: readonly TableColumnStateIf[]): void;
+  /** Property of the column at a model index (a header click), null if there is none. */
+  columnAt(index: number): string | null;
+  /**
+   * The table is behind another view of the same rows (design 041 E7): it keeps order,
+   * filter and cursor, but nothing can be edited in it.
+   */
+  setCovered(covered: boolean): void;
   /** An own "no rows" text over the empty list (result tab), `null` = the table's default. */
   setEmptyText(text: string | null): void;
   /** Column layout, sort and scroll position (per tab, design 004 E2). */
@@ -67,6 +85,7 @@ export function createTableBridge(
 ): TableBridge {
   const scope = api.getTableScope();
   let manualOverlay = false;
+  let covered = false;
   const stopRename = () => {
     body.renaming?.editor.cancel();
   };
@@ -143,8 +162,25 @@ export function createTableBridge(
     repaint: () => api.repaint(),
     announce: (text) => api.announce(text),
     getTableState: () => api.getState([...TAB_TABLE_PARTS]),
+    applyColumns(columns) {
+      api.applyState({ columns: columns.map((c) => ({ ...c })) }, ['columns']);
+    },
+    columnAt(index) {
+      return api.getTableModel().getColumnDefs()?.[index]?.property ?? null;
+    },
+    setCovered(value) {
+      if (covered !== value) {
+        covered = value;
+        if (value) {
+          stopRename();
+        }
+      }
+    },
     startRename(path, selectEnd, done) {
       stopRename();
+      if (covered) {
+        return false; // no cell to edit in: the caller opens the dialog
+      }
       const rows = body.getFilteredRows();
       const index = rows.findIndex((r) => r.path === path);
       if (index < 0) {
@@ -177,14 +213,17 @@ export function createTableBridge(
     },
     setPresentation({ headers, rowHeight }) {
       const header = api.getTableModel().getAreaModel('header');
-      columnDefs.forEach((def, i) => {
+      for (const def of columnDefs) {
         const label = headers[def.property];
-        if (label !== undefined && label !== def.headerLabel) {
+        // the columns can be in another order than at creation (design 041): by property
+        // TODO(guiexpert): no `setColumnHeaderLabel(property, label)` (G23)
+        const i = api.getColumnIndex(def.property);
+        if (label !== undefined && i >= 0 && header.getValueAt(0, i) !== label) {
           def.headerLabel = label;
           // the header row is a copy of the titles made at creation (public AreaModel API)
           header.setValue(0, i, label);
         }
-      });
+      }
       if (body.defaultRowHeight !== rowHeight) {
         body.defaultRowHeight = rowHeight;
         // content height and wrappers were sized with the old height (E2E 015: last row clipped)

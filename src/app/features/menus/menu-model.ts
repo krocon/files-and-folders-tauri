@@ -22,7 +22,8 @@ import { ACT_TEXTS } from '../actions/actions-texts';
  * menus only arrange them. `'-'` = separator, `'@tools'` = the tools of
  * `tools.json` (extra actions, design 011 E4), `'@starter'` = the user's starter menu
  * (`starter.json`, design 032), `'@fileActions'` = the double-click actions whose pattern
- * matches the file under the cursor (`file-actions.json`, design 072; HTML menus only).
+ * matches the file under the cursor (`file-actions.json`, design 072; HTML menus only),
+ * `'@columns'` = the columns of the file list as check entries (design 041 E8).
  */
 export type MenuDef =
   | ActionId
@@ -31,6 +32,7 @@ export type MenuDef =
   | '@starter'
   | '@fileActions'
   | '@themes'
+  | '@columns'
   | { readonly sub: string; readonly items: readonly MenuDef[] }
   | { readonly native: PredefinedItem }
   | { readonly heading: string }
@@ -57,6 +59,8 @@ export interface MenuSource {
   starterTree?(): readonly ExtraMenuNode[];
   /** The colour schemes as radio entries (design 070); absent = none. */
   themeChoices?(): readonly MenuChoice[];
+  /** The columns of the file list as check entries (design 041); absent = none. */
+  columnChoices?(): readonly MenuChoice[];
 }
 
 /** Extra actions of the tools (`tool:<id>`), not those of the starter menu. */
@@ -95,6 +99,22 @@ const COPY_AS: MenuDef = {
     'COPY_2_CLIPBOARD_FULLNAMES_AS_JSON',
   ],
 };
+/** The columns of the file list: a check entry each, then the dialog (design 041 E8). */
+export const COLUMN_MENU: readonly MenuDef[] = ['@columns', '-', 'OPEN_COLUMNS_DLG'];
+const COLUMNS: MenuDef = {
+  get sub() {
+    return T.columns;
+  },
+  items: COLUMN_MENU,
+};
+/** Right click on the column header: the columns and the view modes. */
+export const HEADER_MENU: readonly MenuDef[] = [
+  ...COLUMN_MENU,
+  '-',
+  'VIEW_MODE_FULL',
+  'VIEW_MODE_BRIEF',
+  'VIEW_MODE_THUMBNAILS',
+];
 /** Selection helpers of a duplicate tab (design 016 E6). */
 const DUP_MARK: MenuDef = {
   get sub() {
@@ -221,6 +241,12 @@ export const MENU_BAR: readonly TopMenu[] = [
       'TOGGLE_FLAT_VIEW',
       'TOGGLE_FLAT_VIEW_DIRS',
       'TOGGLE_IMAGE_OVERVIEW',
+      '-',
+      // design 041: how the tab shows its folder, and which columns
+      'VIEW_MODE_FULL',
+      'VIEW_MODE_BRIEF',
+      'VIEW_MODE_THUMBNAILS',
+      COLUMNS,
       '-',
       'QUICK_VIEW',
       'DISK_USAGE_TOGGLE_CHART',
@@ -625,8 +651,9 @@ export function resolveMenu(
       }
     } else if (d === '@starter') {
       items.push(...starterItems(src.starterTree?.() ?? [], src));
-    } else if (d === '@themes') {
-      for (const c of src.themeChoices?.() ?? []) {
+    } else if (d === '@themes' || d === '@columns') {
+      const choices = d === '@themes' ? src.themeChoices?.() : src.columnChoices?.();
+      for (const c of choices ?? []) {
         items.push({ id: c.id, label: c.label, checked: c.checked });
       }
     } else if (typeof d === 'string') {
@@ -734,8 +761,9 @@ export function toNativeSpec(
         // depends on the cursor row: only in the context menus
       } else if (d === '@starter') {
         out.push(...starterNodes(src.starterTree?.() ?? []));
-      } else if (d === '@themes') {
-        for (const c of src.themeChoices?.() ?? []) {
+      } else if (d === '@themes' || d === '@columns') {
+        const choices = d === '@themes' ? src.themeChoices?.() : src.columnChoices?.();
+        for (const c of choices ?? []) {
           out.push({
             kind: 'item',
             id: c.id,

@@ -361,3 +361,8 @@
     animation: none;
   }
 }
+
+/* permissions / attributes (design 041 E2): the nine characters line up */
+.ge-table .fnf-attrs {
+  font-family: var(--font-mono);
+}

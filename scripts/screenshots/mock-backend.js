@@ -177,6 +177,17 @@
   const demoDir = (name, modified) => demoEntry(name, 'directory', null, modified);
   const photoDir = `${home}/Pictures/Italy 2026`;
 
+  // Scene option `mock.manyPhotos` (041): that many more photos in the photo folder – the
+  // thumbnail view with a big folder (only the tiles in view are in the DOM).
+  if (cfg.mock?.manyPhotos) {
+    for (let i = 0; i < cfg.mock.manyPhotos; i++) {
+      const day = String(1 + (i % 28)).padStart(2, '0');
+      dirs[photoDir].push(
+        demoFile(`IMG_${5000 + i}.jpg`, Math.round((2 + (i % 5)) * mb), `2026-08-${day}T10:00:00`),
+      );
+    }
+  }
+
   // Scene option `mock.photoFolders`: the sub folders of the photo folder have photos too
   // (flat view, similar images) – only for those scenes, the others stay as they are.
   if (cfg.mock?.photoFolders) {
@@ -276,7 +287,13 @@
       path,
       parent: parentOf(path),
       segments: segments(path),
-      entries: entriesOf(path),
+      // what Rust reads with the listing since 041: created, accessed, permissions
+      entries: entriesOf(path).map((e) => ({
+        ...e,
+        createdMs: e.modifiedMs === null ? undefined : e.modifiedMs - 3 * 86_400_000 - 5_400_000,
+        accessedMs: e.modifiedMs === null ? undefined : e.modifiedMs + 26 * 3_600_000,
+        mode: e.kind === 'directory' ? 0o755 : /\.(sh|command)$/.test(e.name) ? 0o755 : 0o644,
+      })),
       unreadableEntries: 0,
       archive: archiveOf(path),
       network: false,
@@ -809,6 +826,9 @@
   };
 
   const scans = {};
+  /** Open image overviews: id → items (the thumbnail URL names `<id>.<index>.<step>`). */
+  const overviews = {};
+  let overviewNo = 0;
 
   function buildScan(roots) {
     const nodes = [];
@@ -1302,6 +1322,34 @@
     // folder memory of 027: nothing kept yet
     load_folder_memory: () => ({ value: { version: 1, tabs: [] }, warning: null }),
     run_shell: runShell,
+    // thumbnail view of a panel (041 E6): the pictures of the folder, as Rust's image overview
+    image_overview_open: (a) => {
+      const id = `ov${++overviewNo}`;
+      const root = expand(a?.root);
+      const items = (dirs[root] ?? [])
+        .filter((e) => e.kind === 'file' && /\.(jpe?g|png|gif|webp)$/i.test(e.name))
+        .map((e, index) => ({
+          index,
+          path: join(root, e.name),
+          name: e.name,
+          size: e.size ?? 0,
+          modifiedMs: e.modifiedMs,
+          rel: e.name,
+          dir: root,
+          kind: 'image',
+        }));
+      overviews[id] = items;
+      const channel = a?.onEvent;
+      let index = 0;
+      const emit = (message) =>
+        channel && window.__TAURI_INTERNALS__.runCallback(channel.id, { index: index++, message });
+      setTimeout(() => {
+        emit({ kind: 'items', items });
+        emit({ kind: 'done', truncated: false, unreadable: [], unreadableMore: 0 });
+      }, 20);
+      return id;
+    },
+    image_overview_close: () => null,
     duplicate_thumbnails: (a) =>
       (a?.paths ?? []).map((p) => (/\.(jpe?g|png)$/i.test(p) ? thumbToken(p) : null)),
     load_file_actions: () => ({
@@ -1461,10 +1509,16 @@
     unregisterCallback: (id) => callbacks.delete(id),
     runCallback: (id, data) => callbacks.get(id)?.(data),
     callbacks,
-    convertFileSrc: (path, protocol = 'asset') =>
-      protocol === 'fnfpreview'
+    convertFileSrc: (path, protocol = 'asset') => {
+      if (protocol === 'fnfthumb') {
+        const [id, index] = path.split('.');
+        const item = overviews[id]?.[Number(index)];
+        return `/__demo-image/${encodeURIComponent(item?.path ?? path)}`;
+      }
+      return protocol === 'fnfpreview'
         ? `/__demo-image/${encodeURIComponent(path)}`
-        : `${protocol}://localhost/${encodeURIComponent(path)}`,
+        : `${protocol}://localhost/${encodeURIComponent(path)}`;
+    },
     metadata: {
       currentWindow: { label: 'main' },
       currentWebview: { windowLabel: 'main', label: 'main' },

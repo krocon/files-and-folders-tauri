@@ -1,4 +1,4 @@
-import type { TableStateIf, TableStatePart } from '@guiexpert/table';
+import type { TableColumnStateIf, TableStateIf, TableStatePart } from '@guiexpert/table';
 import { DirEntry } from '../app/core/fs/fs.models';
 import { TableBridge } from '../app/features/browser/file-list/table-bridge';
 
@@ -93,6 +93,27 @@ export class FakeTableBridge implements TableBridge {
     }
   }
 
+  /** The last column layout applied (design 041). */
+  columns: readonly TableColumnStateIf[] = [];
+
+  applyColumns(columns: readonly TableColumnStateIf[]): void {
+    this.calls.push('applyColumns');
+    this.columns = columns;
+  }
+
+  columnAt(index: number): string | null {
+    return this.columns[index]?.property ?? null;
+  }
+
+  covered = false;
+
+  setCovered(covered: boolean): void {
+    this.covered = covered;
+    if (covered) {
+      this.rename = null;
+    }
+  }
+
   /** What `getTableState` returns; `applyTableState` records and merges into it. */
   tableState: Partial<TableStateIf> = { version: 1 };
 
@@ -114,7 +135,7 @@ export class FakeTableBridge implements TableBridge {
   canEdit = true;
 
   startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean {
-    if (!this.canEdit || !this.rows.some((r) => r.path === path)) {
+    if (this.covered || !this.canEdit || !this.rows.some((r) => r.path === path)) {
       return false;
     }
     this.rename = {

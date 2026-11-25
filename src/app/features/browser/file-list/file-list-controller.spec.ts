@@ -247,4 +247,23 @@ describe('FileListController', () => {
       'applyTableState(scroll)',
     ]);
   });
+
+  // design 041 E7: the tile views move the cursor by index and click like the table
+  it('moves the cursor to a displayed index; a covered table cannot rename in place', () => {
+    expect(ctrl.moveCursorToIndex(2)).toBe(true);
+    expect(store.cursorPath()).toBe('/h/b.txt');
+    expect(bridge.focus).toBe(2);
+    expect(ctrl.moveCursorToIndex(99)).toBe(false);
+    expect(ctrl.moveCursorToIndex(-1)).toBe(false);
+    expect(store.cursorPath()).toBe('/h/b.txt');
+    // a click on a tile: the focus first, then the click – Shift marks the range from the cursor before
+    ctrl.moveCursorToIndex(0);
+    ctrl.moveCursorToIndex(2);
+    ctrl.onClick(click(2, { shiftKey: true }));
+    expect([...store.marked()].sort()).toEqual(['/h/Sub', '/h/a.txt', '/h/b.txt']);
+    bridge.setCovered(true);
+    expect(ctrl.startRename(rows[1], () => undefined)).toBe(false);
+    bridge.setCovered(false);
+    expect(ctrl.startRename(rows[1], () => undefined)).toBe(true);
+  });
 });

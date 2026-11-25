@@ -18,6 +18,13 @@
   "view.showHidden": { "type": "bool", "default": false },
   "view.menuBar": { "type": "bool", "default": true },
   "view.dialogKeys": { "type": "enum", "values": ["keycap", "underline"], "default": "keycap" },
+  "view.columns": {
+    "type": "json",
+    "default": ["name", "ext", "size", "modifiedMs"],
+    "maxItems": 16,
+    "maxBytes": 1024
+  },
+  "view.thumbnailSize": { "type": "int", "min": 64, "max": 320, "default": 128 },
   "folderMenu.recentOrder": { "type": "enum", "values": ["alpha", "recent"], "default": "alpha" },
   "behavior.deleteToTrash": { "type": "bool", "default": true },
   "behavior.confirmTrash": { "type": "bool", "default": true },

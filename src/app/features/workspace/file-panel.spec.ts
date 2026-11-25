@@ -23,6 +23,7 @@ import { FilePanel } from './file-panel';
 import { WatchApi } from '../../core/watch/watch-api';
 import { FakeWatchApi } from '../../../testing/fake-watch-api';
 import { newTab, WorkspaceStore } from './workspace.store';
+import { By } from '@angular/platform-browser';
 import { blankProfile } from '../remote/remote-logic';
 import { RemoteStore } from '../remote/remote.store';
 import { EMPTY_STATS } from '../../core/search/search.models';
@@ -32,6 +33,8 @@ import { EMPTY_STATS } from '../../core/search/search.models';
 class FileListStub {
   readonly labelledBy = input.required<string>();
   readonly side = input<unknown>(null);
+  readonly viewMode = input<string>('full');
+  readonly headerMenu = output<{ x: number; y: number }>();
   readonly openInNewTab = output<unknown>();
   readonly tableStateChanged = output<Partial<TableStateIf>>();
 }
@@ -129,6 +132,40 @@ describe('FilePanel', () => {
     };
     return { fixture, store, el, settle };
   }
+
+  // design 041 E4: the view mode belongs to the tab; the list gets it and keeps cursor and marks
+  it('hands the view mode of the active tab to the list; cursor and marks stay on a switch', async () => {
+    const { fixture, store, settle } = await render();
+    await settle();
+    const list = () => fixture.debugElement.query(By.directive(FileListStub)).componentInstance;
+    expect(list().viewMode()).toBe('full');
+    store.setCursor('/data/b.txt');
+    store.toggleMark('/data/a.txt');
+    const id = ws.activeTab('left').id;
+    ws.updateTab(id, { view: 'thumbnails' });
+    await settle();
+    expect(list().viewMode()).toBe('thumbnails');
+    expect(store.cursorPath()).toBe('/data/b.txt');
+    expect([...store.marked()]).toEqual(['/data/a.txt']);
+    // the same list component: nothing was built anew, no folder was read again
+    const reads = fs.calls.length;
+    ws.updateTab(id, { view: 'brief' });
+    await settle();
+    expect(list().viewMode()).toBe('brief');
+    expect(fs.calls.length).toBe(reads);
+    expect(store.cursorPath()).toBe('/data/b.txt');
+    // the other tab has its own view
+    ws.selectTab('left', 1);
+    await settle();
+    expect(list().viewMode()).toBe('full');
+    // a disk-usage tab keeps its columns whatever the tab says
+    ws.updateTab(ws.activeTab('left').id, {
+      view: 'brief',
+      search: { key: 'usage:9', label: 'Usage' },
+    });
+    await settle();
+    expect(list().viewMode()).toBe('full');
+  });
 
   it('watches its folder and applies changes from other programs (design 012)', async () => {
     watch.modes.set('/other', 'off');

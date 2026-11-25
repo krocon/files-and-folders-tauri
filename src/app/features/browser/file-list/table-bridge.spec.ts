@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { createFileTable } from './file-table-model';
 import { createTableBridge } from './table-bridge';
 
-function fakeApi() {
-  const header = { setValue: vi.fn() };
+/** `order`: the properties in the order the table shows them now (design 041). */
+function fakeApi(order: readonly string[] = []) {
+  const header = { setValue: vi.fn(), getValueAt: vi.fn(() => 'old') };
   const model = { getAreaModel: () => header, recalcHeightAndPadding: vi.fn() };
   const api = {
     getTableScope: () => ({}),
     getTableModel: () => model,
+    getColumnIndex: (property: string) => order.indexOf(property),
     recalcWrappers: vi.fn(),
     repaintHard: vi.fn(),
   };
@@ -29,11 +31,57 @@ describe('TableBridge.setPresentation (design 015)', () => {
 
   it('titles change in place in the header row', () => {
     const { body, columnDefs } = createFileTable('x');
-    const { api, header, model } = fakeApi();
+    const { api, header, model } = fakeApi(columnDefs.map((d) => d.property));
     const bridge = createTableBridge(api as unknown as TableApi, body, columnDefs);
     bridge.setPresentation({ headers: { size: 'Größe' }, rowHeight: body.defaultRowHeight });
     const i = columnDefs.findIndex((d) => d.property === 'size');
     expect(header.setValue).toHaveBeenCalledWith(0, i, 'Größe');
     expect(model.recalcHeightAndPadding).not.toHaveBeenCalled();
+  });
+
+  // design 041: the user moved columns – a title belongs to its property, not to the old index
+  it('titles follow their column after the order changed', () => {
+    const { body, columnDefs } = createFileTable('x');
+    const { api, header } = fakeApi(['modifiedMs', 'size', 'name']);
+    const bridge = createTableBridge(api as unknown as TableApi, body, columnDefs);
+    bridge.setPresentation({
+      headers: { size: 'Größe', modifiedMs: 'Geändert', ext: 'Endung' },
+      rowHeight: body.defaultRowHeight,
+    });
+    expect(header.setValue.mock.calls).toEqual([
+      [0, 1, 'Größe'],
+      [0, 0, 'Geändert'],
+    ]);
+  });
+
+  it('applies order, visibility and widths in one state; a covered table edits nothing', () => {
+    const { body, columnDefs } = createFileTable('x');
+    const applyState = vi.fn();
+    const startEditing = vi.fn(() => true);
+    const api = { ...fakeApi().api, applyState, startEditing };
+    const bridge = createTableBridge(api as unknown as TableApi, body, columnDefs);
+    const layout = [
+      { property: 'size', visible: true, width: 90 },
+      { property: 'name', visible: true },
+    ];
+    bridge.applyColumns(layout);
+    expect(applyState).toHaveBeenCalledWith({ columns: layout }, ['columns']);
+    body.setRows([
+      {
+        name: 'a.txt',
+        path: '/a.txt',
+        kind: 'file',
+        targetKind: null,
+        size: 1,
+        modifiedMs: 1,
+        hidden: false,
+        lossyName: false,
+      },
+    ]);
+    bridge.setCovered(true);
+    expect(bridge.startRename('/a.txt', 1, () => undefined)).toBe(false);
+    expect(startEditing).not.toHaveBeenCalled();
+    bridge.setCovered(false);
+    expect(bridge.startRename('/a.txt', 1, () => undefined)).toBe(true);
   });
 });

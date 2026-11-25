@@ -7,7 +7,13 @@ import {
   ValueRowSortComparator,
 } from '@guiexpert/table';
 import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.models';
-import { DateCellRenderer, NameCellRenderer, SizeCellRenderer } from './file-renderers';
+import {
+  attrsText,
+  DateCellRenderer,
+  NameCellRenderer,
+  SizeCellRenderer,
+  typeText,
+} from './file-renderers';
 import { ItemsCellRenderer, itemsOf, ShareCellRenderer } from '../../diskusage/usage-renderers';
 import { usageOf } from '../../diskusage/usage-rows';
 import { relDirOf } from '../../flat/flat-logic';
@@ -19,6 +25,10 @@ export type FileColumn =
   | 'ext'
   | 'size'
   | 'modifiedMs'
+  | 'createdMs'
+  | 'accessedMs'
+  | 'attrs'
+  | 'type'
   | 'dir'
   | 'relDir'
   | 'group'
@@ -125,6 +135,20 @@ export const fileComparators: Record<FileColumn, ValueRowSortComparator> = {
     (a, b) => (a.modifiedMs as number) - (b.modifiedMs as number),
     (e) => e.modifiedMs === null,
   ),
+  // design 041 E2: unknown values (archives, servers) at the end in both directions
+  createdMs: fileComparator(
+    (a, b) => (a.createdMs as number) - (b.createdMs as number),
+    (e) => e.createdMs === undefined,
+  ),
+  accessedMs: fileComparator(
+    (a, b) => (a.accessedMs as number) - (b.accessedMs as number),
+    (e) => e.accessedMs === undefined,
+  ),
+  attrs: fileComparator(
+    (a, b) => (attrsText(a) < attrsText(b) ? -1 : attrsText(a) > attrsText(b) ? 1 : 0),
+    (e) => attrsText(e) === '',
+  ),
+  type: fileComparator((a, b) => collator.compare(typeText(a), typeText(b))),
   // folder of a search hit (design 009); natural order, then by name
   dir: fileComparator((a, b) => collator.compare(dirOf(a), dirOf(b))),
   // folder relative to the flat view's root (design 038 E3): the root first, then by name
@@ -211,6 +235,53 @@ export function createFileColumns(): ColumnDefIf[] {
       sortable: TrueFn,
       sortComparator: fileComparators.modifiedMs,
       bodyRenderer: new DateCellRenderer(),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    // chosen by the user (design 041 E2), hidden by default
+    ColumnDef.create({
+      property: 'createdMs',
+      headerLabel: 'Created',
+      width: px(160),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.createdMs,
+      valueGetter: (row: DirEntry) => row.createdMs ?? null,
+      bodyRenderer: new DateCellRenderer((e) => e.createdMs ?? null),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    ColumnDef.create({
+      property: 'accessedMs',
+      headerLabel: 'Accessed',
+      width: px(160),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.accessedMs,
+      valueGetter: (row: DirEntry) => row.accessedMs ?? null,
+      bodyRenderer: new DateCellRenderer((e) => e.accessedMs ?? null),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start'],
+    }),
+    ColumnDef.create({
+      property: 'attrs',
+      headerLabel: 'Attr',
+      width: px(104),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.attrs,
+      valueGetter: (row: DirEntry) => attrsText(row),
+      headerClasses: ['ge-table-text-align-start'],
+      bodyClasses: ['ge-table-text-align-start', 'fnf-attrs'],
+    }),
+    ColumnDef.create({
+      property: 'type',
+      headerLabel: 'Type',
+      width: px(110),
+      isVisible: FalseFn,
+      sortable: TrueFn,
+      sortComparator: fileComparators.type,
+      valueGetter: (row: DirEntry) => typeText(row),
       headerClasses: ['ge-table-text-align-start'],
       bodyClasses: ['ge-table-text-align-start'],
     }),

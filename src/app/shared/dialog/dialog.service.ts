@@ -41,6 +41,7 @@ export type DialogKind =
   | 'mr-import'
   | 'starter-config'
   | 'file-actions'
+  | 'columns'
   | 'connections'
   | 'remote-prompt'
   | 'checksum'

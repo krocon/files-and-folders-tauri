@@ -6,6 +6,7 @@ import {
   RendererCleanupFnType,
 } from '@guiexpert/table';
 import {
+  FILE_TYPES,
   iconColorGroupForEntry,
   iconFor,
   iconNameForEntry,
@@ -14,6 +15,7 @@ import { DirEntry, isNavigableDir, isParentRow } from '../../../core/fs/fs.model
 import { formatModified, formatSize } from '../../../shared/format';
 import { DISPLAY } from '../../../core/settings/display';
 import { TEXTS } from '../../workspace/texts';
+import { modeString } from '../../preview/permissions';
 
 export { iconFor };
 
@@ -109,6 +111,46 @@ export function displayName(entry: DirEntry): string {
   return entry.name;
 }
 
+/** Unix permissions as `rwxr-xr-x`, Windows attributes as letters (design 041 E2); '' if unknown. */
+export function attrsText(entry: DirEntry): string {
+  if (entry.mode !== undefined) {
+    return modeString(entry.mode);
+  }
+  if (entry.winAttrs !== undefined) {
+    const a = entry.winAttrs;
+    // FILE_ATTRIBUTE_READONLY, _HIDDEN, _SYSTEM, _ARCHIVE
+    return [
+      a & 0x1 ? 'R' : '-',
+      a & 0x2 ? 'H' : '-',
+      a & 0x4 ? 'S' : '-',
+      a & 0x20 ? 'A' : '-',
+    ].join('');
+  }
+  return '';
+}
+
+/**
+ * What kind of thing the entry is (design 041 E2), from what the listing has: folder,
+ * link, the category of `filetypes.json`, else the extension in capitals.
+ */
+export function typeText(entry: DirEntry): string {
+  if (isParentRow(entry)) {
+    return '';
+  }
+  if (entry.kind === 'symlink') {
+    return TEXTS.types.link;
+  }
+  if (isNavigableDir(entry)) {
+    return TEXTS.types.folder;
+  }
+  const dot = entry.name.lastIndexOf('.');
+  const ext = dot > 0 && dot < entry.name.length - 1 ? entry.name.slice(dot + 1) : '';
+  if (ext === '') {
+    return entry.kind === 'unknown' ? '' : TEXTS.types.file;
+  }
+  return FILE_TYPES().byExtension.get(ext.toLowerCase())?.label ?? ext.toUpperCase();
+}
+
 /** `<DIR>` for folders until their size was calculated (Space, design 003 E7); nothing for "..". */
 export function sizeText(entry: DirEntry): string {
   if (isParentRow(entry)) {
@@ -177,7 +219,12 @@ export class SizeCellRenderer implements CellRendererIf {
   }
 }
 
+/** A date of the entry in the chosen format; the tooltip has the seconds. */
 export class DateCellRenderer implements CellRendererIf {
+  constructor(
+    private readonly value: (entry: DirEntry) => number | null = (entry) => entry.modifiedMs,
+  ) {}
+
   render(
     cellDiv: HTMLDivElement,
     rowIndex: number,
@@ -189,8 +236,9 @@ export class DateCellRenderer implements CellRendererIf {
   ): RendererCleanupFnType | undefined {
     const entry = rowOf(areaModel, rowIndex);
     if (entry) {
-      setText(cellDiv, domService, formatModified(entry.modifiedMs));
-      cellDiv.title = entry.modifiedMs !== null ? new Date(entry.modifiedMs).toLocaleString() : '';
+      const ms = this.value(entry);
+      setText(cellDiv, domService, formatModified(ms));
+      cellDiv.title = ms !== null ? new Date(ms).toLocaleString() : '';
     }
     return undefined;
   }

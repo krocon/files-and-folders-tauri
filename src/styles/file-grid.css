@@ -1,0 +1,85 @@
+/*
+ * Tiles of the brief and the thumbnail view of a panel (design 041 E5/E6): plain DOM of
+ * `FileTileRenderer` inside the GuiExpert cover grid, so they are styled here. Colours
+ * are those of the list rows – a tile carries the same classes (`fnf-cursor`,
+ * `fnf-marked`, `fnf-hidden` …, see ge-table-theme.css).
+ */
+.ge-table .fg-tile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: default;
+  font-family: var(--font-list);
+  font-size: var(--font-size-list);
+}
+
+.ge-table .fg-brief {
+  padding-inline: 10px;
+  white-space: nowrap;
+
+  & .fnf-icon {
+    flex: none;
+  }
+}
+
+.ge-table .fg-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ge-table .fg-thumb {
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 4px;
+
+  & .fg-name {
+    flex: none;
+    max-width: 100%;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+  }
+}
+
+.ge-table .fg-picture {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 100%;
+  overflow: hidden;
+
+  & img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  & .fnf-icon {
+    min-width: 0;
+    font-size: 2.6em;
+  }
+}
+
+.ge-table .fg-check {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-marked-bg);
+  color: var(--color-marked);
+  font-size: 11px;
+}
+
+.fnf-active-panel .ge-table .fg-check {
+  background: var(--color-active-marked-bg);
+  color: var(--color-active-marked);
+}

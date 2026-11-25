@@ -42,7 +42,7 @@ import { TileRetries } from './tile-retries';
 const TYPE_AHEAD_MS = 1000;
 
 /** Width of a vertical scroll bar (0 with overlay scroll bars, e.g. macOS). */
-function scrollbarWidth(doc: Document): number {
+export function scrollbarWidth(doc: Document): number {
   const probe = doc.createElement('div');
   probe.style.cssText = 'position:absolute;top:-999px;width:100px;height:100px;overflow:scroll';
   doc.body.appendChild(probe);

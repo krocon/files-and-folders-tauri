@@ -25,7 +25,14 @@ export interface TabSession {
   readonly filterText: string;
   /** Column layout, sort and scroll of the GuiExpert Table. */
   readonly table: Partial<TableStateIf> | null;
+  /** How the tab shows its folder (design 041 E4); missing = `full`. Rust `session::ViewMode`. */
+  readonly view?: ViewMode;
 }
+
+/** Full = the table with columns, brief = names in several columns, thumbnails = tiles. */
+export type ViewMode = 'full' | 'brief' | 'thumbnails';
+
+export const VIEW_MODES: readonly ViewMode[] = ['full', 'brief', 'thumbnails'];
 
 export interface PanelSession {
   readonly activeTab: number;

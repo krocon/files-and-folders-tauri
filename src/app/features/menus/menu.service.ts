@@ -19,6 +19,7 @@ import {
   resolveMenuBar,
   resolveMenu,
   STARTER_POPUP,
+  HEADER_MENU,
   toNativeSpec,
 } from './menu-model';
 import { MENU_TEXTS } from './menu-texts';
@@ -177,7 +178,10 @@ export class MenuService {
     const side = this.ws.activeSide();
     const entry = this.ws.panel(side)?.controller()?.cursorEntry() ?? null;
     const pane = document.getElementById(`fnf-pane-${side}`);
-    const cell = pane?.querySelector<HTMLElement>('.fnf-cursor');
+    // a tile view lies over the table (design 041 E7): its cursor tile, not the covered row
+    const cell =
+      pane?.querySelector<HTMLElement>('.fg-tile.fnf-cursor') ??
+      pane?.querySelector<HTMLElement>('.fnf-cursor');
     const rect = (cell ?? pane)?.getBoundingClientRect();
     const x = rect ? rect.left + Math.min(48, rect.width / 2) : 0;
     const y = rect ? (cell ? rect.bottom : rect.top + 24) : 0;
@@ -192,6 +196,12 @@ export class MenuService {
     const x = rect ? rect.left + 24 : 0;
     const y = rect ? rect.top + 24 : 0;
     this.open.set({ side, x, y, defs: STARTER_POPUP, label: MENU_TEXTS.starterMenu });
+  }
+
+  /** Right click on the column header of `side` (design 041 E8): columns and view modes. */
+  openHeader(side: Side, x: number, y: number): void {
+    this.ws.setActive(side);
+    this.open.set({ side, x, y, defs: HEADER_MENU, label: MENU_TEXTS.columnsMenu });
   }
 
   private openFor(side: Side, x: number, y: number, entry: DirEntry | null): void {

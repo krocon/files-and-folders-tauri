@@ -103,7 +103,12 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
     folder: 'Ordner',
     path: 'Pfad',
     group: 'Gruppe',
+    created: 'Erstellt',
+    accessed: 'Zugriff',
+    attrs: 'Rechte',
+    type: 'Typ',
   },
+  types: { folder: 'Ordner', link: 'Verknüpfung', file: 'Datei' },
   bytesTitle: (marked, total) => `${formatCount(marked)} / ${formatCount(total)} Bytes`,
   status: {
     in: 'in',
