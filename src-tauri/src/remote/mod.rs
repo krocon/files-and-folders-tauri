@@ -1004,6 +1004,10 @@ impl Hub {
                 modified_ms: e.modified_ms,
                 lossy_name: e.lossy,
                 name: e.name,
+                created_ms: None,
+                accessed_ms: None,
+                mode: None,
+                win_attrs: None,
             });
         }
         entries.sort_by(crate::listing::compare_entries);
@@ -1032,6 +1036,10 @@ impl Hub {
                 modified_ms: None,
                 hidden: false,
                 lossy_name: false,
+                created_ms: None,
+                accessed_ms: None,
+                mode: None,
+                win_attrs: None,
             }));
         };
         let meta = self.with(path.profile(), |c| c.stat(path.server_path()))?;
@@ -1044,6 +1052,10 @@ impl Hub {
             size: m.size,
             modified_ms: m.modified_ms,
             lossy_name: false,
+            created_ms: None,
+            accessed_ms: None,
+            mode: None,
+            win_attrs: None,
         }))
     }
 }

@@ -136,6 +136,10 @@ pub(crate) fn unknown_entry(name: String, path: &Path, lossy_name: bool) -> DirE
         size: None,
         modified_ms: None,
         lossy_name,
+        created_ms: None,
+        accessed_ms: None,
+        mode: None,
+        win_attrs: None,
     }
 }
 
@@ -170,13 +174,7 @@ pub(crate) fn entry_from_metadata(
     } else {
         None
     };
-    let modified_ms = link_meta
-        .modified()
-        .ok()
-        .and_then(|t| match t.duration_since(UNIX_EPOCH) {
-            Ok(d) => i64::try_from(d.as_millis()).ok(),
-            Err(e) => i64::try_from(e.duration().as_millis()).ok().map(|v| -v),
-        });
+    let modified_ms = epoch_ms(link_meta.modified());
 
     DirEntryDto {
         hidden: is_hidden(&name, link_meta),
@@ -187,7 +185,41 @@ pub(crate) fn entry_from_metadata(
         size,
         modified_ms,
         lossy_name,
+        // from the metadata read anyway: no further system call per entry (design 041 E2)
+        created_ms: epoch_ms(link_meta.created()),
+        accessed_ms: epoch_ms(link_meta.accessed()),
+        mode: unix_mode(link_meta),
+        win_attrs: windows_attributes(link_meta),
     }
+}
+
+/// Milliseconds since the Unix epoch (negative before it); `None` if the time is unknown.
+fn epoch_ms(time: std::io::Result<std::time::SystemTime>) -> Option<i64> {
+    time.ok().and_then(|t| match t.duration_since(UNIX_EPOCH) {
+        Ok(d) => i64::try_from(d.as_millis()).ok(),
+        Err(e) => i64::try_from(e.duration().as_millis()).ok().map(|v| -v),
+    })
+}
+
+#[cfg(unix)]
+fn unix_mode(meta: &Metadata) -> Option<u32> {
+    use std::os::unix::fs::MetadataExt;
+    Some(meta.mode() & 0o7777)
+}
+
+#[cfg(not(unix))]
+fn unix_mode(_meta: &Metadata) -> Option<u32> {
+    None
+}
+
+#[cfg(windows)]
+fn windows_attributes(meta: &Metadata) -> Option<u32> {
+    Some(crate::platform::file_attributes(meta))
+}
+
+#[cfg(not(windows))]
+fn windows_attributes(_meta: &Metadata) -> Option<u32> {
+    None
 }
 
 fn is_dot_name(name: &str) -> bool {
@@ -308,6 +340,48 @@ mod tests {
         let d = l.entries.iter().find(|e| e.name == "Alpha").unwrap();
         assert_eq!(d.kind, EntryKind::Directory);
         assert_eq!(d.size, None);
+    }
+
+    /// Design 041 E2: access time and permissions come with the listing (the same
+    /// metadata, no further call); creation time where the file system knows it.
+    #[test]
+    fn entries_carry_times_and_permissions() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let file = root.join("späte Datei.txt");
+        File::create(&file).unwrap().write_all(b"x").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o640)).unwrap();
+        }
+        let l = list_directory(root).unwrap();
+        let e = &l.entries[0];
+        let now = epoch_ms(Ok(std::time::SystemTime::now())).unwrap();
+        let accessed = e.accessed_ms.expect("access time");
+        assert!((now - accessed).abs() < 60_000, "accessed just now");
+        if let Some(created) = e.created_ms {
+            assert!((now - created).abs() < 60_000, "created just now");
+        }
+        #[cfg(any(target_os = "macos", windows))]
+        assert!(e.created_ms.is_some());
+        #[cfg(unix)]
+        {
+            assert_eq!(e.mode, Some(0o640));
+            assert_eq!(e.win_attrs, None);
+        }
+        #[cfg(windows)]
+        {
+            assert_eq!(e.mode, None);
+            assert!(e.win_attrs.is_some());
+        }
+        // unknown values are left out of the JSON (the listing of a big folder stays small)
+        let json = serde_json::to_value(unknown_entry("x".into(), &file, false)).unwrap();
+        for key in ["createdMs", "accessedMs", "mode", "winAttrs"] {
+            assert!(json.get(key).is_none(), "{key}");
+        }
+        let json = serde_json::to_value(e).unwrap();
+        assert!(json.get("accessedMs").is_some());
     }
 
     #[test]

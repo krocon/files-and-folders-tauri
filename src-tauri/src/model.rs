@@ -31,6 +31,19 @@ pub struct DirEntryDto {
     /// True when the name is not valid UTF-8 and was converted lossily.
     /// Navigation into such entries is not supported yet.
     pub lossy_name: bool,
+    /// Creation time, milliseconds since the Unix epoch (design 041 E2); `None` where the
+    /// platform or the file system does not know it, in archives and on servers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_ms: Option<i64>,
+    /// Last access, milliseconds since the Unix epoch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessed_ms: Option<i64>,
+    /// Unix permission bits (`st_mode & 0o7777`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<u32>,
+    /// Windows `FILE_ATTRIBUTE_*` bits.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub win_attrs: Option<u32>,
 }
 
 impl DirEntryDto {

@@ -24,8 +24,9 @@ use thumbs::{Cache, MAX_CACHE_BYTES, STEPS, Source};
 
 /// URI scheme of the thumbnails (`fnfthumb://localhost/<id>.<index>.<step>?v=<mtime>`).
 pub const SCHEME: &str = "fnfthumb";
-/// Overviews kept open (one shown, one being replaced).
-pub const MAX_OPEN: usize = 2;
+/// Overviews kept open: the image overview (one shown, one being replaced) and the thumbnail
+/// view of each panel (design 041 E6: one shown, one replacing it, per side).
+pub const MAX_OPEN: usize = 6;
 /// Thumbnails waiting at most (review 074 #4).
 pub const MAX_QUEUED: usize = 1000;
 /// Items per event (Comic Commander 004: one big IPC message is slow).

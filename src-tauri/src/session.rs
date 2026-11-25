@@ -135,6 +135,30 @@ pub struct TabSession {
     pub filter_text: String,
     /// GuiExpert `TableStateIf` (columns, sort, scroll) – opaque here.
     pub table: Option<serde_json::Value>,
+    /// How the tab shows its folder (design 041 E4).
+    pub view: ViewMode,
+}
+
+/// View mode of a tab (design 041 E4). Reading is lenient: an unknown or malformed value
+/// (a newer build, a hand-edited file) is the full view, never a reason to drop the session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum ViewMode {
+    #[default]
+    Full,
+    Brief,
+    Thumbnails,
+}
+
+impl<'de> Deserialize<'de> for ViewMode {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let raw = serde_json::Value::deserialize(d)?;
+        Ok(match raw.as_str() {
+            Some("brief") => Self::Brief,
+            Some("thumbnails") => Self::Thumbnails,
+            _ => Self::Full,
+        })
+    }
 }
 
 /// Outer position and inner size in physical pixels.
@@ -616,6 +640,32 @@ mod tests {
             }
         );
         assert_eq!(out.session.splitter, 0.5);
+    }
+
+    /// Design 041 E4: the view mode of a tab survives a round trip; an unknown one is the
+    /// full view and the rest of the session is kept.
+    #[test]
+    fn the_view_mode_of_a_tab_is_kept_and_read_leniently() {
+        let mut t = tab("a", Some("/p"));
+        t.view = ViewMode::Thumbnails;
+        let json = serde_json::to_value(&t).unwrap();
+        assert_eq!(json["view"], "thumbnails");
+        assert_eq!(serde_json::from_value::<TabSession>(json).unwrap(), t);
+        for (raw, want) in [
+            (json!("brief"), ViewMode::Brief),
+            (json!("full"), ViewMode::Full),
+            (json!("tiles-of-a-newer-build"), ViewMode::Full),
+            (json!(7), ViewMode::Full),
+            (json!(null), ViewMode::Full),
+        ] {
+            let read: TabSession =
+                serde_json::from_value(json!({"id": "a", "path": "/p", "view": raw})).unwrap();
+            assert_eq!(read.view, want);
+            assert_eq!(read.path.as_deref(), Some("/p"));
+        }
+        // sessions of older builds have no such field
+        let old: TabSession = serde_json::from_value(json!({"id": "a"})).unwrap();
+        assert_eq!(old.view, ViewMode::Full);
     }
 
     #[test]

@@ -988,6 +988,10 @@ pub fn list_index(
                 modified_ms: c.modified_ms,
                 hidden: name.starts_with('.'),
                 lossy_name: false,
+                created_ms: None,
+                accessed_ms: None,
+                mode: None,
+                win_attrs: None,
             }
         })
         .collect();
