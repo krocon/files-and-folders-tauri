@@ -108,7 +108,9 @@ Schritte:
   Dialog-Knöpfen, Szene `delete-dialog-keys`).
 
 Weitere Felder sind `"prelude": false` (ohne gemeinsamen Vorlauf), `"ready": "text"` (der Runner wartet auf
-diesen Text statt auf `IMG_4711.jpg`, z. B. wenn die Szene in einem Archiv startet) und `"mock"` mit:
+diesen Text statt auf `IMG_4711.jpg`, z. B. wenn die Szene in einem Archiv startet), `"settings": { … }`
+(Einstellungen nur dieser Szene, z. B. `"view.dateFormat": "locale"` oder `"view.columns"` – 041) und `"mock"`
+mit:
 
 | Option                                                                                               | Wirkung                                                                                        |
 | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |

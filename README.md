@@ -312,6 +312,11 @@ Small things that save time every day:
 
 - **Quick filter per tab** – type `*.jpg -thumb` and the list shows only what matches (`Ctrl+Alt+F` · `⌘⌥F`);
   hidden files on and off (`Ctrl+H` · `⌘⇧.`)
+- **Columns and views per tab** – choose the columns of the list and their order (right click on the column
+  header, or _View → Columns_): extension, size, modified, created, last access, permissions, type – for both
+  panels and all tabs, widths stay per tab. Every tab shows its folder _full_ (`Ctrl+F2` · `⌘1`), _brief_ with
+  the names side by side (`Ctrl+F1` · `⌘2`) or as _thumbnails_ (`Ctrl+Shift+F1` · `⌘3`) – same cursor, marks
+  and keys in all three
 - **Folder sizes** – `Space` on a folder marks it and calculates its size, `Alt+Shift+Enter` does it for all
   marked folders (cancellable, symbolic links are not followed)
 - **Folder menu ▾** – drives with file system and free space, servers, favourites (`Ctrl+D` · `⌘D`) and recently
@@ -386,6 +391,7 @@ All shortcuts can be changed in **Keyboard shortcuts…** (`Ctrl+Shift+K` / `⌘
 | Compare folders (mark) / synchronise folders | `Shift+F2` / `Ctrl+Shift+S`           | `⇧F2` / `⌘⇧S`         |
 | Flat view (all files below)                  | `Ctrl+B`                              | `⌘B`                  |
 | Image overview (tiles, large view)           | `Ctrl+Shift+I`                        | `⌘⇧I`                 |
+| Full / brief / thumbnail view of the tab     | `Ctrl+F2`, `Ctrl+F1`, `Ctrl+Shift+F1` | `⌘1`, `⌘2`, `⌘3`      |
 | Mark / unmark                                | `Space`, `Insert`                     | `Space`               |
 | Select if… (conditional selection)           | `Ctrl+Alt+S`                          | `⌘⌥S`                 |
 | Switch panel                                 | `Tab`                                 | `Tab`                 |

@@ -1,6 +1,6 @@
 # Design 041: Spaltenauswahl und Ansichtsmodi
 
-> **Status:** umgesetzt (Phasen 1–6, ohne Haltepunkt – von Marc so angeordnet) · **Datum:** 2026-11-25 ·
+> **Status:** umgesetzt (Phasen 1–6, ohne Haltepunkt – von Marc so angeordnet; echte App auf dem Mac nicht geprüft, §9) · **Datum:** 2026-11-25 ·
 > **Branch:** `feat/spalten-ansichten` · **Auftrag:** `041-spalten-ansichten.md`
 >
 > **Entscheidungen in einem Satz:** Spaltenauswahl und -reihenfolge sind **global** (Einstellung `view.columns`),
@@ -154,7 +154,58 @@ Ansichten · Doku.
   (z. B. Datumsspalte nach Sprachwechsel), ohne dass sie als gezogen im Zustand landet → hier `stripAutoWidths`.
 - **G23 – Titel einer Spalte ändern:** `header.setValue(0, index, label)` braucht den aktuellen Index;
   `tableApi.setColumnHeaderLabel(property, label)` fehlt (zusätzlich zu den Overlay-Texten aus 015).
+- **G24 – `minWidth` einer Gewichts-Spalte:** Die Namensspalte (`width: 1 weight`, `minWidth: 160 px`) wird in
+  schmalen Panels bzw. mit vielen Spalten schmaler als ihr Minimum (Namen werden zu `…`), statt dass die Table
+  waagerecht scrollt. Schon vor 041 so (Vergleichsbild von `main` bei 760 px Fensterbreite), mit mehr wählbaren
+  Spalten aber eher sichtbar.
 
 ## 8. Fortschritt
 
-Siehe Abschnitt am Ende („Ergebnis“) – wird in Phase 5 ausgefüllt.
+- [x] Phase 1 – dieses Dokument (ohne Haltepunkt, Anordnung Marc)
+- [x] Phase 2 – Rust: `DirEntryDto` + `createdMs`/`accessedMs`/`mode`/`winAttrs` (`listing.rs`), `session::ViewMode`
+      (nachsichtig gelesen), `image_overview::MAX_OPEN` 6
+- [x] Phase 3 – Frontend: `column-layout.ts`, neue Spalten/Renderer/Vergleicher, `TableBridge.applyColumns` /
+      `setCovered`, `features/columns/` (Store, Dialog, Aktionen), `file-grid/` (FileGrid, FileTileRenderer,
+      grid-logic, PanelThumbs), Menüs (`@columns`, Kopf-Menü), Einstellungen, Texte en/de
+- [x] Phase 4 – im Browser mit der echten Table (Playwright + Mock-Backend, `pnpm screenshots`), Debug-Build gebaut
+- [x] Phase 5 – Doku
+- [x] Phase 6 – `pnpm check` grün
+
+## 9. Ergebnis
+
+**Umgesetzt wie entworfen**, mit diesen Erfahrungen:
+
+- `applyState({ columns })` der Table (1.1.105) trägt Reihenfolge, Sichtbarkeit und Breiten in einem Schritt – auch
+  in jsdom (`file-list.spec.ts` prüft den echten Table-Zustand). Die Titel folgen nur, wenn man sie per
+  `getColumnIndex` schreibt (alter Fehler in `setPresentation`, vor 041 nicht sichtbar).
+- Die Table setzt `position: relative` als Inline-Style auf ihren Host – die verdeckte Table braucht deshalb
+  `position: absolute !important`, sonst teilt sie sich die Breite mit dem Grid (im Browser gefunden).
+- Fokus beim Ansichtswechsel: Palette und Menü geben den Fokus an das Element zurück, das ihn vorher hatte – das
+  ist nach dem Wechsel verdeckt bzw. weg. `FileList.onViewMode` holt ihn deshalb in die jetzt sichtbare Ansicht
+  (zweimal, nach 0 und 80 ms), `FileGrid.ready` meldet, wenn dessen Table den Fokus nehmen kann.
+- Datumsbreite: Ziffern sind in der Listenschrift nicht gleich breit (`2026-09-02 08:48` war abgeschnitten, wo
+  `2026-10-12 11:11` passte) → gemessen wird mit jeder Ziffer an allen Stellen, die breiteste zählt.
+
+**Geprüft im Browser** (Chromium, echte GuiExpert Table, nachgebautes Backend; Szenen in
+`scripts/screenshots/scenes.json`): `columns-dialog` (Leertaste, Alt+↑ – beide Panels folgen sofort, Titel stimmen),
+`columns-menu` (Rechtsklick auf den Spaltenkopf), `columns-us-dates` (US-Format vollständig lesbar, Spalten
+Erstellt/Rechte/Typ), `view-brief`, `view-thumbnails` (auch Norton), `view-thumbnails-back` (Pfeile im Raster,
+Leertaste markiert, zurück in die Vollansicht: Cursor und Markierung da, Cursorzeile im Bild),
+`view-thumbnails-2000` (2 027 Einträge: 20 Kacheln im DOM; 60 Frames lang je Frame 700 px weiter gescrollt:
+Median 38 ms, Maximum 78 ms je Frame – jeder Frame ersetzt dabei alle Kacheln samt Vorschaubildern; headless
+Chromium, Vorschaubilder als SVG vom lokalen Testserver, also keine Aussage über WebKit und echte JPEGs).
+
+**Nicht geprüft:** die echte Tauri-App. Marcs installierte App lief während der Arbeit (gleicher App-Ordner
+`io.github.krocon.filesandfolders`); ein zweiter Prozess hätte dieselbe `session.json`/`settings.json` gelesen und
+geschrieben – deshalb nicht gestartet. Damit offen: Miniaturen über das echte Schema `fnfthumb` im Panel
+(WebKit, Rust-Pool, Platten-Cache – die Bausteine selbst sind mit 074 geprüft), Neustart-Persistenz in der echten
+App (Rust-Test für `view`, Einstellungs-/Sitzungsweg unverändert), `⌘1/⌘2/⌘3`, Windows-Attribute (`winAttrs`,
+kein Windows-Build hier).
+
+## 10. Offen
+
+- Miniaturen in Archiven, auf Servern und in Ergebnis-Tabs (Suche, flach, Dubletten) – dort Icons (E6).
+- Spalten Eigentümer und Link-Ziel (E2).
+- Sortieren aus der Kurz-/Miniaturansicht (kein Spaltenkopf) – über die Vollansicht; die Reihenfolge bleibt.
+- Kurzansicht spaltenweise wie TC (G20), Kachelgröße per Strg+Mausrad, Miniaturen für Ordner (Inhaltsvorschau).
+- Kein Bild in der README: ihre Liste ist mit 20 Bildern voll (`scripts/screenshots.test.mjs`), `pngquant` fehlte lokal.

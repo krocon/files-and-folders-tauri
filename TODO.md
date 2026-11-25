@@ -39,7 +39,7 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       bedienbar? `F_NOCACHE` messbar (Aktivitätsanzeige → Speicher)? Menüs/Fenster nach der async-Umstellung normal?
 - [x] **015 Einstellungen/i18n** – in `main` (19.10.): `main` eingemergt (About aus 017 bleibt, Texte von
       016/017/019 übersetzt), E2E unter Xvfb, Review (16 Befunde, Tabelle in Design §6), Doku. Offen (Design §9):
-      ~~Button-Editor~~ (022), Spaltenauswahl, Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
+      ~~Button-Editor~~ (022), ~~Spaltenauswahl~~ (041), Dialog-Optionen 008/010 dauerhaft, weitere Sprachen; Leertaste/Start-Ordner/
       Netzlaufwerk-Polling nur E2E bzw. ohne eigenen Store-Test.
 - [x] **018 Feature-Parität + 020 Actions-Menü** (19.10.): Matrix gegen `old_project/` in `docs/feature-parity.md`
       (192 ✅, 26 🟡, 11 ⬜, 24 ✖), kleine Lücken geschlossen, E2E Linux. Nächstes: Folge-Prompts **021–028** schreiben
@@ -152,9 +152,20 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       Tabs ziehen: erledigt mit 031; Verschieben ins System bewusst nicht (031 E11).
 - [x] Drop aus dem Finder landete auf dem Mac immer links (Position doppelt skaliert) + Tabs als Drop-Ziele – Branch
       `feat/drop-ziele-tabs` (auf 028). **Bei Marc prüfen:** Finder → rechte Seite, Finder → nicht offener Tab.
-- [ ] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
+- [x] Spalte „Modified“ ist für das US-Format (`10/19/2026, 08:48 AM`) zu schmal – wird abgeschnitten (E2E 015).
+      → **041**: die Datumsspalten messen ihre Breite im aktuellen Format (`dateColumnWidth`, breiteste Ziffer),
+      folgen Sprache/Format, eine vom Nutzer gezogene Breite bleibt. Im Browser geprüft (`pnpm screenshots --scene
+    columns-us-dates`).
 - [ ] 015: `loadingText` der Table folgt keinem Sprachwechsel (Overlay-Texte nur beim Erzeugen, `TODO(guiexpert)`).
 - [ ] GuiExpert-Table-Lücken G15–G19 an `mono/TODO.md` melden (Details in den Design-Dokumenten 009, 012).
+- [ ] GuiExpert-Table-Lücken G20–G24 aus 041 an `mono/TODO.md` melden (Design 041 §7): Cover-Grid spaltenweise
+      füllen (TC „Kurz“), `property` im Kopf-Mausereignis, „Breite des Codes“ nachträglich ändern,
+      `setColumnHeaderLabel(property, …)`, `minWidth` einer Gewichts-Spalte wird nicht eingehalten (Name wird in
+      schmalen Panels bzw. mit vielen Spalten zu `…` statt waagerecht zu scrollen – schon vor 041 so).
+- [ ] 041 offen: Miniaturen in Archiven, auf Servern und in Ergebnis-Tabs (Suche, flach); Spalten Eigentümer und
+      Link-Ziel; Sortieren aus der Kurz-/Miniaturansicht heraus (nur über die Vollansicht); Kachelgröße per
+      Strg+Mausrad. **Bei Marc prüfen:** echte App auf dem Mac – Miniaturen eines Ordners mit ~2 000 Fotos
+      (Scrollen, Cache), `⌘1/⌘2/⌘3`, Rechtsklick auf den Spaltenkopf, Spalte „Erstellt“ nach Neustart.
 - [ ] GuiExpert Table: `.ge-table-label-div` hat `text-overflow: ellipsis` ohne `white-space: nowrap` (lange Namen brechen
       in eine verdeckte 2. Zeile um) – bei uns in `ge-table-theme.css` gesetzt, im Core nachziehen (`TODO(guiexpert)`).
 - [ ] Flackernder Rust-Test `jobs::tests_remote::sftp_up_down_conflicts_move_delete`: im vollen Lauf `cargo test --lib remote`

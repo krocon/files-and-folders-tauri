@@ -54,12 +54,12 @@
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
   Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und Prompt 075 (Nach Updates suchen: feste GitHub-URL in `update_check.rs`, `reqwest` mit eigener rustls-Konfiguration, `update-check.json`, `general.checkForUpdates` Default aus, Aktion `CHECK_FOR_UPDATES`) und Prompt 076 (Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf, `data-no-dialog-key`, Rolle `hint:`; Option `view.dialogKeys` = unterstrichener Buchstabe mit Alt, `mnemonic.ts`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
-  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die Prompts 041
+  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–040, 042–070, 072–076 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–070, 072–076 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -202,6 +202,12 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
   app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
+  app/features/browser/file-grid/, features/columns/  Spalten und Ansichten (041): `file-list/column-layout.ts` (rein:
+                             Auswahl `view.columns`, Layout je Art des Tabs, Breiten, Datumsbreite messen), ColumnsStore
+                             (Root: Dialog mit Live-Vorschau, Haken-Einträge `column:<property>` der Menüs), Dialog,
+                             Aktionen OPEN_COLUMNS_DLG / VIEW_MODE_FULL|BRIEF|THUMBNAILS; FileGrid (Cover-Grid für Kurz-
+                             und Miniaturansicht, zeigt `displayedRows()` der verdeckten Table), FileTileRenderer,
+                             grid-logic.ts (rein), PanelThumbs (Miniaturen über `ImageOverviewApi`, nichts Eigenes)
   app/features/workspace/    Workspace (Grid, Splitter), WorkspaceStore (Root: Tabs, aktive Seite, Favoriten), TabDragStore
                              (Root: Tabs ziehen) + tab-drag-logic.ts (rein, 031),
                              FilePanel (eine Seite), TabBar, ContextMenu, ButtonBar (+ buttons.json), Texte
@@ -415,6 +421,10 @@ prompts/                     Feature-Prompts (s. o.)
   - Table-API nur über `TableBridge` (`file-list/table-bridge.ts`) ansprechen – dort sind die Workarounds gebündelt.
   - Umbenennen in der Liste (F2): `FileBodyModel.isEditable` nur für die Namenszelle des Eintrags, eigener Editor
     (`rename-editor.ts`, `getEditRenderer`), `tableApi.startEditing`; das Modell schreibt nie (`setValue` → false).
+  - Spalten (041): Reihenfolge, Sichtbarkeit und Breiten in **einem** Schritt über `TableBridge.applyColumns` (=
+    `applyState({ columns })`), nie einzeln und nie per Index – Spalten können umgeordnet sein (`getColumnIndex`).
+    In der Kurz-/Miniaturansicht liegt die Table verdeckt (`.covered`, `inert`) hinter dem `FileGrid` und bleibt die
+    Quelle für Reihenfolge, Filter und Cursor; den Fokus hat dann das Grid (`FileList.focus()`).
   - Filter extern: `externalFilterFunction` + `tableApi.externalFilterChanged()`; Sortierung über `ColumnDef.sortable`
     / `sortComparator` bzw. `tableApi.sort(fn)`.
   - Renderer ohne Angular (`CellRendererIf`) sind schneller als Angular-Komponenten; Daten nie unescaped in
