@@ -47,10 +47,11 @@ once, find duplicates, look into archives and servers – without reaching for t
 14. [Compare files](#compare-files)
 15. [Compare and synchronise folders](#compare-and-synchronise-folders)
 16. [Group files and clean folders](#group-files-and-clean-folders)
-17. [Shell line](#shell-line)
-18. [Starter menu](#starter-menu)
-19. [Colour schemes](#colour-schemes)
-20. [And more](#and-more)
+17. [Download from URLs](#download-from-urls)
+18. [Shell line](#shell-line)
+19. [Starter menu](#starter-menu)
+20. [Colour schemes](#colour-schemes)
+21. [And more](#and-more)
 
 Shortcuts are written _Windows/Linux · macOS_. All of them can be changed.
 
@@ -273,6 +274,24 @@ after a move the emptied release folders can go to the trash.
 ![Group files: four photos go into the folder IMG, shown in a preview](docs/screenshots/readme/organize.png)
 
 ![Clean folders: three release folders with only .nfo files and samples are leftovers, the comics stay](docs/screenshots/readme/clean-folders.png)
+
+## Download from URLs
+
+**Paste addresses, pick the folder of the left or the right panel, press Download.**
+Files and Folders hands every address to [yt-dlp](https://github.com/yt-dlp/yt-dlp) and shows the download as a
+task: progress per address, cancel (also of the `ffmpeg` it started), _Retry_ for the ones that failed. Presets
+cover the usual cases – _Best video_, _Video up to 1080p (mp4)_, _Audio only (mp3)_ – and the file name comes from a
+template with a preview. Only plain `http`/`https` addresses are accepted, and there is no field for free yt-dlp
+options: the program is started directly, never through a shell, and writes only into the folder you chose.
+
+yt-dlp is **not part of Files and Folders** – install it yourself (`brew install yt-dlp ffmpeg deno`,
+`winget install yt-dlp.yt-dlp`, `pipx install yt-dlp`); `ffmpeg` is needed for audio and merging, a JavaScript
+runtime such as `deno` for YouTube. The dialog shows what it found. You are responsible for having the right to
+download the content.
+
+`Ctrl+Alt+U` · macOS: `⌘⌥U`
+
+![Download from URLs: target folder, three addresses of which one is refused, the preset Best video and the file name template](docs/screenshots/readme/url-download.png)
 
 ## Shell line
 

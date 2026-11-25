@@ -1,6 +1,6 @@
 # Design 078: URL-Download – URLs mit yt-dlp in den Zielordner laden
 
-> **Status:** umgesetzt (Phasen 1–5), Abnahme mit echtem yt-dlp und Netz steht aus (Marc) · **Datum:** 25.11.2026
+> **Status:** umgesetzt (Phasen 1–5), Abnahme mit echtem yt-dlp und Netz sowie externes Review stehen aus (Marc) · **Datum:** 25.11.2026
 > · **Auftrag:** [078-url-download.md](078-url-download.md) · **Branch:** `feat/url-download`
 > **Kein Haltepunkt nach Phase 1** (Marc, 25.11.2026): die Entscheidungen E-a … E-h sind hier getroffen und begründet.
 
@@ -279,7 +279,7 @@ logic.ts` rein, Dialog, Aktionen, Texte en/de), `src/testing/fake-url-download-a
 ```
 ┌ Von URLs laden ─────────────────────────────────────────────────────────────┐
 │ Ziel   [Rechts · /…/Filme.nosync ▾]                    1 select (Autofokus: 2) │
-│ URLs (eine je Zeile)                       [Aus Zwischenablage einfügen ⌘V*]   │
+│ URLs (eine je Zeile)                       [Aus Zwischenablage einfügen ⌘P]    │
 │ ┌ textarea ─────────────────────────┐                  2 textarea (Autofokus)  │
 │ └───────────────────────────────────┘                                          │
 │ 2 URLs · 1 ungültig (Zeile 2: kein http/https)         aria-live=polite        │
@@ -292,8 +292,9 @@ logic.ts` rein, Dialog, Aktionen, Texte en/de), `src/testing/fake-url-download-a
 ```
 
 Tasten: Esc schließt; Enter in einem Feld außer dem URL-Feld = Laden; im URL-Feld Enter = neue Zeile, Laden mit
-`Mod+Enter` (Rolle `primary`, Tastenkappe nach 076); „Aus Zwischenablage“ `secondary:V`, „Befehl kopieren“
-`secondary:C`. yt-dlp fehlt → statt des Formulars die Installationshilfe (Befehle je OS als Text zum Kopieren,
+`Mod+Enter` (eigener `keydown` am Feld; der Knopf hat die Rolle `primary` mit Tastenkappe nach 076, ein Hinweis
+unter dem Feld nennt die Taste); „Aus Zwischenablage“ `secondary:P`, „Befehl kopieren“ `secondary:K`, „Erneut
+suchen“ `secondary:R` (`V` und `C` sind in Dialogen reserviert, 057 E3). yt-dlp fehlt → statt des Formulars die Installationshilfe (Befehle je OS als Text zum Kopieren,
 Projektseite als Text – kein Link, der ohne Zutun öffnet) und „Erneut suchen“. Alle Texte von yt-dlp (Titel,
 Fehler) erscheinen nur über Interpolation (`textContent`), nie `innerHTML`.
 
@@ -327,9 +328,14 @@ Fehler) erscheinen nur über Interpolation (`textContent`), nie `innerHTML`.
   Einträge/Vorbelegung/gesperrte Seite, Start nur gültig, URLs nicht in `dialogs.recent`), Logik rein, Dialog
   (`dialog-roles.spec.ts`), `catalogs.spec.ts`, Menü-Spiegel, Keymaps, `describeFsError`.
 - **Fixtures sind synthetisch** (aus dem festgelegten `--progress-template` und dem Quelltext abgeleitet, nicht
-  aufgezeichnet – kein Lauf gegen eine URL in dieser Sitzung). Aufzeichnen für die Abnahme:
-  `node scripts/record-ytdlp.mjs <url> [--audio]` schreibt die Protokollzeilen eines echten Laufs nach
-  `src-tauri/src/url_download/testdata/recorded-*.txt` (Marke durch `M` ersetzt).
+  aufgezeichnet – kein Lauf gegen eine URL in dieser Sitzung). Aufzeichnen für die Abnahme (nutzt das Netz):
+  `FNF_RECORD_URL='https://…' [FNF_RECORD_AUDIO=1] cargo test record_protocol_lines -- --ignored --nocapture`
+  schreibt die Protokollzeilen eines echten Laufs – mit genau den Argumenten eines Jobs – nach
+  `src-tauri/src/url_download/testdata/recorded-*.txt` (Marke durch `M` ersetzt, s. `testdata/README.md`).
+- **Ohne Netz gegen das echte Programm** (ignorierte Tests, lokal gelaufen mit yt-dlp 2026.11.23):
+  `real_yt_dlp_accepts_the_arguments` – jeder Optionsname, den wir übergeben (auch die ganze Erlaubnisliste), steht
+  in `yt-dlp --help`, und `yt-dlp <unsere Argumente ohne URL> --version` nimmt die Werte an; `probe_this_machine` –
+  die Suche findet yt-dlp, ffmpeg und deno unter `/opt/homebrew/bin`.
 
 ## 6. Offen (nicht in diesem Prompt)
 
@@ -345,7 +351,33 @@ Fehler) erscheinen nur über Interpolation (`textContent`), nie `innerHTML`.
 ## Fortschritt
 
 - [x] Phase 1 Design (dieses Dokument)
-- [ ] Phase 2 Rust
-- [ ] Phase 3 Frontend
-- [ ] Phase 4 Ende-zu-Ende / Screenshots
-- [ ] Phase 5 Doku
+- [x] Phase 2 Rust: `url_download/` (urls, template, args, presets, progress, tools), Job `jobs/download.rs`, Commands,
+      Einstellungstyp `string`, Bündel-Teil `urlDownload`; 52 neue Tests (+ 3 ignorierte gegen das echte Programm/Netz)
+- [x] Phase 3 Frontend: `core/urldownload/`, `features/urldownload/` (Logik, Store, Dialog, Texte en/de), Aktion,
+      Menüs, Keymaps, Job-Anzeige (keine Pause, Phase „verarbeitet“), `ClipboardApi.readText`; 28 neue Tests
+- [x] Phase 4: Debug-Build gebaut und mit eigenem `HOME` gestartet (`node scripts/mcp-e2e.mjs`, 30 Prüfungen – darunter
+      „kein Werkzeug startet einen Download“); Screenshots hell/dunkel/Norton (`url-download-dialog`,
+      `url-download-missing`, `url-download-no-ffmpeg`)
+- [x] Phase 5 Doku: `docs/architecture.md`, `roadmap.md`, `feature-parity.md`, `licenses.md`, README (+ Bild), `CLAUDE.md`,
+      `TODO.md` §2, Index
+- [ ] Phase 6: externes Review (veranlasst Marc), Abnahme mit echtem yt-dlp und Netz
+
+## Stand der Akzeptanzkriterien
+
+| Kriterium | Stand |
+|---|---|
+| Dialog über Actions-Menü, Hauptmenü, Palette, Kürzel; Selectbox links/rechts, Vorbelegung, Tastatur | **Tests** (Katalog, Menüs, Keymaps, Store, DOM des Dialogs) + Screenshots. Im echten Fenster **nicht durchgeklickt**. |
+| „2 URLs · 1 ungültig (Zeile 2)“, Start erst ohne ungültige Zeile; `--exec=…`/`-o /tmp/x` nie als Option | **Tests** Rust (`urls`, `args`, `manager::validate` über `tests_download`) und Frontend. Gezählt wird nach dem Zusammenführen: die Zeilen A, `ftp://…`, B, B ergeben „2 URLs · 1 ungültig (Zeile 2: nur http und https) · 1 doppelt“; A, `ftp://…`, A ergeben „1 URL · 1 ungültig · 1 doppelt“. |
+| Vorlage `../x`, `/etc/x`, `C:\x` abgelehnt mit Grund | **Tests** Rust + Frontend |
+| Fake-yt-dlp: Fortschritt, zweite URL scheitert, Retry nur diese, Abbruch beendet das Kind | **Tests** `jobs/tests_download.rs` (Unix; echte Prozesse, auch ein Kind, das `SIGTERM` ignoriert) |
+| yt-dlp fehlt → Installationshilfe; ffmpeg fehlt → „Nur Audio“ gesperrt mit Grund | **Tests** + Screenshots |
+| Auf Marcs Mac aus dem Finder: Programme gefunden, echtes Video + Audio, Panel frischt auf | Suche vom Terminal aus **geprüft** (`probe_this_machine`); aus dem Finder, echter Download, Auffrischen: **nicht geprüft** (Abnahme Marc) |
+| Archiv / `remote://` / Ergebnis-Tab gesperrt, Aktion aus, Rust lehnt ab | **Tests** Frontend + Rust (`what_is_no_plain_url_or_no_local_folder_never_starts`) |
+| Titel mit Emoji, Umlauten, `/`, sehr langem Namen → gültige Datei im Ziel | **nicht geprüft** – hängt an yt-dlps Bereinigung (im Quelltext nachgelesen) und `--trim-filenames=160` (Zeichen, nicht Bytes: ein sehr langer CJK-/Emoji-Titel kann über 255 Bytes kommen → yt-dlp meldet einen Fehler; Abhilfe `%(title).100B` in der Vorlage) |
+| Tastatur, light/dark, deutsch/englisch | Screenshots light/dark/Norton (englisch); Texte de/en über `catalogs.spec.ts`; Tastatur nur über Tests (Enter/`Mod+Enter` im URL-Feld, natives `<select>`) |
+
+Nicht gebaut (bewusst): Cursor auf die erste neue Datei nach dem Job (im Auftrag „optional“); Editor für
+`url-download.json`; Eintrag auf der Werbeseite `site/` (nur README).
+
+Windows: `platform/process.rs` (Job Object) ist unverändert der Code der Shell-Leiste; der neue Code ist für Windows
+nur typgeprüft gedacht (`pnpm rust:cross` in dieser Sitzung nicht gelaufen), die Job-Tests laufen nur unter Unix.

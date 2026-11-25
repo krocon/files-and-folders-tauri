@@ -92,6 +92,14 @@
   All copyrights to RAR and UnRAR are owned by Alexander Roshal. Files and Folders never
   creates RAR archives. Build without it: `cargo build --no-default-features`.
 
+## Programs that are used but not shipped
+
+- **yt-dlp**, **ffmpeg/ffprobe** and a JavaScript runtime (**deno** or **node**) are started by
+  "Download from URLs" (design 078) when the user has installed them. They are searched in the
+  `PATH`, never bundled, downloaded or updated by Files and Folders, and no code of them is part
+  of the app. yt-dlp: Unlicense (its official PyInstaller executables as a whole: GPLv3+);
+  ffmpeg: LGPL/GPL depending on the build; deno: MIT; node: MIT.
+
 ## npm – development tooling (not shipped)
 
 348 packages; not purely permissive: 5

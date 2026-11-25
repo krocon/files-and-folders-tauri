@@ -39,7 +39,7 @@ test('README: the feature list links to headings that exist', () => {
   const anchors = new Set([...readme.matchAll(/^#{2,3} (.+)$/gm)].map((m) => anchorOf(m[1])));
   const list = readme.split('## Main features')[1].split('\n## ')[0];
   const links = [...list.matchAll(/\]\(#([^)]+)\)/g)].map((m) => m[1]);
-  assert.ok(links.length >= 12 && links.length <= 20, `${links.length} features`);
+  assert.ok(links.length >= 12 && links.length <= 21, `${links.length} features`);
   for (const a of links) assert.ok(anchors.has(a), a);
 });
 

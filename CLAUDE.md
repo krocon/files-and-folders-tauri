@@ -54,12 +54,12 @@
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
   Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und Prompt 075 (Nach Updates suchen: feste GitHub-URL in `update_check.rs`, `reqwest` mit eigener rustls-Konfiguration, `update-check.json`, `general.checkForUpdates` Default aus, Aktion `CHECK_FOR_UPDATES`) und Prompt 076 (Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf, `data-no-dialog-key`, Rolle `hint:`; Option `view.dialogKeys` = unterstrichener Buchstabe mit Alt, `mnemonic.ts`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
-  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) und Prompt 071 (MCP-Schnittstelle: Brücke `--mcp` ↔ Unix-Socket nur für den Nutzer, Tools in drei Stufen – lesen, Ansicht steuern, vorschlagen –, Kopplung im Fenster, `mcp.enabled` Default aus, `docs/mcp.md`; offen: Windows-Transport, `propose_pack`/`propose_extract`/`propose_dedupe`) und Prompt 077 (Rückstände aufräumen: „Ordner aufräumen“ mit Urteil je Startordner `CleanScan.roots`, Profile, Größengrenzen, `clean::plan_tree` im Job, `core/folders/release-extras.ts`; externes Review offen) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
+  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) und Prompt 071 (MCP-Schnittstelle: Brücke `--mcp` ↔ Unix-Socket nur für den Nutzer, Tools in drei Stufen – lesen, Ansicht steuern, vorschlagen –, Kopplung im Fenster, `mcp.enabled` Default aus, `docs/mcp.md`; offen: Windows-Transport, `propose_pack`/`propose_extract`/`propose_dedupe`) und Prompt 077 (Rückstände aufräumen: „Ordner aufräumen“ mit Urteil je Startordner `CleanScan.roots`, Profile, Größengrenzen, `clean::plan_tree` im Job, `core/folders/release-extras.ts`; externes Review offen) und Prompt 078 (URL-Download: „Von URLs laden…“ `Mod+Alt+U`, yt-dlp als Job `download` ohne Shell, `url_download/`, `url-download.json` mit Erlaubnisliste, Einstellungstyp `string` für `download.*Path`; Abnahme mit echtem yt-dlp und externes Review offen) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–077 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–078 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -199,6 +199,11 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/update/, features/update/  Nach Updates suchen (075): UpdateApi (`check_for_update`, `load_update_state`,
                              `skip_update_version`, `open_release_page`), UpdateStore (Root: Dialog-Zustand, Hinweis,
                              tägliche Prüfung nur mit `general.checkForUpdates`), Dialog, Aktion CHECK_FOR_UPDATES
+  app/core/urldownload/, features/urldownload/  Von URLs laden (078): UrlDownloadApi (`download_tools`, `download_presets`,
+                             `download_check`, `download_command_line`), url-download-logic.ts (rein: Vorlagen → Felder,
+                             Ziel links/rechts, Sperren ohne ffmpeg, Zwischenablage), UrlDownloadStore (Root: Ziel-Seite,
+                             URL-Text nur im Speicher, Prüfung mit Sequenz, Start des Jobs `download`), Dialog, Aktion
+                             OPEN_URL_DOWNLOAD_DLG (Mod+Alt+U)
   app/core/shell/            ShellApi (nur `run_shell`, einziger Importeur: ShellBar), ShellSupportApi (Quotieren, Verlauf)
   app/features/shell/        ShellStore (Root: Sichtbarkeit, Verlauf, laufender Job, Ausgabepuffer), ShellBar (Zeile 5,
                              Combobox), shell-logic.ts (rein: Verlauf, Vorschläge, Puffer, Kürzung), Aktionen
@@ -241,6 +246,12 @@ src-tauri/                   Rust (Tauri 2)
   src/about.rs               Daten für About (Version aus tauri.conf.json → package.json, Plattform)
   src/update_check.rs        Nach Updates suchen (075): feste URL, `reqwest` + rustls/ring, SemVer-Vergleich, Antwort
                              feindlich, `update-check.json`; Commands `commands/update.rs`
+  src/url_download/          Von URLs laden (078, rein): urls.rs (geparst, nur http/https), template.rs (Namensvorlage ohne
+                             Ausbruch, Beispielname), args.rs (Argument-Array: `--opt=wert`, URL nach `--`, kein `-P`),
+                             presets.rs (`url-download.json`, Erlaubnisliste), progress.rs (Zeilen hinter einer
+                             Zufallsmarke, feindliche Ausgabe), tools.rs (yt-dlp/ffmpeg/deno suchen, `--version` mit
+                             Zeitlimit); Job `jobs/download.rs` (+ tests_download.rs mit Fake-Programm), Commands
+                             `commands/url_download.rs`
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
@@ -409,6 +420,13 @@ prompts/                     Feature-Prompts (s. o.)
   ist der Command `run_shell` (Hauptfenster, `shell.enabled`); `JobSpec::Shell` bleibt `skip_deserializing`, nur
   `ShellBar` importiert `ShellApi` (Spec prüft das). Arbeitsordner nur per `current_dir`, Befehl als ein Argument an
   die Shell, eingefügte Namen quotiert Rust (`shell_quote`). Befehle und Ausgaben nie loggen.
+- **URL-Download (Design 078) ist keine zweite Shell-Ausnahme**: yt-dlp läuft ohne Shell als Job `download`. Das
+  Frontend schickt nur URLs, den Zielordner und das typisierte `DownloadOptions` – nie ein Programm, einen Pfad zu
+  einem Programm oder ein Argument; es gibt kein freies Optionsfeld. Argumente baut ausschließlich
+  `url_download::args` (jeder Wert als `--opt=wert`, genau eine geprüfte URL nach `--`, kein `-P`: der Zielordner ist
+  der Arbeitsordner), eigene Vorlagen aus `url-download.json` nur über die Erlaubnisliste in `presets.rs` (neue
+  Optionen dort mit Werte-Prüfer ergänzen, nie eine Verbotsliste). Ausgabe von yt-dlp ist feindlich und wird nie
+  geloggt; URLs werden nicht gespeichert. Nichts lädt, installiert oder aktualisiert yt-dlp/ffmpeg; nicht über MCP.
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.

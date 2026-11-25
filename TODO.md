@@ -50,6 +50,12 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 
 `pnpm tauri dev` baut auf macOS (nur 2 Warnungen, behoben in `d4ca3f3`). Bitte durchklicken:
 
+- [ ] Von URLs laden (078, `⌘⌥U`): aus dem Finder gestartet werden yt-dlp, ffmpeg und deno gefunden; ein echtes
+      Video und eine Audio-Extraktion (mp3) landen im gewählten Ordner, das Panel zeigt die Datei ohne Auffrischen;
+      Abbruch mitten im Download (kein `yt-dlp`/`ffmpeg` bleibt übrig, `.part` liegt da), Retry einer kaputten URL;
+      Titel mit Emoji/Umlauten/`/`; „bereits vorhanden“ zählt als übersprungen (internes Feld `__real_download`);
+      „Aus Zwischenablage einfügen“ (Paste-Hinweis von WebKit?), Cookies aus Browser (Schlüsselbund-Abfrage).
+      Echte Protokollzeilen aufzeichnen: `src-tauri/src/url_download/testdata/README.md`.
 - [ ] Natives Menü (014): ⌘-Kürzel in Textfeldern (F2-Editor, Filter) lösen **keine** Aktion aus; Kürzel-Badges.
 - [ ] Papierkorb (006): Finder-Erlaubnis, „Zurücklegen“.
 - [ ] Multi-Rename (007): nur Groß/klein (`a.txt` → `A.txt`) und NFD-Namen auf APFS; Tausch `a↔b`; Undo.
