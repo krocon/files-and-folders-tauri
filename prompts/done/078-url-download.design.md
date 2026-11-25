@@ -380,4 +380,5 @@ Nicht gebaut (bewusst): Cursor auf die erste neue Datei nach dem Job (im Auftrag
 `url-download.json`; Eintrag auf der Werbeseite `site/` (nur README).
 
 Windows: `platform/process.rs` (Job Object) ist unverändert der Code der Shell-Leiste; der neue Code ist für Windows
-nur typgeprüft gedacht (`pnpm rust:cross` in dieser Sitzung nicht gelaufen), die Job-Tests laufen nur unter Unix.
+nur typgeprüft (`scripts/cross-check.sh x86_64-pc-windows-msvc`: clippy `-D warnings` für Lib + Tests grün), die
+Job-Tests mit dem Fake-Programm laufen nur unter Unix. Linux: nicht gebaut in dieser Sitzung (lokal auf dem Mac).
