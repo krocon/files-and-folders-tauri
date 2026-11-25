@@ -79,7 +79,11 @@ export const SECTIONS: readonly Section[] = [
   // design 071: off by default; the names under "always" are revoked by deleting a line
   { id: 'mcp', keys: ['mcp.enabled', 'mcp.allowContent', 'mcp.roots', 'mcp.clients'] },
   { id: 'keyboard', keys: [] },
-  { id: 'tools', keys: [] },
+  // design 078: the programs of the download dialog (empty = searched)
+  {
+    id: 'tools',
+    keys: ['download.ytDlpPath', 'download.ffmpegPath', 'download.jsRuntimePath'],
+  },
   { id: 'colors', keys: [] },
   { id: 'customize', keys: [] },
   { id: 'data', keys: [] },

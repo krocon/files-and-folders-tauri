@@ -36,6 +36,10 @@ export interface SettingsValues {
   'shell.enabled': boolean;
   'shell.loginPath': 'off' | 'login' | 'loginInteractive';
   'shell.windowsShell': 'cmd' | 'powershell';
+  /** Programs of the download dialog (design 078); empty = search the PATH. */
+  'download.ytDlpPath': string;
+  'download.ffmpegPath': string;
+  'download.jsRuntimePath': string;
   'search.recent': readonly unknown[];
   'search.templates': readonly unknown[];
   'selectIf.templates': readonly unknown[];
@@ -64,6 +68,7 @@ export type SettingSpec =
   | { readonly type: 'bool'; readonly default: boolean }
   | { readonly type: 'enum'; readonly values: readonly string[]; readonly default: string }
   | { readonly type: 'int'; readonly min: number; readonly max: number; readonly default: number }
+  | { readonly type: 'string'; readonly default: string; readonly maxLength: number }
   | {
       readonly type: 'json';
       readonly default: unknown;
@@ -94,6 +99,9 @@ export function acceptsValue(spec: SettingSpec, v: unknown): boolean {
       return typeof v === 'string' && spec.values.includes(v);
     case 'int':
       return Number.isInteger(v) && (v as number) >= spec.min && (v as number) <= spec.max;
+    case 'string':
+      // like Rust: counted in characters, no control characters
+      return typeof v === 'string' && [...v].length <= spec.maxLength && !/\p{Cc}/u.test(v);
     case 'json':
       return (
         Array.isArray(v) &&
@@ -145,6 +153,7 @@ export type SettingsPart =
   | 'fileTypes'
   | 'starter'
   | 'fileActions'
+  | 'urlDownload'
   | 'connections';
 export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'settings',
@@ -156,6 +165,7 @@ export const SETTINGS_PARTS: readonly SettingsPart[] = [
   'fileTypes',
   'starter',
   'fileActions',
+  'urlDownload',
   'connections',
 ];
 

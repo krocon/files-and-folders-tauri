@@ -129,6 +129,16 @@ pub enum FsErrorCode {
     UpdateInvalidResponse,
     /// Another HTTP status.
     UpdateHttp,
+    /// Download from URLs (design 078): yt-dlp (or ffmpeg for an option that needs it) was not found.
+    DownloadToolMissing,
+    /// A URL is not a plain http(s) address (or there are none / too many).
+    DownloadInvalidUrl,
+    /// The file name template could leave the target folder or is malformed.
+    DownloadInvalidTemplate,
+    /// An option is out of range or names a preset that does not exist.
+    DownloadInvalidOptions,
+    /// yt-dlp ended with an error for this URL (its last error line, cleaned, is the message).
+    DownloadFailed,
     Io,
 }
 

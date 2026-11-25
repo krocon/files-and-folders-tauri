@@ -1,0 +1,2 @@
+[generic] Extracting URL: https://example.invalid/x
+some line without the marker

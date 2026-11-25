@@ -139,6 +139,8 @@ describe('SettingsDialog', () => {
       'renamePresets',
       'buttons',
       'fileTypes',
+      // own download presets pass an allow list in Rust (design 078): on by default
+      'urlDownload',
       'connections',
     ]);
     fixture.detectChanges();

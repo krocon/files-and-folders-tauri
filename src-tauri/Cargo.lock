@@ -1574,6 +1574,7 @@ dependencies = [
  "unftp-core",
  "unftp-sbe-fs",
  "unrar-ng-sys",
+ "url",
  "windows-native-keyring-store",
  "windows-sys 0.61.2",
  "zeroize",

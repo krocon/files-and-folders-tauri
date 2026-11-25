@@ -26,6 +26,8 @@ open = "5"
 regex = "1.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# design 078: parse the URLs handed to yt-dlp (never a regex) – already in the tree (reqwest, tauri)
+url = "2.5"
 # design 025 review #1/#2 + re-check B1/B3: check the 7z header ourselves (CRCs, AES, bounded
 # LZMA) before sevenz-rust2 reads it – aes/cbc/crc32fast are already in the tree (sevenz-rust2, zip)
 aes = "0.9"

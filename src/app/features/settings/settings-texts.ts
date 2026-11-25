@@ -163,6 +163,21 @@ export const SETTINGS_EN = {
       help: 'cmd.exe like Total Commander, or PowerShell (pwsh if installed).',
       keywords: 'windows cmd powershell pwsh',
     },
+    'download.ytDlpPath': {
+      label: 'yt-dlp (Download from URLs)',
+      help: 'Full path of the yt-dlp program. Empty: it is searched in the PATH of your login shell and the usual places (Homebrew …). The app never downloads or updates yt-dlp.',
+      keywords: 'download url yt-dlp youtube video audio program path',
+    },
+    'download.ffmpegPath': {
+      label: 'ffmpeg (Download from URLs)',
+      help: 'Full path of ffmpeg (ffprobe is expected next to it). Empty: searched. Needed for audio only, mp4/mkv containers and embedding.',
+      keywords: 'download ffmpeg ffprobe merge audio mp3 program path',
+    },
+    'download.jsRuntimePath': {
+      label: 'JavaScript runtime (Download from URLs)',
+      help: 'Full path of deno or node. Empty: searched (deno first). YouTube needs one.',
+      keywords: 'download deno node javascript runtime youtube program path',
+    },
     'search.recent': {
       label: 'Recent searches',
       help: 'The last 10 searches are kept across restarts.',
@@ -379,6 +394,7 @@ export const SETTINGS_EN = {
     fileTypes: 'File types',
     starter: 'Starter menu',
     fileActions: 'Double-click actions',
+    urlDownload: 'Download presets',
     connections: 'Server connections (without passwords)',
   },
   toolsWarning:
@@ -573,6 +589,21 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       label: 'Shell unter Windows',
       help: 'cmd.exe wie im Total Commander oder PowerShell (pwsh, falls installiert).',
       keywords: 'windows cmd powershell pwsh eingabeaufforderung',
+    },
+    'download.ytDlpPath': {
+      label: 'yt-dlp (Von URLs laden)',
+      help: 'Voller Pfad des Programms yt-dlp. Leer: es wird im PATH der Login-Shell und an den üblichen Orten gesucht (Homebrew …). Die App lädt oder aktualisiert yt-dlp nie selbst.',
+      keywords: 'download herunterladen url yt-dlp youtube video audio programm pfad',
+    },
+    'download.ffmpegPath': {
+      label: 'ffmpeg (Von URLs laden)',
+      help: 'Voller Pfad von ffmpeg (ffprobe wird daneben erwartet). Leer: wird gesucht. Nötig für „nur Audio“, die Container mp4/mkv und das Einbetten.',
+      keywords: 'download ffmpeg ffprobe zusammenführen audio mp3 programm pfad',
+    },
+    'download.jsRuntimePath': {
+      label: 'JavaScript-Laufzeit (Von URLs laden)',
+      help: 'Voller Pfad von deno oder node. Leer: wird gesucht (deno zuerst). YouTube braucht eine.',
+      keywords: 'download deno node javascript laufzeit youtube programm pfad',
     },
     'search.recent': {
       label: 'Letzte Suchen',
@@ -785,6 +816,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     fileTypes: 'Dateitypen',
     starter: 'Startermenü',
     fileActions: 'Doppelklick-Aktionen',
+    urlDownload: 'Download-Vorlagen',
     connections: 'Server-Verbindungen (ohne Passwörter)',
   },
   toolsWarning:

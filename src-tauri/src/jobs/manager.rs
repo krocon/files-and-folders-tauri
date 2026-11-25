@@ -86,6 +86,9 @@ pub struct JobManager {
     undo_log: Mutex<VecDeque<(String, Vec<RenameItem>)>>,
     /// What failed tasks left undone (job id → retry plan), newest last (design 048).
     retry_log: retry::RetryLog,
+    /// Programs, environment and presets of a download job (design 078 E-i) – set by the
+    /// app, read when a job runs; without it yt-dlp counts as missing.
+    download_env: Mutex<Option<super::download::EnvProvider>>,
     fs_guard: Mutex<Option<FsGuard>>,
     /// Marks the folders a job writes into (the watcher holds their reloads; design 029 E8).
     target_guard: Mutex<Option<FsGuard>>,
@@ -106,6 +109,7 @@ impl JobManager {
             force_copy_on_move: AtomicBool::new(false),
             undo_log: Mutex::new(VecDeque::new()),
             retry_log: retry::RetryLog::default(),
+            download_env: Mutex::new(None),
             fs_guard: Mutex::new(None),
             target_guard: Mutex::new(None),
             disk_usage: Arc::default(),
@@ -122,6 +126,11 @@ impl JobManager {
     }
 
     /// Installs the guard called around jobs that move, rename or delete.
+    /// Where download jobs get yt-dlp, its environment and the presets from (design 078).
+    pub fn set_download_env(&self, provider: super::download::EnvProvider) {
+        *self.download_env.lock().unwrap_or_else(|e| e.into_inner()) = Some(provider);
+    }
+
     pub fn set_fs_guard(&self, guard: FsGuard) {
         *self.fs_guard.lock().unwrap_or_else(|e| e.into_inner()) = Some(guard);
     }
@@ -581,6 +590,20 @@ impl JobManager {
                     } => {
                         let paths: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
                         attributes::run(id, &paths, change, *recursive, *apply_to, &control, &emit)
+                    }
+                    JobSpec::Download {
+                        urls,
+                        target_dir,
+                        options,
+                    } => {
+                        let provider = self
+                            .download_env
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .clone();
+                        // blocks for the first read of the login shell (design 061)
+                        let env = provider.map(|p| p()).unwrap_or_default();
+                        super::download::run(id, urls, target_dir, options, &env, &control, &emit)
                     }
                     JobSpec::Rename { .. } => unreachable!("handled above"),
                 };
@@ -1136,6 +1159,11 @@ impl JobManager {
             if e.info.state.is_finished() {
                 return;
             }
+            // a paused download keeps its connections open until the server drops them
+            // (design 078 E-e): no pause for this kind
+            if matches!(e.info.spec, JobSpec::Download { .. }) {
+                return;
+            }
             e.control.set_paused(true);
             if matches!(
                 e.info.state,
@@ -1446,6 +1474,14 @@ fn normalize(spec: &mut JobSpec) -> Result<(), FsError> {
         JobSpec::ArchiveMkdir { parent, .. } => one(parent),
         JobSpec::DiskUsage { roots, .. } => all(roots.iter_mut()),
         JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => any(path),
+        // a server path is refused in `validate` with its own message
+        JobSpec::Download { target_dir, .. } => {
+            if crate::remote::is_remote(target_dir) {
+                Ok(())
+            } else {
+                one(target_dir)
+            }
+        }
         JobSpec::Search { .. }
         | JobSpec::Duplicates { .. }
         | JobSpec::Shell { .. }
@@ -1880,6 +1916,28 @@ fn validate(spec: &JobSpec, home: Option<&Path>) -> Result<(), FsError> {
                     check_danger_with(&mut danger, &p, false)?;
                 }
             }
+        }
+        JobSpec::Download {
+            urls,
+            target_dir,
+            options,
+        } => {
+            let bad_url =
+                |message: &str| FsError::new(FsErrorCode::DownloadInvalidUrl, message, None);
+            if urls.is_empty() {
+                return Err(bad_url("No URL"));
+            }
+            if urls.len() > crate::url_download::MAX_URLS {
+                return Err(bad_url("Too many URLs"));
+            }
+            for u in urls {
+                // only the form `check_one` hands out: http(s), parsed, nothing to read as an option
+                if crate::url_download::urls::check_one(u).as_deref() != Ok(u.as_str()) {
+                    return Err(bad_url("Not a plain http(s) address"));
+                }
+            }
+            options.validate()?;
+            super::download::check_target(target_dir)?;
         }
         JobSpec::Shell { cwd, command, .. } => {
             crate::shell::check_cwd(cwd)?;

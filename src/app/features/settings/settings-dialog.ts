@@ -194,6 +194,20 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
                 />
               </label>
             }
+            @case ('string') {
+              <label class="field">
+                <span>{{ label(key) }}</span>
+                <input
+                  type="text"
+                  spellcheck="false"
+                  autocomplete="off"
+                  [attr.maxlength]="maxLength(key)"
+                  [value]="value(key)"
+                  [attr.aria-describedby]="helpId(key)"
+                  (change)="setString(key, $event)"
+                />
+              </label>
+            }
             @case ('columns') {
               <div class="field">
                 <span>{{ label(key) }}</span>
@@ -660,6 +674,15 @@ export class SettingsDialog {
     if (Number.isFinite(n)) {
       this.settings.set(key, Math.min(max, Math.max(min, n)) as never);
     }
+  }
+
+  protected maxLength(key: SettingKey): number {
+    const spec = SCHEMA[key];
+    return spec.type === 'string' ? spec.maxLength : 0;
+  }
+
+  protected setString(key: SettingKey, evt: Event): void {
+    this.settings.set(key, (evt.target as HTMLInputElement).value.trim() as never);
   }
 
   protected mb(bytes: number): number {

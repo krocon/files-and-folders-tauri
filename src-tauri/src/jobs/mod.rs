@@ -14,6 +14,7 @@ pub mod copy;
 pub mod dedupe;
 pub mod delete;
 pub mod disk_usage;
+pub mod download;
 pub mod duplicates;
 pub mod expect;
 pub mod extract;
@@ -40,6 +41,8 @@ mod tests_checksum;
 mod tests_dedupe;
 #[cfg(test)]
 mod tests_disk_usage;
+#[cfg(all(test, unix))]
+mod tests_download;
 #[cfg(test)]
 mod tests_engine;
 #[cfg(test)]
@@ -301,6 +304,15 @@ pub enum JobSpec {
         #[serde(default)]
         apply_to: ApplyTo,
     },
+    /// Download from URLs with yt-dlp (design 078): one process per URL, in `target_dir`.
+    /// Program, environment and presets are resolved by Rust when the job runs – the
+    /// spec carries only checked URLs, the folder and the typed options.
+    Download {
+        urls: Vec<String>,
+        target_dir: String,
+        #[serde(default)]
+        options: crate::url_download::DownloadOptions,
+    },
     /// A command of the shell bar (design 021 E1/E3). Built only by the command
     /// `run_shell` – `start_job` cannot create it (no deserialising).
     #[serde(skip_deserializing)]
@@ -344,6 +356,8 @@ impl JobSpec {
             | JobSpec::Search { .. }
             | JobSpec::Compare { .. }
             | JobSpec::Shell { .. }
+            // hours of download must not hold up copying – and it touches no file of ours
+            | JobSpec::Download { .. }
             | JobSpec::Simulate { .. } => true,
         }
     }
@@ -391,6 +405,7 @@ impl JobSpec {
             | JobSpec::Move { target_dir, .. }
             | JobSpec::Extract { target_dir, .. }
             | JobSpec::Pack { target_dir, .. }
+            | JobSpec::Download { target_dir, .. }
             | JobSpec::Link { target_dir, .. } => target_dir,
             JobSpec::Group { root, .. } => root,
             // the folder that holds the archive (the archive file is replaced there)
@@ -551,6 +566,7 @@ impl JobSpec {
             JobSpec::ArchiveDelete { paths } => out.extend(paths.iter().cloned()),
             JobSpec::ArchiveMkdir { parent, .. } => out.push(parent.clone()),
             JobSpec::DirSize { path } | JobSpec::ViewEntry { path } => out.push(path.clone()),
+            JobSpec::Download { target_dir, .. } => out.push(target_dir.clone()),
             JobSpec::DiskUsage { roots, .. } => out.extend(roots.iter().cloned()),
             JobSpec::Search { .. }
             | JobSpec::Duplicates { .. }
@@ -587,6 +603,7 @@ impl JobSpec {
             JobSpec::DiskUsage { .. } => "diskUsage",
             JobSpec::Simulate { .. } => "simulate",
             JobSpec::Shell { .. } => "shell",
+            JobSpec::Download { .. } => "download",
             JobSpec::Attributes { .. } => "attributes",
         }
     }
@@ -679,6 +696,18 @@ pub struct Progress {
     /// Bytes copied/moved into each top-level target destination so far.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub dest_bytes: HashMap<String, u64>,
+    /// Job `download` (design 078): what happens to the current URL.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<Phase>,
+}
+
+/// Phases of one URL of a download job.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Phase {
+    Downloading,
+    /// A post-processor runs (ffmpeg: merge, extract audio, embed).
+    Processing,
 }
 
 /// Size, modification time and kind of one side of a conflict.
@@ -770,6 +799,9 @@ pub struct Summary {
     /// Job `compare` (design 036): the final statistics (`errors` = unreadable entries).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compare: Option<crate::compare::CompareStats>,
+    /// Job `download` (design 078): the files that arrived.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download: Option<download::DownloadSummary>,
 }
 
 pub const MAX_REPORTED_ERRORS: usize = 1000;
@@ -969,6 +1001,29 @@ mod tests {
             (options.junk_max_bytes, options.large_junk_max_bytes),
             (2 * 1024 * 1024, 300 * 1024 * 1024)
         );
+        // design 078: what the dialog sends; the spec has no place for a program or an argument
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"download","urls":["https://example.org/a"],"targetDir":"/t","options":{"content":"audio","audioFormat":"mp3"}}"#,
+        )
+        .unwrap();
+        assert_eq!(spec.kind(), "download");
+        assert!(spec.is_parallel() && !spec.is_helper());
+        assert_eq!(spec.target_dirs(), [std::path::PathBuf::from("/t")]);
+        assert!(spec.changed_paths().is_empty());
+        for bad in [
+            r#"{"kind":"download","urls":["https://example.org/a"],"targetDir":"/t","args":["--exec","x"]}"#,
+            r#"{"kind":"download","urls":["https://example.org/a"],"targetDir":"/t","options":{"args":["--exec"]}}"#,
+            r#"{"kind":"download","urls":["https://example.org/a"],"targetDir":"/t","program":"/bin/sh"}"#,
+        ] {
+            match serde_json::from_str::<JobSpec>(bad) {
+                // an unknown key beside the options is ignored by serde – it reaches nothing
+                Ok(JobSpec::Download { options, .. }) => {
+                    assert_eq!(options, crate::url_download::DownloadOptions::default())
+                }
+                Ok(_) => panic!(),
+                Err(_) => {}
+            }
+        }
         let e = serde_json::to_value(JobEvent::DirsChanged { dirs: vec![] }).unwrap();
         assert_eq!(e["type"], "dirsChanged");
         let spec: JobSpec = serde_json::from_str(

@@ -36,6 +36,8 @@
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
 //! - [`secret`]       secret texts (passwords) – never printed or serialised
+//! - [`url_download`] download from URLs with yt-dlp: URL and template checks, argument array, progress
+//!   lines, finding the programs (design 078)
 //! - [`mcp`]          MCP interface: local socket, tools in three tiers, proposals (design 071)
 //! - [`commands`]     thin Tauri command layer
 
@@ -90,6 +92,7 @@ pub mod test_slow;
 pub mod themes;
 pub mod tools;
 pub mod update_check;
+pub mod url_download;
 pub mod watch;
 pub mod window_state;
 
@@ -155,6 +158,15 @@ pub fn run() {
             app.state::<commands::JobsState>()
                 .manager
                 .set_home(app.path().home_dir().ok());
+            // download jobs (design 078): programs, start environment and presets are
+            // read when a job runs – never taken from the frontend
+            if let Ok(dir) = app.path().app_config_dir() {
+                app.state::<commands::JobsState>()
+                    .manager
+                    .set_download_env(std::sync::Arc::new(move || {
+                        commands::url_download::download_env(&dir)
+                    }));
+            }
             // the palette's name index (design 043): built in the background, memory only
             palette::init(app.path().home_dir().ok());
             // server connections (design 034): profiles in the config folder, nothing connects yet
@@ -256,6 +268,10 @@ pub fn run() {
             commands::shell::shell_login_status,
             commands::shell::clear_shell_history,
             commands::get_app_info,
+            commands::url_download::download_tools,
+            commands::url_download::download_presets,
+            commands::url_download::download_check,
+            commands::url_download::download_command_line,
             commands::update::check_for_update,
             commands::update::load_update_state,
             commands::update::skip_update_version,

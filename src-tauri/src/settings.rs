@@ -33,7 +33,7 @@ pub const BUNDLE_FORMAT: &str = "files-and-folders-settings";
 pub const BUNDLE_VERSION: u32 = 1;
 pub const BUNDLE_FILE_STEM: &str = "files-and-folders-settings";
 /// Parts of a bundle (`import_settings` takes a subset).
-pub const PARTS: [&str; 10] = [
+pub const PARTS: [&str; 11] = [
     "settings",
     "keymap",
     "themes",
@@ -43,6 +43,7 @@ pub const PARTS: [&str; 10] = [
     "fileTypes",
     "starter",
     "fileActions",
+    "urlDownload",
     "connections",
 ];
 
@@ -63,6 +64,12 @@ pub enum Spec {
         max: i64,
         default: i64,
     },
+    /// A short free text (the path of a program, design 078): no control characters.
+    String {
+        default: String,
+        #[serde(rename = "maxLength")]
+        max_length: usize,
+    },
     /// A remembered list (recent searches …): an array, bounded in items and bytes.
     Json {
         default: Value,
@@ -79,6 +86,7 @@ impl Spec {
             Spec::Bool { default } => Value::Bool(*default),
             Spec::Enum { default, .. } => Value::String(default.clone()),
             Spec::Int { default, .. } => Value::from(*default),
+            Spec::String { default, .. } => Value::String(default.clone()),
             Spec::Json { default, .. } => default.clone(),
         }
     }
@@ -88,6 +96,9 @@ impl Spec {
             Spec::Bool { .. } => v.is_boolean(),
             Spec::Enum { values, .. } => v.as_str().is_some_and(|s| values.iter().any(|x| x == s)),
             Spec::Int { min, max, .. } => v.as_i64().is_some_and(|n| n >= *min && n <= *max),
+            Spec::String { max_length, .. } => v.as_str().is_some_and(|s| {
+                s.chars().count() <= *max_length && !s.chars().any(char::is_control)
+            }),
             Spec::Json {
                 max_items,
                 max_bytes,
@@ -287,6 +298,8 @@ pub struct ConfigFiles {
     pub file_types: PathBuf,
     pub starter: PathBuf,
     pub file_actions: PathBuf,
+    /// Own presets of the download dialog (design 078).
+    pub url_download: PathBuf,
     /// Server profiles (design 034) – exported without secrets.
     pub connections: PathBuf,
 }
@@ -303,6 +316,7 @@ impl ConfigFiles {
             "fileTypes" => &self.file_types,
             "starter" => &self.starter,
             "fileActions" => &self.file_actions,
+            "urlDownload" => &self.url_download,
             "connections" => &self.connections,
             _ => &self.settings,
         }
@@ -319,6 +333,7 @@ impl ConfigFiles {
             file_types: dir.join(filetypes::FILE_NAME),
             starter: dir.join(starter::FILE_NAME),
             file_actions: dir.join(file_actions::FILE_NAME),
+            url_download: dir.join(crate::url_download::presets::FILE_NAME),
             connections: dir.join(crate::remote::profiles::FILE_NAME),
         }
     }
@@ -397,6 +412,17 @@ pub fn bundle(files: &ConfigFiles) -> Value {
             Value::Null
         },
     );
+    // design 078: the own download presets (those that pass the allow list), null without any
+    out.insert("urlDownload".into(), {
+        let presets = crate::url_download::presets::load(&files.url_download)
+            .value
+            .presets;
+        if presets.is_empty() {
+            Value::Null
+        } else {
+            serde_json::to_value(presets).unwrap_or(Value::Null)
+        }
+    });
     // design 034: server profiles without the keychain marker, null without a user file
     out.insert(
         "connections".into(),
@@ -575,6 +601,14 @@ pub fn import(
             "fileActions" => {
                 match serde_json::from_value::<Vec<file_actions::FileActionRule>>(value) {
                     Ok(rules) => file_actions::save(&files.file_actions, rules).map(|_| true),
+                    Err(_) => Ok(false),
+                }
+            }
+            // checked against the allow list again: a bundle is a foreign file
+            "urlDownload" => {
+                match serde_json::from_value::<Vec<crate::url_download::presets::Preset>>(value) {
+                    Ok(presets) => crate::url_download::presets::save(&files.url_download, presets)
+                        .map(|_| true),
                     Err(_) => Ok(false),
                 }
             }
@@ -1075,6 +1109,7 @@ mod tests {
                 "fileTypes",
                 "starter",
                 "fileActions",
+                "urlDownload",
                 "connections"
             ]
         );
@@ -1083,6 +1118,63 @@ mod tests {
             Value::Object(load(&dst.settings).settings),
             json!({"view.menuBar": false})
         );
+    }
+
+    /// Design 078: own download presets travel with the bundle – through the allow list.
+    #[test]
+    fn the_download_presets_are_exported_and_imported() {
+        use crate::url_download::presets::{self, Preset};
+        let a = tempdir().unwrap();
+        let b = tempdir().unwrap();
+        let (src, dst) = (config(a.path()), config(b.path()));
+        assert_eq!(bundle(&src)["urlDownload"], Value::Null);
+        // the default file (no presets) is nothing to export either
+        presets::ensure_file(&src.url_download);
+        assert_eq!(bundle(&src)["urlDownload"], Value::Null);
+        let preset = Preset {
+            id: "p720".into(),
+            label: "720p".into(),
+            args: vec!["-S".into(), "res:720".into()],
+        };
+        presets::save(&src.url_download, vec![preset]).unwrap();
+        let mut bundle = bundle(&src);
+        assert_eq!(bundle["urlDownload"][0]["args"][0], "--format-sort=res:720");
+        // a bundle from somewhere else: what is not allowed does not arrive
+        bundle["urlDownload"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"id": "evil", "label": "Evil", "args": ["--exec", "touch /tmp/pwned"]}));
+        let report = import(&dst, bundle.as_object().unwrap(), &["urlDownload".into()]).unwrap();
+        assert_eq!(report.imported, ["urlDownload"]);
+        let loaded = presets::load(&dst.url_download).value;
+        assert_eq!(loaded.presets.len(), 1);
+        assert_eq!(loaded.presets[0].id, "p720");
+        assert!(
+            !std::fs::read_to_string(&dst.url_download)
+                .unwrap()
+                .contains("exec")
+        );
+    }
+
+    /// The program paths of the download dialog are short texts without control characters.
+    #[test]
+    fn string_settings_are_bounded() {
+        let spec = SCHEMA.get("download.ytDlpPath").unwrap();
+        assert!(spec.accepts(&json!("/opt/homebrew/bin/yt-dlp")));
+        assert!(spec.accepts(&json!("")));
+        assert!(!spec.accepts(&json!("a\nb")));
+        assert!(!spec.accepts(&json!("x".repeat(2000))));
+        assert!(!spec.accepts(&json!(7)));
+        let (kept, warnings) = sanitize(map(json!({
+            "download.ytDlpPath": "/opt/yt-dlp",
+            "download.ffmpegPath": "",
+            "download.jsRuntimePath": 3
+        })));
+        assert_eq!(
+            Value::Object(kept),
+            json!({"download.ytDlpPath": "/opt/yt-dlp"})
+        );
+        assert_eq!(warnings.len(), 1);
     }
 
     /// Design 072: the double-click actions travel with the bundle (null without a user file).

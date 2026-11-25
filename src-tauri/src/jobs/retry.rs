@@ -248,6 +248,32 @@ fn partial(spec: &JobSpec, summary: &Summary, noted: Noted) -> Option<RetryPlan>
             output: checksum::ChecksumOutput::List { .. },
             ..
         } => Some(RetryPlan::whole(spec)),
+        // the URLs that failed, by their exact text (design 078) – never a path comparison
+        JobSpec::Download {
+            urls,
+            target_dir,
+            options,
+        } => {
+            list(true)?;
+            let again: Vec<String> = urls
+                .iter()
+                .filter(|u| {
+                    summary
+                        .errors
+                        .iter()
+                        .any(|e| e.path == **u && e.error.code == FsErrorCode::DownloadFailed)
+                })
+                .cloned()
+                .collect();
+            if again.is_empty() {
+                return None;
+            }
+            Some(RetryPlan::part(JobSpec::Download {
+                urls: again,
+                target_dir: target_dir.clone(),
+                options: options.clone(),
+            }))
+        }
         JobSpec::Copy {
             target_dir,
             background,

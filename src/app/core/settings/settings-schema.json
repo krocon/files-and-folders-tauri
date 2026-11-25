@@ -47,6 +47,9 @@
     "default": "loginInteractive"
   },
   "shell.windowsShell": { "type": "enum", "values": ["cmd", "powershell"], "default": "cmd" },
+  "download.ytDlpPath": { "type": "string", "default": "", "maxLength": 1024 },
+  "download.ffmpegPath": { "type": "string", "default": "", "maxLength": 1024 },
+  "download.jsRuntimePath": { "type": "string", "default": "", "maxLength": 1024 },
   "search.recent": { "type": "json", "default": [], "maxItems": 10, "maxBytes": 65536 },
   "search.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },
   "selectIf.templates": { "type": "json", "default": [], "maxItems": 50, "maxBytes": 131072 },

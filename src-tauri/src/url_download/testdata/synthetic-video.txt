@@ -1,0 +1,14 @@
+M|item|"Mein Video ä 🎬 a/b"
+M|dl|downloading|0|NA|NA|NA|NA
+M|dl|downloading|1024|1048576|NA|524288.0|2
+M|dl|downloading|524288|1048576|NA|1048576.7|0
+M|dl|downloading|1048576|1048576|NA|1048576.0|0
+M|dl|finished|1048576|1048576|NA|932067.5|NA
+M|dl|downloading|2048|NA|4096.5|NA|NA
+M|dl|downloading|4096|NA|4096.0|2048|0
+M|dl|finished|4096|4096|NA|4096.0|NA
+M|pp|started|Merger
+M|pp|finished|Merger
+M|pp|started|MoveFiles
+M|pp|finished|MoveFiles
+M|file|True|"/ziel/Mein Video ä 🎬 a⧸b [abc123].mp4"

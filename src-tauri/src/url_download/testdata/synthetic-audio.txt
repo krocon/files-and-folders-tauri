@@ -1,0 +1,8 @@
+M|item|"Lied"
+M|dl|downloading|100|200|NA|50|2
+M|dl|finished|200|200|NA|100|NA
+M|pp|started|ExtractAudio
+M|pp|finished|ExtractAudio
+M|pp|started|MoveFiles
+M|pp|finished|MoveFiles
+M|file|True|"/ziel/Lied [x1].mp3"

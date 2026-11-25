@@ -1,0 +1,12 @@
+M|item|"Teil 1"
+M|dl|downloading|10|20|NA|5|2
+M|dl|finished|20|20|NA|10|NA
+M|pp|started|MoveFiles
+M|pp|finished|MoveFiles
+M|file|True|"Liste [PL1]/01 - Teil 1.mp4"
+M|item|"Teil 2"
+M|dl|downloading|10|20|NA|5|2
+M|dl|finished|20|20|NA|10|NA
+M|file|True|"Liste [PL1]/02 - Teil 2.mp4"
+M|item|"Teil 3"
+M|dl|downloading|5|20|NA|5|3
