@@ -16,7 +16,7 @@ import { FakeRenameApi } from '../../../testing/fake-rename-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { CleanFoldersDialog } from '../cleanfolders/clean-dialog';
-import { CleanFoldersStore } from '../cleanfolders/clean.store';
+import { CleanFoldersStore, DEFAULT_CLEAN_FORM } from '../cleanfolders/clean.store';
 import { MultiMkdirDialog } from '../multimkdir/multimkdir-dialog';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { GroupFilesDialog } from './groupfiles-dialog';
@@ -183,7 +183,7 @@ describe('folder tool dialogs (design 008)', () => {
     f.detectChanges();
     expect(radio('release').checked).toBe(true);
     expect(el.querySelector('[data-testid="clean-try-release"]')).toBeNull();
-    expect(folders.scans.at(-1)!.options.largeJunk).toContain('*-sample.*');
+    expect(folders.scans.at(-1)!.options.largeJunk).toContain('*-sample.mkv');
     const summary = () => el.querySelector('[data-testid="clean-summary"]')!.textContent!;
     expect(summary()).toContain('1 folder is cleaned · 2 folders, 1 file · 736 B');
     // the list: arrows move the cursor (details follow), Space selects and deselects
@@ -220,6 +220,35 @@ describe('folder tool dialogs (design 008)', () => {
         { path: '/filme/Rest', kind: 'dir' },
       ],
     });
+  });
+
+  it('clean folders: loosened rules open the rules and are named (review 077 #6)', async () => {
+    const cl = TestBed.inject(CleanFoldersStore);
+    cl.request.set({
+      side: 'left',
+      folder: '/src',
+      roots: ['/src/a'],
+      includeRoots: true,
+      ignored: 0,
+    });
+    cl.form.set({ ...DEFAULT_CLEAN_FORM, profile: 'release' });
+    const f = TestBed.createComponent(CleanFoldersDialog);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    const rules = () => el.querySelector<HTMLDetailsElement>('details.rules')!;
+    expect(rules().open).toBe(false);
+    expect(el.querySelector('[data-testid="clean-loosened"]')).toBeNull();
+    // as kept from an earlier run: samples up to 5 GB, extras-only folders next to content
+    cl.form.set({
+      ...DEFAULT_CLEAN_FORM,
+      profile: 'release',
+      sampleMaxMb: 5000,
+      junkDirsBesideContent: true,
+    });
+    f.detectChanges();
+    expect(rules().open).toBe(true);
+    expect(el.querySelector('[data-testid="clean-loosened"]')!.textContent).toContain('wider');
+    cl.close();
   });
 
   it('clean folders guarded for an MCP client: a note, no Enter, permanent without any key', async () => {

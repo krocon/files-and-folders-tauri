@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { describeFsError } from '../../core/fs/fs-error';
 import { FsError } from '../../core/fs/fs.models';
-import { RELEASE_EXTRAS, RELEASE_SAMPLES } from '../../core/folders/release-extras';
+import { RELEASE_EXTRAS, SAMPLE_SHAPES, VIDEO_EXTENSIONS } from '../../core/folders/release-extras';
 import { DEFAULT_JUNK } from '../../core/folders/folders.models';
 import { Modal } from '../../shared/dialog/modal';
 import { DialogKey, DialogKeySpec } from '../../shared/dialog/dialog-key';
@@ -13,6 +13,7 @@ import {
   CLEAN_PROFILES,
   CleanForm,
   detailRowClass,
+  loosened,
   MAX_LIMIT_MB,
   rootRowClass,
 } from './clean-logic';
@@ -57,14 +58,19 @@ const PAGE = 10;
           </fieldset>
           <p class="help" data-testid="clean-profile-help">{{ t.profileHelp[f().profile] }}</p>
           <details class="rules" [open]="rulesOpen()" (toggle)="onRules($event)">
-            <summary>{{ t.rules }}</summary>
+            <summary>
+              {{ t.rules }}
+              @if (isLoosened()) {
+                <strong class="loosened" data-testid="clean-loosened">– {{ t.loosened }}</strong>
+              }
+            </summary>
             @switch (f().profile) {
               @case ('empty') {
                 <p class="help mono">{{ t.extras(junkNames) }}</p>
               }
               @case ('release') {
                 <p class="help mono">{{ t.extras(extraNames) }}</p>
-                <p class="help mono">{{ t.samples(sampleNames) }}</p>
+                <p class="help mono">{{ t.samples(sampleShapes, sampleEndings) }}</p>
                 <div class="row">
                   <label class="inline">
                     {{ t.junkMax }}
@@ -309,6 +315,9 @@ const PAGE = 10;
     .rules summary {
       cursor: pointer;
     }
+    .loosened {
+      color: var(--color-dialog-danger-text, var(--color-danger));
+    }
     .rules .help {
       margin: var(--spacing-1) 0;
       overflow-wrap: anywhere;
@@ -363,11 +372,14 @@ export class CleanFoldersDialog {
   protected readonly detailClass = detailRowClass;
   protected readonly junkNames = DEFAULT_JUNK.join('; ');
   protected readonly extraNames = [...DEFAULT_JUNK, ...RELEASE_EXTRAS].join('; ');
-  protected readonly sampleNames = RELEASE_SAMPLES.join('; ');
-  /** The rules are folded away unless the profile is the user's own. */
+  protected readonly sampleShapes = SAMPLE_SHAPES.join('; ');
+  protected readonly sampleEndings = VIDEO_EXTENSIONS.join(', ');
+  /** The form protects less than the defaults (kept from an earlier run): never hidden. */
+  protected readonly isLoosened = computed(() => loosened(this.f()));
+  /** The rules are folded away unless the profile is the user's own or they were loosened. */
   private readonly rulesToggled = signal<boolean | null>(null);
   protected readonly rulesOpen = computed(
-    () => this.rulesToggled() ?? this.f().profile === 'custom',
+    () => this.rulesToggled() ?? (this.f().profile === 'custom' || this.isLoosened()),
   );
 
   // built when the dialog opens: the labels are in the language of that moment

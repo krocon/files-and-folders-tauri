@@ -12,6 +12,7 @@ import { SessionApi } from '../../core/session/session-api';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { cleanScan, EMPTY_TREE, FakeFoldersApi } from '../../../testing/fake-folders-api';
+import { RELEASE_SAMPLES } from '../../core/folders/release-extras';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
@@ -317,6 +318,7 @@ describe('group series by season (design 045)', () => {
     });
     // the profile "release leftovers" (design 077 E4): only real release extras – never
     // the dialog's own list (`*.jpg`, `*.txt`: review 045 #2)
+    expect(RELEASE_SAMPLES).toContain('*-sample.mkv');
     expect(cl.options()).toEqual({
       emptyDirs: true,
       includeRoots: true,
@@ -328,11 +330,13 @@ describe('group series by season (design 045)', () => {
         '*.sfv',
         '*.srr',
         '*.md5',
-        '*.url',
-        '*-proof.*',
+        '*-proof.jpg',
+        '*-proof.jpeg',
+        '*-proof.png',
       ],
       patterns: [],
-      largeJunk: ['*-sample.*', '*.sample.*', 'sample-*', 'sample.*'],
+      // samples of videos only (review 077 #1)
+      largeJunk: [...RELEASE_SAMPLES],
       junkMaxBytes: 1024 * 1024,
       largeJunkMaxBytes: 300 * 1024 * 1024,
       junkDirsBesideContent: false,

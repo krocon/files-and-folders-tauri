@@ -1589,7 +1589,13 @@
         for (const e of dirs[path] ?? []) {
           visited += 1;
           const child = `${path}/${e.name}`;
-          if (e.kind === 'directory') {
+          if (
+            e.kind === 'directory' &&
+            (e.hidden || /\.(app|bundle|framework|photoslibrary|xcodeproj)$/i.test(e.name))
+          ) {
+            // never entered (review 077 #2)
+            removable = false;
+          } else if (e.kind === 'directory') {
             const sub = walk(child, false);
             if (sub === null) removable = false;
             else soft ||= sub;

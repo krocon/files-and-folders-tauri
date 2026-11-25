@@ -55,7 +55,9 @@ export type KeepReason =
   | 'link'
   | 'unreadable'
   | 'otherFs'
-  | 'special';
+  | 'special'
+  /** A folder the system shows as one file (`.app` …): never entered (review 077 #2). */
+  | 'package';
 
 export interface KeptEntry {
   /** Path relative to the start folder, for display only. */

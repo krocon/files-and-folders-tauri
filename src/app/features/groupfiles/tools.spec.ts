@@ -20,6 +20,7 @@ import { FileBrowserStore } from '../browser/file-browser.store';
 import { FileListController } from '../browser/file-list/file-list-controller';
 import { registerCleanFoldersActions } from '../cleanfolders/clean-actions';
 import { CleanFoldersStore } from '../cleanfolders/clean.store';
+import { RELEASE_SAMPLES } from '../../core/folders/release-extras';
 import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { ProposalService } from '../../core/mcp/proposal.service';
 import { registerMultiMkdirActions } from '../multimkdir/multimkdir-actions';
@@ -244,7 +245,7 @@ describe('folder tools (design 008)', () => {
       items: [{ path: '/src/Ordner', kind: 'dir' }],
       options: {
         includeRoots: false,
-        largeJunk: ['*-sample.*', '*.sample.*', 'sample-*', 'sample.*'],
+        largeJunk: [...RELEASE_SAMPLES],
       },
     });
     expect(dialogs.open()).toBeNull();

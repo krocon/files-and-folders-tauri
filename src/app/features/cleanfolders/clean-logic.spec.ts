@@ -1,5 +1,9 @@
 import { CleanOptions, RootVerdict } from '../../core/folders/folders.models';
-import { RELEASE_EXTRAS, RELEASE_SAMPLES } from '../../core/folders/release-extras';
+import {
+  RELEASE_EXTRAS,
+  RELEASE_SAMPLES,
+  VIDEO_EXTENSIONS,
+} from '../../core/folders/release-extras';
 import { cleanScan, rootVerdict } from '../../../testing/fake-folders-api';
 import { dir, entry } from '../../../testing/fs-fixtures';
 import {
@@ -9,6 +13,7 @@ import {
   detailRows,
   jobItems,
   keepsText,
+  loosened,
   removesText,
   restoreCleanForm,
   rootRows,
@@ -136,13 +141,69 @@ describe('clean folders: pure helpers (design 077)', () => {
     });
   });
 
-  it('the release lists hold no images, subtitles or archive parts', () => {
-    const all = [...RELEASE_EXTRAS, ...RELEASE_SAMPLES].join(' ');
-    for (const no of ['jpg', 'png', 'srt', 'sub', 'rar', 'r00', 'txt', 'mkv']) {
-      expect(all).not.toContain(no);
+  it('the release lists reach what a release leaves behind – and no ordinary document (review 077 #1)', () => {
+    // the matcher of Rust (`*` and `?`, case-insensitive), enough for this check
+    const glob = (pattern: string, name: string) =>
+      new RegExp(
+        `^${pattern
+          .toLowerCase()
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.')}$`,
+      ).test(name.toLowerCase());
+    const extra = (name: string) =>
+      [...RELEASE_EXTRAS, ...RELEASE_SAMPLES].some((p) => glob(p, name));
+    for (const name of [
+      'film.nfo',
+      'film.sfv',
+      'mobland.s02e08.german.dl.1080p.web.h264-wayne-sample.mkv',
+      'Film.Sample.MP4',
+      'sample-film.avi',
+      'sample.mkv',
+      'film-proof.jpg',
+      'Film-Proof.PNG',
+    ]) {
+      expect(extra(name), name).toBe(true);
     }
-    // every sample entry is a pattern: an exact name would have no size limit in Rust
-    expect(RELEASE_SAMPLES.every((p) => p.includes('*'))).toBe(true);
+    for (const name of [
+      'sample-vertrag.docx',
+      'Angebot-sample.xlsx',
+      'config.sample.json',
+      'sample.txt',
+      'sample-data.csv',
+      'Abnahme-proof.pdf',
+      'Bank.url',
+      'cover.jpg',
+      'film.srt',
+      'film.rar',
+      'film.r00',
+      'film.mkv',
+      'readme.txt',
+      'Sample', // a folder name is no licence
+    ]) {
+      expect(extra(name), name).toBe(false);
+    }
+    // 4 sample shapes × the video endings, well below the 100 names Rust takes
+    expect(RELEASE_SAMPLES).toHaveLength(4 * VIDEO_EXTENSIONS.length);
+    expect(RELEASE_SAMPLES.length + RELEASE_EXTRAS.length + 3).toBeLessThanOrEqual(100);
+  });
+
+  it('rules that were loosened are never hidden (review 077 #6)', () => {
+    const release = { ...DEFAULT_CLEAN_FORM, profile: 'release' as const };
+    expect(loosened(DEFAULT_CLEAN_FORM)).toBe(false);
+    expect(loosened(release)).toBe(false);
+    expect(loosened({ ...release, sampleMaxMb: 5000 })).toBe(true);
+    expect(loosened({ ...release, junkMaxMb: 2 })).toBe(true);
+    expect(loosened({ ...release, junkDirsBesideContent: true })).toBe(true);
+    // stricter is not loosened
+    expect(loosened({ ...release, sampleMaxMb: 100, junkMaxMb: 0 })).toBe(false);
+    // values kept for another profile do nothing there
+    expect(
+      loosened({ ...DEFAULT_CLEAN_FORM, sampleMaxMb: 5000, junkDirsBesideContent: true }),
+    ).toBe(false);
+    const custom = { ...DEFAULT_CLEAN_FORM, profile: 'custom' as const, junkOn: true };
+    expect(loosened({ ...custom, junkMaxMb: 50 })).toBe(true);
+    expect(loosened({ ...custom, sampleMaxMb: 5000 })).toBe(false);
   });
 
   it('restores a kept form; one from before 077 becomes "custom" only if it did something', () => {
@@ -267,7 +328,7 @@ describe('clean folders: pure helpers (design 077)', () => {
         o,
         /^2 extras larger than 1.*· 2 files/,
       ],
-      ['hidden', v({ keepFiles: 1, keepBytes: 1, hidden: 1 }), o, /1 hidden file$/],
+      ['hidden', v({ keepFiles: 1, keepBytes: 1, hidden: 1 }), o, /1 hidden entry$/],
       ['links', v({ links: 2 }), o, /^2 links$/],
       ['blocked', v({ blocked: 1 }), o, /^1 entry that cannot be checked$/],
       [

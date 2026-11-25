@@ -351,3 +351,20 @@ export function detailRows(
 export function detailRowClass(row: DetailRow): string | null {
   return row.stays ? 'fnf-mr-unchanged' : null;
 }
+
+/**
+ * The form protects less than the defaults do (review 077 #6): a higher size limit, or
+ * extras-only folders next to content – as far as the profile uses these values. Kept from
+ * an earlier run they would work unseen behind the folded rules.
+ */
+export function loosened(f: CleanForm): boolean {
+  const d = DEFAULT_CLEAN_FORM;
+  switch (f.profile) {
+    case 'empty':
+      return false;
+    case 'release':
+      return f.junkMaxMb > d.junkMaxMb || f.sampleMaxMb > d.sampleMaxMb || f.junkDirsBesideContent;
+    case 'custom':
+      return f.emptyDirs && f.junkOn && (f.junkMaxMb > d.junkMaxMb || f.junkDirsBesideContent);
+  }
+}
