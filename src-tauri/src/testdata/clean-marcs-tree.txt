@@ -1,0 +1,34 @@
+# Marcs Filmordner, 25.11.2026 – vier markierte Ordner unter …/Filme.nosync
+# Format: <Art> <Bytes> <Pfad relativ zu Filme.nosync>   (D = Ordner, F = Datei)
+# Erwartung: Ordner 1 bleibt (Comics), Ordner 2–4 sind Rückstände und gehen als Ganzes.
+
+# 1 – BLEIBT: 3 Comics (.cbr), 1,97 GB
+D 0         Lustiges Taschenbuch - Europareise 01-03
+F 765215206 Lustiges Taschenbuch - Europareise 01-03/Lustiges_Taschenbuch_Europareise_001_-_Italien_(2026)_(German)_(digital)_(HDL-Empire).cbr
+F 785569449 Lustiges Taschenbuch - Europareise 01-03/Lustiges_Taschenbuch_Europareise_002_-_Frankreich_(2026)_(German)_(digital)_(HDL-Empire).cbr
+F 415393679 Lustiges Taschenbuch - Europareise 01-03/Lustiges_Taschenbuch_Europareise_003_-_Skandinavien.cbr
+
+# 2 – RÜCKSTAND: 2 Ordner, 1 Datei, 736 B
+D 0   Mein Land will nicht verschwinden (2025)
+D 0   Mein Land will nicht verschwinden (2025)/Mein.Land.will.nicht.verschwinden.2025.GERMAN.DOKU.1080p.WEB.H264-M00NBull
+F 736 Mein Land will nicht verschwinden (2025)/Mein.Land.will.nicht.verschwinden.2025.GERMAN.DOKU.1080p.WEB.H264-M00NBull/Mein.Land.will.nicht.verschwinden.2025.GERMAN.DOKU.1080p.WEB.H264-M00NBull.nfo
+
+# 3 – RÜCKSTAND: 2 Ordner, 1 Datei, 647 B
+D 0   Miss Merkel - Ein Kreuzfahrt Krimi (2025)
+D 0   Miss Merkel - Ein Kreuzfahrt Krimi (2025)/Miss.Merkel.Ein.Kreuzfahrt.Krimi.2025.German.1080p.WEB.H264-Oergel
+F 647 Miss Merkel - Ein Kreuzfahrt Krimi (2025)/Miss.Merkel.Ein.Kreuzfahrt.Krimi.2025.German.1080p.WEB.H264-Oergel/Miss.Merkel.Ein.Kreuzfahrt.Krimi.2025.German.1080p.WEB.H264-Oergel.nfo
+
+# 4 – RÜCKSTAND: 7 Ordner, 6 Dateien, 212 024 204 B (≈ 202 MiB – fast alles Samples von 55–75 MiB)
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E08.GERMAN.DL.1080P.WEB.H264-WAYNE
+F 629      MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E08.GERMAN.DL.1080P.WEB.H264-WAYNE/mobland.s02e08.german.dl.1080p.web.h264-wayne.nfo
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E08.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample
+F 57434089 MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E08.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample/mobland.s02e08.german.dl.1080p.web.h264-wayne-sample.mkv
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E09.GERMAN.DL.1080P.WEB.H264-WAYNE
+F 629      MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E09.GERMAN.DL.1080P.WEB.H264-WAYNE/mobland.s02e09.german.dl.1080p.web.h264-wayne.nfo
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E09.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample
+F 78788631 MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E09.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample/mobland.s02e09.german.dl.1080p.web.h264-wayne-sample.mkv
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E10.GERMAN.DL.1080P.WEB.H264-WAYNE
+F 629      MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E10.GERMAN.DL.1080P.WEB.H264-WAYNE/mobland.s02e10.german.dl.1080p.web.h264-wayne.nfo
+D 0        MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E10.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample
+F 75799597 MobLand S02 German DL 1080P WEB H264-WAYNE/MobLand.S02E10.GERMAN.DL.1080P.WEB.H264-WAYNE/Sample/mobland.s02e10.german.dl.1080p.web.h264-wayne-sample.mkv

@@ -293,28 +293,24 @@ fn clean_rechecks_every_entry() {
     list.push(crate::clean::CleanItem {
         path: s(&d.path().join("leer daneben")),
         kind: CleanKind::Dir,
-        junk: 0,
-        junk_names: Vec::new(),
+        ..Default::default()
     });
     list.push(crate::clean::CleanItem {
         path: s(&root),
         kind: CleanKind::Dir,
-        junk: 0,
-        junk_names: Vec::new(),
+        ..Default::default()
     });
     list.push(crate::clean::CleanItem {
         path: s(&root.join("keep.txt")),
         kind: CleanKind::File,
-        junk: 0,
-        junk_names: Vec::new(),
+        ..Default::default()
     });
     // `..` refuses the whole job before it starts (external review #1)
     let mut with_up = list.clone();
     with_up.push(crate::clean::CleanItem {
         path: s(&root.join("..").join("leer daneben")),
         kind: CleanKind::Dir,
-        junk: 0,
-        junk_names: Vec::new(),
+        ..Default::default()
     });
     let refused = h.mgr.start(JobSpec::Clean {
         roots: vec![s(&root)],
@@ -734,7 +730,176 @@ fn clean_with_junk_patterns_rechecks_new_content() {
     assert!(
         rel.join("neu.mkv").is_file() && rel.join("die.kirche.s01e01.german-dmpd.nfo").is_file()
     );
-    assert!(!rel.join("Sample").exists(), "the junk-only child may go");
+    // design 077 E3/E6: the folder that stays is not gutted – 045 let `Sample/` go here
+    assert!(rel.join("Sample").is_dir(), "not gutted");
+    // both are reported: the folder (not empty any more) and its extras-only child
+    assert_eq!(info.summary.unwrap().items_failed, 2);
+}
+
+// ---- design 077: residues go as a whole, decided again by the walk of the scan ----
+
+fn release_options() -> CleanOptions {
+    CleanOptions {
+        include_roots: true,
+        junk: [".DS_Store", "*.nfo"].map(String::from).to_vec(),
+        large_junk: vec!["*-sample.*".into()],
+        junk_max_bytes: 1000,
+        large_junk_max_bytes: 100_000,
+        ..CleanOptions::default()
+    }
+}
+
+/// Three release folders: extras only (`a`, `b`), and one with a film (`film`).
+fn residue_tree() -> (tempfile::TempDir, Vec<PathBuf>) {
+    let d = tempdir().unwrap();
+    let base = d.path().join("Filme ö");
+    let mut roots = Vec::new();
+    for n in ["a", "b", "film"] {
+        let r = base.join(format!("{n} (2025)"));
+        fs::create_dir_all(r.join("Rel/Sample")).unwrap();
+        fs::write(r.join("Rel/x.nfo"), "nfo").unwrap();
+        fs::write(r.join("Rel/Sample/x-sample.mkv"), "sample").unwrap();
+        roots.push(r);
+    }
+    fs::write(roots[2].join("Rel/film.mkv"), "film").unwrap();
+    fs::create_dir(roots[2].join("leer")).unwrap();
+    (d, roots)
+}
+
+fn count_entries(dir: &Path) -> usize {
+    fs::read_dir(dir)
+        .unwrap()
+        .map(|e| {
+            let p = e.unwrap().path();
+            1 + if p.is_dir() { count_entries(&p) } else { 0 }
+        })
+        .sum()
+}
+
+#[test]
+fn clean_removes_residues_as_a_whole_and_keeps_the_rest() {
+    let h = Harness::new();
+    let (d, roots) = residue_tree();
+    let o = release_options();
+    let scan = find_empty_dirs(&roots, &o).unwrap();
+    // a: 3 folders, b: 3 folders, film: only its empty folder
+    assert_eq!(scan.items.len(), 7, "{:?}", scan.items);
+    let before = count_entries(&roots[2]);
+    let info = h.finish(&h.clean(&roots, scan.items, o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (7, 0));
+    assert_eq!(sum.bytes_done, 2 * 9, "nfo + sample of two folders");
+    assert!(!roots[0].exists() && !roots[1].exists());
+    assert!(roots[2].join("Rel/film.mkv").is_file());
+    assert!(roots[2].join("Rel/x.nfo").is_file() && roots[2].join("Rel/Sample").is_dir());
+    assert_eq!(count_entries(&roots[2]), before - 1, "only `leer` went");
+    assert!(
+        d.path().join("Filme ö").is_dir(),
+        "never above a start folder"
+    );
+}
+
+/// Marc's folders from prompt 077: three residues go, the comics stay.
+#[cfg(unix)]
+#[test]
+fn clean_marcs_tree() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let roots = crate::clean::tests::marcs_tree(d.path());
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(&roots, &o).unwrap();
+    let info = h.finish(&h.clean(&roots, scan.items, o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert_eq!(sum.items_done, 11);
+    assert_eq!(sum.bytes_done, 736 + 647 + 212_024_204);
+    let left: Vec<String> = fs::read_dir(d.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(left, ["Lustiges Taschenbuch - Europareise 01-03"]);
+    assert_eq!(fs::read_dir(&roots[0]).unwrap().count(), 3);
+}
+
+#[test]
+fn clean_leaves_a_residue_alone_that_got_content_after_the_preview() {
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let o = release_options();
+    let scan = find_empty_dirs(&roots[..2], &o).unwrap();
+    assert_eq!(scan.items.len(), 6);
+    // between preview and start: a film is put into `a`, deep inside
+    fs::write(roots[0].join("Rel/neuer film.mkv"), "x").unwrap();
+    let before = count_entries(&roots[0]);
+    let info = h.finish(&h.clean(&roots[..2], scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    // `a` and `a/Rel` failed ("not empty any more"), `a/Rel/Sample` was not gutted
+    assert!(sum.items_failed >= 1, "{:?}", sum.errors);
+    assert!(sum.errors.iter().any(|e| e.path == s(&roots[0])));
+    assert_eq!(
+        count_entries(&roots[0]),
+        before,
+        "nothing of it was touched"
+    );
+    assert!(roots[0].join("Rel/Sample/x-sample.mkv").is_file());
+    assert!(!roots[1].exists(), "the other residue went");
+}
+
+#[test]
+fn clean_rechecks_size_limit_and_hidden_files() {
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let o = release_options();
+    let scan = find_empty_dirs(&roots[..2], &o).unwrap();
+    // the sample of `a` grew past its limit; a hidden file appeared in `b`
+    fs::File::create(roots[0].join("Rel/Sample/x-sample.mkv"))
+        .unwrap()
+        .set_len(100_001)
+        .unwrap();
+    fs::write(roots[1].join("Rel/.versteckt.nfo"), "x").unwrap();
+    let before = (count_entries(&roots[0]), count_entries(&roots[1]));
+    let info = h.finish(&h.clean(&roots[..2], scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(
+        (count_entries(&roots[0]), count_entries(&roots[1])),
+        before,
+        "both stay untouched"
+    );
+}
+
+#[test]
+fn clean_does_not_gut_a_folder_with_content_even_when_asked_to() {
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let film = &roots[2];
+    let o = release_options();
+    // a forged list: the extras-only folders next to the film
+    let forged = |paths: &[PathBuf]| -> Vec<crate::clean::CleanItem> {
+        paths
+            .iter()
+            .map(|p| crate::clean::CleanItem {
+                path: s(p),
+                kind: CleanKind::Dir,
+                ..Default::default()
+            })
+            .collect()
+    };
+    let list = forged(&[film.join("Rel/Sample"), film.join("leer")]);
+    let info = h.finish(&h.clean(std::slice::from_ref(film), list.clone(), o.clone()));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(film.join("Rel/Sample/x-sample.mkv").is_file());
+    assert!(!film.join("leer").exists(), "a really empty folder goes");
+    // with the option it goes
+    let gut = CleanOptions {
+        junk_dirs_beside_content: true,
+        ..o
+    };
+    let info = h.finish(&h.clean(std::slice::from_ref(film), list[..1].to_vec(), gut));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(!film.join("Rel/Sample").exists());
+    assert!(film.join("Rel/film.mkv").is_file() && film.join("Rel/x.nfo").is_file());
 }
 
 /// Design 045 E8 (Marc, 29.10.2026): target = other side + a folder named like the series.

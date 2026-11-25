@@ -440,6 +440,44 @@ fn delete_to_the_trash() {
     let id = h.delete(&[&f], DeleteMode::Trash);
     let info = h.finish(&id);
     assert_eq!(info.state, JobState::DoneWithErrors);
+    // here, because this test owns XDG_DATA_HOME
+    clean_residue_is_one_trash_entry(&h, d.path(), &files);
+}
+
+/// Design 077 E6: a residue folder lands in the trash as **one** entry with
+/// everything inside – not folder by folder as in design 008. Only called where
+/// the trash can be redirected (Linux); compiled everywhere.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn clean_residue_is_one_trash_entry(h: &Harness, base: &Path, trash_files: &Path) {
+    let rest = base.join("Rest ä (2025)");
+    fs::create_dir_all(rest.join("Rel/Sample")).unwrap();
+    fs::write(rest.join("Rel/x.nfo"), "n").unwrap();
+    fs::write(rest.join("Rel/Sample/x-sample.mkv"), "s").unwrap();
+    let o = CleanOptions {
+        include_roots: true,
+        junk: vec!["*.nfo".into()],
+        large_junk: vec!["*-sample.*".into()],
+        ..CleanOptions::default()
+    };
+    let scan = crate::clean::find_empty_dirs(std::slice::from_ref(&rest), &o).unwrap();
+    assert_eq!(scan.items.len(), 3);
+    let id = h
+        .mgr
+        .start(JobSpec::Clean {
+            roots: vec![s(&rest)],
+            items: scan.items,
+            mode: DeleteMode::Trash,
+            options: o,
+        })
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    assert!(!rest.exists());
+    assert_eq!(
+        fs::read_to_string(trash_files.join("Rest ä (2025)/Rel/Sample/x-sample.mkv")).unwrap(),
+        "s"
+    );
+    assert!(!trash_files.join("Sample").exists() && !trash_files.join("Rel").exists());
 }
 
 #[test]

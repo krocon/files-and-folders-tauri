@@ -425,9 +425,11 @@ pub async fn find_empty_dirs<R: Runtime>(
         .iter()
         .map(|r| resolve_input(&app, r))
         .collect::<Result<Vec<_>, _>>()?;
+    // for the danger check: a home, root or system folder never goes as a whole (077 E3)
+    let home = home_dir(&app).ok();
     let token = app.state::<CleanScanState>().begin(&scan_id);
     let result = blocking("Searching empty folders", move || {
-        crate::clean::find_empty_dirs_cancellable(&roots, &options, &token)
+        crate::clean::scan(&roots, &options, home.as_deref(), &token)
     })
     .await;
     app.state::<CleanScanState>().end(&scan_id);
