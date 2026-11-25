@@ -950,3 +950,114 @@ fn series_into_a_series_folder_on_the_other_side() {
     assert_eq!(info.state, JobState::Failed, "{:?}", info.summary);
     assert!(other.join("Blockiert").is_file());
 }
+
+// ---- review 077: what happens between the plan and the deletion ----
+
+use super::clean::hooks::{self, Stage};
+
+#[test]
+fn clean_notices_a_file_that_arrives_after_the_plan() {
+    // review 077 #3: a running unpacker drops a film into the folder right after it was planned
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let a = roots[0].clone();
+    let o = release_options();
+    let scan = find_empty_dirs(std::slice::from_ref(&a), &o).unwrap();
+    let film = a.join("Rel/Sample/neu.mkv");
+    hooks::set(&a, Stage::AfterPlan, move || {
+        fs::write(&film, "film").unwrap()
+    });
+    let before = count_entries(&a);
+    let info = h.finish(&h.clean(std::slice::from_ref(&a), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(count_entries(&a), before + 1, "nothing of it was removed");
+    assert!(a.join("Rel/Sample/x-sample.mkv").is_file() && a.join("Rel/x.nfo").is_file());
+    assert_eq!(info.summary.unwrap().items_done, 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn clean_does_not_delete_an_extra_that_grew_after_the_plan() {
+    // review 077 #4: the "sample" is replaced by a film in place – same name, same folder
+    // time stamp – between the plan and the unlink
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let a = roots[0].clone();
+    let o = release_options();
+    let scan = find_empty_dirs(std::slice::from_ref(&a), &o).unwrap();
+    let sample = a.join("Rel/Sample/x-sample.mkv");
+    let grow = sample.clone();
+    hooks::set(&a, Stage::BeforeRemove, move || {
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&grow)
+            .unwrap()
+            .set_len(200_000)
+            .unwrap()
+    });
+    let info = h.finish(&h.clean(std::slice::from_ref(&a), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(fs::metadata(&sample).unwrap().len(), 200_000);
+    assert!(a.join("Rel/x.nfo").is_file());
+}
+
+#[test]
+fn clean_counts_what_a_failed_run_removed() {
+    // review 077 #5: the folder goes halfway, then something new blocks the rest
+    let h = Harness::new();
+    let (_d, roots) = residue_tree();
+    let a = roots[0].clone();
+    let o = release_options();
+    let scan = find_empty_dirs(std::slice::from_ref(&a), &o).unwrap();
+    assert_eq!(scan.items.len(), 3);
+    let film = a.join("Rel/neu.mkv");
+    hooks::set(&a, Stage::BeforeRemove, move || {
+        fs::write(&film, "film").unwrap()
+    });
+    let info = h.finish(&h.clean(std::slice::from_ref(&a), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert!(!a.join("Rel/Sample").exists() && a.join("Rel/neu.mkv").is_file());
+    // `Sample` went and counts; the start folder and `Rel` stayed
+    assert_eq!(
+        (sum.items_done, sum.items_failed),
+        (1, 2),
+        "{:?}",
+        sum.errors
+    );
+    assert_eq!(sum.bytes_done, 6, "the sample");
+    let top = sum.errors.iter().find(|e| e.path == s(&a)).unwrap();
+    assert!(top.error.message.contains("Partly removed"), "{top:?}");
+    assert!(!sum.errors.iter().any(|e| e.path.ends_with("Sample")));
+}
+
+#[test]
+fn clean_never_enters_hidden_or_package_folders() {
+    // review 077 #2: a forged list names the empty folders of a git repository
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let repo = d.path().join("repo");
+    fs::create_dir_all(repo.join(".git/refs/heads")).unwrap();
+    fs::create_dir_all(repo.join("Tool.app/Contents/Resources")).unwrap();
+    fs::create_dir_all(repo.join("leer")).unwrap();
+    fs::write(repo.join("main.rs"), "x").unwrap();
+    let list: Vec<crate::clean::CleanItem> = [
+        ".git/refs/heads",
+        ".git/refs",
+        "Tool.app/Contents/Resources",
+        "Tool.app",
+        "leer",
+    ]
+    .iter()
+    .map(|p| crate::clean::CleanItem {
+        path: s(&repo.join(p)),
+        kind: CleanKind::Dir,
+        ..Default::default()
+    })
+    .collect();
+    let info = h.finish(&h.clean(std::slice::from_ref(&repo), list, CleanOptions::default()));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(repo.join(".git/refs/heads").is_dir());
+    assert!(repo.join("Tool.app/Contents/Resources").is_dir());
+    assert!(!repo.join("leer").exists());
+}

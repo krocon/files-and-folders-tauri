@@ -171,6 +171,8 @@ pub enum KeepReason {
     OtherFs,
     /// A FIFO, socket, device, or a name that is not valid Unicode.
     Special,
+    /// A folder the system shows as one file (`.app`, `.photoslibrary` …): never entered.
+    Package,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -246,10 +248,45 @@ pub enum FileClass {
     Keep(KeepReason),
 }
 
+/// The built-in system junk (lower case): the only names without a size limit –
+/// `.DS_Store` and `Thumbs.db` grow with their folder (review 077 #7).
+pub const SYSTEM_JUNK: [&str; 3] = [".ds_store", "thumbs.db", "desktop.ini"];
+
+/// Folders the system shows as one file (macOS packages and bundles): never entered,
+/// always content – "empty" folders inside belong to their format (review 077 #2).
+/// Hidden folders (`.git`) are treated the same way.
+pub const PACKAGE_EXTENSIONS: [&str; 16] = [
+    "app",
+    "bundle",
+    "framework",
+    "plugin",
+    "kext",
+    "xcodeproj",
+    "xcworkspace",
+    "playground",
+    "lproj",
+    "photoslibrary",
+    "musiclibrary",
+    "tvlibrary",
+    "imovielibrary",
+    "fcpbundle",
+    "sparsebundle",
+    "rtfd",
+];
+
+/// The folder name ends with a package extension (any case).
+pub fn is_package(name: &str) -> bool {
+    name.rsplit_once('.').is_some_and(|(stem, ext)| {
+        !stem.is_empty() && PACKAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str())
+    })
+}
+
 /// Compiled options: lower-case junk names and patterns, the size limits.
 pub struct Matcher {
-    /// Exact names (lower case).
+    /// Exact names of the built-in system junk (lower case): no size limit.
     junk: Vec<String>,
+    /// Other exact names (typed by the user): extras up to `junk_max` only.
+    junk_names: Vec<String>,
     /// Junk names with `*`/`?` (design 045 E4: `*.nfo`).
     junk_patterns: Vec<Vec<char>>,
     /// Sample patterns (`*-sample.*`), with the generous limit.
@@ -278,6 +315,7 @@ impl Matcher {
             return Err(bad_name("Too many names or patterns"));
         }
         let mut junk = Vec::new();
+        let mut junk_names = Vec::new();
         let mut junk_patterns = Vec::new();
         for j in &o.junk {
             let j = j.trim();
@@ -292,8 +330,10 @@ impl Matcher {
                     return Err(bad_name("The junk pattern would match every file"));
                 }
                 junk_patterns.push(j.to_lowercase().chars().collect());
-            } else {
+            } else if SYSTEM_JUNK.contains(&j.to_lowercase().as_str()) {
                 junk.push(j.to_lowercase());
+            } else {
+                junk_names.push(j.to_lowercase());
             }
         }
         let mut large_patterns = Vec::new();
@@ -305,11 +345,9 @@ impl Matcher {
             if j.len() > MAX_NAME_LEN || j.contains(['/', '\\', '\0']) {
                 return Err(bad_name("A sample pattern is invalid"));
             }
-            // always a pattern: an exact name would have no size limit
-            if !j.contains(['*', '?']) || matches_everything(j) {
-                return Err(bad_name(
-                    "A sample pattern must be a name pattern such as *-sample.*",
-                ));
+            // an exact name (`sample.mkv`) is fine here: it has the sample limit, too
+            if matches_everything(j) {
+                return Err(bad_name("The sample pattern would match every file"));
             }
             large_patterns.push(j.to_lowercase().chars().collect());
         }
@@ -333,6 +371,7 @@ impl Matcher {
         }
         Ok(Matcher {
             junk,
+            junk_names,
             junk_patterns,
             large_patterns,
             patterns,
@@ -345,7 +384,7 @@ impl Matcher {
     /// hidden rules. For texts only; decisions use [`Matcher::classify`].
     pub fn is_junk(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
-        if self.junk.contains(&lower) {
+        if self.junk.contains(&lower) || self.junk_names.contains(&lower) {
             return true;
         }
         let chars: Vec<char> = lower.chars().collect();
@@ -374,6 +413,14 @@ impl Matcher {
         }
         if self.junk.contains(&lower) {
             return FileClass::Junk { pattern: false };
+        }
+        // a name the user typed: explicit (it may be hidden), but never a large file
+        if self.junk_names.contains(&lower) {
+            return if size <= self.junk_max {
+                FileClass::Junk { pattern: true }
+            } else {
+                FileClass::Keep(KeepReason::TooLarge)
+            };
         }
         if hidden {
             // a pattern never reaches a hidden file
@@ -475,8 +522,30 @@ struct RootStats {
     junk_seen: u64,
 }
 
-/// A folder of a [`TreePlan`]: its path and the junk files directly inside.
-pub type PlannedDir = (PathBuf, Vec<OsString>);
+/// A folder of a [`TreePlan`] as the walk saw it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlannedDir {
+    pub path: PathBuf,
+    /// The junk files directly inside, each with its size at that moment.
+    pub junk: Vec<(OsString, u64)>,
+    /// Entries directly inside (junk files and folders that go).
+    pub entries: usize,
+    /// Its modification time before it was read (changes when an entry comes or goes).
+    pub modified: Option<std::time::SystemTime>,
+}
+
+impl PlannedDir {
+    /// Still a real folder with the same time stamp and number of entries (cheap:
+    /// no file inside is looked at).
+    pub fn unchanged(&self) -> bool {
+        let Ok(meta) = fs::symlink_metadata(&self.path) else {
+            return false;
+        };
+        meta.is_dir()
+            && meta.modified().ok() == self.modified
+            && fs::read_dir(&self.path).is_ok_and(|rd| rd.count() == self.entries)
+    }
+}
 
 struct Ctx<'a> {
     m: &'a Matcher,
@@ -524,9 +593,10 @@ impl Ctx<'_> {
             KeepReason::SampleTooLarge => self.stats.sample_too_large += 1,
             KeepReason::Hidden => self.stats.hidden += 1,
             KeepReason::Link => self.stats.links += 1,
-            KeepReason::Unreadable | KeepReason::OtherFs | KeepReason::Special => {
-                self.stats.blocked += 1
-            }
+            KeepReason::Unreadable
+            | KeepReason::OtherFs
+            | KeepReason::Special
+            | KeepReason::Package => self.stats.blocked += 1,
         }
         if self.stats.keep_sample.len() < MAX_KEEP_SAMPLE {
             let rel = self.rel(path);
@@ -580,6 +650,11 @@ impl Ctx<'_> {
     }
 
     fn walk(&mut self, dir: &Path, dev: Option<u64>, is_root: bool) -> Option<bool> {
+        // plan mode: the time stamp from before the reading
+        let modified = match self.plan {
+            Some(_) => fs::symlink_metadata(dir).and_then(|m| m.modified()).ok(),
+            None => None,
+        };
         let rd = match fs::read_dir(dir) {
             Ok(rd) => rd,
             Err(e) => {
@@ -588,18 +663,20 @@ impl Ctx<'_> {
                 return None;
             }
         };
+        let mut entries = 0usize;
         let mut removable = true;
         let mut soft = false;
         let mut junk = 0u32;
         let mut junk_bytes = 0u64;
         let mut junk_names: Vec<String> = Vec::new();
-        let mut junk_all: Vec<OsString> = Vec::new();
+        let mut junk_all: Vec<(OsString, u64)> = Vec::new();
         for entry in rd {
             if self.cancel.load(Ordering::Relaxed) {
                 self.scan.cancelled = true;
                 self.scan.truncated = true;
                 return None;
             }
+            entries += 1;
             self.scan.visited += 1;
             if self.scan.visited > self.max_visited || self.scan.truncated {
                 self.scan.truncated = true;
@@ -631,11 +708,22 @@ impl Ctx<'_> {
                 self.keep(&path, 0, KeepReason::Link);
                 removable = false; // never followed, never "empty"
             } else if ft.is_dir() {
-                let same_fs = match fs::symlink_metadata(&path) {
-                    Ok(m) if m.is_dir() => dev.is_none() || file_id(&m).map(|f| f.0) == dev,
-                    _ => false,
-                };
-                if !same_fs {
+                let meta = fs::symlink_metadata(&path).ok().filter(|m| m.is_dir());
+                let same_fs = meta
+                    .as_ref()
+                    .is_some_and(|m| dev.is_none() || file_id(m).map(|f| f.0) == dev);
+                // never entered (review 077 #2): `.git/refs/heads` is empty on purpose,
+                // and so are folders inside a bundle
+                if meta
+                    .as_ref()
+                    .is_some_and(|m| crate::listing::is_hidden(name, m))
+                {
+                    self.keep(&path, 0, KeepReason::Hidden);
+                    removable = false;
+                } else if is_package(name) {
+                    self.keep(&path, 0, KeepReason::Package);
+                    removable = false;
+                } else if !same_fs {
                     self.keep(&path, 0, KeepReason::OtherFs);
                     removable = false;
                 } else {
@@ -687,7 +775,7 @@ impl Ctx<'_> {
                             junk_names.push(name.to_string());
                         }
                         if self.plan.is_some() {
-                            junk_all.push(entry.file_name());
+                            junk_all.push((entry.file_name(), size));
                         }
                     }
                     FileClass::Keep(reason) => {
@@ -719,7 +807,12 @@ impl Ctx<'_> {
             soft,
         });
         if let Some(plan) = self.plan.as_mut() {
-            plan.push((dir.to_path_buf(), junk_all));
+            plan.push(PlannedDir {
+                path: dir.to_path_buf(),
+                junk: junk_all,
+                entries,
+                modified,
+            });
         }
         Some(soft)
     }
@@ -897,6 +990,13 @@ pub struct TreePlan {
     pub bytes: u64,
 }
 
+impl TreePlan {
+    /// Nothing came or went in any folder of the plan since it was made (review 077 #3).
+    pub fn unchanged(&self) -> bool {
+        self.dirs.iter().all(PlannedDir::unchanged)
+    }
+}
+
 /// Decides **now** whether the folder `top` (inside or equal to the start folder
 /// `root`) can go as a whole – with the walk of the scan: links, other file
 /// systems, hidden files, size limits. `None`: it holds content (or the walk
@@ -914,6 +1014,20 @@ pub fn plan_tree(
     let meta = fs::symlink_metadata(top).map_err(|e| FsError::from_io(&e, top))?;
     if !meta.is_dir() || !(dev.is_none() || file_id(&meta).map(|f| f.0) == dev) {
         return Ok(None);
+    }
+    // below the start folder nothing hidden and no package is entered – the scan never
+    // lists anything in there, so such an entry did not come from it (review 077 #2)
+    if let Ok(rel) = top.strip_prefix(root) {
+        let mut at = root.to_path_buf();
+        for part in rel.components() {
+            at.push(part);
+            let name = part.as_os_str().to_string_lossy();
+            let hidden =
+                fs::symlink_metadata(&at).is_ok_and(|m| crate::listing::is_hidden(&name, &m));
+            if hidden || is_package(&name) {
+                return Ok(None);
+            }
+        }
     }
     let mut ctx = Ctx {
         m,
@@ -1309,14 +1423,26 @@ pub(crate) mod tests {
                 "*.sfv",
                 "*.srr",
                 "*.md5",
-                "*.url",
-                "*-proof.*",
+                "*-proof.jpg",
+                "*-proof.jpeg",
+                "*-proof.png",
             ]
             .map(String::from)
             .to_vec(),
-            large_junk: ["*-sample.*", "*.sample.*", "sample-*", "sample.*"]
-                .map(String::from)
-                .to_vec(),
+            // as `RELEASE_SAMPLES` in release-extras.ts: video endings only (review 077 #1)
+            large_junk: [
+                "mkv", "mp4", "avi", "m4v", "mov", "wmv", "ts", "mpg", "mpeg", "webm",
+            ]
+            .iter()
+            .flat_map(|e| {
+                [
+                    format!("*-sample.{e}"),
+                    format!("*.sample.{e}"),
+                    format!("sample-*.{e}"),
+                    format!("sample.{e}"),
+                ]
+            })
+            .collect(),
             ..opts()
         }
     }
@@ -1574,8 +1700,15 @@ pub(crate) mod tests {
         assert_eq!(parsed.junk_max_bytes, DEFAULT_JUNK_MAX_BYTES);
         assert_eq!(parsed.large_junk_max_bytes, DEFAULT_LARGE_JUNK_MAX_BYTES);
         assert!(!parsed.junk_dirs_beside_content && !parsed.include_roots);
-        // a sample "pattern" without a wildcard would be an exact name without a limit
-        for bad in ["sample.mkv", "*", "*.*", "a/b*"] {
+        // an exact sample name is fine (it has the sample limit); everything-patterns are not
+        assert!(
+            Matcher::new(&CleanOptions {
+                large_junk: vec!["sample.mkv".into()],
+                ..opts()
+            })
+            .is_ok()
+        );
+        for bad in ["*", "*.*", "a/b*"] {
             assert!(
                 Matcher::new(&CleanOptions {
                     large_junk: vec![bad.into()],
@@ -1750,9 +1883,19 @@ pub(crate) mod tests {
         let plan = plan_tree(&root, &root, &o, &m, &never).unwrap().unwrap();
         assert!(plan.soft);
         assert_eq!((plan.files, plan.bytes, plan.dirs.len()), (2, 8, 4));
-        assert_eq!(plan.dirs.last().unwrap().0, root);
-        let sample = plan.dirs.iter().find(|d| d.0.ends_with("Sample")).unwrap();
-        assert_eq!(sample.1, [OsString::from("a-sample.mkv")]);
+        assert_eq!(plan.dirs.last().unwrap().path, root);
+        assert_eq!(plan.dirs.last().unwrap().entries, 2);
+        let sample = plan
+            .dirs
+            .iter()
+            .find(|d| d.path.ends_with("Sample"))
+            .unwrap();
+        assert_eq!(sample.junk, [(OsString::from("a-sample.mkv"), 5)]);
+        // review 077 #3: the cheap check right before the trash
+        assert!(plan.unchanged());
+        fs::write(root.join("rel/Sample/neu.mkv"), "x").unwrap();
+        assert!(!plan.unchanged());
+        fs::remove_file(root.join("rel/Sample/neu.mkv")).unwrap();
         // a really empty folder is no soft one
         let plan = plan_tree(&root.join("leer"), &root, &o, &m, &never)
             .unwrap()
@@ -1863,5 +2006,125 @@ pub(crate) mod tests {
             assert_eq!(serde_json::to_value(reason).unwrap(), name);
         }
         assert_eq!(serde_json::to_value(Verdict::Residue).unwrap(), "residue");
+    }
+
+    // ---- review 077 ----
+
+    #[test]
+    fn documents_named_like_samples_are_content() {
+        // review 077 #1: the release profile must not reach ordinary documents
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().join("Vorlagen");
+        fs::create_dir_all(root.join("Favoriten")).unwrap();
+        fs::create_dir_all(root.join("Sample")).unwrap();
+        for f in [
+            "sample-vertrag.docx",
+            "Angebot-sample.xlsx",
+            "config.sample.json",
+            "sample.txt",
+            "Abnahme-proof.pdf",
+            "Favoriten/Bank.url",
+            "Sample/notizen.txt",
+        ] {
+            fs::write(root.join(f), "x").unwrap();
+        }
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = &scan.roots[0];
+        assert_eq!(numbers(v), (Verdict::Keep, 0, 0, 0));
+        assert_eq!((v.keep_files, v.junk_kept), (7, 0));
+        // what a release really leaves behind still counts
+        let m = Matcher::new(&release()).unwrap();
+        for junk in [
+            "film-sample.mkv",
+            "Film.Sample.MP4",
+            "sample-film.avi",
+            "sample.mkv",
+            "film-proof.jpg",
+            "x.nfo",
+        ] {
+            assert!(
+                matches!(m.classify(junk, false, 1), FileClass::Junk { .. }),
+                "{junk}"
+            );
+        }
+    }
+
+    #[test]
+    fn hidden_and_package_folders_are_content_and_never_entered() {
+        // review 077 #2: a git repository after `git pack-refs --all` – its empty
+        // `refs/heads`, `objects/pack` … must stay; the same for bundles
+        let t = tempfile::tempdir().unwrap();
+        let repo = t.path().join("repo");
+        fs::create_dir_all(repo.join(".git/refs/heads")).unwrap();
+        fs::create_dir_all(repo.join(".git/objects/pack")).unwrap();
+        fs::create_dir_all(repo.join("Tool.APP/Contents/Resources")).unwrap();
+        fs::create_dir_all(repo.join("Fotos.photoslibrary/database")).unwrap();
+        fs::create_dir_all(repo.join("src/leer")).unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&repo), &only_empty()).unwrap();
+        assert_eq!(names(&scan, &repo), ["src/leer/", "src/"]);
+        let v = &scan.roots[0];
+        assert_eq!(v.verdict, Verdict::Partial);
+        assert_eq!((v.hidden, v.blocked), (1, 2));
+        let mut kept: Vec<(String, KeepReason)> = v
+            .keep_sample
+            .iter()
+            .map(|k| (k.rel.clone(), k.reason))
+            .collect();
+        kept.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            kept,
+            [
+                (".git".to_string(), KeepReason::Hidden),
+                ("Fotos.photoslibrary".to_string(), KeepReason::Package),
+                ("Tool.APP".to_string(), KeepReason::Package),
+            ]
+        );
+        // the job's walk says the same – also for a folder inside
+        let o = only_empty();
+        let m = Matcher::new(&o).unwrap();
+        let never = AtomicBool::new(false);
+        for inside in [".git", ".git/refs", ".git/refs/heads", "Tool.APP/Contents"] {
+            assert_eq!(
+                plan_tree(&repo.join(inside), &repo, &o, &m, &never).unwrap(),
+                None,
+                "{inside}"
+            );
+        }
+        assert_eq!(plan_tree(&repo, &repo, &o, &m, &never).unwrap(), None);
+        // a hidden folder the user marked himself is his choice – what is hidden inside is not
+        let own = t.path().join(".alt");
+        fs::create_dir_all(own.join("leer")).unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&own), &only_empty()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+        fs::create_dir_all(own.join(".tief")).unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&own), &only_empty()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Partial);
+    }
+
+    #[test]
+    fn only_the_built_in_system_junk_has_no_size_limit() {
+        // review 077 #7: an exact name the user typed ("sample") is an extra up to the limit only
+        let o = CleanOptions {
+            junk: vec![".DS_Store".into(), "Thumbs.db".into(), "sample".into()],
+            junk_max_bytes: 10,
+            ..opts()
+        };
+        let m = Matcher::new(&o).unwrap();
+        assert_eq!(
+            m.classify("Sample", false, 10),
+            FileClass::Junk { pattern: true }
+        );
+        assert_eq!(
+            m.classify("sample", false, 11),
+            FileClass::Keep(KeepReason::TooLarge)
+        );
+        assert_eq!(
+            m.classify(".ds_store", true, 5000),
+            FileClass::Junk { pattern: false }
+        );
+        assert_eq!(
+            m.classify("THUMBS.DB", false, 5000),
+            FileClass::Junk { pattern: false }
+        );
     }
 }

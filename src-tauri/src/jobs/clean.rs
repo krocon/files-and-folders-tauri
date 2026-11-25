@@ -104,6 +104,24 @@ fn remove_file(
     Ok(meta.len())
 }
 
+/// Why a folder did not go – and what of it went before that (review 077 #5).
+struct Failure {
+    error: FsError,
+    /// Folders of the plan that were removed before the run stopped.
+    removed: Vec<PathBuf>,
+    bytes: u64,
+}
+
+impl From<FsError> for Failure {
+    fn from(error: FsError) -> Self {
+        Failure {
+            error,
+            removed: Vec::new(),
+            bytes: 0,
+        }
+    }
+}
+
 /// A topmost listed folder: decided again as a whole tree, then removed.
 fn remove_tree(
     path: &Path,
@@ -113,33 +131,107 @@ fn remove_tree(
     home: Option<&Path>,
     mode: DeleteMode,
     cancel: &AtomicBool,
-) -> Result<TreePlan, FsError> {
+) -> Result<TreePlan, Failure> {
     let root = locate(CleanKind::Dir, path, roots, o, home)?;
     if !o.empty_dirs {
-        return Err(left(path, "The entry changed"));
+        return Err(left(path, "The entry changed").into());
     }
     let Some(plan) = plan_tree(path, root, o, m, cancel)? else {
-        return Err(left(path, "The folder is not empty any more"));
+        return Err(left(path, "The folder is not empty any more").into());
     };
     // only a start folder goes with nothing but extras inside; any other folder
     // lies next to content that stays (design 077 E3)
     if plan.soft && path != root && !o.junk_dirs_beside_content {
-        return Err(left(path, "Only extras inside, next to content"));
+        return Err(left(path, "Only extras inside, next to content").into());
     }
+    #[cfg(test)]
+    hooks::fire(path, hooks::Stage::AfterPlan);
+    // the walk took a moment (a big tree, a slow drive): did anything come or go in
+    // one of its folders meanwhile – a running unpacker (review 077 #3)? Cheap: time
+    // stamp and number of entries per folder. What remains is the instant between
+    // this check and the call below.
+    if !plan.unchanged() {
+        return Err(left(path, "The folder changed while it was checked").into());
+    }
+    #[cfg(test)]
+    hooks::fire(path, hooks::Stage::BeforeRemove);
     if mode == DeleteMode::Trash {
-        // one trash entry for the whole folder; by path: the walk right before is
-        // the guard (design 008, residual risk)
+        // one trash entry for the whole folder, under its own name; by path
+        // (design 008, residual risk)
         trash_one(path)?;
         return Ok(plan);
     }
     // the fresh plan, children first; relative to the start folder, never through a
     // link on the way (review 008 #3); never remove_dir_all: something new inside
-    // makes this fail
-    for (dir, junk) in &plan.dirs {
-        let rel = dir.strip_prefix(root).unwrap_or(Path::new(""));
-        remove_below(root, rel, true, junk).map_err(|e| FsError::from_io(&e, dir))?;
+    // makes this fail, and an extra is removed only as the regular file of the
+    // planned size (review 077 #4)
+    let mut removed = Vec::new();
+    let mut bytes = 0u64;
+    for dir in &plan.dirs {
+        let rel = dir.path.strip_prefix(root).unwrap_or(Path::new(""));
+        if let Err(e) = remove_below(root, rel, true, &dir.junk) {
+            let io = FsError::from_io(&e, &dir.path);
+            let error = if removed.is_empty() {
+                io
+            } else {
+                FsError::new(
+                    io.code,
+                    format!(
+                        "Partly removed ({} of {} folders), then: {}",
+                        removed.len(),
+                        plan.dirs.len(),
+                        io.message
+                    ),
+                    Some(&dir.path),
+                )
+            };
+            return Err(Failure {
+                error,
+                removed,
+                bytes,
+            });
+        }
+        bytes = dir
+            .junk
+            .iter()
+            .fold(bytes, |a, (_, size)| a.saturating_add(*size));
+        removed.push(dir.path.clone());
     }
     Ok(plan)
+}
+
+/// Test hooks: something happens to a folder between the steps of [`remove_tree`]
+/// (review 077 #3–#5: a running unpacker). Keyed by path, so parallel tests do not meet.
+#[cfg(test)]
+pub(crate) mod hooks {
+    use std::path::{Path, PathBuf};
+    use std::sync::Mutex;
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum Stage {
+        /// The tree was planned, nothing checked again yet.
+        AfterPlan,
+        /// Right before the first entry is removed.
+        BeforeRemove,
+    }
+
+    type Hook = (PathBuf, Stage, Box<dyn Fn() + Send>);
+    static HOOKS: Mutex<Vec<Hook>> = Mutex::new(Vec::new());
+
+    pub fn set(path: &Path, stage: Stage, f: impl Fn() + Send + 'static) {
+        HOOKS
+            .lock()
+            .unwrap()
+            .push((path.to_path_buf(), stage, Box::new(f)));
+    }
+
+    pub fn fire(path: &Path, stage: Stage) {
+        for (p, s, f) in HOOKS.lock().unwrap().iter() {
+            if p == path && *s == stage {
+                f();
+            }
+        }
+    }
 }
 
 /// How a listed folder ended.
@@ -195,6 +287,8 @@ pub fn run(
     rep.tick(true);
     let never = AtomicBool::new(false);
     let mut outcome: HashMap<PathBuf, Outcome> = HashMap::new();
+    // folders that went as part of a run that failed later (review 077 #5)
+    let mut gone: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
     let mut cancelled = false;
     let work = files
         .iter()
@@ -220,7 +314,7 @@ pub fn run(
                     .ancestors()
                     .skip(1)
                     .find_map(|a| outcome.get(a).copied());
-                if above == Some(Outcome::Removed) {
+                if above == Some(Outcome::Removed) || gone.contains(path) {
                     outcome.insert(path.clone(), Outcome::Removed);
                     summary.items_done += 1;
                     rep.progress.items_done += 1;
@@ -236,7 +330,20 @@ pub fn run(
                         Outcome::Stayed
                     },
                 );
-                r.map(|plan| plan.bytes)
+                match r {
+                    Ok(plan) => Ok(plan.bytes),
+                    Err(f) => {
+                        // what went before the failure is gone and counts
+                        summary.bytes_done = summary.bytes_done.saturating_add(f.bytes);
+                        if !f.removed.is_empty()
+                            && let Some(parent) = path.parent()
+                        {
+                            rep.dir_changed(path_string(parent));
+                        }
+                        gone.extend(f.removed);
+                        Err(f.error)
+                    }
+                }
             }
         };
         match result {

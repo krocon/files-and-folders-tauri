@@ -241,7 +241,9 @@ pub fn links_not_permitted(e: &io::Error) -> bool {
 }
 
 /// Deletes `rel` below `root` – a file, or (`dir`) an empty folder after the
-/// `junk` files directly inside it – without following a link in any path part
+/// `junk` files directly inside it (name and expected size: a junk file that is
+/// no regular file of exactly that size any more is not removed and the call
+/// fails, review 077 #4) – without following a link in any path part
 /// below `root` (review 008 #3). `rel` = "" means `root` itself, which then
 /// must not be a link; `root` itself may be reached through a link otherwise
 /// (the panel's path). Unix: every folder is opened with
@@ -253,7 +255,7 @@ pub fn remove_below(
     root: &Path,
     rel: &Path,
     dir: bool,
-    junk: &[std::ffi::OsString],
+    junk: &[(std::ffi::OsString, u64)],
 ) -> io::Result<()> {
     use std::path::Component;
     let mut parts = Vec::new();
@@ -278,7 +280,7 @@ fn remove_at(
     base: &Path,
     parts: &[&std::ffi::OsStr],
     dir: bool,
-    junk: &[std::ffi::OsString],
+    junk: &[(std::ffi::OsString, u64)],
 ) -> io::Result<()> {
     use std::ffi::{CString, OsStr};
     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
@@ -320,9 +322,28 @@ fn remove_at(
         return unlink(cur.as_raw_fd(), &name, 0);
     }
     let inner = open(cur.as_raw_fd(), &name, false)?;
-    for j in junk {
-        // flags 0: never a folder; a link would only lose itself
-        unlink(inner.as_raw_fd(), &c(j)?, 0)?;
+    for (j, size) in junk {
+        let j = c(j)?;
+        // still the regular file of the plan? A film that took the name of the
+        // "sample" meanwhile is not deleted (a link is no regular file here)
+        // SAFETY: a valid descriptor and name; `st` is written by the call
+        let mut st: libc::stat = unsafe { std::mem::zeroed() };
+        if unsafe {
+            libc::fstatat(
+                inner.as_raw_fd(),
+                j.as_ptr(),
+                &mut st,
+                libc::AT_SYMLINK_NOFOLLOW,
+            )
+        } != 0
+        {
+            return Err(io::Error::last_os_error());
+        }
+        if (st.st_mode & libc::S_IFMT) != libc::S_IFREG || st.st_size as u64 != *size {
+            return Err(io::Error::other("An extra changed after it was checked"));
+        }
+        // flags 0: never a folder
+        unlink(inner.as_raw_fd(), &j, 0)?;
     }
     drop(inner);
     unlink(cur.as_raw_fd(), &name, libc::AT_REMOVEDIR)
@@ -333,15 +354,20 @@ fn remove_at(
     base: &Path,
     parts: &[&std::ffi::OsStr],
     dir: bool,
-    junk: &[std::ffi::OsString],
+    junk: &[(std::ffi::OsString, u64)],
 ) -> io::Result<()> {
     let mut path = base.to_path_buf();
     path.extend(parts);
     if !dir {
         return fs::remove_file(&path);
     }
-    for j in junk {
-        fs::remove_file(path.join(j))?;
+    for (j, size) in junk {
+        let file = path.join(j);
+        let meta = fs::symlink_metadata(&file)?;
+        if !meta.is_file() || meta.len() != *size {
+            return Err(io::Error::other("An extra changed after it was checked"));
+        }
+        fs::remove_file(file)?;
     }
     fs::remove_dir(&path)
 }
@@ -871,7 +897,7 @@ mod tests {
         // swap `a` for a link to `outside`
         fs::rename(root.join("a"), t.path().join("a old")).unwrap();
         std::os::unix::fs::symlink(&outside, root.join("a")).unwrap();
-        let junk = [std::ffi::OsString::from(".DS_Store")];
+        let junk = [(std::ffi::OsString::from(".DS_Store"), 4)];
         assert!(remove_below(&root, Path::new("a/x.bak"), false, &[]).is_err());
         assert!(remove_below(&root, Path::new("a/leer"), true, &junk).is_err());
         // the link itself is no folder to remove either
@@ -883,6 +909,10 @@ mod tests {
         let real = t.path().join("a old");
         fs::write(real.join("leer/.DS_Store"), "x").unwrap();
         remove_below(&real, Path::new("x.bak"), false, &[]).unwrap();
+        // review 077 #4: a junk file of another size than planned is not the planned file
+        assert!(remove_below(&real, Path::new("leer"), true, &junk).is_err());
+        assert!(real.join("leer/.DS_Store").exists());
+        fs::write(real.join("leer/.DS_Store"), "four").unwrap();
         remove_below(&real, Path::new("leer"), true, &junk).unwrap();
         assert!(!real.join("x.bak").exists() && !real.join("leer").exists());
         remove_below(&real, Path::new(""), true, &[]).unwrap();
