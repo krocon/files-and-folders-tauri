@@ -1194,6 +1194,32 @@
   }
 
   // ---- command table -----------------------------------------------------------------
+  /** Rust `mcp::McpStatus` – what the indicator, the log and the settings show. */
+  function mcpStatus() {
+    const m = cfg.mock?.mcp;
+    const now = Date.parse('2026-11-25T14:02:00Z');
+    return {
+      enabled: cfg.settings?.['mcp.enabled'] === true,
+      listening: cfg.settings?.['mcp.enabled'] === true,
+      error: null,
+      allowContent: cfg.settings?.['mcp.allowContent'] === true,
+      clients: (m?.clients ?? []).map((name, i) => ({
+        connection: i + 1,
+        name,
+        sinceMs: now,
+        calls: (m?.log ?? []).length,
+        paired: true,
+      })),
+      log: (m?.log ?? []).map(([tool, count, outcome], i) => ({
+        atMs: now + (i + 1) * 21000,
+        client: m?.clients?.[0] ?? 'Claude Code',
+        tool,
+        count,
+        outcome,
+      })),
+    };
+  }
+
   const handlers = {
     list_directory: listDirectory,
     resolve_location: resolveLocation,
@@ -1449,6 +1475,45 @@
     palette_cancel: () => null,
     palette_rebuild: paletteStatus,
     palette_clear: paletteStatus,
+    // MCP (design 071): `mock.mcp` = { clients, log, request } – a request reaches the
+    // window like one of Rust's bridge; `paths` become entries of the demo file system
+    subscribe_mcp: (a) => {
+      const channel = a?.onEvent ?? null;
+      const request = cfg.mock?.mcp?.request;
+      if (channel && request) {
+        const { paths, pairs, ...rest } = request;
+        const message = {
+          type: 'request',
+          id: 1,
+          request: {
+            ...rest,
+            ...(paths ? { entries: paths.map((p) => entryAt(expand(p))).filter(Boolean) } : {}),
+            ...(pairs
+              ? {
+                  pairs: pairs.map((p) => ({
+                    entry: entryAt(expand(p.path)),
+                    newName: p.newName,
+                    parentNames: [nameOf(parentOf(expand(p.path))), '', ''],
+                  })),
+                }
+              : {}),
+            ...(rest.sourceDir ? { sourceDir: expand(rest.sourceDir) } : {}),
+            ...(rest.folder ? { folder: expand(rest.folder) } : {}),
+            ...(rest.target ? { target: expand(rest.target) } : {}),
+          },
+        };
+        setTimeout(
+          () => window.__TAURI_INTERNALS__.runCallback(channel.id, { index: 0, message }),
+          cfg.mock.mcp.delay ?? 600,
+        );
+      }
+      return mcpStatus();
+    },
+    mcp_sync: mcpStatus,
+    mcp_status: mcpStatus,
+    mcp_publish_state: () => null,
+    mcp_reply: () => null,
+    mcp_disconnect: () => null,
     subscribe_jobs: (a) => {
       jobChannel = a?.onEvent ?? null;
       if (cfg.mock?.conflict) return [conflictJob()];

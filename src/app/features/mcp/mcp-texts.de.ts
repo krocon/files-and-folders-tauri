@@ -19,7 +19,8 @@ export const MCP_DE: Translation<typeof MCP_EN> = {
   indicatorTitle: (clients) => `Über MCP verbunden: ${clients} – Klick zeigt das Protokoll`,
   logTitle: 'MCP',
   off: 'MCP ist ausgeschaltet. Nichts lauscht. Einschalten unter Einstellungen → MCP.',
-  listening: 'MCP ist an und wartet auf einen Client auf diesem Rechner.',
+  listening:
+    'MCP ist an. Verbinden können sich nur Programme deines Benutzerkontos auf diesem Rechner.',
   notListening: (reason) => `MCP ist an, lauscht aber nicht: ${reason}`,
   reasons: {
     unsupported: 'auf dieser Plattform noch nicht verfügbar.',

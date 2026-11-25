@@ -21,7 +21,7 @@ export const MCP_EN = {
   indicatorTitle: (clients: string) => `Connected over MCP: ${clients} – click for the log`,
   logTitle: 'MCP',
   off: 'MCP is switched off. Nothing listens. Switch it on under Settings → MCP.',
-  listening: 'MCP is on and waits for a client on this computer.',
+  listening: 'MCP is on. Only programs of your user account on this computer can connect.',
   notListening: (reason: string) => `MCP is on but does not listen: ${reason}`,
   reasons: {
     unsupported: 'not available on this platform yet.',
