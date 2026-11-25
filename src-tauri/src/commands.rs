@@ -6,6 +6,7 @@ pub mod disk_usage;
 pub mod duplicates;
 pub mod file_actions;
 pub mod image_overview;
+pub mod mcp;
 pub mod mr_import;
 pub mod os_drag;
 pub mod palette;
@@ -1374,13 +1375,18 @@ pub struct JobsState {
     subscribers: Arc<Mutex<HashMap<String, Channel<JobEvent>>>>,
     /// Set once the user confirmed quitting – lets the next close/exit through.
     pub quitting: AtomicBool,
+    /// Results of the jobs MCP clients started (design 071) – hears every job event.
+    pub mcp_tap: Arc<crate::mcp::jobs::JobTap>,
 }
 
 impl Default for JobsState {
     fn default() -> Self {
         let subscribers: Arc<Mutex<HashMap<String, Channel<JobEvent>>>> = Arc::default();
         let sink_subs = subscribers.clone();
+        let mcp_tap = Arc::new(crate::mcp::jobs::JobTap::default());
+        let sink_tap = mcp_tap.clone();
         let manager = JobManager::new(Arc::new(move |event: &JobEvent| {
+            sink_tap.on_event(event);
             // channels of closed webviews fail – drop them
             sink_subs
                 .lock()
@@ -1391,6 +1397,7 @@ impl Default for JobsState {
             manager,
             subscribers,
             quitting: AtomicBool::new(false),
+            mcp_tap,
         }
     }
 }
@@ -1672,7 +1679,8 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 14] = [
+    const SOURCES: [(&str, &str); 15] = [
+        ("commands/mcp.rs", include_str!("commands/mcp.rs")),
         ("commands/update.rs", include_str!("commands/update.rs")),
         (
             "commands/image_overview.rs",

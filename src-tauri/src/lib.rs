@@ -36,6 +36,7 @@
 //! - [`config_file`]  shared loader of small config files (missing / broken → `.bad` / unreadable)
 //! - [`remote`]       server connections FTP/FTPS/SFTP: profiles, keychain, trust, protocols (design 034)
 //! - [`secret`]       secret texts (passwords) – never printed or serialised
+//! - [`mcp`]          MCP interface: local socket, tools in three tiers, proposals (design 071)
 //! - [`commands`]     thin Tauri command layer
 
 pub mod about;
@@ -65,6 +66,7 @@ pub mod jobs;
 pub mod keymap;
 pub mod listing;
 pub mod listing_gate;
+pub mod mcp;
 pub mod model;
 pub mod mr_import;
 pub mod opener;
@@ -116,6 +118,7 @@ pub fn run() {
         .manage(commands::starter::StarterState::default())
         .manage(commands::file_actions::FileActionsState::default())
         .manage(commands::remote::RemoteState::default())
+        .manage(commands::mcp::McpState::default())
         // thumbnails of the image overview (design 074 E3): a LIFO pool answers
         .register_asynchronous_uri_scheme_protocol(
             image_overview::SCHEME,
@@ -158,6 +161,8 @@ pub fn run() {
             if let Ok(dir) = app.path().app_config_dir() {
                 remote::init(dir, app.path().home_dir().ok().as_deref());
             }
+            // MCP (design 071): off unless `mcp.enabled` – then a socket for this user only
+            commands::mcp::init(app.handle());
             // folders a job writes into: the watcher holds their reloads back until it
             // ends and pauses polling there (design 029 E8)
             {
@@ -347,12 +352,19 @@ pub fn run() {
             commands::remote::remote_disconnect,
             commands::remote::remote_forget_secret,
             commands::remote::remote_parse_url,
-            commands::remote::subscribe_remote
+            commands::remote::subscribe_remote,
+            commands::mcp::subscribe_mcp,
+            commands::mcp::mcp_sync,
+            commands::mcp::mcp_publish_state,
+            commands::mcp::mcp_reply,
+            commands::mcp::mcp_status,
+            commands::mcp::mcp_disconnect
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
             if let RunEvent::Exit = event {
+                commands::mcp::shutdown(app);
                 archive::view::cleanup();
                 if let Ok(h) = remote::hub() {
                     h.disconnect_all();
