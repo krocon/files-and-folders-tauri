@@ -28,6 +28,7 @@ struct Fx {
     hub: Arc<McpHub>,
     jobs: Arc<JobManager>,
     events: Arc<Mutex<Vec<UiEvent>>>,
+    statuses: Arc<std::sync::atomic::AtomicUsize>,
     policy: Arc<Mutex<Policy>>,
 }
 
@@ -59,6 +60,7 @@ fn config(root: &Path) -> McpConfig {
         enabled: true,
         allow_content: false,
         roots: vec![root.to_path_buf()],
+        explicit_roots: false,
         clients: Vec::new(),
     }
 }
@@ -93,6 +95,8 @@ fn fx() -> Fx {
     );
     let events: Arc<Mutex<Vec<UiEvent>>> = Arc::default();
     let policy: Arc<Mutex<Policy>> = Arc::new(Mutex::new(allow_all()));
+    let statuses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let st = statuses.clone();
     let (ev, pol, weak) = (events.clone(), policy.clone(), Arc::downgrade(&hub));
     hub.bridge.set_sink(Some(Arc::new(move |event| {
         if let UiEvent::Request { id, request } = &event {
@@ -101,7 +105,9 @@ fn fx() -> Fx {
                 h.bridge.reply(*id, a);
             }
         }
-        if !matches!(event, UiEvent::Status { .. }) {
+        if matches!(event, UiEvent::Status { .. }) {
+            st.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        } else {
             ev.lock().unwrap().push(event);
         }
         true
@@ -117,6 +123,7 @@ fn fx() -> Fx {
         hub,
         jobs,
         events,
+        statuses,
         policy,
     }
 }
@@ -1029,10 +1036,10 @@ fn the_view_is_steered_only_inside_the_roots() {
         .collect();
     assert_eq!(views.len(), 6);
     assert!(
-        matches!(&views[0], UiRequest::Navigate { side: super::state::Side::Right, path } if *path == f.p("docs"))
+        matches!(&views[0], UiRequest::Navigate { side: super::state::Side::Right, path, client } if *path == f.p("docs") && client == "c")
     );
     assert!(
-        matches!(&views[1], UiRequest::OpenTab { side: super::state::Side::Right, title, activate: true, .. } if title == "docs")
+        matches!(&views[1], UiRequest::OpenTab { side: super::state::Side::Right, title, activate: false, .. } if title == "docs")
     );
     assert!(
         matches!(&views[3], UiRequest::Mark { paths, mode, .. } if paths.len() == 2 && mode == "replace")
@@ -1201,7 +1208,10 @@ fn a_proposal_changes_nothing_and_waits_for_the_user() {
         f.root.join("docs/a.txt").exists(),
         "moving is the window's job, not the tool's"
     );
-    assert_eq!(f.hub.tap.owner("j77").as_deref(), Some("Claude Code"));
+    assert!(
+        f.hub.tap.owner("j77").is_some(),
+        "the job belongs to the connection"
+    );
     let log: Vec<String> = f
         .hub
         .status()
@@ -1509,4 +1519,362 @@ fn the_bridge_reaches_the_app_and_says_when_it_is_gone() {
     drop(say);
     drop(to_bridge);
     bridge.join().unwrap();
+}
+
+// ---- security review (design 071, section "Review") ----
+
+/// Review #1: with contents allowed, a content search is no way around the places
+/// `read_text` refuses – neither as a root nor by a hit.
+#[test]
+fn review_1_a_content_search_never_reaches_credentials() {
+    let f = fx();
+    fs::create_dir_all(f.root.join(".ssh")).unwrap();
+    fs::create_dir_all(f.root.join(".config/gh")).unwrap();
+    fs::create_dir_all(f.root.join("Library/Application Support/Claude")).unwrap();
+    fs::write(f.root.join(".ssh/id_ed25519"), "PRIVATE alpha").unwrap();
+    fs::write(f.root.join(".git-credentials"), "https://alpha@host").unwrap();
+    fs::write(f.root.join(".pypirc"), "password = alpha").unwrap();
+    fs::write(f.root.join(".config/gh/hosts.yml"), "oauth_token: alpha").unwrap();
+    fs::write(f.root.join(".zsh_history"), "export TOKEN=alpha").unwrap();
+    fs::write(f.root.join(".claude.json"), "{\"key\":\"alpha\"}").unwrap();
+    fs::write(
+        f.root
+            .join("Library/Application Support/Claude/config.json"),
+        "alpha",
+    )
+    .unwrap();
+    let mut on = config(&f.root);
+    on.allow_content = true;
+    f.hub.apply(on);
+    let mut c = f.client("c");
+    // a place of credentials as the root of a content search
+    for root in [".ssh", ".config/gh", ".config", "Library"] {
+        let e = c
+            .tool(
+                "search",
+                json!({ "roots": [f.p(root)], "content": "alpha", "includeHidden": true }),
+            )
+            .unwrap_err();
+        assert_eq!(e, "content_not_allowed", "{root}");
+    }
+    // from the home folder: only the ordinary file is found
+    let s = c
+        .tool(
+            "search",
+            json!({ "roots": [f.root], "content": "alpha", "includeHidden": true, "showAsTab": true }),
+        )
+        .unwrap();
+    assert_eq!(names(&s, "hits"), ["a.txt"]);
+    let shown: Vec<UiRequest> = f
+        .requests()
+        .into_iter()
+        .filter(|r| matches!(r, UiRequest::ShowResults { .. }))
+        .collect();
+    assert!(
+        matches!(&shown[..], [UiRequest::ShowResults { hits, .. }] if hits.len() == 1),
+        "the result tab gets the same filtered hits"
+    );
+    // and none of them can be read or hashed
+    for rel in [
+        ".git-credentials",
+        ".pypirc",
+        ".config/gh/hosts.yml",
+        ".zsh_history",
+        ".claude.json",
+        "Library/Application Support/Claude/config.json",
+    ] {
+        assert_eq!(
+            c.tool("read_text", json!({ "path": f.p(rel) }))
+                .unwrap_err(),
+            "content_not_allowed",
+            "{rel}"
+        );
+    }
+    // a search by name (no content) may still see that such files exist
+    let by_name = c
+        .tool(
+            "search",
+            json!({ "roots": [f.root], "name": ".pypirc", "includeHidden": true }),
+        )
+        .unwrap();
+    assert_eq!(names(&by_name, "hits"), [".pypirc"]);
+}
+
+/// Review #1: a private place the user named as a root is open for contents – the
+/// hard list of credentials stays closed.
+#[test]
+fn review_1_an_explicit_root_opens_a_private_place_but_never_credentials() {
+    let f = fx();
+    fs::create_dir_all(f.root.join(".config/app")).unwrap();
+    fs::create_dir_all(f.root.join(".ssh")).unwrap();
+    fs::write(f.root.join(".config/app/notes.txt"), "alpha").unwrap();
+    fs::write(f.root.join(".ssh/id_ed25519"), "PRIVATE alpha").unwrap();
+    let mut on = config(&f.root);
+    on.allow_content = true;
+    on.roots = vec![f.root.clone(), f.root.join(".config"), f.root.join(".ssh")];
+    on.explicit_roots = true;
+    f.hub.apply(on);
+    let mut c = f.client("c");
+    assert_eq!(
+        c.tool("read_text", json!({ "path": f.p(".config/app/notes.txt") }))
+            .unwrap()["text"],
+        "alpha"
+    );
+    assert_eq!(
+        c.tool("read_text", json!({ "path": f.p(".ssh/id_ed25519") }))
+            .unwrap_err(),
+        "content_not_allowed"
+    );
+    assert_eq!(
+        c.tool(
+            "search",
+            json!({ "roots": [f.p(".ssh")], "content": "alpha", "includeHidden": true })
+        )
+        .unwrap_err(),
+        "content_not_allowed"
+    );
+}
+
+/// Review #5: the folders of the app do not show up in a comparison or in disk usage.
+#[test]
+fn review_5_engines_do_not_tell_about_the_folders_of_the_app() {
+    let f = fx();
+    // a second root with the same names as the app's folder
+    fs::create_dir_all(f.outside.join("appdata")).unwrap();
+    fs::write(f.outside.join("appdata/connections.json"), "{}").unwrap();
+    let mut cfg = config(&f.root);
+    cfg.roots.push(f.outside.clone());
+    f.hub.apply(cfg);
+    let mut c = f.client("c");
+    let cmp = c
+        .tool(
+            "compare_folders",
+            json!({ "left": f.root, "right": f.outside, "by": "content", "includeEqual": true }),
+        )
+        .unwrap();
+    assert_eq!(cmp["status"], "done", "{cmp}");
+    let text = cmp.to_string();
+    assert!(text.contains("secret.txt"), "the rest is there: {text}");
+    // `appdata/connections.json` is equal on both sides – and not told
+    assert!(!text.contains("connections.json"), "{text}");
+    assert!(
+        !text.contains(&f.app_dir.to_string_lossy().into_owned()),
+        "{text}"
+    );
+    let du = c
+        .tool("disk_usage", json!({ "path": f.root, "top": 50 }))
+        .unwrap();
+    let text = du.to_string();
+    assert!(
+        !text.contains(&f.app_dir.to_string_lossy().into_owned()),
+        "{text}"
+    );
+    assert!(text.contains("docs"), "the rest is there: {text}");
+}
+
+/// Review #6: a connection has one name, and a job belongs to the connection.
+#[test]
+fn review_6_a_second_initialize_is_refused_and_jobs_belong_to_the_connection() {
+    let f = fx();
+    let mut a = f.client("Honest");
+    let job = a
+        .tool("search", json!({ "roots": [f.root], "name": "*.txt" }))
+        .unwrap()["jobId"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // another connection takes the same name: it does not get the job
+    let mut b = f.client("Honest");
+    assert_eq!(
+        b.tool("get_job", json!({ "id": job })).unwrap_err(),
+        "not_found"
+    );
+    assert_eq!(
+        b.tool("cancel_job", json!({ "id": job })).unwrap_err(),
+        "not_found"
+    );
+    assert!(
+        b.tool("list_jobs", json!({})).unwrap()["jobs"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    // a paired connection cannot rename itself
+    let mut c = f.client("Guest");
+    assert!(c.tool("get_workspace", json!({})).is_ok());
+    let again = c.request(
+        "initialize",
+        json!({ "protocolVersion": "2025-06-18", "clientInfo": { "name": "Honest" } }),
+    );
+    assert_eq!(again["error"]["code"], super::protocol::INVALID_REQUEST);
+    let names: Vec<String> = f
+        .hub
+        .status()
+        .clients
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    assert_eq!(names, ["Honest", "Honest", "Guest"]);
+    assert_eq!(
+        a.tool("get_job", json!({ "id": job })).unwrap()["status"],
+        "done"
+    );
+}
+
+/// Review #7: texts a dialog shows carry no invisible or direction-changing characters.
+#[test]
+fn review_7_shown_texts_carry_no_format_characters() {
+    let f = fx();
+    let mut c = f.client("c");
+    let a = f.p("docs/a.txt");
+    for bad in [
+        "x\u{202E}txt.exe",
+        "a\u{200B}b",
+        "a\u{0007}b",
+        "a\u{00AD}b",
+        "a\u{3164}b",
+        "a\u{FE0F}",
+    ] {
+        assert_eq!(
+            c.tool(
+                "propose_rename",
+                json!({ "pairs": [{ "path": a, "newName": bad }] })
+            )
+            .unwrap_err(),
+            "invalid_name",
+            "{bad:?}"
+        );
+        assert_eq!(
+            c.tool(
+                "propose_mkdir",
+                json!({ "parent": f.p("docs"), "names": [bad] })
+            )
+            .unwrap_err(),
+            "invalid_name",
+            "{bad:?}"
+        );
+        assert_eq!(
+            c.tool("show_results", json!({ "title": bad, "paths": [a] }))
+                .unwrap_err(),
+            "invalid_arguments",
+            "{bad:?}"
+        );
+    }
+    assert!(!f.requests().iter().any(|r| r.is_proposal()));
+}
+
+/// Review #3: the question gets rarer with every no and then stops – whatever name the
+/// next connection states; switching MCP off and on starts over.
+#[test]
+fn review_3_denials_stop_the_pairing_question() {
+    let f = fx();
+    f.set_policy(Box::new(|r| match r {
+        UiRequest::Pair { .. } => Some(decision("deny")),
+        _ => Some(ok()),
+    }));
+    let asked = |f: &Fx| {
+        f.requests()
+            .iter()
+            .filter(|r| matches!(r, UiRequest::Pair { .. }))
+            .count()
+    };
+    let mut first = f.client("one");
+    assert_eq!(
+        first.tool("get_workspace", json!({})).unwrap_err(),
+        "not_paired"
+    );
+    assert_eq!(asked(&f), 1);
+    // right after a no nobody is asked – not under another name either
+    for name in ["two", "three", "four"] {
+        let mut c = f.client(name);
+        assert_eq!(
+            c.tool("get_workspace", json!({})).unwrap_err(),
+            "not_paired"
+        );
+        drop(c);
+    }
+    assert_eq!(asked(&f), 1, "a no is followed by a pause for everyone");
+    // a client the user always allows is not held up by any of this
+    let mut cfg = config(&f.root);
+    cfg.clients = vec!["Trusted".into()];
+    f.hub.apply(cfg);
+    assert!(f.client("Trusted").tool("get_workspace", json!({})).is_ok());
+    assert_eq!(asked(&f), 1);
+    // off and on again: asking is possible again
+    let mut off = config(&f.root);
+    off.enabled = false;
+    f.hub.apply(off);
+    f.hub.apply(config(&f.root));
+    let mut again = f.client("one");
+    assert_eq!(
+        again.tool("get_workspace", json!({})).unwrap_err(),
+        "not_paired"
+    );
+    assert_eq!(asked(&f), 2);
+}
+
+/// Review #9: a connection that never paired does not keep its place for ever, the
+/// window is not told about every single call, and refusals do not flood the log.
+#[test]
+fn review_9_idle_unpaired_connections_go_and_calls_do_not_flood_the_window() {
+    let f = fx();
+    let mut paired = f.client("paired");
+    assert!(paired.tool("get_workspace", json!({})).is_ok());
+    let mut silent = Client::connect(&f.socket);
+    silent.send(&json!({ "jsonrpc": "2.0", "id": 1, "method": "ping" }));
+    assert!(silent.read().is_some());
+    assert_eq!(f.hub.connection_count(), 2);
+    let now = Instant::now();
+    assert_eq!(
+        f.hub.reap_unpaired(now + Duration::from_secs(10)),
+        0,
+        "not yet"
+    );
+    assert_eq!(
+        f.hub
+            .reap_unpaired(now + limits::UNPAIRED_IDLE + Duration::from_secs(1)),
+        1
+    );
+    assert!(silent.read().is_none(), "the idle connection was closed");
+    assert_eq!(f.hub.connection_count(), 1);
+    assert!(
+        paired.tool("get_workspace", json!({})).is_ok(),
+        "a paired one stays"
+    );
+
+    // many calls: the window hears about a few of them at most
+    std::thread::sleep(limits::STATUS_GAP);
+    let before = f.statuses.load(std::sync::atomic::Ordering::SeqCst);
+    let started = Instant::now();
+    for _ in 0..30 {
+        assert!(paired.tool("get_workspace", json!({})).is_ok());
+    }
+    let told = f.statuses.load(std::sync::atomic::Ordering::SeqCst) - before;
+    let allowed = 2 + (started.elapsed().as_millis() / limits::STATUS_GAP.as_millis()) as usize;
+    assert!(told <= allowed, "{told} status events for 30 calls");
+    assert_eq!(
+        f.hub.status().log.len(),
+        32,
+        "the log itself has every call"
+    );
+
+    // refusals of a client that is not paired are one line
+    f.set_policy(Box::new(|r| match r {
+        UiRequest::Pair { .. } => Some(decision("deny")),
+        _ => Some(ok()),
+    }));
+    let mut denied = f.client("denied");
+    for _ in 0..20 {
+        assert_eq!(
+            denied.tool("get_workspace", json!({})).unwrap_err(),
+            "not_paired"
+        );
+    }
+    let log = f.hub.status().log;
+    let last = log.last().unwrap();
+    assert_eq!(
+        (last.client.as_str(), last.outcome.as_str(), last.count),
+        ("denied", "not_paired", 20)
+    );
+    assert_eq!(log.len(), 33);
 }

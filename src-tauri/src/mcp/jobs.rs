@@ -127,20 +127,24 @@ fn event_job(event: &JobEvent) -> Option<&str> {
 
 #[derive(Default)]
 struct TapInner {
-    /// A tool on this thread is inside `JobManager::start` – the `added` event of
-    /// its job arrives on the same thread before `start` returns.
-    claim: Option<(ThreadId, Arc<Collector>)>,
+    /// A tool on that thread is inside `JobManager::start` – the `added` event of
+    /// its job arrives on the same thread before `start` returns. One claim per
+    /// thread (review #8): calls of several clients never take each other's job.
+    claims: HashMap<ThreadId, Arc<Collector>>,
     collectors: HashMap<String, Arc<Collector>>,
     /// Newest last, for dropping old results.
     order: VecDeque<String>,
-    /// Job id → client name: who may ask about it and cancel it.
-    owners: VecDeque<(String, String)>,
+    /// Job id → connection: who may ask about it and cancel it. Not the name – a
+    /// client states its name itself (review #6).
+    owners: VecDeque<(String, u64)>,
 }
 
 /// Listens to all job events and keeps what belongs to jobs of clients.
 #[derive(Default)]
 pub struct JobTap {
     inner: Mutex<TapInner>,
+    /// Counting the running jobs of a connection and starting one more is one step.
+    starting: Mutex<()>,
 }
 
 impl JobTap {
@@ -153,11 +157,7 @@ impl JobTap {
     pub fn on_event(&self, event: &JobEvent) {
         if let JobEvent::Added { job } = event {
             let mut inner = self.lock();
-            let mine = inner
-                .claim
-                .as_ref()
-                .is_some_and(|(t, _)| *t == std::thread::current().id());
-            if mine && let Some((_, collector)) = inner.claim.take() {
+            if let Some(collector) = inner.claims.remove(&std::thread::current().id()) {
                 inner.collectors.insert(job.id.clone(), collector);
                 inner.order.push_back(job.id.clone());
             }
@@ -173,12 +173,14 @@ impl JobTap {
     }
 
     /// Starts a **reading** job for a client. Refuses every other kind – this is the
-    /// only place a tool starts a job.
+    /// only place a tool starts a job – and a job beyond `max_running` unfinished ones
+    /// of the same connection.
     pub fn start(
         &self,
         manager: &Arc<JobManager>,
         spec: JobSpec,
         collector: Arc<Collector>,
+        max_running: usize,
     ) -> Result<String, McpError> {
         if !READ_KINDS.contains(&spec.kind()) {
             return Err(McpError::new(
@@ -186,20 +188,22 @@ impl JobTap {
                 "This kind of job cannot be started over MCP",
             ));
         }
-        let client = collector.client.clone();
-        self.lock().claim = Some((std::thread::current().id(), collector));
+        let connection = collector.connection;
+        let me = std::thread::current().id();
+        let _one = self.starting.lock().unwrap_or_else(|e| e.into_inner());
+        if self.running_of(connection).len() >= max_running {
+            return Err(McpError::new(
+                "limit_exceeded",
+                "Too many jobs of this client are running – wait for them or cancel one",
+            ));
+        }
+        self.lock().claims.insert(me, collector);
         let started = manager.start(spec);
         let mut inner = self.lock();
         // the claim is taken by `added`; a refused start leaves it
-        if inner
-            .claim
-            .as_ref()
-            .is_some_and(|(t, _)| *t == std::thread::current().id())
-        {
-            inner.claim = None;
-        }
+        inner.claims.remove(&me);
         let id = started?;
-        Self::own(&mut inner, &id, &client);
+        Self::own(&mut inner, &id, connection);
         while inner.order.len() > KEPT_RESULTS {
             // drop the oldest finished result; running ones stay
             let pos = inner.order.iter().position(|j| {
@@ -220,32 +224,32 @@ impl JobTap {
         Ok(id)
     }
 
-    fn own(inner: &mut TapInner, id: &str, client: &str) {
+    fn own(inner: &mut TapInner, id: &str, connection: u64) {
         inner.owners.retain(|(j, _)| j != id);
-        inner.owners.push_back((id.to_string(), client.to_string()));
+        inner.owners.push_back((id.to_string(), connection));
         while inner.owners.len() > KEPT_OWNERS {
             inner.owners.pop_front();
         }
     }
 
-    /// A job the window started for a confirmed proposal of `client`.
-    pub fn adopt(&self, id: &str, client: &str) {
-        Self::own(&mut self.lock(), id, client);
+    /// A job the window started for a confirmed proposal of a connection.
+    pub fn adopt(&self, id: &str, connection: u64) {
+        Self::own(&mut self.lock(), id, connection);
     }
 
-    pub fn owner(&self, id: &str) -> Option<String> {
+    pub fn owner(&self, id: &str) -> Option<u64> {
         self.lock()
             .owners
             .iter()
             .find(|(j, _)| j == id)
-            .map(|(_, c)| c.clone())
+            .map(|(_, c)| *c)
     }
 
-    pub fn owned_by(&self, client: &str) -> Vec<String> {
+    pub fn owned_by(&self, connection: u64) -> Vec<String> {
         self.lock()
             .owners
             .iter()
-            .filter(|(_, c)| c == client)
+            .filter(|(_, c)| *c == connection)
             .map(|(j, _)| j.clone())
             .collect()
     }
@@ -363,7 +367,7 @@ mod tests {
         ];
         for spec in refused {
             let kind = spec.kind();
-            let e = tap.start(&m, spec, collector(10)).unwrap_err();
+            let e = tap.start(&m, spec, collector(10), 9).unwrap_err();
             assert_eq!(e.code, "not_available", "{kind}");
         }
         assert!(m.list().is_empty(), "nothing was started");
@@ -380,15 +384,15 @@ mod tests {
         }
         std::fs::write(tmp.path().join("other.md"), "x").unwrap();
         let c = collector(100);
-        let id = tap.start(&m, search(tmp.path()), c.clone()).unwrap();
+        let id = tap.start(&m, search(tmp.path()), c.clone(), 9).unwrap();
         let cancel = AtomicBool::new(false);
         let w = wait(&m, &id, &c, Duration::from_secs(20), &cancel, |_| {});
         assert_eq!(w, Waited::Finished);
         assert_eq!(c.lock().hits.len(), 5);
         assert!(!c.lock().truncated);
-        assert_eq!(tap.owner(&id).as_deref(), Some("client"));
-        assert_eq!(tap.owned_by("client"), vec![id.clone()]);
-        assert!(tap.owned_by("someone else").is_empty());
+        assert_eq!(tap.owner(&id), Some(1));
+        assert_eq!(tap.owned_by(1), vec![id.clone()]);
+        assert!(tap.owned_by(2).is_empty());
         assert!(tap.running_of(1).is_empty());
     }
 
@@ -401,7 +405,7 @@ mod tests {
             std::fs::write(tmp.path().join(format!("f{i}.txt")), "x").unwrap();
         }
         let c = collector(7);
-        let id = tap.start(&m, search(tmp.path()), c.clone()).unwrap();
+        let id = tap.start(&m, search(tmp.path()), c.clone(), 9).unwrap();
         let w = wait(
             &m,
             &id,
@@ -430,7 +434,7 @@ mod tests {
             }
         }
         let c = collector(100_000);
-        let id = tap.start(&m, search(tmp.path()), c.clone()).unwrap();
+        let id = tap.start(&m, search(tmp.path()), c.clone(), 9).unwrap();
         let cancel = AtomicBool::new(true);
         let w = wait(&m, &id, &c, Duration::from_secs(20), &cancel, |_| {});
         // the search may have been faster than the cancel – then it is simply finished
@@ -447,6 +451,55 @@ mod tests {
             );
         }
         assert!(tap.running_of(1).is_empty());
+    }
+
+    /// Review #8: starts from several threads at once – every job gets its own
+    /// collector and owner, and the limit holds.
+    #[test]
+    fn concurrent_starts_keep_their_jobs_apart_and_the_limit() {
+        let tap = Arc::new(JobTap::default());
+        let m = manager_with(&tap);
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("a.txt"), "x").unwrap();
+        let root = tmp.path().to_path_buf();
+        let threads: Vec<_> = (0..4u64)
+            .map(|conn| {
+                let (tap, m, root) = (tap.clone(), m.clone(), root.clone());
+                std::thread::spawn(move || {
+                    let mut mine = Vec::new();
+                    for _ in 0..3 {
+                        let c = Collector::new(
+                            "search",
+                            "same name",
+                            conn,
+                            10,
+                            serde_json::Value::Null,
+                        );
+                        let id = tap.start(&m, search(&root), c.clone(), 1000).unwrap();
+                        mine.push((id, c));
+                    }
+                    (conn, mine)
+                })
+            })
+            .collect();
+        for t in threads {
+            let (conn, mine) = t.join().unwrap();
+            for (id, c) in mine {
+                let kept = tap
+                    .collector(&id)
+                    .expect("every started job has a collector");
+                assert!(
+                    Arc::ptr_eq(&kept, &c),
+                    "job {id} got the collector of another call"
+                );
+                assert_eq!(tap.owner(&id), Some(conn));
+            }
+        }
+        // the limit: nothing starts beyond it
+        let c = Collector::new("search", "x", 99, 10, serde_json::Value::Null);
+        let e = tap.start(&m, search(&root), c, 0).unwrap_err();
+        assert_eq!(e.code, "limit_exceeded");
+        assert!(tap.owned_by(99).is_empty());
     }
 
     #[test]
@@ -469,7 +522,7 @@ mod tests {
             "kind": "search", "criteria": { "roots": ["relative"], "name": "*" }
         }))
         .unwrap();
-        assert!(tap.start(&m, bad, collector(10)).is_err());
+        assert!(tap.start(&m, bad, collector(10), 9).is_err());
         // the next job of the window must not fall into the stale claim
         let tmp = tempfile::tempdir().unwrap();
         let id = m.start(search(tmp.path())).unwrap();

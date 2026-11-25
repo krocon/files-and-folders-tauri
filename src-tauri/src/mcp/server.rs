@@ -160,7 +160,12 @@ pub fn start(hub: Arc<McpHub>, path: &Path) -> Result<ServerHandle, McpError> {
 }
 
 fn accept_loop(hub: &Arc<McpHub>, listener: &UnixListener, stop: &AtomicBool) {
+    let mut last_reap = std::time::Instant::now();
     while !stop.load(Ordering::SeqCst) {
+        if last_reap.elapsed() >= Duration::from_secs(5) {
+            last_reap = std::time::Instant::now();
+            hub.reap_unpaired(last_reap);
+        }
         match listener.accept() {
             Ok((stream, _)) => accept(hub, stream),
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {

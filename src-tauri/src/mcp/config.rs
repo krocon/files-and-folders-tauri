@@ -24,6 +24,9 @@ pub struct McpConfig {
     pub allow_content: bool,
     /// Validated, absolute; empty settings = the home folder.
     pub roots: Vec<PathBuf>,
+    /// The user named the roots (`mcp.roots` is not empty) – a private place among them
+    /// is open for contents (review #1).
+    pub explicit_roots: bool,
     /// Client names that are paired for good.
     pub clients: Vec<String>,
 }
@@ -63,6 +66,7 @@ pub fn from_settings(stored: &Map<String, Value>, home: Option<&Path>) -> McpCon
             }
         })
         .collect();
+    let explicit_roots = !roots.is_empty();
     if roots.is_empty()
         && let Some(h) = home
     {
@@ -73,6 +77,7 @@ pub fn from_settings(stored: &Map<String, Value>, home: Option<&Path>) -> McpCon
         enabled: value(stored, "mcp.enabled").as_bool() == Some(true),
         allow_content: value(stored, "mcp.allowContent").as_bool() == Some(true),
         roots,
+        explicit_roots,
         clients: strings(&value(stored, "mcp.clients"), MAX_CLIENTS)
             .iter()
             .map(|n| super::pairing::clean_name(n))

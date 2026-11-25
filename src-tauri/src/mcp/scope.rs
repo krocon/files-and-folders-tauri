@@ -6,8 +6,10 @@
 use super::McpError;
 use std::path::{Component, Path, PathBuf};
 
-/// Folders below the home folder whose files are never read (`read_text`, content search).
-const SECRET_DIRS: [&str; 9] = [
+/// Folders below the home folder whose files are never read, hashed or searched – not
+/// even when the user names them as a root (`read_text`, `checksum`, content search,
+/// content comparison, duplicates).
+const SECRET_DIRS: [&str; 10] = [
     ".ssh",
     ".gnupg",
     ".aws",
@@ -17,24 +19,14 @@ const SECRET_DIRS: [&str; 9] = [
     ".config/gh",
     ".password-store",
     "Library/Keychains",
+    "Library/Cookies",
 ];
 /// File names that are never read, wherever they are (compared without case).
 const SECRET_NAMES: [&str; 4] = [".netrc", ".npmrc", ".pypirc", ".git-credentials"];
-/// Name patterns (search exclusions) that keep a content search out of secrets.
-pub const SECRET_EXCLUDES: [&str; 12] = [
-    ".ssh",
-    ".gnupg",
-    ".aws",
-    ".kube",
-    ".docker",
-    "gcloud",
-    ".password-store",
-    "Keychains",
-    ".netrc",
-    ".npmrc",
-    ".env",
-    ".env.*",
-];
+/// The part of the home folder that is private by default (review #1): every entry
+/// whose name starts with a dot, and `Library` (settings of other programs, histories,
+/// tokens). Closed for contents unless the user named a root at or below such a place.
+const PRIVATE_DIR: &str = "Library";
 
 #[derive(Debug, Clone, Default)]
 pub struct Scope {
@@ -42,8 +34,10 @@ pub struct Scope {
     roots: Vec<PathBuf>,
     /// Canonical folders of the app (never inside).
     denied: Vec<PathBuf>,
-    /// Canonical folders that hold secrets.
-    secrets: Vec<PathBuf>,
+    /// The canonical home folder.
+    home: Option<PathBuf>,
+    /// Roots the user named that lie in the private part of the home folder.
+    opened: Vec<PathBuf>,
 }
 
 /// The physical place of `path`: its deepest existing ancestor with links resolved,
@@ -76,22 +70,73 @@ fn out_of_scope() -> McpError {
 
 impl Scope {
     /// Roots and app folders that do not exist are dropped (nothing is inside them).
-    pub fn new(roots: &[PathBuf], denied: &[PathBuf], home: Option<&Path>) -> Self {
-        let canon = |ps: &[PathBuf]| -> Vec<PathBuf> {
-            ps.iter()
-                .filter_map(|p| std::fs::canonicalize(p).ok())
-                .collect()
-        };
-        let secrets = home
-            .and_then(|h| std::fs::canonicalize(h).ok())
-            .map(|h| SECRET_DIRS.iter().map(|d| h.join(d)).collect())
-            .unwrap_or_default();
-        Self {
-            roots: canon(roots),
+    /// `explicit`: the user named the roots (`mcp.roots` is not empty).
+    pub fn new(roots: &[PathBuf], denied: &[PathBuf], home: Option<&Path>, explicit: bool) -> Self {
+        let roots: Vec<PathBuf> = roots
+            .iter()
+            .filter_map(|p| std::fs::canonicalize(p).ok())
+            .collect();
+        let home = home.and_then(|h| std::fs::canonicalize(h).ok());
+        let mut scope = Self {
+            roots,
             // a denied folder that does not exist yet still counts once it does
             denied: denied.iter().filter_map(|p| physical(p)).collect(),
-            secrets,
+            home,
+            opened: Vec::new(),
+        };
+        if explicit {
+            scope.opened = scope
+                .roots
+                .iter()
+                .filter(|r| scope.is_private(r))
+                .cloned()
+                .collect();
         }
+        scope
+    }
+
+    /// A place that holds credentials – closed for contents, always.
+    fn is_secret(&self, real: &Path) -> bool {
+        let by_name = real
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| {
+                let n = n.to_lowercase();
+                SECRET_NAMES.contains(&n.as_str()) || n == ".env" || n.starts_with(".env.")
+            })
+            // a name we cannot read is not judged safe
+            .unwrap_or(true);
+        by_name
+            || self
+                .home
+                .as_ref()
+                .is_some_and(|h| SECRET_DIRS.iter().any(|d| real.starts_with(h.join(d))))
+    }
+
+    /// In the private part of the home folder: below a dot entry of it, or below `Library`.
+    fn is_private(&self, real: &Path) -> bool {
+        let Some(rest) = self.home.as_ref().and_then(|h| real.strip_prefix(h).ok()) else {
+            return false;
+        };
+        match rest.components().next() {
+            Some(Component::Normal(first)) => first
+                .to_str()
+                .is_none_or(|n| n.starts_with('.') || n == PRIVATE_DIR),
+            _ => false,
+        }
+    }
+
+    /// The **one** rule for contents (review #1): may the content of what is at `path`
+    /// be read, hashed, searched or compared? Not in a place of credentials; not in the
+    /// private part of the home folder unless the user named a root there.
+    pub fn content_allowed(&self, path: &Path) -> bool {
+        let Some(real) = physical(path) else {
+            return false;
+        };
+        if self.is_secret(&real) {
+            return false;
+        }
+        !self.is_private(&real) || self.opened.iter().any(|r| real.starts_with(r))
     }
 
     /// Validates a path of a tool call and checks that it lies in a root: absolute,
@@ -128,23 +173,14 @@ impl Scope {
         self.check_path(path).is_ok()
     }
 
-    /// [`check`](Self::check) for a file whose content is read: also not in a folder
-    /// of secrets and not a file known to hold credentials.
+    /// [`check`](Self::check) for something whose content is read (a file, or a folder a
+    /// content search starts in): also [`content_allowed`](Self::content_allowed).
     pub fn check_content(&self, raw: &str) -> Result<PathBuf, McpError> {
         let path = self.check(raw)?;
-        let real = physical(&path).ok_or_else(out_of_scope)?;
-        let secret_name = real
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|n| {
-                let n = n.to_lowercase();
-                SECRET_NAMES.contains(&n.as_str()) || n == ".env" || n.starts_with(".env.")
-            })
-            .unwrap_or(true);
-        if secret_name || self.secrets.iter().any(|s| real.starts_with(s)) {
+        if !self.content_allowed(&path) {
             return Err(McpError::new(
                 "content_not_allowed",
-                "Files that usually hold credentials are never read over MCP",
+                "Private files of the home folder and files that hold credentials are not read over MCP",
             ));
         }
         Ok(path)
@@ -187,6 +223,7 @@ mod tests {
             std::slice::from_ref(&root),
             std::slice::from_ref(&app),
             Some(&root),
+            false,
         );
         Fx {
             _tmp: tmp,
@@ -297,10 +334,60 @@ mod tests {
     #[test]
     fn without_roots_nothing_is_inside() {
         let f = fx();
-        let none = Scope::new(&[], &[], None);
+        let none = Scope::new(&[], &[], None, false);
         assert_eq!(none.check(&s(&f.root)).unwrap_err().code, "out_of_scope");
         // a root that does not exist is no root
-        let gone = Scope::new(&[f.root.join("nope")], &[], None);
+        let gone = Scope::new(&[f.root.join("nope")], &[], None, false);
         assert!(gone.check(&s(&f.root.join("nope/x"))).is_err());
+    }
+
+    /// Review #1: dot entries of the home folder and `Library` are private by default.
+    #[test]
+    fn the_private_part_of_home_is_closed_for_contents_unless_named_as_a_root() {
+        let f = fx();
+        for rel in [
+            ".config/app",
+            "Library/Application Support/X",
+            ".local/share",
+        ] {
+            fs::create_dir_all(f.root.join(rel)).unwrap();
+        }
+        fs::write(f.root.join(".zsh_history"), "x").unwrap();
+        fs::write(f.root.join(".config/app/a.txt"), "x").unwrap();
+        fs::write(f.root.join("docs/.hidden.txt"), "x").unwrap();
+        let closed = [
+            ".zsh_history",
+            ".config",
+            ".config/app/a.txt",
+            "Library",
+            "Library/Application Support/X",
+            ".ssh",
+        ];
+        for rel in closed {
+            assert!(!f.scope.content_allowed(&f.root.join(rel)), "{rel}");
+            assert!(
+                f.scope.check(&s(&f.root.join(rel))).is_ok(),
+                "{rel} may be listed"
+            );
+        }
+        // a dot file deeper down is an ordinary file, and so is the home folder itself
+        assert!(f.scope.content_allowed(&f.root.join("docs/.hidden.txt")));
+        assert!(f.scope.content_allowed(&f.root));
+        // named as a root: open – credentials stay closed, also as a root
+        let named = Scope::new(
+            &[f.root.clone(), f.root.join(".config"), f.root.join(".ssh")],
+            &[],
+            Some(&f.root),
+            true,
+        );
+        assert!(named.content_allowed(&f.root.join(".config/app/a.txt")));
+        assert!(!named.content_allowed(&f.root.join(".ssh/id_ed25519")));
+        assert!(!named.content_allowed(&f.root.join(".zsh_history")));
+        // naming the home folder itself opens nothing private
+        let home_only = Scope::new(std::slice::from_ref(&f.root), &[], Some(&f.root), true);
+        assert!(!home_only.content_allowed(&f.root.join(".config/app/a.txt")));
+        // a link in an ordinary folder that leads into a private place
+        symlink(f.root.join(".zsh_history"), f.root.join("docs/history.txt")).unwrap();
+        assert!(!f.scope.content_allowed(&f.root.join("docs/history.txt")));
     }
 }

@@ -269,13 +269,10 @@ fn start_job(
     spec: JobSpec,
     collector: Arc<Collector>,
 ) -> Result<Value, McpError> {
-    if hub.tap.running_of(call.conn.id).len() >= MAX_JOBS {
-        return Err(McpError::new(
-            "limit_exceeded",
-            "Too many jobs of this client are running – wait for them or cancel one",
-        ));
-    }
-    let id = hub.tap.start(&hub.deps.jobs, spec, collector.clone())?;
+    // counted and started under one lock (review #8)
+    let id = hub
+        .tap
+        .start(&hub.deps.jobs, spec, collector.clone(), MAX_JOBS)?;
     let waited = super::jobs::wait(
         &hub.deps.jobs,
         &id,
@@ -308,6 +305,13 @@ fn job_answer(hub: &McpHub, id: &str, c: &Collector) -> Value {
         return v;
     }
     let scope = hub.scope();
+    // a job that looked into files (content search, hashes, byte comparison) tells
+    // nothing about files whose content is closed (review #1) – one rule: the scope's
+    let by_content = c.shape["content"].as_bool().unwrap_or(false);
+    let tellable = |raw: &str| -> bool {
+        let p = Path::new(raw);
+        scope.allows(p) && (!by_content || scope.content_allowed(p))
+    };
     let d = c.lock();
     let finished = d.finished.as_ref();
     let status = finished.map_or("running", |(s, _)| state_name(*s, d.truncated));
@@ -328,11 +332,8 @@ fn job_answer(hub: &McpHub, id: &str, c: &Collector) -> Value {
             // the job may find entries the client must not see (folders of the app): it
             // looks for some more than asked, the answer keeps `limit` of the allowed ones
             let limit = c.shape["limit"].as_u64().unwrap_or(c.limit as u64) as usize;
-            let allowed: Vec<&SearchHit> = d
-                .hits
-                .iter()
-                .filter(|h| scope.allows(Path::new(&h.entry.path)))
-                .collect();
+            let allowed: Vec<&SearchHit> =
+                d.hits.iter().filter(|h| tellable(&h.entry.path)).collect();
             let stats = d.search_stats.clone().unwrap_or_default();
             out["hits"] = json!(
                 allowed
@@ -348,11 +349,7 @@ fn job_answer(hub: &McpHub, id: &str, c: &Collector) -> Value {
         }
         "duplicates" => {
             let mut groups: Vec<(u32, Vec<&SearchHit>)> = Vec::new();
-            for h in d
-                .hits
-                .iter()
-                .filter(|h| scope.allows(Path::new(&h.entry.path)))
-            {
+            for h in d.hits.iter().filter(|h| tellable(&h.entry.path)) {
                 let g = h.group.unwrap_or(0);
                 match groups.iter_mut().find(|(n, _)| *n == g) {
                     Some((_, list)) => list.push(h),
@@ -391,6 +388,8 @@ fn job_answer(hub: &McpHub, id: &str, c: &Collector) -> Value {
                 .rows
                 .iter()
                 .filter(|r| include_equal || r.status != crate::compare::CompareStatus::Equal)
+                // nothing about entries a client must not see (folders of the app, review #5)
+                .filter(|r| tellable(&r.left_path) && tellable(&r.right_path))
                 .map(|r| json!({ "rel": r.rel, "status": r.status, "left": side(&r.left), "right": side(&r.right) }))
                 .collect();
             let stats = d.compare_stats.clone().unwrap_or_default();
@@ -446,14 +445,28 @@ fn usage_result(hub: &McpHub, id: &str, top: usize) -> Option<Value> {
             "files": n["files"], "dirs": n["dirs"],
         })
     };
+    // the folders of the app are not described (review #5); the sums of the folders
+    // above still count them
+    let scope = hub.scope();
+    let allowed = |path: Option<&str>| path.is_none_or(|p| scope.allows(Path::new(p)));
     let children: Vec<Value> = node["children"]
         .as_array()
-        .map(|a| a.iter().map(pick).collect())
+        .map(|a| {
+            a.iter()
+                .filter(|n| allowed(n["path"].as_str()))
+                .map(pick)
+                .collect()
+        })
         .unwrap_or_default();
     let largest: Vec<Value> = scan
         .read()
-        .largest(crate::disk_usage::tree::TOP, top.min(crate::disk_usage::MAX_LARGEST))
+        .largest(
+            crate::disk_usage::tree::TOP,
+            crate::disk_usage::MAX_LARGEST,
+        )
         .iter()
+        .filter(|f| allowed(Some(&f.path)))
+        .take(top)
         .map(|f| json!({ "name": f.name, "path": f.path, "allocated": f.allocated, "logical": f.logical }))
         .collect();
     Some(json!({
@@ -479,7 +492,7 @@ fn from_json<T: serde::de::DeserializeOwned>(v: Value) -> Result<T, McpError> {
 pub fn search(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, McpError> {
     let args = Args::checked("search", args)?;
     let roots = checked_strings(hub, &args.strings("roots"))?;
-    let mut excludes: Vec<String> = args
+    let excludes: Vec<String> = args
         .strings("excludes")
         .iter()
         .map(|s| s.to_string())
@@ -489,13 +502,17 @@ pub fn search(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value,
             if !hub.config().allow_content {
                 return Err(content_off());
             }
-            // a content search never opens the usual places of credentials
-            excludes.extend(super::scope::SECRET_EXCLUDES.iter().map(|s| s.to_string()));
+            // a content search never starts in a place whose contents are closed; what it
+            // finds elsewhere is filtered by the same rule (`job_answer`, review #1)
+            for root in &roots {
+                hub.scope().check_content(root)?;
+            }
             json!({ "text": text, "caseSensitive": args.bool("contentCaseSensitive", false) })
         }
         None => Value::Null,
     };
     let limit = args.limit();
+    let with_content = !content.is_null();
     let criteria: crate::search::SearchCriteria = from_json(json!({
         "roots": roots,
         "name": args.opt_str("name").unwrap_or(""),
@@ -526,7 +543,7 @@ pub fn search(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value,
         &McpHub::client_of(call),
         call.conn.id,
         limit + SEARCH_MARGIN,
-        json!({ "limit": limit }),
+        json!({ "limit": limit, "content": with_content }),
     );
     let mut out = start_job(hub, call, JobSpec::Search { criteria }, collector.clone())?;
     if args.bool("showAsTab", false) && out["status"] == "done" {
@@ -536,13 +553,17 @@ pub fn search(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value,
             .lock()
             .hits
             .iter()
-            .filter(|h| scope.allows(Path::new(&h.entry.path)))
+            .filter(|h| {
+                let p = Path::new(&h.entry.path);
+                scope.allows(p) && (!with_content || scope.content_allowed(p))
+            })
             .take(limit)
             .cloned()
             .collect();
         let shown = hub.bridge.ask(
             super::bridge::UiRequest::ShowResults {
-                side: side_of(&args, &ui, ui.active_side),
+                client: McpHub::client_of(call),
+                side: side_of(&args, &ui, ui.active_side.other()),
                 title: label.chars().take(100).collect(),
                 hits,
                 roots: search_roots,
@@ -573,12 +594,13 @@ pub fn find_duplicates(
         "minSize": args.u64("minSize"),
         "includeHidden": false,
     }))?;
+    // equal content is a statement about the content: the rule for contents applies
     let collector = Collector::new(
         "duplicates",
         &McpHub::client_of(call),
         call.conn.id,
         args.limit(),
-        Value::Null,
+        json!({ "content": true }),
     );
     start_job(hub, call, JobSpec::Duplicates { criteria }, collector)
 }
@@ -606,7 +628,11 @@ pub fn compare_folders(
         "ignoreDate": by != "date",
         "maxRows": limit,
     }))?;
-    let shape = json!({ "includeEqual": args.bool("includeEqual", false) });
+    let shape = json!({
+        "includeEqual": args.bool("includeEqual", false),
+        // a byte comparison says whether two files are equal
+        "content": by == "content",
+    });
     let collector = Collector::new(
         "compare",
         &McpHub::client_of(call),
@@ -698,7 +724,7 @@ pub fn list_jobs(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Val
     let all = hub.deps.jobs.list();
     let jobs: Vec<Value> = hub
         .tap
-        .owned_by(&McpHub::client_of(call))
+        .owned_by(call.conn.id)
         .iter()
         .filter_map(|id| job_state(hub, &all, id))
         .collect();
@@ -751,7 +777,7 @@ fn not_my_job() -> McpError {
 pub fn get_job(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, McpError> {
     let args = Args::checked("get_job", args)?;
     let id = args.str("id")?;
-    if hub.tap.owner(id).as_deref() != Some(McpHub::client_of(call).as_str()) {
+    if hub.tap.owner(id) != Some(call.conn.id) {
         return Err(not_my_job());
     }
     if let Some(c) = hub.tap.collector(id) {

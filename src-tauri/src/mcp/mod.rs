@@ -117,6 +117,7 @@ pub struct Conn {
     /// Request id (JSON text) → cancel flag of a running call.
     cancels: Mutex<HashMap<String, Arc<AtomicBool>>>,
     closed: AtomicBool,
+    connected: Instant,
     /// Closes the transport (the reader thread ends and cleans up).
     closer: Box<dyn Fn() + Send + Sync>,
 }
@@ -202,6 +203,8 @@ pub struct McpHub {
     server: Mutex<Option<server::ServerHandle>>,
     listen_error: Mutex<Option<String>>,
     gate: Mutex<PromptGate>,
+    /// When the window last heard about a call.
+    last_status: Mutex<Option<Instant>>,
     /// One pairing question at a time.
     pair_lock: Mutex<()>,
     next_conn: AtomicU64,
@@ -234,6 +237,7 @@ impl McpHub {
             server: Mutex::new(None),
             listen_error: Mutex::new(None),
             gate: Mutex::new(PromptGate::default()),
+            last_status: Mutex::new(None),
             pair_lock: Mutex::new(()),
             next_conn: AtomicU64::new(0),
         })
@@ -264,7 +268,12 @@ impl McpHub {
     /// Applies what the user allowed: starts or stops listening, replaces the roots,
     /// disconnects clients whose "always" was revoked. Switching off closes everything.
     pub fn apply(self: &Arc<Self>, cfg: McpConfig) {
-        let scope = Scope::new(&cfg.roots, &self.deps.denied, self.deps.home.as_deref());
+        let scope = Scope::new(
+            &cfg.roots,
+            &self.deps.denied,
+            self.deps.home.as_deref(),
+            cfg.explicit_roots,
+        );
         *self.scope.write().unwrap_or_else(|e| e.into_inner()) = Arc::new(scope);
         let enabled = cfg.enabled;
         let clients = cfg.clients.clone();
@@ -275,6 +284,8 @@ impl McpHub {
             *self.ui.write().unwrap_or_else(|e| e.into_inner()) = UiState::default();
             self.log.clear();
             *lock(&self.listen_error) = None;
+            // off and on again: the pairing question may be asked again (review #3)
+            *lock(&self.gate) = PromptGate::default();
         } else {
             // "always" was taken back: the connection ends, the next one asks again
             let revoked: Vec<Arc<Conn>> = lock(&self.conns)
@@ -373,6 +384,20 @@ impl McpHub {
         }
     }
 
+    /// After a call: the window hears about it, but not more often than
+    /// [`limits::STATUS_GAP`] (review #9 – the status carries the whole log; the log
+    /// dialog reads it on demand, connects and disconnects are told at once).
+    fn emit_status_soon(&self) {
+        let now = Instant::now();
+        let mut last = lock(&self.last_status);
+        if last.is_some_and(|t| now.saturating_duration_since(t) < limits::STATUS_GAP) {
+            return;
+        }
+        *last = Some(now);
+        drop(last);
+        self.emit_status();
+    }
+
     /// The frontend reports the window (only while MCP is on).
     pub fn publish_state(&self, state: UiState) -> Result<(), McpError> {
         if !self.config().enabled {
@@ -406,6 +431,7 @@ impl McpHub {
             calls: AtomicU64::new(0),
             cancels: Mutex::new(HashMap::new()),
             closed: AtomicBool::new(false),
+            connected: Instant::now(),
             closer,
         });
         conns.insert(id, conn.clone());
@@ -446,6 +472,29 @@ impl McpHub {
             self.drop_conn(&c);
         }
         self.emit_status();
+    }
+
+    /// Closes connections that were never paired and are older than
+    /// [`limits::UNPAIRED_IDLE`] (review #9) – they hold one of the few places. A call
+    /// that waits for the user's answer keeps its connection.
+    pub fn reap_unpaired(&self, now: Instant) -> usize {
+        let idle: Vec<Arc<Conn>> = lock(&self.conns)
+            .values()
+            .filter(|c| {
+                *lock(&c.pairing) != Pairing::Allowed
+                    && c.active.load(Ordering::SeqCst) == 0
+                    && now.saturating_duration_since(c.connected) >= limits::UNPAIRED_IDLE
+            })
+            .cloned()
+            .collect();
+        for c in &idle {
+            (c.closer)();
+            self.drop_conn(c);
+        }
+        if !idle.is_empty() {
+            self.emit_status();
+        }
+        idle.len()
     }
 
     pub fn connection_count(&self) -> usize {
@@ -501,14 +550,23 @@ impl McpHub {
                 .to_string(),
             Err(e) => e.code.clone(),
         };
-        self.log.add(LogLine {
-            at_ms: now_ms(),
-            client: call.conn.name(),
-            tool: tool.name.to_string(),
-            count: tools::count_of(args, result.as_ref().ok()),
-            outcome,
-        });
-        self.emit_status();
+        // refusals before pairing and by the rate limit are counted in one line
+        let refused = matches!(outcome.as_str(), "not_paired" | "rate_limited");
+        self.log.add_or_count(
+            LogLine {
+                at_ms: now_ms(),
+                client: call.conn.name(),
+                tool: tool.name.to_string(),
+                count: if refused {
+                    1
+                } else {
+                    tools::count_of(args, result.as_ref().ok())
+                },
+                outcome,
+            },
+            refused,
+        );
+        self.emit_status_soon();
         result
     }
 
@@ -554,15 +612,27 @@ impl McpHub {
         if let Some(r) = decide(conn) {
             return r;
         }
-        // calls of the same connection wait for the one question
+        let name = conn.name();
+        let listed = |me: &Self| -> bool {
+            if me.config().clients.contains(&name) {
+                conn.via_list.store(true, Ordering::SeqCst);
+                *lock(&conn.pairing) = Pairing::Allowed;
+                true
+            } else {
+                false
+            }
+        };
+        // a client the user always allows never waits behind a question about another
+        // one (review #9)
+        if listed(self) {
+            return Ok(());
+        }
+        // one question at a time; calls of the same connection wait for it
         let _one = lock(&self.pair_lock);
         if let Some(r) = decide(conn) {
             return r;
         }
-        let name = conn.name();
-        if self.config().clients.contains(&name) {
-            conn.via_list.store(true, Ordering::SeqCst);
-            *lock(&conn.pairing) = Pairing::Allowed;
+        if listed(self) {
             return Ok(());
         }
         if !lock(&self.gate).may_ask(&name, Instant::now()) {
@@ -579,9 +649,10 @@ impl McpHub {
             Ok(r) => r.decision.as_deref().unwrap_or("deny"),
             Err(_) => "none",
         };
+        // a no, no answer, a busy window: the next question waits longer (review #3)
+        lock(&self.gate).answered(&name, matches!(decision, "once" | "always"), Instant::now());
         match decision {
             "once" | "always" => {
-                lock(&self.gate).answered(&name);
                 if decision == "always" {
                     // the frontend writes `mcp.clients`; known here at once
                     conn.via_list.store(true, Ordering::SeqCst);

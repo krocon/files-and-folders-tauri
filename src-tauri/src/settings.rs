@@ -492,6 +492,22 @@ pub fn read_bundle(path: &Path) -> Result<Map<String, Value>, FsError> {
 /// Imports the chosen `parts` of a bundle: every part is checked by its module and
 /// written atomically. A part that is missing (`null`) or invalid is skipped with a
 /// warning `part_skipped` (key = part); the others are imported.
+/// Keys an import never changes (design 071, review #10): who may reach the app over
+/// MCP, what they may see and whether file contents are readable is decided in the
+/// settings dialog of this installation – not by a file from somewhere else.
+pub const LOCAL_ONLY_PREFIX: &str = "mcp.";
+
+/// The imported settings with this installation's own values for the local-only keys.
+fn keep_local(current: &Path, mut imported: Map<String, Value>) -> Map<String, Value> {
+    imported.retain(|k, _| !k.starts_with(LOCAL_ONLY_PREFIX));
+    for (k, v) in load(current).settings {
+        if k.starts_with(LOCAL_ONLY_PREFIX) {
+            imported.insert(k, v);
+        }
+    }
+    imported
+}
+
 pub fn import(
     files: &ConfigFiles,
     bundle: &Map<String, Value>,
@@ -508,10 +524,12 @@ pub fn import(
         let value = bundle.get(part).cloned().unwrap_or(Value::Null);
         let written: Result<bool, io::Error> = match part {
             "settings" => match value {
-                Value::Object(m) => save(&files.settings, m).map(|w| {
-                    report.warnings.extend(w);
-                    true
-                }),
+                Value::Object(m) => {
+                    save(&files.settings, keep_local(&files.settings, m)).map(|w| {
+                        report.warnings.extend(w);
+                        true
+                    })
+                }
                 _ => Ok(false),
             },
             "keymap" => match serde_json::from_value::<keymap::Bindings>(value) {
@@ -876,6 +894,47 @@ mod tests {
         assert_eq!(v["renamePresets"]["version"], 1);
         assert_eq!(v["tools"]["version"], 1);
         assert!(export(&files, &first).is_err());
+    }
+
+    /// Design 071, review #10: a settings file from elsewhere never switches MCP on,
+    /// opens file contents, widens the folders or pairs a client – and never takes
+    /// what the user set here away.
+    #[test]
+    fn import_never_touches_the_mcp_settings() {
+        let dir = tempdir().unwrap();
+        let src = config(&dir.path().join("a"));
+        save(
+            &src.settings,
+            map(json!({
+                "view.density": "spacious",
+                "mcp.enabled": true,
+                "mcp.allowContent": true,
+                "mcp.roots": ["/"],
+                "mcp.clients": ["Evil"],
+            })),
+        )
+        .unwrap();
+        let out = export(&src, dir.path()).unwrap();
+        let bundle = read_bundle(&out).unwrap();
+        // a fresh installation: everything about MCP stays at its default (off)
+        let fresh = config(&dir.path().join("b"));
+        import(&fresh, &bundle, &["settings".into()]).unwrap();
+        let got = load(&fresh.settings).settings;
+        assert_eq!(got.get("view.density"), Some(&json!("spacious")));
+        assert!(!got.keys().any(|k| k.starts_with("mcp.")), "{got:?}");
+        // an installation with its own MCP settings keeps exactly those
+        let own = config(&dir.path().join("c"));
+        save(
+            &own.settings,
+            map(json!({ "mcp.enabled": true, "mcp.clients": ["Claude Code"], "view.density": "compact" })),
+        )
+        .unwrap();
+        import(&own, &bundle, &["settings".into()]).unwrap();
+        let got = load(&own.settings).settings;
+        assert_eq!(got.get("view.density"), Some(&json!("spacious")));
+        assert_eq!(got.get("mcp.enabled"), Some(&json!(true)));
+        assert_eq!(got.get("mcp.clients"), Some(&json!(["Claude Code"])));
+        assert!(got.get("mcp.allowContent").is_none() && got.get("mcp.roots").is_none());
     }
 
     #[test]

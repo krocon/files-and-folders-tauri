@@ -35,6 +35,10 @@ pub const PAIR_GAP: Duration = Duration::from_secs(30);
 pub const UI_WAIT: Duration = Duration::from_secs(10);
 /// The palette's answer (`find_files`).
 pub const FIND_WAIT: Duration = Duration::from_secs(5);
+/// A connection that was never paired is closed after this time.
+pub const UNPAIRED_IDLE: Duration = Duration::from_secs(300);
+/// The window hears about calls at most this often (the log is read on demand).
+pub const STATUS_GAP: Duration = Duration::from_millis(500);
 /// Lines of the call log (memory only).
 pub const LOG_LINES: usize = 200;
 /// `read_text`: default and hard limit.

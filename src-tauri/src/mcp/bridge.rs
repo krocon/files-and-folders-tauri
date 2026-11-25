@@ -31,33 +31,39 @@ pub struct RenamePair {
 )]
 pub enum UiRequest {
     /// "‹client› wants to access …": once / always / deny.
-    Pair {
-        client: String,
-    },
+    Pair { client: String },
+    // view requests name the client: the window remembers who changed what the user's
+    // next key acts on (review #2)
     Navigate {
+        client: String,
         side: Side,
         path: String,
     },
     OpenTab {
+        client: String,
         side: Side,
         path: String,
         title: String,
         activate: bool,
     },
     SetCursor {
+        client: String,
         side: Side,
         path: String,
     },
     Mark {
+        client: String,
         side: Side,
         paths: Vec<String>,
         mode: String,
     },
     QuickView {
+        client: String,
         side: Side,
         path: String,
     },
     ShowResults {
+        client: String,
         side: Side,
         title: String,
         hits: Vec<SearchHit>,
@@ -328,6 +334,7 @@ mod tests {
 
     fn nav() -> UiRequest {
         UiRequest::Navigate {
+            client: "c".into(),
             side: Side::Left,
             path: "/x".into(),
         }

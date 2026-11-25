@@ -30,6 +30,25 @@ impl CallLog {
         l.push_back(line);
     }
 
+    /// Adds a line – or, if the newest line is the same refusal of the same client
+    /// (`merge`), counts it there: a client that is not paired cannot push everything
+    /// else out of the log by calling (review #9).
+    pub fn add_or_count(&self, line: LogLine, merge: bool) {
+        let mut l = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if merge
+            && let Some(last) = l.back_mut()
+            && last.client == line.client
+            && last.outcome == line.outcome
+        {
+            last.count = last.count.saturating_add(1);
+            last.at_ms = line.at_ms;
+            last.tool = "*".to_string();
+            return;
+        }
+        drop(l);
+        self.add(line);
+    }
+
     /// Newest last.
     pub fn lines(&self) -> Vec<LogLine> {
         self.0
@@ -48,6 +67,43 @@ impl CallLog {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn line(client: &str, tool: &str, outcome: &str) -> LogLine {
+        LogLine {
+            at_ms: 1,
+            client: client.into(),
+            tool: tool.into(),
+            count: 1,
+            outcome: outcome.into(),
+        }
+    }
+
+    /// Review #9: refused calls of one client are one line with a count.
+    #[test]
+    fn repeated_refusals_are_counted_in_one_line() {
+        let log = CallLog::default();
+        log.add(line("good", "get_selection", "ok"));
+        for _ in 0..500 {
+            log.add_or_count(line("bad", "list_directory", "not_paired"), true);
+        }
+        log.add_or_count(line("other", "search", "not_paired"), true);
+        log.add_or_count(line("good", "search", "ok"), false);
+        log.add_or_count(line("good", "search", "ok"), false);
+        let lines = log.lines();
+        assert_eq!(lines.len(), 5);
+        assert_eq!(
+            lines[0].tool, "get_selection",
+            "the useful line is still there"
+        );
+        assert_eq!(
+            (
+                lines[1].client.as_str(),
+                lines[1].count,
+                lines[1].tool.as_str()
+            ),
+            ("bad", 500, "*")
+        );
+    }
 
     #[test]
     fn the_log_is_bounded() {

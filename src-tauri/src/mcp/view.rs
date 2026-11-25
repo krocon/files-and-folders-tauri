@@ -43,6 +43,7 @@ pub fn navigate(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Valu
         hub,
         call,
         UiRequest::Navigate {
+            client: McpHub::client_of(call),
             side: side_of(&args, &ui, ui.active_side),
             path,
         },
@@ -61,10 +62,11 @@ pub fn open_tab(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Valu
         hub,
         call,
         UiRequest::OpenTab {
+            client: McpHub::client_of(call),
             side: side_of(&args, &ui, ui.active_side),
             path,
             title,
-            activate: args.bool("activate", true),
+            activate: args.bool("activate", false),
         },
     )
 }
@@ -106,7 +108,15 @@ pub fn set_cursor(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Va
     let ui = hub.ui();
     let side = side_of(&args, &ui, ui.active_side);
     let path = in_panel(hub, &ui, side, args.str("path")?)?;
-    ask(hub, call, UiRequest::SetCursor { side, path })
+    ask(
+        hub,
+        call,
+        UiRequest::SetCursor {
+            client: McpHub::client_of(call),
+            side,
+            path,
+        },
+    )
 }
 
 pub fn mark(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, McpError> {
@@ -119,7 +129,16 @@ pub fn mark(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, M
         .map(|raw| in_panel(hub, &ui, side, raw))
         .collect::<Result<Vec<_>, _>>()?;
     let mode = args.str("mode")?.to_string();
-    ask(hub, call, UiRequest::Mark { side, paths, mode })
+    ask(
+        hub,
+        call,
+        UiRequest::Mark {
+            client: McpHub::client_of(call),
+            side,
+            paths,
+            mode,
+        },
+    )
 }
 
 pub fn quick_view(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, McpError> {
@@ -127,7 +146,15 @@ pub fn quick_view(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Va
     let ui = hub.ui();
     let side = ui.active_side;
     let path = in_panel(hub, &ui, side, args.str("path")?)?;
-    ask(hub, call, UiRequest::QuickView { side, path })
+    ask(
+        hub,
+        call,
+        UiRequest::QuickView {
+            client: McpHub::client_of(call),
+            side,
+            path,
+        },
+    )
 }
 
 /// A hit for a result tab from a path: described by Rust like a search would.
@@ -170,6 +197,13 @@ pub fn show_results(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<
     if hits.is_empty() {
         return Err(McpError::new("not_found", "None of the paths exists"));
     }
+    let title = args.str("title")?;
+    if !super::pairing::is_plain(title) {
+        // shown as the name of a tab: no invisible or direction-changing characters
+        return Err(McpError::invalid(
+            "The title contains control or format characters",
+        ));
+    }
     let roots = hits
         .first()
         .map(|h| vec![h.dir.clone()])
@@ -177,8 +211,10 @@ pub fn show_results(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<
     let shown = hits.len();
     hub.bridge.ask(
         UiRequest::ShowResults {
-            side: side_of(&args, &ui, ui.active_side),
-            title: args.str("title")?.to_string(),
+            client: McpHub::client_of(call),
+            // by default beside what the user works in, and never with the focus
+            side: side_of(&args, &ui, ui.active_side.other()),
+            title: title.to_string(),
             hits,
             roots,
         },
@@ -192,7 +228,7 @@ pub fn cancel_job(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Va
     let args = Args::checked("cancel_job", args)?;
     let id = args.str("id")?;
     // only a job this client started or proposed – never one of the user
-    if hub.tap.owner(id).as_deref() != Some(McpHub::client_of(call).as_str()) {
+    if hub.tap.owner(id) != Some(call.conn.id) {
         return Err(McpError::new(
             "not_found",
             "No job of this client has this id",

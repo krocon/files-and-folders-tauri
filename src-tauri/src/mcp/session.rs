@@ -158,6 +158,13 @@ pub fn serve<R: BufRead>(
                 }
             }
             Incoming::Request { id, method, params } => match method.as_str() {
+                // once per connection: the name the user was asked about stays (review #6)
+                "initialize" if initialized => {
+                    send(
+                        &out,
+                        &protocol::error(&id, protocol::INVALID_REQUEST, "Already initialized"),
+                    );
+                }
                 "initialize" => {
                     conn.set_name(&protocol::client_name(&params));
                     initialized = true;

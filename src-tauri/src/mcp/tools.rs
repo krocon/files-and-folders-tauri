@@ -215,7 +215,7 @@ fn s_open_tab() -> Value {
         json!({
             "side": side_schema(true),
             "path": path_schema("Folder for the new tab."),
-            "activate": { "type": "boolean", "description": "Select the new tab (default true)." },
+            "activate": { "type": "boolean", "description": "Select the new tab in its panel (default false). The keyboard focus stays where the user is." },
         }),
         &["side", "path"],
     )

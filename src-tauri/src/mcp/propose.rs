@@ -56,17 +56,30 @@ fn common_dir(paths: &[PathBuf]) -> String {
 /// Opens the dialog and waits for the user. A confirmed proposal's job belongs to the
 /// client (it may watch and cancel it).
 fn propose(hub: &McpHub, call: &Call<'_>, request: UiRequest) -> Result<Value, McpError> {
-    let client = McpHub::client_of(call);
     let reply: UiReply = hub.bridge.ask(request, PROPOSAL_WAIT, call.cancel)?;
     match reply.outcome.as_deref() {
         Some("confirmed") => {
             let job = reply.job_id.filter(|j| j.len() <= 32);
             if let Some(id) = &job {
-                hub.tap.adopt(id, &client);
+                hub.tap.adopt(id, call.conn.id);
             }
             Ok(json!({ "outcome": "confirmed", "jobId": job }))
         }
         _ => Ok(json!({ "outcome": "cancelled" })),
+    }
+}
+
+/// A name a client proposes is shown in a dialog and becomes a file name: no control,
+/// format (bidi, zero-width …) or other invisible characters (review #7) – the user
+/// must see the name that is created.
+fn shown_name(name: &str) -> Result<(), McpError> {
+    if super::pairing::is_plain(name) {
+        Ok(())
+    } else {
+        Err(McpError::new(
+            "invalid_name",
+            "A proposed name must not contain control or invisible characters",
+        ))
     }
 }
 
@@ -145,6 +158,7 @@ pub fn rename(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value,
         // a name, never a path: the entry stays in its folder (the dialog's check and
         // the job check again)
         crate::paths::validate_name(&new_name)?;
+        shown_name(&new_name)?;
         if Path::new(&new_name).components().count() != 1 {
             return Err(McpError::new(
                 "invalid_name",
@@ -184,6 +198,7 @@ pub fn mkdir(hub: &Arc<McpHub>, call: &Call<'_>, args: &Value) -> Result<Value, 
     let mut names = Vec::new();
     for name in args.strings("names") {
         crate::paths::validate_name(name)?;
+        shown_name(name)?;
         if Path::new(name).components().count() != 1 {
             return Err(McpError::new(
                 "invalid_name",
