@@ -660,3 +660,273 @@ fn mcp_cannot_start_a_download() {
     assert!(h.mgr.list().is_empty());
     assert!(runs(&f).is_empty());
 }
+
+/// The installed yt-dlp knows every option we pass (its `--help`) and takes their values
+/// (`--version` in place of `-- <url>`: the options are parsed, nothing is contacted or
+/// downloaded). What a value means to yt-dlp is not checked here – that is the run with
+/// a real URL.
+/// `cargo test real_yt_dlp_accepts_the_arguments -- --ignored --nocapture`
+#[test]
+#[ignore = "needs yt-dlp in the PATH"]
+fn real_yt_dlp_accepts_the_arguments() {
+    use crate::url_download::args::{Mode, build};
+    use crate::url_download::presets::{Preset, check_args};
+    use crate::url_download::{AudioFormat, Browser, Container};
+    let dirs: Vec<PathBuf> = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .chain([
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+        ])
+        .collect();
+    let Some(program) = crate::url_download::tools::find_in(&dirs, "yt-dlp") else {
+        panic!("yt-dlp not found");
+    };
+    let env = DownloadEnv {
+        yt_dlp: Some(program.clone()),
+        ffmpeg: crate::url_download::tools::find_in(&dirs, "ffmpeg"),
+        js_runtime: crate::url_download::tools::find_in(&dirs, "deno").map(|p| ("deno".into(), p)),
+        env: Vec::new(),
+        // every option of the allow list once, with a value its check accepts
+        presets: [
+            (
+                "all1",
+                vec![
+                    "-f",
+                    "bv*[height<=720]+ba/b",
+                    "-S",
+                    "res:720,ext:mp4:m4a",
+                    "-x",
+                    "--audio-format",
+                    "mp3",
+                    "--audio-quality",
+                    "0",
+                    "--merge-output-format",
+                    "mp4/mkv",
+                    "--remux-video",
+                    "mkv",
+                    "--recode-video",
+                    "mp4",
+                    "--embed-thumbnail",
+                    "--embed-metadata",
+                    "--embed-chapters",
+                    "--embed-subs",
+                    "--write-subs",
+                    "--write-auto-subs",
+                    "--sub-langs",
+                    "en.*,-live_chat",
+                    "--sub-format",
+                    "srt/best",
+                    "--convert-subs",
+                    "srt",
+                ],
+            ),
+            (
+                "all2",
+                vec![
+                    "--convert-thumbnails",
+                    "jpg",
+                    "-r",
+                    "2.5M",
+                    "-N",
+                    "4",
+                    "-R",
+                    "infinite",
+                    "--fragment-retries",
+                    "10",
+                    "-I",
+                    "1:3,7,-5::2",
+                    "--max-filesize",
+                    "2G",
+                    "--min-filesize",
+                    "10k",
+                    "--sponsorblock-remove",
+                    "sponsor,selfpromo",
+                    "--sponsorblock-mark",
+                    "all",
+                    "--mtime",
+                    "--no-mtime",
+                ],
+            ),
+        ]
+        .into_iter()
+        .map(|(id, args)| Preset {
+            id: id.into(),
+            label: id.into(),
+            args: check_args(&args.into_iter().map(String::from).collect::<Vec<_>>()).unwrap(),
+        })
+        .collect(),
+    };
+    let d = DownloadOptions::default();
+    let cases = [
+        d.clone(),
+        DownloadOptions {
+            max_height: Some(1080),
+            container: Container::Mp4,
+            playlist: true,
+            playlist_subfolder: true,
+            subtitles: true,
+            sub_langs: "de,en".into(),
+            embed_thumbnail: true,
+            embed_metadata: true,
+            overwrite: true,
+            cookies_browser: Some(Browser::Firefox),
+            template: "%(upload_date>%Y-%m-%d)s %(title).100B.%(ext)s".into(),
+            ..d.clone()
+        },
+        DownloadOptions {
+            content: Content::Audio,
+            audio_format: AudioFormat::Mp3,
+            ..d.clone()
+        },
+        DownloadOptions {
+            content: Content::Audio,
+            audio_format: AudioFormat::Opus,
+            ..d.clone()
+        },
+        DownloadOptions {
+            container: Container::Mkv,
+            max_height: Some(360),
+            ..d.clone()
+        },
+        DownloadOptions {
+            preset: Some("all1".into()),
+            ..d.clone()
+        },
+        DownloadOptions {
+            preset: Some("all2".into()),
+            ..d.clone()
+        },
+    ];
+    // `--version` checks the values of known options but lets unknown names pass: every
+    // option name must also stand in the program's own `--help`
+    let help = std::process::Command::new(&program)
+        .arg("--help")
+        .output()
+        .unwrap();
+    let help = String::from_utf8_lossy(&help.stdout).into_owned();
+    let known: std::collections::HashSet<&str> = help
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|w| w.starts_with("--"))
+        .collect();
+    assert!(known.len() > 100, "the help lists the options");
+    for o in cases {
+        let mut args = build(
+            &o,
+            &env,
+            Mode::Job { marker: "MARK" },
+            "https://example.org/a",
+        )
+        .unwrap();
+        let n = args.len();
+        args.truncate(n - 2); // no `--`, no URL
+        for a in &args {
+            let name = a.split('=').next().unwrap();
+            assert!(
+                known.contains(name),
+                "{name} is not an option of this yt-dlp"
+            );
+        }
+        args.push("--version".into());
+        let out = std::process::Command::new(&program)
+            .args(&args)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        println!(
+            "{} → {} {}",
+            args.len(),
+            String::from_utf8_lossy(&out.stdout).trim(),
+            stderr.trim()
+        );
+        assert!(out.status.success(), "{args:?}\n{stderr}");
+        assert!(stderr.trim().is_empty(), "{stderr}");
+    }
+}
+
+/// Records the protocol lines of a **real** run for the parser fixtures (design 078 §5) –
+/// Marc's acceptance, never part of the normal tests: it uses the network.
+///
+/// ```text
+/// FNF_RECORD_URL='https://…' [FNF_RECORD_AUDIO=1] [FNF_RECORD_NAME=video] \
+///   cargo test record_protocol_lines -- --ignored --nocapture
+/// ```
+/// Downloads into a temp folder (removed afterwards) with exactly the arguments of a job
+/// and writes `src/url_download/testdata/recorded-<name>.txt`: stdout lines as they are,
+/// stderr lines prefixed `E `, the marker replaced by `M`, the temp folder by `/ziel`.
+#[test]
+#[ignore = "uses the network: set FNF_RECORD_URL"]
+fn record_protocol_lines() {
+    use crate::url_download::args::{Mode, build};
+    use crate::url_download::{AudioFormat, urls};
+    let Ok(raw) = std::env::var("FNF_RECORD_URL") else {
+        panic!("set FNF_RECORD_URL");
+    };
+    let url = urls::check_one(raw.trim()).expect("a plain http(s) URL");
+    let audio = std::env::var_os("FNF_RECORD_AUDIO").is_some();
+    let name = std::env::var("FNF_RECORD_NAME").unwrap_or_else(|_| {
+        if audio {
+            "audio".into()
+        } else {
+            "video".into()
+        }
+    });
+    assert!(name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
+    let dirs: Vec<PathBuf> = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .chain([
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+        ])
+        .collect();
+    let find = |n: &str| crate::url_download::tools::find_in(&dirs, n);
+    let program = find("yt-dlp").expect("yt-dlp in the PATH");
+    let env = DownloadEnv {
+        yt_dlp: Some(program.clone()),
+        ffmpeg: find("ffmpeg"),
+        js_runtime: find("deno").map(|p| ("deno".into(), p)),
+        ..DownloadEnv::default()
+    };
+    let options = DownloadOptions {
+        content: if audio {
+            Content::Audio
+        } else {
+            Content::Video
+        },
+        audio_format: if audio {
+            AudioFormat::Mp3
+        } else {
+            AudioFormat::Best
+        },
+        ..DownloadOptions::default()
+    };
+    let marker = "FNFRECORDMARKER";
+    let args = build(&options, &env, Mode::Job { marker }, &url).unwrap();
+    let target = tempdir().unwrap();
+    let out = super::download::build_command(&program, &args, target.path(), &env)
+        .output()
+        .unwrap();
+    let place = fs::canonicalize(target.path()).unwrap();
+    let clean = |text: &[u8], prefix: &str| -> String {
+        String::from_utf8_lossy(text)
+            .lines()
+            .map(|l| {
+                format!(
+                    "{prefix}{}\n",
+                    l.replace(marker, "M")
+                        .replace(&*place.to_string_lossy(), "/ziel")
+                        .replace(&*target.path().to_string_lossy(), "/ziel")
+                )
+            })
+            .collect()
+    };
+    let text = clean(&out.stdout, "") + &clean(&out.stderr, "E ");
+    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("src/url_download/testdata")
+        .join(format!("recorded-{name}.txt"));
+    fs::write(&file, &text).unwrap();
+    println!(
+        "exit {:?}, {} lines → {}",
+        out.status.code(),
+        text.lines().count(),
+        file.display()
+    );
+}

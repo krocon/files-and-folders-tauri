@@ -212,6 +212,21 @@ async function main() {
   ok(Array.isArray(jobs.value?.jobs), 'list_jobs answers', jobs);
   const unknown = await request('tools/call', { name: 'run_shell', arguments: { command: 'id' } });
   ok(/^Unknown tool/.test(unknown.error?.message ?? ''), 'run_shell is an unknown tool', unknown);
+  // design 078: no tool downloads from a URL or starts a job by its spec
+  const toolList = await request('tools/list', {});
+  const names = (toolList.result?.tools ?? []).map((t) => t.name);
+  ok(
+    names.length > 0 && !names.some((n) => /download|start_job|yt/i.test(n)),
+    'no tool starts a download',
+    names,
+  );
+  for (const name of ['download', 'download_from_urls', 'start_job']) {
+    const r = await request('tools/call', {
+      name,
+      arguments: { kind: 'download', urls: ['https://example.org/a'], targetDir: docs },
+    });
+    ok(/^Unknown tool/.test(r.error?.message ?? ''), `${name} is an unknown tool`, r);
+  }
 }
 
 try {

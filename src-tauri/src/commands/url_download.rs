@@ -195,6 +195,18 @@ mod tests {
         assert_eq!(serde_json::to_value(&c).unwrap()["template"], "separator");
     }
 
+    /// What the dialog would show on this machine – runs only `--version` of the local
+    /// programs, no network: `cargo test probe_this_machine -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "depends on what is installed"]
+    fn probe_this_machine() {
+        let d = tempfile::tempdir().unwrap();
+        let env = tool_env(d.path());
+        let located = tools::locate(&tools::ToolSettings::default(), &tools::path_dirs(&env));
+        let found = tools::probe(&located, &env, tools::today_days());
+        println!("{}", serde_json::to_string_pretty(&found).unwrap());
+    }
+
     #[test]
     fn the_environment_of_a_job_reads_settings_and_presets() {
         let d = tempfile::tempdir().unwrap();
