@@ -113,6 +113,9 @@ const MAX_SHOWN_PROBLEMS = 3;
                 </select>
               </label>
               <p class="help path" [id]="ids.targetPath">{{ s.target()?.path ?? t.noTarget }}</p>
+              @if (s.targetChangedBy(); as client) {
+                <p class="warning mcp-hint" role="alert">{{ t.targetByMcp(client) }}</p>
+              }
 
               <div class="urls-head">
                 <label [attr.for]="ids.urls">{{ t.urls }}</label>

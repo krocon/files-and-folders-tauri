@@ -11,6 +11,7 @@ import { DirectoryListing } from '../../core/fs/fs.models';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobInfo, JobState, Summary } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { ClipboardApi } from '../../core/os/clipboard';
 import { SessionApi } from '../../core/session/session-api';
 import { SettingsApi } from '../../core/settings/settings-api';
@@ -560,12 +561,53 @@ describe('download from URLs: store and dialog (design 078)', () => {
     expect(s.notice()).toContain('could not be read');
   });
 
-  it('copies the command of the first URL', async () => {
+  it('copies the command of the first URL and names the shell it is quoted for', async () => {
     await open();
     await type('https://a.example/1\nhttps://b.example/2');
     await s.copyCommand();
     expect(api.commandLines.map((c) => c.url)).toEqual(['https://a.example/1']);
     expect(clip.written).toEqual(["yt-dlp -- 'https://a.example/1'"]);
+    expect(s.notice()).toBe('The command for PowerShell is in the clipboard.');
+  });
+
+  // review 078 #2: cmd.exe cannot take the command safely – then nothing is copied
+  it('copies nothing when the shell cannot take the command', async () => {
+    api.refuseCommandLine = { code: 'unquotable_name', message: 'cmd', path: null };
+    await open();
+    await type('https://a.example/1');
+    await s.copyCommand();
+    expect(clip.written).toEqual([]);
+    expect(s.notice()).toBeNull();
+    expect(s.runError()).toContain('PowerShell');
+  });
+
+  // review 078 #4: an MCP client can navigate the other side – which is the default target
+  it('says so when an MCP client chose the folder of the target', async () => {
+    const guard = TestBed.inject(McpGuardService);
+    guard.changed('right', 'Evil client', null);
+    await open();
+    expect(s.side()).toBe('right');
+    expect(s.targetChangedBy()).toBe('Evil client');
+    const fixture = TestBed.createComponent(UrlDownloadDialog);
+    await fixture.whenStable();
+    const el: HTMLElement = fixture.nativeElement;
+    const hint = el.querySelector('.mcp-hint');
+    expect(hint?.textContent).toContain('Evil client');
+    expect(hint?.getAttribute('role')).toBe('alert');
+    // the side the user is on is theirs
+    s.setSide('left');
+    expect(s.targetChangedBy()).toBeNull();
+    await fixture.whenStable();
+    expect(el.querySelector('.mcp-hint')).toBeNull();
+    // the user touched the panel again: the folder is theirs
+    s.setSide('right');
+    guard.userTouched('right');
+    expect(s.targetChangedBy()).toBeNull();
+    // starting a download into it is a knowing confirmation
+    guard.changed('right', 'Evil client', null);
+    await type('https://a.example/1');
+    await s.run();
+    expect(guard.influence('right', new Set())).toBeNull();
   });
 
   it('an own preset travels as its id; one that is gone blocks the start', async () => {
@@ -704,6 +746,7 @@ describe('download from URLs: entries and job texts (design 078)', () => {
 
   it('describes the new error codes', () => {
     for (const code of [
+      'download_target_unsupported',
       'download_tool_missing',
       'download_invalid_url',
       'download_invalid_template',

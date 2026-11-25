@@ -3,6 +3,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from '../fs/fs-error';
 import {
   DownloadCheck,
+  DownloadCommandLine,
   DownloadOptions,
   DownloadTools,
   LoadedDownloadPresets,
@@ -21,8 +22,11 @@ export abstract class UrlDownloadApi {
   abstract presets(): Promise<LoadedDownloadPresets>;
   /** Checks the text of the URL field and the template; no network. */
   abstract check(text: string, options: DownloadOptions): Promise<DownloadCheck>;
-  /** The yt-dlp command for `url` as a person would type it. */
-  abstract commandLine(url: string, options: DownloadOptions): Promise<string>;
+  /**
+   * The yt-dlp command for `url`, quoted for the user's shell; rejects (`unquotable_name`)
+   * when that shell cannot take it safely.
+   */
+  abstract commandLine(url: string, options: DownloadOptions): Promise<DownloadCommandLine>;
 }
 
 @Injectable()
@@ -50,7 +54,7 @@ export class TauriUrlDownloadApi extends UrlDownloadApi {
     return this.call('download_check', { text, options });
   }
 
-  commandLine(url: string, options: DownloadOptions): Promise<string> {
+  commandLine(url: string, options: DownloadOptions): Promise<DownloadCommandLine> {
     return this.call('download_command_line', { url, options });
   }
 }

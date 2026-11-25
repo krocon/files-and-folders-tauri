@@ -2,6 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { errorText, toFsError } from '../../core/fs/fs-error';
 import { JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { ClipboardApi } from '../../core/os/clipboard';
 import { Side } from '../../core/session/session.models';
 import { SettingsStore } from '../../core/settings/settings.store';
@@ -35,6 +36,9 @@ import {
 } from './url-download-logic';
 import { URL_DOWNLOAD_TEXTS } from './urldownload-texts';
 
+/** Product names of the shells – the same in every language. */
+const SHELL_NAMES = { sh: 'sh', fish: 'fish', cmd: 'cmd.exe', powershell: 'PowerShell' } as const;
+
 /**
  * "Download from URLs" (design 078): the dialog's state and the start of the job
  * `download`. The store sends URLs (as Rust's check returned them), the target folder
@@ -49,6 +53,7 @@ export class UrlDownloadStore {
   private readonly settings = inject(SettingsStore);
   private readonly api = inject(UrlDownloadApi);
   private readonly clipboard = inject(ClipboardApi);
+  private readonly guard = inject(McpGuardService);
   private recalled = false;
   private checkSeq = 0;
   private toolsSeq = 0;
@@ -123,6 +128,20 @@ export class UrlDownloadStore {
       tabId: this.ws.activeTab(side).id,
     };
   }
+
+  /**
+   * The MCP client whose folder (or marks) still stand on the chosen side (design 071,
+   * review 078 #4): a client can navigate the other panel – the default target – into a
+   * folder of its choice. The dialog says so next to the target.
+   */
+  readonly targetChangedBy = computed<string | null>(() => {
+    const side = this.side();
+    if (side === null) {
+      return null;
+    }
+    const marks = this.ws.panel(side)?.store.marked() ?? new Set<string>();
+    return this.guard.influence(side, marks);
+  });
 
   /** At least one side shows a local folder. */
   canOpen(): boolean {
@@ -262,11 +281,21 @@ export class UrlDownloadStore {
       return;
     }
     try {
-      const line = await this.api.commandLine(url, this.form());
+      const { line, shell } = await this.api.commandLine(url, this.form());
       await this.clipboard.writeText(line);
-      this.notice.set(URL_DOWNLOAD_TEXTS.commandCopied);
+      this.runError.set(null);
+      this.notice.set(
+        URL_DOWNLOAD_TEXTS.commandCopied(
+          shell === 'sh' ? URL_DOWNLOAD_TEXTS.yourShell : SHELL_NAMES[shell],
+        ),
+      );
     } catch (e) {
-      this.runError.set(errorText(toFsError(e)));
+      // the shell cannot take the command safely (cmd.exe and `%`): nothing is copied
+      const err = toFsError(e);
+      this.notice.set(null);
+      this.runError.set(
+        err.code === 'unquotable_name' ? URL_DOWNLOAD_TEXTS.commandNotForShell : errorText(err),
+      );
     }
   }
 
@@ -291,6 +320,8 @@ export class UrlDownloadStore {
       this.busy.set(false);
       return;
     }
+    // the user saw the target (with the hint, if a client chose it) and started: it is theirs
+    this.guard.forget(t.side);
     // the options – never the URLs, the cookies choice or "overwrite"
     rememberDialog(this.settings, 'urlDownload', rememberedForm(form));
     this.jobs.report(URL_DOWNLOAD_TEXTS.started(c.urls.length));

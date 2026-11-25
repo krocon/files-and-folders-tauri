@@ -105,6 +105,7 @@ export type FsErrorCode =
   | 'update_http'
   /** Download from URLs (design 078). */
   | 'download_tool_missing'
+  | 'download_target_unsupported'
   | 'download_invalid_url'
   | 'download_invalid_template'
   | 'download_invalid_options'

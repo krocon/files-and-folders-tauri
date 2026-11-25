@@ -1601,7 +1601,10 @@
             .replace('%(ext)s', ext);
       return { urls, problems, duplicates, tooMany: false, template, example };
     },
-    download_command_line: (a) => `yt-dlp --ignore-config --no-exec -- '${a?.url ?? ''}'`,
+    download_command_line: (a) => ({
+      line: `yt-dlp --ignore-config --no-exec -- '${a?.url ?? ''}'`,
+      shell: 'sh',
+    }),
     create_folders: () => ({ created: [], errors: [] }),
     get_properties: (a) => properties(a?.path),
     read_preview: (a) => preview(a?.path),

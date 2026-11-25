@@ -66,6 +66,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<FsErrorCode>([
   'update_invalid_response',
   'update_http',
   'download_tool_missing',
+  'download_target_unsupported',
   'download_invalid_url',
   'download_invalid_template',
   'download_invalid_options',

@@ -1,6 +1,7 @@
 import { UrlDownloadApi } from '../app/core/urldownload/url-download-api';
 import {
   DownloadCheck,
+  DownloadCommandLine,
   DownloadOptions,
   DownloadTools,
   LoadedDownloadPresets,
@@ -55,6 +56,8 @@ export class FakeUrlDownloadApi extends UrlDownloadApi {
   readonly commandLines: { url: string; options: DownloadOptions }[] = [];
   /** When set, `check` waits for this promise before answering (stale answers). */
   gate: Promise<void> | null = null;
+  /** `commandLine` rejects with this (the shell cannot take the command). */
+  refuseCommandLine: unknown = null;
   /** `check` rejects with this. */
   refuseCheck: unknown = null;
 
@@ -116,8 +119,11 @@ export class FakeUrlDownloadApi extends UrlDownloadApi {
     };
   }
 
-  commandLine(url: string, options: DownloadOptions): Promise<string> {
+  commandLine(url: string, options: DownloadOptions): Promise<DownloadCommandLine> {
     this.commandLines.push({ url, options });
-    return Promise.resolve(`yt-dlp -- '${url}'`);
+    if (this.refuseCommandLine) {
+      return Promise.reject(this.refuseCommandLine);
+    }
+    return Promise.resolve({ line: `yt-dlp -- '${url}'`, shell: 'powershell' });
   }
 }

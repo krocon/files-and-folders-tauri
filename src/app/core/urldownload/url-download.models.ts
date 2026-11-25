@@ -138,6 +138,12 @@ export interface DownloadCheck {
   readonly example: string;
 }
 
+/** The command of "Copy command", quoted for `shell`. */
+export interface DownloadCommandLine {
+  readonly line: string;
+  readonly shell: 'sh' | 'fish' | 'cmd' | 'powershell';
+}
+
 /** `Summary.download` of a finished job. */
 export interface DownloadSummary {
   readonly files: readonly string[];

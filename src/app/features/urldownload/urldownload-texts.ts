@@ -128,7 +128,12 @@ export const URL_DOWNLOAD_EN = {
   jsRuntime: 'JavaScript runtime',
   rescan: 'Search again',
   copyCommand: 'Copy command',
-  commandCopied: 'The command is in the clipboard.',
+  commandCopied: (shell: string) => `The command for ${shell} is in the clipboard.`,
+  commandNotForShell:
+    'cmd.exe cannot take this command safely (it expands “%…%” even inside quotes). Choose PowerShell under Settings → Shell and copy again – nothing was copied.',
+  yourShell: 'your shell (sh, zsh, bash)',
+  targetByMcp: (client: string) =>
+    `“${client}” opened this folder over MCP – check the target before you download.`,
   missingTitle: 'yt-dlp was not found',
   missingIntro:
     'This dialog uses the program yt-dlp, which is not part of Files and Folders. Install it and choose “Search again”:',

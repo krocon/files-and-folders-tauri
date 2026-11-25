@@ -128,7 +128,12 @@ export const URL_DOWNLOAD_DE: Translation<typeof URL_DOWNLOAD_EN> = {
   jsRuntime: 'JavaScript-Laufzeit',
   rescan: 'Erneut suchen',
   copyCommand: 'Befehl kopieren',
-  commandCopied: 'Der Befehl liegt in der Zwischenablage.',
+  commandCopied: (shell) => `Der Befehl für ${shell} liegt in der Zwischenablage.`,
+  commandNotForShell:
+    'cmd.exe kann diesen Befehl nicht sicher aufnehmen (es ersetzt „%…%“ auch in Anführungszeichen). Unter Einstellungen → Shell PowerShell wählen und erneut kopieren – es wurde nichts kopiert.',
+  yourShell: 'deine Shell (sh, zsh, bash)',
+  targetByMcp: (client) =>
+    `„${client}“ hat diesen Ordner über MCP geöffnet – bitte das Ziel prüfen, bevor du lädst.`,
   missingTitle: 'yt-dlp wurde nicht gefunden',
   missingIntro:
     'Dieser Dialog nutzt das Programm yt-dlp, das nicht zu Files and Folders gehört. Installiere es und wähle „Erneut suchen“:',
