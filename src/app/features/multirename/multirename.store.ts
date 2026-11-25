@@ -24,6 +24,7 @@ import {
   summarize,
 } from './multirename-logic';
 import { MR_TEXTS } from './multirename-texts';
+import { ProposalService } from '../../core/mcp/proposal.service';
 import {
   compileRules,
   DEFAULT_RULES,
@@ -52,6 +53,19 @@ export interface MrRequest {
   readonly sources: readonly MrSource[];
   /** Set when the entries come from a result tab (design 009 E4). */
   readonly searchKey?: string | null;
+  /**
+   * Mode "list" (design 071 E7): the new name of every source, in the same order – the
+   * rules do not apply. Same preview, same check in Rust, same job, same undo.
+   */
+  readonly fixed?: readonly string[];
+  /** An MCP client proposed this: its name, shown in the dialog. */
+  readonly proposedBy?: string;
+}
+
+/** One pair of the mode "list". */
+export interface FixedRename {
+  readonly source: MrSource;
+  readonly newName: string;
 }
 
 function err(message: string): FsError {
@@ -70,6 +84,7 @@ export class MultiRenameStore {
   private readonly api = inject(RenameApi);
   private readonly dialogs = inject(DialogService);
   private readonly search = inject(SearchStore);
+  private readonly proposals = inject(ProposalService);
 
   readonly request = signal<MrRequest | null>(null);
   /** What the form shows (changes at once). */
@@ -94,6 +109,9 @@ export class MultiRenameStore {
 
   readonly compiled = computed(() => compileRules(this.applied()));
   readonly ruleErrors = computed<readonly RuleError[]>(() => {
+    if (this.request()?.fixed) {
+      return []; // the rules are not used
+    }
     const c = this.compiled();
     return isRuleErrors(c) ? c : [];
   });
@@ -105,6 +123,10 @@ export class MultiRenameStore {
   /** The pairs for Rust – `null` while a rule is broken. A new array per change. */
   readonly items = computed<readonly RenameItem[] | null>(() => {
     const req = this.request();
+    if (req?.fixed) {
+      const fixed = req.fixed;
+      return req.sources.map((s, i) => ({ path: s.path, newName: fixed[i] ?? s.name }));
+    }
     const c = this.compiled();
     if (!req || isRuleErrors(c)) {
       return null;
@@ -200,6 +222,38 @@ export class MultiRenameStore {
     this.schedulePlan(0);
   }
 
+  /**
+   * Mode "list" (design 071 E7): the dialog for given pairs – the preview shows exactly
+   * them, Rust checks them like any names (`plan_rename`), the job and its undo are the
+   * usual ones. `folder` '' if the entries come from several folders.
+   */
+  openFixed(args: {
+    side: Side;
+    folder: string;
+    pairs: readonly FixedRename[];
+    proposedBy?: string;
+  }): void {
+    if (args.pairs.length === 0) {
+      throw err(MR_TEXTS.nothingSelected);
+    }
+    this.rules.set(DEFAULT_RULES);
+    this.applied.set(DEFAULT_RULES);
+    this.planned.set(null);
+    this.planError.set(null);
+    this.runError.set(null);
+    this.filter.set('all');
+    this.busy.set(false);
+    this.request.set({
+      side: args.side,
+      folder: args.folder,
+      sources: args.pairs.map((p) => p.source),
+      fixed: args.pairs.map((p) => p.newName),
+      ...(args.proposedBy !== undefined ? { proposedBy: args.proposedBy } : {}),
+    });
+    this.dialogs.show('multi-rename');
+    this.schedulePlan(0);
+  }
+
   close(): void {
     this.cancelTimer();
     if (this.applyTimer !== null) {
@@ -210,6 +264,8 @@ export class MultiRenameStore {
     this.request.set(null);
     this.planned.set(null);
     this.dialogs.close();
+    // a proposal that was not confirmed ends here (no-op after `confirmed`)
+    this.proposals.cancelled('multi-rename');
   }
 
   setRules(rules: RenameRules): void {
@@ -288,6 +344,9 @@ export class MultiRenameStore {
     if (!req || !items || !this.canRun() || this.applied() !== this.rules()) {
       return;
     }
+    if (this.proposals.locked(req.proposedBy)) {
+      return; // a proposal's dialog just appeared: its button is still locked
+    }
     this.busy.set(true);
     const renamed = new Map<string, string>();
     this.rows().forEach((r) => {
@@ -303,7 +362,10 @@ export class MultiRenameStore {
       this.busy.set(false);
       return;
     }
-    void this.saveLast(this.applied());
+    if (!req.fixed) {
+      void this.saveLast(this.applied()); // a list has no rules to remember
+    }
+    this.proposals.confirmed('multi-rename', id);
     this.close();
     this.busy.set(false);
     void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req, renamed));

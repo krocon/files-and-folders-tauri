@@ -134,3 +134,11 @@ app-context-menu {
     animation: none;
   }
 }
+
+/* the connected MCP client (design 071): a long name must not push the bar apart */
+.mcp-name {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

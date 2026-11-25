@@ -131,6 +131,16 @@ code {
   max-height: 8rem;
   margin: 0;
   overflow: auto;
+
+  /* a proposal of an MCP client (design 071): the whole list, scrollable */
+  &.all {
+    max-height: min(40vh, 22rem);
+    padding: var(--spacing-1) var(--spacing-1) var(--spacing-1) var(--spacing-4);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
 }
 
 /* 059: red text on the dialog background, no bar – same box as the normal line, so nothing moves */

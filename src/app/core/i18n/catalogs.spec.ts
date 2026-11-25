@@ -22,6 +22,7 @@ import '../../features/imageoverview/image-overview-texts';
 import '../../features/groupfiles/groupfiles-texts';
 import '../../features/jobs/job-format';
 import '../../features/menus/menu-texts';
+import '../../features/mcp/mcp-texts';
 import '../../features/multimkdir/multimkdir-texts';
 import '../../features/multirename/multirename-texts';
 import '../../features/mrimport/mr-import-texts';
@@ -46,6 +47,9 @@ import '../../shared/dialog/dialog-key-texts';
 /** Same in both languages on purpose (names, symbols, technical terms). */
 const SAME = new Set([
   'OK',
+  'MCP',
+  'Client',
+  'Tool',
   'UTF-8',
   'Server',
   'Port',

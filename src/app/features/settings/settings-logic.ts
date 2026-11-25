@@ -8,6 +8,7 @@ export type SectionId =
   | 'behavior'
   | 'shell'
   | 'palette'
+  | 'mcp'
   | 'keyboard'
   | 'tools'
   | 'colors'
@@ -75,6 +76,8 @@ export const SECTIONS: readonly Section[] = [
       'palette.maxHits',
     ],
   },
+  // design 071: off by default; the names under "always" are revoked by deleting a line
+  { id: 'mcp', keys: ['mcp.enabled', 'mcp.allowContent', 'mcp.roots', 'mcp.clients'] },
   { id: 'keyboard', keys: [] },
   { id: 'tools', keys: [] },
   { id: 'colors', keys: [] },
@@ -118,6 +121,8 @@ export function sectionText(id: SectionId): string {
       return [t.cat.data, t.dataIntro, t.export, t.import, t.resetAll].join(' ');
     case 'shell':
       return [t.cat.shell, t.shellIntro, t.clearShellHistory].join(' ');
+    case 'mcp':
+      return [t.cat.mcp, t.mcpIntro, t.mcpSetup, t.mcpShowLog].join(' ');
     default:
       return t.cat[id];
   }

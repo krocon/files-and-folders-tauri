@@ -15,6 +15,9 @@ import { insertAt, PreviewFilter } from './multirename-logic';
 import { MR_TEXTS } from './multirename-texts';
 import { MultiRenameStore } from './multirename.store';
 import { PREVIEW_LABEL_ID, PreviewTable } from './preview-table';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { ProposalNote } from '../mcp/proposal-note';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 import {
   CapitalizeMode,
   MACROS,
@@ -46,7 +49,7 @@ const CATEGORIES = [...new Set(MACROS.map((m) => m.category))];
  */
 @Component({
   selector: 'app-multi-rename-dialog',
-  imports: [Modal, DialogKey, PreviewTable],
+  imports: [Modal, DialogKey, PreviewTable, ProposalNote],
   templateUrl: './multirename-dialog.html',
   styleUrl: './multirename-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,6 +58,12 @@ const CATEGORIES = [...new Set(MACROS.map((m) => m.category))];
 export class MultiRenameDialog {
   protected readonly t = MR_TEXTS;
   protected readonly mr = inject(MultiRenameStore);
+  protected readonly mcp = MCP_TEXTS;
+  private readonly proposals = inject(ProposalService);
+  /** Mode "list" (design 071 E7): fixed pairs, no rules. */
+  protected readonly fixed = computed(() => this.mr.request()?.fixed !== undefined);
+  /** A proposal's button is locked for a moment after the dialog appeared. */
+  protected readonly locked = computed(() => this.proposals.locked(this.mr.request()?.proposedBy));
   protected readonly tokens = TOKENS;
   protected readonly starts = STARTS;
   protected readonly steps = STEPS;

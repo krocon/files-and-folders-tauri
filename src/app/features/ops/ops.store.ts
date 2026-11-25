@@ -42,6 +42,8 @@ import {
   targetOptions,
 } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 
 /** The operations of the copy/move dialog – `link` creates symbolic links (design 031 E8). */
 export type TransferKind = 'copy' | 'move' | 'link';
@@ -58,6 +60,8 @@ export interface CopyMoveRequest {
   readonly dangers: readonly PathCheck[];
   /** What the panel showed when the request was made (design 030 E5, review #1). */
   readonly expected?: readonly ExpectedEntry[];
+  /** An MCP client proposed this (design 071): its name, shown in the dialog. */
+  readonly proposedBy?: string;
 }
 
 export interface CopyMoveInput {
@@ -90,6 +94,8 @@ export interface DeleteRequest {
   readonly inArchive?: boolean;
   /** The basket of this disk-usage scan (design 047): its tree is corrected after the job. */
   readonly usageScan?: string;
+  /** An MCP client proposed this (design 071): its name, shown in the dialog. */
+  readonly proposedBy?: string;
 }
 
 export interface NameRequest {
@@ -129,6 +135,7 @@ export class OpsStore {
   private readonly archive = inject(ArchiveStore);
   private readonly usage = inject(DiskUsageStore);
   private readonly dup = inject(DuplicatesStore);
+  private readonly proposals = inject(ProposalService);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
@@ -264,6 +271,8 @@ export class OpsStore {
     sourceDir: string;
     sources: readonly DirEntry[];
     target: string;
+    /** A proposal of an MCP client (design 071): the dialog says so and never starts on Enter. */
+    proposedBy?: string;
   }): Promise<void> {
     if (args.sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
@@ -309,7 +318,14 @@ export class OpsStore {
         ? undefined
         : isUsageKey(usageKey)
           ? this.usage.expected(args.sources)
-          : expectedFor(args.sources, this.listingState(args.side));
+          : args.proposedBy !== undefined
+            ? // described by Rust a moment ago – the dialog may stay open: always compared
+              expectedFor(args.sources, { network: true, fromCache: true })
+            : expectedFor(args.sources, this.listingState(args.side));
+    if (args.proposedBy !== undefined && this.dialogs.open() !== null) {
+      // the user opened a dialog while Rust was asked: a proposal never replaces it
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
     this.copyMove.set({ ...args, targets, dangers, ...(expected ? { expected } : {}) });
     this.dialogs.show('copy-move');
   }
@@ -368,6 +384,40 @@ export class OpsStore {
       return;
     }
     this.del.set(req);
+    this.dialogs.show('delete');
+  }
+
+  /**
+   * The delete dialog for given entries – a proposal of an MCP client (design 071):
+   * always asked, the trash preselected whatever the settings say, the entries compared
+   * with what the dialog showed. `sourceDir` '' if they come from several folders.
+   */
+  async openDeleteFor(args: {
+    side: Side;
+    sourceDir: string;
+    entries: readonly DirEntry[];
+    proposedBy: string;
+  }): Promise<void> {
+    if (args.entries.length === 0) {
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    if (args.entries.some((e) => isRemotePath(e.path) || this.archive.isArchivePath(e.path))) {
+      throw err('unknown', OPS_TEXTS.noFolder);
+    }
+    const dangers = await this.dangers(args.entries);
+    if (this.dialogs.open() !== null) {
+      // the user opened a dialog while Rust was asked: a proposal never replaces it
+      throw err('unknown', OPS_TEXTS.nothingSelected);
+    }
+    this.del.set({
+      mode: 'trash',
+      side: args.side,
+      sourceDir: args.sourceDir,
+      entries: args.entries,
+      dangers,
+      expected: expectedFor(args.entries, { network: true, fromCache: true }),
+      proposedBy: args.proposedBy,
+    });
     this.dialogs.show('delete');
   }
 
@@ -544,12 +594,18 @@ export class OpsStore {
     this.del.set(null);
     this.name.set(null);
     this.dialogs.close();
+    // a proposal that was not confirmed ends here (no-op after `confirmed`)
+    this.proposals.cancelled('copy-move');
+    this.proposals.cancelled('delete');
   }
 
   // ---- run the confirmed operation ----
 
   /** Starts the copy/move job. Returns an error to show in the dialog, or null (closed). */
   async runCopyMove(req: CopyMoveRequest, input: CopyMoveInput): Promise<FsError | null> {
+    if (this.proposals.locked(req.proposedBy)) {
+      return err('unknown', MCP_TEXTS.proposalLocked);
+    }
     const raw = input.target.trim();
     if (raw === '') {
       return err('invalid_path', OPS_TEXTS.emptyTarget);
@@ -603,6 +659,7 @@ export class OpsStore {
       return toFsError(e);
     }
     this.ws.addRecent(dir);
+    this.proposals.confirmed('copy-move', id);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, req.kind === 'move');
     return null;
@@ -644,6 +701,7 @@ export class OpsStore {
       this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
     }
+    this.proposals.confirmed('copy-move', id);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, move);
     return null;
@@ -713,6 +771,9 @@ export class OpsStore {
 
   /** Starts the delete job; the cursor moves to the next remaining entry at once. */
   async runDelete(req: DeleteRequest, allowDangerous: boolean): Promise<FsError | null> {
+    if (this.proposals.locked(req.proposedBy)) {
+      return err('unknown', MCP_TEXTS.proposalLocked);
+    }
     const paths = req.entries.map((e) => e.path);
     // before the job starts: its "folder changed" reload must already keep the new cursor
     const cursor = this.ws.panel(req.side)?.store.cursorPath() ?? null;
@@ -735,6 +796,7 @@ export class OpsStore {
       this.ws.panel(req.side)?.store.setCursor(cursor);
       return toFsError(e);
     }
+    this.proposals.confirmed('delete', id);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, paths, true, req.usageScan);
     return null;

@@ -36,6 +36,8 @@ export type DialogKind =
   | 'settings'
   | 'about'
   | 'update'
+  | 'mcp-pairing'
+  | 'mcp-log'
   | 'button-config'
   | 'file-types'
   | 'mr-import'

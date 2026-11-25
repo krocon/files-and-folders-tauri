@@ -11,11 +11,16 @@ import { DEFAULT_MKDIR, folderNames, MkdirTemplate, restoreMkdir } from './mkdir
 import { SettingsStore } from '../../core/settings/settings.store';
 import { recallDialog, rememberDialog } from '../../shared/dialog-memory';
 import { MM_TEXTS } from './multimkdir-texts';
+import { ProposalService } from '../../core/mcp/proposal.service';
 
 export interface MkdirRequest {
   readonly side: Side;
   readonly parent: string;
   readonly parents: readonly [string, string, string];
+  /** Given names instead of the template (a proposal of an MCP client, design 071). */
+  readonly fixed?: readonly string[];
+  /** The client's name, shown in the dialog. */
+  readonly proposedBy?: string;
 }
 
 export interface MkdirRow {
@@ -41,6 +46,7 @@ export class MultiMkdirStore {
   private readonly api = inject(FoldersApi);
   private readonly dialogs = inject(DialogService);
   private readonly settings = inject(SettingsStore);
+  private readonly proposals = inject(ProposalService);
   /** The kept template is read once, at the first opening (design 027 E5). */
   private recalled = false;
 
@@ -51,6 +57,10 @@ export class MultiMkdirStore {
 
   readonly outcome = computed(() => {
     const req = this.request();
+    if (req?.fixed) {
+      // Rust checked the names and `create_folders` checks them again
+      return { names: req.fixed.map((name) => ({ name, error: null })), error: null };
+    }
     return folderNames(this.template(), req?.parents ?? ['', '', '']);
   });
   readonly rows = computed<readonly MkdirRow[]>(() =>
@@ -99,6 +109,26 @@ export class MultiMkdirStore {
     this.dialogs.show('multi-mkdir');
   }
 
+  /** The dialog for given names – a proposal of an MCP client (design 071). */
+  openFixed(args: {
+    side: Side;
+    parent: string;
+    parents: readonly [string, string, string];
+    names: readonly string[];
+    proposedBy: string;
+  }): void {
+    this.busy.set(false);
+    this.runError.set(null);
+    this.request.set({
+      side: args.side,
+      parent: args.parent,
+      parents: args.parents,
+      fixed: args.names,
+      proposedBy: args.proposedBy,
+    });
+    this.dialogs.show('multi-mkdir');
+  }
+
   update(patch: Partial<MkdirTemplate>): void {
     this.template.set({ ...this.template(), ...patch });
     this.runError.set(null);
@@ -107,18 +137,23 @@ export class MultiMkdirStore {
   close(): void {
     this.request.set(null);
     this.dialogs.close();
+    this.proposals.cancelled('multi-mkdir');
   }
 
   async run(): Promise<void> {
     const req = this.request();
-    if (!req || !this.canRun()) {
+    if (!req || !this.canRun() || this.proposals.locked(req.proposedBy)) {
       return;
     }
     const names = this.outcome().names.map((n) => n.name);
     this.busy.set(true);
     try {
       const res = await this.api.createFolders(req.parent, names);
-      rememberDialog(this.settings, 'multiMkdir', this.template());
+      if (!req.fixed) {
+        rememberDialog(this.settings, 'multiMkdir', this.template());
+      }
+      // folders were created (maybe not all): the proposal was acted on
+      this.proposals.confirmed('multi-mkdir', null);
       this.refresh(req, res.created[0] ?? null);
       if (res.errors.length > 0) {
         const list = res.errors.map((e) => `${e.name} (${describeFsError(e.error)})`).join(', ');

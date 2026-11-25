@@ -24,6 +24,8 @@ import { Modal } from './modal';
  * - `cancel` – marker for Esc (the modal's `closed` does the work): tooltip and ARIA only.
  * - `secondary:<L>` – `Mod+<L>` (⌘ on macOS, Ctrl elsewhere).
  * - `destructive:<L>` – `Mod+Shift+<L>`: irreversible actions (delete permanently). Never Enter.
+ * - `confirm` – `Mod+Enter` only, never Enter alone: the main button of a dialog that
+ *   someone else opened (a proposal of an MCP client, design 071 rule 4).
  * - `hint:<keys>` – display only (design 076 E3): the dialog handles the keys itself
  *   (`F7`, `Shift+F7`, `0`); the button just shows them.
  * - `null`/`''` – no role (a role that only applies in some states).
@@ -37,6 +39,7 @@ import { Modal } from './modal';
 export type DialogKeySpec =
   | 'primary'
   | 'cancel'
+  | 'confirm'
   | `secondary:${string}`
   | `destructive:${string}`
   | `hint:${string}`
@@ -44,7 +47,7 @@ export type DialogKeySpec =
   | null;
 
 export interface DialogKeyRole {
-  readonly role: 'primary' | 'cancel' | 'secondary' | 'destructive' | 'hint';
+  readonly role: 'primary' | 'cancel' | 'confirm' | 'secondary' | 'destructive' | 'hint';
   /** `A`–`Z` for secondary/destructive. */
   readonly letter: string | null;
   /** The keys of a `hint` in keymap notation (`Shift+F7`). */
@@ -70,7 +73,7 @@ export const RESERVED_DIALOG_LETTERS: ReadonlySet<string> = new Set([
 
 /** Parses a role; `null` for no role or an invalid/reserved letter. Pure. */
 export function parseDialogKey(spec: DialogKeySpec | undefined): DialogKeyRole | null {
-  if (spec === 'primary' || spec === 'cancel') {
+  if (spec === 'primary' || spec === 'cancel' || spec === 'confirm') {
     return { role: spec, letter: null };
   }
   if (spec?.startsWith('hint:')) {
@@ -134,6 +137,8 @@ export function ariaKeysFor(role: DialogKeyRole, platform: Platform): string {
       return 'Enter';
     case 'cancel':
       return 'Escape';
+    case 'confirm':
+      return platform === 'macos' ? 'Meta+Enter' : 'Control+Enter';
     case 'hint':
       return ''; // the template states its own aria-keyshortcuts
     default: {
@@ -148,8 +153,14 @@ export function displayKeysFor(role: DialogKeyRole, platform: Platform): string 
   if (role.role === 'hint') {
     return formatShortcut(role.keys ?? '', platform);
   }
-  const key = role.role === 'primary' ? 'Enter' : role.role === 'cancel' ? 'Escape' : role.letter!;
-  const command = role.role === 'secondary' || role.role === 'destructive';
+  const key =
+    role.role === 'primary' || role.role === 'confirm'
+      ? 'Enter'
+      : role.role === 'cancel'
+        ? 'Escape'
+        : role.letter!;
+  const command =
+    role.role === 'secondary' || role.role === 'destructive' || role.role === 'confirm';
   return formatStroke(
     { mod: command, ctrl: false, alt: false, shift: role.role === 'destructive', key },
     platform,

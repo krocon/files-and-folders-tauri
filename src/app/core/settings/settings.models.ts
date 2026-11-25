@@ -47,6 +47,10 @@ export interface SettingsValues {
   'palette.includeHidden': boolean;
   'palette.systemSearch': boolean;
   'palette.maxHits': number;
+  'mcp.enabled': boolean;
+  'mcp.allowContent': boolean;
+  'mcp.roots': readonly unknown[];
+  'mcp.clients': readonly unknown[];
   'imageOverview.tileSize': number;
   'imageOverview.sort': 'name' | 'date' | 'size' | 'type';
   'imageOverview.tree': boolean;

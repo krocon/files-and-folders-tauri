@@ -40,6 +40,8 @@ import { hitCount, NOTES, searchSettings, SectionId, SECTIONS } from './settings
 import { describeSettingsWarning } from './settings-warnings';
 import { SETTINGS_TEXTS } from './settings-texts';
 import { PaletteStore } from '../palette/palette.store';
+import { McpStatusService } from '../../core/mcp/mcp-status.service';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 
 /** JSON lists of strings edited as text (design 043 E6). */
 /** The index state is read this often while the settings are open. */
@@ -48,6 +50,8 @@ const INDEX_POLL_MS = 1000;
 const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   'palette.roots',
   'palette.excludes',
+  'mcp.roots',
+  'mcp.clients',
 ]);
 
 /**
@@ -321,6 +325,21 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
               </button>
             </div>
           }
+          @case ('mcp') {
+            <p>{{ t.mcpIntro }}</p>
+            <p>{{ t.mcpSetup }}</p>
+            <p role="status" data-testid="mcp-settings-state">{{ mcpState() }}</p>
+            <div class="row">
+              <button
+                data-no-dialog-key
+                type="button"
+                class="btn"
+                (click)="actions.run('MCP_SHOW_LOG')"
+              >
+                {{ t.mcpShowLog }}
+              </button>
+            </div>
+          }
           @case ('shell') {
             <p>{{ t.shellIntro }}</p>
             <div class="row">
@@ -506,6 +525,17 @@ export class SettingsDialog {
   private readonly shell = inject(ShellStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly palette = inject(PaletteStore);
+  private readonly mcpStatus = inject(McpStatusService);
+  /** What MCP does right now (design 071): off, listening, or why it cannot listen. */
+  protected readonly mcpState = computed(() => {
+    const s = this.mcpStatus.status();
+    if (!s.enabled) {
+      return MCP_TEXTS.off;
+    }
+    return s.listening
+      ? MCP_TEXTS.listening
+      : MCP_TEXTS.notListening(MCP_TEXTS.reasons[s.error ?? ''] ?? MCP_TEXTS.unknownReason);
+  });
 
   constructor() {
     // the index state as it is now – and while it is built (design 043 E7)

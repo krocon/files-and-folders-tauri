@@ -141,6 +141,10 @@ import { ConnectionsDialog } from '../remote/connections-dialog';
 import { RemotePromptDialog } from '../remote/remote-prompt-dialog';
 import { registerRemoteActions } from '../remote/remote-actions';
 import { RemoteStore } from '../remote/remote.store';
+import { McpStore } from '../mcp/mcp.store';
+import { registerMcpActions } from '../mcp/mcp-actions';
+import { McpPairingDialog } from '../mcp/mcp-pairing-dialog';
+import { McpLogDialog } from '../mcp/mcp-log-dialog';
 
 /**
  * The main window (`docs/ui-layout.md`): a CSS grid with the rows header · tabs ·
@@ -201,6 +205,8 @@ import { RemoteStore } from '../remote/remote.store';
     ConnectionsDialog,
     RemotePromptDialog,
     ImageOverview,
+    McpPairingDialog,
+    McpLogDialog,
   ],
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
@@ -256,6 +262,8 @@ export class Workspace implements OnInit {
   private readonly columns = inject(ColumnsStore);
   private readonly remote = inject(RemoteStore);
   private readonly selectIf = inject(SelectIfStore);
+  /** Created at the start: it reports the window to Rust while MCP is on (design 071). */
+  private readonly mcp = inject(McpStore);
   private readonly menuApi = inject(MenuApi);
   private readonly keyboard = inject(KeyboardDispatcher);
   protected readonly menus = inject(MenuService);
@@ -422,6 +430,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));
     this.destroyRef.onDestroy(registerStarterActions(this.actions, this.starter, this.menus));
     this.destroyRef.onDestroy(registerRemoteActions(this.actions, this.ws, this.remote));
+    this.destroyRef.onDestroy(registerMcpActions(this.actions, this.mcp));
     this.destroyRef.onDestroy(this.keyboard.attach(document));
     void this.settings.init();
     this.menus.init();
@@ -432,6 +441,7 @@ export class Workspace implements OnInit {
     void this.buttonConfig.init();
     void this.fileActions.init();
     void this.fileTypes.init();
+    void this.mcp.init();
   }
 
   // ---- splitter ----

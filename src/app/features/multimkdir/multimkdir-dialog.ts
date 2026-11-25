@@ -4,6 +4,9 @@ import { DialogKey } from '../../shared/dialog/dialog-key';
 import { GridColumn, PreviewGrid } from '../../shared/preview-grid/preview-grid';
 import { LetterCase, MkdirTemplate } from './mkdir-engine';
 import { MM_TEXTS } from './multimkdir-texts';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { ProposalNote } from '../mcp/proposal-note';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 import { MkdirRow, MultiMkdirStore } from './multimkdir.store';
 
 const LABEL_ID = 'fnf-mm-preview-label';
@@ -22,7 +25,7 @@ function rowClass(r: MkdirRow): string | null {
 /** Multi-MkDir (OPEN_MULTIMKDIR_DLG, design 008 E4): template, counter, case, preview. */
 @Component({
   selector: 'app-multi-mkdir-dialog',
-  imports: [Modal, DialogKey, PreviewGrid],
+  imports: [Modal, DialogKey, PreviewGrid, ProposalNote],
   template: `
     @if (mm.request(); as req) {
       <app-modal [heading]="heading()" width="min(46rem, 92vw)" height="70vh" (closed)="mm.close()">
@@ -30,41 +33,48 @@ function rowClass(r: MkdirRow): string | null {
           <p class="help">
             {{ t.inFolder }}: <span class="path">{{ req.parent }}</span>
           </p>
-          <label class="field">
-            <span>{{ t.template }}</span>
-            <input
-              type="text"
-              data-autofocus
-              spellcheck="false"
-              autocomplete="off"
-              aria-describedby="fnf-mm-help"
-              [value]="v().template"
-              (input)="set('template', text($event))"
-              (keydown.enter)="$event.preventDefault(); mm.run()"
-            />
-          </label>
-          <p id="fnf-mm-help" class="help">{{ t.templateHelp }}</p>
-          <div class="row">
-            @for (k of numbers; track k.key) {
-              <label class="field num">
-                <span>{{ k.label }}</span>
-                <input
-                  type="number"
-                  [min]="k.key === 'step' ? 1 : k.key === 'digits' ? 0 : null"
-                  [value]="v()[k.key]"
-                  (input)="setNumber(k.key, $event)"
-                />
-              </label>
-            }
+          @if (req.proposedBy; as client) {
+            <app-proposal-note [client]="client" />
+          }
+          @if (req.fixed) {
+            <p class="help" data-testid="mm-list-note">{{ mcp.mkdirList }}</p>
+          } @else {
             <label class="field">
-              <span>{{ t.letterCase }}</span>
-              <select (change)="set('letterCase', $any(text($event)))">
-                @for (c of cases; track c) {
-                  <option [value]="c" [selected]="c === v().letterCase">{{ t.cases[c] }}</option>
-                }
-              </select>
+              <span>{{ t.template }}</span>
+              <input
+                type="text"
+                data-autofocus
+                spellcheck="false"
+                autocomplete="off"
+                aria-describedby="fnf-mm-help"
+                [value]="v().template"
+                (input)="set('template', text($event))"
+                (keydown.enter)="$event.preventDefault(); mm.run()"
+              />
             </label>
-          </div>
+            <p id="fnf-mm-help" class="help">{{ t.templateHelp }}</p>
+            <div class="row">
+              @for (k of numbers; track k.key) {
+                <label class="field num">
+                  <span>{{ k.label }}</span>
+                  <input
+                    type="number"
+                    [min]="k.key === 'step' ? 1 : k.key === 'digits' ? 0 : null"
+                    [value]="v()[k.key]"
+                    (input)="setNumber(k.key, $event)"
+                  />
+                </label>
+              }
+              <label class="field">
+                <span>{{ t.letterCase }}</span>
+                <select (change)="set('letterCase', $any(text($event)))">
+                  @for (c of cases; track c) {
+                    <option [value]="c" [selected]="c === v().letterCase">{{ t.cases[c] }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          }
           <span [id]="labelId" class="preview-label">{{ t.preview }}</span>
           <app-preview-grid
             class="preview"
@@ -76,14 +86,24 @@ function rowClass(r: MkdirRow): string | null {
           <div class="foot">
             <p class="error" role="alert">{{ mm.outcome().error ?? mm.runError() ?? '' }}</p>
             <div class="buttons">
-              <button appDialogKey="cancel" type="button" class="btn" (click)="mm.close()">
+              @if (req.proposedBy) {
+                <div class="help">{{ mcp.proposalKeys }}</div>
+              }
+              <button
+                appDialogKey="cancel"
+                type="button"
+                class="btn"
+                [attr.data-autofocus]="req.fixed ? '' : null"
+                (click)="mm.close()"
+              >
                 {{ t.cancel }}
               </button>
               <button
-                appDialogKey="primary"
+                [appDialogKey]="req.proposedBy ? 'confirm' : 'primary'"
                 type="button"
                 class="btn primary"
-                [disabled]="!mm.canRun()"
+                data-testid="mm-confirm"
+                [disabled]="!mm.canRun() || locked()"
                 (click)="mm.run()"
               >
                 {{ t.create }}
@@ -100,6 +120,10 @@ function rowClass(r: MkdirRow): string | null {
 export class MultiMkdirDialog {
   protected readonly t = MM_TEXTS;
   protected readonly mm = inject(MultiMkdirStore);
+  protected readonly mcp = MCP_TEXTS;
+  private readonly proposals = inject(ProposalService);
+  /** A proposal's button is locked for a moment after the dialog appeared (design 071). */
+  protected readonly locked = computed(() => this.proposals.locked(this.mm.request()?.proposedBy));
   protected readonly v = this.mm.template;
   protected readonly cases = CASES;
   protected readonly columns = COLUMNS;

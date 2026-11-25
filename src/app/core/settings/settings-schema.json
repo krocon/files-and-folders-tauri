@@ -63,6 +63,10 @@
   "palette.includeHidden": { "type": "bool", "default": false },
   "palette.systemSearch": { "type": "bool", "default": false },
   "palette.maxHits": { "type": "int", "min": 50, "max": 2000, "default": 300 },
+  "mcp.enabled": { "type": "bool", "default": false },
+  "mcp.allowContent": { "type": "bool", "default": false },
+  "mcp.roots": { "type": "json", "default": [], "maxItems": 16, "maxBytes": 16384 },
+  "mcp.clients": { "type": "json", "default": [], "maxItems": 16, "maxBytes": 4096 },
   "imageOverview.tileSize": { "type": "int", "min": 96, "max": 640, "default": 200 },
   "imageOverview.sort": {
     "type": "enum",

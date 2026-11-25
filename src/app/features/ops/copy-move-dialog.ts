@@ -7,6 +7,9 @@ import { formatSize } from '../../shared/format';
 import { dialogError, sameNames } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { liveCount } from './live-count';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { ProposalNote } from '../mcp/proposal-note';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 import { OpsStore, TransferKind } from './ops.store';
 import { TargetField } from './target-field';
 
@@ -25,23 +28,34 @@ const DEFAULTS: readonly ConflictDefault[] = [
  */
 @Component({
   selector: 'app-copy-move-dialog',
-  imports: [Modal, DialogKey, TargetField],
+  imports: [Modal, DialogKey, TargetField, ProposalNote],
   template: `
     @if (req(); as r) {
       <app-modal [heading]="heading(r.kind)" width="min(60rem, 94vw)" (closed)="ops.close()">
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
+          @if (r.proposedBy; as client) {
+            <app-proposal-note [client]="client" />
+          }
           <p class="source">
             <strong>{{
               r.sources.length === 1 ? r.sources[0].name : t.entries(r.sources.length)
             }}</strong>
             <span class="count" aria-live="polite">{{ countText() }}</span>
           </p>
+          @if (r.proposedBy) {
+            <!-- a proposal (design 071): every source with its path, not only a number -->
+            <ul class="names all" tabindex="0" [attr.aria-label]="mcp.allEntries(r.sources.length)">
+              @for (e of r.sources; track e.path) {
+                <li class="path">{{ e.path }}</li>
+              }
+            </ul>
+          }
           <app-target-field
             [label]="t.to"
             [suggestionsLabel]="t.suggestions"
             [value]="target()"
             [targets]="r.targets"
-            [autofocus]="true"
+            [autofocus]="!r.proposedBy"
             [invalid]="!!error()"
             describedBy="fnf-copy-error"
             (valueChange)="target.set($event); error.set(null)"
@@ -130,17 +144,24 @@ const DEFAULTS: readonly ConflictDefault[] = [
           </p>
 
           <div class="buttons">
-            <div class="help">{{ t.ctrlEnter }}</div>
+            <div class="help">{{ r.proposedBy ? mcp.proposalKeys : t.ctrlEnter }}</div>
             <div class="spacer"></div>
 
-            <button type="button" class="btn" appDialogKey="cancel" (click)="ops.close()">
+            <button
+              type="button"
+              class="btn"
+              appDialogKey="cancel"
+              [attr.data-autofocus]="r.proposedBy ? '' : null"
+              (click)="ops.close()"
+            >
               {{ t.cancel }}
             </button>
             <button
               type="submit"
               class="btn primary"
-              appDialogKey="primary"
-              [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
+              [appDialogKey]="r.proposedBy ? 'confirm' : 'primary'"
+              data-testid="copy-confirm"
+              [disabled]="busy() || locked() || (r.dangers.length > 0 && !allowDangerous())"
             >
               {{ r.kind === 'link' ? t.linkConfirm : heading(r.kind) }}
             </button>
@@ -157,6 +178,10 @@ export class CopyMoveDialog {
   protected readonly defaults = DEFAULTS;
   protected readonly ops = inject(OpsStore);
   protected readonly req = this.ops.copyMove;
+  protected readonly mcp = MCP_TEXTS;
+  private readonly proposals = inject(ProposalService);
+  /** A proposal's button is locked for a moment after the dialog appeared (design 071). */
+  protected readonly locked = computed(() => this.proposals.locked(this.req()?.proposedBy));
 
   protected readonly target = signal(this.req()?.target ?? '');
   protected readonly name = signal(
@@ -220,7 +245,12 @@ export class CopyMoveDialog {
 
   private async start(): Promise<void> {
     const req = this.req();
-    if (!req || this.busy() || (req.dangers.length > 0 && !this.allowDangerous())) {
+    if (
+      !req ||
+      this.busy() ||
+      this.locked() ||
+      (req.dangers.length > 0 && !this.allowDangerous())
+    ) {
       return;
     }
     this.busy.set(true);

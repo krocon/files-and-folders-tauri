@@ -20,6 +20,7 @@ export const SETTINGS_EN = {
     behavior: 'Behaviour',
     shell: 'Shell',
     palette: 'Palette & index',
+    mcp: 'MCP (AI agents)',
     keyboard: 'Keyboard',
     tools: 'Tools',
     colors: 'Colours',
@@ -217,6 +218,26 @@ export const SETTINGS_EN = {
       help: 'At most this many files and folders per query (memory per query stays small).',
       keywords: 'palette hits limit results count',
     },
+    'mcp.enabled': {
+      label: 'Let AI agents work with this app (MCP)',
+      help: 'Off: nothing listens. On: an MCP client on this computer (Claude Desktop, Claude Code) can see the panels, search in the allowed folders and propose file operations – every new client is asked about, and nothing is changed without your confirmation in this window.',
+      keywords: 'mcp model context protocol ai agent claude assistant interface socket',
+    },
+    'mcp.allowContent': {
+      label: 'Allow file contents',
+      help: 'Agents may read text files (up to 256 KiB each) and search inside files. Off: names, sizes and dates only. Files that usually hold credentials (.ssh, .env …) are never read.',
+      keywords: 'mcp content read text privacy',
+    },
+    'mcp.roots': {
+      label: 'Folders agents may see',
+      help: 'One folder per line; empty = your home folder. Everything outside is refused – also through a link. The folders of this app (settings, connections) are never visible.',
+      keywords: 'mcp roots folders scope allowed',
+    },
+    'mcp.clients': {
+      label: 'Clients that are always allowed',
+      help: 'Names you answered with “Always allow”, one per line. Delete a line to take it back: the client is disconnected and asked about again.',
+      keywords: 'mcp clients pairing always revoke',
+    },
     'imageOverview.tileSize': {
       label: 'Image overview: tile size',
       help: 'Width of a tile in pixels (96–640); also with the slider, Mod+= / Mod+- and Mod+mouse wheel.',
@@ -282,6 +303,11 @@ export const SETTINGS_EN = {
   on: 'On',
   clearRecent: 'Clear',
   shellIntro: 'The shell history is kept in shell-history.json in the app folder (100 commands).',
+  mcpIntro:
+    'MCP lets an AI agent work with the running app: it sees what you see and proposes; you confirm. There is no tool for the shell, for opening files, for passwords or for connecting to servers.',
+  mcpSetup:
+    'Set up the client with the command of this app and the argument --mcp (docs/mcp.md). Only programs of your user account on this computer can connect.',
+  mcpShowLog: 'Connections and log…',
   paletteIntro:
     'The Command Palette (Mod+Shift+P) finds actions, folders and files. The index lives only in memory and goes with the app.',
   indexState: {
@@ -405,6 +431,7 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
     behavior: 'Verhalten',
     shell: 'Shell',
     palette: 'Palette & Index',
+    mcp: 'MCP (KI-Agenten)',
     keyboard: 'Tastatur',
     tools: 'Tools',
     colors: 'Farben',
@@ -603,6 +630,26 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
       help: 'Höchstens so viele Dateien und Ordner je Anfrage (der Speicher je Anfrage bleibt klein).',
       keywords: 'palette treffer grenze ergebnisse anzahl',
     },
+    'mcp.enabled': {
+      label: 'KI-Agenten mit dieser App arbeiten lassen (MCP)',
+      help: 'Aus: nichts lauscht. An: ein MCP-Client auf diesem Rechner (Claude Desktop, Claude Code) kann die Panels sehen, in den erlaubten Ordnern suchen und Dateioperationen vorschlagen – bei jedem neuen Client wird gefragt, und ohne deine Bestätigung in diesem Fenster wird nichts geändert.',
+      keywords: 'mcp model context protocol ki agent claude assistent schnittstelle socket',
+    },
+    'mcp.allowContent': {
+      label: 'Dateiinhalte erlauben',
+      help: 'Agenten dürfen Textdateien lesen (je bis 256 KiB) und in Dateien suchen. Aus: nur Namen, Größen und Datum. Dateien, die üblicherweise Zugangsdaten enthalten (.ssh, .env …), werden nie gelesen.',
+      keywords: 'mcp inhalt lesen text privatsphäre',
+    },
+    'mcp.roots': {
+      label: 'Ordner, die Agenten sehen dürfen',
+      help: 'Ein Ordner je Zeile; leer = dein Home-Ordner. Alles außerhalb wird abgelehnt – auch über einen Link. Die Ordner dieser App (Einstellungen, Verbindungen) sind nie sichtbar.',
+      keywords: 'mcp wurzeln ordner bereich erlaubt',
+    },
+    'mcp.clients': {
+      label: 'Clients, die immer erlaubt sind',
+      help: 'Namen, bei denen du „Immer erlauben“ gewählt hast, einer je Zeile. Lösche eine Zeile, um es zurückzunehmen: Der Client wird getrennt und es wird wieder gefragt.',
+      keywords: 'mcp clients kopplung immer widerrufen',
+    },
     'imageOverview.tileSize': {
       label: 'Bilder-Übersicht: Kachelgröße',
       help: 'Breite einer Kachel in Pixeln (96–640); auch mit dem Regler, Mod+= / Mod+- und Mod+Mausrad.',
@@ -668,6 +715,11 @@ const SETTINGS_DE: Translation<typeof SETTINGS_EN> = {
   on: 'An',
   clearRecent: 'Leeren',
   shellIntro: 'Der Shell-Verlauf liegt in shell-history.json im App-Ordner (100 Befehle).',
+  mcpIntro:
+    'Mit MCP arbeitet ein KI-Agent mit der laufenden App: Er sieht, was du siehst, und schlägt vor; du bestätigst. Es gibt kein Tool für die Shell, zum Öffnen von Dateien, für Passwörter oder zum Verbinden mit Servern.',
+  mcpSetup:
+    'Richte den Client mit dem Befehl dieser App und dem Argument --mcp ein (docs/mcp.md). Verbinden können sich nur Programme deines Benutzerkontos auf diesem Rechner.',
+  mcpShowLog: 'Verbindungen und Protokoll…',
   paletteIntro:
     'Die Befehlspalette (Mod+Umschalt+P) findet Aktionen, Ordner und Dateien. Der Index liegt nur im Speicher und endet mit der App.',
   indexState: {

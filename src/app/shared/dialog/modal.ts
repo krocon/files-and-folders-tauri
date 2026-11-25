@@ -65,7 +65,8 @@ const CLICKABLE = [
  * Enter clicks the `primary` button wherever the focus is (except E2: a focused
  * button, textarea, list/grid/combobox/menu, IME, auto-repeat, another form, a
  * disabled button), `Mod+<letter>` a `secondary`, `Mod+Shift+<letter>` a
- * `destructive` one – never Enter. Esc closes unless an inner popup took it.
+ * `destructive` one – never Enter. A `confirm` button (a proposal from outside, design
+ * 071) takes `Mod+Enter` only. Esc closes unless an inner popup took it.
  */
 @Component({
   selector: 'app-modal',
@@ -251,7 +252,9 @@ export class Modal {
       return;
     }
     if (evt.key === 'Enter') {
-      this.onEnter(evt);
+      if (!this.onModEnter(evt)) {
+        this.onEnter(evt);
+      }
       return;
     }
     if (this.onMnemonic(evt)) {
@@ -283,7 +286,10 @@ export class Modal {
       // not submit a form whose button is destructive (implicit submission)
       if (
         form &&
-        [...this.keys].some((k) => k.role()?.role === 'destructive' && form.contains(k.el))
+        [...this.keys].some((k) => {
+          const role = k.role()?.role;
+          return (role === 'destructive' || role === 'confirm') && form.contains(k.el);
+        })
       ) {
         evt.preventDefault();
       }
@@ -298,6 +304,30 @@ export class Modal {
     if (!evt.repeat) {
       primary.trigger();
     }
+  }
+
+  /**
+   * `Mod+Enter` → the `confirm` button (design 071): the only key of a dialog that an
+   * MCP client opened. A dialog that handles the key itself comes first (`defaultPrevented`).
+   */
+  private onModEnter(evt: KeyboardEvent): boolean {
+    const mod = this.platform === 'macos' ? evt.metaKey : evt.ctrlKey;
+    if (!mod || evt.altKey || evt.shiftKey || evt.isComposing) {
+      return false;
+    }
+    if (evt.defaultPrevented) {
+      return true;
+    }
+    const confirm = [...this.keys].find((k) => k.role()?.role === 'confirm' && this.visible(k));
+    if (!confirm) {
+      return false;
+    }
+    evt.preventDefault();
+    evt.stopPropagation();
+    if (!evt.repeat) {
+      confirm.trigger();
+    }
+    return true;
   }
 
   /** `Alt+<letter>` → the button with that underlined letter (design 076 E4). */

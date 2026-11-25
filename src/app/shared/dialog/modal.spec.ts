@@ -149,6 +149,54 @@ describe('Modal: dialog keys (057)', () => {
     expect(cmp.log).toEqual(['primary', 'submit']);
   });
 
+  it('071: a `confirm` button takes Mod+Enter only – never Enter, never a letter', () => {
+    const { q, key, cmp, fixture } = setup('linux');
+    cmp.primary.set('confirm');
+    cmp.secondary.set(null);
+    fixture.detectChanges();
+    // Enter from a field: nothing, and no implicit submit of the form
+    for (const sel of ['.text', '.check', '.select']) {
+      expect(key(q(sel), { key: 'Enter' }).defaultPrevented).toBe(true);
+    }
+    key(q('.text'), { key: 'Enter', shiftKey: true });
+    key(q('.text'), { key: 'Enter', ctrlKey: true, shiftKey: true });
+    key(q('.text'), { key: 'Enter', metaKey: true }); // ⌘ is not the modifier here
+    expect(cmp.log).toEqual([]);
+    const evt = key(q('.text'), { key: 'Enter', ctrlKey: true });
+    expect(evt.defaultPrevented).toBe(true);
+    expect(cmp.log).toEqual(['primary', 'submit']);
+    // held down: swallowed, not repeated
+    key(q('.text'), { key: 'Enter', ctrlKey: true, repeat: true });
+    expect(cmp.log).toHaveLength(2);
+    // a dialog that handles Mod+Enter itself comes first – no second click
+    q('.area').addEventListener('keydown', (e) => e.preventDefault());
+    key(q('.area'), { key: 'Enter', ctrlKey: true });
+    expect(cmp.log).toHaveLength(2);
+    // disabled (a proposal is locked right after it appeared): nothing
+    cmp.disabled.set(true);
+    fixture.detectChanges();
+    key(q('.text'), { key: 'Enter', ctrlKey: true });
+    expect(cmp.log).toHaveLength(2);
+    expect(parseDialogKey('confirm')).toEqual({ role: 'confirm', letter: null });
+    expect(displayKeysFor({ role: 'confirm', letter: null }, 'linux')).toBe('Ctrl+Enter');
+    expect(q('.primary').getAttribute('aria-keyshortcuts')).toContain('Control+Enter');
+  });
+
+  it('071: Mod+Enter is ⌘+Enter on macOS, and a `confirm` button gets no Alt letter', () => {
+    const mac = setup('macos', 'underline');
+    mac.cmp.primary.set('confirm');
+    mac.cmp.secondary.set(null);
+    mac.fixture.detectChanges();
+    mac.modal.refreshMnemonics();
+    mac.key(mac.q('.text'), { key: 'Enter', ctrlKey: true });
+    expect(mac.cmp.log).toEqual([]);
+    mac.key(mac.q('.text'), { key: 'Enter', metaKey: true });
+    expect(mac.cmp.log).toEqual(['primary', 'submit']);
+    expect(mac.q('.primary').getAttribute('data-mnemonic')).toBeNull();
+    mac.key(mac.q('.text'), { key: 'o', code: 'KeyO', altKey: true });
+    expect(mac.cmp.log).toHaveLength(2);
+  });
+
   it('Mod+letter clicks a secondary, Mod+Shift+letter a destructive one (Ctrl / ⌘)', () => {
     const linux = setup('linux');
     linux.key(linux.q('.text'), { key: 'b', code: 'KeyB', ctrlKey: true });

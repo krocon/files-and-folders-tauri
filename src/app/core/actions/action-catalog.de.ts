@@ -137,6 +137,8 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_FILE_ACTIONS_DLG: 'Doppelklick-Aktionen…',
   OPEN_IMPORT_OLD_CONFIG_DLG: 'Aus Files and Folders (alt) importieren…',
   OPEN_TASK_DLG: 'Tasks…',
+  MCP_SHOW_LOG: 'MCP: Verbindungen und Protokoll…',
+  MCP_DISCONNECT_ALL: 'MCP: alle Clients trennen',
   OPEN_ABOUT_DLG: 'Über…',
   CHECK_FOR_UPDATES: 'Nach Updates suchen…',
   QUIT_APP: 'Beenden',

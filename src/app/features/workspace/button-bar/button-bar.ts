@@ -20,6 +20,8 @@ import { ContextMenu, MenuCloseReason } from '../context-menu';
 import { TEXTS } from '../texts';
 import { modifierSet } from './button-config';
 import { ButtonConfigStore } from '../../config/button-config.store';
+import { McpStatusService } from '../../../core/mcp/mcp-status.service';
+import { MCP_TEXTS } from '../../mcp/mcp-texts';
 
 interface ToolButton {
   readonly id: ActionId;
@@ -55,6 +57,20 @@ interface ToolButton {
       }
     </div>
     <div class="tools" role="toolbar" [attr.aria-label]="t.tools">
+      @if (mcpShown(); as m) {
+        <!-- design 071, rule 3: visible as long as an MCP client is connected -->
+        <button
+          type="button"
+          class="fbtn attention mcp"
+          data-testid="mcp-indicator"
+          [attr.title]="m.title"
+          [attr.aria-label]="m.title"
+          (click)="run('MCP_SHOW_LOG', true)"
+        >
+          <i class="fa fa-exchange" aria-hidden="true"></i>
+          <span class="mcp-name">{{ m.label }}</span>
+        </button>
+      }
       <button
         type="button"
         class="fbtn start-toggle"
@@ -135,6 +151,20 @@ export class ButtonBar {
   private readonly jobs = inject(JobsStore);
   private readonly config = inject(ButtonConfigStore);
   protected readonly menuOpen = signal(false);
+  private readonly mcp = inject(McpStatusService);
+  /** The connected MCP clients (design 071): one name, or how many. */
+  protected readonly mcpShown = computed(() => {
+    const clients = this.mcp.clients();
+    if (clients.length === 0) {
+      return null;
+    }
+    const names = clients.map((c) => c.name);
+    return {
+      label:
+        names.length === 1 ? MCP_TEXTS.indicator(names[0]) : MCP_TEXTS.indicatorMany(names.length),
+      title: MCP_TEXTS.indicatorTitle(names.join(', ')),
+    };
+  });
 
   constructor() {
     // mr OPEN_MENU: the Actions menu by keyboard (018 J7)

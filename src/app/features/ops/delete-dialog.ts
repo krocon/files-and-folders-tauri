@@ -13,6 +13,9 @@ import { OpsStore } from './ops.store';
 import { liveCount } from './live-count';
 import { formatSize } from '../../shared/format';
 import { DUP_TEXTS } from '../duplicates/duplicates-texts';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { ProposalNote } from '../mcp/proposal-note';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 
 const SHOWN = 5;
 
@@ -23,10 +26,14 @@ const SHOWN = 5;
  * permanently" as a second, red button: never the default, and while it is
  * hovered or focused the message says that it cannot be undone. The size of
  * the entries is counted live; the buttons never wait for it.
+ *
+ * A proposal of an MCP client (design 071, rule 4): every entry is listed with its
+ * path, the focus starts on Cancel, Enter never deletes (`Mod+Enter` or a click), and
+ * the buttons are locked for a moment after the dialog appeared.
  */
 @Component({
   selector: 'app-delete-dialog',
-  imports: [Modal, DialogKey],
+  imports: [Modal, DialogKey, ProposalNote],
   template: `
     @if (req(); as r) {
       <app-modal
@@ -37,6 +44,9 @@ const SHOWN = 5;
         (closed)="ops.close()"
       >
         <div class="form">
+          @if (r.proposedBy; as client) {
+            <app-proposal-note [client]="client" />
+          }
           <p id="fnf-delete-message" class="message" [class.danger-text]="showsPermanent()">
             {{
               showsPermanent()
@@ -70,9 +80,18 @@ const SHOWN = 5;
               }
             </p>
           }
-          <ul class="names">
+          @if (r.proposedBy) {
+            <p class="muted" id="fnf-delete-all">{{ mcp.allEntries(r.entries.length) }}</p>
+          }
+          <ul
+            class="names"
+            [class.all]="!!r.proposedBy"
+            [attr.tabindex]="r.proposedBy ? 0 : null"
+            [attr.aria-labelledby]="r.proposedBy ? 'fnf-delete-all' : null"
+            data-testid="delete-names"
+          >
             @for (e of shown(); track e.path) {
-              <li class="path">{{ e.name }}</li>
+              <li class="path">{{ r.proposedBy ? e.path : e.name }}</li>
             }
             @if (r.entries.length > shown().length) {
               <li class="muted">{{ t.moreEntries(r.entries.length - shown().length) }}</li>
@@ -130,7 +149,7 @@ const SHOWN = 5;
             @if (!permanent()) {
               <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
               <div class="help" [style.visibility]="armed() ? 'hidden' : null">
-                {{ t.trashHint(r.entries.length) }}
+                {{ r.proposedBy ? mcp.proposalKeys : t.trashHint(r.entries.length) }}
               </div>
               <div class="spacer"></div>
             }
@@ -149,7 +168,7 @@ const SHOWN = 5;
                 class="btn danger"
                 data-testid="delete-permanent"
                 appDialogKey="destructive:D"
-                [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
+                [disabled]="busy() || locked() || (r.dangers.length > 0 && !allowDangerous())"
                 (mouseenter)="armed.set(true)"
                 (mouseleave)="armed.set(false)"
                 (focus)="armed.set(true)"
@@ -167,7 +186,7 @@ const SHOWN = 5;
               [attr.data-autofocus]="cancelFirst() ? null : ''"
               data-testid="delete-confirm"
               [appDialogKey]="confirmKey()"
-              [disabled]="busy() || (r.dangers.length > 0 && !allowDangerous())"
+              [disabled]="busy() || locked() || (r.dangers.length > 0 && !allowDangerous())"
               (click)="confirm()"
             >
               {{ permanent() ? t.deletePermanent : t.toTrash }}
@@ -197,6 +216,7 @@ export class DeleteDialog {
   protected readonly cancelFirst = computed(
     () =>
       this.permanent() ||
+      !!this.req()?.proposedBy ||
       (this.req()?.dangers.length ?? 0) > 0 ||
       (this.req()?.wholeGroups ?? 0) > 0,
   );
@@ -205,8 +225,18 @@ export class DeleteDialog {
    * then the button needs Mod+Shift+D (permanent) or Mod+Shift+T (trash, dangerous path).
    */
   protected readonly confirmKey = computed<DialogKeySpec>(() =>
-    this.permanent() ? 'destructive:D' : this.cancelFirst() ? 'destructive:T' : 'primary',
+    this.permanent()
+      ? 'destructive:D'
+      : this.req()?.proposedBy
+        ? 'confirm' // a proposal (design 071): Mod+Enter or a click, never Enter
+        : this.cancelFirst()
+          ? 'destructive:T'
+          : 'primary',
   );
+  protected readonly mcp = MCP_TEXTS;
+  private readonly proposals = inject(ProposalService);
+  /** A proposal's buttons are locked for a moment after the dialog appeared. */
+  protected readonly locked = computed(() => this.proposals.locked(this.req()?.proposedBy));
   protected readonly dup = DUP_TEXTS;
   protected readonly usage = USAGE_TEXTS;
   /**
@@ -224,7 +254,11 @@ export class DeleteDialog {
       ? this.t.filesAndSize(c.size.files, formatSize(c.size.bytes))
       : '';
   });
-  protected readonly shown = computed(() => this.req()?.entries.slice(0, SHOWN) ?? []);
+  /** The first few names – every entry for a proposal (the user must see what would go). */
+  protected readonly shown = computed(() => {
+    const req = this.req();
+    return req?.proposedBy ? req.entries : (req?.entries.slice(0, SHOWN) ?? []);
+  });
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal<FsError | null>(null);
@@ -236,7 +270,12 @@ export class DeleteDialog {
   /** `mode` overrides the request's mode (the trash dialog's "Delete permanently"). */
   protected async confirm(mode?: DeleteMode): Promise<void> {
     const req = this.req();
-    if (!req || this.busy() || (req.dangers.length > 0 && !this.allowDangerous())) {
+    if (
+      !req ||
+      this.busy() ||
+      this.locked() ||
+      (req.dangers.length > 0 && !this.allowDangerous())
+    ) {
       return;
     }
     this.busy.set(true);
