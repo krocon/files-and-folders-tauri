@@ -1,6 +1,6 @@
 # Design 071: MCP-Schnittstelle
 
-> **Status:** umgesetzt (Stufen 0–2, macOS/Linux; Sicherheits-Review steht aus) · **Datum:** 2026-11-25 · **Auftrag:** `071-mcp-schnittstelle.md`
+> **Status:** umgesetzt (Stufen 0–2, macOS/Linux; Sicherheits-Review eingearbeitet, s. „Review“) · **Datum:** 2026-11-25 · **Auftrag:** `071-mcp-schnittstelle.md`
 > Ohne Haltepunkt nach Phase 1 (Anordnung von Marc für diesen Lauf); das Sicherheits-Review (Phase 6) macht ein
 > separater Agent. Offenes steht unter „Offen“, der Stand unter „Fortschritt“.
 
@@ -12,7 +12,7 @@
 | **E2** | App läuft nicht / MCP aus → die Brücke antwortet selbst mit `mcp_disabled` und klarem Text. Die App wird **nie** gestartet. |
 | **E3** | **Eigenes, schmales JSON-RPC** (nur Tools) statt `rmcp` – keine neue Abhängigkeit. |
 | **E4** | Rückfrage im Fenster je Verbindung: **einmal / immer / ablehnen**; „immer“ = Name in `mcp.clients`. **Kein Token** (schützt nicht gegen Prozesse desselben Nutzers; gegen andere Nutzer schützen Socket-Rechte + Peer-UID). |
-| **E5** | `read_text` nur mit `mcp.allowContent` (Default aus), höchstens 256 KiB (Default 64 KiB), nur Text laut `preview/detect.rs`, nur echte lokale Dateien (kein Archiv, kein Server), nie aus Geheimnis-Ordnern. Dasselbe gilt für `search.content`. |
+| **E5** | `read_text` nur mit `mcp.allowContent` (Default aus), höchstens 256 KiB (Default 64 KiB), nur Text laut `preview/detect.rs`, nur echte lokale Dateien (kein Archiv, kein Server). **Eine** Pfadregel für alles, was Inhalte ansieht (`Scope::content_allowed`: `read_text`, `checksum`, Inhaltssuche, Dubletten, Inhaltsvergleich): nie Orte mit Zugangsdaten, und der private Teil des Home-Ordners (Punkt-Einträge direkt im Home, `~/Library`) nur, wenn der Nutzer dort ausdrücklich eine Wurzel eingetragen hat (Review #1). |
 | **E6** | `mcp.roots`, Default **leer = nur der Home-Ordner**. Geprüft wird der **physische** Ort (kanonisch). Die Ordner der App (Konfiguration, Daten, Cache) sind immer ausgenommen. Archive nur, wenn sie **in einem Tab offen** sind; Server nur bei **bestehender** Verbindung und nur `list_directory`. |
 | **E7** | Multi-Rename bekommt den **Modus „Liste“**: feste Paare statt Regeln, gleiche Vorschau-Table, gleiches `plan_rename`, gleicher Job `rename`, gleiches Undo. |
 | **E8** | Lange Tools sind **Jobs**; das Tool wartet bis **30 s**, danach `status: "running"` + `jobId` (+ bisherige Treffer); `get_job` liefert später das Ergebnis. `notifications/cancelled` bricht den Job ab. |
@@ -88,10 +88,22 @@ sichtbare Zeichen gekürzt.
 
 `Scope::check(path)`: `validate_job_path` (absolut, kein NUL, **kein `..`**) → `remote://` abgelehnt (eigener Weg) →
 tiefster vorhandener Vorfahre **kanonisch** + Rest muss unter einer kanonischen Wurzel liegen und in keinem
-App-Ordner. Ein Symlink in der Wurzel, der hinausführt, ist damit draußen. Treffer von Suche, Palette, Dubletten und
-Vergleich werden zusätzlich lexikalisch gefiltert (App-Ordner). Für Inhalte (`read_text`, `search.content`) sind
-außerdem `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.kube`, `~/.config/gcloud`, `~/Library/Keychains`, `.netrc`, `.env*`
-gesperrt.
+App-Ordner. Ein Symlink in der Wurzel, der hinausführt, ist damit draußen. Was die Engines finden, wird vor der Antwort **mit derselben
+Prüfung** gefiltert: Treffer von Suche, Palette und Dubletten, Zeilen des Vergleichs, Kinder und größte Dateien der
+Belegung (Review #5 – der erste Entwurf filterte Vergleich und Belegung nicht; die Summen der Belegung zählen die
+App-Ordner weiter mit).
+
+Für Inhalte gilt zusätzlich `Scope::content_allowed` (eine Liste, ein Pfadprädikat – Review #1):
+
+- **immer zu:** `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.kube`, `~/.docker`, `~/.config/gcloud`, `~/.config/gh`,
+  `~/.password-store`, `~/Library/Keychains`, `~/Library/Cookies`, und überall `.netrc`, `.npmrc`, `.pypirc`,
+  `.git-credentials`, `.env`, `.env.*`;
+- **per Default zu:** jeder Punkt-Eintrag direkt im Home (`~/.zsh_history`, `~/.claude.json`, `~/.config/…`) und
+  `~/Library` – offen nur unterhalb einer Wurzel, die der Nutzer **dort** in `mcp.roots` eingetragen hat (das Home
+  selbst als Wurzel öffnet nichts davon).
+
+Eine Inhaltssuche darf an so einem Ort nicht starten (Wurzel wird geprüft) und meldet von dort keine Treffer – auch
+nicht in den Ergebnis-Tab.
 
 ## Verträge
 
@@ -189,9 +201,10 @@ Der Löschdialog zeigt bei einem Vorschlag **alle** Einträge (scrollbar) statt 
 | Webseite im Browser | `fetch`/WebSocket auf localhost, DNS-Rebinding | es gibt keinen Port |
 | Entfernter Rechner | Netz | Unix-Socket, kein Listen auf einer Schnittstelle |
 | Bösartiger Dateiname / Dateiinhalt (Prompt Injection) | bringt den Agenten dazu, zu löschen/verschieben/exfiltrieren | Stufe 3 existiert nicht (keine Shell, kein Öffnen, kein Verbinden); Ändern nur als Vorschlag mit vollständiger Liste; kein Enter; Inhalte nur mit `mcp.allowContent`; Tool-Beschreibungen kennzeichnen Namen/Inhalte als Daten; UI escaped wie überall |
-| Kompromittierter Agent | ruft beliebige Tools mit beliebigen Argumenten | Positivliste (`tools.rs`), jedes Argument geprüft (`Scope`, `validate_job_path`), Jobs nur lesende Arten (`jobs::READ_KINDS`), `JobSpec::Shell` ist nicht konstruierbar (Test), Grenzen und Rate-Limit, `busy` statt Dialog-Stapel |
-| Agent drängt zum Bestätigen | öffnet Dialoge im Sekundentakt, hofft auf Enter/Klick im falschen Moment | ein Vorschlag zugleich, `busy` bei offenem Dialog, Fokus auf Abbrechen, Enter bestätigt nie, 800 ms Sperre des Knopfs |
-| Agent will Geheimnisse | liest `connections.json`, Schlüsselbund, `~/.ssh` | App-Ordner außerhalb des Bereichs; Geheimnis-Ordner für Inhalte gesperrt; kein Tool für Profile, Passwörter, Einstellungen; Serverpfade nur bei bestehender Verbindung, nie `connect` |
+| Kompromittierter Agent | ruft beliebige Tools mit beliebigen Argumenten, gibt sich per zweitem `initialize` einen anderen Namen | Positivliste (`tools.rs`), jedes Argument geprüft (`Scope`, `validate_job_path`), gezeigte Texte ohne Steuer-/Format-Zeichen, `initialize` einmal je Verbindung, Jobs gehören der Verbindung, Jobs nur lesende Arten (`jobs::READ_KINDS`), `JobSpec::Shell` ist nicht konstruierbar (Test), Grenzen und Rate-Limit, `busy` statt Dialog-Stapel |
+| Agent drängt zum Bestätigen | öffnet Dialoge im Sekundentakt, hofft auf Enter/Klick im falschen Moment | ein Vorschlag zugleich, `busy` bei offenem Dialog, Fokus auf Abbrechen, Enter bestätigt nie, Knopf erst nach 800 ms **ohne Tastendruck** scharf, „Endgültig löschen“ ohne Kürzel; Kopplungsfrage nur per Klick, wird nach jedem Nein seltener und hört nach 5 auf |
+| Agent richtet den nächsten Tastendruck des Nutzers aus (Stufe 1) | `mark`/`set_cursor`/`navigate`/`show_results` kurz bevor der Nutzer F8, F5, Enter drückt | kein Fokuswechsel durch MCP; 1,5 s Sperre für dateiändernde Aktionen, Öffnen und Shell-Enter; Kopieren/Verschieben/Löschen über eine vom Client gesetzte Auswahl oder ein gesetztes Ziel fragen wie ein Vorschlag; sichtbarer Hinweis (`McpGuardService`) |
+| Agent will Geheimnisse | liest `connections.json`, Schlüsselbund, `~/.ssh`, Verläufe, Konfigurationen anderer Programme; nutzt Suche/Vergleich/Hash als Orakel | App-Ordner außerhalb des Bereichs und aus allen Ergebnissen gefiltert; **eine** Inhaltsregel für Lesen, Hashen, Suchen, Vergleichen (Zugangsdaten immer zu, privater Teil des Home per Default zu); ein Einstellungs-Import ändert `mcp.*` nie; kein Tool für Profile, Passwörter, Einstellungen; Serverpfade nur bei bestehender Verbindung, nie `connect` |
 | Agent will aus dem Bereich | Symlink, `..`, Archiv-Pfad, `remote://` | kanonische Prüfung, `..` abgelehnt, Archive nur wenn in einem Tab offen, `remote://` nur `list_directory` bei `Connected` |
 | Agent überlastet die App | Riesen-Suche, viele Aufrufe | Jobs laufen auf eigenen Threads, ≤ 2 je Verbindung, Listen begrenzt, Rate-Limit, der Nutzer sieht und stoppt sie in „Tasks“ |
 
@@ -235,7 +248,7 @@ Der Löschdialog zeigt bei einem Vorschlag **alle** Einträge (scrollbar) statt 
   Funktion des Inhalts. `mcp.allowContent` braucht es dafür nicht.
 - **Vorschläge vergleichen immer:** Verschieben und Löschen bekommen `expected` (Größe/Zeit je Eintrag aus dem Moment
   des Vorschlags) – was sich bis zur Bestätigung ändert, lässt der Job stehen (wie 030 E5 für ungeprüfte Listings).
-- **Kopplungsdialog:** kein Knopf nimmt Enter; „Immer“/„Einmal“ über `Mod+L`/`Mod+O` oder Klick.
+- **Kopplungsdialog:** kein Knopf nimmt Enter; „Immer“/„Einmal“ nur per Klick, nach der Sperre (Review #3).
 - **Anzeige** in der Button-Leiste (Werkzeug-Gruppe), nicht in der Statuszeile eines Panels – sie ist fensterweit.
 
 ## Geprüft
@@ -248,6 +261,37 @@ Der Löschdialog zeigt bei einem Vorschlag **alle** Einträge (scrollbar) statt 
 | Echte Debug-App (eigenes HOME, eigener Socket) über die Brücke: Tabs im Spiegel, Listing, `navigate`/`mark`/`set_cursor`/`open_tab` wirken im echten Panel, Suche + Ergebnis-Tab, Prüfsumme, `propose_delete` öffnet den echten Dialog (`busy` für alles andere), Abbruch schließt ihn, nichts gelöscht, `run_shell` unbekannt | `node scripts/mcp-e2e.mjs` – 26 Prüfungen grün |
 | Aussehen light/dark: Kopplung, Protokoll, Anzeige, Einstellungen, Lösch- und Umbenenn-Vorschlag | `pnpm screenshots --scene mcp-pairing,mcp-log,mcp-indicator,mcp-settings,mcp-propose-delete,mcp-propose-rename` |
 
+## Review (Sicherheit, separater Agent, 25.11.2026)
+
+Kein kritischer Befund; zehn Befunde, alle angenommen und behoben. Tests: Rust `mcp/tests.rs` (`review_*`),
+`mcp/pairing.rs`, `mcp/jobs.rs`, `mcp/log.rs`, `mcp/scope.rs`, `settings.rs`; Vitest `features/mcp/*.spec.ts`,
+`core/mcp/*.spec.ts`, `features/shell/shell.spec.ts`.
+
+| # | Befund | Behebung | Test |
+| --- | --- | --- | --- |
+| 1 | Inhaltssuche umging den Geheimnisschutz (Ausschluss nur als Namens-Glob, nicht für die Wurzel; `.git-credentials`, `.config/gh` fehlten); `~/.claude.json`, `~/.zsh_history`, `~/Library/…` lesbar | eine Pfadregel `Scope::content_allowed` für alle Inhalts-Wege; Wurzeln einer Inhaltssuche geprüft, Treffer (auch für `showAsTab`) gefiltert; privater Teil des Home per Default zu, `McpConfig.explicit_roots` | `review_1_a_content_search_never_reaches_credentials`, `review_1_an_explicit_root_opens_a_private_place_but_never_credentials`, `scope::…the_private_part_of_home_is_closed_for_contents_unless_named_as_a_root` |
+| 2 | Stufe 1 ändert, worauf der nächste Tastendruck wirkt (Markierung/Cursor/Ziel/Fokus) | (a) `show_results`/`open_tab` nehmen nie den Fokus, `activate` Default aus, `show_results` Default andere Seite; (b) 1,5 s Sperre nach jeder Ansichtsänderung für Aktionen der Kategorie „files“, Tools/Starter, Datei öffnen und Shell-Enter (`McpGuardService.locked`); (c) solange Markierung (bis sie sich ändert) bzw. Cursor/Ordner (bis der Nutzer Cursor bewegt oder ins Panel klickt) vom Client stammen, sind Kopieren/Verschieben/Löschen wie ein Vorschlag geschützt (`changedBy`: Hinweis, volle Liste, kein Enter, Sperre, `confirmTrash=false` ignoriert); (d) Anzeige „MCP: ‹Client› hat die Ansicht geändert“ | `mcp.store.spec.ts` › „review #2 …“ (7), `mcp-guard.service.spec.ts`, `proposal-dialogs.spec.ts` › „review #2 …“, `shell.spec.ts` › „071 review #2 …“ |
+| 3 | Kopplungsfrage ohne Sperrzeit, `Mod+L` kollidiert, beliebig oft auslösbar | „Immer“/„Einmal“ nur per Klick, gleiche Sperre wie Vorschläge; Pause verdoppelt sich nach jedem Nein (global, nicht je Name), nach 5 bis zum Aus-/Einschalten keine Frage mehr | `pairing::denials_slow_the_question_down_and_then_stop_it`, `review_3_denials_stop_the_pairing_question`, `proposal-dialogs.spec.ts` › „review #3 …“ |
+| 4 | `Mod+Enter`/`Mod+Shift+D` sind Tasten des Panels; ein Akkord löschte endgültig | im geschützten Dialog hat „Endgültig löschen“ kein Kürzel; die Sperre zählt ab dem **letzten Tastendruck** (800 ms Ruhe), nach jeder Taste neu | `proposal.service.spec.ts` › „review #4 …“, `proposal-dialogs.spec.ts` › „review #4 …“ |
+| 5 | `compare_folders`/`disk_usage` nannten Pfade im App-Ordner | Zeilen, Kinder und größte Dateien mit `Scope::allows` gefiltert; Inhaltsvergleich und Dubletten zusätzlich mit der Inhaltsregel | `review_5_engines_do_not_tell_about_the_folders_of_the_app` |
+| 6 | erneutes `initialize` änderte den Namen; Job-Besitz am Namen | `initialize` einmal je Verbindung; Besitz an der Verbindungs-Id | `review_6_a_second_initialize_is_refused_and_jobs_belong_to_the_connection` |
+| 7 | Bidi-/Format-Zeichen in gezeigten Texten | `pairing::is_plain` (Cc, Cf, Zl/Zp, Füllzeichen, Variationsselektoren): `newName`, `names`, `title` abgelehnt; Client-Name gefiltert, Anführungszeichen entfernt | `review_7_shown_texts_carry_no_format_characters`, `pairing::names_lose_every_hidden_character_and_quotes` |
+| 8 | ein `claim`-Platz für alle Threads, Zählen/Starten nicht atomar | Claim je Thread, Zählen + Starten unter einem Lock (`JobTap::start(…, max_running)`) | `jobs::concurrent_starts_keep_their_jobs_apart_and_the_limit` |
+| 9 | Status-Ereignis je Aufruf, `pair_lock` vor der Listenprüfung, kein Leerlauf-Limit, Protokoll flutbar | Status höchstens alle 500 ms; „immer“ erlaubte Clients warten nie hinter einer Frage; ungekoppelte Verbindungen nach 5 min getrennt; Ablehnungen eines Clients in einer Protokollzeile gezählt | `review_9_idle_unpaired_connections_go_and_calls_do_not_flood_the_window`, `log::repeated_refusals_are_counted_in_one_line` |
+| 10 | Einstellungs-Import konnte `mcp.*` setzen (bestätigt) | Import lässt `mcp.*` aus und behält die eigenen Werte | `settings::import_never_touches_the_mcp_settings` |
+
+Rot zuerst gelaufen sind die Tests zu 1, 5, 6 und 7 (über den Test-Client gegen den alten Stand); die Tests zu 2, 3, 4,
+8, 9, 10 brauchen neue Schnittstellen und entstanden mit der Behebung.
+
+**Bewusst so belassen / Restrisiko:**
+
+- (2c) deckt Kopieren, Verschieben und Löschen (`OpsStore`). Die anderen Dialoge (Multi-Rename, Packen, Attribute,
+  Gruppieren …) haben nur die Sperre (2b) – sie zeigen ihre vollständige Vorschau ohnehin vor der Bestätigung.
+- Namen mit Emoji-Sequenzen (ZWJ, Variationsselektor) lehnt `propose_rename`/`propose_mkdir` ab (Folge von #7).
+- `disk_usage`: die Summen der übergeordneten Ordner zählen die App-Ordner mit (Größe, keine Namen).
+- Eine Inhaltssuche vom Home aus liest im Prozess auch private Dateien (der Job kennt keinen Pfad-Ausschluss) –
+  gemeldet wird davon nichts; `truncated` kann dadurch früher wahr werden.
+
 ## Fortschritt
 
 - [x] Phase 1 Design (dieses Dokument)
@@ -255,4 +299,4 @@ Der Löschdialog zeigt bei einem Vorschlag **alle** Einträge (scrollbar) statt 
 - [x] Phase 3 Frontend
 - [x] Phase 4 E2E im Prozess (echter Socket, Test-Client) und gegen die echte Debug-App in eigenem HOME (`scripts/mcp-e2e.mjs`)
 - [x] Phase 5 Doku
-- [x] Phase 6 `pnpm check` + Debug-Build; Sicherheits-Review: separater Agent (steht aus)
+- [x] Phase 6 `pnpm check` + Debug-Build; Sicherheits-Review durch separaten Agenten, zehn Befunde behoben (Abschnitt „Review“)

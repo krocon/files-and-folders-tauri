@@ -20,8 +20,8 @@ MCP ist **aus**, bis du es einschaltest: **Einstellungen → MCP (KI-Agenten)**.
 | Einstellung | Default | Bedeutung |
 | --- | --- | --- |
 | `mcp.enabled` – KI-Agenten mit dieser App arbeiten lassen | aus | Aus: nichts lauscht, der Socket existiert nicht. An: lokale Clients können sich verbinden. |
-| `mcp.allowContent` – Dateiinhalte erlauben | aus | `read_text` und die Inhaltssuche. Aus: nur Namen, Größen, Zeiten. |
-| `mcp.roots` – Ordner, die Agenten sehen dürfen | leer = Home-Ordner | Ein Ordner je Zeile. Alles außerhalb wird abgelehnt (`out_of_scope`), auch über einen Symlink. |
+| `mcp.allowContent` – Dateiinhalte erlauben | aus | `read_text` und die Inhaltssuche. Aus: nur Namen, Größen, Zeiten. Auch an: nie Dateien mit Zugangsdaten, und nichts aus dem privaten Teil des Home-Ordners (s. Sicherheitsmodell 7). |
+| `mcp.roots` – Ordner, die Agenten sehen dürfen | leer = Home-Ordner | Ein Ordner je Zeile. Alles außerhalb wird abgelehnt (`out_of_scope`), auch über einen Symlink. Ein hier eingetragener Ordner im privaten Teil des Home (`~/.config/meinprojekt`) ist damit auch für Inhalte offen. |
 | `mcp.clients` – Clients, die immer erlaubt sind | leer | Namen, bei denen du „Immer erlauben“ gewählt hast. Zeile löschen = widerrufen. |
 
 Die App muss laufen. Die Brücke startet sie nie.
@@ -55,7 +55,10 @@ claude mcp add files-and-folders -- "/Applications/Files and Folders.app/Content
 }
 ```
 
-Beim ersten Tool-Aufruf fragt die App im Fenster: **Ablehnen / Immer erlauben / Einmal erlauben**. Solange ein Client
+Beim ersten Tool-Aufruf fragt die App im Fenster: **Ablehnen / Immer erlauben / Einmal erlauben**. Erlauben geht nur
+per Klick (die Knöpfe sind einen Moment gesperrt), Esc lehnt ab. Nach jedem Nein wartet die nächste Frage länger
+(30 s, 1 min, 2 min, 4 min – egal unter welchem Namen); nach fünf wird nicht mehr gefragt, bis du MCP aus- und wieder
+einschaltest. Eine Verbindung, die nie erlaubt wurde, wird nach fünf Minuten getrennt. Solange ein Client
 verbunden ist, steht er in der Button-Leiste (`⇄ MCP: Claude Code`); ein Klick (oder die Aktion „MCP: Verbindungen und
 Protokoll…“) zeigt die Verbindungen mit „Trennen“ und das Protokoll der Aufrufe.
 
@@ -89,9 +92,19 @@ Lange Tools laufen als normale Jobs (sichtbar unter „Tasks“). Ein Tool warte
 
 ### Stufe 1 – Ansicht steuern (sichtbar, ändert keine Datei)
 
-`navigate`, `open_tab`, `set_cursor`, `mark` (`replace`/`add`/`remove`, nur Einträge des gezeigten Ordners),
-`quick_view` (Eintrag im Ordner der aktiven Seite), `show_results` (Ergebnis-Tab mit genau diesen Pfaden),
-`cancel_job` (nur eigene Jobs).
+`navigate`, `open_tab` (`activate` Default aus), `set_cursor`, `mark` (`replace`/`add`/`remove`, nur Einträge des
+gezeigten Ordners), `quick_view` (Eintrag im Ordner der aktiven Seite), `show_results` (Ergebnis-Tab mit genau diesen
+Pfaden, ohne `side` auf der anderen Seite), `cancel_job` (nur Jobs dieser Verbindung).
+
+Diese Tools ändern keine Datei – aber sie ändern, worauf deine nächste Taste wirkt. Deshalb:
+
+- MCP nimmt nie den Tastaturfokus (kein Seitenwechsel durch `show_results`/`open_tab`).
+- Nach jeder Ansichtsänderung durch einen Client tun dateiändernde Aktionen (F5, F6, F8 …), Tools, Enter auf einer
+  Datei und Enter in der Shell-Leiste **1,5 s lang nichts**.
+- Solange die Markierung noch die des Clients ist (bis du sie änderst) bzw. Cursor oder Ordner (bis du den Cursor
+  bewegst oder ins Panel klickst), zeigt die Button-Leiste „MCP: ‹Client› hat die Ansicht geändert“, und Kopieren,
+  Verschieben und Löschen fragen **wie bei einem Vorschlag**: Hinweis, vollständige Liste, kein Enter – auch wenn
+  „Papierkorb ohne Rückfrage“ eingestellt ist.
 
 ### Stufe 2 – vorschlagen (du bestätigst)
 
@@ -103,7 +116,9 @@ Jedes dieser Tools öffnet den **normalen Dialog**, vorbelegt, mit dem Hinweis �
 - zeigt **alle** Einträge (scrollbar) mit Pfad, nicht nur eine Zahl,
 - startet mit dem Fokus auf „Abbrechen“,
 - bestätigt **nie** mit Enter – nur per Klick oder Strg/⌘+Enter,
-- ist die ersten 0,8 s nach dem Erscheinen gesperrt,
+- ist gesperrt, bis 0,8 s lang **keine Taste** gedrückt wurde (eine Taste, die du gerade ohnehin drücken wolltest,
+  startet die Wartezeit neu statt zu bestätigen),
+- hat für „Endgültig löschen“ kein Kürzel (nur Klick),
 - löscht in den Papierkorb (auch wenn „endgültig löschen“ in den Einstellungen der Standard ist).
 
 Das Tool antwortet, wenn der Dialog zu ist: `{ "outcome": "confirmed", "jobId": "…" }` oder `{ "outcome":
@@ -131,11 +146,11 @@ Ein Tool-Fehler kommt als `isError: true` mit `{ "error": { "code", "message" } 
 | `timeout` | der Vorschlag blieb 10 Minuten unbeantwortet |
 | `cancelled` | der Client hat den Aufruf abgebrochen |
 | `out_of_scope` | Pfad außerhalb von `mcp.roots`, im Ordner der App, Archiv nicht in einem Tab offen |
-| `content_not_allowed` | `mcp.allowContent` ist aus, keine Textdatei, oder eine Datei mit Zugangsdaten |
+| `content_not_allowed` | `mcp.allowContent` ist aus, keine Textdatei, eine Datei mit Zugangsdaten oder im privaten Teil des Home-Ordners |
 | `not_connected` | Serverpfad ohne bestehende Verbindung – die App verbindet nie für einen Agenten |
 | `limit_exceeded`, `rate_limited` | Grenze erreicht (s. u.) |
 | `invalid_arguments`, `not_available`, `not_found` | Argumente passen nicht zum Schema / Fenster nicht bereit / kein Job dieses Clients |
-| `invalid_path`, `not_found`, `permission_denied`, `not_a_directory`, `invalid_name`, `invalid_pattern` … | wie bei den Commands der App (`FsError`-Codes) |
+| `invalid_path`, `not_found`, `permission_denied`, `not_a_directory`, `invalid_name`, `invalid_pattern` … | wie bei den Commands der App (`FsError`-Codes). `invalid_name` auch für vorgeschlagene Namen mit Steuer- oder unsichtbaren Zeichen (Bidi, Zero-Width, Variationsselektoren) |
 
 Meldungen des Betriebssystems werden nicht durchgereicht (sie können Pfade nennen), nur der Code.
 
@@ -170,9 +185,17 @@ Meldungen des Betriebssystems werden nicht durchgereicht (sie können Pfade nenn
    werden Namen nie als HTML gesetzt.
 6. **Gleiche Prüfungen wie die UI.** Jeder Pfad: absolut, kein `..`, kein NUL, physisch (Symlinks aufgelöst) in einer
    erlaubten Wurzel.
-7. **Geheimnisse bleiben drin.** Die Ordner der App (Einstellungen, `connections.json`, Caches) sind nie sichtbar;
-   `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.kube`, `.env`, `.netrc` u. ä. werden nie gelesen oder gehasht; kein Tool für
-   Passwörter, Profile oder Verbindungen.
+7. **Geheimnisse bleiben drin.** Die Ordner der App (Einstellungen, `connections.json`, Caches) sind nie sichtbar –
+   auch nicht in Suchtreffern, Vergleichszeilen oder der Belegung. Für alles, was **Inhalte** ansieht (`read_text`,
+   `checksum`, Inhaltssuche, Dubletten, Vergleich nach Inhalt), gilt eine Pfadregel:
+   - immer zu: `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.kube`, `~/.docker`, `~/.config/gcloud`, `~/.config/gh`,
+     `~/.password-store`, `~/Library/Keychains`, `~/Library/Cookies`, und überall `.env*`, `.netrc`, `.npmrc`,
+     `.pypirc`, `.git-credentials`;
+   - per Default zu: alle Punkt-Einträge direkt im Home (`~/.zsh_history`, `~/.claude.json`, `~/.config/…`) und
+     `~/Library` – außer du trägst einen Ordner dort ausdrücklich in `mcp.roots` ein.
+
+   Namen, Größen und Zeiten solcher Dateien sind sichtbar (wie in der Dateiliste), ihr Inhalt nicht. Kein Tool für
+   Passwörter, Profile oder Verbindungen. Ein Import von Einstellungen ändert die `mcp.*`-Werte nie.
 8. **Begrenzt.** Siehe „Grenzen“.
 9. **Protokoll ohne Pfade.** Tool, Zeit, Client, Anzahl, Ergebnis – nur im Speicher, weg beim Ausschalten oder
    Beenden.

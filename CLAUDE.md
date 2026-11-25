@@ -170,7 +170,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              erste Regel), FileActionsStore (Root, `handleDoubleClick` aus `file-list.ts`), Dialog,
                              OPEN_FILE_ACTIONS_DLG
   app/core/mcp/, features/mcp/  MCP-Schnittstelle (071): McpApi + DTOs, McpStatusService, ProposalService (welcher Vorschlag
-                             gehört zum offenen Dialog, 0,8 s Sperre); McpStore (Root: Spiegel der Panels nur bei
+                             gehört zum offenen Dialog, Sperre bis 0,8 s ohne Taste), McpGuardService (was ein Client an der Ansicht
+                             geändert hat: 1,5 s Sperre, `changedBy` für Kopieren/Verschieben/Löschen); McpStore (Root: Spiegel der Panels nur bei
                              `mcp.enabled`, Anfragen aus `subscribe_mcp` → Stores/Dialoge, `busy` bei offenem Dialog),
                              mcp-logic.ts (rein), Kopplungs- und Protokolldialog, ProposalNote, MCP_SHOW_LOG/MCP_DISCONNECT_ALL
   app/core/remote/           Server-Verbindungen (034): RemoteApi, DTOs, remote-path.ts (Präfix-Test, Anzeige),
@@ -385,7 +386,10 @@ prompts/                     Feature-Prompts (s. o.)
   für einen Client nur lesende Jobs (`mcp::jobs::READ_KINDS`, über `JobManager::start`) – alles, was ändert, startet das
   Fenster nach der Bestätigung im **normalen** Dialog (`ProposalService`, Rolle `confirm` = nur `Mod+Enter`). Nichts
   lauscht ohne `mcp.enabled`; Rust liest `mcp.*` selbst aus `settings.json`; nie für einen Client verbinden oder ein
-  Passwort erfragen; Protokoll nur im Speicher, ohne Pfade. Details: `docs/mcp.md`.
+  Passwort erfragen; Protokoll nur im Speicher, ohne Pfade. Was Inhalte ansieht (lesen, hashen, suchen, vergleichen),
+  fragt `Scope::content_allowed` – eine Regel, kein zweiter Filter; was eine Engine findet, wird vor der Antwort mit
+  `Scope::allows` gefiltert. Stufe 1 meldet jede Ansichtsänderung dem `McpGuardService` (Sperre, „vom Client geändert“)
+  und nimmt nie den Fokus. Ein Einstellungs-Import ändert `mcp.*` nie. Details: `docs/mcp.md`.
 - **Fremde Archive sind feindlich** (025): Vorabprüfungen fail-closed (was nicht sicher beurteilt wird, wird abgelehnt),
   jede Anzahl/Größe vor der Allokation begrenzen; Passwörter nur im Speicher (`archive::secrets`, `Zeroizing`), nie
   serialisiert, geloggt oder in Events; Entpacktes erbt die Herkunftsmarke des Archivs.
