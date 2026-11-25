@@ -11,7 +11,7 @@ import { RenameApi } from '../../core/rename/rename-api';
 import { SessionApi } from '../../core/session/session-api';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
-import { EMPTY_TREE, FakeFoldersApi } from '../../../testing/fake-folders-api';
+import { cleanScan, EMPTY_TREE, FakeFoldersApi } from '../../../testing/fake-folders-api';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
@@ -315,40 +315,49 @@ describe('group series by season (design 045)', () => {
       folder: '/src',
       roots: ['/src/Show.S01E01-GRP', '/src/Show.S01E02-GRP'],
     });
-    // only real release extras – never the dialog's own list (`*.jpg`, `*.txt`: review 045 #2)
+    // the profile "release leftovers" (design 077 E4): only real release extras – never
+    // the dialog's own list (`*.jpg`, `*.txt`: review 045 #2)
     expect(cl.options()).toEqual({
       emptyDirs: true,
       includeRoots: true,
       junk: [
+        '.DS_Store',
+        'Thumbs.db',
+        'desktop.ini',
         '*.nfo',
         '*.sfv',
         '*.srr',
         '*.md5',
-        '*-sample.*',
-        '*.sample.*',
-        'sample-*',
-        'sample.*',
-        '.DS_Store',
-        'Thumbs.db',
-        'desktop.ini',
+        '*.url',
+        '*-proof.*',
       ],
       patterns: [],
+      largeJunk: ['*-sample.*', '*.sample.*', 'sample-*', 'sample.*'],
+      junkMaxBytes: 1024 * 1024,
+      largeJunkMaxBytes: 300 * 1024 * 1024,
+      junkDirsBesideContent: false,
     });
     expect(cl.mode()).toBe('trash');
     // the dialog names the junk that leaves with a folder (review 045 #2)
-    folders.scan = {
-      ...folders.scan,
-      items: [
-        {
-          path: '/src/Show.S01E01-GRP',
-          kind: 'dir',
-          junk: 7,
-          junkNames: ['a.nfo', 'b.nfo', 'c.nfo', 'd.nfo', 'e.nfo'],
-        },
-      ],
-    };
+    folders.scan = cleanScan([
+      {
+        path: '/src/Show.S01E01-GRP',
+        items: [
+          {
+            path: '/src/Show.S01E01-GRP',
+            kind: 'dir',
+            rel: '',
+            junk: 7,
+            bytes: 70,
+            junkNames: ['a.nfo', 'b.nfo', 'c.nfo', 'd.nfo', 'e.nfo'],
+          },
+        ],
+        over: { verdict: 'residue' },
+      },
+    ]);
     await cl.scanNow();
-    expect(cl.rows()[0].info).toBe('with 7 junk files: a.nfo, b.nfo, c.nfo, d.nfo, e.nfo …');
+    expect(cl.rows()[0]).toMatchObject({ check: '☑', verdict: 'leftover' });
+    expect(cl.details()[0].info).toBe('with 7 extras (70 B): a.nfo, b.nfo, c.nfo, d.nfo, e.nfo …');
     // the prepared form is not kept as the user's last input, and goes on close
     cl.close();
     expect(cl.form().patternsText).toBe('*.mine');

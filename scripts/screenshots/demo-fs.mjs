@@ -260,8 +260,48 @@ export function buildDemoFs(repoRoot) {
       file('poster_unused.webp', 66 * KB, '2026-10-03T17:17:00'),
     ],
     ...treeFromPaths(PROJECT, files, sizeOf),
+    ...leftovers(),
   };
   return { home: HOME, dirs };
+}
+
+export const FILME = '/mnt/nas/Filme';
+
+/**
+ * The four folders of prompt 077 (clean folders): comics that stay and three release
+ * folders that hold nothing but `.nfo` files and samples. Not listed in any parent
+ * folder, so no other scene changes.
+ */
+function leftovers() {
+  const at = '2026-11-25T19:30:00';
+  const comics = 'Lustiges Taschenbuch - Europareise 01-03';
+  const land = 'Mein Land will nicht verschwinden (2025)';
+  const landRel = 'Mein.Land.will.nicht.verschwinden.2025.GERMAN.DOKU.1080p.WEB.H264-M00NBull';
+  const merkel = 'Miss Merkel - Ein Kreuzfahrt Krimi (2025)';
+  const merkelRel = 'Miss.Merkel.Ein.Kreuzfahrt.Krimi.2025.German.1080p.WEB.H264-Oergel';
+  const mob = 'MobLand S02 German DL 1080P WEB H264-WAYNE';
+  const out = {
+    [FILME]: [dir(comics, at), dir(land, at), dir(merkel, at), dir(mob, at)],
+    [`${FILME}/${comics}`]: [
+      file('Lustiges_Taschenbuch_Europareise_001_-_Italien_(2026).cbr', 765215206, at),
+      file('Lustiges_Taschenbuch_Europareise_002_-_Frankreich_(2026).cbr', 785569449, at),
+      file('Lustiges_Taschenbuch_Europareise_003_-_Skandinavien.cbr', 415393679, at),
+    ],
+    [`${FILME}/${land}`]: [dir(landRel, at)],
+    [`${FILME}/${land}/${landRel}`]: [file(`${landRel}.nfo`, 736, at)],
+    [`${FILME}/${merkel}`]: [dir(merkelRel, at)],
+    [`${FILME}/${merkel}/${merkelRel}`]: [file(`${merkelRel}.nfo`, 647, at)],
+    [`${FILME}/${mob}`]: [],
+  };
+  const samples = { '08': 57434089, '09': 78788631, 10: 75799597 };
+  for (const [ep, size] of Object.entries(samples).sort()) {
+    const rel = `MobLand.S02E${ep}.GERMAN.DL.1080P.WEB.H264-WAYNE`;
+    const base = `${FILME}/${mob}/${rel}`;
+    out[`${FILME}/${mob}`].push(dir(rel, at));
+    out[base] = [file(`${rel.toLowerCase()}.nfo`, 629, at), dir('Sample', at)];
+    out[`${base}/Sample`] = [file(`${rel.toLowerCase()}-sample.mkv`, size, at)];
+  }
+  return out;
 }
 
 /** Contents for the viewer (F3): a few real files of the repository plus invented notes. */

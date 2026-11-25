@@ -68,7 +68,8 @@ test('README pictures (044): known scenes in Norton, one file per feature, every
   }
   const files = cfg.readme.images.map((i) => i.file);
   assert.equal(new Set(files).size, files.length);
-  assert.ok(files.length >= 12 && files.length <= 20, `${files.length} pictures`);
+  // 21: "group files and clean folders" shows two (077)
+  assert.ok(files.length >= 12 && files.length <= 21, `${files.length} pictures`);
   for (const name of ['conflict-dialog', 'flat-view', 'archive-folder', 'remote-panel', 'shell-output', 'similar-images']) {
     assert.ok(cfg.readme.images.some((i) => i.scene === name), `${name} is not used`);
   }

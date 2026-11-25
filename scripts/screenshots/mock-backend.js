@@ -1530,25 +1530,157 @@
     },
     watch_dirs: (a) =>
       (a?.dirs ?? []).map((dir) => ({ dir, mode: 'native', reason: null, modifiedMs: null })),
-    find_empty_dirs: (a) => {
-      const roots = a?.roots ?? [];
-      const below = Object.keys(dirs).filter((d) => roots.some((r) => d.startsWith(`${r}/`)));
-      const items = below
-        .filter((d) => dirs[d].length === 0)
-        .map((path) => ({ path, kind: 'dir' }));
-      return {
-        items,
-        unreadable: [],
-        unreadableMore: 0,
-        truncated: false,
-        cancelled: false,
-        visited: below.length,
-      };
-    },
+    find_empty_dirs: (a) => findEmptyDirs(a?.roots ?? [], a?.options ?? {}),
     create_folders: () => ({ created: [], errors: [] }),
     get_properties: (a) => properties(a?.path),
     read_preview: (a) => preview(a?.path),
   };
+
+  // ---- clean folders (design 077): the rules of src-tauri/src/clean.rs, on the demo data ----
+
+  function glob(pattern, name) {
+    const re = pattern
+      .toLowerCase()
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.');
+    return new RegExp(`^${re}$`).test(name.toLowerCase());
+  }
+
+  function findEmptyDirs(roots, o) {
+    const junk = o.junk ?? [];
+    const exact = junk.filter((j) => !/[*?]/.test(j)).map((j) => j.toLowerCase());
+    const patterns = junk.filter((j) => /[*?]/.test(j));
+    const large = o.largeJunk ?? [];
+    const classify = (e) => {
+      if (exact.includes(e.name.toLowerCase())) return { junk: true, soft: false };
+      if (e.hidden) return { reason: 'hidden' };
+      if (large.some((p) => glob(p, e.name))) {
+        return e.size <= o.largeJunkMaxBytes
+          ? { junk: true, soft: true }
+          : { reason: 'sampleTooLarge' };
+      }
+      if (patterns.some((p) => glob(p, e.name))) {
+        return e.size <= o.junkMaxBytes ? { junk: true, soft: true } : { reason: 'tooLarge' };
+      }
+      return { reason: 'content' };
+    };
+    const items = [];
+    const verdicts = [];
+    let visited = 0;
+    for (const root of roots) {
+      const first = items.length;
+      const v = {
+        keepFiles: 0,
+        keepBytes: 0,
+        ext: {},
+        keepSample: [],
+        tooLarge: 0,
+        sampleTooLarge: 0,
+        hidden: 0,
+        junkSeen: 0,
+      };
+      const walk = (path, isRoot) => {
+        const start = items.length;
+        let removable = true;
+        let soft = false;
+        const names = [];
+        let bytes = 0;
+        for (const e of dirs[path] ?? []) {
+          visited += 1;
+          const child = `${path}/${e.name}`;
+          if (e.kind === 'directory') {
+            const sub = walk(child, false);
+            if (sub === null) removable = false;
+            else soft ||= sub;
+          } else if (e.kind === 'file') {
+            const c = classify(e);
+            if (c.junk) {
+              names.push(e.name);
+              bytes += e.size;
+              soft ||= c.soft;
+              v.junkSeen += 1;
+            } else {
+              removable = false;
+              v.keepFiles += 1;
+              v.keepBytes += e.size;
+              if (c.reason === 'content' && e.name.includes('.')) {
+                const x = `.${e.name.split('.').pop().toLowerCase()}`;
+                v.ext[x] = (v.ext[x] ?? 0) + 1;
+              } else if (c.reason !== 'content') {
+                v[c.reason] += 1;
+              }
+              if (v.keepSample.length < 20) {
+                v.keepSample.push({
+                  rel: child.slice(root.length + 1),
+                  bytes: e.size,
+                  reason: c.reason,
+                });
+              }
+            }
+          } else {
+            removable = false;
+          }
+        }
+        if (!removable || (isRoot && !o.includeRoots)) {
+          if (!o.junkDirsBesideContent) {
+            const kept = items.slice(start).filter((it) => !it.soft);
+            items.length = start;
+            items.push(...kept);
+          }
+          return null;
+        }
+        items.push({
+          path,
+          kind: 'dir',
+          junk: names.length,
+          junkNames: names.slice(0, 5),
+          bytes,
+          rel: path.slice(root.length + 1),
+          soft,
+        });
+        return soft;
+      };
+      const went = walk(root, true) !== null;
+      const own = items.slice(first);
+      const junkGone = own.reduce((n, it) => n + it.junk, 0);
+      verdicts.push({
+        path: root,
+        name: root.split('/').pop(),
+        verdict: went ? 'residue' : own.length > 0 ? 'partial' : 'keep',
+        first,
+        count: own.length,
+        removeDirs: own.length,
+        removeFiles: junkGone,
+        removeBytes: own.reduce((n, it) => n + it.bytes, 0),
+        keepFiles: v.keepFiles,
+        keepBytes: v.keepBytes,
+        keepExtensions: Object.entries(v.ext)
+          .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+          .slice(0, 3)
+          .map((x) => x[0]),
+        keepSample: v.keepSample,
+        tooLarge: v.tooLarge,
+        sampleTooLarge: v.sampleTooLarge,
+        hidden: v.hidden,
+        links: 0,
+        blocked: 0,
+        junkKept: v.junkSeen - junkGone,
+        danger: null,
+        linked: false,
+        incomplete: false,
+      });
+    }
+    return {
+      items,
+      roots: verdicts,
+      unreadable: [],
+      unreadableMore: 0,
+      truncated: false,
+      cancelled: false,
+      visited,
+    };
+  }
 
   async function invoke(cmd, args) {
     if (cmd.startsWith('plugin:')) return null;

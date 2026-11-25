@@ -1,14 +1,81 @@
 import { FoldersApi } from '../app/core/folders/folders-api';
 import {
+  CleanItem,
   CleanOptions,
   CleanScan,
   CollectOptions,
   CreatedFolders,
   FileTree,
+  RootVerdict,
 } from '../app/core/folders/folders.models';
+
+/** A verdict as Rust sends it: `keep` without anything, unless `over` says otherwise. */
+export function rootVerdict(path: string, over: Partial<RootVerdict> = {}): RootVerdict {
+  return {
+    path,
+    name: path.slice(path.lastIndexOf('/') + 1),
+    verdict: 'keep',
+    first: 0,
+    count: 0,
+    removeDirs: 0,
+    removeFiles: 0,
+    removeBytes: 0,
+    keepFiles: 0,
+    keepBytes: 0,
+    keepExtensions: [],
+    keepSample: [],
+    tooLarge: 0,
+    sampleTooLarge: 0,
+    hidden: 0,
+    links: 0,
+    blocked: 0,
+    junkKept: 0,
+    danger: null,
+    linked: false,
+    incomplete: false,
+    ...over,
+  };
+}
+
+/**
+ * A scan of `roots`, each with its own entries: `first`/`count` and the numbers are
+ * derived (a root with entries is a `partial` unless its verdict is given).
+ */
+export function cleanScan(
+  roots: readonly { path: string; items?: readonly CleanItem[]; over?: Partial<RootVerdict> }[],
+  over: Partial<CleanScan> = {},
+): CleanScan {
+  const items: CleanItem[] = [];
+  const verdicts = roots.map((r) => {
+    const own = r.items ?? [];
+    const first = items.length;
+    items.push(...own);
+    const dirs = own.filter((i) => i.kind === 'dir');
+    return rootVerdict(r.path, {
+      verdict: own.length > 0 ? 'partial' : 'keep',
+      first,
+      count: own.length,
+      removeDirs: dirs.length,
+      removeFiles: own.length - dirs.length + dirs.reduce((n, i) => n + (i.junk ?? 0), 0),
+      removeBytes: own.reduce((n, i) => n + (i.bytes ?? 0), 0),
+      ...r.over,
+    });
+  });
+  return {
+    items,
+    roots: verdicts,
+    unreadable: [],
+    unreadableMore: 0,
+    truncated: false,
+    cancelled: false,
+    visited: items.length,
+    ...over,
+  };
+}
 
 const EMPTY_SCAN: CleanScan = {
   items: [],
+  roots: [],
   unreadable: [],
   unreadableMore: 0,
   truncated: false,

@@ -143,6 +143,13 @@ describe('menu model', () => {
     expect(contextMenuFor('result')).not.toContain('OPEN_IN_NEW_TAB');
     expect(contextMenuFor('marked', 3)[0]).toEqual({ heading: '3 marked entries' });
     expect(ids(contextMenuFor('folder')).has('OPEN_IN_NEW_TAB')).toBe(true);
+    // clean folders judges the folder under the cursor or the marked ones (design 077 E5)
+    for (const kind of ['folder', 'marked'] as const) {
+      expect(ids(contextMenuFor(kind)).has('OPEN_DELETE_EMPTY_FOLDERS_DLG'), kind).toBe(true);
+    }
+    for (const kind of ['file', 'archive', 'result', 'resultFolder', 'empty'] as const) {
+      expect(ids(contextMenuFor(kind)).has('OPEN_DELETE_EMPTY_FOLDERS_DLG'), kind).toBe(false);
+    }
     expect(ids(contextMenuFor('file')).has('OPEN_IN_NEW_TAB')).toBe(false);
   });
 

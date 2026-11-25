@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { FoldersApi } from '../../core/folders/folders-api';
-import { DEFAULT_JUNK, FileTree } from '../../core/folders/folders.models';
+import { FileTree } from '../../core/folders/folders.models';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirectoryListing, DirEntry, FsError, isParentRow } from '../../core/fs/fs.models';
 import { GroupItem, JobInfo } from '../../core/jobs/jobs.models';
@@ -17,7 +17,6 @@ import {
   planSeries,
   restoreSeriesOptions,
   SeriesOptions,
-  RELEASE_EXTRAS,
   SeriesPlan,
   SeriesRow,
   SeriesTarget,
@@ -419,13 +418,11 @@ export class SeriesGroupStore {
       return;
     }
     // the start folders lie below the scanned folders, also when the target was the other side
+    // the profile "release leftovers" (design 077 E4): one list of extras for both features –
+    // never the dialog's own list, which may hold `*.jpg` or `*.txt` of the user (review 045 #2)
     this.clean.openPrepared(req.side, req.sourceDir, roots, {
       ...DEFAULT_CLEAN_FORM,
-      emptyDirs: true,
-      includeRoots: true,
-      junkOn: true,
-      junkText: [...RELEASE_EXTRAS, ...DEFAULT_JUNK].join('; '),
-      patternsOn: false,
+      profile: 'release',
     });
   }
 }

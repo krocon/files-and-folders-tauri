@@ -115,6 +115,9 @@ describe('CommandPalette', () => {
     // a strong action match: the group "Actions" comes first, its header is row 0
     expect(el.querySelector('.head')?.textContent).toContain('Actions');
     expect(input.getAttribute('aria-activedescendant')).toMatch(/-1$/);
+    // several hits ("copy…" has one since 077 renamed "Clean folders (delete empty folders)…")
+    type('copy');
+    expect(input.getAttribute('aria-activedescendant')).toMatch(/-1$/);
     key('ArrowDown');
     expect(input.getAttribute('aria-activedescendant')).toMatch(/-2$/);
   });

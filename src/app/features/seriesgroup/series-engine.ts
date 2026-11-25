@@ -43,22 +43,6 @@ export const SUBTITLES: readonly string[] = ['.srt', '.sub', '.idx', '.ass', '.s
 export const DEFAULT_JUNK =
   '*.nfo; *.sfv; *.srr; *.md5; *.txt; *.url; *.jpg; *.jpeg; *.png; *-sample.*; *.sample.*; sample-*; sample.*';
 export const DEFAULT_JUNK_DIRS = 'Sample; Samples; Proof';
-/**
- * What "clean folders" may treat as junk after a move (design 045 E4): only true release
- * extras – never the dialog's own list, which may hold `*.jpg` or `*.txt` of the user
- * (review 045 #2).
- */
-export const RELEASE_EXTRAS: readonly string[] = [
-  '*.nfo',
-  '*.sfv',
-  '*.srr',
-  '*.md5',
-  '*-sample.*',
-  '*.sample.*',
-  'sample-*',
-  'sample.*',
-];
-
 export const DEFAULT_SERIES_OPTIONS: SeriesOptions = {
   template: 'S{nn}',
   videos: DEFAULT_VIDEOS,

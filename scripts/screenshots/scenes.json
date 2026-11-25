@@ -346,13 +346,33 @@
     },
     {
       "name": "clean-folders-dialog",
+      "prelude": false,
       "steps": [
-        {
-          "action": "OPEN_DELETE_EMPTY_FOLDERS_DLG"
-        },
-        {
-          "wait": 1200
-        }
+        { "action": "OPEN_CHDIR_DLG" },
+        { "type": "/mnt/nas/Filme" },
+        { "key": "Enter" },
+        { "wait": 400 },
+        { "action": "SELECT_ALL" },
+        { "action": "OPEN_DELETE_EMPTY_FOLDERS_DLG" },
+        { "wait": 600 },
+        { "click": "[data-testid='clean-profile-release']" },
+        { "wait": 900 },
+        { "click": "[data-testid='clean-list']" },
+        { "key": "End" },
+        { "wait": 300 }
+      ]
+    },
+    {
+      "name": "clean-folders-hint",
+      "prelude": false,
+      "steps": [
+        { "action": "OPEN_CHDIR_DLG" },
+        { "type": "/mnt/nas/Filme" },
+        { "key": "Enter" },
+        { "wait": 400 },
+        { "action": "SELECT_ALL" },
+        { "action": "OPEN_DELETE_EMPTY_FOLDERS_DLG" },
+        { "wait": 1200 }
       ]
     },
     {
@@ -1168,6 +1188,10 @@
       {
         "file": "themes.png",
         "scene": "colour-schemes-dialog"
+      },
+      {
+        "file": "clean-folders.png",
+        "scene": "clean-folders-dialog"
       }
     ]
   }

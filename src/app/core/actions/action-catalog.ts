@@ -298,7 +298,7 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_MULTIMKDIR_DLG: m('Create several folders…', 'files', '008'),
   OPEN_GROUPFILES_DLG: m('Group files…', 'files', '008'),
   OPEN_SERIES_GROUP_DLG: m('Group series by season…', 'files', '045'),
-  OPEN_DELETE_EMPTY_FOLDERS_DLG: m('Clean folders (delete empty folders)…', 'files', '008'),
+  OPEN_DELETE_EMPTY_FOLDERS_DLG: m('Clean folders…', 'files', '008'),
   OPEN_FIND_DUPLICATES_DLG: m('Find duplicates…', 'files', '016'),
   COMPARE_FILES: m('Compare files…', 'files', '037'),
   COMPARE_DIRS: m('Compare folders (mark differences)', 'selection', '036'),

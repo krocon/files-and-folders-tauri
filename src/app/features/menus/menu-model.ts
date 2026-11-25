@@ -468,6 +468,8 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'OPEN_MOVE_DLG',
     'OPEN_RENAME_DLG',
     'OPEN_DELETE_DLG',
+    // the folder under the cursor is what "clean folders" judges (design 077 E5)
+    'OPEN_DELETE_EMPTY_FOLDERS_DLG',
     '-',
     COPY_AS,
     'REVEAL_IN_FILE_MANAGER',
@@ -482,6 +484,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'COMPARE_FILES',
     'OPEN_MULTIRENAME_DLG',
     'OPEN_GROUPFILES_DLG',
+    'OPEN_DELETE_EMPTY_FOLDERS_DLG',
     'OPEN_PACK_DLG',
     'OPEN_UNPACK_DLG',
     'OPEN_DISK_USAGE',

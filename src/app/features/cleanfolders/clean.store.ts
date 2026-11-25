@@ -1,99 +1,52 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { FoldersApi } from '../../core/folders/folders-api';
-import {
-  CleanItem,
-  CleanOptions,
-  CleanScan,
-  DEFAULT_JUNK,
-} from '../../core/folders/folders.models';
+import { CleanOptions, CleanScan, RootVerdict } from '../../core/folders/folders.models';
 import { toFsError } from '../../core/fs/fs-error';
-import { DirEntry, FsError, isParentRow } from '../../core/fs/fs.models';
+import { FsError } from '../../core/fs/fs.models';
 import { DeleteMode, JobInfo } from '../../core/jobs/jobs.models';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
+import { ProposalService } from '../../core/mcp/proposal.service';
 import { Side } from '../../core/session/session.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { CL_TEXTS } from './clean-texts';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { recallDialog, rememberDialog } from '../../shared/dialog-memory';
-import { boolOr, record, textOr } from '../../shared/restore-fields';
+import { formatSize } from '../../shared/format';
+import {
+  CleanForm,
+  cleanInput,
+  cleanOptions,
+  DEFAULT_CLEAN_FORM,
+  detailRows,
+  jobItems,
+  restoreCleanForm,
+  rootRows,
+  selectable,
+  selection,
+  sums,
+} from './clean-logic';
+
+export { cleanOptions, DEFAULT_CLEAN_FORM, restoreCleanForm } from './clean-logic';
+export type { CleanForm } from './clean-logic';
 
 /** The search runs this long after the last change of an option. */
 export const SCAN_DEBOUNCE_MS = 250;
-
-/** What the form shows (texts stay when a switch is off). */
-export interface CleanForm {
-  readonly emptyDirs: boolean;
-  readonly includeRoots: boolean;
-  readonly junkOn: boolean;
-  readonly junkText: string;
-  readonly patternsOn: boolean;
-  readonly patternsText: string;
-}
-
-export const DEFAULT_CLEAN_FORM: CleanForm = {
-  emptyDirs: true,
-  includeRoots: false,
-  junkOn: false,
-  junkText: DEFAULT_JUNK.join('; '),
-  patternsOn: false,
-  patternsText: '*.bak',
-};
-
-/** The form kept from the last run (design 027 E5) – never the delete mode (trash every time). */
-export function restoreCleanForm(v: unknown): CleanForm {
-  const r = record(v);
-  const d = DEFAULT_CLEAN_FORM;
-  return {
-    emptyDirs: boolOr(r['emptyDirs'], d.emptyDirs),
-    includeRoots: boolOr(r['includeRoots'], d.includeRoots),
-    junkOn: boolOr(r['junkOn'], d.junkOn),
-    junkText: textOr(r['junkText'], d.junkText),
-    patternsOn: boolOr(r['patternsOn'], d.patternsOn),
-    patternsText: textOr(r['patternsText'], d.patternsText),
-  };
-}
 
 export interface CleanRequest {
   readonly side: Side;
   readonly folder: string;
   readonly roots: readonly string[];
-}
-
-export interface CleanRow {
-  readonly nr: number;
-  readonly path: string;
-  readonly kind: string;
-  readonly info: string;
-}
-
-function split(text: string): string[] {
-  return text
-    .split(';')
-    .map((s) => s.trim())
-    .filter((s) => s !== '');
-}
-
-/** The options Rust gets for a form. */
-export function cleanOptions(f: CleanForm): CleanOptions {
-  return {
-    emptyDirs: f.emptyDirs,
-    includeRoots: f.emptyDirs && f.includeRoots,
-    junk: f.emptyDirs && f.junkOn ? split(f.junkText) : [],
-    patterns: f.patternsOn ? split(f.patternsText) : [],
-  };
-}
-
-/** Start folders: the marked real folders (not links), otherwise the current folder. */
-export function cleanRoots(folder: string, marked: readonly DirEntry[]): readonly string[] {
-  const dirs = marked.filter((e) => !isParentRow(e) && e.kind === 'directory').map((e) => e.path);
-  return dirs.length > 0 ? dirs : [folder];
-}
-
-/** "with 7 junk files: a.nfo, b.nfo …" – the user sees what leaves with the folder. */
-function junkInfo(n: number, names: readonly string[]): string {
-  const base = CL_TEXTS.junkInside(n);
-  return names.length === 0 ? base : `${base}: ${names.join(', ')}${n > names.length ? ' …' : ''}`;
+  /** The start folders may go as a whole (marked / under the cursor) – the panel's folder never. */
+  readonly includeRoots: boolean;
+  /** Marked entries that are no folders: ignored (a hint says so). */
+  readonly ignored: number;
+  /**
+   * An MCP client set the marks or the cursor and the user has not changed them since
+   * (design 071 review #2, 077 E9): guarded like a proposal.
+   */
+  readonly changedBy?: string;
 }
 
 function err(message: string): FsError {
@@ -101,9 +54,10 @@ function err(message: string): FsError {
 }
 
 /**
- * Clean folders (OPEN_DELETE_EMPTY_FOLDERS_DLG, design 008 E3): the start
- * folders, the form, the search in Rust (debounced, stale answers dropped)
- * and the `clean` job, which checks every entry again before deleting it.
+ * Clean folders (OPEN_DELETE_EMPTY_FOLDERS_DLG, design 008 E3, 077): the start
+ * folders, the profile, the search in Rust (debounced, stale answers dropped) with a
+ * verdict per start folder, the user's choice of folders and the `clean` job, which
+ * decides everything again before deleting.
  */
 @Injectable({ providedIn: 'root' })
 export class CleanFoldersStore {
@@ -112,6 +66,8 @@ export class CleanFoldersStore {
   private readonly api = inject(FoldersApi);
   private readonly dialogs = inject(DialogService);
   private readonly settings = inject(SettingsStore);
+  private readonly guard = inject(McpGuardService);
+  private readonly proposals = inject(ProposalService);
   /** The kept form is read once, at the first opening (design 027 E5). */
   private recalled = false;
 
@@ -122,6 +78,10 @@ export class CleanFoldersStore {
   readonly scanError = signal<FsError | null>(null);
   readonly runError = signal<FsError | null>(null);
   private readonly scanned = signal<{ options: CleanOptions; scan: CleanScan } | null>(null);
+  /** Start folders the user took out; survives a new search while the dialog is open. */
+  private readonly deselected = signal<ReadonlySet<string>>(new Set());
+  /** The row under the cursor of the folder table. */
+  readonly active = signal(0);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private seq = 0;
   /** Id of the search still running in Rust (review 008 #2: cancelled when obsolete). */
@@ -132,7 +92,9 @@ export class CleanFoldersStore {
    */
   private ownForm: CleanForm | null = null;
 
-  readonly options = computed(() => cleanOptions(this.form()));
+  readonly options = computed(() =>
+    cleanOptions(this.form(), this.request()?.includeRoots ?? false),
+  );
   /** The search result belongs to the current options. */
   readonly scan = computed(() => {
     const s = this.scanned();
@@ -142,21 +104,34 @@ export class CleanFoldersStore {
     () => this.request() !== null && this.scan() === null && this.scanError() === null,
   );
 
-  readonly rows = computed<readonly CleanRow[]>(() =>
-    (this.scan()?.items ?? []).map((it, i) => ({
-      nr: i + 1,
-      path: it.path,
-      kind: it.kind === 'dir' ? CL_TEXTS.kindDir : CL_TEXTS.kindFile,
-      info: it.junk ? junkInfo(it.junk, it.junkNames ?? []) : '',
-    })),
-  );
-  readonly counts = computed(() => {
-    const items = this.scan()?.items ?? [];
-    const dirs = items.filter((i) => i.kind === 'dir').length;
-    return { dirs, files: items.length - dirs };
+  /** The start folders that will be cleaned. */
+  readonly selected = computed(() => selection(this.scan(), this.deselected()));
+  readonly rows = computed(() => rootRows(this.scan(), this.selected(), this.options()));
+  readonly activeRoot = computed<RootVerdict | null>(() => {
+    const roots = this.scan()?.roots ?? [];
+    return roots[Math.min(this.active(), roots.length - 1)] ?? null;
   });
+  readonly details = computed(() => detailRows(this.scan(), this.activeRoot(), this.options()));
+  readonly sums = computed(() => sums(this.scan(), this.selected()));
+  /** Something could be deleted (selected or not). */
+  readonly offers = computed(() => (this.scan()?.roots ?? []).some(selectable));
+  /**
+   * "Only empty folders" found nothing, but files lie in the folders: the profile
+   * "release leftovers" may be what the user wants (design 077 E4).
+   */
+  readonly suggestRelease = computed(() => {
+    const scan = this.scan();
+    return (
+      scan !== null &&
+      this.form().profile === 'empty' &&
+      !this.offers() &&
+      scan.roots.some((r) => r.keepFiles > 0)
+    );
+  });
+  /** Guarded for an MCP client: its button waits until the keyboard was quiet. */
+  readonly locked = computed(() => this.proposals.locked(this.request()?.changedBy));
   readonly canRun = computed(
-    () => !this.busy() && (this.scan()?.items.length ?? 0) > 0 && this.runError() === null,
+    () => !this.busy() && this.sums().roots > 0 && this.runError() === null && !this.locked(),
   );
 
   hasFolder(): boolean {
@@ -170,7 +145,7 @@ export class CleanFoldersStore {
     if (!store || folder === null) {
       throw err(CL_TEXTS.noFolder);
     }
-    const roots = cleanRoots(folder, store.markedEntries());
+    const input = cleanInput(folder, store.markedEntries(), store.cursorEntry());
     if (!this.recalled) {
       this.recalled = true;
       const kept = recallDialog(this.settings, 'clean');
@@ -178,20 +153,19 @@ export class CleanFoldersStore {
         this.form.set(restoreCleanForm(kept));
       }
     }
-    this.scanned.set(null);
-    this.scanError.set(null);
-    this.runError.set(null);
-    this.busy.set(false);
-    this.mode.set('trash'); // the trash is the default every time (CLAUDE.md §4)
-    this.request.set({ side, folder, roots });
-    this.dialogs.show('clean-folders');
-    this.schedule(0);
+    // marks, cursor or folder set by an MCP client decide here what is deleted (design 077 E9)
+    const changedBy = this.guard.influence(side, store.marked()) ?? undefined;
+    this.show({ side, folder, ...input, ...(changedBy !== undefined ? { changedBy } : {}) });
+    if (changedBy !== undefined) {
+      this.proposals.watch(); // locked until the keyboard was quiet, like a proposal
+    }
   }
 
   /**
-   * Opens the dialog for given start folders and a given form – after "group series by
-   * season" moved episodes out of their release folders (design 045 E4). The user sees
-   * the list and confirms; the trash is the default as always.
+   * Opens the dialog for given start folders – after "group series by season" moved
+   * episodes out of their release folders (design 045 E4). The form is the prepared one
+   * (the profile "release leftovers"); the user sees the verdicts and confirms, the
+   * trash is the default as always.
    */
   openPrepared(side: Side, folder: string, roots: readonly string[], form: CleanForm): void {
     if (roots.length === 0) {
@@ -201,12 +175,18 @@ export class CleanFoldersStore {
       this.ownForm = this.form();
     }
     this.form.set(form);
+    this.show({ side, folder, roots: [...roots], includeRoots: true, ignored: 0 });
+  }
+
+  private show(req: CleanRequest): void {
     this.scanned.set(null);
     this.scanError.set(null);
     this.runError.set(null);
     this.busy.set(false);
-    this.mode.set('trash');
-    this.request.set({ side, folder, roots: [...roots] });
+    this.deselected.set(new Set());
+    this.active.set(0);
+    this.mode.set('trash'); // the trash is the default every time (CLAUDE.md §4)
+    this.request.set(req);
     this.dialogs.show('clean-folders');
     this.schedule(0);
   }
@@ -221,6 +201,7 @@ export class CleanFoldersStore {
       this.form.set(this.ownForm);
       this.ownForm = null;
     }
+    this.proposals.release();
     this.dialogs.close();
   }
 
@@ -229,6 +210,26 @@ export class CleanFoldersStore {
     this.scanError.set(null);
     this.runError.set(null);
     this.schedule();
+  }
+
+  /** Moves the cursor of the folder table (clamped). */
+  moveActive(index: number): void {
+    const n = this.scan()?.roots.length ?? 0;
+    this.active.set(Math.max(0, Math.min(n - 1, index)));
+  }
+
+  /** Selects or deselects the start folder in row `index`; a folder that stays cannot be selected. */
+  toggle(index: number): void {
+    const root = this.scan()?.roots[index];
+    if (!root || !selectable(root)) {
+      return;
+    }
+    const next = new Set(this.deselected());
+    if (!next.delete(root.path)) {
+      next.add(root.path);
+    }
+    this.deselected.set(next);
+    this.runError.set(null);
   }
 
   private cancelRunning(): void {
@@ -268,6 +269,7 @@ export class CleanFoldersStore {
       const scan = await this.api.findEmptyDirs(id, req.roots, options);
       if (seq === this.seq && !scan.cancelled) {
         this.scanned.set({ options, scan });
+        this.moveActive(this.active());
       }
     } catch (e) {
       if (seq === this.seq) {
@@ -280,22 +282,24 @@ export class CleanFoldersStore {
     }
   }
 
-  /** Starts the clean job with exactly the listed entries; the dialog closes. */
+  /** Starts the clean job with exactly the entries of the selected folders; the dialog closes. */
   async run(): Promise<void> {
     const req = this.request();
     const scan = this.scan();
     if (!req || !scan || !this.canRun()) {
       return;
     }
-    const items: readonly CleanItem[] = scan.items;
+    const selected = this.selected();
+    const mode = this.mode();
     this.busy.set(true);
     let id: string;
     try {
       id = await this.jobs.start({
         kind: 'clean',
-        roots: req.roots,
-        items,
-        mode: this.mode(),
+        // as Rust merged them: only the selected ones may be touched
+        roots: scan.roots.filter((r) => selected.has(r.path)).map((r) => r.path),
+        items: jobItems(scan, selected),
+        mode,
         options: this.options(),
       });
     } catch (e) {
@@ -306,23 +310,32 @@ export class CleanFoldersStore {
     if (this.ownForm === null) {
       rememberDialog(this.settings, 'clean', this.form());
     }
+    if (req.changedBy !== undefined) {
+      // the user saw the guarded dialog and confirmed: the selection is theirs now
+      this.guard.forget(req.side);
+    }
     this.close();
     this.busy.set(false);
-    void this.jobs.whenFinished(id).then((job) => this.afterJob(job, req));
+    void this.jobs.whenFinished(id).then((job) => this.afterJob(job, mode));
   }
 
-  private afterJob(job: JobInfo, req: CleanRequest): void {
+  /**
+   * The marks need no care: a folder that went leaves them with the reload, one that
+   * stayed keeps its mark (design 077 E8).
+   */
+  private afterJob(job: JobInfo, mode: DeleteMode): void {
     const s = job.summary;
     if (job.state === 'failed') {
       this.jobs.report(CL_TEXTS.failed(s?.error?.message ?? ''));
     } else if (job.state === 'doneWithErrors' && s) {
       this.jobs.report(CL_TEXTS.withErrors(s.itemsFailed));
     } else if (job.state === 'done' && s) {
-      this.jobs.report(CL_TEXTS.done(s.itemsDone));
-    }
-    const store = this.ws.panel(req.side)?.store;
-    if (store && store.path() === req.folder && !store.navigationLocked()) {
-      store.setMarked([...req.roots], false);
+      const size = formatSize(s.bytesDone);
+      this.jobs.report(
+        mode === 'trash'
+          ? CL_TEXTS.doneTrash(s.itemsDone, size)
+          : CL_TEXTS.donePermanent(s.itemsDone, size),
+      );
     }
   }
 }

@@ -8,7 +8,8 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { RenameApi } from '../../core/rename/rename-api';
 import { SessionApi } from '../../core/session/session-api';
 import { PreviewGrid } from '../../shared/preview-grid/preview-grid';
-import { FakeFoldersApi } from '../../../testing/fake-folders-api';
+import { ProposalService } from '../../core/mcp/proposal.service';
+import { cleanScan, FakeFoldersApi } from '../../../testing/fake-folders-api';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
@@ -28,6 +29,7 @@ class StubGrid {
   readonly columns = input<unknown>();
   readonly rowClass = input<unknown>();
   readonly labelledBy = input<string | null>(null);
+  readonly activeIndex = input<number>(-1);
 }
 
 const flush = () => new Promise((r) => setTimeout(r));
@@ -91,9 +93,15 @@ describe('folder tool dialogs (design 008)', () => {
     });
   });
 
-  it('clean folders: trash is the default, permanent is red, nothing found blocks Delete', async () => {
+  it('clean folders: trash is the default, permanent is red, nothing found blocks the button', async () => {
     const cl = TestBed.inject(CleanFoldersStore);
-    cl.request.set({ side: 'left', folder: '/src', roots: ['/src'] });
+    cl.request.set({
+      side: 'left',
+      folder: '/src',
+      roots: ['/src'],
+      includeRoots: false,
+      ignored: 0,
+    });
     const f = TestBed.createComponent(CleanFoldersDialog);
     f.detectChanges();
     const el = f.nativeElement as HTMLElement;
@@ -102,16 +110,150 @@ describe('folder tool dialogs (design 008)', () => {
     await cl.scanNow();
     f.detectChanges();
     expect(el.textContent).toContain('Nothing to delete');
-    expect(buttons(el)['Delete'].disabled).toBe(true);
-    folders.scan = { ...folders.scan, items: [{ path: '/src/e', kind: 'dir' }] };
+    const run = () => el.querySelector<HTMLButtonElement>('[data-testid="clean-run"]')!;
+    expect(run().textContent).toContain('Clean up');
+    expect(run().disabled).toBe(true);
+    folders.scan = cleanScan([
+      { path: '/src', items: [{ path: '/src/e', kind: 'dir', rel: 'e' }] },
+    ]);
     await cl.scanNow();
     cl.mode.set('permanent');
     f.detectChanges();
-    const del = buttons(el)['Delete permanently'];
-    expect(del.classList.contains('danger')).toBe(true);
-    expect(del.disabled).toBe(false);
-    // Ctrl+Enter never deletes permanently
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+    expect(run().textContent).toContain('Delete permanently');
+    expect(run().classList.contains('danger')).toBe(true);
+    expect(run().disabled).toBe(false);
+    // neither Enter nor Ctrl+Enter ever deletes permanently
+    for (const ctrlKey of [false, true]) {
+      el.querySelector('.tool')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', ctrlKey, bubbles: true }),
+      );
+    }
+    await flush();
+    expect(jobsApi.started).toEqual([]);
+    cl.close();
+  });
+
+  it('clean folders: profiles, the folder list with its keys, the hint and the sums (design 077)', async () => {
+    const cl = TestBed.inject(CleanFoldersStore);
+    cl.request.set({
+      side: 'left',
+      folder: '/filme',
+      roots: ['/filme/Comics', '/filme/Rest'],
+      includeRoots: true,
+      ignored: 2,
+    });
+    folders.scan = cleanScan([
+      { path: '/filme/Comics', over: { keepFiles: 3, keepBytes: 99, keepExtensions: ['.cbr'] } },
+      { path: '/filme/Rest', over: { keepFiles: 1, keepBytes: 736, keepExtensions: ['.nfo'] } },
+    ]);
+    const f = TestBed.createComponent(CleanFoldersDialog);
+    await cl.scanNow();
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Clean folders – 2 folders in /filme');
+    const radio = (p: string) =>
+      el.querySelector<HTMLInputElement>(`[data-testid="clean-profile-${p}"]`)!;
+    expect(radio('empty').checked).toBe(true);
+    // nothing found, but files inside: the hint names the other profile
+    const hint = el.querySelector('[data-testid="clean-try-release"]')!;
+    expect(hint.textContent).toContain('Release leftovers');
+    expect(el.querySelector('[data-testid="clean-summary"]')!.textContent).toContain(
+      'Nothing to delete · 2 marked files are ignored',
+    );
+    folders.scan = cleanScan([
+      { path: '/filme/Comics', over: { keepFiles: 3, keepBytes: 99, keepExtensions: ['.cbr'] } },
+      {
+        path: '/filme/Rest',
+        items: [
+          {
+            path: '/filme/Rest/Rel',
+            kind: 'dir',
+            rel: 'Rel',
+            junk: 1,
+            bytes: 736,
+            junkNames: ['x.nfo'],
+          },
+          { path: '/filme/Rest', kind: 'dir', rel: '' },
+        ],
+        over: { verdict: 'residue' },
+      },
+    ]);
+    hint.querySelector('button')!.click();
+    await cl.scanNow();
+    f.detectChanges();
+    expect(radio('release').checked).toBe(true);
+    expect(el.querySelector('[data-testid="clean-try-release"]')).toBeNull();
+    expect(folders.scans.at(-1)!.options.largeJunk).toContain('*-sample.*');
+    const summary = () => el.querySelector('[data-testid="clean-summary"]')!.textContent!;
+    expect(summary()).toContain('1 folder is cleaned · 2 folders, 1 file · 736 B');
+    // the list: arrows move the cursor (details follow), Space selects and deselects
+    const list = el.querySelector<HTMLElement>('[data-testid="clean-list"]')!;
+    const key = (k: string) => {
+      list.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      f.detectChanges();
+    };
+    const details = () => el.querySelector('[data-testid="clean-details-label"]')!.textContent;
+    expect(details()).toContain('Comics');
+    key(' '); // a folder that stays cannot be selected
+    expect(cl.sums().roots).toBe(1);
+    key('ArrowDown');
+    expect(details()).toContain('Rest');
+    expect(cl.details().map((d) => d.entry)).toEqual(['Rel', '(the folder itself)']);
+    key(' ');
+    expect(summary()).toContain('No folder selected');
+    expect(el.querySelector<HTMLButtonElement>('[data-testid="clean-run"]')!.disabled).toBe(true);
+    key(' ');
+    key('Home');
+    expect(cl.active()).toBe(0);
+    key('End');
+    expect(cl.active()).toBe(1);
+    // Enter in the list cleans up – to the trash
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await flush();
+    expect(jobsApi.started).toHaveLength(1);
+    expect(jobsApi.started[0].spec).toMatchObject({
+      kind: 'clean',
+      mode: 'trash',
+      roots: ['/filme/Rest'],
+      items: [
+        { path: '/filme/Rest/Rel', kind: 'dir' },
+        { path: '/filme/Rest', kind: 'dir' },
+      ],
+    });
+  });
+
+  it('clean folders guarded for an MCP client: a note, no Enter, permanent without any key', async () => {
+    const cl = TestBed.inject(CleanFoldersStore);
+    cl.request.set({
+      side: 'left',
+      folder: '/src',
+      roots: ['/src/a'],
+      includeRoots: true,
+      ignored: 0,
+      changedBy: 'Claude Code',
+    });
+    folders.scan = cleanScan([
+      {
+        path: '/src/a',
+        items: [{ path: '/src/a', kind: 'dir', rel: '' }],
+        over: { verdict: 'residue' },
+      },
+    ]);
+    const f = TestBed.createComponent(CleanFoldersDialog);
+    await cl.scanNow();
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="proposal-note"]')!.textContent).toContain('Claude Code');
+    const run = el.querySelector<HTMLButtonElement>('[data-testid="clean-run"]')!;
+    // locked: the keyboard was not quiet yet
+    expect(run.disabled).toBe(true);
+    TestBed.inject(ProposalService).armed.set(true);
+    f.detectChanges();
+    expect(run.disabled).toBe(false);
+    // Enter alone never confirms a guarded dialog
+    el.querySelector('.tool')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+    );
     await flush();
     expect(jobsApi.started).toEqual([]);
     cl.close();

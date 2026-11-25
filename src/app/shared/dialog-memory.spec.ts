@@ -69,6 +69,8 @@ describe('last inputs of the tool dialogs (design 027 E5)', () => {
       restoreCleanForm({ patternsOn: true, patternsText: '*.tmp; *.bak', mode: 'permanent' }),
     ).toEqual({
       ...DEFAULT_CLEAN_FORM,
+      // kept before design 077 without a profile: a switched-on pattern was "custom"
+      profile: 'custom',
       patternsOn: true,
       patternsText: '*.tmp; *.bak',
     });

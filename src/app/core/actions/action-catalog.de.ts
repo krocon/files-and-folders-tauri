@@ -100,7 +100,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_MULTIMKDIR_DLG: 'Mehrere Ordner anlegen…',
   OPEN_GROUPFILES_DLG: 'Dateien gruppieren…',
   OPEN_SERIES_GROUP_DLG: 'Serien nach Staffeln gruppieren…',
-  OPEN_DELETE_EMPTY_FOLDERS_DLG: 'Ordner aufräumen (leere Ordner löschen)…',
+  OPEN_DELETE_EMPTY_FOLDERS_DLG: 'Ordner aufräumen…',
   OPEN_FIND_DUPLICATES_DLG: 'Duplikate finden…',
   COMPARE_FILES: 'Dateien vergleichen…',
   COMPARE_DIRS: 'Ordner vergleichen (Unterschiede markieren)',

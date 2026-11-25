@@ -257,8 +257,12 @@ files, deletes go to the trash, and nothing that changed since the comparison is
 
 **Bring order into a messy folder in one step.**
 _Group files_ moves or copies files into folders built from their names (the name before a running number, the
-first word, the text before a dash, the first letters) – with a preview. _Clean folders_ removes empty folders and leftovers like `.DS_Store`, `Thumbs.db` or
-`*.bak` (to the trash by default). _Create folders_ makes many folders from a template.
+first word, the text before a dash, the first letters) – with a preview. _Clean folders_ judges every marked folder: a _leftover_ holds nothing but empty folders and
+extras and goes as a whole, a folder with content stays – and the dialog says why (“3 files · 1.8 GB (.cbr)”).
+The profile _Only empty folders_ is safe anywhere; _Release leftovers_ also treats `.nfo`, `.sfv` and samples as
+extras (a “sample” above 300 MiB is a film and keeps its folder); _Custom_ takes your own names and patterns such
+as `*.bak`. Everything goes to the trash by default, each leftover as one entry. _Create folders_ makes many
+folders from a template.
 _Group series by season_ collects the episodes of one or more marked series folders – also from release
 sub-folders – and copies (or moves) them into `S01`, `S02` … on the other side, in the series folder itself or in a
 folder named like the series, recognising `S01E01`, `1x01` and the like; samples and `.nfo` files are left out, and
@@ -267,6 +271,8 @@ after a move the emptied release folders can go to the trash.
 `Alt+G` group · `Alt+Shift+G` series by season · `Ctrl+Alt+R` clean · `Ctrl+F7` many folders · macOS: `⌥G` · `⌥⇧G` · `⌘⌥R` · `⌘F7`
 
 ![Group files: four photos go into the folder IMG, shown in a preview](docs/screenshots/readme/organize.png)
+
+![Clean folders: three release folders with only .nfo files and samples are leftovers, the comics stay](docs/screenshots/readme/clean-folders.png)
 
 ## Shell line
 
