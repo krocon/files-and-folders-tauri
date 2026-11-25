@@ -1,6 +1,9 @@
 import { effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { isNavigableDir } from '../../core/fs/fs.models';
+import { ActionService } from '../../core/actions/action.service';
+import { ACTIONS } from '../../core/actions/action-catalog';
 import { McpApi } from '../../core/mcp/mcp-api';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { McpStatusService } from '../../core/mcp/mcp-status.service';
 import {
   McpEvent,
@@ -25,6 +28,7 @@ import { OpsStore } from '../ops/ops.store';
 import { QuickViewStore } from '../preview/quick-view.store';
 import { SearchStore } from '../search/search.store';
 import { MAX_TABS, TabState, WorkspaceStore } from '../workspace/workspace.store';
+import { MCP_TEXTS } from './mcp-texts';
 import {
   EMPTY_PANEL,
   entriesInPanel,
@@ -33,6 +37,18 @@ import {
   tabKind,
   withClient,
 } from './mcp-logic';
+
+/** Keys that move the cursor or change the marks in a list – the user took the panel back. */
+const SELECTION_KEYS: ReadonlySet<string> = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  ' ',
+  'Insert',
+]);
 
 export interface PairingRequest {
   readonly id: number;
@@ -50,6 +66,11 @@ export interface PairingRequest {
  * - the pairing question waits until no dialog is open.
  *
  * The settings are never sent to Rust: it reads `settings.json` itself after `sync`.
+ *
+ * Tier 1 changes no file, but it changes what the user's next key acts on (review #2):
+ * every view change is noted in the `McpGuardService` – a short lock for actions that
+ * change files, and Copy/Move/Delete over a selection or target a client set ask like
+ * for a proposal. Result tabs and new tabs never take the keyboard focus.
  */
 @Injectable({ providedIn: 'root' })
 export class McpStore {
@@ -65,6 +86,8 @@ export class McpStore {
   private readonly overview = inject(ImageOverviewStore);
   private readonly proposals = inject(ProposalService);
   private readonly statusService = inject(McpStatusService);
+  private readonly guard = inject(McpGuardService);
+  private readonly actions = inject(ActionService);
 
   readonly status = this.statusService.status;
   /** The pairing question shown right now. */
@@ -111,6 +134,8 @@ export class McpStore {
           this.pairQueue.update((q) => q.slice(1));
           this.pairing.set(next);
           this.dialogs.show('mcp-pairing');
+          // like a proposal: no yes until the keyboard was quiet (review #3)
+          this.proposals.watch();
         });
       }
     });
@@ -120,6 +145,21 @@ export class McpStore {
       const open = this.dialogs.open();
       if (proposal && open !== proposal.dialog) {
         untracked(() => this.proposals.abandon());
+      }
+    });
+    // the marks of a panel changed: they are no longer the client's
+    effect(() => {
+      for (const side of ['left', 'right'] as const) {
+        const marks = this.ws.panel(side)?.store.marked();
+        if (marks) {
+          untracked(() => this.guard.marksNow(side, marks));
+        }
+      }
+    });
+    // MCP was switched off: nothing of a client stands any more
+    effect(() => {
+      if (this.settings.loaded() && !this.settings.get('mcp.enabled')) {
+        untracked(() => this.guard.forget());
       }
     });
     // the pairing dialog went away without an answer (Esc is "deny"; anything else too)
@@ -137,10 +177,36 @@ export class McpStore {
       return;
     }
     this.subscribed = true;
+    // right after a client changed the view: no action that changes files, no tool,
+    // no starter entry (review #2) – the user's key was meant for what was there before
+    this.actions.setVeto((id) =>
+      this.guard.locked() && (id === null || ACTIONS[id].category === 'files')
+        ? MCP_TEXTS.viewLocked
+        : null,
+    );
+    if (typeof document !== 'undefined') {
+      // the user moves the cursor or clicks in a panel: cursor and folder are theirs again
+      document.addEventListener('keydown', (evt) => this.onUserKey(evt), true);
+      document.addEventListener('pointerdown', (evt) => this.onUserPointer(evt), true);
+    }
     try {
       this.status.set(await this.api.subscribe((e) => this.onEvent(e)));
     } catch {
       this.subscribed = false; // no backend: MCP stays off
+    }
+  }
+
+  private onUserKey(evt: KeyboardEvent): void {
+    if (this.dialogs.open() === null && SELECTION_KEYS.has(evt.key)) {
+      this.guard.userTouched(this.ws.activeSide());
+    }
+  }
+
+  private onUserPointer(evt: Event): void {
+    const panel = evt.target instanceof Element ? evt.target.closest('app-file-panel') : null;
+    const side = panel?.getAttribute('side');
+    if (side === 'left' || side === 'right') {
+      this.guard.userTouched(side);
     }
   }
 
@@ -238,6 +304,7 @@ export class McpStore {
     this.pairQueue.update((q) => q.filter((p) => p.id !== id));
     if (this.pairing()?.id === id) {
       this.pairing.set(null);
+      this.proposals.release();
       if (this.dialogs.open() === 'mcp-pairing') {
         this.dialogs.close();
       }
@@ -282,18 +349,19 @@ export class McpStore {
       switch (request.kind) {
         case 'navigate':
           this.ws.requestNavigate(request.side, request.path);
+          this.guard.changed(request.side, request.client, null);
           this.reply(id, { ok: true });
           break;
         case 'openTab':
           this.openTab(id, request);
           break;
         case 'setCursor':
-          this.reply(
-            id,
-            this.setCursor(request.side, request.path)
-              ? { ok: true }
-              : { ok: false, code: 'not_found' },
-          );
+          if (this.setCursor(request.side, request.path)) {
+            this.guard.changed(request.side, request.client);
+            this.reply(id, { ok: true });
+          } else {
+            this.refuse(id, 'not_found');
+          }
           break;
         case 'mark':
           this.mark(id, request);
@@ -303,7 +371,7 @@ export class McpStore {
             this.refuse(id, 'not_found');
             break;
           }
-          this.ws.setActive(request.side);
+          this.guard.changed(request.side, request.client);
           if (!this.quick.on()) {
             this.quick.toggle();
           }
@@ -316,7 +384,11 @@ export class McpStore {
             request.roots,
             request.side,
             null,
+            false, // never takes the keyboard focus (review #2)
           );
+          if (!error) {
+            this.guard.changed(request.side, request.client, null);
+          }
           this.reply(id, error ? { ok: false, code: 'limit_exceeded' } : { ok: true });
           break;
         }
@@ -402,6 +474,9 @@ export class McpStore {
     this.ws.openInNewTab(request.side, request.path, request.title);
     if (!request.activate) {
       this.ws.selectTab(request.side, before.activeTab);
+    } else {
+      // the panel shows another folder now – not the user's choice
+      this.guard.changed(request.side, request.client, null);
     }
     this.reply(id, { ok: true });
   }
@@ -435,6 +510,7 @@ export class McpStore {
       store.clearMarks();
     }
     store.setMarked(paths, request.mode !== 'remove');
+    this.guard.changed(request.side, request.client, store.marked());
     this.reply(id, { ok: true });
   }
 
@@ -446,6 +522,10 @@ export class McpStore {
     if (!pairing) {
       return;
     }
+    if (decision !== 'deny' && !this.proposals.armed()) {
+      return; // the question just appeared: a yes needs a moment and a click
+    }
+    this.proposals.release();
     this.pairing.set(null);
     if (decision === 'always') {
       this.settings.set(

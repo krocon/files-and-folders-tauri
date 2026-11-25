@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ProposalService } from '../../core/mcp/proposal.service';
 import { DialogKey } from '../../shared/dialog/dialog-key';
 import { Modal } from '../../shared/dialog/modal';
 import { MCP_TEXTS } from './mcp-texts';
@@ -6,7 +7,8 @@ import { McpStore } from './mcp.store';
 
 /**
  * "‹client› wants to work with Files and Folders" (design 071 E4): deny / once / always.
- * No button takes Enter – the focus starts on Deny, Esc denies. The name is text from
+ * No button takes Enter – the focus starts on Deny, Esc denies; allowing is a click on a
+ * button that is locked for a moment (no shortcut: `Mod+L` and `Mod+O` are keys of the panel). The name is text from
  * outside and cannot be verified; the dialog says so.
  */
 @Component({
@@ -29,6 +31,7 @@ import { McpStore } from './mcp.store';
           <p>{{ mcp.status().allowContent ? t.pairContentOn : t.pairContentOff }}</p>
           <p class="muted">{{ t.pairName }}</p>
           <div class="buttons">
+            <span class="muted keys">{{ t.pairKeys }}</span>
             <button
               type="button"
               class="btn"
@@ -39,11 +42,13 @@ import { McpStore } from './mcp.store';
             >
               {{ t.deny }}
             </button>
+            <!-- a yes is a click, never a key (review #3) – and not before the lock ran out -->
             <button
               type="button"
               class="btn"
-              appDialogKey="secondary:L"
+              data-no-dialog-key
               data-testid="mcp-pair-always"
+              [disabled]="!armed()"
               (click)="mcp.decide('always')"
             >
               {{ t.always }}
@@ -51,8 +56,9 @@ import { McpStore } from './mcp.store';
             <button
               type="button"
               class="btn"
-              appDialogKey="secondary:O"
+              data-no-dialog-key
               data-testid="mcp-pair-once"
+              [disabled]="!armed()"
               (click)="mcp.decide('once')"
             >
               {{ t.once }}
@@ -78,6 +84,10 @@ import { McpStore } from './mcp.store';
     .muted {
       color: var(--color-muted);
     }
+    .keys {
+      flex: 1 1 10rem;
+      align-self: center;
+    }
     .buttons {
       display: flex;
       flex-wrap: wrap;
@@ -91,4 +101,6 @@ import { McpStore } from './mcp.store';
 export class McpPairingDialog {
   protected readonly t = MCP_TEXTS;
   protected readonly mcp = inject(McpStore);
+  /** The buttons that allow are locked until the keyboard was quiet for a moment. */
+  protected readonly armed = inject(ProposalService).armed;
 }

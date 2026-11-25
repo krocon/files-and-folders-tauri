@@ -33,8 +33,8 @@ const DEFAULTS: readonly ConflictDefault[] = [
     @if (req(); as r) {
       <app-modal [heading]="heading(r.kind)" width="min(60rem, 94vw)" (closed)="ops.close()">
         <form class="form" (submit)="submit($event)" (keydown)="onKeydown($event)">
-          @if (r.proposedBy; as client) {
-            <app-proposal-note [client]="client" />
+          @if (guardedBy(); as client) {
+            <app-proposal-note [client]="client" [changed]="!r.proposedBy" />
           }
           <p class="source">
             <strong>{{
@@ -42,7 +42,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
             }}</strong>
             <span class="count" aria-live="polite">{{ countText() }}</span>
           </p>
-          @if (r.proposedBy) {
+          @if (guardedBy()) {
             <!-- a proposal (design 071): every source with its path, not only a number -->
             <ul class="names all" tabindex="0" [attr.aria-label]="mcp.allEntries(r.sources.length)">
               @for (e of r.sources; track e.path) {
@@ -55,7 +55,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
             [suggestionsLabel]="t.suggestions"
             [value]="target()"
             [targets]="r.targets"
-            [autofocus]="!r.proposedBy"
+            [autofocus]="!guardedBy()"
             [invalid]="!!error()"
             describedBy="fnf-copy-error"
             (valueChange)="target.set($event); error.set(null)"
@@ -144,14 +144,14 @@ const DEFAULTS: readonly ConflictDefault[] = [
           </p>
 
           <div class="buttons">
-            <div class="help">{{ r.proposedBy ? mcp.proposalKeys : t.ctrlEnter }}</div>
+            <div class="help">{{ guardedBy() ? mcp.proposalKeys : t.ctrlEnter }}</div>
             <div class="spacer"></div>
 
             <button
               type="button"
               class="btn"
               appDialogKey="cancel"
-              [attr.data-autofocus]="r.proposedBy ? '' : null"
+              [attr.data-autofocus]="guardedBy() ? '' : null"
               (click)="ops.close()"
             >
               {{ t.cancel }}
@@ -159,7 +159,7 @@ const DEFAULTS: readonly ConflictDefault[] = [
             <button
               type="submit"
               class="btn primary"
-              [appDialogKey]="r.proposedBy ? 'confirm' : 'primary'"
+              [appDialogKey]="guardedBy() ? 'confirm' : 'primary'"
               data-testid="copy-confirm"
               [disabled]="busy() || locked() || (r.dangers.length > 0 && !allowDangerous())"
             >
@@ -181,7 +181,11 @@ export class CopyMoveDialog {
   protected readonly mcp = MCP_TEXTS;
   private readonly proposals = inject(ProposalService);
   /** A proposal's button is locked for a moment after the dialog appeared (design 071). */
-  protected readonly locked = computed(() => this.proposals.locked(this.req()?.proposedBy));
+  /** The MCP client this dialog is guarded for: its proposal, or its marks/target (review #2). */
+  protected readonly guardedBy = computed(
+    () => this.req()?.proposedBy ?? this.req()?.changedBy ?? null,
+  );
+  protected readonly locked = computed(() => this.proposals.locked(this.guardedBy()));
 
   protected readonly target = signal(this.req()?.target ?? '');
   protected readonly name = signal(

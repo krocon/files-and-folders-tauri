@@ -11,8 +11,8 @@ import { MCP_TEXTS } from './mcp-texts';
     <p class="note" role="note" data-testid="proposal-note">
       <i class="fa fa-exchange" aria-hidden="true"></i>
       <span>
-        <strong>{{ t.proposalFrom(client()) }}</strong>
-        {{ t.proposalCheck }}
+        <strong>{{ changed() ? t.changedBy(client()) : t.proposalFrom(client()) }}</strong>
+        {{ changed() ? t.changedCheck : t.proposalCheck }}
       </span>
     </p>
   `,
@@ -37,5 +37,7 @@ import { MCP_TEXTS } from './mcp-texts';
 })
 export class ProposalNote {
   readonly client = input.required<string>();
+  /** Not a proposal: the user opened the dialog, but a client set marks, cursor or target (review #2). */
+  readonly changed = input(false);
   protected readonly t = MCP_TEXTS;
 }

@@ -6,7 +6,9 @@ import { FsApi } from '../../core/fs/fs-api';
 import { DirEntry } from '../../core/fs/fs.models';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { JobsStore } from '../../core/jobs/jobs.store';
+import { ActionService } from '../../core/actions/action.service';
 import { McpApi } from '../../core/mcp/mcp-api';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { McpUiRequest } from '../../core/mcp/mcp.models';
 import { ProposalService } from '../../core/mcp/proposal.service';
 import { PreviewApi } from '../../core/preview/preview-api';
@@ -28,6 +30,7 @@ import { entry, FakeFsApi, listing } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { MultiMkdirStore } from '../multimkdir/multimkdir.store';
 import { MultiRenameStore } from '../multirename/multirename.store';
+import { registerOpsActions } from '../ops/ops-actions';
 import { OpsStore } from '../ops/ops.store';
 import { MAX_TABS, WorkspaceStore } from '../workspace/workspace.store';
 import { McpStore } from './mcp.store';
@@ -61,10 +64,16 @@ describe('McpStore (design 071)', () => {
   let ops: OpsStore;
   let left: FileBrowserStore;
   let proposals: ProposalService;
+  let guard: McpGuardService;
+  let actions: ActionService;
+  let right: FileBrowserStore;
+  let time = 0;
   let nextId = 0;
+  let fsApi: FakeFsApi;
 
   async function setup(stored: Record<string, unknown> = { 'mcp.enabled': true }): Promise<void> {
     const fs = new FakeFsApi();
+    fsApi = fs;
     fs.handler = (p) =>
       Promise.resolve(p === '/src' ? listing('/src', [A, B, C, HOSTILE]) : listing('/dst', []));
     fs.locations = { '/dst': { dir: '/dst', select: null } };
@@ -92,7 +101,7 @@ describe('McpStore (design 071)', () => {
     ws = TestBed.inject(WorkspaceStore);
     await ws.init();
     left = TestBed.runInInjectionContext(() => new FileBrowserStore());
-    const right = TestBed.runInInjectionContext(() => new FileBrowserStore());
+    right = TestBed.runInInjectionContext(() => new FileBrowserStore());
     await left.load('/src');
     await right.load('/dst');
     ws.registerPanel('left', { store: left, controller: () => undefined });
@@ -100,6 +109,11 @@ describe('McpStore (design 071)', () => {
     dialogs = TestBed.inject(DialogService);
     ops = TestBed.inject(OpsStore);
     proposals = TestBed.inject(ProposalService);
+    guard = TestBed.inject(McpGuardService);
+    time = 1_000_000;
+    guard.now = () => time;
+    actions = TestBed.inject(ActionService);
+    registerOpsActions(actions, ops);
     store = TestBed.inject(McpStore);
     store.debounceMs = 0;
     await store.init();
@@ -124,7 +138,7 @@ describe('McpStore (design 071)', () => {
       left.setMarked(['/src/a.txt'], true);
       await settle();
       expect(api.published).toEqual([]);
-      const id = ask({ kind: 'navigate', side: 'left', path: '/dst' });
+      const id = ask({ kind: 'navigate', client: 'Claude', side: 'left', path: '/dst' });
       await settle();
       expect(api.replyTo(id)).toEqual({ ok: false, code: 'not_available' });
       expect(ws.navigateRequest()).toBeNull();
@@ -168,30 +182,37 @@ describe('McpStore (design 071)', () => {
     });
 
     it('steers the view: navigate, cursor, marks – only entries the panel lists', async () => {
-      const nav = ask({ kind: 'navigate', side: 'right', path: '/src' });
+      const nav = ask({ kind: 'navigate', client: 'Claude', side: 'right', path: '/src' });
       expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/src' });
       expect(api.replyTo(nav)).toEqual({ ok: true });
 
-      const cur = ask({ kind: 'setCursor', side: 'left', path: '/src/c.pdf' });
+      const cur = ask({ kind: 'setCursor', client: 'Claude', side: 'left', path: '/src/c.pdf' });
       expect(left.cursorPath()).toBe('/src/c.pdf');
       expect(api.replyTo(cur)).toEqual({ ok: true });
-      const lost = ask({ kind: 'setCursor', side: 'left', path: '/etc/passwd' });
+      const lost = ask({ kind: 'setCursor', client: 'Claude', side: 'left', path: '/etc/passwd' });
       expect(left.cursorPath()).toBe('/src/c.pdf');
       expect(api.replyTo(lost)).toEqual({ ok: false, code: 'not_found' });
 
       left.setMarked(['/src/c.pdf'], true);
       const mark = ask({
         kind: 'mark',
+        client: 'Claude',
         side: 'left',
         paths: ['/src/a.txt', '/etc/passwd', '/src/b.txt'],
         mode: 'replace',
       });
       expect([...left.marked()].sort()).toEqual(['/src/a.txt', '/src/b.txt']);
       expect(api.replyTo(mark)).toEqual({ ok: true });
-      ask({ kind: 'mark', side: 'left', paths: ['/src/a.txt'], mode: 'remove' });
-      ask({ kind: 'mark', side: 'left', paths: ['/src/c.pdf'], mode: 'add' });
+      ask({ kind: 'mark', client: 'Claude', side: 'left', paths: ['/src/a.txt'], mode: 'remove' });
+      ask({ kind: 'mark', client: 'Claude', side: 'left', paths: ['/src/c.pdf'], mode: 'add' });
       expect([...left.marked()].sort()).toEqual(['/src/b.txt', '/src/c.pdf']);
-      const none = ask({ kind: 'mark', side: 'left', paths: ['/nope'], mode: 'add' });
+      const none = ask({
+        kind: 'mark',
+        client: 'Claude',
+        side: 'left',
+        paths: ['/nope'],
+        mode: 'add',
+      });
       expect(api.replyTo(none)).toEqual({ ok: false, code: 'not_found' });
     });
 
@@ -201,6 +222,7 @@ describe('McpStore (design 071)', () => {
       const active = ws.panels().right.activeTab;
       const quiet = ask({
         kind: 'openTab',
+        client: 'Claude',
         side: 'right',
         path: '/src',
         title: 'src',
@@ -209,12 +231,20 @@ describe('McpStore (design 071)', () => {
       expect(tabs()).toBe(before + 1);
       expect(ws.panels().right.activeTab).toBe(active);
       expect(api.replyTo(quiet)).toEqual({ ok: true });
-      ask({ kind: 'openTab', side: 'right', path: '/src', title: 'src', activate: true });
+      ask({
+        kind: 'openTab',
+        client: 'Claude',
+        side: 'right',
+        path: '/src',
+        title: 'src',
+        activate: true,
+      });
       expect(ws.panels().right.activeTab).not.toBe(active);
 
       const hit = { ...A, dir: '/src', relDir: '', parentNames: ['src', '', ''] } as SearchHit;
       const shown = ask({
         kind: 'showResults',
+        client: 'Claude',
         side: 'left',
         title: 'Candidates',
         hits: [hit],
@@ -229,6 +259,7 @@ describe('McpStore (design 071)', () => {
       }
       const full = ask({
         kind: 'openTab',
+        client: 'Claude',
         side: 'right',
         path: '/src',
         title: 'src',
@@ -240,8 +271,8 @@ describe('McpStore (design 071)', () => {
     it('E9: is busy while a dialog is open – nothing changes behind it', async () => {
       dialogs.show('settings');
       const requests: McpUiRequest[] = [
-        { kind: 'navigate', side: 'left', path: '/dst' },
-        { kind: 'mark', side: 'left', paths: ['/src/a.txt'], mode: 'add' },
+        { kind: 'navigate', client: 'Claude', side: 'left', path: '/dst' },
+        { kind: 'mark', client: 'Claude', side: 'left', paths: ['/src/a.txt'], mode: 'add' },
         { kind: 'proposeDelete', client: 'Claude', entries: [A], sourceDir: '/src' },
         {
           kind: 'proposeMkdir',
@@ -447,6 +478,12 @@ describe('McpStore (design 071)', () => {
       await settle();
       expect(dialogs.open()).toBe('mcp-pairing');
       expect(store.pairing()).toEqual({ id: first, client: 'Claude Code' });
+      // review #3: right after the question appeared a yes does nothing
+      store.decide('always');
+      await settle();
+      expect(api.replyTo(first)).toBeUndefined();
+      expect(dialogs.open()).toBe('mcp-pairing');
+      proposals.armed.set(true);
       store.decide('always');
       await settle();
       expect(api.replyTo(first)).toEqual({ ok: true, decision: 'always' });
@@ -455,6 +492,7 @@ describe('McpStore (design 071)', () => {
 
       const second = ask({ kind: 'pair', client: 'Other' });
       await settle();
+      proposals.armed.set(true);
       store.decide('once');
       await settle();
       expect(api.replyTo(second)).toEqual({ ok: true, decision: 'once' });
@@ -485,6 +523,161 @@ describe('McpStore (design 071)', () => {
       expect(dialogs.open()).toBeNull();
       expect(store.pairing()).toBeNull();
       expect(api.replyTo(id)).toBeUndefined();
+    });
+
+    describe('review #2: tier 1 must not aim the user’s next key', () => {
+      const listKey = (key: string) =>
+        document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      const deletes = () => jobsApi.started.filter((j) => j.spec.kind === 'delete');
+
+      it('result tabs and new tabs never take the keyboard focus', async () => {
+        ws.setActive('left');
+        const hit = { ...A, dir: '/src', relDir: '', parentNames: ['src', '', ''] } as SearchHit;
+        const focusBefore = ws.focusRequest();
+        ask({
+          kind: 'showResults',
+          client: 'Claude',
+          side: 'right',
+          title: 'x',
+          hits: [hit],
+          roots: ['/src'],
+        });
+        ask({
+          kind: 'openTab',
+          client: 'Claude',
+          side: 'right',
+          path: '/src',
+          title: 'src',
+          activate: true,
+        });
+        await settle();
+        expect(ws.activeSide()).toBe('left');
+        expect(ws.focusRequest()).toBe(focusBefore);
+      });
+
+      it('right after a view change file actions, tools and the open key do nothing', async () => {
+        left.setCursor('/src/a.txt');
+        ask({
+          kind: 'mark',
+          client: 'Claude',
+          side: 'left',
+          paths: ['/src/b.txt', '/src/c.pdf'],
+          mode: 'replace',
+        });
+        expect(guard.locked()).toBe(true);
+        // the user's F8 / F5 from the moment before
+        expect(await actions.run('OPEN_DELETE_DLG')).toBe(false);
+        expect(await actions.run('OPEN_COPY_DLG')).toBe(false);
+        expect(dialogs.open()).toBeNull();
+        expect(deletes()).toEqual([]);
+        // moving around is not held up
+        expect(actions.state('OPEN_DELETE_DLG')).not.toBe('unavailable');
+        time += 1500;
+        expect(guard.locked()).toBe(false);
+        expect(await actions.run('OPEN_DELETE_DLG')).toBe(true);
+        expect(dialogs.open()).toBe('delete');
+      });
+
+      it('Enter on a file right after a client moved the cursor opens nothing', async () => {
+        ask({ kind: 'setCursor', client: 'Claude', side: 'left', path: '/src/c.pdf' });
+        await left.openFile(C);
+        expect(fsApi.opened).toEqual([]);
+        time += 1500;
+        await left.openFile(C);
+        expect(fsApi.opened).toEqual([{ path: '/src/c.pdf', allowExecutable: false }]);
+      });
+
+      it('marks a client set: the delete dialog is guarded and never skipped', async () => {
+        settings.set('behavior.confirmTrash', false); // F8 normally deletes at once
+        ask({
+          kind: 'mark',
+          client: 'Claude Code',
+          side: 'left',
+          paths: ['/src/b.txt', '/src/c.pdf'],
+          mode: 'replace',
+        });
+        time += 2000;
+        listKey('ArrowDown'); // moving the cursor does not make the marks the user's
+        await ops.openDelete('trash');
+        await settle();
+        expect(deletes()).toEqual([]); // not deleted without a question
+        expect(dialogs.open()).toBe('delete');
+        expect(ops.del()).toMatchObject({ changedBy: 'Claude Code', mode: 'trash' });
+        expect(ops.del()!.proposedBy).toBeUndefined();
+        // locked like a proposal until the keyboard was quiet
+        expect(await ops.runDelete(ops.del()!, false)).not.toBeNull();
+        proposals.armed.set(true);
+        expect(await ops.runDelete(ops.del()!, false)).toBeNull();
+        expect(deletes()).toHaveLength(1);
+        // the user confirmed knowingly: the next F8 is an ordinary one again
+        expect(guard.client()).toBeNull();
+      });
+
+      it('marks the user changed are the user’s again', async () => {
+        settings.set('behavior.confirmTrash', false);
+        ask({
+          kind: 'mark',
+          client: 'Claude',
+          side: 'left',
+          paths: ['/src/b.txt'],
+          mode: 'replace',
+        });
+        time += 2000;
+        left.setMarked(['/src/a.txt'], true); // Insert / click by the user
+        listKey('ArrowDown');
+        await settle();
+        expect(guard.client()).toBeNull();
+        await ops.openDelete('trash');
+        await settle();
+        expect(dialogs.open()).toBeNull(); // the plain, unasked trash delete as configured
+        expect(deletes()).toHaveLength(1);
+      });
+
+      it('a cursor a client set is guarded until the user moves it', async () => {
+        ask({ kind: 'setCursor', client: 'Claude', side: 'left', path: '/src/c.pdf' });
+        time += 2000;
+        await ops.openDelete('trash');
+        expect(ops.del()).toMatchObject({ changedBy: 'Claude' });
+        ops.close();
+        listKey('ArrowUp');
+        left.setCursor('/src/a.txt');
+        await ops.openDelete('trash');
+        expect(ops.del()!.changedBy).toBeUndefined();
+      });
+
+      it('a target a client navigated to: the copy dialog is guarded', async () => {
+        left.setCursor('/src/a.txt');
+        ws.setActive('left');
+        ask({ kind: 'navigate', client: 'Claude', side: 'right', path: '/dst' });
+        time += 2000;
+        await ops.openCopyMove('copy');
+        expect(ops.copyMove()).toMatchObject({ changedBy: 'Claude', kind: 'copy' });
+        ops.close();
+        // the user clicks into that panel: it is theirs
+        const panel = document.createElement('app-file-panel');
+        panel.setAttribute('side', 'right');
+        document.body.appendChild(panel);
+        panel.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        panel.remove();
+        ws.setActive('left');
+        await ops.openCopyMove('copy');
+        expect(ops.copyMove()!.changedBy).toBeUndefined();
+      });
+
+      it('switching MCP off forgets everything', async () => {
+        ask({
+          kind: 'mark',
+          client: 'Claude',
+          side: 'left',
+          paths: ['/src/b.txt'],
+          mode: 'replace',
+        });
+        expect(guard.client()).toBe('Claude');
+        settings.set('mcp.enabled', false);
+        await settle();
+        expect(guard.client()).toBeNull();
+        expect(guard.locked()).toBe(false);
+      });
     });
 
     it('shows the status Rust sends and disconnects on request', async () => {

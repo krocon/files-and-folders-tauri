@@ -1,3 +1,4 @@
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
@@ -174,6 +175,7 @@ export class FileBrowserStore implements OnDestroy {
   readonly filterActive = signal(false);
   readonly filterText = signal('');
   private readonly jobs = inject(JobsStore);
+  private readonly mcpGuard = inject(McpGuardService);
   private readonly passwordPrompt = inject(ArchivePasswordPrompt);
   /** Size jobs started by this panel: job id → folder path. */
   private readonly ownSizeJobs = signal<ReadonlyMap<string, string>>(new Map());
@@ -1120,6 +1122,11 @@ export class FileBrowserStore implements OnDestroy {
 
   /** Opens a file with the default app; programs only after `confirmExecutable` (F4, Enter). */
   async openFile(entry: DirEntry): Promise<void> {
+    // an MCP client just moved the cursor or changed the folder: this Enter or double
+    // click was not meant for the entry that is under it now (design 071, review #2)
+    if (this.mcpGuard.locked()) {
+      return;
+    }
     try {
       await this.api.openFile(entry.path, false);
     } catch (err) {

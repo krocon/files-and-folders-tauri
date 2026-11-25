@@ -21,6 +21,7 @@ import { TEXTS } from '../texts';
 import { modifierSet } from './button-config';
 import { ButtonConfigStore } from '../../config/button-config.store';
 import { McpStatusService } from '../../../core/mcp/mcp-status.service';
+import { McpGuardService } from '../../../core/mcp/mcp-guard.service';
 import { MCP_TEXTS } from '../../mcp/mcp-texts';
 
 interface ToolButton {
@@ -62,6 +63,7 @@ interface ToolButton {
         <button
           type="button"
           class="fbtn attention mcp"
+          [class.changed]="m.changed"
           data-testid="mcp-indicator"
           [attr.title]="m.title"
           [attr.aria-label]="m.title"
@@ -152,8 +154,18 @@ export class ButtonBar {
   private readonly config = inject(ButtonConfigStore);
   protected readonly menuOpen = signal(false);
   private readonly mcp = inject(McpStatusService);
+  private readonly mcpGuard = inject(McpGuardService);
   /** The connected MCP clients (design 071): one name, or how many. */
   protected readonly mcpShown = computed(() => {
+    // marks, cursor or folder still stand as a client set them (review #2): say so
+    const changedBy = this.mcpGuard.client();
+    if (changedBy !== null) {
+      return {
+        label: MCP_TEXTS.indicatorChanged(changedBy),
+        title: MCP_TEXTS.indicatorChangedTitle(changedBy),
+        changed: true,
+      };
+    }
     const clients = this.mcp.clients();
     if (clients.length === 0) {
       return null;
@@ -163,6 +175,7 @@ export class ButtonBar {
       label:
         names.length === 1 ? MCP_TEXTS.indicator(names[0]) : MCP_TEXTS.indicatorMany(names.length),
       title: MCP_TEXTS.indicatorTitle(names.join(', ')),
+      changed: false,
     };
   });
 

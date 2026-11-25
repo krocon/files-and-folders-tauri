@@ -50,6 +50,13 @@ export const MCP_DE: Translation<typeof MCP_EN> = {
   proposalCheck: 'Prüfe ihn, bevor du bestätigst – vorher passiert nichts.',
   proposalKeys: 'Bestätigen per Klick oder Strg/⌘+Enter; Enter allein tut hier nichts.',
   proposalLocked: 'Sieh dir den Vorschlag zuerst an.',
+  changedBy: (client) => `„${client}“ hat über MCP die Auswahl oder das Ziel geändert.`,
+  changedCheck: 'Prüfe, was dieser Dialog tun würde, bevor du bestätigst.',
+  viewLocked: 'ein MCP-Client hat gerade die Ansicht geändert – einen Moment warten',
+  indicatorChanged: (client) => `MCP: ${client} hat die Ansicht geändert`,
+  indicatorChangedTitle: (client) =>
+    `„${client}“ hat über MCP Markierung, Cursor oder Ordner geändert. Bis du sie selbst änderst, fragen Kopieren, Verschieben und Löschen wie bei einem Vorschlag. Klick zeigt das Protokoll.`,
+  pairKeys: 'Erlauben geht nur per Klick. Esc lehnt ab.',
   allEntries: (n) => (n === 1 ? '1 Eintrag:' : `Alle ${n} Einträge:`),
   renameList: 'Die Namen gibt der Vorschlag vor; die Regeln gelten nicht.',
   mkdirList: 'Die Namen gibt der Vorschlag vor.',

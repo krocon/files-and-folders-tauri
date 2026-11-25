@@ -44,8 +44,8 @@ const SHOWN = 5;
         (closed)="ops.close()"
       >
         <div class="form">
-          @if (r.proposedBy; as client) {
-            <app-proposal-note [client]="client" />
+          @if (guardedBy(); as client) {
+            <app-proposal-note [client]="client" [changed]="!r.proposedBy" />
           }
           <p id="fnf-delete-message" class="message" [class.danger-text]="showsPermanent()">
             {{
@@ -80,18 +80,18 @@ const SHOWN = 5;
               }
             </p>
           }
-          @if (r.proposedBy) {
+          @if (guardedBy()) {
             <p class="muted" id="fnf-delete-all">{{ mcp.allEntries(r.entries.length) }}</p>
           }
           <ul
             class="names"
-            [class.all]="!!r.proposedBy"
-            [attr.tabindex]="r.proposedBy ? 0 : null"
-            [attr.aria-labelledby]="r.proposedBy ? 'fnf-delete-all' : null"
+            [class.all]="!!guardedBy()"
+            [attr.tabindex]="guardedBy() ? 0 : null"
+            [attr.aria-labelledby]="guardedBy() ? 'fnf-delete-all' : null"
             data-testid="delete-names"
           >
             @for (e of shown(); track e.path) {
-              <li class="path">{{ r.proposedBy ? e.path : e.name }}</li>
+              <li class="path">{{ guardedBy() ? e.path : e.name }}</li>
             }
             @if (r.entries.length > shown().length) {
               <li class="muted">{{ t.moreEntries(r.entries.length - shown().length) }}</li>
@@ -149,7 +149,7 @@ const SHOWN = 5;
             @if (!permanent()) {
               <!-- hidden, not removed, while armed: the buttons must not move under the pointer -->
               <div class="help" [style.visibility]="armed() ? 'hidden' : null">
-                {{ r.proposedBy ? mcp.proposalKeys : t.trashHint(r.entries.length) }}
+                {{ guardedBy() ? mcp.proposalKeys : t.trashHint(r.entries.length) }}
               </div>
               <div class="spacer"></div>
             }
@@ -167,7 +167,7 @@ const SHOWN = 5;
                 type="button"
                 class="btn danger"
                 data-testid="delete-permanent"
-                appDialogKey="destructive:D"
+                [appDialogKey]="guardedBy() ? null : 'destructive:D'"
                 [disabled]="busy() || locked() || (r.dangers.length > 0 && !allowDangerous())"
                 (mouseenter)="armed.set(true)"
                 (mouseleave)="armed.set(false)"
@@ -213,30 +213,36 @@ export class DeleteDialog {
   /** The message warns "cannot be undone": permanent mode or the armed second button. */
   protected readonly showsPermanent = computed(() => this.permanent() || this.armed());
   /** Enter must not destroy: permanent delete, or a dangerous path (its button starts disabled). */
+  /**
+   * The MCP client this dialog is guarded for (design 071): it proposed the deletion, or
+   * it set the selection the user is about to delete (review #2).
+   */
+  protected readonly guardedBy = computed(
+    () => this.req()?.proposedBy ?? this.req()?.changedBy ?? null,
+  );
   protected readonly cancelFirst = computed(
     () =>
       this.permanent() ||
-      !!this.req()?.proposedBy ||
+      this.guardedBy() !== null ||
       (this.req()?.dangers.length ?? 0) > 0 ||
       (this.req()?.wholeGroups ?? 0) > 0,
   );
   /**
    * Keys (design 057): Enter = "Move to trash"; never Enter when `cancelFirst` –
    * then the button needs Mod+Shift+D (permanent) or Mod+Shift+T (trash, dangerous path).
+   * Guarded for an MCP client: the trash needs Mod+Enter or a click, deleting
+   * permanently has **no key at all** – one chord must never delete for good (review #4).
    */
-  protected readonly confirmKey = computed<DialogKeySpec>(() =>
-    this.permanent()
-      ? 'destructive:D'
-      : this.req()?.proposedBy
-        ? 'confirm' // a proposal (design 071): Mod+Enter or a click, never Enter
-        : this.cancelFirst()
-          ? 'destructive:T'
-          : 'primary',
-  );
+  protected readonly confirmKey = computed<DialogKeySpec>(() => {
+    if (this.guardedBy() !== null) {
+      return this.permanent() ? null : 'confirm';
+    }
+    return this.permanent() ? 'destructive:D' : this.cancelFirst() ? 'destructive:T' : 'primary';
+  });
   protected readonly mcp = MCP_TEXTS;
   private readonly proposals = inject(ProposalService);
   /** A proposal's buttons are locked for a moment after the dialog appeared. */
-  protected readonly locked = computed(() => this.proposals.locked(this.req()?.proposedBy));
+  protected readonly locked = computed(() => this.proposals.locked(this.guardedBy()));
   protected readonly dup = DUP_TEXTS;
   protected readonly usage = USAGE_TEXTS;
   /**
@@ -257,7 +263,7 @@ export class DeleteDialog {
   /** The first few names – every entry for a proposal (the user must see what would go). */
   protected readonly shown = computed(() => {
     const req = this.req();
-    return req?.proposedBy ? req.entries : (req?.entries.slice(0, SHOWN) ?? []);
+    return this.guardedBy() !== null ? (req?.entries ?? []) : (req?.entries.slice(0, SHOWN) ?? []);
   });
   protected readonly allowDangerous = signal(false);
   protected readonly busy = signal(false);

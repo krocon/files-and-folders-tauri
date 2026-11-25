@@ -25,6 +25,12 @@ import { PreviewRow } from '../multirename/multirename-logic';
 import { MultiRenameStore } from '../multirename/multirename.store';
 import { PreviewTable } from '../multirename/preview-table';
 import { CopyMoveDialog } from '../ops/copy-move-dialog';
+import { PreviewApi } from '../../core/preview/preview-api';
+import { FakePreviewApi } from '../../../testing/fake-preview-api';
+import { McpApi } from '../../core/mcp/mcp-api';
+import { FakeMcpApi } from '../../../testing/fake-mcp-api';
+import { McpPairingDialog } from './mcp-pairing-dialog';
+import { McpStore } from './mcp.store';
 import { DeleteDialog } from '../ops/delete-dialog';
 import { OpsStore } from '../ops/ops.store';
 import { PreviewGrid } from '../../shared/preview-grid/preview-grid';
@@ -71,6 +77,8 @@ describe('dialogs of a proposal (design 071)', () => {
         { provide: RenameApi, useValue: new FakeRenameApi() },
         { provide: FoldersApi, useValue: new FakeFoldersApi() },
         { provide: DIALOG_PLATFORM, useValue: 'linux' },
+        { provide: PreviewApi, useValue: new FakePreviewApi() },
+        { provide: McpApi, useValue: new FakeMcpApi() },
       ],
     });
     TestBed.overrideComponent(MultiRenameDialog, {
@@ -168,6 +176,10 @@ describe('dialogs of a proposal (design 071)', () => {
     await flush();
     expect(started('delete')).toEqual([]);
     // Mod+Enter is the key; a click works too
+    // the keys before started the lock again (review #4): it must run out first
+    expect(proposals.armed()).toBe(false);
+    proposals.armed.set(true);
+    fixture.detectChanges();
     key(list, { key: 'Enter', ctrlKey: true });
     await flush();
     expect(started('delete')).toHaveLength(1);
@@ -191,6 +203,93 @@ describe('dialogs of a proposal (design 071)', () => {
     confirm.click();
     await flush();
     expect(started('delete')).toHaveLength(1);
+  });
+
+  it('review #4: deleting permanently has no key in a guarded dialog – a click only', async () => {
+    deleteProposal(2);
+    const { el, key, fixture } = await render(DeleteDialog);
+    proposals.armed.set(true);
+    fixture.detectChanges();
+    const permanent = el.querySelector<HTMLButtonElement>('[data-testid="delete-permanent"]')!;
+    expect(permanent.getAttribute('aria-keyshortcuts')).toBeNull();
+    expect(permanent.getAttribute('data-dialog-key')).toBeNull();
+    key(el.querySelector('.form')!, { key: 'D', code: 'KeyD', ctrlKey: true, shiftKey: true });
+    await flush();
+    expect(started('delete')).toEqual([]);
+    proposals.armed.set(true);
+    fixture.detectChanges();
+    permanent.click();
+    await flush();
+    expect(started('delete')[0].spec).toMatchObject({ mode: 'permanent' });
+  });
+
+  it('review #2: a selection a client set – the user’s own F8 dialog is guarded too', async () => {
+    const entries = Array.from({ length: 9 }, (_, i) =>
+      entry(`f${i}.tmp`, { path: `/src/f${i}.tmp` }),
+    );
+    ops.del.set({
+      mode: 'trash',
+      side: 'left',
+      sourceDir: '/src',
+      entries,
+      dangers: [],
+      changedBy: 'Claude',
+    });
+    dialogs.show('delete');
+    proposals.watch();
+    const { el, key, fixture } = await render(DeleteDialog);
+    const note = el.querySelector('[data-testid="proposal-note"]')!;
+    expect(note.textContent).toContain('“Claude” changed the selection or the target');
+    expect(el.querySelectorAll('[data-testid="delete-names"] li')).toHaveLength(9);
+    const confirm = el.querySelector<HTMLButtonElement>('[data-testid="delete-confirm"]')!;
+    expect(confirm.disabled).toBe(true);
+    expect(confirm.hasAttribute('data-autofocus')).toBe(false);
+    proposals.armed.set(true);
+    fixture.detectChanges();
+    key(el.querySelector('.form')!, { key: 'Enter' });
+    await flush();
+    expect(started('delete')).toEqual([]);
+    proposals.armed.set(true);
+    fixture.detectChanges();
+    confirm.click();
+    await flush();
+    expect(started('delete')).toHaveLength(1);
+    proposals.unwatch();
+  });
+
+  it('review #3: the pairing question – a yes is a click on a button that starts locked', async () => {
+    const mcp = TestBed.inject(McpStore);
+    mcp.pairing.set({ id: 9, client: 'Claude <i>Code</i>' });
+    dialogs.show('mcp-pairing');
+    proposals.watch();
+    const { el, key, fixture } = await render(McpPairingDialog);
+    expect(el.querySelector('[data-testid="mcp-pair-question"]')?.textContent).toContain(
+      'Claude <i>Code</i>',
+    );
+    expect(el.querySelector('i')).toBeNull();
+    const always = el.querySelector<HTMLButtonElement>('[data-testid="mcp-pair-always"]')!;
+    const once = el.querySelector<HTMLButtonElement>('[data-testid="mcp-pair-once"]')!;
+    const deny = el.querySelector<HTMLButtonElement>('[data-testid="mcp-pair-deny"]')!;
+    expect(deny.hasAttribute('data-autofocus')).toBe(true);
+    for (const b of [always, once]) {
+      expect(b.disabled).toBe(true);
+      expect(b.getAttribute('aria-keyshortcuts')).toBeNull(); // no Mod+L / Mod+O
+      expect(b.hasAttribute('data-no-dialog-key')).toBe(true);
+    }
+    proposals.armed.set(true);
+    fixture.detectChanges();
+    expect(always.disabled).toBe(false);
+    // no key allows: Enter, Mod+Enter, the old letters
+    const body = el.querySelector('.body')!;
+    key(body, { key: 'Enter' });
+    key(body, { key: 'Enter', ctrlKey: true });
+    key(body, { key: 'l', code: 'KeyL', ctrlKey: true });
+    key(body, { key: 'o', code: 'KeyO', ctrlKey: true });
+    expect(mcp.pairing()).not.toBeNull();
+    expect(dialogs.open()).toBe('mcp-pairing');
+    // Esc denies – always possible
+    key(body, { key: 'Escape' });
+    expect(mcp.pairing()).toBeNull();
   });
 
   it('a delete dialog the user opened keeps its keys (Enter = trash, five names)', async () => {
@@ -239,6 +338,10 @@ describe('dialogs of a proposal (design 071)', () => {
     expect(enter.defaultPrevented).toBe(true); // no implicit submit of the form
     await flush();
     expect(started('move')).toEqual([]);
+    // the keys before started the lock again (review #4): it must run out first
+    expect(proposals.armed()).toBe(false);
+    proposals.armed.set(true);
+    fixture.detectChanges();
     key(input, { key: 'Enter', ctrlKey: true });
     await flush();
     expect(started('move')).toHaveLength(1);
@@ -285,6 +388,10 @@ describe('dialogs of a proposal (design 071)', () => {
     key(el.querySelector('.mr')!, { key: 'Enter' });
     await flush();
     expect(started('rename')).toEqual([]);
+    // the keys before started the lock again (review #4): it must run out first
+    expect(proposals.armed()).toBe(false);
+    proposals.armed.set(true);
+    fixture.detectChanges();
     key(el.querySelector('.mr')!, { key: 'Enter', ctrlKey: true });
     await flush();
     expect(started('rename')[0].spec).toEqual({
@@ -313,6 +420,10 @@ describe('dialogs of a proposal (design 071)', () => {
     key(el.querySelector('.tool')!, { key: 'Enter' });
     await flush();
     expect(api.creates).toEqual([]);
+    // the keys before started the lock again (review #4): it must run out first
+    expect(proposals.armed()).toBe(false);
+    proposals.armed.set(true);
+    fixture.detectChanges();
     key(el.querySelector('.tool')!, { key: 'Enter', ctrlKey: true });
     await flush();
     expect(api.creates).toEqual([{ parent: '/src', names: ['2025', '2026'] }]);

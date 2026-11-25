@@ -267,6 +267,8 @@ export class SearchStore {
     roots: readonly string[],
     side: Side,
     fetch: (() => Promise<readonly SearchHit[]>) | null,
+    /** false: the tab opens, the keyboard focus stays where the user is (MCP, design 071). */
+    focus = true,
   ): FsError | null {
     const key = `p${++keySeq}`;
     this.fixed.set(key, fetch);
@@ -291,8 +293,10 @@ export class SearchStore {
       this.release(key);
       return { code: 'too_many', message: SEARCH_TEXTS.tooManyTabs, path: null };
     }
-    this.ws.setActive(side);
-    this.ws.requestFocus(side);
+    if (focus) {
+      this.ws.setActive(side);
+      this.ws.requestFocus(side);
+    }
     return null;
   }
 

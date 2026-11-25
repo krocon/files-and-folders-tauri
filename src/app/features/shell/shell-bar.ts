@@ -13,6 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { ShellApi } from '../../core/shell/shell-api';
 import { historyStep, HistoryNav, middleEllipsis, NO_NAV, suggestions } from './shell-logic';
 import { OUTPUT_MAX, OUTPUT_MIN, ShellStore } from './shell.store';
@@ -38,6 +39,7 @@ export class ShellBar {
   protected readonly t = SHELL_TEXTS;
   protected readonly store = inject(ShellStore);
   private readonly api = inject(ShellApi);
+  private readonly mcpGuard = inject(McpGuardService);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -254,6 +256,11 @@ export class ShellBar {
 
   /** Enter: the one place a typed line is handed to Rust. */
   private async runLine(): Promise<void> {
+    // an MCP client just changed the view (maybe the folder this line would run in):
+    // this Enter was not meant for that (design 071, review #2) – the line stays
+    if (this.mcpGuard.locked()) {
+      return;
+    }
     const line = this.text().trim();
     const cwd = this.store.cwd();
     if (this.store.busy()) {

@@ -142,3 +142,9 @@ app-context-menu {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* a client changed marks, cursor or folder and the user has not taken them back (review #2) */
+.fbtn.mcp.changed {
+  color: var(--color-accent-text);
+  background: var(--color-accent);
+}

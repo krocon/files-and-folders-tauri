@@ -91,24 +91,42 @@ export interface McpRenamePair {
 
 export type McpUiRequest =
   | { readonly kind: 'pair'; readonly client: string }
-  | { readonly kind: 'navigate'; readonly side: Side; readonly path: string }
+  | {
+      readonly kind: 'navigate';
+      readonly client: string;
+      readonly side: Side;
+      readonly path: string;
+    }
   | {
       readonly kind: 'openTab';
+      readonly client: string;
       readonly side: Side;
       readonly path: string;
       readonly title: string;
       readonly activate: boolean;
     }
-  | { readonly kind: 'setCursor'; readonly side: Side; readonly path: string }
+  | {
+      readonly kind: 'setCursor';
+      readonly client: string;
+      readonly side: Side;
+      readonly path: string;
+    }
   | {
       readonly kind: 'mark';
+      readonly client: string;
       readonly side: Side;
       readonly paths: readonly string[];
       readonly mode: 'replace' | 'add' | 'remove';
     }
-  | { readonly kind: 'quickView'; readonly side: Side; readonly path: string }
+  | {
+      readonly kind: 'quickView';
+      readonly client: string;
+      readonly side: Side;
+      readonly path: string;
+    }
   | {
       readonly kind: 'showResults';
+      readonly client: string;
       readonly side: Side;
       readonly title: string;
       readonly hits: readonly SearchHit[];

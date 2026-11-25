@@ -17,6 +17,9 @@ describe('ProposalService (design 071, tier 2)', () => {
     return seen;
   }
 
+  const press = (key: string, init: KeyboardEventInit = {}) =>
+    document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }));
+
   it('locks the confirm button for a moment after the dialog appeared', () => {
     expect(svc.locked('Claude')).toBe(true);
     open();
@@ -27,6 +30,48 @@ describe('ProposalService (design 071, tier 2)', () => {
     expect(svc.locked('Claude')).toBe(false);
     // a dialog the user opened is never locked
     expect(svc.locked(undefined)).toBe(false);
+  });
+
+  it('review #4: the lock counts from the last key, not from the appearance', () => {
+    open();
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS - 100);
+    press('Enter', { metaKey: true }); // the ⌘+Enter the user was about to press in the panel
+    vi.advanceTimersByTime(200);
+    expect(svc.armed()).toBe(false);
+    // a key held down (auto-repeat) keeps it locked
+    for (let i = 0; i < 20; i++) {
+      press('Enter', { repeat: true });
+      vi.advanceTimersByTime(100);
+    }
+    expect(svc.armed()).toBe(false);
+    // holding a modifier is no typing
+    press('Meta');
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS);
+    expect(svc.armed()).toBe(true);
+    // armed: this key may confirm – and the lock is back right after it
+    press('Enter', { metaKey: true });
+    expect(svc.armed()).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(svc.armed()).toBe(false);
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS);
+    expect(svc.armed()).toBe(true);
+  });
+
+  it('watch/unwatch guard a dialog without a proposal; keys outside do nothing', () => {
+    press('a');
+    expect(svc.armed()).toBe(false);
+    svc.watch();
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS);
+    expect(svc.armed()).toBe(true);
+    svc.release(); // no proposal open: the lock ends
+    expect(svc.armed()).toBe(false);
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS * 2);
+    expect(svc.armed()).toBe(false);
+    // a proposal keeps its lock when another store closes its own dialog
+    open();
+    vi.advanceTimersByTime(PROPOSAL_ARM_MS);
+    svc.release();
+    expect(svc.armed()).toBe(true);
   });
 
   it('ends as confirmed with the job, once', async () => {

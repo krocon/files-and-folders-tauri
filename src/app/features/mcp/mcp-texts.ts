@@ -52,6 +52,13 @@ export const MCP_EN = {
   proposalCheck: 'Check it before you confirm – nothing happens until you do.',
   proposalKeys: 'Confirm with a click or Ctrl/⌘+Enter; Enter alone does nothing here.',
   proposalLocked: 'Look at the proposal first.',
+  changedBy: (client: string) => `“${client}” changed the selection or the target over MCP.`,
+  changedCheck: 'Check what this dialog would do before you confirm.',
+  viewLocked: 'an MCP client just changed the view – wait a moment',
+  indicatorChanged: (client: string) => `MCP: ${client} changed the view`,
+  indicatorChangedTitle: (client: string) =>
+    `“${client}” changed marks, cursor or folder over MCP. Until you change them yourself, Copy, Move and Delete ask like for a proposal. Click for the log.`,
+  pairKeys: 'Allowing needs a click. Esc denies.',
   allEntries: (n: number) => (n === 1 ? '1 entry:' : `All ${n} entries:`),
   renameList: 'The names are given by the proposal; the rules do not apply.',
   mkdirList: 'The names are given by the proposal.',

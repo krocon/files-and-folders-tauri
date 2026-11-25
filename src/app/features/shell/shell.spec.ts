@@ -28,6 +28,7 @@ import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { FileListController } from '../browser/file-list/file-list-controller';
 import { WorkspaceStore } from '../workspace/workspace.store';
+import { McpGuardService, VIEW_LOCK_MS } from '../../core/mcp/mcp-guard.service';
 import { ShellBar } from './shell-bar';
 import { registerShellActions } from './shell-actions';
 import { ShellStore } from './shell.store';
@@ -251,6 +252,24 @@ describe('shell bar (design 021)', () => {
     expect(shell.visible()).toBe(false);
     await actions.run('TOGGLE_SHELL');
     expect(shell.visible()).toBe(true);
+  });
+
+  it('071 review #2: Enter does nothing right after an MCP client changed the view', async () => {
+    const guard = TestBed.inject(McpGuardService);
+    let time = 5000;
+    guard.now = () => time;
+    const { input, type, key } = await bar();
+    type('rm -rf build');
+    guard.changed('left', 'Claude', null); // e.g. `navigate`: the folder the line runs in
+    key('Enter');
+    await flush();
+    expect(shellApi.runs).toEqual([]);
+    expect(input.value).toBe('rm -rf build'); // the line stays, nothing is lost
+    time += VIEW_LOCK_MS;
+    key('Enter');
+    await flush();
+    expect(shellApi.runs).toHaveLength(1);
+    guard.forget();
   });
 
   it('Enter runs the typed line in the active folder; output streams in, the exit code ends it', async () => {

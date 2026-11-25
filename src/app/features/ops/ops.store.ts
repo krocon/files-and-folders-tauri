@@ -43,6 +43,7 @@ import {
 } from './ops-logic';
 import { OPS_TEXTS } from './ops-texts';
 import { ProposalService } from '../../core/mcp/proposal.service';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
 import { MCP_TEXTS } from '../mcp/mcp-texts';
 
 /** The operations of the copy/move dialog – `link` creates symbolic links (design 031 E8). */
@@ -62,6 +63,11 @@ export interface CopyMoveRequest {
   readonly expected?: readonly ExpectedEntry[];
   /** An MCP client proposed this (design 071): its name, shown in the dialog. */
   readonly proposedBy?: string;
+  /**
+   * The user opened the dialog, but an MCP client set the marks, the cursor or the
+   * target folder and the user has not changed them since (review #2): guarded like a proposal.
+   */
+  readonly changedBy?: string;
 }
 
 export interface CopyMoveInput {
@@ -96,6 +102,8 @@ export interface DeleteRequest {
   readonly usageScan?: string;
   /** An MCP client proposed this (design 071): its name, shown in the dialog. */
   readonly proposedBy?: string;
+  /** The selection was set by an MCP client and not changed since (review #2). */
+  readonly changedBy?: string;
 }
 
 export interface NameRequest {
@@ -136,10 +144,29 @@ export class OpsStore {
   private readonly usage = inject(DiskUsageStore);
   private readonly dup = inject(DuplicatesStore);
   private readonly proposals = inject(ProposalService);
+  private readonly guard = inject(McpGuardService);
 
   readonly copyMove = signal<CopyMoveRequest | null>(null);
   readonly del = signal<DeleteRequest | null>(null);
   readonly name = signal<NameRequest | null>(null);
+
+  /**
+   * The MCP client whose marks, cursor or folder still stand on one of `sides` (review
+   * #2) – what the user is about to act on was not chosen by the user.
+   */
+  private changedBy(...sides: Side[]): string | undefined {
+    if (this.overview.isOpen()) {
+      return undefined;
+    }
+    for (const side of sides) {
+      const marks = this.ws.panel(side)?.store.marked() ?? new Set<string>();
+      const client = this.guard.influence(side, marks);
+      if (client !== null) {
+        return client;
+      }
+    }
+    return undefined;
+  }
 
   /** The entries an operation of the active panel works on. */
   selection(): readonly DirEntry[] {
@@ -231,6 +258,8 @@ export class OpsStore {
       sourceDir,
       sources,
       target: other ?? this.folder() ?? '',
+      // the sources or the target (the other panel) may be a client's choice
+      changedBy: this.changedBy(side, otherSide(side)),
     });
   }
 
@@ -273,6 +302,8 @@ export class OpsStore {
     target: string;
     /** A proposal of an MCP client (design 071): the dialog says so and never starts on Enter. */
     proposedBy?: string;
+    /** Marks, cursor or target were set by this MCP client (review #2). */
+    changedBy?: string;
   }): Promise<void> {
     if (args.sources.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
@@ -328,6 +359,9 @@ export class OpsStore {
     }
     this.copyMove.set({ ...args, targets, dangers, ...(expected ? { expected } : {}) });
     this.dialogs.show('copy-move');
+    if (args.changedBy !== undefined) {
+      this.proposals.watch(); // locked until the keyboard was quiet, like a proposal
+    }
   }
 
   async openDelete(mode: DeleteMode): Promise<void> {
@@ -347,6 +381,7 @@ export class OpsStore {
     if (entries.length === 0) {
       throw err('unknown', OPS_TEXTS.nothingSelected);
     }
+    const changedBy = this.changedBy(this.ws.source());
     const dangers = await this.dangers(entries);
     // settings (design 015): F8 deletes permanently when the trash is switched off
     // servers have no trash (design 034 E4): always permanent there
@@ -369,9 +404,12 @@ export class OpsStore {
       sizeOnly: store?.searchKind() === 'duplicates' && this.search.sizeOnly(store.searchKey()),
       ...this.expectedOf(entries),
       ...this.usageExtras(entries),
+      ...(changedBy !== undefined ? { changedBy } : {}),
     };
-    // without confirmation only a plain trash delete (no dangers, no whole duplicate groups)
+    // without confirmation only a plain trash delete (no dangers, no whole duplicate groups) –
+    // and never what an MCP client selected (review #2)
     if (
+      changedBy === undefined &&
       effective === 'trash' &&
       dangers.length === 0 &&
       whole === 0 &&
@@ -385,6 +423,9 @@ export class OpsStore {
     }
     this.del.set(req);
     this.dialogs.show('delete');
+    if (changedBy !== undefined) {
+      this.proposals.watch(); // locked until the keyboard was quiet, like a proposal
+    }
   }
 
   /**
@@ -597,13 +638,14 @@ export class OpsStore {
     // a proposal that was not confirmed ends here (no-op after `confirmed`)
     this.proposals.cancelled('copy-move');
     this.proposals.cancelled('delete');
+    this.proposals.release();
   }
 
   // ---- run the confirmed operation ----
 
   /** Starts the copy/move job. Returns an error to show in the dialog, or null (closed). */
   async runCopyMove(req: CopyMoveRequest, input: CopyMoveInput): Promise<FsError | null> {
-    if (this.proposals.locked(req.proposedBy)) {
+    if (this.proposals.locked(req.proposedBy ?? req.changedBy)) {
       return err('unknown', MCP_TEXTS.proposalLocked);
     }
     const raw = input.target.trim();
@@ -660,6 +702,7 @@ export class OpsStore {
     }
     this.ws.addRecent(dir);
     this.proposals.confirmed('copy-move', id);
+    this.userConfirmed(req);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, req.kind === 'move');
     return null;
@@ -702,6 +745,7 @@ export class OpsStore {
       return toFsError(e);
     }
     this.proposals.confirmed('copy-move', id);
+    this.userConfirmed(req);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, sources, move);
     return null;
@@ -771,7 +815,7 @@ export class OpsStore {
 
   /** Starts the delete job; the cursor moves to the next remaining entry at once. */
   async runDelete(req: DeleteRequest, allowDangerous: boolean): Promise<FsError | null> {
-    if (this.proposals.locked(req.proposedBy)) {
+    if (this.proposals.locked(req.proposedBy ?? req.changedBy)) {
       return err('unknown', MCP_TEXTS.proposalLocked);
     }
     const paths = req.entries.map((e) => e.path);
@@ -797,9 +841,18 @@ export class OpsStore {
       return toFsError(e);
     }
     this.proposals.confirmed('delete', id);
+    this.userConfirmed(req);
     this.close();
     this.afterJob(id, req.side, req.sourceDir, paths, true, req.usageScan);
     return null;
+  }
+
+  /** The user saw the guarded dialog and confirmed: the selection is theirs now (review #2). */
+  private userConfirmed(req: { readonly side: Side; readonly changedBy?: string }): void {
+    if (req.changedBy !== undefined) {
+      this.guard.forget(req.side);
+      this.guard.forget(otherSide(req.side));
+    }
   }
 
   /** Creates or renames. Returns an error to show in the dialog, or null (closed). */
