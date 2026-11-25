@@ -20,8 +20,12 @@ pub const TRIM_FILENAMES: u32 = 160;
 /// What the arguments are for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode<'a> {
-    /// A job: with the protocol lines, marked with this process's marker.
-    Job { marker: &'a str },
+    /// A job: with the protocol lines, marked with this process's marker. `paths` = the
+    /// target as `--paths=home:…` (the working folder is a neutral one, review 078 #1e).
+    Job {
+        marker: &'a str,
+        paths: Option<&'a std::path::Path>,
+    },
     /// "Copy command": what a person would type – no protocol, no program locations.
     Show,
 }
@@ -108,7 +112,7 @@ pub fn build(
         "--no-exec".into(),
         "--no-simulate".into(),
     ];
-    if let Mode::Job { marker } = mode {
+    if let Mode::Job { marker, paths } = mode {
         if marker.is_empty()
             || !marker
                 .chars()
@@ -137,13 +141,26 @@ pub fn build(
             format!("--print=before_dl:{marker}|item|%(title)j"),
             format!("--print=after_move:{marker}|file|%(__real_download|NA)s|%(filepath)j"),
         ]);
-        if let Some(p) = &env.ffmpeg {
-            a.push(format!("--ffmpeg-location={}", p.to_string_lossy()));
-        }
+        // yt-dlp must never look for a helper by its bare name: it would take one lying in
+        // the working folder (Windows) or reached through a relative PATH entry (review
+        // 078 #1). ffmpeg is always named – a path that does not exist means "continue
+        // without ffmpeg" (`postprocessor/ffmpeg.py::_determine_executables`).
+        let ffmpeg = match &env.ffmpeg {
+            Some(p) => p.clone(),
+            None => std::env::temp_dir().join(format!("fnf-no-ffmpeg-{marker}")),
+        };
+        a.push(format!("--ffmpeg-location={}", ffmpeg.to_string_lossy()));
+        // the default runtime (`deno`, by name) is cleared before ours is given by path
+        a.push("--no-js-runtimes".into());
         if let Some((name, p)) = &env.js_runtime
             && matches!(name.as_str(), "deno" | "node")
+            && p.is_absolute()
         {
             a.push(format!("--js-runtimes={name}:{}", p.to_string_lossy()));
+        }
+        if let Some(target) = paths {
+            path_option_target(target, cfg!(windows))?;
+            a.push(format!("--paths=home:{}", target.to_string_lossy()));
         }
     }
     a.push(format!("--trim-filenames={TRIM_FILENAMES}"));
@@ -192,33 +209,45 @@ pub fn build(
     Ok(a)
 }
 
-/// POSIX single quotes / PowerShell single quotes – for showing, never for running.
-fn quote(arg: &str, windows: bool) -> String {
-    let plain = !arg.is_empty()
-        && arg
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '=' | '.' | '/' | ':'));
-    if plain {
-        arg.to_string()
-    } else if windows {
-        format!("'{}'", arg.replace('\'', "''"))
+/// Whether yt-dlp would use `target` unchanged as `--paths` (review 078 #1e): it trims
+/// the path and expands `$VAR`/`${VAR}` (Windows also `%VAR%`) in it
+/// (`YoutubeDL.get_output_path` → `expand_path`). Such a folder is refused rather than
+/// downloaded into another one.
+pub fn path_option_target(target: &std::path::Path, windows: bool) -> Result<(), FsError> {
+    let ok = target.to_str().is_some_and(|t| {
+        !t.is_empty()
+            && t == t.trim()
+            && !t.chars().any(char::is_control)
+            && !t.contains('$')
+            && !(windows && t.contains('%'))
+    });
+    if ok {
+        Ok(())
     } else {
-        format!("'{}'", arg.replace('\'', r"'\''"))
+        Err(FsError::new(
+            FsErrorCode::DownloadTargetUnsupported,
+            "yt-dlp cannot write into a folder whose path has \"$\", \"%\" or blanks at its edge",
+            Some(target),
+        ))
     }
 }
 
-/// The command a person could type in a terminal for `url` (dialog "Copy command").
+/// The command a person could type in **their** shell for `url` (dialog "Copy
+/// command"), quoted by the rules of that shell (`shell::quote`). An error
+/// (`unquotable_name`) when the shell cannot take an argument safely – cmd.exe expands
+/// `%…%` even inside quotes, and every command has a `%(…)s` template: nothing is shown
+/// then (review 078 #2).
 pub fn command_line(
     options: &DownloadOptions,
     env: &DownloadEnv,
     url: &str,
-    windows: bool,
+    kind: &crate::shell::ShellKind,
 ) -> Result<String, FsError> {
     let args = build(options, env, Mode::Show, url)?;
     let mut out = String::from("yt-dlp");
     for a in &args {
         out.push(' ');
-        out.push_str(&quote(a, windows));
+        out.push_str(&crate::shell::quote::quote_one(a, kind, false)?);
     }
     Ok(out)
 }
@@ -243,11 +272,21 @@ mod tests {
                 label: "720p".into(),
                 args: vec!["--format-sort=res:720".into(), "--embed-chapters".into()],
             }],
+            neutral_cwd: false,
         }
     }
 
     fn job(o: &DownloadOptions) -> Vec<String> {
-        build(o, &env(), Mode::Job { marker: M }, URL).unwrap()
+        build(
+            o,
+            &env(),
+            Mode::Job {
+                marker: M,
+                paths: None,
+            },
+            URL,
+        )
+        .unwrap()
     }
 
     /// Only the part the options decide (between the fixed head and `--`).
@@ -298,6 +337,11 @@ mod tests {
         assert!(a.contains(&"--no-exec".to_string()));
     }
 
+    fn assert_shape_with_paths(a: &[String]) {
+        assert_eq!(a[a.len() - 2], "--");
+        assert_eq!(a.iter().filter(|x| x.starts_with("--paths=")).count(), 1);
+    }
+
     #[test]
     fn the_fixed_head_of_a_job() {
         let a = job(&DownloadOptions::default());
@@ -318,6 +362,7 @@ mod tests {
                 "--print=before_dl:MARK123|item|%(title)j",
                 "--print=after_move:MARK123|file|%(__real_download|NA)s|%(filepath)j",
                 "--ffmpeg-location=/opt/bin/ffmpeg",
+                "--no-js-runtimes",
                 "--js-runtimes=deno:/opt/bin/deno",
                 "--trim-filenames=160",
                 "--no-playlist",
@@ -515,7 +560,15 @@ mod tests {
             "HTTPS://EXAMPLE.org/x",
             "https://example.org",
         ] {
-            let r = build(&d, &e, Mode::Job { marker: M }, bad);
+            let r = build(
+                &d,
+                &e,
+                Mode::Job {
+                    marker: M,
+                    paths: None,
+                },
+                bad,
+            );
             assert_eq!(
                 r.unwrap_err().code,
                 FsErrorCode::DownloadInvalidUrl,
@@ -534,9 +587,17 @@ mod tests {
                 ..d.clone()
             };
             assert_eq!(
-                build(&o, &e, Mode::Job { marker: M }, URL)
-                    .unwrap_err()
-                    .code,
+                build(
+                    &o,
+                    &e,
+                    Mode::Job {
+                        marker: M,
+                        paths: None
+                    },
+                    URL
+                )
+                .unwrap_err()
+                .code,
                 FsErrorCode::DownloadInvalidTemplate
             );
         }
@@ -555,9 +616,17 @@ mod tests {
             ..d.clone()
         };
         assert_eq!(
-            build(&o, &e, Mode::Job { marker: M }, URL)
-                .unwrap_err()
-                .code,
+            build(
+                &o,
+                &e,
+                Mode::Job {
+                    marker: M,
+                    paths: None
+                },
+                URL
+            )
+            .unwrap_err()
+            .code,
             FsErrorCode::DownloadInvalidOptions
         );
         // a preset that is not in the file, and one that was tampered with after loading
@@ -566,9 +635,17 @@ mod tests {
             ..d.clone()
         };
         assert_eq!(
-            build(&o, &e, Mode::Job { marker: M }, URL)
-                .unwrap_err()
-                .code,
+            build(
+                &o,
+                &e,
+                Mode::Job {
+                    marker: M,
+                    paths: None
+                },
+                URL
+            )
+            .unwrap_err()
+            .code,
             FsErrorCode::DownloadInvalidOptions
         );
         let mut evil = env();
@@ -578,14 +655,44 @@ mod tests {
             ..d.clone()
         };
         assert_eq!(
-            build(&o, &evil, Mode::Job { marker: M }, URL)
-                .unwrap_err()
-                .code,
+            build(
+                &o,
+                &evil,
+                Mode::Job {
+                    marker: M,
+                    paths: None
+                },
+                URL
+            )
+            .unwrap_err()
+            .code,
             FsErrorCode::DownloadInvalidOptions
         );
         // a marker that could break the templates
-        assert!(build(&d, &e, Mode::Job { marker: "a|b" }, URL).is_err());
-        assert!(build(&d, &e, Mode::Job { marker: "" }, URL).is_err());
+        assert!(
+            build(
+                &d,
+                &e,
+                Mode::Job {
+                    marker: "a|b",
+                    paths: None
+                },
+                URL
+            )
+            .is_err()
+        );
+        assert!(
+            build(
+                &d,
+                &e,
+                Mode::Job {
+                    marker: "",
+                    paths: None
+                },
+                URL
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -594,23 +701,179 @@ mod tests {
         let mut e = env();
         e.ffmpeg = None;
         e.js_runtime = None;
-        let a = build(&d, &e, Mode::Job { marker: M }, URL).unwrap();
-        assert!(!a.iter().any(|x| x.starts_with("--ffmpeg-location")));
+        let a = build(
+            &d,
+            &e,
+            Mode::Job {
+                marker: M,
+                paths: None,
+            },
+            URL,
+        )
+        .unwrap();
         assert!(!a.iter().any(|x| x.starts_with("--js-runtimes")));
         let audio = DownloadOptions {
             content: Content::Audio,
             ..d.clone()
         };
         assert_eq!(
-            build(&audio, &e, Mode::Job { marker: M }, URL)
-                .unwrap_err()
-                .code,
+            build(
+                &audio,
+                &e,
+                Mode::Job {
+                    marker: M,
+                    paths: None
+                },
+                URL
+            )
+            .unwrap_err()
+            .code,
             FsErrorCode::DownloadToolMissing
         );
         // an unknown runtime name is not passed on
         e.js_runtime = Some(("bun --exec".into(), PathBuf::from("/x")));
-        let a = build(&d, &e, Mode::Job { marker: M }, URL).unwrap();
+        let a = build(
+            &d,
+            &e,
+            Mode::Job {
+                marker: M,
+                paths: None,
+            },
+            URL,
+        )
+        .unwrap();
         assert!(!a.iter().any(|x| x.starts_with("--js-runtimes")));
+    }
+
+    /// Review 078 #1: yt-dlp never looks for a helper by its bare name (it would find one
+    /// in the working folder on Windows, or through a relative PATH entry).
+    #[test]
+    fn helpers_are_named_by_path_or_switched_off() {
+        let d = DownloadOptions::default();
+        let a = job(&d);
+        let no = a
+            .iter()
+            .position(|x| x == "--no-js-runtimes")
+            .expect("always");
+        let js = a
+            .iter()
+            .position(|x| x.starts_with("--js-runtimes="))
+            .unwrap();
+        assert!(
+            no < js,
+            "the default runtime is cleared before ours is named"
+        );
+        // nothing found: the defaults are still cleared, ffmpeg is a path that does not exist
+        let mut e = env();
+        e.ffmpeg = None;
+        e.js_runtime = None;
+        let a = build(
+            &d,
+            &e,
+            Mode::Job {
+                marker: M,
+                paths: None,
+            },
+            URL,
+        )
+        .unwrap();
+        assert!(a.contains(&"--no-js-runtimes".to_string()));
+        assert!(!a.iter().any(|x| x.starts_with("--js-runtimes=")));
+        let loc = a
+            .iter()
+            .find_map(|x| x.strip_prefix("--ffmpeg-location="))
+            .expect("always given");
+        let p = std::path::Path::new(loc);
+        assert!(p.is_absolute() && !p.exists(), "{loc}");
+        assert_shape(&a);
+    }
+
+    /// Review 078 #1e: with a neutral working folder the target goes as `--paths=home:…` –
+    /// only a path yt-dlp would not change (it expands variables and trims).
+    #[test]
+    fn the_target_as_a_path_option() {
+        let d = DownloadOptions::default();
+        let t = std::path::Path::new("/Users/marc/Filme ä");
+        let a = build(
+            &d,
+            &env(),
+            Mode::Job {
+                marker: M,
+                paths: Some(t),
+            },
+            URL,
+        )
+        .unwrap();
+        assert!(a.contains(&"--paths=home:/Users/marc/Filme ä".to_string()));
+        assert_shape_with_paths(&a);
+        assert!(!job(&d).iter().any(|x| x.starts_with("--paths")));
+        for (target, windows, ok) in [
+            ("/Users/marc/Filme", false, true),
+            ("/Users/marc/100% Filme", false, true),
+            ("C:\\Users\\marc\\Filme", true, true),
+            ("/Users/marc/$HOME", false, false),
+            ("/Users/marc/${x}", false, false),
+            ("/Users/marc/Filme ", false, false),
+            (" /Users/marc/Filme", false, false),
+            ("C:\\Users\\%USERNAME%\\x", true, false),
+            ("C:\\Users\\marc\\100% x", true, false),
+            ("/a\nb", false, false),
+        ] {
+            let r = path_option_target(std::path::Path::new(target), windows);
+            assert_eq!(r.is_ok(), ok, "{target:?}");
+            if let Err(e) = r {
+                assert_eq!(e.code, FsErrorCode::DownloadTargetUnsupported);
+            }
+        }
+    }
+
+    /// Review 078 #2: the command is quoted for the shell the user has – and not shown at
+    /// all when that shell cannot take it safely.
+    #[test]
+    fn the_command_is_quoted_for_the_shell() {
+        use crate::shell::ShellKind;
+        let d = DownloadOptions::default();
+        let e = DownloadEnv::default();
+        let evil = "https://e.example/v?a=1&\\\\evil\\s\\x.exe&";
+        let evil = urls::check_one(evil).unwrap();
+        let cmd = ShellKind::Cmd {
+            program: "cmd.exe".into(),
+        };
+        let r = command_line(&d, &e, &evil, &cmd);
+        assert_eq!(
+            r.unwrap_err().code,
+            FsErrorCode::UnquotableName,
+            "no line for cmd.exe"
+        );
+        let ps = ShellKind::PowerShell {
+            program: "pwsh".into(),
+        };
+        let line = command_line(&d, &e, &evil, &ps).unwrap();
+        assert!(line.ends_with(&format!("'--' '{evil}'")), "{line}");
+        let o = DownloadOptions {
+            template: "it's %(title)s.%(ext)s".into(),
+            ..d.clone()
+        };
+        assert!(
+            command_line(&o, &e, URL, &ps)
+                .unwrap()
+                .contains("'--output=it''s %(title)s.%(ext)s'")
+        );
+        let sh = ShellKind::default();
+        assert!(
+            command_line(&o, &e, URL, &sh)
+                .unwrap()
+                .contains(r"'--output=it'\''s %(title)s.%(ext)s'")
+        );
+        let fish = ShellKind::Posix {
+            program: "/usr/bin/fish".into(),
+            fish: true,
+        };
+        assert!(
+            command_line(&o, &e, URL, &fish)
+                .unwrap()
+                .contains(r"'--output=it\'s %(title)s.%(ext)s'")
+        );
     }
 
     #[test]
@@ -621,7 +884,13 @@ mod tests {
             ..DownloadOptions::default()
         };
         // no ffmpeg known: showing the command does not need it
-        let line = command_line(&o, &DownloadEnv::default(), URL, false).unwrap();
+        let line = command_line(
+            &o,
+            &DownloadEnv::default(),
+            URL,
+            &crate::shell::ShellKind::default(),
+        )
+        .unwrap();
         assert_eq!(
             line,
             "yt-dlp --ignore-config --no-exec --no-simulate --trim-filenames=160 --format=ba/b \
@@ -633,10 +902,32 @@ mod tests {
             template: "it's %(title)s.%(ext)s".into(),
             ..DownloadOptions::default()
         };
-        let line = command_line(&o, &DownloadEnv::default(), URL, false).unwrap();
+        let line = command_line(
+            &o,
+            &DownloadEnv::default(),
+            URL,
+            &crate::shell::ShellKind::default(),
+        )
+        .unwrap();
         assert!(line.contains(r"'--output=it'\''s %(title)s.%(ext)s'"));
-        let line = command_line(&o, &DownloadEnv::default(), URL, true).unwrap();
+        let line = command_line(
+            &o,
+            &DownloadEnv::default(),
+            URL,
+            &crate::shell::ShellKind::PowerShell {
+                program: "pwsh".into(),
+            },
+        )
+        .unwrap();
         assert!(line.contains("'--output=it''s %(title)s.%(ext)s'"));
-        assert!(command_line(&o, &DownloadEnv::default(), "-x", false).is_err());
+        assert!(
+            command_line(
+                &o,
+                &DownloadEnv::default(),
+                "-x",
+                &crate::shell::ShellKind::default()
+            )
+            .is_err()
+        );
     }
 }

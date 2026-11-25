@@ -522,12 +522,24 @@ pub fn read_bundle(path: &Path) -> Result<Map<String, Value>, FsError> {
 /// MCP, what they may see and whether file contents are readable is decided in the
 /// settings dialog of this installation – not by a file from somewhere else.
 pub const LOCAL_ONLY_PREFIX: &str = "mcp.";
+/// … and the programs the download dialog starts (design 078, review #3): opening the
+/// dialog runs them with `--version` – which program that is, is not for a foreign file
+/// to say.
+pub const LOCAL_ONLY_KEYS: [&str; 3] = [
+    "download.ytDlpPath",
+    "download.ffmpegPath",
+    "download.jsRuntimePath",
+];
+
+fn local_only(key: &str) -> bool {
+    key.starts_with(LOCAL_ONLY_PREFIX) || LOCAL_ONLY_KEYS.contains(&key)
+}
 
 /// The imported settings with this installation's own values for the local-only keys.
 fn keep_local(current: &Path, mut imported: Map<String, Value>) -> Map<String, Value> {
-    imported.retain(|k, _| !k.starts_with(LOCAL_ONLY_PREFIX));
+    imported.retain(|k, _| !local_only(k));
     for (k, v) in load(current).settings {
-        if k.starts_with(LOCAL_ONLY_PREFIX) {
+        if local_only(&k) {
             imported.insert(k, v);
         }
     }
@@ -1153,6 +1165,38 @@ mod tests {
             !std::fs::read_to_string(&dst.url_download)
                 .unwrap()
                 .contains("exec")
+        );
+    }
+
+    /// Review 078 #3: a bundle from somewhere else never names the programs the download
+    /// dialog starts (opening the dialog runs them with `--version`).
+    #[test]
+    fn imported_settings_never_set_the_download_programs() {
+        let dir = tempdir().unwrap();
+        let dst = config(dir.path());
+        save(
+            &dst.settings,
+            map(json!({ "download.ffmpegPath": "/opt/my/ffmpeg" })),
+        )
+        .unwrap();
+        let bundle = map(json!({
+            "format": BUNDLE_FORMAT, "version": 1,
+            "settings": {
+                "download.ytDlpPath": "/tmp/evil/yt-dlp",
+                "download.ffmpegPath": "/tmp/evil/ffmpeg",
+                "download.jsRuntimePath": "/tmp/evil/deno",
+                "view.menuBar": false
+            }
+        }));
+        import(&dst, &bundle, &["settings".into()]).unwrap();
+        let got = load(&dst.settings).settings;
+        assert_eq!(got.get("view.menuBar"), Some(&json!(false)));
+        assert_eq!(got.get("download.ytDlpPath"), None);
+        assert_eq!(got.get("download.jsRuntimePath"), None);
+        // what was set here stays
+        assert_eq!(
+            got.get("download.ffmpegPath"),
+            Some(&json!("/opt/my/ffmpeg"))
         );
     }
 

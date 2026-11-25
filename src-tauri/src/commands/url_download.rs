@@ -3,11 +3,12 @@
 //! `download`) – no command here runs yt-dlp against a URL, and none takes a program,
 //! a path to one or an argument from the frontend.
 
-use crate::commands::shell::tool_env;
+use crate::commands::shell::{shell_settings, tool_env};
 use crate::commands::{blocking, config_dir};
 use crate::config_file::ConfigWarning;
 use crate::error::{FsError, FsErrorCode};
 use crate::settings;
+use crate::shell::ShellKind;
 use crate::url_download::presets::{self, PresetProblem};
 use crate::url_download::template::{self, TemplateReason};
 use crate::url_download::tools::{self, DownloadTools};
@@ -34,6 +35,7 @@ pub fn download_env(config: &Path) -> DownloadEnv {
         presets: presets::load(&config.join(presets::FILE_NAME))
             .value
             .presets,
+        neutral_cwd: cfg!(windows),
     }
 }
 
@@ -143,20 +145,48 @@ pub async fn download_check(
     blocking("Checking the URLs", move || Ok(check(&text, &options))).await
 }
 
-/// The yt-dlp command for `url` as a person would type it ("Copy command").
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadCommandLine {
+    pub line: String,
+    /// The shell the line is quoted for: `sh` | `fish` | `cmd` | `powershell`.
+    pub shell: &'static str,
+}
+
+/// The name of a shell kind for the dialog.
+pub fn shell_name(kind: &ShellKind) -> &'static str {
+    match kind {
+        ShellKind::Posix { fish: false, .. } => "sh",
+        ShellKind::Posix { fish: true, .. } => "fish",
+        ShellKind::Cmd { .. } => "cmd",
+        ShellKind::PowerShell { .. } => "powershell",
+    }
+}
+
+/// The yt-dlp command for `url` as a person would type it ("Copy command") – quoted for
+/// the shell of the shell bar (`shell.windowsShell` on Windows, `$SHELL` elsewhere). An
+/// error `unquotable_name` when that shell cannot take the command safely (cmd.exe and
+/// `%`): then nothing is copied (review 078 #2).
 #[tauri::command]
 pub async fn download_command_line<R: Runtime>(
     app: AppHandle<R>,
     url: String,
     options: DownloadOptions,
-) -> Result<String, FsError> {
-    let file = config_dir(&app)?.join(presets::FILE_NAME);
+) -> Result<DownloadCommandLine, FsError> {
+    let config = config_dir(&app)?;
     blocking("Building the command", move || {
         let env = DownloadEnv {
-            presets: presets::load(&file).value.presets,
+            presets: presets::load(&config.join(presets::FILE_NAME))
+                .value
+                .presets,
             ..DownloadEnv::default()
         };
-        args::command_line(&options, &env, &url, cfg!(windows))
+        let stored = settings::load(&config.join(settings::FILE_NAME)).settings;
+        let kind = crate::shell::choose(&shell_settings(&stored).windows_shell);
+        Ok(DownloadCommandLine {
+            line: args::command_line(&options, &env, &url, &kind)?,
+            shell: shell_name(&kind),
+        })
     })
     .await
 }

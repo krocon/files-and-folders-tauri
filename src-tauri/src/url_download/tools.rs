@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::time::{Duration, Instant};
 
 /// A PyInstaller binary unpacks itself on its first start.
@@ -97,13 +97,21 @@ pub struct Located {
     pub js_name: Option<String>,
 }
 
+/// Whether a configured path may be run at all (review 078 #3). Windows: no UNC path
+/// (`\\server\share\…`, also written with `/`) and no device or verbatim path – a setting must
+/// not start a program from another machine.
+pub fn local_path(path: &str, windows: bool) -> bool {
+    !(windows && (path.starts_with("\\\\") || path.starts_with("//")))
+}
+
 fn configured(setting: &str) -> Option<Found> {
     if setting.is_empty() {
         return None;
     }
     let p = PathBuf::from(setting);
     Some(Found {
-        path: (p.is_absolute() && is_program(&p)).then_some(p),
+        path: (p.is_absolute() && local_path(setting, cfg!(windows)) && is_program(&p))
+            .then_some(p),
         configured: true,
     })
 }
@@ -198,20 +206,19 @@ pub fn run_version(
     timeout: Duration,
 ) -> Option<String> {
     let mut cmd = Command::new(program);
-    cmd.arg(arg)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+    cmd.arg(arg);
     for (k, v) in env {
         cmd.env(k, v);
     }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    }
-    let mut child = cmd.spawn().ok()?;
-    let stdout = child.stdout.take()?;
+    // its own process group: a check that hangs is ended with everything it started
+    // (review 078 #5c)
+    #[cfg(unix)]
+    let spawned = crate::platform::process::spawn_group_quiet(cmd);
+    #[cfg(not(unix))]
+    let spawned = crate::platform::process::spawn_group(cmd);
+    let mut g = spawned.ok()?;
+    drop(g.child.stderr.take());
+    let stdout = g.child.stdout.take()?;
     // the reader hands its bytes over a channel: a grandchild that keeps the pipe open
     // must not make us wait beyond the time limit
     let (tx, rx) = std::sync::mpsc::channel();
@@ -225,17 +232,19 @@ pub fn run_version(
         .ok()?;
     let deadline = Instant::now() + timeout;
     let status = loop {
-        match child.try_wait() {
-            Ok(Some(s)) => break s,
+        match g.child.try_wait() {
+            Ok(Some(s)) => break Some(s),
             Ok(None) if Instant::now() < deadline => {
                 std::thread::sleep(Duration::from_millis(20));
             }
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
+            _ => break None,
         }
+    };
+    // whatever is left of the group ends now – after a time-out and after an answer
+    g.kill();
+    let Some(status) = status else {
+        let _ = g.child.wait();
+        return None;
     };
     if !status.success() {
         return None;
@@ -452,6 +461,22 @@ mod tests {
         assert!(!outdated("", today));
     }
 
+    /// Review 078 #3: a path from the settings never names a program on another machine.
+    #[test]
+    fn network_and_device_paths_are_no_programs() {
+        for (p, windows, ok) in [
+            ("C:\\Tools\\yt-dlp.exe", true, true),
+            ("\\\\server\\share\\yt-dlp.exe", true, false),
+            ("//server/share/yt-dlp.exe", true, false),
+            ("\\\\?\\C:\\Tools\\yt-dlp.exe", true, false),
+            ("\\\\.\\pipe\\x", true, false),
+            ("/opt/homebrew/bin/yt-dlp", false, true),
+            ("//opt/yt-dlp", false, true),
+        ] {
+            assert_eq!(local_path(p, windows), ok, "{p}");
+        }
+    }
+
     #[test]
     fn settings_are_read_defensively() {
         let mut m = Map::new();
@@ -571,6 +596,36 @@ mod tests {
             let json = serde_json::to_value(&t).unwrap();
             assert_eq!(json["ytDlp"]["state"], "missing");
             assert_eq!(json["jsRuntime"]["state"], "missing");
+        }
+
+        /// Review 078 #5c: a version check that hangs is ended with everything it started.
+        #[test]
+        fn a_hanging_version_check_ends_with_its_children() {
+            let d = tempdir().unwrap();
+            let pid_file = d.path().join("pid");
+            let hang = program(
+                d.path(),
+                "hang",
+                &format!("sleep 30 &\necho $! > '{}'\nwait", pid_file.display()),
+            );
+            assert_eq!(
+                run_version(&hang, "--version", &[], Duration::from_millis(400)),
+                None
+            );
+            let pid: i32 = fs::read_to_string(&pid_file)
+                .unwrap()
+                .trim()
+                .parse()
+                .unwrap();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            // SAFETY: signal 0 only checks for existence.
+            while unsafe { libc::kill(pid, 0) } == 0 {
+                assert!(
+                    Instant::now() < deadline,
+                    "the child of the version check survived"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
         }
 
         #[test]

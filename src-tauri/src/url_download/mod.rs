@@ -194,6 +194,10 @@ pub struct DownloadEnv {
     pub js_runtime: Option<(String, PathBuf)>,
     pub env: Vec<(String, String)>,
     pub presets: Vec<presets::Preset>,
+    /// The process runs in an empty folder of its own and gets the target as
+    /// `--paths` (Windows: a program is also looked for in the working folder – review
+    /// 078 #1e). Else the target is the working folder.
+    pub neutral_cwd: bool,
 }
 
 #[cfg(test)]

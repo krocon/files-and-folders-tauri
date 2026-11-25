@@ -21,10 +21,14 @@ for a in "$@"; do
   url="$a"
   case "$a" in
     --print=before_dl:*) m="${a#--print=before_dl:}"; marker="${m%%|*}";;
+    --paths=home:*) home="${a#--paths=home:}";;
   esac
 done
 { printf '%s\n' "$@"; echo "==="; } >> "$FAKE_LOG/args"
 pwd >> "$FAKE_LOG/cwd"
+ls -A | wc -l | tr -d ' ' >> "$FAKE_LOG/cwd-entries"
+echo "$PATH" >> "$FAKE_LOG/path"
+[ -n "$home" ] && cd "$home"
 echo "$PYTHONUTF8/$PYTHONIOENCODING" >> "$FAKE_LOG/env"
 name=$(printf '%s' "$url" | sed 's|.*/||')
 case "$url" in
@@ -33,6 +37,15 @@ case "$url" in
     printf 'ERROR: [generic] Unable to download webpage: \033[31mHTTP Error 404\033[0m: Not Found\n' >&2
     echo "WARNING: later" >&2
     exit 1;;
+  *helper*)
+    # like yt-dlp: a helper by its bare name
+    ffmpeg -version >/dev/null 2>&1
+    echo "$marker|item|\"Helper\"";;
+  *grandchild*)
+    # a background process that keeps the pipe and floods it, while we end
+    yes "$marker|dl|downloading|1|2|NA|3|4" &
+    echo $! > "$FAKE_LOG/child"
+    exit 0;;
   *stubborn*)
     trap '' TERM
     sleep 300 &
@@ -686,6 +699,7 @@ fn real_yt_dlp_accepts_the_arguments() {
         ffmpeg: crate::url_download::tools::find_in(&dirs, "ffmpeg"),
         js_runtime: crate::url_download::tools::find_in(&dirs, "deno").map(|p| ("deno".into(), p)),
         env: Vec::new(),
+        neutral_cwd: false,
         // every option of the allow list once, with a value its check accepts
         presets: [
             (
@@ -809,14 +823,13 @@ fn real_yt_dlp_accepts_the_arguments() {
         .filter(|w| w.starts_with("--"))
         .collect();
     assert!(known.len() > 100, "the help lists the options");
-    for o in cases {
-        let mut args = build(
-            &o,
-            &env,
-            Mode::Job { marker: "MARK" },
-            "https://example.org/a",
-        )
-        .unwrap();
+    let home = Path::new("/tmp");
+    for (o, paths) in cases.iter().flat_map(|o| [(o, None), (o, Some(home))]) {
+        let mode = Mode::Job {
+            marker: "MARK",
+            paths,
+        };
+        let mut args = build(o, &env, mode, "https://example.org/a").unwrap();
         let n = args.len();
         args.truncate(n - 2); // no `--`, no URL
         for a in &args {
@@ -899,7 +912,16 @@ fn record_protocol_lines() {
         ..DownloadOptions::default()
     };
     let marker = "FNFRECORDMARKER";
-    let args = build(&options, &env, Mode::Job { marker }, &url).unwrap();
+    let args = build(
+        &options,
+        &env,
+        Mode::Job {
+            marker,
+            paths: None,
+        },
+        &url,
+    )
+    .unwrap();
     let target = tempdir().unwrap();
     let out = super::download::build_command(&program, &args, target.path(), &env)
         .output()
@@ -928,5 +950,161 @@ fn record_protocol_lines() {
         out.status.code(),
         text.lines().count(),
         file.display()
+    );
+}
+
+/// Review 078 #1c: the PATH of the process has absolute folders only – a `.` or relative
+/// entry would make yt-dlp run a program lying in the download folder.
+#[test]
+fn a_program_in_the_target_folder_is_not_run() {
+    let h = Harness::new();
+    let mut f = fake(&h);
+    let planted = f.target.join("ffmpeg");
+    fs::write(
+        &planted,
+        format!("#!/bin/sh\necho pwned > '{}/pwned'\n", f.log.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&planted, fs::Permissions::from_mode(0o755)).unwrap();
+    f.env
+        .env
+        .push(("PATH".into(), ".::rel/bin:/usr/bin:/bin".into()));
+    set_env(&h, f.env.clone());
+    let id = h
+        .mgr
+        .start(spec(&f.target, &["https://example.org/helper"]))
+        .unwrap();
+    assert_eq!(h.finish(&id).state, JobState::Done);
+    assert!(!f.log.join("pwned").exists(), "the planted ffmpeg ran");
+    assert_eq!(
+        fs::read_to_string(f.log.join("path")).unwrap().trim(),
+        "/usr/bin:/bin"
+    );
+}
+
+/// Review 078 #1d/#1c: what the child gets, per OS.
+#[test]
+fn the_environment_of_the_child() {
+    use super::download::child_env;
+    let env = DownloadEnv {
+        env: vec![
+            ("LANG".into(), "de_DE.UTF-8".into()),
+            ("PATH".into(), ".:/usr/bin::bin:/opt/x".into()),
+        ],
+        ..DownloadEnv::default()
+    };
+    let unix = child_env(&env, false);
+    let get =
+        |e: &[(String, String)], k: &str| e.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone());
+    assert_eq!(get(&unix, "PATH").as_deref(), Some("/usr/bin:/opt/x"));
+    assert_eq!(get(&unix, "LANG").as_deref(), Some("de_DE.UTF-8"));
+    assert_eq!(get(&unix, "PYTHONUTF8").as_deref(), Some("1"));
+    assert_eq!(get(&unix, "NoDefaultCurrentDirectoryInExePath"), None);
+    let win = child_env(&env, true);
+    assert_eq!(
+        get(&win, "NoDefaultCurrentDirectoryInExePath").as_deref(),
+        Some("1")
+    );
+    // no PATH handed over: the app's own, filtered the same way
+    let own = child_env(&DownloadEnv::default(), false);
+    let path = get(&own, "PATH").expect("always set");
+    assert!(
+        std::env::split_paths(&path).all(|p| p.is_absolute()),
+        "{path}"
+    );
+}
+
+/// Review 078 #1e: the working folder is an empty one of our own, the target travels as
+/// `--paths` (the way a job runs on Windows).
+#[test]
+fn a_neutral_working_folder_with_the_target_as_a_path_option() {
+    let h = Harness::new();
+    let mut f = fake(&h);
+    f.env.neutral_cwd = true;
+    set_env(&h, f.env.clone());
+    let id = h
+        .mgr
+        .start(spec(&f.target, &["https://example.org/a"]))
+        .unwrap();
+    let info = h.finish(&id);
+    assert_eq!(info.state, JobState::Done);
+    assert!(f.target.join("a.mp4").exists());
+    let d = info.summary.unwrap().download.unwrap();
+    assert_eq!(
+        d.files,
+        [f.target.join("a.mp4").to_string_lossy().into_owned()]
+    );
+    let run = &runs(&f)[0];
+    assert!(run.contains(&format!("--paths=home:{}", f.target.display())));
+    assert_eq!(&run[run.len() - 2..], ["--", "https://example.org/a"]);
+    let cwd = PathBuf::from(fs::read_to_string(f.log.join("cwd")).unwrap().trim());
+    assert_ne!(cwd, fs::canonicalize(&f.target).unwrap());
+    assert_eq!(
+        fs::read_to_string(f.log.join("cwd-entries"))
+            .unwrap()
+            .trim(),
+        "0",
+        "the working folder was empty"
+    );
+    assert!(!cwd.exists(), "and is removed afterwards");
+
+    // a target yt-dlp would change is refused before anything runs
+    let odd = f.target.join("$HOME");
+    fs::create_dir(&odd).unwrap();
+    let info = h.finish(&h.mgr.start(spec(&odd, &["https://example.org/a"])).unwrap());
+    assert_eq!(info.state, JobState::Failed);
+    assert_eq!(
+        info.summary.unwrap().error.unwrap().code,
+        FsErrorCode::DownloadTargetUnsupported
+    );
+    assert_eq!(runs(&f).len(), 1);
+    // … while the same folder works as a working folder
+    f.env.neutral_cwd = false;
+    set_env(&h, f.env.clone());
+    let info = h.finish(&h.mgr.start(spec(&odd, &["https://example.org/a"])).unwrap());
+    assert_eq!(info.state, JobState::Done);
+    assert!(odd.join("a.mp4").exists());
+}
+
+/// Review 078 #5a: a background process that floods the pipe after yt-dlp ended must not
+/// keep the job running.
+#[test]
+fn a_flooding_grandchild_does_not_hold_the_job() {
+    let h = Harness::new();
+    let f = fake(&h);
+    let id = h
+        .mgr
+        .start(spec(&f.target, &["https://example.org/grandchild"]))
+        .unwrap();
+    let start = Instant::now();
+    let info = h
+        .mgr
+        .wait_finished(&id, Duration::from_secs(8))
+        .expect("the job ends although the pipe never closes");
+    assert_eq!(info.state, JobState::Done);
+    assert!(start.elapsed() < Duration::from_secs(8));
+    let child: i32 = fs::read_to_string(f.log.join("child"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    wait_for("the flooding process ended", || !alive(child));
+}
+
+/// Review 078 #5b: with both pipes closed and the process still running, the loop waits
+/// instead of spinning.
+#[test]
+fn waiting_without_pipes_does_not_spin() {
+    use super::download::next_block;
+    let (tx, rx) = std::sync::mpsc::sync_channel::<u8>(1);
+    drop(tx);
+    let start = Instant::now();
+    for _ in 0..5 {
+        assert!(next_block(&rx).is_none());
+    }
+    assert!(
+        start.elapsed() >= Duration::from_millis(80),
+        "{:?}",
+        start.elapsed()
     );
 }

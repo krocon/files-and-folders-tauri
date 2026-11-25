@@ -137,6 +137,9 @@ pub enum FsErrorCode {
     DownloadInvalidTemplate,
     /// An option is out of range or names a preset that does not exist.
     DownloadInvalidOptions,
+    /// The target folder has a name yt-dlp would change (`$`, `%…%`, blanks at the edge) –
+    /// only where the target travels as a path option (Windows, review 078 #1e).
+    DownloadTargetUnsupported,
     /// yt-dlp ended with an error for this URL (its last error line, cleaned, is the message).
     DownloadFailed,
     Io,

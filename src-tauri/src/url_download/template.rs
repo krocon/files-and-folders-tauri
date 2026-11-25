@@ -10,6 +10,9 @@ use serde::Serialize;
 
 pub const MAX_TEMPLATE_CHARS: usize = 200;
 const EXT: &str = ".%(ext)s";
+/// Flags, width and precision of a field: at most this many characters each (`%(n)03d`,
+/// `%(title).100B`).
+const MAX_SPEC_DIGITS: usize = 3;
 /// Conversion types of yt-dlp's output template (Python's plus B, j, h, l, q, D, S, U).
 const TYPES: &str = "diouxXeEfFgGcrsaBjhlqDSU";
 
@@ -104,23 +107,29 @@ fn parse(template: &str) -> Result<Vec<Part>, TemplateReason> {
         if depth != 0 || inner.is_empty() {
             return Err(TemplateReason::Field);
         }
-        // flags, width, precision, type
+        // flags, width, precision, type – each bounded: yt-dlp would build a string of
+        // any width asked for (review 078 #6)
         let mut spec = String::new();
-        while j < chars.len() && matches!(chars[j], '-' | '#' | '0' | '+' | ' ') {
-            spec.push(chars[j]);
-            j += 1;
-        }
-        while j < chars.len() && chars[j].is_ascii_digit() {
-            spec.push(chars[j]);
-            j += 1;
+        let take = |j: &mut usize, spec: &mut String, ok: fn(char) -> bool| {
+            let from = *j;
+            while *j < chars.len() && ok(chars[*j]) {
+                spec.push(chars[*j]);
+                *j += 1;
+            }
+            *j - from <= MAX_SPEC_DIGITS
+        };
+        if !take(&mut j, &mut spec, |c| {
+            matches!(c, '-' | '#' | '0' | '+' | ' ')
+        }) || !take(&mut j, &mut spec, |c| c.is_ascii_digit())
+        {
+            return Err(TemplateReason::Field);
         }
         if j < chars.len() && chars[j] == '.' && chars.get(j + 1).is_some_and(char::is_ascii_digit)
         {
             spec.push('.');
             j += 1;
-            while j < chars.len() && chars[j].is_ascii_digit() {
-                spec.push(chars[j]);
-                j += 1;
+            if !take(&mut j, &mut spec, |c| c.is_ascii_digit()) {
+                return Err(TemplateReason::Field);
             }
         }
         let Some(&conv) = chars.get(j).filter(|c| TYPES.contains(**c)) else {
@@ -415,6 +424,27 @@ mod tests {
         }
         let long = format!("{}.%(ext)s", "a".repeat(MAX_TEMPLATE_CHARS));
         assert_eq!(validate(&long), Err(TooLong));
+    }
+
+    /// Review 078 #6: a huge width would make yt-dlp build a huge string.
+    #[test]
+    fn width_and_precision_are_bounded() {
+        for ok in [
+            "%(title).100B.%(ext)s",
+            "%(n)03d %(title)999s.%(ext)s",
+            "%(title)-20.10s.%(ext)s",
+        ] {
+            assert_eq!(validate(ok), Ok(()), "{ok}");
+        }
+        for bad in [
+            "%(title)1000s.%(ext)s",
+            "%(title)999999999999999999s.%(ext)s",
+            "%(title).1000B.%(ext)s",
+            "%(title)5.99999s.%(ext)s",
+            "%(n)0000000000d.%(ext)s",
+        ] {
+            assert_eq!(validate(bad), Err(TemplateReason::Field), "{bad}");
+        }
     }
 
     #[test]

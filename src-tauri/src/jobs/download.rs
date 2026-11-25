@@ -158,17 +158,93 @@ fn reader(
         });
 }
 
-/// The program with its arguments, working folder and environment – no shell.
-pub fn build_command(program: &Path, args: &[String], target: &Path, env: &DownloadEnv) -> Command {
-    let mut cmd = Command::new(program);
-    cmd.args(args).current_dir(target);
-    for (k, v) in &env.env {
-        cmd.env(k, v);
-    }
+/// The environment of the process (review 078 #1c/#1d): the start environment with a
+/// `PATH` of **absolute folders only** – yt-dlp and Python look programs up by their
+/// bare name, and a `.` or relative entry would be searched in the working folder, which
+/// is the download folder. Windows: cmd.exe (if anything starts one) does not search the
+/// current folder either.
+pub fn child_env(env: &DownloadEnv, windows: bool) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = env
+        .env
+        .iter()
+        .filter(|(k, _)| k != "PATH")
+        .cloned()
+        .collect();
+    let path = env
+        .env
+        .iter()
+        .find(|(k, _)| k == "PATH")
+        .map(|(_, v)| std::ffi::OsString::from(v))
+        .or_else(|| std::env::var_os("PATH"))
+        .unwrap_or_default();
+    let dirs: Vec<PathBuf> = std::env::split_paths(&path)
+        .filter(|d| d.is_absolute())
+        .collect();
+    let joined = std::env::join_paths(dirs)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    out.push(("PATH".into(), joined));
     // an app started from the Finder has no locale: yt-dlp would drop every non-ASCII
     // character of a title
-    cmd.env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8");
+    out.push(("PYTHONUTF8".into(), "1".into()));
+    out.push(("PYTHONIOENCODING".into(), "utf-8".into()));
+    if windows {
+        out.push(("NoDefaultCurrentDirectoryInExePath".into(), "1".into()));
+    }
+    out
+}
+
+/// The program with its arguments, working folder and environment – no shell.
+pub fn build_command(program: &Path, args: &[String], cwd: &Path, env: &DownloadEnv) -> Command {
+    let mut cmd = Command::new(program);
+    cmd.args(args).current_dir(cwd);
+    for (k, v) in child_env(env, cfg!(windows)) {
+        cmd.env(k, v);
+    }
     cmd
+}
+
+/// An empty folder of our own as working folder (review 078 #1e): on Windows a program
+/// started by its bare name is looked for in the working folder first – that must not
+/// be the folder the downloads (and whatever else) lie in. Removed when dropped.
+struct NeutralDir(PathBuf);
+
+impl NeutralDir {
+    fn create(marker: &str) -> Result<Self, FsError> {
+        let dir = std::env::temp_dir().join(format!("fnf-download-{marker}"));
+        let b = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        let b = {
+            use std::os::unix::fs::DirBuilderExt;
+            let mut b = b;
+            b.mode(0o700);
+            b
+        };
+        // never an existing folder: it would not be ours (and not empty)
+        b.create(&dir).map_err(|e| FsError::from_io(&e, &dir))?;
+        Ok(Self(dir))
+    }
+}
+
+impl Drop for NeutralDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// The next message of the pipe readers, waiting a little. `None` also when both
+/// readers are gone – then after a pause, so a process that closed its pipes and runs
+/// on does not make the loop spin (review 078 #5b).
+pub fn next_block<T>(rx: &mpsc::Receiver<T>) -> Option<T> {
+    const WAIT: Duration = Duration::from_millis(20);
+    match rx.recv_timeout(WAIT) {
+        Ok(m) => Some(m),
+        Err(mpsc::RecvTimeoutError::Timeout) => None,
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            std::thread::sleep(WAIT);
+            None
+        }
+    }
 }
 
 /// What one URL came to.
@@ -254,8 +330,19 @@ fn run_one(
     live: &mut Live<'_>,
 ) -> Result<Outcome, FsError> {
     let marker = crate::shell::env::new_marker();
-    let args = args::build(options, env, Mode::Job { marker: &marker }, url)?;
-    let cmd = build_command(program, &args, target, env);
+    // Windows: an empty working folder of our own, the target as a path option
+    let neutral = if env.neutral_cwd {
+        Some(NeutralDir::create(&marker)?)
+    } else {
+        None
+    };
+    let mode = Mode::Job {
+        marker: &marker,
+        paths: neutral.as_ref().map(|_| target),
+    };
+    let args = args::build(options, env, mode, url)?;
+    let cwd = neutral.as_ref().map_or(target, |n| n.0.as_path());
+    let cmd = build_command(program, &args, cwd, env);
     let mut out = Outcome::default();
     let mut g: GroupChild = match spawn_group(cmd) {
         Ok(g) => g,
@@ -307,12 +394,11 @@ fn run_one(
             g.kill();
             killed = true;
         }
-        match rx.recv_timeout(Duration::from_millis(20)) {
-            Ok(Msg::Out(bytes)) => on_out(&dec_out.push(&bytes), &mut out, live),
-            Ok(Msg::Err(bytes)) => on_err(&dec_err.push(&bytes), &mut out, live),
-            Ok(Msg::Eof) => open_pipes -= 1,
-            Err(mpsc::RecvTimeoutError::Disconnected) => open_pipes = 0,
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
+        match next_block(&rx) {
+            Some(Msg::Out(bytes)) => on_out(&dec_out.push(&bytes), &mut out, live),
+            Some(Msg::Err(bytes)) => on_err(&dec_err.push(&bytes), &mut out, live),
+            Some(Msg::Eof) => open_pipes -= 1,
+            None => {}
         }
         if status.is_none()
             && let Ok(Some(s)) = g.child.try_wait()
@@ -327,9 +413,16 @@ fn run_one(
         }
     }
     let cancelled = control.is_cancelled();
+    // nothing of ours runs on: whatever is left of the group ends now – before the last
+    // output is read, so a background process cannot keep feeding the pipe (after a
+    // cancel these are the children that survived SIGTERM; review 078 #5a)
+    g.kill();
     if !cancelled {
-        // what already arrived (at most CHANNEL_BLOCKS)
-        loop {
+        // what already arrived, and no more than that: the channel holds CHANNEL_BLOCKS
+        for _ in 0..CHANNEL_BLOCKS * 4 {
+            if control.is_cancelled() {
+                break;
+            }
             match rx.try_recv() {
                 Ok(Msg::Out(bytes)) => on_out(&dec_out.push(&bytes), &mut out, live),
                 Ok(Msg::Err(bytes)) => on_err(&dec_err.push(&bytes), &mut out, live),
@@ -340,15 +433,13 @@ fn run_one(
         on_out(&(dec_out.finish() + "\n"), &mut out, live);
         on_err(&(dec_err.finish() + "\n"), &mut out, live);
     }
-    // nothing of ours runs on: whatever is left of the group ends now (after a cancel
-    // these are the children that survived SIGTERM)
-    g.kill();
     if cancelled {
         let deadline = Instant::now() + REAP;
         while g.group_alive() && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
+    drop(neutral);
     out.cancelled = cancelled;
     out.ok = !cancelled && status.is_some_and(|s| s.success());
     if !out.ok && !cancelled {
