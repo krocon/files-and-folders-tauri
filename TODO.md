@@ -56,6 +56,11 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       Titel mit Emoji/Umlauten/`/`; „bereits vorhanden“ zählt als übersprungen (internes Feld `__real_download`);
       „Aus Zwischenablage einfügen“ (Paste-Hinweis von WebKit?), Cookies aus Browser (Schlüsselbund-Abfrage).
       Echte Protokollzeilen aufzeichnen: `src-tauri/src/url_download/testdata/README.md`.
+- [ ] Von URLs laden unter **Windows** (078, nur typgeprüft): Download läuft im leeren Arbeitsordner und landet über
+      `--paths` im Ziel; ein `ffmpeg.exe`/`deno.exe`/`rtmpdump.exe` im Zielordner wird **nicht** gestartet; Ziel mit
+      `%` oder `$` im Namen wird mit Meldung abgelehnt; Abbruch beendet den Prozessbaum (Job Object); „Befehl
+      kopieren“ mit `shell.windowsShell` = cmd kopiert nichts (Meldung), mit PowerShell einen einfügbaren Befehl;
+      UNC-Pfad in `download.ytDlpPath` gilt als „nicht gefunden“.
 - [ ] Natives Menü (014): ⌘-Kürzel in Textfeldern (F2-Editor, Filter) lösen **keine** Aktion aus; Kürzel-Badges.
 - [ ] Papierkorb (006): Finder-Erlaubnis, „Zurücklegen“.
 - [ ] Multi-Rename (007): nur Groß/klein (`a.txt` → `A.txt`) und NFD-Namen auf APFS; Tausch `a↔b`; Undo.

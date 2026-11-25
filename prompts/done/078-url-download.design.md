@@ -1,6 +1,6 @@
 # Design 078: URL-Download – URLs mit yt-dlp in den Zielordner laden
 
-> **Status:** umgesetzt (Phasen 1–5), Abnahme mit echtem yt-dlp und Netz sowie externes Review stehen aus (Marc) · **Datum:** 25.11.2026
+> **Status:** umgesetzt (Phasen 1–5), externes Review eingearbeitet; Abnahme mit echtem yt-dlp und Netz steht aus (Marc) · **Datum:** 25.11.2026
 > · **Auftrag:** [078-url-download.md](078-url-download.md) · **Branch:** `feat/url-download`
 > **Kein Haltepunkt nach Phase 1** (Marc, 25.11.2026): die Entscheidungen E-a … E-h sind hier getroffen und begründet.
 
@@ -45,7 +45,7 @@ die mitgelieferte `README.md` und der installierte Python-Quelltext. Kein Lauf g
   trotzdem dabei.
 - `--js-runtimes RUNTIME[:PATH]`, Mindestversionen im Quelltext: deno 2.3.0, node 22.0.0 (bun 1.2.11, quickjs
   2023-12-09 – beide suchen wir nicht).
-- **`-P` ist unbrauchbar für fremde Pfade:** `get_output_path` ruft `expand_path(paths['home'].strip())` – Leerzeichen
+- **`-P` verändert Pfade** (seit dem Review unter Windows trotzdem benutzt, mit Ablehnung solcher Ziele – s. „Externes Review“ #1)**:** `get_output_path` ruft `expand_path(paths['home'].strip())` – Leerzeichen
   am Rand gehen verloren, `$VAR`/`~` werden ersetzt. → Wir übergeben **kein `-P`**, sondern setzen den Zielordner als
   **Arbeitsordner** des Prozesses (`current_dir`). Abweichung vom Auftrag („`-P <Ziel>`“), begründet durch den
   Quelltext.
@@ -156,11 +156,12 @@ Kürzel `Mod+Alt+U` (U wie URL) auf macOS, Windows, Linux; Palette und Button-Le
   gekürzt – als `message` des `download_failed`-Fehlers.
 - **E-k Anzeige der URL.** `Progress.current` trägt nur `host/…/letztes-Segment` (ohne Query); die volle URL steht im
   Spec und in `ItemError.path` (Details des Tasks, vom Nutzer aufgeklappt) – beides nur im Speicher, nie im Log.
-- **E-l MCP (071).** Kein Werkzeug startet die Job-Art (`READ_KINDS`, Test), keine Vorschlagsart „download“. Der
-  Dialog braucht **keinen** eigenen `McpGuardService`-Anschluss: er wirkt nicht auf Markierung/Cursor; ein von
-  einem Client gewechselter Ordner steht ausgeschrieben in der Selectbox, die URLs tippt der Nutzer selbst, und im
-  URL-Feld ist Enter ein Zeilenwechsel – ein „blindes Enter“ startet nichts. Die kurze Sperre nach einer
-  Ansichtsänderung greift über die Kategorie `files` wie bei jeder Dateiaktion.
+- **E-l MCP (071).** Kein Werkzeug startet die Job-Art (`READ_KINDS`, Test), keine Vorschlagsart „download“. Die
+  kurze Sperre nach einer Ansichtsänderung greift über die Kategorie `files`. **Korrigiert nach dem Review (#4):**
+  die erste Fassung hielt einen `McpGuardService`-Anschluss für unnötig (Ziel steht ausgeschrieben da, Enter im
+  URL-Feld startet nichts). Das übersah, dass ein Client die **Gegenseite** – das vorgewählte Ziel – in einen
+  präparierten Ordner navigieren kann. Der Dialog zeigt deshalb am Ziel einen Hinweis, solange Ordner oder
+  Markierung der gewählten Seite noch vom Client stammen (`influence` wie in `OpsStore.changedBy`).
 - **E-m Plugins/Cache von yt-dlp** bleiben, wie der Nutzer sie eingerichtet hat (`--ignore-config` betrifft nur
   Konfigurationsdateien): PO-Token-Provider für YouTube sind Plugins. Kein `--no-plugin-dirs`.
 - **E-n Neuer Einstellungstyp `string`** (`maxLength`), weil Programmpfade weder Enum noch Liste sind; Rust und
@@ -360,7 +361,45 @@ Fehler) erscheinen nur über Interpolation (`textContent`), nie `innerHTML`.
       `url-download-missing`, `url-download-no-ffmpeg`)
 - [x] Phase 5 Doku: `docs/architecture.md`, `roadmap.md`, `feature-parity.md`, `licenses.md`, README (+ Bild), `CLAUDE.md`,
       `TODO.md` §2, Index
-- [ ] Phase 6: externes Review (veranlasst Marc), Abnahme mit echtem yt-dlp und Netz
+- [x] Phase 6a: externes Review – acht Punkte behoben (Abschnitt „Externes Review“)
+- [ ] Phase 6b: Abnahme mit echtem yt-dlp und Netz (Mac), Lauf unter Windows
+
+## Externes Review (25.11.2026) – Befunde und was daraus wurde
+
+Kein kritischer Befund; Argument-Bau, URL-/Vorlagenprüfung, Erlaubnisliste, Parser und MCP hielten. Jeder Punkt
+unten bekam zuerst einen roten Test (rot gesehen), dann den Fix.
+
+| # | Befund | Entscheidung | Test |
+|---|---|---|---|
+| 1 | yt-dlp sucht Helfer per bloßem Namen und fände sie im Arbeitsordner = Zielordner (Windows: `_find_exe` nimmt `os.getcwd()` vor `PATH`, `CreateProcess` durchsucht den aktuellen Ordner; Unix: über `.`/relative `PATH`-Einträge – real belegt) | **behoben**, fünf Teile: (a) immer `--no-js-runtimes` vor dem eigenen `--js-runtimes=<name>:<abs>`; (b) immer `--ffmpeg-location` – ohne Fund ein Pfad, den es nicht gibt (`_determine_executables`: „Continuing without ffmpeg“, keine Suche; am Quelltext 2026.11.23 nachgelesen); (c) `PATH` des Kindprozesses nur mit absoluten Ordnern (`child_env`); (d) Windows `NoDefaultCurrentDirectoryInExePath=1`; (e) **Windows: neutraler, leerer Arbeitsordner je Prozess** (`NeutralDir`, im Temp-Ordner des Nutzers, danach entfernt) und das Ziel als `--paths=home:<Ziel>`; Ziele, die yt-dlp verändern würde (`$`, unter Windows `%`, Rand-Leerzeichen, Steuerzeichen), werden mit `download_target_unsupported` abgelehnt. Unix bleibt bei Arbeitsordner = Ziel (kein Ordner wird abgelehnt; mit gefiltertem `PATH` ist die Lücke zu). Der Schalter ist `DownloadEnv.neutral_cwd` (= `cfg!(windows)`), damit **beide Wege unter Unix getestet** sind. | `args::helpers_are_named_by_path_or_switched_off`, `args::the_target_as_a_path_option`, `tests_download::a_program_in_the_target_folder_is_not_run` (geplantes `ffmpeg` im Ziel lief vor dem Fix), `the_environment_of_the_child`, `a_neutral_working_folder_with_the_target_as_a_path_option` |
+| 2 | „Befehl kopieren“ quotierte unter Windows immer für PowerShell, Default ist `cmd` | **behoben**: Quotierung über `shell::quote::quote_one` für die Shell der Shell-Leiste (`shell.windowsShell` / `$SHELL`, auch fish); der Hinweis nennt die Shell. cmd.exe ersetzt `%…%` auch in Anführungszeichen und jeder Befehl enthält `%(…)s` → für cmd wird **nichts kopiert**, die Meldung verweist auf PowerShell. | `args::the_command_is_quoted_for_the_shell`; Frontend „copies nothing when the shell cannot take the command“, „… names the shell it is quoted for“ |
+| 3 | `download.*Path` reisten im Import-Teil „settings“; schon das Öffnen des Dialogs startet das Programm mit `--version` | **behoben**: die drei Schlüssel sind beim Import lokal wie `mcp.*` (`settings::LOCAL_ONLY_KEYS`); unter Windows gilt ein UNC-/Geräte-/Verbatim-Pfad (`\\…`, `//…`) nie als Programm (`tools::local_path`). | `settings::imported_settings_never_set_the_download_programs`, `tools::network_and_device_paths_are_no_programs` |
+| 4 | Dialog ohne MCP-Hinweis: ein Stufe-1-Client navigiert die Gegenseite (= Default-Ziel) | **behoben**, E-l unten korrigiert: `UrlDownloadStore.targetChangedBy` wertet `McpGuardService.influence` für die gewählte Seite aus, der Dialog zeigt am Ziel „‹Client› hat diesen Ordner über MCP geöffnet …“ (`role="alert"`); der Start gilt als bewusste Bestätigung (`guard.forget`). | Frontend „says so when an MCP client chose the folder of the target“ |
+| 5a | Nachlese nach Prozessende vor `g.kill()` und unbegrenzt: ein Enkel, der die Pipe flutet, hielt den Job | **behoben**: erst die Gruppe beenden, dann höchstens `4 × CHANNEL_BLOCKS` Blöcke nachlesen | `tests_download::a_flooding_grandchild_does_not_hold_the_job` (lief vorher in die Zeitgrenze) |
+| 5b | heiße Schleife, wenn beide Pipes zu sind und der Prozess weiterläuft | **behoben**: `next_block` wartet auch bei getrenntem Kanal | `tests_download::waiting_without_pipes_does_not_spin` |
+| 5c | `run_version` beendete beim Timeout nur das Kind | **behoben**: eigene Prozessgruppe (`spawn_group_quiet`), die Gruppe wird beendet | `tools::unix::a_hanging_version_check_ends_with_its_children` |
+| 6 | Breite/Präzision der Vorlage unbegrenzt | **behoben**: Flags, Breite, Präzision je höchstens 3 Zeichen | `template::width_and_precision_are_bounded` |
+
+Zur Frage „eine Lösung für beide Systeme?“: Ein neutraler Arbeitsordner mit `--paths` überall wäre ein Codeweg
+weniger, würde aber unter macOS/Linux Ordner mit `$` oder Rand-Leerzeichen ablehnen, ohne dort etwas zu schließen
+(Unix sucht den aktuellen Ordner nie, wenn `PATH` ihn nicht nennt). Deshalb zwei Wege hinter einem Schalter, beide
+unter Unix getestet.
+
+**Erlaubnisliste und externe Downloader:** keine erlaubte Option wählt einen externen Downloader (`--downloader`
+steht nicht auf der Liste) oder nimmt einen Programmnamen. **Weitere Helfer per bloßem Namen** (Quelltext 2026.11.23, `check_executable`): `rtmpdump` (Protokolle
+`rtmp`/`rtmpe`, `downloader/rtmp.py`), `phantomjs` (einzelne Extraktoren, `extractor/openload.py`), `AtomicParsley`
+(Ausweichweg von „Thumbnail einbetten“ in mp4, `postprocessor/embedthumbnail.py`); `mplayer`/`mpv` gibt es nicht
+mehr, `setfattr`/`xattr` nur mit `--xattrs` (nicht erlaubt). Abschalten lässt sich das nicht sauber (welcher Helfer
+läuft, bestimmt die Webseite über Protokoll und Extraktor) – es ist auch nicht nötig: gesucht wird jetzt nur noch in
+absoluten `PATH`-Ordnern und unter Windows zusätzlich im leeren Arbeitsordner und im Ordner von yt-dlp selbst.
+
+**Rest-Risiken:**
+- Windows ist für diesen Code **nur typgeprüft**; der Weg „neutraler Ordner + `--paths`“ ist unter Unix mit dem
+  Fake-Programm getestet, mit echtem yt-dlp unter Windows aber nie gelaufen (`get_output_path` am Quelltext gelesen).
+- Ein Programm in einem **absoluten** `PATH`-Ordner, in den andere schreiben dürfen, bleibt ein Problem des Systems.
+- Zwischen Prüfung und Start kann jemand das gefundene Programm ersetzen (wie bei jedem externen Tool, 011).
+- Der Ordner von `yt-dlp.exe` wird von Windows immer zuerst durchsucht – er gehört dem Nutzer.
+- Für cmd.exe gibt es keinen kopierbaren Befehl (Absicht).
 
 ## Stand der Akzeptanzkriterien
 

@@ -427,6 +427,9 @@ prompts/                     Feature-Prompts (s. o.)
   der Arbeitsordner), eigene Vorlagen aus `url-download.json` nur über die Erlaubnisliste in `presets.rs` (neue
   Optionen dort mit Werte-Prüfer ergänzen, nie eine Verbotsliste). Ausgabe von yt-dlp ist feindlich und wird nie
   geloggt; URLs werden nicht gespeichert. Nichts lädt, installiert oder aktualisiert yt-dlp/ffmpeg; nicht über MCP.
+  yt-dlp darf **keinen Helfer per bloßem Namen suchen**: immer `--ffmpeg-location` und `--no-js-runtimes`, `PATH` des
+  Prozesses nur mit absoluten Ordnern (`jobs/download.rs::child_env`), unter Windows ein leerer Arbeitsordner +
+  `--paths` (`DownloadEnv.neutral_cwd`). `download.*Path` wird nie importiert (`settings::LOCAL_ONLY_KEYS`).
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.
