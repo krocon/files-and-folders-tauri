@@ -41,6 +41,7 @@ import '../../features/fileactions/file-actions-texts';
 import '../../features/starter/starter-texts';
 import '../../features/themes/theme-texts';
 import '../../features/update/update-texts';
+import '../../features/urldownload/urldownload-texts';
 import '../../features/workspace/texts';
 import '../../shared/dialog/dialog-key-texts';
 
@@ -117,6 +118,12 @@ const SAME = new Set([
   'TAR',
   'TAR.GZ',
   'RAR',
+  'Video',
+  'Container',
+  'Playlist',
+  'Extras',
+  'macOS (Homebrew)',
+  'Windows (winget)',
 ]);
 
 const SAMPLE_ARGS: unknown[] = [2, 'x', 3, 4];

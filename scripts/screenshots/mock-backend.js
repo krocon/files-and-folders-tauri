@@ -1531,6 +1531,77 @@
     watch_dirs: (a) =>
       (a?.dirs ?? []).map((dir) => ({ dir, mode: 'native', reason: null, modifiedMs: null })),
     find_empty_dirs: (a) => findEmptyDirs(a?.roots ?? [], a?.options ?? {}),
+    // download from URLs (design 078): the programs as on a Mac with Homebrew – or missing
+    download_tools: () => {
+      const d = cfg.mock?.download ?? {};
+      const tool = (version, path, name = null) => ({
+        state: 'ok',
+        version,
+        path,
+        name,
+        configured: false,
+      });
+      const missing = {
+        state: 'missing',
+        version: null,
+        path: null,
+        name: null,
+        configured: false,
+      };
+      return {
+        ytDlp: d.missing ? missing : tool('2026.11.23', '/opt/homebrew/bin/yt-dlp'),
+        ffmpeg: d.noFfmpeg ? missing : tool('9.1', '/opt/homebrew/bin/ffmpeg'),
+        jsRuntime: d.noJs ? missing : tool('2.9.8', '/opt/homebrew/bin/deno', 'deno'),
+        ytDlpOutdated: false,
+      };
+    },
+    download_presets: () => ({
+      presets: [],
+      problems: [],
+      warning: null,
+      file: `${home}/.config/files-and-folders/url-download.json`,
+    }),
+    download_check: (a) => {
+      const urls = [];
+      const problems = [];
+      let duplicates = 0;
+      String(a?.text ?? '')
+        .split('\n')
+        .forEach((raw, i) => {
+          const line = raw.trim();
+          if (line === '') return;
+          if (/^https?:\/\/[^\s/]+\S*$/.test(line)) {
+            if (urls.includes(line)) duplicates += 1;
+            else urls.push(line);
+          } else {
+            problems.push({
+              line: i + 1,
+              reason: /^[a-z]+:\/\//.test(line) ? 'scheme' : 'invalid',
+            });
+          }
+        });
+      const t = String(a?.options?.template ?? '');
+      const template = /[\\/]/.test(t) ? 'separator' : t.endsWith('.%(ext)s') ? null : 'extension';
+      const ext =
+        a?.options?.content === 'audio'
+          ? a.options.audioFormat === 'mp3'
+            ? 'mp3'
+            : 'm4a'
+          : a?.options?.container === 'mkv'
+            ? 'mkv'
+            : 'mp4';
+      const example = template
+        ? ''
+        : t
+            .replace('%(title)s', 'My video')
+            .replace('%(id)s', 'abc123')
+            .replace('%(uploader)s', 'Uploader')
+            .replace('%(upload_date>%Y-%m-%d)s', '2026-01-31')
+            .replace('%(playlist_index)02d', '01')
+            .replace('%(ext)s', ext);
+      return { urls, problems, duplicates, tooMany: false, template, example };
+    },
+    download_command_line: (a) => `yt-dlp --ignore-config --no-exec -- '${a?.url ?? ''}'`,
     create_folders: () => ({ created: [], errors: [] }),
     get_properties: (a) => properties(a?.path),
     read_preview: (a) => preview(a?.path),

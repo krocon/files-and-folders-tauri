@@ -1,0 +1,146 @@
+/* Download from URLs (design 078) – layout only; controls look as in controls.css. */
+.scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* room for the focus ring of the fields at the edge */
+  padding: 2px;
+}
+
+.target {
+  width: 100%;
+}
+
+.count-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--spacing-3);
+}
+
+.format select {
+  min-width: 0;
+}
+
+.more summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.urls-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.urls {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.count,
+.example,
+.status,
+.warning,
+.missing p {
+  margin: 0;
+}
+
+.count {
+  min-height: 1.2em;
+}
+
+.example {
+  min-height: 1.2em;
+  color: var(--color-muted);
+
+  &.error {
+    color: var(--color-danger);
+  }
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2) var(--spacing-3);
+  min-height: var(--control-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group-label {
+  min-width: 4rem;
+  font-weight: 600;
+}
+
+.langs {
+  width: 7rem;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.status {
+  overflow-wrap: anywhere;
+}
+
+.warning {
+  color: var(--color-danger);
+
+  & ul {
+    margin: 0;
+    padding-left: var(--spacing-4);
+  }
+}
+
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.missing-title {
+  margin: 0;
+  font-size: var(--font-size-md, 1rem);
+}
+
+.install {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--spacing-1) var(--spacing-3);
+  margin: 0;
+
+  & dd {
+    margin: 0;
+  }
+
+  & code {
+    font-family: var(--font-mono);
+    user-select: all;
+    overflow-wrap: anywhere;
+  }
+}
+
+.messages {
+  flex: 1;
+  min-width: 0;
+
+  & p {
+    margin: 0;
+  }
+}

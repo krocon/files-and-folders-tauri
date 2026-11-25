@@ -117,6 +117,7 @@ export const ACTION_IDS = [
   'OPEN_CHECKSUM_CREATE_DLG',
   'CHECKSUM_VERIFY',
   'COPY_CHECKSUM',
+  'OPEN_URL_DOWNLOAD_DLG',
   'OPEN_DISK_USAGE',
   'OPEN_DISK_USAGE_VOLUME',
   'DISK_USAGE_TOGGLE_CHART',
@@ -306,6 +307,8 @@ const ACTIONS_EN: Readonly<Record<ActionId, ActionMeta>> = {
   OPEN_CHECKSUM_CREATE_DLG: m('Create checksums…', 'files', '039'),
   CHECKSUM_VERIFY: m('Verify checksums', 'files', '039'),
   COPY_CHECKSUM: m('Copy SHA-256 to clipboard', 'files', '039', true),
+  // design 078: category `files` – vetoed right after an MCP client changed the view
+  OPEN_URL_DOWNLOAD_DLG: m('Download from URLs…', 'files', '078'),
   OPEN_DISK_USAGE: m('Disk usage…', 'files', '033'),
   OPEN_DISK_USAGE_VOLUME: m('Disk usage of the drive…', 'files', '033'),
   DISK_USAGE_TOGGLE_CHART: m('Disk usage: rings or tiles', 'navigation', '033', true),

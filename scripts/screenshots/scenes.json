@@ -588,6 +588,34 @@
       ]
     },
     {
+      "name": "url-download-dialog",
+      "steps": [
+        { "action": "OPEN_URL_DOWNLOAD_DLG" },
+        { "wait": 300 },
+        { "type": "https://www.example.org/watch?v=abc123" },
+        { "key": "Enter" },
+        { "type": "ftp://files.example.org/video.mp4" },
+        { "key": "Enter" },
+        { "type": "https://media.example.net/talks/2026/keynote" },
+        { "wait": 300 }
+      ]
+    },
+    {
+      "name": "url-download-missing",
+      "mock": { "download": { "missing": true } },
+      "steps": [{ "action": "OPEN_URL_DOWNLOAD_DLG" }, { "wait": 300 }]
+    },
+    {
+      "name": "url-download-no-ffmpeg",
+      "mock": { "download": { "noFfmpeg": true, "noJs": true } },
+      "steps": [
+        { "action": "OPEN_URL_DOWNLOAD_DLG" },
+        { "wait": 300 },
+        { "type": "https://www.example.org/watch?v=abc123" },
+        { "wait": 300 }
+      ]
+    },
+    {
       "name": "about-dialog",
       "steps": [
         {
@@ -789,13 +817,35 @@
     {
       "name": "mcp-log",
       "settings": { "mcp.enabled": true },
-      "mock": { "mcp": { "clients": ["Claude Code"], "log": [["get_selection", 3, "ok"], ["search", 42, "done"], ["propose_rename", 3, "cancelled"], ["list_directory", 6, "out_of_scope"], ["propose_delete", 4, "confirmed"]] } },
+      "mock": {
+        "mcp": {
+          "clients": ["Claude Code"],
+          "log": [
+            ["get_selection", 3, "ok"],
+            ["search", 42, "done"],
+            ["propose_rename", 3, "cancelled"],
+            ["list_directory", 6, "out_of_scope"],
+            ["propose_delete", 4, "confirmed"]
+          ]
+        }
+      },
       "steps": [{ "action": "MCP_SHOW_LOG" }, { "wait": 400 }]
     },
     {
       "name": "mcp-indicator",
       "settings": { "mcp.enabled": true },
-      "mock": { "mcp": { "clients": ["Claude Code"], "log": [["get_selection", 3, "ok"], ["search", 42, "done"], ["propose_rename", 3, "cancelled"], ["list_directory", 6, "out_of_scope"], ["propose_delete", 4, "confirmed"]] } },
+      "mock": {
+        "mcp": {
+          "clients": ["Claude Code"],
+          "log": [
+            ["get_selection", 3, "ok"],
+            ["search", 42, "done"],
+            ["propose_rename", 3, "cancelled"],
+            ["list_directory", 6, "out_of_scope"],
+            ["propose_delete", 4, "confirmed"]
+          ]
+        }
+      },
       "steps": [{ "wait": 300 }]
     },
     {
@@ -843,8 +893,14 @@
             "folder": "~/Downloads",
             "pairs": [
               { "path": "~/Downloads/invoice-2026-09.pdf", "newName": "2026-09-30 Invoice.pdf" },
-              { "path": "~/Downloads/Screenshot_2026-10-19.png", "newName": "2026-10-19 Screenshot.png" },
-              { "path": "~/Downloads/tauri-2.8-release-notes.md", "newName": "2026-10-14 Tauri 2.8 release notes.md" }
+              {
+                "path": "~/Downloads/Screenshot_2026-10-19.png",
+                "newName": "2026-10-19 Screenshot.png"
+              },
+              {
+                "path": "~/Downloads/tauri-2.8-release-notes.md",
+                "newName": "2026-10-14 Tauri 2.8 release notes.md"
+              }
             ]
           }
         }

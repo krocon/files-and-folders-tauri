@@ -72,6 +72,11 @@ export const FS_ERROR_EN: Readonly<Record<FsErrorCode, string>> = {
   update_no_release: 'No published release was found.',
   update_invalid_response: 'The answer from GitHub cannot be read.',
   update_http: 'GitHub answered with an error.',
+  download_tool_missing: 'A program for the download was not found (yt-dlp or ffmpeg).',
+  download_invalid_url: 'Only plain http(s) addresses can be downloaded.',
+  download_invalid_template: 'The file name template is not allowed.',
+  download_invalid_options: 'The download options are not valid.',
+  download_failed: 'yt-dlp reported an error.',
   io: 'Read or write error.',
   unknown: 'Read or write error.',
 };
@@ -148,6 +153,11 @@ const FS_ERROR_DE: Translation<typeof FS_ERROR_EN> = {
   update_no_release: 'Es wurde keine veröffentlichte Version gefunden.',
   update_invalid_response: 'Die Antwort von GitHub ist nicht lesbar.',
   update_http: 'GitHub hat mit einem Fehler geantwortet.',
+  download_tool_missing: 'Ein Programm für den Download wurde nicht gefunden (yt-dlp oder ffmpeg).',
+  download_invalid_url: 'Geladen werden nur einfache http(s)-Adressen.',
+  download_invalid_template: 'Die Dateinamen-Vorlage ist nicht erlaubt.',
+  download_invalid_options: 'Die Download-Optionen sind nicht gültig.',
+  download_failed: 'yt-dlp hat einen Fehler gemeldet.',
   io: 'Lese- oder Schreibfehler.',
   unknown: 'Lese- oder Schreibfehler.',
 };

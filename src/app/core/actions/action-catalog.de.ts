@@ -108,6 +108,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   OPEN_CHECKSUM_CREATE_DLG: 'Prüfsummen erzeugen…',
   CHECKSUM_VERIFY: 'Prüfsummen prüfen',
   COPY_CHECKSUM: 'SHA-256 in die Zwischenablage',
+  OPEN_URL_DOWNLOAD_DLG: 'Von URLs laden…',
   OPEN_DISK_USAGE: 'Speicherbelegung…',
   OPEN_DISK_USAGE_VOLUME: 'Speicherbelegung des Laufwerks…',
   DISK_USAGE_TOGGLE_CHART: 'Speicherbelegung: Ringe oder Kacheln',

@@ -78,6 +78,17 @@ export class FakeOsApi extends OsApi {
 export class FakeClipboardApi extends ClipboardApi {
   readonly written: string[] = [];
   fail = false;
+  /** What `readText` hands out (`null` = the system refuses). */
+  text: string | null = '';
+  reads = 0;
+
+  async readText(): Promise<string> {
+    this.reads++;
+    if (this.text === null) {
+      throw { code: 'io', message: 'no clipboard', path: null };
+    }
+    return this.text;
+  }
 
   async writeText(text: string): Promise<void> {
     if (this.fail) {

@@ -101,6 +101,9 @@ export const JOB_EN = {
   summary: (done: number, skipped: number, failed: number) =>
     `${done} done · ${skipped} skipped · ${failed} failed`,
   left: (time: string) => `${time} left`,
+  /** Job `download` (design 078): the URL being loaded, and yt-dlp's post-processing. */
+  urlOf: (n: number, total: number) => `URL ${n} of ${total}`,
+  processing: 'processing (ffmpeg)',
   /** The summary in the table: two lines. */
   doneCount: (done: number) => `${done} done`,
   skippedFailed: (skipped: number, failed: number) => `${skipped} skipped · ${failed} failed`,
@@ -157,6 +160,8 @@ export const JOB_EN = {
     archiveMkdir: (name: string, parent: string) => `Create folder ${name} in ${parent}`,
     attributes: (what: string, recursive: boolean) =>
       `Change attributes of ${what}${recursive ? ' and their contents' : ''}`,
+    download: (n: number, target: string) =>
+      `Download ${n === 1 ? '1 URL' : `${n} URLs`} → ${target}`,
   },
 } as const;
 
@@ -268,6 +273,9 @@ export function jobTitle(job: JobInfo): string {
       const n = spec.paths.length;
       return t.attributes(n === 1 ? spec.paths[0] : t.entries(n), !!spec.recursive);
     }
+    // the URLs are not part of the title (design 078 E-k): they show in the details
+    case 'download':
+      return t.download(spec.urls.length, spec.targetDir);
   }
 }
 
@@ -284,6 +292,17 @@ export function fraction(p: Progress): number | null {
 
 /** "1.2 MB of 5.0 MB" (or items) – empty while the total is unknown. */
 export function amountText(p: Progress): string {
+  // a download (design 078): which URL, and the bytes of its current file if known
+  if (p.phase !== undefined && p.itemsTotal > 0) {
+    const url = JOB_TEXTS.urlOf(Math.min(p.itemsDone + 1, p.itemsTotal), p.itemsTotal);
+    const bytes =
+      p.bytesTotal > 0
+        ? JOB_TEXTS.of(formatSize(p.bytesDone), formatSize(p.bytesTotal))
+        : p.bytesDone > 0
+          ? formatSize(p.bytesDone)
+          : '';
+    return p.itemsTotal > 1 ? [url, bytes].filter((s) => s !== '').join(' · ') : bytes;
+  }
   if (p.bytesTotal > 0) {
     return JOB_TEXTS.of(formatSize(p.bytesDone), formatSize(p.bytesTotal));
   }
@@ -295,6 +314,9 @@ export function amountText(p: Progress): string {
 
 /** "3.4 MB/s · 0:12 left" – only while running with a known rate. */
 export function speedText(p: Progress, running = true): string {
+  if (running && p.phase === 'processing') {
+    return JOB_TEXTS.processing;
+  }
   if (!running || p.rateBps <= 0) {
     return '';
   }

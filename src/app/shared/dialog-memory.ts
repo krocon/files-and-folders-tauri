@@ -7,7 +7,14 @@ const MAX_REMEMBERED =
 
 /** Tool dialogs that open with the values of their last run (design 027 E5, 046 E6). */
 export type RememberedDialog =
-  'groupFiles' | 'clean' | 'multiMkdir' | 'checksum' | 'sync' | 'seriesGroup' | 'selectIf';
+  | 'groupFiles'
+  | 'clean'
+  | 'multiMkdir'
+  | 'checksum'
+  | 'sync'
+  | 'seriesGroup'
+  | 'selectIf'
+  | 'urlDownload';
 
 interface Entry {
   readonly dialog: RememberedDialog;

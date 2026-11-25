@@ -42,6 +42,7 @@ describe('last inputs of the tool dialogs (design 027 E5)', () => {
       'sync',
       'seriesGroup',
       'selectIf',
+      'urlDownload',
     ];
     for (const d of all) {
       rememberDialog(settings, d, { id: d });

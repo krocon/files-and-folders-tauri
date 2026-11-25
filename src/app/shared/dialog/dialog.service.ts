@@ -49,7 +49,8 @@ export type DialogKind =
   | 'checksum'
   | 'checksum-result'
   | 'diff'
-  | 'sync';
+  | 'sync'
+  | 'url-download';
 
 /**
  * Which modal dialog is open (one at a time). While one is open, the keyboard

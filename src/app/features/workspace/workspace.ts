@@ -113,6 +113,9 @@ import { registerAboutActions } from '../about/about-actions';
 import { UpdateDialog } from '../update/update-dialog';
 import { openUpdateHint, registerUpdateActions } from '../update/update-actions';
 import { UpdateStore } from '../update/update.store';
+import { registerUrlDownloadActions } from '../urldownload/url-download-actions';
+import { UrlDownloadDialog } from '../urldownload/url-download-dialog';
+import { UrlDownloadStore } from '../urldownload/url-download.store';
 import { UPDATE_TEXTS } from '../update/update-texts';
 import { MenuService } from '../menus/menu.service';
 import { ContextMenu } from './context-menu';
@@ -197,6 +200,7 @@ import { McpLogDialog } from '../mcp/mcp-log-dialog';
     SettingsDialog,
     AboutDialog,
     UpdateDialog,
+    UrlDownloadDialog,
     ContextMenu,
     ShellBar,
     ButtonConfigDialog,
@@ -274,6 +278,7 @@ export class Workspace implements OnInit {
   protected readonly dragging = signal(false);
   protected readonly modalOpen = computed(() => this.dialogs.open() !== null);
   protected readonly update = inject(UpdateStore);
+  private readonly urlDownload = inject(UrlDownloadStore);
   protected readonly updateTexts = UPDATE_TEXTS;
 
   protected showUpdateHint(): void {
@@ -425,6 +430,7 @@ export class Workspace implements OnInit {
     this.destroyRef.onDestroy(registerMenuActions(this.actions, this.menus));
     this.destroyRef.onDestroy(registerAboutActions(this.actions, this.dialogs));
     this.destroyRef.onDestroy(registerUpdateActions(this.actions, this.update, this.dialogs));
+    this.destroyRef.onDestroy(registerUrlDownloadActions(this.actions, this.urlDownload));
     this.destroyRef.onDestroy(this.update.startAuto());
     this.destroyRef.onDestroy(registerConfigActions(this.actions, this.dialogs, this.menuApi));
     this.destroyRef.onDestroy(registerMrImportActions(this.actions, this.mrImport));

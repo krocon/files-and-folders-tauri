@@ -10,6 +10,11 @@ import { ApplyTo, AttrChange } from '../attributes/attributes.models';
 import { DuplicateCriteria, SearchCriteria, SearchHit, SearchStats } from '../search/search.models';
 import { ChecksumAlgo, ChecksumOutput, ChecksumSummary } from '../checksum/checksum.models';
 import { CompareOptions, CompareRow, CompareStats, SyncOp } from '../sync/sync.models';
+import {
+  DownloadOptions,
+  DownloadPhase,
+  DownloadSummary,
+} from '../urldownload/url-download.models';
 
 /** What happens when a target exists (copy/move dialog). */
 export type ConflictDefault = 'ask' | 'overwrite' | 'skip' | 'overwriteIfNewer' | 'rename';
@@ -224,6 +229,16 @@ export type JobSpec =
   | { readonly kind: 'archiveDelete'; readonly paths: readonly string[] }
   /** Create a folder in an archive (design 035). */
   | { readonly kind: 'archiveMkdir'; readonly parent: string; readonly name: string }
+  /**
+   * Download from URLs with yt-dlp (design 078): `urls` as `download_check` returned them.
+   * Program and arguments are Rust's – the spec has no place for either.
+   */
+  | {
+      readonly kind: 'download';
+      readonly urls: readonly string[];
+      readonly targetDir: string;
+      readonly options: DownloadOptions;
+    }
   /** Shell bar (design 021): only Rust creates it (`run_shell`), never `start`. */
   | { readonly kind: 'shell'; readonly cwd: string; readonly command: string };
 
@@ -261,6 +276,8 @@ export interface Progress {
   readonly rateBps: number;
   /** Bytes copied/moved into each top-level target destination so far. */
   readonly destBytes?: Readonly<Record<string, number>>;
+  /** Job `download` (design 078): what happens to the current URL. */
+  readonly phase?: DownloadPhase;
 }
 
 export interface FileMeta {
@@ -319,6 +336,8 @@ export interface Summary {
   readonly checksums?: ChecksumSummary | null;
   /** Job `compare` (design 036): the final statistics. */
   readonly compare?: CompareStats | null;
+  /** Job `download` (design 078): the files that arrived. */
+  readonly download?: DownloadSummary | null;
 }
 
 /** What "Start now" did (Rust `jobs::manager::StartNow`). */

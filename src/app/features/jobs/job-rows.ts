@@ -72,7 +72,8 @@ function buttonsOf(job: JobInfo, title: string): JobButton[] {
   }
   if (job.state === 'waitingForDecision') {
     out.push(b('answer', t.answer, 'toggle', 'primary'));
-  } else {
+  } else if (job.spec.kind !== 'download') {
+    // no pause for a download (design 078 E-e): its connections would time out
     const paused = job.state === 'paused';
     out.push(
       b(paused ? 'resume' : 'pause', paused ? t.resume : t.pause, 'toggle', 'normal', {

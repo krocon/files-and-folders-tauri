@@ -336,6 +336,7 @@ export const MENU_BAR: readonly TopMenu[] = [
       },
       'OPEN_DISK_USAGE',
       'OPEN_DISK_USAGE_VOLUME',
+      'OPEN_URL_DOWNLOAD_DLG',
       '-',
       WITH_TOOL,
       'OPEN_CALL_ACTION_DLG',

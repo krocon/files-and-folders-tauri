@@ -18,14 +18,30 @@ export function clipboardText(
   return format === 'json' ? JSON.stringify(values, null, 2) : values.join('\n');
 }
 
-/** Writes text to the system clipboard (no plugin: the webview can do it, design 011 E5). */
+/**
+ * Writes text to the system clipboard (no plugin: the webview can do it, design 011 E5) and
+ * reads it – only when the user asks for it with a button (design 078 E-g).
+ */
 @Injectable({ providedIn: 'root', useFactory: () => new WebClipboardApi() })
 export abstract class ClipboardApi {
   abstract writeText(text: string): Promise<void>;
+  /** The text in the clipboard; rejects when the system does not hand it out. */
+  abstract readText(): Promise<string>;
 }
 
 @Injectable()
 export class WebClipboardApi extends ClipboardApi {
+  async readText(): Promise<string> {
+    try {
+      if (navigator.clipboard?.readText) {
+        return await navigator.clipboard.readText();
+      }
+    } catch {
+      // refused (no user gesture, the system's paste prompt was dismissed)
+    }
+    throw { code: 'io', message: 'The clipboard cannot be read', path: null };
+  }
+
   async writeText(text: string): Promise<void> {
     try {
       if (navigator.clipboard?.writeText) {

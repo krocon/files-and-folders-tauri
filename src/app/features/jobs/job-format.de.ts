@@ -84,6 +84,8 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
   summary: (done, skipped, failed) =>
     `${done} erledigt · ${skipped} übersprungen · ${failed} fehlgeschlagen`,
   left: (time) => `noch ${time}`,
+  urlOf: (n, total) => `URL ${n} von ${total}`,
+  processing: 'verarbeitet (ffmpeg)',
   doneCount: (done) => `${done} erledigt`,
   skippedFailed: (skipped, failed) => `${skipped} übersprungen · ${failed} fehlgeschlagen`,
   states: {
@@ -141,5 +143,6 @@ export const JOB_DE: Translation<typeof JOB_EN> = {
     archiveDelete: (what) => `${what} aus dem Archiv entfernen`,
     archiveMkdir: (name, parent) => `Ordner ${name} anlegen in ${parent}`,
     attributes: (what, recursive) => `Attribute ändern: ${what}${recursive ? ' samt Inhalt' : ''}`,
+    download: (n, target) => `${n === 1 ? '1 URL' : `${n} URLs`} laden → ${target}`,
   },
 };

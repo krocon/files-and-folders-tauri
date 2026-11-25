@@ -13,7 +13,8 @@ export type ActionsMenuEntry = ActionId | '-' | '@tools';
  * Target = Source (040, next to the panel entries), Toggle Flat View (038, under Toggle Hidden Files),
  * Quick View (010, under Toggle Shell – Marc, 2026-10-24), Double-click actions (072, next to the starter
  * menu – Marc, 2026-11-07), Go to anything / Do anything (the palette with files and folders only / with
- * actions only, under Command Palette – Marc, 2026-11-19).
+ * actions only, under Command Palette – Marc, 2026-11-19), Download from URLs (078, at the end of the file
+ * column – mr had "Download" there; here it is yt-dlp as a job).
  */
 export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
   [
@@ -76,6 +77,8 @@ export const ACTIONS_MENU_COLUMNS: readonly (readonly ActionsMenuEntry[])[] = [
     'OPEN_DELETE_EMPTY_FOLDERS_DLG',
     'OPEN_FIND_DUPLICATES_DLG',
     'OPEN_DISK_USAGE',
+    '-',
+    'OPEN_URL_DOWNLOAD_DLG',
   ],
   [
     'OPEN_SETUP_DLG',
@@ -123,6 +126,7 @@ export const OPENS_DIALOG: ReadonlySet<ActionId> = new Set<ActionId>([
   'OPEN_SERIES_GROUP_DLG',
   'OPEN_DELETE_EMPTY_FOLDERS_DLG',
   'OPEN_FIND_DUPLICATES_DLG',
+  'OPEN_URL_DOWNLOAD_DLG',
   'OPEN_SETUP_DLG',
   'OPEN_THEMES_DLG',
   'OPEN_BUTTON_CONFIG_DLG',

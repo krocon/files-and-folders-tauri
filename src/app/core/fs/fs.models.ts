@@ -103,6 +103,12 @@ export type FsErrorCode =
   | 'update_no_release'
   | 'update_invalid_response'
   | 'update_http'
+  /** Download from URLs (design 078). */
+  | 'download_tool_missing'
+  | 'download_invalid_url'
+  | 'download_invalid_template'
+  | 'download_invalid_options'
+  | 'download_failed'
   /** An external program (tool, terminal, file manager) is not installed. */
   | 'program_not_found'
   /** The tool id is not in the configuration (anymore). */
