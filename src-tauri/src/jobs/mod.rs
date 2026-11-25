@@ -951,6 +951,24 @@ mod tests {
         assert!(options.empty_dirs, "default on");
         assert_eq!(items[0].junk, 0);
         assert_eq!(spec.kind(), "clean");
+        // an old spec without limits (a retry, another client): the protective defaults
+        assert_eq!(options.junk_max_bytes, crate::clean::DEFAULT_JUNK_MAX_BYTES);
+        assert!(!options.junk_dirs_beside_content);
+        // design 077: exactly what the frontend sends for the profile "release leftovers"
+        // (`cleanOptions` in clean-logic.ts, `jobItems`: path and kind only)
+        let spec: JobSpec = serde_json::from_str(
+            r#"{"kind":"clean","roots":["/r/a"],"items":[{"path":"/r/a","kind":"dir"}],"mode":"trash","options":{"emptyDirs":true,"includeRoots":true,"junk":[".DS_Store","*.nfo"],"patterns":[],"largeJunk":["*-sample.*"],"junkMaxBytes":2097152,"largeJunkMaxBytes":314572800,"junkDirsBesideContent":true}}"#,
+        )
+        .unwrap();
+        let JobSpec::Clean { options, .. } = &spec else {
+            panic!()
+        };
+        assert!(options.include_roots && options.junk_dirs_beside_content);
+        assert_eq!(options.large_junk, ["*-sample.*"]);
+        assert_eq!(
+            (options.junk_max_bytes, options.large_junk_max_bytes),
+            (2 * 1024 * 1024, 300 * 1024 * 1024)
+        );
         let e = serde_json::to_value(JobEvent::DirsChanged { dirs: vec![] }).unwrap();
         assert_eq!(e["type"], "dirsChanged");
         let spec: JobSpec = serde_json::from_str(

@@ -1790,4 +1790,78 @@ pub(crate) mod tests {
         );
         assert!(plan_tree(&root.join("fehlt"), &root, &o, &m, &never).is_err());
     }
+
+    #[test]
+    fn the_scan_is_serialised_as_the_frontend_reads_it() {
+        // DTO contract with `core/folders/folders.models.ts` (CLAUDE.md §4)
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().join("r");
+        fs::create_dir_all(root.join("leer")).unwrap();
+        fs::write(root.join("film.mkv"), "x").unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = serde_json::to_value(&scan).unwrap();
+        let keys = |v: &serde_json::Value| -> Vec<String> {
+            let mut k: Vec<String> = v.as_object().unwrap().keys().cloned().collect();
+            k.sort();
+            k
+        };
+        assert_eq!(
+            keys(&v),
+            [
+                "cancelled",
+                "items",
+                "roots",
+                "truncated",
+                "unreadable",
+                "unreadableMore",
+                "visited"
+            ]
+        );
+        assert_eq!(
+            keys(&v["roots"][0]),
+            [
+                "blocked",
+                "count",
+                "danger",
+                "first",
+                "hidden",
+                "incomplete",
+                "junkKept",
+                "keepBytes",
+                "keepExtensions",
+                "keepFiles",
+                "keepSample",
+                "linked",
+                "links",
+                "name",
+                "path",
+                "removeBytes",
+                "removeDirs",
+                "removeFiles",
+                "sampleTooLarge",
+                "tooLarge",
+                "verdict"
+            ]
+        );
+        assert_eq!(v["roots"][0]["verdict"], "partial");
+        assert_eq!(v["roots"][0]["danger"], serde_json::Value::Null);
+        assert_eq!(
+            keys(&v["roots"][0]["keepSample"][0]),
+            ["bytes", "reason", "rel"]
+        );
+        assert_eq!(v["roots"][0]["keepSample"][0]["reason"], "content");
+        assert_eq!(
+            keys(&v["items"][0]),
+            ["bytes", "junk", "kind", "path", "rel", "soft"]
+        );
+        assert_eq!(v["items"][0]["kind"], "dir");
+        for (reason, name) in [
+            (KeepReason::SampleTooLarge, "sampleTooLarge"),
+            (KeepReason::TooLarge, "tooLarge"),
+            (KeepReason::OtherFs, "otherFs"),
+        ] {
+            assert_eq!(serde_json::to_value(reason).unwrap(), name);
+        }
+        assert_eq!(serde_json::to_value(Verdict::Residue).unwrap(), "residue");
+    }
 }

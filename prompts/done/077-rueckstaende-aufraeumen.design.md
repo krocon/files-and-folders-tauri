@@ -110,8 +110,10 @@ Heute: jeder leere Ordner einzeln in den Papierkorb (MobLand = 7 Einträge). Neu
 frischen Plan, nicht aus der Liste der Vorschau – die Liste bestimmt nur, **welche obersten Ordner** angefasst
 werden dürfen.
 **Rest-Risiko** (unverändert seit 008): zwischen `plan_tree` und `trash_one` (per Pfad) liegt ein kleines
-Zeitfenster. „Nicht ausweiden“ prüft der Job nicht neu (er kennt die Geschwister nicht); die Liste kommt aus der
-Suche in Rust.
+Zeitfenster. „Nicht ausweiden“ prüft auch der Job: Ein gelisteter Ordner, dessen Elternordner stehen bleibt, geht
+nur, wenn er wirklich leer ist (oder die Option gesetzt ist) – nur eine Wurzel selbst darf als reiner
+Beiwerk-Ordner gehen. Scheitert ein oberster Ordner, werden seine gelisteten Kinder mit derselben Regel einzeln
+neu entschieden (wirklich leere gehen, Beiwerk-Ordner bleiben).
 
 ### E7 – Dialog
 ```
@@ -126,7 +128,9 @@ Details: <Ordner unter dem Cursor>
 ┌ geht/bleibt │ Eintrag │ Grund ───────────────────────────────────────────────┐
 3 Ordner werden gelöscht · 11 Ordner, 8 Dateien · 202 MiB     (•) Papierkorb ( ) endgültig   [Esc] [↩ Aufräumen]
 ```
-- Fokus-Reihenfolge: Profil (Radiogruppe, Autofokus) → Regeln → Ordnerliste (`tabindex=0`, APG-Grid-Muster wie
+- Fokus-Reihenfolge: Profil (Radiogruppe) → Regeln (`<details>`, bei „Eigene“ offen) → Ordnerliste (**Autofokus**:
+  Pfeile zeigen sofort die Details, Leertaste wählt ab, Enter räumt auf; geschützt für MCP liegt der Autofokus
+  auf „Abbrechen“) (`tabindex=0`, APG-Grid-Muster wie
   Sync 036: ↑/↓/Bild/Pos1/Ende, **Leertaste** = an/abwählen, Klick in die Checkbox-Spalte) → Details → Löschmodus
   → Knöpfe. Live-Region nennt Zeile und Urteil.
 - Zeilen „bleibt“ sind nicht anwählbar (`–`), „Rückstand“ und „teilweise“ sind vorgewählt.
@@ -194,13 +198,68 @@ Fehlercodes. Job `clean`: `JobSpec::Clean` unverändert in der Form.
   Option, alte Tests angepasst (Begründung im Test).
 - **Rust `jobs/tests_tools.rs`:** Rückstand als Ganzes endgültig und (bedingt) in den Papierkorb, neue Datei →
   Ordner bleibt ganz, gewachsenes Sample, Abbruch, nie oberhalb der Wurzel, kein Ausweiden beim Scheitern.
-- **Frontend:** `clean-logic.spec.ts` (tabellengetrieben), Store (`tools.spec.ts` + `clean.store.spec.ts`:
+- **Frontend:** `clean-logic.spec.ts` (tabellengetrieben), Store (`groupfiles/tools.spec.ts`:
   Profile → Optionen, Vorwahl, Abwählen, Summen, veraltete Antworten, Job nur mit angewählten, Formular merken –
   nie der Löschmodus, `openPrepared`, MCP-Schutz), Dialog (`tools-dialogs.spec.ts`), `dialog-roles`, `catalogs`.
 - **Nur Ende-zu-Ende:** echter Papierkorb, Tabelle im echten Fenster.
 
 ## 5. Abweichungen bei der Umsetzung
-(siehe „Fortschritt“)
 
-## 6. Fortschritt
-- [x] Phase 1 Design
+- **E6:** Scheitert ein oberster Ordner, bleibt er nicht pauschal „samt allem“ stehen: seine gelisteten Kinder
+  werden einzeln neu entschieden, wirklich leere gehen weiter (so blieb `clean_rechecks_every_entry` aus 008
+  gültig). Reine Beiwerk-Unterordner gehen dann **nicht** (anders als 045: Test
+  `clean_with_junk_patterns_rechecks_new_content` angepasst, Begründung im Test).
+- **E3:** `check_roots` (Fehler bei verschachtelten Wurzeln) ist durch `merge_roots` ersetzt; der Test
+  `roots_are_checked` prüft jetzt das Zusammenführen.
+- **045:** `RELEASE_EXTRAS` liegt in `core/folders/release-extras.ts`; `openPrepared` übergibt
+  `{ ...DEFAULT_CLEAN_FORM, profile: 'release' }` statt eines Mustertexts. Neu in der Liste: `*.url`,
+  `*-proof.*`. Samples haben jetzt die 300-MiB-Grenze, die übrigen Muster 1 MiB – auch nach „Serien nach Staffeln“.
+- **Aufgabe 6:** Ohne Markierung ist der **Ordner unter dem Cursor** die Eingabe (vorher: der Panel-Ordner). Der
+  Panel-Ordner wird nur noch genommen, wenn der Cursor auf einer Datei oder `..` steht – und geht dann nie selbst.
+  Die Checkbox „Auch der Startordner selbst“ gibt es nicht mehr.
+- **Marcs Fixture** (`src-tauri/src/testdata/clean-marcs-tree.txt` = Kopie der Beispieldatei, sparse per
+  `set_len`) läuft nur unter Unix (`#[cfg(unix)]`): NTFS belegt für `set_len` ohne Sparse-Flag echten Platz (2 GB).
+- **Befund am Rand:** Der Job aus 008/045 prüfte Beiwerk nur über den Namen. Die neuen Tests waren gegen den
+  alten Job rot (6 von 10): ein nach der Vorschau gewachsenes „Sample“ und eine neue versteckte `.x.nfo` wären
+  mitgelöscht worden.
+- `command-palette.spec.ts`: Die Eingabe `copy…` traf nur zufällig ein zweites Label („Clean folders (delete empty
+  folders)…“); der Test tippt für die Pfeiltasten jetzt `copy`.
+
+## 6. Verifikation (ehrlich)
+
+| Akzeptanzkriterium | geprüft durch |
+|---|---|
+| Marcs Beispiel, „Release-Reste“: Urteile und Zahlen 2/1/736, 2/1/647, 7/6/212 024 204 | Rust `clean::tests::marcs_tree_release_leftovers` (echtes Dateisystem, sparse); Dialog: `clean-logic.spec.ts`, Screenshot-Szene `clean-folders-dialog` (Mock-Backend mit denselben Regeln) |
+| Aufräumen → drei Ordner weg, Comic-Ordner unverändert | Rust `jobs::tests_tools::clean_marcs_tree` (**endgültig**, nicht Papierkorb) |
+| … **im Papierkorb**, je Ordner ein Eintrag | nur Linux-Test `delete_to_the_trash` → `clean_residue_is_one_trash_entry` – **auf dem Mac kompiliert, nicht gelaufen**; echter macOS-Papierkorb **nicht geprüft** |
+| „Nur leere Ordner“ → viermal „bleibt“, Knopf gesperrt, Hinweis | Rust `marcs_tree_only_empty_folders_keeps_all_four`; `tools-dialogs.spec.ts`, `tools.spec.ts`; Szene `clean-folders-hint` |
+| Sample 4 GiB hält den Ordner | Rust `a_huge_sample_keeps_its_folder`, `size_limits_turn_extras_into_content` |
+| Film + leerer Unterordner + `Sample/` → „teilweise“, Option | Rust `the_three_verdicts_and_no_gutting`; Job `clean_does_not_gut_a_folder_with_content_even_when_asked_to` |
+| Datei zwischen Vorschau und Start | Job `clean_leaves_a_residue_alone_that_got_content_after_the_preview`, `clean_rechecks_size_limit_and_hidden_files` |
+| Symlink, unlesbar, Home | Rust `links_and_unreadable_folders_hold_a_residue`, `a_home_folder_never_goes_as_a_whole`, 008-Tests; **Mountpoint** und **Volume-Wurzel** nur über den vorhandenen Code-Pfad (Geräte-Id, `paths::danger_of` mit eigenen Tests) – kein eigener Test |
+| `openPrepared` (045) | `series.spec.ts`, Rust `series_move_then_clean_…` |
+| 50 000 Einträge bedienbar, abbrechbar | **nicht gemessen**; Abbruch und Grenze: Rust `a_cancelled_scan_ends_early`, `a_scan_at_its_limit_is_incomplete`, Store-Test „cancels a running search …“ |
+| Tastatur, de/en | `tools-dialogs.spec.ts` (Pfeile, Leertaste, Enter, Pos1/Ende), `catalogs.spec.ts`, `dialog-roles.spec.ts`; Screenreader **nicht** geprüft |
+| Ende-zu-Ende im echten Fenster | **nicht durchgeklickt.** Die Debug-Binary wurde gebaut und mit eigenem `HOME` gestartet (`node scripts/mcp-e2e.mjs`: 26 Prüfungen grün – Start, Panels, Jobs), der Clean-Dialog lässt sich aber nur per Tastatur/Maus öffnen: Tastendrücke an ein Fenster zu schicken, während Marc am Rechner arbeitet und seine installierte App dieselbe Kennung trägt, war das Risiko nicht wert. |
+
+## 7. Offen
+
+- Externes Review (000 Phase 6) – veranlasst Marc. Schwerpunkte: `clean.rs` `Ctx::walk`/`Ctx::dir`
+  (Entfernbarkeit, Filter „nicht ausweiden“), `Matcher::classify`, `plan_tree`, `jobs/clean.rs` `locate`,
+  `remove_tree`, `run` (Reihenfolge Eltern → Kinder, `Outcome`).
+- Echter macOS-/Windows-Papierkorb mit einem Rückstands-Ordner; Klick-Durchlauf im echten Fenster.
+- `docs/screenshots/readme/clean-folders.png` ist unkomprimiert (kein `pngquant` auf dem Rechner):
+  `pnpm screenshots:readme` mit `pngquant` holt das nach.
+- Windows: keine Geräte-Id aus `std` (wie 008/045) – die Grenze „kein fremdes Dateisystem“ greift dort nicht.
+- Nicht in diesem Prompt: automatisches Aufräumen ohne Dialog, Abgleich „liegt der Film woanders?“, Serverpfade
+  und Archive, benannte eigene Profile, MCP-Werkzeug `propose_clean`, Option „entpackte Archivteile“.
+- „Dateien nach Muster löschen“ (Profil „Eigene“) trifft weiterhin auch versteckte Dateien (wie 008).
+
+## 8. Fortschritt
+
+- [x] Phase 1 Design (25.11.2026, ohne Haltepunkt)
+- [x] Phase 2 Rust: Scan mit Urteil, Schutzregeln, Job (Tests zuerst rot gegen den alten Job)
+- [x] Phase 3 Frontend: Logik, Store, Dialog, Texte de/en, Kontextmenü, MCP-Schutz
+- [x] Phase 4: Debug-Build, Start mit eigenem `HOME`, Screenshots light/dark/Norton – Klick-Durchlauf offen (s. §6)
+- [x] Phase 5 Doku, Prompt nach `prompts/done/`
+- [x] Phase 6 `pnpm check`

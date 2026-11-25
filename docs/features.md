@@ -84,10 +84,18 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Beiwerk (`Sample/`, `*-sample.*`, `*.nfo` …) wird ignoriert, Untertitel auf Wunsch mitgenommen. Vorschau mit Status
   je Datei, Hinweisen zu doppelten/fehlenden Folgen und mehreren Serien. Nach dem Verschieben öffnet sich auf Wunsch
   _Ordner aufräumen_ mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).
-- **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`): leere Ordner (optional mit Systemmüll wie `.DS_Store` – Namen
-  oder Muster wie `*.nfo`, seit 045) und
-  Dateien nach Muster (`*.bak`) unterhalb des aktuellen bzw. der markierten Ordner – Vorschau, Papierkorb als Standard,
-  nie oberhalb des Startordners, Links werden nie verfolgt; jeder Eintrag wird vor dem Löschen erneut geprüft.
+- **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`, Kontextmenü auf Ordnern und Markierung; 008, 077): nimmt die
+  markierten Ordner (sonst den Ordner unter dem Cursor, sonst den Ordner des Panels) und fällt **je Ordner ein
+  Urteil**: _Rückstand_ (nur leere Ordner und Beiwerk – geht als Ganzes, als **ein** Papierkorb-Eintrag),
+  _teilweise_ (hat Inhalt, darunter gehen wirklich leere Unterordner) oder _bleibt_ – mit Grund („3 Dateien · 1,8 GB
+  (.cbr)“, „Sample größer als 300 MiB“). Profile: _Nur leere Ordner_ (Standard beim ersten Mal, plus `.DS_Store`,
+  `Thumbs.db`, `desktop.ini`), _Release-Reste_ (zusätzlich `*.nfo`, `*.sfv`, `*.srr`, `*.md5`, `*.url`, `*-proof.*`
+  bis 1 MiB und Samples bis 300 MiB – Grenzen änderbar), _Eigene_ (Namen/Muster, „Dateien nach Muster löschen“ wie
+  `*.bak`). Alles, was nicht ausdrücklich Beiwerk ist, ist Inhalt; versteckte Dateien, Links, fremde Dateisysteme und
+  unlesbare Ordner halten ihren Ordner fest; ein Ordner mit Inhalt wird nicht ausgeweidet (Option). Ordner lassen
+  sich mit der Leertaste abwählen, Details zeigen, was geht und was bleibt. Papierkorb als Standard, nie oberhalb
+  eines Startordners, der Home-Ordner oder ein Laufwerk nie als Ganzes; der Job entscheidet jeden Ordner unmittelbar
+  vor dem Löschen neu (Datei dazugekommen → der Ordner bleibt ganz stehen).
 - **Mehrere Ordner anlegen** (`Strg+F7`, macOS `⌘F7`): Vorlage mit Zähler (`S[C]` → `S01` … `S05`), Buchstabe `[L]`,
   Elternordner `[P]`, Schreibweise.
 - **Suche** (`Alt+F7`, Prompt 009): Name als Glob (`*.mp3;*.flac`), Regex oder Text, Groß/klein, ganzer Name/Teil;
@@ -325,7 +333,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Multi rename…                         | `Ctrl+F6`, `Ctrl+Alt+M`, `Ctrl+M`                             | `⌘F6`                    |
 | Create several folders…               | `Ctrl+F7`                                                     | `⌘F7`                    |
 | Group files…                          | `Alt+G`, `Ctrl+Alt+G`                                         | `⌥G`, `⌘⌥G`              |
-| Clean folders (delete empty folders)… | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D`                              | `⌘⌥R`, `⌘⌥⇧D`            |
+| Clean folders…                        | `Ctrl+Alt+R`, `Ctrl+Alt+Shift+D`                              | `⌘⌥R`, `⌘⌥⇧D`            |
 | Properties…                           | `Alt+Enter`                                                   | `⌥Enter`, `⌘I`           |
 | Change attributes…                    | `Ctrl+Shift+F2`                                               | `⌘⇧F2`                   |
 | Pack…                                 | `Alt+F5`                                                      | `⌥F5`                    |
