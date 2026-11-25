@@ -54,12 +54,12 @@
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
   Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und Prompt 075 (Nach Updates suchen: feste GitHub-URL in `update_check.rs`, `reqwest` mit eigener rustls-Konfiguration, `update-check.json`, `general.checkForUpdates` Default aus, Aktion `CHECK_FOR_UPDATES`) und Prompt 076 (Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf, `data-no-dialog-key`, Rolle `hint:`; Option `view.dialogKeys` = unterstrichener Buchstabe mit Alt, `mnemonic.ts`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
-  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
+  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) und Prompt 071 (MCP-Schnittstelle: Brücke `--mcp` ↔ Unix-Socket nur für den Nutzer, Tools in drei Stufen – lesen, Ansicht steuern, vorschlagen –, Kopplung im Fenster, `mcp.enabled` Default aus, `docs/mcp.md`; offen: Windows-Transport, `propose_pack`/`propose_extract`/`propose_dedupe`) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–070, 072–076 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–076 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -79,6 +79,7 @@
 | Alles prüfen | `pnpm check` |
 | Screenshots | `pnpm screenshots` (alle Farbschemata × Szenen → `screenshots/`, s. `docs/screenshots.md`), `pnpm screenshots:docs` (Doku-Bilder in `docs/screenshots/`), `pnpm screenshots:readme` (je README-Feature ein Norton-Bild in `docs/screenshots/readme/`), einmalig `pnpm screenshots:install` |
 | Werbeseite | `pnpm site` → `site/dist/` (Seite + `img/` + Favicon) zum Hochladen nach krocon.de/products/fnf (`site/README.md`) |
+| MCP prüfen | `cargo test --lib mcp::` (E2E im Prozess), `node scripts/mcp-bridge-check.mjs` (Brücke der Debug-Binary ohne App), `node scripts/mcp-e2e.mjs` (startet die Debug-App in einem eigenen HOME, Fenster für einige Sekunden) |
 | Lizenzen | `pnpm notices` schreibt `THIRD-PARTY-NOTICES.txt` (nach jeder Abhängigkeitsänderung; `pnpm check` prüft per `notices:check`), `pnpm licenses:report` = Übersicht `docs/licenses.md` |
 | Version | `pnpm version:check`, `pnpm version:set X.Y.Z` (Quelle `package.json`), `pnpm release:notes` |
 | Release-Build | `pnpm tauri build` (Signierung/Notarisierung vorbereitet, nicht eingerichtet – `docs/release.md`) |
@@ -168,6 +169,10 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/fileactions/, features/fileactions/  Doppelklick-Aktionen (072): FileActionsApi, file-actions-logic.ts (rein: Muster,
                              erste Regel), FileActionsStore (Root, `handleDoubleClick` aus `file-list.ts`), Dialog,
                              OPEN_FILE_ACTIONS_DLG
+  app/core/mcp/, features/mcp/  MCP-Schnittstelle (071): McpApi + DTOs, McpStatusService, ProposalService (welcher Vorschlag
+                             gehört zum offenen Dialog, 0,8 s Sperre); McpStore (Root: Spiegel der Panels nur bei
+                             `mcp.enabled`, Anfragen aus `subscribe_mcp` → Stores/Dialoge, `busy` bei offenem Dialog),
+                             mcp-logic.ts (rein), Kopplungs- und Protokolldialog, ProposalNote, MCP_SHOW_LOG/MCP_DISCONNECT_ALL
   app/core/remote/           Server-Verbindungen (034): RemoteApi, DTOs, remote-path.ts (Präfix-Test, Anzeige),
                              RemoteConnectPrompt (Brücke Panel → Verbinden)
   app/features/remote/       RemoteStore (Root: Profile, Zustände, Ablauf Passwort/Host-Key/Zertifikat), Dialog
@@ -270,6 +275,13 @@ src-tauri/                   Rust (Tauri 2)
                              eigene Tokio-Laufzeit), mod.rs (Hub: Pool, Verbinden, Listing), view.rs, danger.rs;
                              testserver.rs (libunftp + russh-Server im Test), testdata/; Jobs `jobs/transfer.rs`,
                              `jobs/remote_delete.rs`; Commands `commands/remote.rs`
+  src/mcp/                   MCP-Schnittstelle (071, reines std): mod.rs (McpHub: Einstellungen, Verbindungen, Kopplung,
+                             Aufruf), tools.rs (Positivliste + Schemata + deren Prüfung), read.rs/view.rs/propose.rs
+                             (Stufe 0/1/2), scope.rs (Wurzeln am physischen Ort, App-Ordner, Geheimnis-Ordner), state.rs
+                             (Spiegel), bridge.rs (Anfragen an die UI, ein Vorschlag), jobs.rs (Abgriff der Job-Ereignisse,
+                             `READ_KINDS`), server.rs (Unix-Socket 0600, Peer-UID), session.rs (JSON-RPC je Verbindung),
+                             stdio.rs (Brücke `--mcp`), protocol.rs, limits.rs, pairing.rs, log.rs, config.rs,
+                             tests.rs (E2E im Prozess); Commands `commands/mcp.rs`
   src/secret.rs              `Secret` (Zeroizing, kein Serialize) für Archiv- und Server-Passwörter
   src/diff.rs                Dateien vergleichen (037): Text nebeneinander (`similar`), binär; Command `diff_files`;
                              Frontend core/diff/, features/diff/ (compare-files-logic.ts rein, DiffStore, Dialog)
@@ -316,6 +328,7 @@ src-tauri/                   Rust (Tauri 2)
   capabilities/default.json  nur core:default
   icons/source/app-icon.png  Quelle des App-Icons (= docs/icons/icon-new.png, 1024 px; `pnpm tauri icon …`)
 scripts/                     version.mjs (eine Version), release-notes.mjs, licenses.mjs; Tests `*.test.mjs` (node --test);
+                             mcp-bridge-check.mjs (Brücke ohne App), mcp-e2e.mjs (echte Debug-App in eigenem HOME, 071);
                              screenshots/ (Playwright + Mock-Backend + Demo-Dateisystem, Szenen in scenes.json);
                              site.mjs + site-lib.mjs (Werbeseite zusammenstellen, Bild-/Ankerprüfung, 044)
 site/                        Werbeseite für krocon.de/products/fnf: index.html (statisch, ohne JS), README.md (Hochladen)
@@ -364,6 +377,15 @@ prompts/                     Feature-Prompts (s. o.)
   `remote::RemotePath`); Geheimnisse nur im Schlüsselbund des OS (`remote::credentials`), nie in Dateien, Events,
   Logs oder im Frontend nach dem Senden; nichts verbindet ohne Zutun des Nutzers; neue Commands mit Pfaden prüfen
   `remote::is_remote` zuerst (lokale Commands lehnen Serverpfade über `validate_input_path` ab).
+- **MCP-Stufen** (071): Ein MCP-Client kann nichts, was ein Nutzer mit Maus und Tastatur nicht auch könnte, und nichts,
+  was Dateien ändert, ohne Bestätigung im Fenster. Tools nur aus der Positivliste `mcp::tools::TOOLS` (Stufe 0 lesen, 1
+  Ansicht steuern, 2 vorschlagen; **Stufe 3 gibt es nicht**: Shell, Tools, Starter, Öffnen, Attribute, Passwörter,
+  Verbinden, Einstellungen, Konflikt-Antworten – neu nur per Prompt). Jeder Pfad eines Clients geht durch
+  `mcp::scope::Scope::check` (wie die Commands, kein `..`, physisch in `mcp.roots`, nie die Ordner der App); Rust startet
+  für einen Client nur lesende Jobs (`mcp::jobs::READ_KINDS`, über `JobManager::start`) – alles, was ändert, startet das
+  Fenster nach der Bestätigung im **normalen** Dialog (`ProposalService`, Rolle `confirm` = nur `Mod+Enter`). Nichts
+  lauscht ohne `mcp.enabled`; Rust liest `mcp.*` selbst aus `settings.json`; nie für einen Client verbinden oder ein
+  Passwort erfragen; Protokoll nur im Speicher, ohne Pfade. Details: `docs/mcp.md`.
 - **Fremde Archive sind feindlich** (025): Vorabprüfungen fail-closed (was nicht sicher beurteilt wird, wird abgelehnt),
   jede Anzahl/Größe vor der Allokation begrenzen; Passwörter nur im Speicher (`archive::secrets`, `Zeroizing`), nie
   serialisiert, geloggt oder in Events; Entpacktes erbt die Herkunftsmarke des Archivs.

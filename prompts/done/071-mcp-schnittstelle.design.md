@@ -1,6 +1,6 @@
 # Design 071: MCP-Schnittstelle
 
-> **Status:** umgesetzt (Stufen 0–2, Unix) · **Datum:** 2026-11-25 · **Auftrag:** `071-mcp-schnittstelle.md`
+> **Status:** umgesetzt (Stufen 0–2, macOS/Linux; Sicherheits-Review steht aus) · **Datum:** 2026-11-25 · **Auftrag:** `071-mcp-schnittstelle.md`
 > Ohne Haltepunkt nach Phase 1 (Anordnung von Marc für diesen Lauf); das Sicherheits-Review (Phase 6) macht ein
 > separater Agent. Offenes steht unter „Offen“, der Stand unter „Fortschritt“.
 
@@ -146,6 +146,7 @@ src-tauri/src/mcp/
   config.rs     Einstellungen aus settings.json, socket_path()
   protocol.rs   JSON-RPC je Zeile (rein): initialize, ping, tools/list, tools/call, cancelled
   server.rs     Unix-Socket: Ordner 0700, Socket 0600, Peer-UID, Threads je Verbindung
+  session.rs    eine Verbindung: Zeilen lesen (begrenzt), Antworten, Tool-Aufrufe auf eigenen Threads
   stdio.rs      Brücke `--mcp` (stdin/stdout ↔ Socket, Antworten ohne App)
   tools.rs      Positivliste: Name, Stufe, Beschreibung, Schema; Dispatch
   read.rs       Stufe 0   · view.rs Stufe 1 · propose.rs Stufe 2
@@ -155,7 +156,7 @@ src-tauri/src/mcp/
   jobs.rs       Abgriff der Job-Ereignisse, Sammler, Positivliste der Job-Arten
   limits.rs     Grenzen, Token-Eimer · pairing.rs Kopplung · log.rs Protokoll im Speicher
   tests.rs      Ende-zu-Ende im Prozess (Socket in tempfile, Test-Client, Fake-UI)
-src/app/core/mcp/      McpApi, DTOs, ProposalService (welcher Vorschlag gehört zum offenen Dialog)
+src/app/core/mcp/      McpApi, DTOs, McpStatusService, ProposalService (welcher Vorschlag gehört zum offenen Dialog)
 src/app/features/mcp/  McpStore (Root), mcp-logic.ts (rein), Kopplungs- und Protokolldialog, Anzeige, Aktionen, Texte
 ```
 
@@ -172,8 +173,8 @@ src/app/features/mcp/  McpStore (Root), mcp-logic.ts (rein), Kopplungs- und Prot
                                                      │             [Alle trennen] [Schließen]│
 Vorschlag in jedem betroffenen Dialog:               └─────────────────────────────────────┘
   ┌───────────────────────────────────────────────┐
-  │ ⇄ Vorschlag von „Claude Code“ – prüfen Sie    │  role="note"; Fokus beim Öffnen auf „Abbrechen“;
-  │   die Liste, bevor Sie bestätigen.            │  Bestätigen: Klick oder Mod+Enter, nie Enter;
+  │ ⇄ Vorschlag von „Claude Code“. Prüfe ihn,     │  role="note"; Fokus beim Öffnen auf „Abbrechen“;
+  │   bevor du bestätigst.                        │  Bestätigen: Klick oder Mod+Enter, nie Enter;
   └───────────────────────────────────────────────┘  der Knopf ist die ersten 800 ms gesperrt.
 ```
 
@@ -215,14 +216,43 @@ Der Löschdialog zeigt bei einem Vorschlag **alle** Einträge (scrollbar) statt 
 - **Windows** – kein Transport (Named Pipe + ACL, Binary ohne Konsole), s. E1.
 - **`quick_view`** zeigt nur einen Eintrag aus dem Ordner der aktiven Seite (setzt dort den Cursor und schaltet die
   Schnellvorschau ein) – die Schnellvorschau folgt dem Cursor.
-- **Echter Client** (Claude Desktop/Code, MCP Inspector) und das Fenster selbst sind in dieser Sitzung nicht
-  durchgespielt (laufende App von Marc, s. Fortschritt).
+- **Echter Client** (Claude Desktop, Claude Code, MCP Inspector): nicht ausprobiert. Geprüft ist das Protokoll mit
+  eigenen Test-Clients (Rust im Prozess, `scripts/mcp-e2e.mjs` über die Brücke gegen die echte Debug-App).
+- **Bestätigen im echten Fenster** (Klick/`Mod+Enter` im Vorschlagsdialog, „Immer erlauben“, Trennen per Knopf) ist nur
+  über Vitest und Bilder (`pnpm screenshots`, Szenen `mcp-*`) geprüft, nicht von Hand durchgeklickt.
+- **Fortschritts-Meldungen** (`notifications/progress`) werden gesendet, wenn der Client ein `progressToken` schickt –
+  ohne Test.
+- **Linux**: gebaut und getestet wurde auf macOS; der Linux-Zweig (`SO_PEERCRED`, `XDG_DATA_HOME`) ist nur übersetzt
+  gedacht, nicht gelaufen.
+
+## Abweichungen vom Entwurf (beim Bauen entschieden)
+
+- **Trennen ist synchron:** `McpHub::disconnect` schließt den Transport **und** nimmt die Verbindung sofort aus der
+  Liste (vorher erst, wenn der Lese-Thread das Ende sah) – „Trennen wirkt sofort“ gilt auch für den Status.
+- **Suche holt mehr als `limit`:** Treffer in den Ordnern der App werden zurückgehalten; der Job sucht darum
+  `limit + 100` und die Antwort behält `limit` der erlaubten.
+- **`checksum`** rechnet nur Dateien, die auch gelesen werden dürften (keine Geheimnis-Ordner) – ein Hash ist eine
+  Funktion des Inhalts. `mcp.allowContent` braucht es dafür nicht.
+- **Vorschläge vergleichen immer:** Verschieben und Löschen bekommen `expected` (Größe/Zeit je Eintrag aus dem Moment
+  des Vorschlags) – was sich bis zur Bestätigung ändert, lässt der Job stehen (wie 030 E5 für ungeprüfte Listings).
+- **Kopplungsdialog:** kein Knopf nimmt Enter; „Immer“/„Einmal“ über `Mod+L`/`Mod+O` oder Klick.
+- **Anzeige** in der Button-Leiste (Werkzeug-Gruppe), nicht in der Statuszeile eines Panels – sie ist fensterweit.
+
+## Geprüft
+
+| Was | Wie |
+| --- | --- |
+| Rust: Protokoll, Positivliste, Schemata, Scope, Kopplung, Bridge, Grenzen, Jobs, Transport, Brücke | `cargo test --lib mcp::` – 72 Tests, 10× hintereinander grün (echter Socket in `tempfile`) |
+| Frontend: Spiegel, Anfragen → Stores, `busy`, Kopplung, Vorschläge, Enter-Regel, Sperre, Listenmodus | Vitest: `mcp.store.spec.ts` (17), `proposal-dialogs.spec.ts` (8), `mcp-logic.spec.ts` (6), `proposal.service.spec.ts` (4), `modal.spec.ts` (+2) |
+| Brücke der gebauten Binary ohne App → `mcp_disabled` | `node scripts/mcp-bridge-check.mjs` |
+| Echte Debug-App (eigenes HOME, eigener Socket) über die Brücke: Tabs im Spiegel, Listing, `navigate`/`mark`/`set_cursor`/`open_tab` wirken im echten Panel, Suche + Ergebnis-Tab, Prüfsumme, `propose_delete` öffnet den echten Dialog (`busy` für alles andere), Abbruch schließt ihn, nichts gelöscht, `run_shell` unbekannt | `node scripts/mcp-e2e.mjs` – 26 Prüfungen grün |
+| Aussehen light/dark: Kopplung, Protokoll, Anzeige, Einstellungen, Lösch- und Umbenenn-Vorschlag | `pnpm screenshots --scene mcp-pairing,mcp-log,mcp-indicator,mcp-settings,mcp-propose-delete,mcp-propose-rename` |
 
 ## Fortschritt
 
 - [x] Phase 1 Design (dieses Dokument)
 - [x] Phase 2 Rust
 - [x] Phase 3 Frontend
-- [x] Phase 4 E2E im Prozess (echter Socket, Test-Client); Fenster nur über Screenshots
+- [x] Phase 4 E2E im Prozess (echter Socket, Test-Client) und gegen die echte Debug-App in eigenem HOME (`scripts/mcp-e2e.mjs`)
 - [x] Phase 5 Doku
-- [ ] Phase 6 Sicherheits-Review (separater Agent)
+- [x] Phase 6 `pnpm check` + Debug-Build; Sicherheits-Review: separater Agent (steht aus)

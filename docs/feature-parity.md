@@ -33,9 +33,9 @@ nachgebildet – hier ersetzt Tauri-IPC sie.
 | E Panels, Tabs, Persistenz | 19 | 1 | 0 | 0 |
 | F Operationen & Jobs | 17 | 2 | 0 | 1 |
 | G Konfigurationsdateien & Editoren | 7 | 3 | 1 | 0 |
-| H Shell-Leiste, Server-Shell, KI, Electron | 5 | 2 | 3 | 4 |
+| H Shell-Leiste, Server-Shell, KI, Electron | 6 | 2 | 3 | 4 |
 | I Bugs der alten Versionen | 37 | 0 | 1 | 2 |
-| **Summe** | **197** | **24** | **9** | **23** |
+| **Summe** | **198** | **24** | **9** | **23** |
 
 - Die ⬜-Zeilen sind die Folge-Prompts 021 ff. (Abschnitt „Folge-Prompts“), die ✖-Zeilen sind bewusst entfallen
   (Web-/Server-Transport, Electron, tote Ids, nie funktionierende Kürzel der alten Version) – Grund je Zeile.
@@ -351,6 +351,7 @@ eine Leerzeile).
 | KI Namen umwandeln | `POST /api/ai/convertnames` (OpenAI/Ollama), Button im Multi-Rename | – | ⬜ | – | optional, Schlüssel im Schlüsselbund (mr §11) |
 | KI gruppieren | `POST /api/ai/groupfiles`, Strategie `AI` | – | ⬜ | – | dito |
 | `hasopenaiapikey` | Freigabe des KI-Buttons | – | ⬜ | – | dito |
+| MCP-Schnittstelle für KI-Agenten (neu, 071) | – (kein Gegenstück in mr; mr hatte KI nur als HTTP-Aufrufe zu OpenAI/Ollama) | lokaler MCP-Server der laufenden App: Stufe 0 lesen (Panels, Markierung, Suche, Belegung, Dubletten, Vergleich, Prüfsummen), Stufe 1 Ansicht steuern, Stufe 2 **vorschlagen** (normaler Dialog, Bestätigung per Klick oder Mod+Enter); Brücke `--mcp`, Unix-Socket nur für den Nutzer, `mcp.enabled` Default aus | ✅ | Rust `mcp/tests.rs` › `a_proposal_changes_nothing_and_waits_for_the_user`, `mcp/tools.rs` › `tier_3_does_not_exist`; `features/mcp/mcp.store.spec.ts` › „a delete proposal opens the normal dialog: every entry, trash, and waits“ | neu; Windows-Transport und `propose_pack`/`propose_extract`/`propose_dedupe` offen (Design 071 „Offen“) |
 | Electron-Fenster | 1280×800, CSP | Tauri-Fenster, Geometrie gespeichert, CSP strikt | ✅ | Rust `window_state.rs` › `position_on_a_monitor_is_reachable` | |
 | DevTools global (`Cmd+Alt+I`, `F12`) | systemweit | – | ✖ | – | kollidierte mit App-Tasten (mr §10) |
 | HTTP-Helfer 127.0.0.1:4765, `window.bridge` | ungenutzt | – | ✖ | – | Tauri-IPC |
@@ -453,4 +454,5 @@ eine Leerzeile).
 | 031 Drag & Drop, Teil 2 | ✅ Tabs ziehen (umsortieren, andere Seite, Kopie) + Tab-Aktionen, Verknüpfungen (Job `link`, Drag mit Strg+Umschalt/⌘⌥, `OPEN_LINK_DLG`); Verschieben ins System bewusst nicht (Design `prompts/done/031-drag-tabs-links.design.md` E11). |
 | 072 Doppelklick-Aktionen | ✅ (neu): Dialog „Doppelklick-Aktionen…“ im Menü Configuration und im Actions-Menü (rechte Spalte): Auslöser, Dateimuster, Abfrage ja/nein, Kommando (`node %N`), optional im Terminalfenster, Hilfedialog, `file-actions.json` (Design `prompts/done/072-doppelklick-aktionen.design.md`); seit 073 mit gehaltenen Tasten (Shift, ⌘/Strg, Alt – genau diese, sonst normales Öffnen; Markierung des ersten Klicks wird bei einem Treffer zurückgesetzt), `prompts/done/073-doppelklick-ausloeser.design.md`. Passende Regeln stehen auch im Kontextmenü der Datei („Ausführen: node %N“) und in der Befehlspalette; vorinstalliert ist `node %N` für `*.js *.mjs *.cjs` im Terminalfenster (⌘/Strg+Doppelklick). |
 | 032 Starter-Menü | ✅ (neu, Vorbild Total Commander „Start“): Menü „Start“ + `Alt+S`, Editor „Startermenü ändern…“, Programme/Skripte/Ordner/Untermenüs (Programme optional im Terminalfenster, 072 E9), TC-Parameter `%P%N` …, Kürzel je Eintrag (Design `prompts/done/032-startermenue.design.md`). |
+| 071 MCP-Schnittstelle | ✅ (neu): Agenten (Claude Desktop/Code) arbeiten mit der laufenden App – sehen, was der Nutzer sieht, und schlagen vor; der Nutzer bestätigt (Design `prompts/done/071-mcp-schnittstelle.design.md`, `docs/mcp.md`). Offen: Windows, Packen/Entpacken/Dubletten als Vorschlag. |
 | später | KI-Funktionen (Namen normalisieren, Gruppieren; Schlüssel im OS-Schlüsselbund), Dateien teilen/zusammenfügen. |

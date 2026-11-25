@@ -325,6 +325,10 @@ Small things that save time every day:
   mouse buttons 4/5)
 - **Mark by pattern** – _Enhance / Reduce Selection_ with wildcards or regex and one-click presets per file type
   (images, movies, documents …; `Num+` / `Num−`)
+- **AI agents (MCP)** – an MCP client on your computer (Claude Desktop, Claude Code) can see the panels and the
+  marked files, use search, disk usage, duplicates and folder comparison, and _propose_ copying, moving, renaming
+  or deleting: the normal dialog opens with the full list, and nothing changes until you confirm it there. Off by
+  default, local only, no tool for the shell or for opening files – see [docs/mcp.md](docs/mcp.md)
 - **Select if…** – conditional selection by companion files in the same folder (e.g. _all movies and their cover
   images when a cover exists_, movies without cover, RAW without JPEG), comparison with the other panel, size,
   date/age and name rules, with live preview and saved templates (`Ctrl+Alt+S` · `⌘⌥S`)
