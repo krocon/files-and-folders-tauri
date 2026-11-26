@@ -1,7 +1,7 @@
 import { TableApi } from '@guiexpert/table';
 import { describe, expect, it, vi } from 'vitest';
 import { createFileTable } from './file-table-model';
-import { createTableBridge, releaseTableMouse } from './table-bridge';
+import { createTableBridge } from './table-bridge';
 
 /** `order`: the properties in the order the table shows them now (design 041). */
 function fakeApi(order: readonly string[] = []) {
@@ -89,29 +89,15 @@ describe('TableBridge.setPresentation (design 015)', () => {
 /**
  * Dragged into another program (design 028), the system has the mouse: the page never gets
  * the mouseup. The table then stayed "pressed" – with the next move it went on with a column
- * drag and showed the name column as an empty drop zone.
+ * drag and showed the name column as an empty drop zone. Since table 1.1.119 it has an API.
  */
 describe('TableBridge.releaseMouse', () => {
-  it('ends the press of the table with a mouseup at its host only', () => {
+  it('ends the press of the table through its API', () => {
     const { body, columnDefs } = createFileTable('x');
-    const outer = document.createElement('div');
-    const hostElement = document.createElement('div');
-    outer.appendChild(hostElement);
-    const seen: MouseEvent[] = [];
-    const outside: Event[] = [];
-    hostElement.addEventListener('mouseup', (e) => seen.push(e));
-    outer.addEventListener('mouseup', (e) => outside.push(e));
-    const api = { ...fakeApi().api, getTableScope: () => ({ hostElement }) };
+    const releaseMouse = vi.fn();
+    const api = { ...fakeApi().api, releaseMouse };
     const bridge = createTableBridge(api as unknown as TableApi, body, columnDefs);
-    bridge.releaseMouse(1300, 240);
-    expect(seen.map((e) => [e.type, e.button, e.clientX, e.clientY])).toEqual([
-      ['mouseup', 0, 1300, 240],
-    ]);
-    // back/forward of the list and other mouseup listeners do not see it
-    expect(outside).toEqual([]);
-  });
-
-  it('does nothing without a table', () => {
-    expect(() => releaseTableMouse(undefined, 0, 0)).not.toThrow();
+    bridge.releaseMouse();
+    expect(releaseMouse).toHaveBeenCalledTimes(1);
   });
 });

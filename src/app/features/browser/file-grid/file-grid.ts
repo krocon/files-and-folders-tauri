@@ -31,7 +31,6 @@ import { thumbStep } from '../../imageoverview/overview-logic';
 import { TileRetries } from '../../imageoverview/tile-retries';
 import { TEXTS } from '../../workspace/texts';
 import { FileBrowserStore } from '../file-browser.store';
-import { releaseTableMouse } from '../file-list/table-bridge';
 import { FileTileRenderer, TILE_INDEX_ATTR } from './file-tile-renderer';
 import { cellIndex, GridMode, rowCount, tileLayout } from './grid-logic';
 import { PanelThumbs } from './panel-thumbs';
@@ -383,8 +382,8 @@ export class FileGrid {
   }
 
   /** The mouse press in the grid is over without a mouseup (a drag into another program). */
-  releaseMouse(x: number, y: number): void {
-    releaseTableMouse(this.tableApi(), x, y);
+  releaseMouse(): void {
+    this.tableApi()?.releaseMouse();
   }
 
   /** Focus into the grid (the table's host is the tab stop); false until the table exists. */

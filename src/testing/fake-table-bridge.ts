@@ -101,8 +101,8 @@ export class FakeTableBridge implements TableBridge {
     this.columns = columns;
   }
 
-  releaseMouse(x: number, y: number): void {
-    this.calls.push(`releaseMouse(${x},${y})`);
+  releaseMouse(): void {
+    this.calls.push('releaseMouse');
   }
 
   columnAt(index: number): string | null {

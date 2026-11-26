@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { TableApi } from '@guiexpert/table';
 import { vi } from 'vitest';
 import { FsApi } from '../../../core/fs/fs-api';
 import { ImageOverviewApi } from '../../../core/imageoverview/image-overview-api';
@@ -172,75 +173,70 @@ describe('FileList: columns and view modes (design 041)', () => {
   // ---- the table and our own drag (design 012 E5, 028) ----
 
   /** A body cell as the table renders it (jsdom paints none): the press finds its row. */
-  function fakeCell(el: HTMLElement, rowIndex: number): { table: HTMLElement; cell: HTMLElement } {
-    const table = el.querySelector<HTMLElement>('.table')!;
+  function fakeCell(el: HTMLElement, rowIndex: number): HTMLElement {
     const cell = document.createElement('div');
     cell.setAttribute('data-area', 'body');
     cell.setAttribute('data-row-index', String(rowIndex));
-    table.appendChild(cell);
-    return { table, cell };
+    el.querySelector<HTMLElement>('.table')!.appendChild(cell);
+    return cell;
   }
 
   const pointer = (type: string, x: number, y: number, buttons = 1) =>
     new MouseEvent(type, { bubbles: true, button: 0, buttons, clientX: x, clientY: y });
 
-  it('a pressed row belongs to our drag: the table sees no mouse moves until the release', async () => {
-    const { fixture, el, settle } = await setup();
-    fixture.componentRef.setInput('side', 'left');
-    await settle();
-    const { table, cell } = fakeCell(el, 2); // '..', Sub, a.jpg
-    const moves: Event[] = [];
-    table.addEventListener('mousemove', (e) => moves.push(e));
-    cell.dispatchEvent(pointer('mousemove', 9, 9, 0));
-    expect(moves.length).toBe(1); // hover, no button: the table's business
-    cell.dispatchEvent(pointer('pointerdown', 10, 10));
-    // a little jitter between press and release: with a stale column action of a header
-    // click the table (1.1.105) moved that column to the one under the pointer
-    cell.dispatchEvent(pointer('mousemove', 11, 10));
-    cell.dispatchEvent(pointer('mousemove', 40, 10));
-    expect(moves.length).toBe(1);
-    window.dispatchEvent(pointer('pointerup', 40, 10, 0));
-    cell.dispatchEvent(pointer('mousemove', 41, 10, 0));
-    expect(moves.length).toBe(2);
-    fixture.destroy();
-  });
+  /** The real table: is it "pressed" (between its mousedown and the end of the press)? */
+  const pressed = (list: FileList) =>
+    (list as unknown as { api(): TableApi | undefined }).api()?.isMouseDown();
 
-  it('dragged out of the window, the table gets the mouseup the system keeps', async () => {
-    const { fixture, el, settle } = await setup();
+  /** The press as the browser sends it: to us (pointer) and to the table (mouse). */
+  function press(cell: HTMLElement, x: number, y: number): void {
+    cell.dispatchEvent(pointer('pointerdown', x, y));
+    cell.dispatchEvent(pointer('mousedown', x, y));
+  }
+
+  it('dragged out of the window, the table is not left pressed: the system keeps the mouseup', async () => {
+    const { fixture, list, el, settle } = await setup();
     fixture.componentRef.setInput('side', 'left');
     await settle();
     const dnd = TestBed.inject(DragStore);
     const handOff = vi.spyOn(dnd, 'handOff').mockResolvedValue();
-    const { table, cell } = fakeCell(el, 2); // '..', Sub, a.jpg
-    const ups: MouseEvent[] = [];
-    table.addEventListener('mouseup', (e) => ups.push(e as MouseEvent));
-    cell.dispatchEvent(pointer('pointerdown', 10, 10));
+    const cell = fakeCell(el, 2); // '..', Sub, a.jpg
+    press(cell, 10, 10);
     window.dispatchEvent(pointer('pointermove', 60, 10));
     expect(dnd.drag()?.sources.map((s) => s.path)).toEqual(['/fotos/a.jpg']);
-    expect(ups).toEqual([]);
+    expect(pressed(list)).toBe(true);
     window.dispatchEvent(pointer('pointermove', window.innerWidth + 20, 10));
     expect(handOff).toHaveBeenCalledTimes(1);
-    expect(ups.map((e) => [e.button, e.clientX])).toEqual([[0, window.innerWidth + 20]]);
-    // the press is over: moves reach the table again (hover)
-    const moves: Event[] = [];
-    table.addEventListener('mousemove', (e) => moves.push(e));
-    cell.dispatchEvent(pointer('mousemove', 30, 10, 0));
-    expect(moves.length).toBe(1);
+    // without it the next mouse move went on as a drag in the table (a column changed places)
+    expect(pressed(list)).toBe(false);
     fixture.destroy();
   });
 
   it('a cancelled pointer (the system took it) ends the press of the table too', async () => {
-    const { fixture, el, settle } = await setup();
+    const { fixture, list, el, settle } = await setup();
     fixture.componentRef.setInput('side', 'left');
     await settle();
-    const { table, cell } = fakeCell(el, 2); // '..', Sub, a.jpg
-    const ups: Event[] = [];
-    table.addEventListener('mouseup', (e) => ups.push(e));
-    cell.dispatchEvent(pointer('pointerdown', 10, 10));
+    const cell = fakeCell(el, 2); // '..', Sub, a.jpg
+    press(cell, 10, 10);
     window.dispatchEvent(pointer('pointermove', 60, 10));
+    expect(pressed(list)).toBe(true);
     window.dispatchEvent(pointer('pointercancel', 60, 10, 0));
-    expect(ups.length).toBe(1);
+    expect(pressed(list)).toBe(false);
     expect(TestBed.inject(DragStore).drag()).toBeNull();
+    fixture.destroy();
+  });
+
+  it('a drop inside the window leaves the press to the table: its mouseup ends it', async () => {
+    const { fixture, list, el, settle } = await setup();
+    fixture.componentRef.setInput('side', 'left');
+    await settle();
+    const cell = fakeCell(el, 2); // '..', Sub, a.jpg
+    press(cell, 10, 10);
+    window.dispatchEvent(pointer('pointermove', 60, 10));
+    window.dispatchEvent(pointer('pointerup', 60, 10, 0));
+    expect(pressed(list)).toBe(true);
+    cell.dispatchEvent(pointer('mouseup', 60, 10, 0));
+    expect(pressed(list)).toBe(false);
     fixture.destroy();
   });
 });

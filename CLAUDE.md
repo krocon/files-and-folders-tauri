@@ -454,7 +454,7 @@ prompts/                     Feature-Prompts (s. o.)
 ## 5. GuiExpert Table als Dateiliste
 
 - Pakete: `@guiexpert/table` (Core, 0 Runtime-Deps) + `@guiexpert/angular-table` mit **gleicher Major wie Angular**
-  (Angular 22 → `@guiexpert/angular-table@22.1.100`, Core `1.1.100`, Stand Okt. 2026). Wir nutzen die
+  (Angular 22 → `@guiexpert/angular-table@22.1.119`, Core `1.1.119`, Stand Nov. 2026). Wir nutzen die
   signal-native Komponente **`TableSignalComponent`**, Selektor `guiexpert-table-signal` (erst ab 22.1.100):
   Signal-Inputs `tableModel`, `tableOptions`, `loading`, die API als Signal per **`[(tableApi)]="api"`** mit
   `api = signal<TableApi | undefined>(undefined)` – **kein `tableReady`**, verdrahtet wird in einem `effect()` auf
