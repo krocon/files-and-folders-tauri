@@ -2,6 +2,7 @@ import { CleanOptions, RootVerdict } from '../../core/folders/folders.models';
 import {
   RELEASE_EXTRAS,
   RELEASE_SAMPLES,
+  RELEASE_SUBTITLES,
   VIDEO_EXTENSIONS,
 } from '../../core/folders/release-extras';
 import { cleanScan, rootVerdict } from '../../../testing/fake-folders-api';
@@ -88,6 +89,7 @@ describe('clean folders: pure helpers (design 077)', () => {
       largeJunk: [],
       ...limits,
       junkDirsBesideContent: false,
+      companionJunk: [],
     });
     // a text in the custom fields never leaks into another profile
     expect(
@@ -104,7 +106,10 @@ describe('clean folders: pure helpers (design 077)', () => {
       largeJunk: [...RELEASE_SAMPLES],
       ...limits,
       junkDirsBesideContent: false,
+      // subtitles: companions of a leftover only (addendum 26.11.2026)
+      companionJunk: ['*.idx', '*.sub', '*.srt', '*.ass', '*.ssa', '*.sup', '*.vtt'],
     });
+    expect(RELEASE.companionJunk).toEqual([...RELEASE_SUBTITLES]);
     expect(
       cleanOptions(
         {
@@ -123,7 +128,17 @@ describe('clean folders: pure helpers (design 077)', () => {
     });
     // custom = the form of design 008
     const custom = { ...DEFAULT_CLEAN_FORM, profile: 'custom' as const };
-    expect(cleanOptions(custom, true)).toMatchObject({ junk: [], patterns: [], largeJunk: [] });
+    expect(cleanOptions(custom, true)).toMatchObject({
+      junk: [],
+      patterns: [],
+      largeJunk: [],
+      companionJunk: [],
+    });
+    // … not even with everything switched on: subtitles are named by the release profile only
+    expect(
+      cleanOptions({ ...custom, junkOn: true, patternsOn: true, junkDirsBesideContent: true }, true)
+        .companionJunk,
+    ).toEqual([]);
     expect(
       cleanOptions(
         { ...custom, junkOn: true, patternsOn: true, patternsText: ' *.bak ; ;*.tmp' },
@@ -186,6 +201,20 @@ describe('clean folders: pure helpers (design 077)', () => {
     // 4 sample shapes × the video endings, well below the 100 names Rust takes
     expect(RELEASE_SAMPLES).toHaveLength(4 * VIDEO_EXTENSIONS.length);
     expect(RELEASE_SAMPLES.length + RELEASE_EXTRAS.length + 3).toBeLessThanOrEqual(100);
+    // subtitles are no extras of their own: a list apart, by ending only
+    for (const name of ['film.srt', 'film.eng.idx', 'film.sub', 'film.sup', 'Film.ASS']) {
+      expect(extra(name), name).toBe(false);
+      expect(
+        RELEASE_SUBTITLES.some((p) => glob(p, name)),
+        name,
+      ).toBe(true);
+    }
+    for (const name of ['film.mkv', 'subs.rar', 'notes.txt', 'film.srt.bak']) {
+      expect(
+        RELEASE_SUBTITLES.some((p) => glob(p, name)),
+        name,
+      ).toBe(false);
+    }
   });
 
   it('rules that were loosened are never hidden (review 077 #6)', () => {

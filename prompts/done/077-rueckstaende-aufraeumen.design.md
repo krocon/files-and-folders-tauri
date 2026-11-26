@@ -84,7 +84,8 @@ probieren“ (kein zweiter Scan auf Verdacht).
 avi, m4v, mov, wmv, ts, mpg, mpeg, webm – 40 Muster, weil die Mustersprache nur `*`/`?` kennt).
 *(Nach dem Review enger gefasst, s. §9 Befund 1: vorher `*.url`, `*-proof.*` und Samples jeder Endung.)* Die Serien-Engine (045) nutzt weiter beide
 zusammen als „Extras“ ihres Dialogs.
-**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner), Untertitel und ein Ordner `Subs`,
+**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner), Untertitel und ein Ordner `Subs` *(seit
+26.11.2026 Begleiter, s. §10)*,
 Archivteile (`*.rar`, `*.r00`: groß und unwiederbringlich – auch nicht als Option; wer das will, nimmt „Eigene“ und
 hebt die Grenze an), **keine Ordner-Regel** („alles in `Sample/`/`Proof/` ist Beiwerk“): `sample/` gibt es auch in
 Code-Projekten; in Releases heißen die Dateien selbst `…-sample.*`.
@@ -295,3 +296,54 @@ Befund ein Test, der vor dem Fix rot lief.
 **Verhaltensänderungen durch das Review:** leere versteckte Ordner (`.Trashes`, `.cache/leer`) werden unterhalb
 einer Wurzel nicht mehr aufgeräumt; nach „Serien nach Staffeln“ gelten `*.url` und Nicht-Video-„Samples“ nicht
 mehr als Beiwerk (der Release-Ordner bleibt dann stehen – sichtbar mit Grund).
+
+## 10. Nachtrag 26.11.2026 – Untertitel als Begleiter (Branch `fix/aufraeumen-untertitel`)
+
+**Anlass (Marc):** `Tigerland (2000)/<Release>/` mit `Proof/…-proof.jpg`, `Sample/…-sample.mkv` (91,8 MB),
+`Subs/*.idx` + `*.sub` (bis 10,1 MB) und einer `.nfo` – kein Film mehr darin – bekam im Profil „Release-Reste“ das
+Urteil „bleibt“: die vier Untertitel in `Subs/` zählten nach E4 als Inhalt (bestätigt durch den roten Test:
+`keep_files: 4`, `.idx`/`.sub`).
+
+**Regel:** Untertitel sind **Begleiter**, kein eigenes Beiwerk. Sie zählen nur dann als Beiwerk, wenn
+1. der **Startordner als Ganzes geht** (Urteil „Rückstand“ – also nirgends im Baum Inhalt liegt und der Ordner
+   selbst gehen darf) **und**
+2. im selben Startordner mindestens ein **echtes Beiwerk** liegt (ein Treffer aus `RELEASE_EXTRAS`/`RELEASE_SAMPLES`
+   innerhalb seiner Größengrenze; Systemmüll wie `.DS_Store` zählt nicht).
+
+In jedem anderen Fall sind sie Inhalt wie bisher: eine Untertitel-Sammlung, ein Ordner nur mit `.idx`-Dateien,
+`Subs/` neben dem Film – **auch mit „Beiwerk-Unterordner neben Inhalt“** (ein Ordner mit Untertiteln geht nie über
+diese Option, auch nicht, wenn eine `.sfv` daneben liegt) – und alles unterhalb des Panel-Ordners, der selbst nie
+geht. Versteckte Untertitel sind Inhalt (wie bei jedem Muster).
+
+**Liste** (`core/folders/release-extras.ts` `RELEASE_SUBTITLES`): `*.idx`, `*.sub` (VobSub; `.sub` auch MicroDVD),
+`*.srt` (SubRip), `*.ass`, `*.ssa`, `*.sup` (PGS von Blu-ray), `*.vtt` (WebVTT). Nicht aufgenommen: gepackte
+Untertitel (`Subs/*.rar` – Archive bleiben nach E4 Inhalt) und seltene Formate (`.smi`, `.ttml`, `.usf`); `.idx`
+und `.sub` sind mehrdeutige Endungen – genau dafür die Begleiter-Bedingung.
+
+**Größengrenze:** fest `clean::COMPANION_MAX_BYTES` = **64 MiB**, kein Formularfeld. Die 1-MiB-Grenze passt nicht
+(VobSub ~10 MB je Sprache, PGS eines langen Films bis ~60 MB), die Proben-Grenze (300 MiB, vom Nutzer anhebbar)
+wäre zu weit und hätte eine zweite Bedeutung bekommen. Darüber ist die Datei schlicht Inhalt (Grund „Inhalt“,
+kein neuer Grund, keine neuen Texte).
+
+**Umsetzung:** neue Option `CleanOptions.companion_junk` / `companionJunk` (Default leer, fehlendes Feld = aus;
+nur das Profil „Release-Reste“ füllt sie). `Matcher::classify` liefert `FileClass::Companion`; ob das Beiwerk ist,
+entscheidet der Durchlauf: `Ctx::root_walk` nimmt Begleiter zuerst als Beiwerk und zählt echtes Beiwerk
+(`RootStats.real_extras`) und Begleiter. Gilt die Bedingung nicht (`companions_stand`), wird der Startordner
+zurückgespult (`rewind`: Einträge, Unlesbares, Zähler) und **noch einmal ohne Begleiter** durchlaufen – so stimmen
+Urteil, Gründe und Summen ohne Sonderfälle (höchstens doppelte Laufzeit, nur für Startordner mit Untertiteln, die
+gehen dürften). Der Job entscheidet gleich: `plan_tree` kennt Begleiter nur für `top == root` und lehnt ohne echtes
+Beiwerk ab; ein gelisteter Ordner unterhalb der Wurzel mit Untertiteln ist Inhalt.
+
+**Folge für 045:** Nach „Serien nach Staffeln“ (Verschieben, Untertitel nicht mitgenommen) gilt ein geleerter
+Release-Ordner mit `.nfo`/Sample **und** Untertiteln jetzt als Rückstand (vorher blieb er wegen der Untertitel
+stehen) – sichtbar im vorbelegten Dialog, Papierkorb als Default.
+
+**Tests (alle vorher rot):** Rust `clean.rs` › `subtitles_go_with_a_release_leftover`, `subtitles_alone_are_content`,
+`subtitles_next_to_a_film_always_stay`, `a_huge_subtitle_is_content`,
+`plan_tree_knows_companions_only_for_a_whole_start_folder`, `companion_patterns_are_checked_and_optional`;
+`jobs/tests_tools.rs` › `clean_takes_subtitles_with_a_release_leftover`,
+`clean_never_takes_subtitles_alone_or_next_to_content`; Frontend `clean-logic.spec.ts` (Optionen je Profil, Liste).
+**Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im Fenster (wie §6); der echte Ordner wurde nicht angefasst.
+
+**Außerdem:** Das Urteil „Rückstand“ steht in der Ordnerliste rot (`--color-danger`, Zellklasse `fnf-cl-residue`);
+der Text bleibt, „teilweise“ und „bleibt“ sind unverändert.

@@ -12,7 +12,7 @@ import { SessionApi } from '../../core/session/session-api';
 import { SettingsStore } from '../../core/settings/settings.store';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { cleanScan, EMPTY_TREE, FakeFoldersApi } from '../../../testing/fake-folders-api';
-import { RELEASE_SAMPLES } from '../../core/folders/release-extras';
+import { RELEASE_SAMPLES, RELEASE_SUBTITLES } from '../../core/folders/release-extras';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
 import { FakeRenameApi } from '../../../testing/fake-rename-api';
@@ -340,6 +340,8 @@ describe('group series by season (design 045)', () => {
       junkMaxBytes: 1024 * 1024,
       largeJunkMaxBytes: 300 * 1024 * 1024,
       junkDirsBesideContent: false,
+      // subtitles left in an emptied release folder go with it (addendum 26.11.2026 of 077)
+      companionJunk: [...RELEASE_SUBTITLES],
     });
     expect(cl.mode()).toBe('trash');
     // the dialog names the junk that leaves with a folder (review 045 #2)

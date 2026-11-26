@@ -8,7 +8,9 @@
 //! files are content unless their exact name is in the junk list, an extra that
 //! only a pattern makes one is content once it is larger than its limit, and
 //! nothing above a start folder is ever looked at. A folder that stays is not
-//! gutted: below it only really empty folders go (design 077 E3).
+//! gutted: below it only really empty folders go (design 077 E3). Companions
+//! (subtitles, `companion_junk`) are extras only where a start folder goes as a
+//! whole and holds a real extra – in every other case they are content.
 //!
 //! The job (`jobs/clean.rs`) decides with the same walk ([`plan_tree`]) right
 //! before it deletes.
@@ -38,6 +40,10 @@ pub const MAX_ROOTS: usize = 10_000;
 pub const DEFAULT_JUNK_MAX_BYTES: u64 = 1024 * 1024;
 /// The same for the sample patterns (`large_junk`): samples are big.
 pub const DEFAULT_LARGE_JUNK_MAX_BYTES: u64 = 300 * 1024 * 1024;
+/// Largest companion file (subtitle) that goes with a residue. Fixed: a VobSub
+/// `.sub` has about 10 MB per language, a PGS `.sup` of a long film up to some
+/// 60 MB – and no film is that small.
+pub const COMPANION_MAX_BYTES: u64 = 64 * 1024 * 1024;
 /// Entries that stay, reported per start folder.
 pub const MAX_KEEP_SAMPLE: usize = 20;
 /// Most frequent extensions of the content, reported per start folder.
@@ -87,6 +93,12 @@ pub struct CleanOptions {
     /// next to the film) go as well. Default off: a folder with content is not gutted.
     #[serde(default)]
     pub junk_dirs_beside_content: bool,
+    /// Name patterns of companions (subtitles, addendum 26.11.2026 of design 077):
+    /// extras only where a start folder goes as a whole **and** holds at least one
+    /// real extra of `junk` patterns/names or `large_junk` – never on their own, never
+    /// next to content, never larger than [`COMPANION_MAX_BYTES`]. Empty = off.
+    #[serde(default)]
+    pub companion_junk: Vec<String>,
 }
 
 impl Default for CleanOptions {
@@ -100,6 +112,7 @@ impl Default for CleanOptions {
             junk_max_bytes: DEFAULT_JUNK_MAX_BYTES,
             large_junk_max_bytes: DEFAULT_LARGE_JUNK_MAX_BYTES,
             junk_dirs_beside_content: false,
+            companion_junk: Vec::new(),
         }
     }
 }
@@ -245,6 +258,10 @@ pub enum FileClass {
     },
     /// Matches a delete pattern: listed on its own.
     Delete,
+    /// A companion (subtitle) within its size limit: an extra only where its start
+    /// folder goes as a whole with a real extra inside, content otherwise – the walk
+    /// decides ([`Ctx::companions`]).
+    Companion,
     Keep(KeepReason),
 }
 
@@ -291,6 +308,8 @@ pub struct Matcher {
     junk_patterns: Vec<Vec<char>>,
     /// Sample patterns (`*-sample.*`), with the generous limit.
     large_patterns: Vec<Vec<char>>,
+    /// Companion patterns (`*.srt`), limit [`COMPANION_MAX_BYTES`].
+    companion_patterns: Vec<Vec<char>>,
     patterns: Vec<Vec<char>>,
     junk_max: u64,
     large_max: u64,
@@ -311,6 +330,7 @@ impl Matcher {
         if o.junk.len() > MAX_NAMES
             || o.patterns.len() > MAX_NAMES
             || o.large_junk.len() > MAX_NAMES
+            || o.companion_junk.len() > MAX_NAMES
         {
             return Err(bad_name("Too many names or patterns"));
         }
@@ -351,6 +371,20 @@ impl Matcher {
             }
             large_patterns.push(j.to_lowercase().chars().collect());
         }
+        let mut companion_patterns = Vec::new();
+        for j in &o.companion_junk {
+            let j = j.trim();
+            if j.is_empty() {
+                continue;
+            }
+            if j.len() > MAX_NAME_LEN || j.contains(['/', '\\', '\0']) {
+                return Err(bad_name("A companion pattern is invalid"));
+            }
+            if matches_everything(j) {
+                return Err(bad_name("The companion pattern would match every file"));
+            }
+            companion_patterns.push(j.to_lowercase().chars().collect());
+        }
         let mut patterns = Vec::new();
         for p in &o.patterns {
             let p = p.trim();
@@ -374,14 +408,20 @@ impl Matcher {
             junk_names,
             junk_patterns,
             large_patterns,
+            companion_patterns,
             patterns,
             junk_max: o.junk_max_bytes,
             large_max: o.large_junk_max_bytes,
         })
     }
 
-    /// The name alone says "extra" (exact name or a pattern) – without size and
-    /// hidden rules. For texts only; decisions use [`Matcher::classify`].
+    /// There are companion patterns at all.
+    pub fn has_companions(&self) -> bool {
+        !self.companion_patterns.is_empty()
+    }
+
+    /// The name alone says "extra" (exact name or a pattern, no companion) – without
+    /// size and hidden rules. For texts only; decisions use [`Matcher::classify`].
     pub fn is_junk(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
         if self.junk.contains(&lower) || self.junk_names.contains(&lower) {
@@ -439,6 +479,16 @@ impl Matcher {
             } else {
                 FileClass::Keep(KeepReason::TooLarge)
             };
+        }
+        // last: a name that is a real extra, too, is one (`x-sample.ts` never a companion).
+        // Too large = plain content: no subtitle, whatever its name says
+        if size <= COMPANION_MAX_BYTES
+            && self
+                .companion_patterns
+                .iter()
+                .any(|p| glob_match(p, &chars))
+        {
+            return FileClass::Companion;
         }
         FileClass::Keep(KeepReason::Content)
     }
@@ -520,6 +570,11 @@ struct RootStats {
     links: u64,
     blocked: u64,
     junk_seen: u64,
+    /// Extras that only a pattern or a typed name makes extras – what makes a
+    /// folder a release leftover (system junk does not).
+    real_extras: u64,
+    /// Companions that were taken as extras.
+    companions: u64,
 }
 
 /// A folder of a [`TreePlan`] as the walk saw it.
@@ -560,9 +615,72 @@ struct Ctx<'a> {
     plan: Option<Vec<PlannedDir>>,
     /// [`MAX_VISITED`] (tests use a small one).
     max_visited: u64,
+    /// Companions count as extras in this walk – a first look that only stands if the
+    /// start folder goes as a whole and holds a real extra ([`Ctx::companions_stand`]).
+    companions: bool,
+}
+
+/// Where a walk began, to take it back ([`Ctx::rewind`]).
+struct Mark {
+    items: usize,
+    unreadable: usize,
+    unreadable_more: u64,
+    visited: u64,
 }
 
 impl Ctx<'_> {
+    fn mark(&self) -> Mark {
+        Mark {
+            items: self.scan.items.len(),
+            unreadable: self.scan.unreadable.len(),
+            unreadable_more: self.scan.unreadable_more,
+            visited: self.scan.visited,
+        }
+    }
+
+    /// Forgets everything the walk of the current start folder noted.
+    fn rewind(&mut self, mark: &Mark) {
+        self.scan.items.truncate(mark.items);
+        self.scan.unreadable.truncate(mark.unreadable);
+        self.scan.unreadable_more = mark.unreadable_more;
+        self.scan.visited = mark.visited;
+        self.stats = RootStats::default();
+        if let Some(plan) = self.plan.as_mut() {
+            plan.clear();
+        }
+    }
+
+    /// The walk that took companions as extras stands: none was met, or the start
+    /// folder goes as a whole (`went`) and holds a real extra. Otherwise companions
+    /// are content, and the folder has to be walked again without them.
+    fn companions_stand(&self, went: bool) -> bool {
+        self.stats.companions == 0 || (went && self.stats.real_extras > 0)
+    }
+
+    /// Walks the start folder `root`; `true` = it goes as a whole. Companions
+    /// (subtitles) are extras only in a start folder that goes as a whole with a real
+    /// extra inside: a first walk takes them as extras, and if that does not hold, a
+    /// second one decides with companions as content – so they never go on their
+    /// own and never next to content, not even with `junk_dirs_beside_content`.
+    fn root_walk(&mut self, root: &Path, dev: Option<u64>) -> bool {
+        self.companions = self.m.has_companions() && self.root_may_go;
+        if !self.companions {
+            return self.dir(root, dev, true).is_some();
+        }
+        let mark = self.mark();
+        let went = self.dir(root, dev, true).is_some();
+        if self.scan.truncated || self.companions_stand(went) {
+            if self.scan.truncated {
+                // nothing of it is certain – and no folder listed with companions inside
+                self.scan.items.truncate(mark.items);
+            }
+            return went;
+        }
+        self.rewind(&mark);
+        self.companions = false;
+        self.dir(root, dev, true).is_some()
+    }
+
     fn unreadable(&mut self, path: &Path, e: &std::io::Error) {
         if self.scan.unreadable.len() < MAX_UNREADABLE {
             self.scan.unreadable.push(FsError::from_io(e, path));
@@ -766,7 +884,21 @@ impl Ctx<'_> {
                             });
                         }
                     }
-                    FileClass::Junk { pattern } => {
+                    FileClass::Companion if !self.companions => {
+                        self.keep_file(&path, name, size, KeepReason::Content);
+                        removable = false;
+                    }
+                    class @ (FileClass::Junk { .. } | FileClass::Companion) => {
+                        let pattern = match class {
+                            FileClass::Junk { pattern } => {
+                                self.stats.real_extras += u64::from(pattern);
+                                pattern
+                            }
+                            _ => {
+                                self.stats.companions += 1;
+                                true
+                            }
+                        };
                         junk += 1;
                         junk_bytes = junk_bytes.saturating_add(size);
                         soft |= pattern;
@@ -934,6 +1066,7 @@ fn scan_limited(
         stats: RootStats::default(),
         plan: None,
         max_visited,
+        companions: false,
     };
     for root in &roots {
         if ctx.scan.truncated {
@@ -959,7 +1092,7 @@ fn scan_limited(
         ctx.root = root.clone();
         ctx.root_may_go = options.include_roots && !linked && risk.is_none();
         let first = ctx.scan.items.len();
-        let went = ctx.dir(root, dev, true).is_some();
+        let went = ctx.root_walk(root, dev);
         let v = ctx.verdict(root, first, went, risk, linked);
         ctx.scan.roots.push(v);
     }
@@ -999,8 +1132,8 @@ impl TreePlan {
 
 /// Decides **now** whether the folder `top` (inside or equal to the start folder
 /// `root`) can go as a whole – with the walk of the scan: links, other file
-/// systems, hidden files, size limits. `None`: it holds content (or the walk
-/// hit a limit); nothing of it may be deleted then.
+/// systems, hidden files, size limits, companions. `None`: it holds content (or
+/// the walk hit a limit); nothing of it may be deleted then.
 pub fn plan_tree(
     top: &Path,
     root: &Path,
@@ -1039,11 +1172,19 @@ pub fn plan_tree(
         stats: RootStats::default(),
         plan: Some(Vec::new()),
         max_visited: MAX_VISITED,
+        // companions go only with a whole start folder; a folder below it lies next
+        // to something that stays
+        companions: m.has_companions() && top == root,
     };
     let Some(soft) = ctx.dir(top, dev, true) else {
         return Ok(None);
     };
     if ctx.scan.truncated || ctx.scan.cancelled {
+        return Ok(None);
+    }
+    // … and only with a real extra: subtitles alone are content (no second walk
+    // needed – without companions the folder holds content)
+    if !ctx.companions_stand(true) {
         return Ok(None);
     }
     let dirs = ctx.plan.take().unwrap_or_default();
@@ -1443,6 +1584,11 @@ pub(crate) mod tests {
                 ]
             })
             .collect(),
+            // as `RELEASE_SUBTITLES` in release-extras.ts
+            companion_junk: ["idx", "sub", "srt", "ass", "ssa", "sup", "vtt"]
+                .iter()
+                .map(|e| format!("*.{e}"))
+                .collect(),
             ..opts()
         }
     }
@@ -1867,6 +2013,231 @@ pub(crate) mod tests {
         let scan = scan_limited(&roots, &release(), None, &AtomicBool::new(true), 10).unwrap();
         assert!(scan.cancelled && scan.items.is_empty());
         assert!(scan.roots.iter().all(|r| r.count == 0 && r.incomplete));
+    }
+
+    // ---- addendum 26.11.2026: subtitles are companions of a release leftover ----
+
+    /// Marc's folder "Tigerland (2000)": the film is gone, sample, proof, nfo and
+    /// subtitles are left. Returns the start folder.
+    pub(crate) fn tigerland(base: &Path) -> PathBuf {
+        let root = base.join("Tigerland (2000)");
+        let rel = root.join("Tigerland.2000.German.DL.1080p.BluRay.x264-DETAiLS");
+        for d in ["Proof", "Sample", "Subs"] {
+            fs::create_dir_all(rel.join(d)).unwrap();
+        }
+        for (f, len) in [
+            ("Proof/d-tigerland-1080p-proof.jpg", 176_000u64),
+            ("Sample/d-tigerland-1080p-sample.mkv", 91_800_000),
+            ("Subs/d-tigerland-1080p-eng.idx", 59_000),
+            ("Subs/d-tigerland-1080p-eng.sub", 9_400_000),
+            ("Subs/d-tigerland-1080p.idx", 59_000),
+            ("Subs/d-tigerland-1080p.sub", 10_100_000),
+            ("d-tigerland-1080p.nfo", 6_600),
+        ] {
+            sparse(&rel.join(f), len);
+        }
+        root
+    }
+
+    pub(crate) const TIGERLAND_BYTES: u64 =
+        176_000 + 91_800_000 + 2 * 59_000 + 9_400_000 + 10_100_000 + 6_600;
+
+    #[test]
+    fn subtitles_go_with_a_release_leftover() {
+        let t = tempfile::tempdir().unwrap();
+        let root = tigerland(t.path());
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = &scan.roots[0];
+        // the start folder, the release folder, Proof, Sample, Subs – 7 files
+        assert_eq!(
+            numbers(v),
+            (Verdict::Residue, 5, 7, TIGERLAND_BYTES),
+            "{v:?}"
+        );
+        assert_eq!((v.keep_files, v.junk_kept), (0, 0));
+        assert_eq!(scan.items.last().unwrap().path, path_string(&root));
+        assert!(scan.items.iter().all(|i| i.soft));
+        // without the companions (the rule before): the subtitles are content
+        let before = CleanOptions {
+            companion_junk: Vec::new(),
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &before).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep);
+        assert_eq!(scan.roots[0].keep_files, 4);
+        // the panel's own folder never goes: then nothing of it goes, subtitles are content
+        let own = CleanOptions {
+            include_roots: false,
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &own).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep, "{:?}", scan.items);
+        assert_eq!(scan.roots[0].keep_files, 4);
+        assert!(scan.items.is_empty());
+    }
+
+    #[test]
+    fn subtitles_alone_are_content() {
+        let t = tempfile::tempdir().unwrap();
+        // a collection of subtitles, with system junk – but no release extra
+        let subs = t.path().join("Untertitel ä");
+        fs::create_dir_all(subs.join("Subs")).unwrap();
+        fs::write(subs.join("film.de.srt"), "1").unwrap();
+        fs::write(subs.join("Subs/film.idx"), "22").unwrap();
+        fs::write(subs.join("Subs/film.sub"), "333").unwrap();
+        fs::write(subs.join(".DS_Store"), "x").unwrap();
+        // index files only
+        let idx = t.path().join("idx");
+        fs::create_dir(&idx).unwrap();
+        fs::write(idx.join("a.idx"), "1").unwrap();
+        // a visit counter and the unreadable list must not count twice
+        let scan = find_empty_dirs(&[subs.clone(), idx.clone()], &release()).unwrap();
+        for v in &scan.roots {
+            assert_eq!(v.verdict, Verdict::Keep, "{v:?}");
+            assert_eq!(v.count, 0);
+        }
+        assert!(scan.items.is_empty(), "{:?}", scan.items);
+        let v = &scan.roots[0];
+        assert_eq!((v.keep_files, v.keep_bytes, v.junk_kept), (3, 6, 1));
+        assert!(
+            v.keep_sample
+                .iter()
+                .all(|k| k.reason == KeepReason::Content)
+        );
+        assert_eq!(scan.roots[1].keep_extensions, [".idx"]);
+        assert_eq!(scan.visited, 6, "the second look does not count again");
+        // one release extra anywhere in the start folder, and they are its companions
+        fs::write(subs.join("Subs/film.nfo"), "n").unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&subs), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+        // a hidden subtitle is content, as for every pattern
+        fs::write(subs.join(".x.srt"), "h").unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&subs), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep);
+        assert_eq!((scan.roots[0].hidden, scan.roots[0].keep_files), (1, 4));
+    }
+
+    #[test]
+    fn subtitles_next_to_a_film_always_stay() {
+        let t = tempfile::tempdir().unwrap();
+        let root = t.path().join("Film (2000)");
+        for d in ["Subs", "Sample", "Extras"] {
+            fs::create_dir_all(root.join(d)).unwrap();
+        }
+        fs::write(root.join("film.mkv"), "film").unwrap();
+        fs::write(root.join("film.nfo"), "n").unwrap();
+        fs::write(root.join("Subs/film.idx"), "i").unwrap();
+        fs::write(root.join("Subs/film.sub"), "s").unwrap();
+        fs::write(root.join("Sample/film-sample.mkv"), "x").unwrap();
+        // subtitles with a real extra beside them, in a folder next to the film
+        fs::write(root.join("Extras/film.eng.srt"), "s").unwrap();
+        fs::write(root.join("Extras/x.sfv"), "s").unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep);
+        assert!(scan.items.is_empty(), "{:?}", scan.items);
+        // gutting takes the sample folder – never a folder with subtitles
+        let gut = CleanOptions {
+            junk_dirs_beside_content: true,
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &gut).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Partial);
+        assert_eq!(names(&scan, &root), ["Sample/"]);
+        assert_eq!(scan.roots[0].keep_files, 4, "film and three subtitles");
+        // the same below a folder that must not go (the panel's own)
+        let lib = t.path().join("Filme");
+        let left = tigerland(&lib);
+        let own = CleanOptions {
+            include_roots: false,
+            ..gut.clone()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&lib), &own).unwrap();
+        let got = names(&scan, &left);
+        assert_eq!(got.len(), 2, "{got:?}");
+        assert!(
+            got.iter()
+                .all(|n| n.ends_with("/Proof/") || n.ends_with("/Sample/"))
+        );
+    }
+
+    #[test]
+    fn a_huge_subtitle_is_content() {
+        let t = tempfile::tempdir().unwrap();
+        let root = tigerland(t.path());
+        let sub = root.join("Tigerland.2000.German.DL.1080p.BluRay.x264-DETAiLS/Subs/big.sup");
+        sparse(&sub, COMPANION_MAX_BYTES + 1);
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = &scan.roots[0];
+        assert_eq!(v.verdict, Verdict::Keep, "{v:?}");
+        // all subtitles are content then, not only the big one
+        assert_eq!(v.keep_files, 5);
+        assert!(scan.items.is_empty());
+        // exactly at the limit it is a companion
+        sparse(&sub, COMPANION_MAX_BYTES);
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+        // the limits of the form do not reach companions
+        let tight = CleanOptions {
+            large_junk_max_bytes: 100_000_000,
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &tight).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+    }
+
+    #[test]
+    fn plan_tree_knows_companions_only_for_a_whole_start_folder() {
+        let t = tempfile::tempdir().unwrap();
+        let root = tigerland(t.path());
+        let rel = root.join("Tigerland.2000.German.DL.1080p.BluRay.x264-DETAiLS");
+        let o = release();
+        let m = Matcher::new(&o).unwrap();
+        let never = AtomicBool::new(false);
+        let plan = plan_tree(&root, &root, &o, &m, &never).unwrap().unwrap();
+        assert!(plan.soft);
+        assert_eq!(
+            (plan.files, plan.bytes, plan.dirs.len()),
+            (7, TIGERLAND_BYTES, 5)
+        );
+        let subs = plan.dirs.iter().find(|d| d.path.ends_with("Subs")).unwrap();
+        assert_eq!(subs.junk.len(), 4);
+        // a folder below the start folder lies next to something that stays
+        assert_eq!(plan_tree(&rel, &root, &o, &m, &never).unwrap(), None);
+        assert_eq!(
+            plan_tree(&rel.join("Subs"), &root, &o, &m, &never).unwrap(),
+            None
+        );
+        assert!(
+            plan_tree(&rel.join("Sample"), &root, &o, &m, &never)
+                .unwrap()
+                .is_some()
+        );
+        // the real extras went meanwhile: subtitles alone are content
+        fs::remove_file(rel.join("d-tigerland-1080p.nfo")).unwrap();
+        fs::remove_dir_all(rel.join("Proof")).unwrap();
+        fs::remove_dir_all(rel.join("Sample")).unwrap();
+        assert_eq!(plan_tree(&root, &root, &o, &m, &never).unwrap(), None);
+    }
+
+    #[test]
+    fn companion_patterns_are_checked_and_optional() {
+        // an old job spec has no such field: off
+        let o: CleanOptions = serde_json::from_str("{}").unwrap();
+        assert!(o.companion_junk.is_empty());
+        let o: CleanOptions = serde_json::from_str(r#"{"companionJunk":["*.srt"]}"#).unwrap();
+        assert_eq!(o.companion_junk, ["*.srt"]);
+        for bad in ["*", "*.*", "a/b.srt"] {
+            let o = CleanOptions {
+                companion_junk: vec![bad.into()],
+                ..opts()
+            };
+            assert!(Matcher::new(&o).is_err(), "{bad}");
+        }
+        let many = CleanOptions {
+            companion_junk: vec!["*.srt".into(); MAX_NAMES + 1],
+            ..opts()
+        };
+        assert!(Matcher::new(&many).is_err());
     }
 
     #[test]

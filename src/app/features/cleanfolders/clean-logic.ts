@@ -6,7 +6,11 @@ import {
   KeepReason,
   RootVerdict,
 } from '../../core/folders/folders.models';
-import { RELEASE_EXTRAS, RELEASE_SAMPLES } from '../../core/folders/release-extras';
+import {
+  RELEASE_EXTRAS,
+  RELEASE_SAMPLES,
+  RELEASE_SUBTITLES,
+} from '../../core/folders/release-extras';
 import { DirEntry, isParentRow, isVirtualPath } from '../../core/fs/fs.models';
 import { boolOr, intOr, oneOf, record, textOr } from '../../shared/restore-fields';
 import { formatSize } from '../../shared/format';
@@ -97,6 +101,7 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         largeJunk: [],
         ...limits,
         junkDirsBesideContent: false,
+        companionJunk: [],
       };
     case 'release':
       return {
@@ -107,6 +112,8 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         largeJunk: [...RELEASE_SAMPLES],
         ...limits,
         junkDirsBesideContent: f.junkDirsBesideContent,
+        // subtitles go with a leftover, never on their own or next to content (Rust decides)
+        companionJunk: [...RELEASE_SUBTITLES],
       };
     case 'custom':
       return {
@@ -117,6 +124,7 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         largeJunk: [],
         ...limits,
         junkDirsBesideContent: f.emptyDirs && f.junkDirsBesideContent,
+        companionJunk: [],
       };
   }
 }

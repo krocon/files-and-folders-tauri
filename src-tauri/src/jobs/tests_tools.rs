@@ -822,6 +822,58 @@ fn clean_marcs_tree() {
     assert_eq!(fs::read_dir(&roots[0]).unwrap().count(), 3);
 }
 
+/// Addendum 26.11.2026: the subtitles of a release leftover go with it – as one unit.
+#[test]
+fn clean_takes_subtitles_with_a_release_leftover() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::tigerland(d.path());
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    assert_eq!(scan.items.len(), 5, "{:?}", scan.items);
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (5, 0));
+    assert_eq!(sum.bytes_done, crate::clean::tests::TIGERLAND_BYTES);
+    assert!(!root.exists());
+    assert!(d.path().is_dir());
+}
+
+/// The job decides again: subtitles are no extras without a real one, and never
+/// next to content – whatever the list says.
+#[test]
+fn clean_never_takes_subtitles_alone_or_next_to_content() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::tigerland(d.path());
+    let rel = root.join("Tigerland.2000.German.DL.1080p.BluRay.x264-DETAiLS");
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    // after the preview the real extras went: what is left is a subtitle collection
+    fs::remove_file(rel.join("d-tigerland-1080p.nfo")).unwrap();
+    fs::remove_dir_all(rel.join("Proof")).unwrap();
+    fs::remove_dir_all(rel.join("Sample")).unwrap();
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o.clone()));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(fs::read_dir(rel.join("Subs")).unwrap().count(), 4);
+    // a forged list with the option to gut: `Subs` next to a film
+    fs::write(rel.join("film.mkv"), "film").unwrap();
+    fs::write(rel.join("film.nfo"), "n").unwrap();
+    let gut = CleanOptions {
+        junk_dirs_beside_content: true,
+        ..o
+    };
+    let forged = vec![crate::clean::CleanItem {
+        path: s(&rel.join("Subs")),
+        kind: CleanKind::Dir,
+        ..Default::default()
+    }];
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), forged, gut));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(fs::read_dir(rel.join("Subs")).unwrap().count(), 4);
+}
+
 #[test]
 fn clean_leaves_a_residue_alone_that_got_content_after_the_preview() {
     let h = Harness::new();

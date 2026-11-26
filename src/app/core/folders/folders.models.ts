@@ -24,6 +24,12 @@ export interface CleanOptions {
   readonly largeJunkMaxBytes: number;
   /** Below a folder that stays, folders holding only pattern extras go as well (default off). */
   readonly junkDirsBesideContent: boolean;
+  /**
+   * Patterns of companions (subtitles, addendum 26.11.2026 of design 077): extras only where
+   * a start folder goes as a whole and holds a real extra of `junk`/`largeJunk`; content
+   * otherwise, and above Rust's fixed limit. Empty = off.
+   */
+  readonly companionJunk: readonly string[];
 }
 
 export type CleanKind = 'dir' | 'file';
