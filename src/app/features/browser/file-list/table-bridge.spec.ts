@@ -85,3 +85,19 @@ describe('TableBridge.setPresentation (design 015)', () => {
     expect(bridge.startRename('/a.txt', 1, () => undefined)).toBe(true);
   });
 });
+
+/**
+ * Dragged into another program (design 028), the system has the mouse: the page never gets
+ * the mouseup. The table then stayed "pressed" – with the next move it went on with a column
+ * drag and showed the name column as an empty drop zone. Since table 1.1.119 it has an API.
+ */
+describe('TableBridge.releaseMouse', () => {
+  it('ends the press of the table through its API', () => {
+    const { body, columnDefs } = createFileTable('x');
+    const releaseMouse = vi.fn();
+    const api = { ...fakeApi().api, releaseMouse };
+    const bridge = createTableBridge(api as unknown as TableApi, body, columnDefs);
+    bridge.releaseMouse();
+    expect(releaseMouse).toHaveBeenCalledTimes(1);
+  });
+});

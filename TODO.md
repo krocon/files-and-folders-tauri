@@ -173,6 +173,15 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       füllen (TC „Kurz“), `property` im Kopf-Mausereignis, „Breite des Codes“ nachträglich ändern,
       `setColumnHeaderLabel(property, …)`, `minWidth` einer Gewichts-Spalte wird nicht eingehalten (Name wird in
       schmalen Panels bzw. mit vielen Spalten zu `…` statt waagerecht zu scrollen – schon vor 041 so).
+- [ ] GuiExpert Table nach einem Drag ins System (26.11.2026): der native Drag behält das `mouseup`, die Table blieb
+      „gedrückt“ und zog nach einem Klick auf einen Spaltenkopf mit der nächsten Mausbewegung eine Spalte (Name-Spalte
+      als leere, grünliche Drop-Zone, Spalten vertauscht). Behoben im Core (`mono/prompts/028-press-ohne-mouseup.md`,
+      Table 1.1.119: der Press endet von selbst, dazu `tableApi.releaseMouse()`); wir sind auf 1.1.119 und rufen
+      `TableBridge.releaseMouse()` bei der Übergabe ans System und bei `pointercancel` (Branch
+      `chore/guiexpert-table-1.1.119`, die Umgehungen G25/G26 aus `fix/table-press-nach-system-drag` sind wieder weg).
+      Geprüft: Nachstellung im Browser, alle Screenshot-Szenen alt gegen neu (hell). **Bei Marc prüfen:** echte App –
+      Spaltenkopf doppelklicken, Datei in den Finder ziehen, Liste danach normal; Bilder-Übersicht (`⌘⇧I`) mit
+      Pfeiltasten und Enter (Cover-Grid der Table hat seit 1.1.115 eine eigene Tastatur, bei uns abgeschaltet).
 - [ ] 041 offen: Miniaturen in Archiven, auf Servern und in Ergebnis-Tabs (Suche, flach); Spalten Eigentümer und
       Link-Ziel; Sortieren aus der Kurz-/Miniaturansicht heraus (nur über die Vollansicht); Kachelgröße per
       Strg+Mausrad. **Bei Marc prüfen:** echte App auf dem Mac – Miniaturen eines Ordners mit ~2 000 Fotos

@@ -63,6 +63,14 @@ export interface TableBridge {
   /** Displayed index of the body row containing `element` (drag and drop), -1 if none. */
   rowIndexAt(element: Element): number;
   /**
+   * The mouse press in the table is over without a mouseup: a drag handed to the system
+   * (design 028 – the native drag keeps the mouse) or a cancelled pointer. A column move or
+   * resize in the table is cancelled, no click is reported. The table notices it by itself
+   * with the next move without the button; we know the moment (`tableApi.releaseMouse`,
+   * table 1.1.119 – before, it stayed pressed and went on dragging a column).
+   */
+  releaseMouse(): void;
+  /**
    * Column titles (by property) and row height changed (language, density – design
    * 015): applied to the live model and repainted, no new table.
    */
@@ -210,6 +218,9 @@ export function createTableBridge(
       return Number.isInteger(index) && index >= 0 && index < body.getFilteredRows().length
         ? index
         : -1;
+    },
+    releaseMouse() {
+      api.releaseMouse();
     },
     setPresentation({ headers, rowHeight }) {
       const header = api.getTableModel().getAreaModel('header');

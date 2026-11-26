@@ -381,6 +381,11 @@ export class FileGrid {
     return Number.isInteger(index) && index >= 0 && index < this.rows().length ? index : -1;
   }
 
+  /** The mouse press in the grid is over without a mouseup (a drag into another program). */
+  releaseMouse(): void {
+    this.tableApi()?.releaseMouse();
+  }
+
   /** Focus into the grid (the table's host is the tab stop); false until the table exists. */
   focus(): boolean {
     const target = this.tableApi()?.getTableScope().hostElement;

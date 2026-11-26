@@ -667,6 +667,7 @@ export class FileList implements OnDestroy {
       return;
     }
     this.press = { x: evt.clientX, y: evt.clientY, pointerId: evt.pointerId, row };
+    this.lastPointer = { x: evt.clientX, y: evt.clientY };
     window.addEventListener('pointermove', this.onPointerMove, true);
     window.addEventListener('pointerup', this.onPointerUp, true);
     window.addEventListener('pointercancel', this.onPointerCancel, true);
@@ -732,6 +733,7 @@ export class FileList implements OnDestroy {
    */
   private handOffToSystem(buttons: number): void {
     this.endPress();
+    this.releaseTables(); // the system keeps the mouseup
     if (buttons & 1) {
       void this.dnd.handOff();
     } else {
@@ -753,7 +755,17 @@ export class FileList implements OnDestroy {
       this.dnd.cancel();
     }
     this.endPress();
+    this.releaseTables(); // no mouseup after a cancelled pointer
   };
+
+  /**
+   * The mouseup of this press never reaches the page (the system has the mouse): the table
+   * and the grid are told, else they stay pressed and go on dragging with the next move.
+   */
+  private releaseTables(): void {
+    this.bridge?.releaseMouse();
+    this.grid()?.releaseMouse();
+  }
 
   /**
    * Esc cancels; Shift/⌘ switch between copy and move without moving the mouse;
