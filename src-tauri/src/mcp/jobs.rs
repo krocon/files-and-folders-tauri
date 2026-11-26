@@ -450,6 +450,11 @@ mod tests {
                 info.state
             );
         }
+        // the manager shows the end before the `Finished` event reached the collector
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !tap.running_of(1).is_empty() && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
         assert!(tap.running_of(1).is_empty());
     }
 

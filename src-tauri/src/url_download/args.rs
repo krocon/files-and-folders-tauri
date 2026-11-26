@@ -261,11 +261,21 @@ mod tests {
     const URL: &str = "https://example.org/watch?v=1";
     const M: &str = "MARK123";
 
+    /// An absolute program path on every platform (`/opt/bin/x` is not one on Windows).
+    fn bin(name: &str) -> PathBuf {
+        let dir = if cfg!(windows) {
+            r"C:\opt\bin"
+        } else {
+            "/opt/bin"
+        };
+        PathBuf::from(dir).join(name)
+    }
+
     fn env() -> DownloadEnv {
         DownloadEnv {
-            yt_dlp: Some(PathBuf::from("/opt/bin/yt-dlp")),
-            ffmpeg: Some(PathBuf::from("/opt/bin/ffmpeg")),
-            js_runtime: Some(("deno".into(), PathBuf::from("/opt/bin/deno"))),
+            yt_dlp: Some(bin("yt-dlp")),
+            ffmpeg: Some(bin("ffmpeg")),
+            js_runtime: Some(("deno".into(), bin("deno"))),
             env: Vec::new(),
             presets: vec![Preset {
                 id: "p720".into(),
@@ -361,9 +371,9 @@ mod tests {
                 "--progress-template=postprocess:MARK123|pp|%(progress.status)s|%(progress.postprocessor)s",
                 "--print=before_dl:MARK123|item|%(title)j",
                 "--print=after_move:MARK123|file|%(__real_download|NA)s|%(filepath)j",
-                "--ffmpeg-location=/opt/bin/ffmpeg",
+                &format!("--ffmpeg-location={}", bin("ffmpeg").display()),
                 "--no-js-runtimes",
-                "--js-runtimes=deno:/opt/bin/deno",
+                &format!("--js-runtimes=deno:{}", bin("deno").display()),
                 "--trim-filenames=160",
                 "--no-playlist",
                 "--output=%(title)s [%(id)s].%(ext)s",
