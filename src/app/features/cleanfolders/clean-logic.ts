@@ -8,6 +8,7 @@ import {
 } from '../../core/folders/folders.models';
 import {
   RELEASE_EXTRAS,
+  RELEASE_PICTURES,
   RELEASE_SAMPLES,
   RELEASE_SUBTITLES,
 } from '../../core/folders/release-extras';
@@ -102,6 +103,7 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         ...limits,
         junkDirsBesideContent: false,
         companionJunk: [],
+        companionPictures: [],
       };
     case 'release':
       return {
@@ -114,6 +116,8 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         junkDirsBesideContent: f.junkDirsBesideContent,
         // subtitles go with a leftover, never on their own or next to content (Rust decides)
         companionJunk: [...RELEASE_SUBTITLES],
+        // … and so do its pictures: in `Proof`, or named like their folder (Rust decides)
+        companionPictures: [...RELEASE_PICTURES],
       };
     case 'custom':
       return {
@@ -125,6 +129,7 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         ...limits,
         junkDirsBesideContent: f.emptyDirs && f.junkDirsBesideContent,
         companionJunk: [],
+        companionPictures: [],
       };
   }
 }

@@ -840,6 +840,49 @@ fn clean_takes_subtitles_with_a_release_leftover() {
     assert!(d.path().is_dir());
 }
 
+/// Second addendum 26.11.2026: the pictures of a release (in `Proof`, or named like
+/// their folder) go with the leftover, too.
+#[test]
+fn clean_takes_pictures_with_a_release_leftover() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::schrei(d.path());
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    assert_eq!(scan.items.len(), 5, "{:?}", scan.items);
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (5, 0));
+    assert_eq!(sum.bytes_done, crate::clean::tests::SCHREI_BYTES);
+    assert!(!root.exists());
+    assert!(d.path().is_dir());
+}
+
+/// The job decides again: a picture that came into `Proof` after the preview is too
+/// large to be one of the release – the folder stays, nothing of it is touched.
+#[test]
+fn clean_never_takes_a_picture_that_is_no_companion() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::schrei(d.path());
+    let rel = root.join(crate::clean::tests::SCHREI_RELEASE);
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    // after the preview the real extras went: pictures and subtitles are content
+    fs::remove_file(rel.join(format!(
+        "{}.nfo",
+        crate::clean::tests::SCHREI_RELEASE.to_lowercase()
+    )))
+    .unwrap();
+    fs::remove_dir_all(rel.join("Sample")).unwrap();
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(fs::read_dir(rel.join("Proof")).unwrap().count(), 1);
+    assert_eq!(fs::read_dir(rel.join("Subs")).unwrap().count(), 4);
+    assert_eq!(fs::read_dir(&rel).unwrap().count(), 3);
+}
+
 /// The job decides again: subtitles are no extras without a real one, and never
 /// next to content – whatever the list says.
 #[test]

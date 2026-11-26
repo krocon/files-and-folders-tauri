@@ -84,11 +84,12 @@ probieren“ (kein zweiter Scan auf Verdacht).
 avi, m4v, mov, wmv, ts, mpg, mpeg, webm – 40 Muster, weil die Mustersprache nur `*`/`?` kennt).
 *(Nach dem Review enger gefasst, s. §9 Befund 1: vorher `*.url`, `*-proof.*` und Samples jeder Endung.)* Die Serien-Engine (045) nutzt weiter beide
 zusammen als „Extras“ ihres Dialogs.
-**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner), Untertitel und ein Ordner `Subs` *(seit
-26.11.2026 Begleiter, s. §10)*,
+**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner; *seit 26.11.2026 an zwei Orten Begleiter, s.
+§11*), Untertitel und ein Ordner `Subs` *(seit 26.11.2026 Begleiter, s. §10)*,
 Archivteile (`*.rar`, `*.r00`: groß und unwiederbringlich – auch nicht als Option; wer das will, nimmt „Eigene“ und
 hebt die Grenze an), **keine Ordner-Regel** („alles in `Sample/`/`Proof/` ist Beiwerk“): `sample/` gibt es auch in
-Code-Projekten; in Releases heißen die Dateien selbst `…-sample.*`.
+Code-Projekten; in Releases heißen die Dateien selbst `…-sample.*`. *(§11: Bilder in `Proof/` sind Begleiter – der
+Ordnername macht weiter nichts zu echtem Beiwerk.)*
 
 ### E5 – Eingabe ✅ (F8 als Maßstab)
 Markierung vorhanden → die markierten **echten Ordner** (Links nicht; markierte Dateien werden gezählt und als
@@ -348,3 +349,49 @@ stehen) – sichtbar im vorbelegten Dialog, Papierkorb als Default.
 **Außerdem:** Das Urteil „Rückstand“ steht in der Ordnerliste rot (vorhandenes Token `--color-error-text`, das sein
 Kontrastpaar gegen den Listenhintergrund hat; Zellklasse `fnf-cl-residue` über `PreviewGrid.cellClass`). Der Text
 bleibt, „teilweise“ und „bleibt“ sind unverändert; in der aktiven Zeile gilt die Textfarbe des Cursors.
+
+## 11. Zweiter Nachtrag 26.11.2026 – Bilder eines Release als Begleiter (Branch `fix/aufraeumen-bilder`)
+
+**Anlass (Marc):** Fünf Ordner in `Filme.nosync` „sind auch Rückstände“. Der echte Scan (nur lesend, jeder Ordner
+als Startordner, Profil „Release-Reste“) ergab: vier davon – `Das Wunder von Manhattan (1994)`, `Der Vetter aus
+Dingsda German (1934)`, `Moskau in New York (1984)`, `Tigerland (2000)` – bekommen seit §10 schon das Urteil
+„Rückstand“. Nur **`Ein Schrei in der Dunkelheit (1988)`** blieb stehen, wegen zweier Bilder (und mit ihnen der vier
+Untertitel): `<Release>/Proof/<release>.jpg` (244 KB, **ohne** „-proof“ im Namen) und `<Release>/<release>.jpg`
+(226 KB, ein Cover neben der `.nfo`) – beide heißen wie der Release-Ordner.
+
+**Regel:** Bilder (`*.jpg`, `*.jpeg`, `*.png`) sind **Begleiter nach ihrem Ort** – nie nach der Endung allein:
+1. sie liegen in einem Ordner namens **`Proof`** (Groß-/Kleinschreibung egal; `Proofs`, `Covers` … nicht), **oder**
+2. sie heißen **wie der Ordner, in dem sie liegen** (`Film-GRP/film-grp.jpg`, ohne Endung, Groß-/Kleinschreibung
+   egal). Davon gibt es je Endung höchstens eines pro Ordner – die Regel kann nie eine Sammlung treffen.
+
+Dazu gelten die Bedingungen jedes Begleiters aus §10 (Startordner geht als Ganzes **und** enthält echtes Beiwerk)
+und die **Grenze für Beiwerk** aus dem Formular (`junkMaxBytes`, Default 1 MiB – dieselbe wie für `*-proof.jpg`;
+darüber schlicht Inhalt, kein neuer Grund). Versteckte Bilder sind Inhalt.
+
+**Bewusst enger als bei Untertiteln** (Fotos sind unwiederbringlich): ein Fotoordner mit `.nfo` oder
+Prüfsummendatei bleibt Inhalt (`Urlaub/IMG_1.jpg` + `sums.md5`), auch das eine Bild, das wie sein Ordner heißt,
+sobald irgendetwas bleibt. **Verworfen:** „Bild heißt wie die `.nfo`/ein Beiwerk daneben“ (`IMG_1.jpg` + `IMG_1.md5`
+je Foto würde einen ganzen Fotoordner zum Rückstand machen), „Bild heißt wie ein Ordner weiter oben“ und feste
+Namen (`cover.jpg`, `poster.jpg`, `folder.jpg` – liegen auch in Musik- und Filmordnern mit Inhalt; dort bleiben sie
+ohnehin, aber als Regel ohne Anlass).
+
+**Umsetzung:** neue Option `CleanOptions.companion_pictures` / `companionPictures` (Default leer, fehlendes Feld =
+aus; nur „Release-Reste“ füllt sie aus `RELEASE_PICTURES`). `Matcher::classify_in(folder, …)` bekommt den Namen des
+Ordners (`classify` = ohne Ordner, kein Bild ist Begleiter) und liefert `FileClass::Companion`; alles Weitere ist die
+Mechanik aus §10 (`root_walk`, `companions_stand`, `plan_tree` nur für `top == root`). `clean::PROOF_DIR`.
+
+**Tests (alle vorher rot):** Rust `clean.rs` › `pictures_go_with_a_release_leftover` (Fixture `schrei` = der echte
+Ordner mit seinen Größen), `pictures_are_companions_only_in_their_two_places`, `a_large_picture_is_content`,
+`plan_tree_knows_pictures_only_for_a_whole_start_folder`, `picture_patterns_are_checked_and_optional`;
+`jobs/tests_tools.rs` › `clean_takes_pictures_with_a_release_leftover`,
+`clean_never_takes_a_picture_that_is_no_companion`; Frontend `clean-logic.spec.ts`, `series.spec.ts`.
+**Geprüft am echten Ordner (nur lesend):** alle fünf genannten Ordner „Rückstand“; `Defilade …`, `New RTS …`,
+`Problem LG …` (einzelne `.srt`, `.m4a`, `(BQ).jpg`), `_alt` und `R J Decker S02 …` (`.URL`/`.txt` in einem
+Werbeordner) bleiben. `Die Simpsons Special … (2024)` (nur eine `.nfo`) ist ebenfalls „Rückstand“ – wie schon vorher.
+**Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im Fenster.
+
+**Offen (Marcs Entscheidung):** Ohne Markierung und mit dem Cursor auf `..`/einer Datei ist der Panel-Ordner selbst
+der Startordner (E5) – er geht nie, und ein Ordner, der bleibt, wird nicht ausgeweidet (E3). Im Profil
+„Release-Reste“ findet der Dialog dann in `Filme.nosync` **nichts**, obwohl fünf Unterordner Rückstände sind; sie
+müssen markiert sein. Ob der Dialog in diesem Fall die Unterordner des Panel-Ordners einzeln beurteilen soll, ist
+nicht entschieden.

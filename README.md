@@ -266,7 +266,8 @@ first word, the text before a dash, the first letters) – with a preview. _Clea
 extras and goes as a whole, a folder with content stays – and the dialog says why (“3 files · 1.8 GB (.cbr)”).
 The profile _Only empty folders_ is safe anywhere; _Release leftovers_ also treats `.nfo`, `.sfv` and video samples as
 extras (a “sample” above 300 MiB is a film and keeps its folder; `sample-contract.docx` is a document and stays;
-subtitles go only with such a leftover – on their own or next to a film they are content); _Custom_ takes your own names and patterns such
+subtitles go only with such a leftover – on their own or next to a film they are content – and so do the pictures of
+a release: those in a folder `Proof` and the one named like its folder; a photo folder stays); _Custom_ takes your own names and patterns such
 as `*.bak`. Everything goes to the trash by default, each leftover as one entry. _Create folders_ makes many
 folders from a template.
 _Group series by season_ collects the episodes of one or more marked series folders – also from release

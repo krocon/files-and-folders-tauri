@@ -30,6 +30,12 @@ export interface CleanOptions {
    * otherwise, and above Rust's fixed limit. Empty = off.
    */
   readonly companionJunk: readonly string[];
+  /**
+   * Patterns of pictures (second addendum 26.11.2026 of design 077): companions as
+   * `companionJunk`, but only inside a folder named `Proof` or named like their folder, and
+   * up to `junkMaxBytes`. Empty = off.
+   */
+  readonly companionPictures: readonly string[];
 }
 
 export type CleanKind = 'dir' | 'file';

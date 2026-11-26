@@ -1,6 +1,7 @@
 import { CleanOptions, RootVerdict } from '../../core/folders/folders.models';
 import {
   RELEASE_EXTRAS,
+  RELEASE_PICTURES,
   RELEASE_SAMPLES,
   RELEASE_SUBTITLES,
   VIDEO_EXTENSIONS,
@@ -91,6 +92,7 @@ describe('clean folders: pure helpers (design 077)', () => {
       ...limits,
       junkDirsBesideContent: false,
       companionJunk: [],
+      companionPictures: [],
     });
     // a text in the custom fields never leaks into another profile
     expect(
@@ -109,8 +111,11 @@ describe('clean folders: pure helpers (design 077)', () => {
       junkDirsBesideContent: false,
       // subtitles: companions of a leftover only (addendum 26.11.2026)
       companionJunk: ['*.idx', '*.sub', '*.srt', '*.ass', '*.ssa', '*.sup', '*.vtt'],
+      // pictures: companions in `Proof` or named like their folder (second addendum)
+      companionPictures: ['*.jpg', '*.jpeg', '*.png'],
     });
     expect(RELEASE.companionJunk).toEqual([...RELEASE_SUBTITLES]);
+    expect(RELEASE.companionPictures).toEqual([...RELEASE_PICTURES]);
     expect(
       cleanOptions(
         {
@@ -134,12 +139,15 @@ describe('clean folders: pure helpers (design 077)', () => {
       patterns: [],
       largeJunk: [],
       companionJunk: [],
+      companionPictures: [],
     });
-    // … not even with everything switched on: subtitles are named by the release profile only
-    expect(
-      cleanOptions({ ...custom, junkOn: true, patternsOn: true, junkDirsBesideContent: true }, true)
-        .companionJunk,
-    ).toEqual([]);
+    // … not even with everything switched on: subtitles and pictures are named by the
+    // release profile only
+    const all = cleanOptions(
+      { ...custom, junkOn: true, patternsOn: true, junkDirsBesideContent: true },
+      true,
+    );
+    expect([all.companionJunk, all.companionPictures]).toEqual([[], []]);
     expect(
       cleanOptions(
         { ...custom, junkOn: true, patternsOn: true, patternsText: ' *.bak ; ;*.tmp' },
@@ -213,6 +221,22 @@ describe('clean folders: pure helpers (design 077)', () => {
     for (const name of ['film.mkv', 'subs.rar', 'notes.txt', 'film.srt.bak']) {
       expect(
         RELEASE_SUBTITLES.some((p) => glob(p, name)),
+        name,
+      ).toBe(false);
+    }
+    // pictures are no extras by their name either (`cover.jpg` above): Rust takes them by
+    // their place only – a list apart, three endings
+    expect(RELEASE_PICTURES).toEqual(['*.jpg', '*.jpeg', '*.png']);
+    for (const name of ['film-grp.jpg', 'IMG_1.JPEG', 'cover.png']) {
+      expect(extra(name), name).toBe(false);
+      expect(
+        RELEASE_PICTURES.some((p) => glob(p, name)),
+        name,
+      ).toBe(true);
+    }
+    for (const name of ['film.gif', 'scan.pdf', 'foto.jpg.txt', 'bild.heic', 'film.srt']) {
+      expect(
+        RELEASE_PICTURES.some((p) => glob(p, name)),
         name,
       ).toBe(false);
     }

@@ -9,7 +9,8 @@
 //! only a pattern makes one is content once it is larger than its limit, and
 //! nothing above a start folder is ever looked at. A folder that stays is not
 //! gutted: below it only really empty folders go (design 077 E3). Companions
-//! (subtitles, `companion_junk`) are extras only where a start folder goes as a
+//! (subtitles, `companion_junk`; pictures in a folder `Proof` or named like their
+//! folder, `companion_pictures`) are extras only where a start folder goes as a
 //! whole and holds a real extra – in every other case they are content.
 //!
 //! The job (`jobs/clean.rs`) decides with the same walk ([`plan_tree`]) right
@@ -44,6 +45,9 @@ pub const DEFAULT_LARGE_JUNK_MAX_BYTES: u64 = 300 * 1024 * 1024;
 /// `.sub` has about 10 MB per language, a PGS `.sup` of a long film up to some
 /// 60 MB – and no film is that small.
 pub const COMPANION_MAX_BYTES: u64 = 64 * 1024 * 1024;
+/// The folder whose pictures are companions (lower case): what a release shows as
+/// proof of its source. No other folder name makes anything an extra.
+pub const PROOF_DIR: &str = "proof";
 /// Entries that stay, reported per start folder.
 pub const MAX_KEEP_SAMPLE: usize = 20;
 /// Most frequent extensions of the content, reported per start folder.
@@ -99,6 +103,12 @@ pub struct CleanOptions {
     /// next to content, never larger than [`COMPANION_MAX_BYTES`]. Empty = off.
     #[serde(default)]
     pub companion_junk: Vec<String>,
+    /// Name patterns of pictures (`*.jpg`, second addendum 26.11.2026 of design 077):
+    /// companions as `companion_junk`, but only in one of two places – inside a folder
+    /// named `Proof`, or named like the folder they lie in (`Film-GRP/film-grp.jpg`) –
+    /// and never larger than `junk_max_bytes`. Every other picture is content. Empty = off.
+    #[serde(default)]
+    pub companion_pictures: Vec<String>,
 }
 
 impl Default for CleanOptions {
@@ -113,6 +123,7 @@ impl Default for CleanOptions {
             large_junk_max_bytes: DEFAULT_LARGE_JUNK_MAX_BYTES,
             junk_dirs_beside_content: false,
             companion_junk: Vec::new(),
+            companion_pictures: Vec::new(),
         }
     }
 }
@@ -258,9 +269,9 @@ pub enum FileClass {
     },
     /// Matches a delete pattern: listed on its own.
     Delete,
-    /// A companion (subtitle) within its size limit: an extra only where its start
-    /// folder goes as a whole with a real extra inside, content otherwise – the walk
-    /// decides ([`Ctx::companions`]).
+    /// A companion (a subtitle, a picture in one of its two places) within its size
+    /// limit: an extra only where its start folder goes as a whole with a real extra
+    /// inside, content otherwise – the walk decides ([`Ctx::companions`]).
     Companion,
     Keep(KeepReason),
 }
@@ -310,6 +321,8 @@ pub struct Matcher {
     large_patterns: Vec<Vec<char>>,
     /// Companion patterns (`*.srt`), limit [`COMPANION_MAX_BYTES`].
     companion_patterns: Vec<Vec<char>>,
+    /// Picture patterns (`*.jpg`): companions in their two places only, limit `junk_max`.
+    picture_patterns: Vec<Vec<char>>,
     patterns: Vec<Vec<char>>,
     junk_max: u64,
     large_max: u64,
@@ -325,12 +338,43 @@ fn bad_name(m: &str) -> FsError {
     FsError::new(FsErrorCode::InvalidName, m.to_string(), None)
 }
 
+/// The patterns of a companion list, lower case.
+fn companion_list(list: &[String]) -> Result<Vec<Vec<char>>, FsError> {
+    let mut out = Vec::new();
+    for j in list {
+        let j = j.trim();
+        if j.is_empty() {
+            continue;
+        }
+        if j.len() > MAX_NAME_LEN || j.contains(['/', '\\', '\0']) {
+            return Err(bad_name("A companion pattern is invalid"));
+        }
+        if matches_everything(j) {
+            return Err(bad_name("The companion pattern would match every file"));
+        }
+        out.push(j.to_lowercase().chars().collect());
+    }
+    Ok(out)
+}
+
+/// A picture named `lower` (lower case) in the folder `folder` lies where a release
+/// puts its pictures: in `Proof`, or it is named like its folder – of which there is
+/// at most one per ending, so this never reaches a collection.
+fn picture_place(folder: &str, lower: &str) -> bool {
+    let folder = folder.to_lowercase();
+    folder == PROOF_DIR
+        || lower
+            .rsplit_once('.')
+            .is_some_and(|(stem, _)| stem == folder)
+}
+
 impl Matcher {
     pub fn new(o: &CleanOptions) -> Result<Matcher, FsError> {
         if o.junk.len() > MAX_NAMES
             || o.patterns.len() > MAX_NAMES
             || o.large_junk.len() > MAX_NAMES
             || o.companion_junk.len() > MAX_NAMES
+            || o.companion_pictures.len() > MAX_NAMES
         {
             return Err(bad_name("Too many names or patterns"));
         }
@@ -371,20 +415,8 @@ impl Matcher {
             }
             large_patterns.push(j.to_lowercase().chars().collect());
         }
-        let mut companion_patterns = Vec::new();
-        for j in &o.companion_junk {
-            let j = j.trim();
-            if j.is_empty() {
-                continue;
-            }
-            if j.len() > MAX_NAME_LEN || j.contains(['/', '\\', '\0']) {
-                return Err(bad_name("A companion pattern is invalid"));
-            }
-            if matches_everything(j) {
-                return Err(bad_name("The companion pattern would match every file"));
-            }
-            companion_patterns.push(j.to_lowercase().chars().collect());
-        }
+        let companion_patterns = companion_list(&o.companion_junk)?;
+        let picture_patterns = companion_list(&o.companion_pictures)?;
         let mut patterns = Vec::new();
         for p in &o.patterns {
             let p = p.trim();
@@ -409,6 +441,7 @@ impl Matcher {
             junk_patterns,
             large_patterns,
             companion_patterns,
+            picture_patterns,
             patterns,
             junk_max: o.junk_max_bytes,
             large_max: o.large_junk_max_bytes,
@@ -417,7 +450,7 @@ impl Matcher {
 
     /// There are companion patterns at all.
     pub fn has_companions(&self) -> bool {
-        !self.companion_patterns.is_empty()
+        !self.companion_patterns.is_empty() || !self.picture_patterns.is_empty()
     }
 
     /// The name alone says "extra" (exact name or a pattern, no companion) – without
@@ -442,9 +475,21 @@ impl Matcher {
         self.patterns.iter().any(|p| glob_match(p, &name))
     }
 
-    /// The one decision about a regular file (design 077 E3), used by the scan
-    /// and by the job: `hidden` as the listing shows it, `size` in bytes.
+    /// [`Matcher::classify_in`] without a folder: no picture is a companion.
     pub fn classify(&self, name: &str, hidden: bool, size: u64) -> FileClass {
+        self.classify_in(None, name, hidden, size)
+    }
+
+    /// The one decision about a regular file (design 077 E3), used by the scan
+    /// and by the job: `folder` = the name of the folder it lies in, `hidden` as
+    /// the listing shows it, `size` in bytes.
+    pub fn classify_in(
+        &self,
+        folder: Option<&str>,
+        name: &str,
+        hidden: bool,
+        size: u64,
+    ) -> FileClass {
         let lower = name.to_lowercase();
         let chars: Vec<char> = lower.chars().collect();
         // an explicit instruction of the user (profile "custom"), as in design 008
@@ -487,6 +532,14 @@ impl Matcher {
                 .companion_patterns
                 .iter()
                 .any(|p| glob_match(p, &chars))
+        {
+            return FileClass::Companion;
+        }
+        // a picture of the release (proof, cover): by its place, not by its name – and
+        // with the limit of the form, as `*-proof.jpg` has it. Too large = plain content
+        if size <= self.junk_max
+            && folder.is_some_and(|f| picture_place(f, &lower))
+            && self.picture_patterns.iter().any(|p| glob_match(p, &chars))
         {
             return FileClass::Companion;
         }
@@ -658,7 +711,7 @@ impl Ctx<'_> {
     }
 
     /// Walks the start folder `root`; `true` = it goes as a whole. Companions
-    /// (subtitles) are extras only in a start folder that goes as a whole with a real
+    /// (subtitles, pictures of the release) are extras only in a start folder that goes as a whole with a real
     /// extra inside: a first walk takes them as extras, and if that does not hold, a
     /// second one decides with companions as content – so they never go on their
     /// own and never next to content, not even with `junk_dirs_beside_content`.
@@ -781,6 +834,8 @@ impl Ctx<'_> {
                 return None;
             }
         };
+        // a name that is not Unicode names no place for a picture
+        let folder = dir.file_name().and_then(|n| n.to_str());
         let mut entries = 0usize;
         let mut removable = true;
         let mut soft = false;
@@ -867,7 +922,7 @@ impl Ctx<'_> {
                 }
                 let size = meta.len();
                 let hidden = crate::listing::is_hidden(name, &meta);
-                match self.m.classify(name, hidden, size) {
+                match self.m.classify_in(folder, name, hidden, size) {
                     FileClass::Delete => {
                         if self.plan.is_some() {
                             // the job deletes pattern files first: one that is (still or
@@ -1589,6 +1644,11 @@ pub(crate) mod tests {
                 .iter()
                 .map(|e| format!("*.{e}"))
                 .collect(),
+            // as `RELEASE_PICTURES` in release-extras.ts
+            companion_pictures: ["jpg", "jpeg", "png"]
+                .iter()
+                .map(|e| format!("*.{e}"))
+                .collect(),
             ..opts()
         }
     }
@@ -2235,6 +2295,212 @@ pub(crate) mod tests {
         }
         let many = CleanOptions {
             companion_junk: vec!["*.srt".into(); MAX_NAMES + 1],
+            ..opts()
+        };
+        assert!(Matcher::new(&many).is_err());
+    }
+
+    // ---- addendum 2 of 26.11.2026: pictures of a release are companions, too ----
+
+    /// Marc's folder "Ein Schrei in der Dunkelheit (1988)": the proof picture has no
+    /// "-proof" in its name, and a cover lies next to the `.nfo` – both named like the
+    /// release folder. Returns the start folder.
+    pub(crate) fn schrei(base: &Path) -> PathBuf {
+        let root = base.join("Ein Schrei in der Dunkelheit (1988)");
+        let rel = root.join(SCHREI_RELEASE);
+        for d in ["Proof", "Sample", "Subs"] {
+            fs::create_dir_all(rel.join(d)).unwrap();
+        }
+        let low = SCHREI_RELEASE.to_lowercase();
+        let short = low.strip_prefix("ein.").unwrap();
+        for (f, len) in [
+            (format!("Proof/{low}.jpg"), 244_036u64),
+            (format!("Sample/{low}.sample.mkv"), 83_973_882),
+            (format!("Subs/{short}-eng.idx"), 72_122),
+            (format!("Subs/{short}-eng.sub"), 9_953_280),
+            (format!("Subs/{short}.idx"), 69_195),
+            (format!("Subs/{short}.sub"), 9_609_216),
+            (format!("{low}.jpg"), 226_467),
+            (format!("{low}.nfo"), 1_932),
+        ] {
+            sparse(&rel.join(f), len);
+        }
+        root
+    }
+
+    pub(crate) const SCHREI_RELEASE: &str =
+        "Ein.Schrei.in.der.Dunkelheit.1988.German.DL.1080p.BluRay.x264-CONTRiBUTiON";
+    pub(crate) const SCHREI_BYTES: u64 =
+        244_036 + 83_973_882 + 72_122 + 9_953_280 + 69_195 + 9_609_216 + 226_467 + 1_932;
+
+    #[test]
+    fn pictures_go_with_a_release_leftover() {
+        let t = tempfile::tempdir().unwrap();
+        let root = schrei(t.path());
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = &scan.roots[0];
+        // the start folder, the release folder, Proof, Sample, Subs – 8 files
+        assert_eq!(numbers(v), (Verdict::Residue, 5, 8, SCHREI_BYTES), "{v:?}");
+        assert_eq!((v.keep_files, v.junk_kept), (0, 0));
+        assert!(scan.items.iter().all(|i| i.soft));
+        // without the pictures (the rule before): both are content
+        let before = CleanOptions {
+            companion_pictures: Vec::new(),
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &before).unwrap();
+        let v = &scan.roots[0];
+        assert_eq!(v.verdict, Verdict::Keep);
+        // … and with them the subtitles: nothing of the folder goes
+        assert_eq!((v.keep_files, v.count), (6, 0));
+        // the panel's own folder never goes: pictures are content there
+        let own = CleanOptions {
+            include_roots: false,
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &own).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep);
+        assert_eq!(scan.roots[0].keep_files, 6);
+        assert!(scan.items.is_empty());
+    }
+
+    #[test]
+    fn pictures_are_companions_only_in_their_two_places() {
+        let t = tempfile::tempdir().unwrap();
+        let place = |name: &str, files: &[&str]| {
+            let root = t.path().join(name);
+            for f in files {
+                let p = root.join(f);
+                fs::create_dir_all(p.parent().unwrap()).unwrap();
+                fs::write(p, "x").unwrap();
+            }
+            root
+        };
+        let verdict = |root: &PathBuf, o: &CleanOptions| {
+            let scan = find_empty_dirs(std::slice::from_ref(root), o).unwrap();
+            (scan.roots[0].verdict, scan.roots[0].keep_files)
+        };
+        let o = release();
+        // any name inside `Proof` (any case), jpg/jpeg/png
+        let proof = place("a", &["r/x.nfo", "r/PROOF/foto.JPG", "r/proof/b.png"]);
+        assert_eq!(verdict(&proof, &o), (Verdict::Residue, 0));
+        // named like its folder (any case) – also the start folder itself
+        let cover = place("Film (2000)", &["film (2000).jpeg", "r/x.sfv", "r/R.png"]);
+        assert_eq!(verdict(&cover, &o), (Verdict::Residue, 0));
+        // a photo folder with a checksum file: pictures are content
+        let photos = place("Urlaub", &["IMG_1.jpg", "IMG_2.jpg", "sums.md5"]);
+        assert_eq!(verdict(&photos, &o), (Verdict::Keep, 2));
+        // … also the one that is named like the folder, once anything stays
+        let photos = place("Rom", &["rom.jpg", "IMG_2.jpg", "x.nfo"]);
+        assert_eq!(verdict(&photos, &o), (Verdict::Keep, 2));
+        // named like the folder above, like the `.nfo`, or `cover.jpg`: no rule
+        for (i, files) in [
+            &["r/x.nfo", "r/Sub/r.jpg"][..],
+            &["r/x.nfo", "r/x.jpg"],
+            &["r/x.nfo", "r/cover.jpg"],
+            &["r/x.nfo", "r/Proofs/a.jpg"],
+            &["r/x.nfo", "r/Proof/a.gif"],
+            &["r/x.nfo", "r/Proof/a.jpg.txt"],
+            &["r/x.nfo", "r/Proof/.a.jpg"],
+        ]
+        .iter()
+        .enumerate()
+        {
+            let root = place(&format!("n{i}"), files);
+            assert_eq!(verdict(&root, &o), (Verdict::Keep, 1), "{files:?}");
+        }
+        // pictures alone – without a real extra – are content, system junk does not count
+        let alone = place("b", &["r/Proof/a.jpg", "r/r.png", "r/.DS_Store"]);
+        assert_eq!(verdict(&alone, &o), (Verdict::Keep, 2));
+        // next to content they stay, also with "extras-only folders beside content"
+        let gut = CleanOptions {
+            junk_dirs_beside_content: true,
+            ..release()
+        };
+        let film = place("c", &["film.mkv", "Proof/a.jpg", "Sample/a-sample.mkv"]);
+        let scan = find_empty_dirs(std::slice::from_ref(&film), &gut).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Partial);
+        let gone: Vec<&str> = scan.items.iter().map(|i| i.rel.as_str()).collect();
+        assert_eq!(gone, ["Sample"]);
+        // a real extra by its name stays one: `*-proof.jpg` needs no place
+        let named = place("d", &["r/a-proof.jpg"]);
+        assert_eq!(verdict(&named, &o), (Verdict::Residue, 0));
+    }
+
+    #[test]
+    fn a_large_picture_is_content() {
+        let t = tempfile::tempdir().unwrap();
+        let root = schrei(t.path());
+        let proof = root
+            .join(SCHREI_RELEASE)
+            .join("Proof")
+            .join(format!("{}.jpg", SCHREI_RELEASE.to_lowercase()));
+        // the limit of the form for extras, as for `*-proof.jpg`
+        sparse(&proof, DEFAULT_JUNK_MAX_BYTES + 1);
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        let v = &scan.roots[0];
+        assert_eq!(v.verdict, Verdict::Keep, "{v:?}");
+        // every companion is content then: two pictures, four subtitles
+        assert_eq!((v.keep_files, v.too_large), (6, 0));
+        sparse(&proof, DEFAULT_JUNK_MAX_BYTES);
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+        let wide = CleanOptions {
+            junk_max_bytes: 5 * DEFAULT_JUNK_MAX_BYTES,
+            ..release()
+        };
+        sparse(&proof, 3 * DEFAULT_JUNK_MAX_BYTES);
+        let scan = find_empty_dirs(std::slice::from_ref(&root), &wide).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+    }
+
+    #[test]
+    fn plan_tree_knows_pictures_only_for_a_whole_start_folder() {
+        let t = tempfile::tempdir().unwrap();
+        let root = schrei(t.path());
+        let rel = root.join(SCHREI_RELEASE);
+        let o = release();
+        let m = Matcher::new(&o).unwrap();
+        let never = AtomicBool::new(false);
+        let plan = plan_tree(&root, &root, &o, &m, &never).unwrap().unwrap();
+        assert_eq!(
+            (plan.files, plan.bytes, plan.dirs.len()),
+            (8, SCHREI_BYTES, 5)
+        );
+        let proof = plan
+            .dirs
+            .iter()
+            .find(|d| d.path.ends_with("Proof"))
+            .unwrap();
+        assert_eq!(proof.junk.len(), 1);
+        // a folder below the start folder lies next to something that stays
+        assert_eq!(plan_tree(&rel, &root, &o, &m, &never).unwrap(), None);
+        assert_eq!(
+            plan_tree(&rel.join("Proof"), &root, &o, &m, &never).unwrap(),
+            None
+        );
+        // the real extras went meanwhile: pictures and subtitles alone are content
+        fs::remove_file(rel.join(format!("{}.nfo", SCHREI_RELEASE.to_lowercase()))).unwrap();
+        fs::remove_dir_all(rel.join("Sample")).unwrap();
+        assert_eq!(plan_tree(&root, &root, &o, &m, &never).unwrap(), None);
+    }
+
+    #[test]
+    fn picture_patterns_are_checked_and_optional() {
+        // an old job spec has no such field: off
+        let o: CleanOptions = serde_json::from_str("{}").unwrap();
+        assert!(o.companion_pictures.is_empty());
+        let o: CleanOptions = serde_json::from_str(r#"{"companionPictures":["*.jpg"]}"#).unwrap();
+        assert_eq!(o.companion_pictures, ["*.jpg"]);
+        for bad in ["*", "*.*", "a/b.jpg"] {
+            let o = CleanOptions {
+                companion_pictures: vec![bad.into()],
+                ..opts()
+            };
+            assert!(Matcher::new(&o).is_err(), "{bad}");
+        }
+        let many = CleanOptions {
+            companion_pictures: vec!["*.jpg".into(); MAX_NAMES + 1],
             ..opts()
         };
         assert!(Matcher::new(&many).is_err());
