@@ -79,6 +79,9 @@ Mindestversion) · `failed` (startet nicht / antwortet nicht) · zusätzlich `ou
 Versionsdatum älter als 90 Tage ist (Hinweis, kein Sperren). Die App übergibt nie `-U`.
 
 ### E-b Zielordner → Selectbox, Gegenseite vorgewählt ✅
+> **Nachtrag 26.11.2026 (Marc):** vorgewählt ist jetzt das **aktive Panel** (ein Download hat keine Quellseite); ist es
+> gesperrt, die Gegenseite. Der MCP-Hinweis (Review #4) gilt unverändert für die gewählte Seite.
+
 Natives `<select>` (Tastatur ohne Zutun, Screenreader). Einträge „Links · ‹Pfad›“ / „Rechts · ‹Pfad›“, das aktive
 Panel mit „(aktives Panel)“; lange Pfade in der Mitte gekürzt (`…`), voller Pfad als `title` und in der Zeile
 darunter. Eine Seite ist **gesperrt** (`disabled`, Grund im Text), wenn ihr aktiver Tab keinen echten lokalen
