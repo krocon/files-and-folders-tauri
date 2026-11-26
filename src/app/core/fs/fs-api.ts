@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toFsError } from './fs-error';
-import { DirectoryListing, Location, PathCheck } from './fs.models';
+import { DirectoryListing, Location, MissingPath, PathCheck } from './fs.models';
 
 /**
  * Typed facade for all file-system commands. UI code depends on this
@@ -13,6 +13,8 @@ export abstract class FsApi {
   abstract listDirectory(path?: string): Promise<DirectoryListing>;
   /** A typed path (`~` allowed): folder, or file → its folder + the file to select. */
   abstract resolveLocation(input: string): Promise<Location>;
+  /** Why a local folder is missing: gone for good, or only its drive away? */
+  abstract diagnoseMissing(path: string): Promise<MissingPath>;
   /** Opens with the default app; rejects with code `executable` unless allowed. */
   abstract openFile(path: string, allowExecutable: boolean): Promise<void>;
   /** Creates `parent/name` (`a/b/c` allowed); resolves to the topmost new path. */
@@ -33,6 +35,10 @@ export class TauriFsApi extends FsApi {
 
   resolveLocation(input: string): Promise<Location> {
     return call<Location>('resolve_location', { input });
+  }
+
+  diagnoseMissing(path: string): Promise<MissingPath> {
+    return call<MissingPath>('diagnose_missing_path', { path });
   }
 
   openFile(path: string, allowExecutable: boolean): Promise<void> {

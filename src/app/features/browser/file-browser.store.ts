@@ -4,10 +4,12 @@ import type { TableStateIf } from '@guiexpert/table';
 import { FsApi } from '../../core/fs/fs-api';
 import { ListingCache } from '../../core/fs/listing-cache';
 import { toFsError } from '../../core/fs/fs-error';
+import { isRemotePath } from '../../core/remote/remote-path';
 import {
   DirEntry,
   DirectoryListing,
   FsError,
+  MissingPath,
   isNavigableDir,
   isParentRow,
   isVirtualPath,
@@ -38,6 +40,15 @@ interface FolderDelta {
 }
 
 export type HistoryMode = 'push' | 'back' | 'forward' | 'none';
+
+/** A folder that failed to open with `not_found` (see {@link FileBrowserStore.missing}). */
+export interface MissingFolder {
+  /** The path asked for – the one a favourite holds. */
+  readonly path: string;
+  readonly error: FsError;
+  /** Null until Rust has answered (and for server paths). */
+  readonly info: MissingPath | null;
+}
 
 export interface LoadOptions {
   /** Entry to put the cursor on; `undefined` = remembered cursor of that folder (or first row). */
@@ -177,6 +188,15 @@ export class FileBrowserStore implements OnDestroy {
    */
   readonly cachedAt = signal<number | null>(null);
   readonly error = signal<FsError | null>(null);
+  private readonly missingState = signal<MissingFolder | null>(null);
+  /**
+   * The folder the shown `not_found` error is about, and – once Rust has looked – why it is
+   * missing. Null for any other error and as soon as the error is gone.
+   */
+  readonly missing = computed<MissingFolder | null>(() => {
+    const m = this.missingState();
+    return m !== null && m.error === this.error() ? m : null;
+  });
   readonly cursorPath = signal<string | null>(null);
   readonly marked = signal<ReadonlySet<string>>(EMPTY_MARKS);
   /** True while a tab's folder is being opened: navigation relative to the old listing is ignored. */
@@ -412,6 +432,7 @@ export class FileBrowserStore implements OnDestroy {
       }
       if (error.code === 'not_found' && path !== undefined) {
         this.cache.forget(path);
+        this.diagnoseMissing(path, error);
       }
       // a deleted history target must not block the history forever
       if (
@@ -963,6 +984,25 @@ export class FileBrowserStore implements OnDestroy {
   invertMarks(displayed: readonly string[]): void {
     const current = this.marked();
     this.marked.set(new Set(displayed.filter((p) => !current.has(p) && !this.isParentPath(p))));
+  }
+
+  /**
+   * Gone for good or only away? The banner is there at once, the answer adds to it; a
+   * server path has none (Rust refuses it), and no answer leaves the plain error.
+   */
+  private diagnoseMissing(path: string, error: FsError): void {
+    this.missingState.set({ path, error, info: null });
+    if (isRemotePath(path)) {
+      return;
+    }
+    this.api.diagnoseMissing(path).then(
+      (info) => {
+        if (this.missingState()?.error === error) {
+          this.missingState.set({ path, error, info });
+        }
+      },
+      () => undefined,
+    );
   }
 
   dismissError(): void {

@@ -255,6 +255,8 @@ src-tauri/                   Rust (Tauri 2)
                              Zeitlimit); Job `jobs/download.rs` (+ tests_download.rs mit Fake-Programm), Commands
                              `commands/url_download.rs`
   src/app_menu.rs            natives Menü aus dem Spec des Frontends (Validierung, Keymap → Accelerator)
+  src/missing.rs             Warum fehlt ein Ordner? `gone`/`volume`/`network` + nächster vorhandener Ordner (Command
+                             `diagnose_missing_path`); das Fehlerbanner im Panel bietet danach Favorit entfernen/Retry
   src/dirsize.rs, opener.rs  Ordnergröße (ohne Symlinks, abbrechbar); Datei mit Standard-App öffnen (geprüft)
   src/fileops.rs             Ordner/Datei anlegen, Umbenennen (nie überschreiben); Gefahrenprüfung (`check_danger`)
   src/jobs/                  Job-Engine: manager (Warteschlange, Threads, Zählen), control (Abbruch/Pause/Antwort,

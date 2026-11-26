@@ -39,6 +39,15 @@ export const TEXTS_EN = {
   },
   splitter: 'Panel divider (double-click: 50 / 50)',
   dismiss: 'Dismiss',
+  /** A folder that is not there (a favourite, a recent folder): ways out in the error banner. */
+  missing: {
+    volume: (name: string) => `The drive “${name}” is not connected.`,
+    network:
+      'The folder was not found on the network drive – it may only be unavailable right now.',
+    removeFavorite: 'Remove from favourites',
+    goTo: (name: string) => `Go to “${name}”`,
+    retry: 'Retry',
+  },
   sessionLoadFailed: 'The saved session could not be loaded.',
   sessionSaveFailed: 'The session could not be saved:',
   /** Design 027: `folder-memory.json`. */

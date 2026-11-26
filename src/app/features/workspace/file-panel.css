@@ -167,6 +167,15 @@
   border-color: var(--color-border);
 }
 
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+  flex: none;
+  max-width: 60%;
+}
+
 .error-path {
   font-family: var(--font-mono);
   word-break: break-all;

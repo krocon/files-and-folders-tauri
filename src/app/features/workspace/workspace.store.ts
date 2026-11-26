@@ -713,6 +713,13 @@ export class WorkspaceStore {
     this.recent.update((r) => [path, ...r.filter((p) => p !== path)].slice(0, MAX_RECENT));
   }
 
+  /** A folder that is gone for good leaves the recent list (it stays a favourite until removed). */
+  forgetRecent(path: string): void {
+    if (this.recent().includes(path)) {
+      this.recent.update((r) => r.filter((p) => p !== path));
+    }
+  }
+
   isFavorite(path: string | null): boolean {
     return path !== null && this.favorites().has(path);
   }

@@ -466,7 +466,33 @@
         }
         <div class="error-detail">{{ store.error()?.message }}</div>
       </div>
-      <button type="button" class="btn" (click)="store.dismissError()">{{ texts.dismiss }}</button>
+      <div class="error-actions">
+        @if (missing(); as m) {
+          @if (m.away) {
+            <button type="button" class="btn primary" (click)="openFromMissing(m.path)">
+              <i class="fa fa-refresh" aria-hidden="true"></i> {{ texts.missing.retry }}
+            </button>
+          }
+          @if (m.nearest; as near) {
+            <button type="button" class="btn" (click)="openFromMissing(near.path)">
+              <i class="fa fa-level-up" aria-hidden="true"></i> {{ texts.missing.goTo(near.name) }}
+            </button>
+          }
+          @if (m.favorite) {
+            <button
+              type="button"
+              class="btn"
+              [class.primary]="m.gone"
+              (click)="removeMissingFavorite()"
+            >
+              <i class="fa fa-star-o" aria-hidden="true"></i> {{ texts.missing.removeFavorite }}
+            </button>
+          }
+        }
+        <button type="button" class="btn" (click)="store.dismissError()">
+          {{ texts.dismiss }}
+        </button>
+      </div>
     </div>
   }
   @if (store.slow()) {

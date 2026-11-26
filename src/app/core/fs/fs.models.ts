@@ -227,6 +227,21 @@ export interface Location {
   readonly select: string | null;
 }
 
+/**
+ * Why a folder is not there (Rust `missing.rs`): `gone` = deleted or renamed, `volume` =
+ * its drive is not connected, `network` = missing on a mounted network drive.
+ */
+export type MissingReason = 'gone' | 'volume' | 'network';
+
+export interface MissingPath {
+  readonly reason: MissingReason;
+  /** Nearest ancestor that exists; null for `volume`. */
+  readonly nearest: string | null;
+  readonly nearestName: string | null;
+  /** Name of the missing volume (`volume` only). */
+  readonly volume: string | null;
+}
+
 export function isNavigableDir(entry: DirEntry): boolean {
   return (
     entry.kind === 'directory' || (entry.kind === 'symlink' && entry.targetKind === 'directory')

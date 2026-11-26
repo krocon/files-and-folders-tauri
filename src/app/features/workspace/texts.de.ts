@@ -36,6 +36,14 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   },
   splitter: 'Trenner der Seiten (Doppelklick: 50 / 50)',
   dismiss: 'Schließen',
+  missing: {
+    volume: (name) => `Das Laufwerk „${name}“ ist nicht verbunden.`,
+    network:
+      'Der Ordner wurde auf dem Netzlaufwerk nicht gefunden – vielleicht ist er nur gerade nicht erreichbar.',
+    removeFavorite: 'Aus Favoriten entfernen',
+    goTo: (name) => `Zu „${name}“ wechseln`,
+    retry: 'Erneut versuchen',
+  },
   sessionLoadFailed: 'Die gespeicherte Sitzung konnte nicht geladen werden.',
   sessionSaveFailed: 'Die Sitzung konnte nicht gespeichert werden:',
   folderMemoryBroken: (bad) =>
