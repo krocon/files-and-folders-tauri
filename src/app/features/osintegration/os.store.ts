@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, Injector, signal } from '@angular/core';
 import { ActionService, ExtraAction } from '../../core/actions/action.service';
 import { toFsError } from '../../core/fs/fs-error';
 import { DirEntry, FsError } from '../../core/fs/fs.models';
@@ -8,11 +8,13 @@ import {
   ClipboardWhat,
   clipboardText,
 } from '../../core/os/clipboard';
+import { FileClipboardApi } from '../../core/os/file-clipboard-api';
 import { OsApi } from '../../core/os/os-api';
 import { isRemotePath } from '../../core/remote/remote-path';
 import { ToolContext, ToolInfo } from '../../core/os/os.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { selectionForAction } from '../ops/ops-logic';
+import { OpsStore } from '../ops/ops.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { OS_TEXTS } from './os-texts';
 
@@ -31,6 +33,9 @@ export class OsStore {
   private readonly ws = inject(WorkspaceStore);
   private readonly api = inject(OsApi);
   private readonly clipboard = inject(ClipboardApi);
+  private readonly fileClipboard = inject(FileClipboardApi);
+  /** `OpsStore` only when something is pasted (it needs the whole workspace). */
+  private readonly injector = inject(Injector);
   private readonly actions = inject(ActionService);
   private readonly dialogs = inject(DialogService);
 
@@ -185,6 +190,53 @@ export class OsStore {
     }
     await this.clipboard.writeText(clipboardText(entries, what, format));
     this.status.set(OS_TEXTS.copied(entries.length, what, format === 'json'));
+  }
+
+  /** Where pasted files go: the folder of the active panel – none in a result or chart tab. */
+  pasteTarget(): string | null {
+    const store = this.ws.panel()?.store;
+    return store && store.searchKey() === null ? store.path() : null;
+  }
+
+  /**
+   * `PASTE_FILES`: the files copied in Finder, Explorer or Files go into the folder of the
+   * active panel – through the normal copy dialog, like a drop from the system (design
+   * 012 E6): the clipboard cannot be seen, so the dialog shows what would be copied before
+   * anything starts. Always a copy; the clipboard itself stays as it is.
+   */
+  async paste(): Promise<void> {
+    const side = this.ws.activeSide();
+    const target = this.pasteTarget();
+    if (target === null) {
+      throw err(OS_TEXTS.noFolder);
+    }
+    const described = await this.fileClipboard.readFiles();
+    if (
+      this.dialogs.open() !== null ||
+      this.ws.activeSide() !== side ||
+      this.pasteTarget() !== target
+    ) {
+      return; // the user went on while Rust looked at the entries
+    }
+    if (described.entries.length === 0) {
+      // said plainly, not as a failure of the action: nothing went wrong
+      this.actions.report(described.missing > 0 ? OS_TEXTS.pasteGone : OS_TEXTS.pasteNoFiles);
+      return;
+    }
+    if (described.parent === target) {
+      this.actions.report(OS_TEXTS.pasteSameFolder);
+      return;
+    }
+    if (described.missing > 0) {
+      this.actions.report(OS_TEXTS.pasteMissing(described.missing));
+    }
+    await this.injector.get(OpsStore).openCopyMoveFor({
+      kind: 'copy',
+      side,
+      sourceDir: described.parent ?? '',
+      sources: described.entries,
+      target,
+    });
   }
 
   async openConfigDialog(): Promise<void> {

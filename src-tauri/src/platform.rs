@@ -3,6 +3,7 @@
 //! [`attributes`] (permissions, attributes and times without following links, design 024).
 
 pub mod attributes;
+pub mod clipboard;
 pub mod clock;
 pub mod desktop;
 pub mod disk_usage;

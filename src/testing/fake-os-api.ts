@@ -1,4 +1,6 @@
 import { ClipboardApi } from '../app/core/os/clipboard';
+import { FileClipboardApi } from '../app/core/os/file-clipboard-api';
+import { DescribedPaths } from '../app/core/watch/watch.models';
 import { OsApi } from '../app/core/os/os-api';
 import { LoadedTools, ToolContext, Volume } from '../app/core/os/os.models';
 
@@ -95,5 +97,23 @@ export class FakeClipboardApi extends ClipboardApi {
       throw { code: 'io', message: 'no clipboard', path: null };
     }
     this.written.push(text);
+  }
+}
+
+/** In-memory file clipboard: `files` is what the system clipboard "holds". */
+export class FakeFileClipboardApi extends FileClipboardApi {
+  files: DescribedPaths = { entries: [], parent: null, missing: 0 };
+  reads = 0;
+  fail: { code: string; message: string; path: null } | null = null;
+  /** Runs before the answer – what the user does while Rust reads. */
+  before: (() => void) | null = null;
+
+  async readFiles(): Promise<DescribedPaths> {
+    this.reads += 1;
+    if (this.fail) {
+      throw this.fail;
+    }
+    this.before?.();
+    return this.files;
   }
 }

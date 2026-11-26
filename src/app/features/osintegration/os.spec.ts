@@ -6,6 +6,7 @@ import { FsApi } from '../../core/fs/fs-api';
 import { DirEntry } from '../../core/fs/fs.models';
 import { JobsApi } from '../../core/jobs/jobs-api';
 import { ClipboardApi } from '../../core/os/clipboard';
+import { FileClipboardApi } from '../../core/os/file-clipboard-api';
 import { OsApi } from '../../core/os/os-api';
 import { ToolInfo } from '../../core/os/os.models';
 import { SessionApi } from '../../core/session/session-api';
@@ -13,13 +14,14 @@ import { ThemeApi } from '../../core/theme/theme-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { FakeJobsApi } from '../../../testing/fake-jobs-api';
 import { FakeKeymapApi } from '../../../testing/fake-keymap-api';
-import { FakeClipboardApi, FakeOsApi } from '../../../testing/fake-os-api';
+import { FakeClipboardApi, FakeFileClipboardApi, FakeOsApi } from '../../../testing/fake-os-api';
 import { FakeSessionApi } from '../../../testing/fake-session-api';
 import { FakeThemeApi } from '../../../testing/fake-theme-api';
 import { dir, entry, FakeFsApi } from '../../../testing/fs-fixtures';
 import { CommandPalette } from '../actions/command-palette';
 import { FileBrowserStore } from '../browser/file-browser.store';
 import { FileListController } from '../browser/file-list/file-list-controller';
+import { OpsStore } from '../ops/ops.store';
 import { WorkspaceStore } from '../workspace/workspace.store';
 import { registerOsActions } from './os-actions';
 import { volumeLabel } from './os-texts';
@@ -42,6 +44,8 @@ const tool = (id: string, over: Partial<ToolInfo> = {}): ToolInfo => ({
 describe('OS integration (design 011)', () => {
   let osApi: FakeOsApi;
   let clip: FakeClipboardApi;
+  let files: FakeFileClipboardApi;
+  let ws: WorkspaceStore;
   let actions: ActionService;
   let dialogs: DialogService;
   let os: OsStore;
@@ -52,6 +56,7 @@ describe('OS integration (design 011)', () => {
     displayed = null;
     osApi = new FakeOsApi();
     clip = new FakeClipboardApi();
+    files = new FakeFileClipboardApi();
     const fsApi = new FakeFsApi();
     fsApi.handler = (path?: string) =>
       Promise.resolve({
@@ -73,6 +78,7 @@ describe('OS integration (design 011)', () => {
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
         { provide: OsApi, useValue: osApi },
         { provide: ClipboardApi, useValue: clip },
+        { provide: FileClipboardApi, useValue: files },
         { provide: ThemeApi, useValue: new FakeThemeApi() },
       ],
     });
@@ -80,7 +86,7 @@ describe('OS integration (design 011)', () => {
     actions.platform.set('linux');
     dialogs = TestBed.inject(DialogService);
     os = TestBed.inject(OsStore);
-    const ws = TestBed.inject(WorkspaceStore);
+    ws = TestBed.inject(WorkspaceStore);
     left = TestBed.runInInjectionContext(() => new FileBrowserStore());
     const right = TestBed.runInInjectionContext(() => new FileBrowserStore());
     const controller = {
@@ -118,6 +124,110 @@ describe('OS integration (design 011)', () => {
     expect(actions.state('COPY_2_CLIPBOARD_NAMES')).toBe('disabled');
     left.setCursor('/src/b.txt');
     expect(actions.state('COPY_2_CLIPBOARD_NAMES')).toBe('ready');
+  });
+
+  describe('paste files from the system clipboard', () => {
+    const copied = (names: readonly string[], parent: string | null = '/finder') => ({
+      entries: names.map((n) => entry(n, { path: `${parent ?? '/x'}/${n}` })),
+      parent,
+      missing: 0,
+    });
+
+    it('Mod+V in the file list opens the copy dialog for the folder of the active panel', async () => {
+      files.files = copied(['Grüße 🎉.txt', 'b.txt']);
+      const ops = TestBed.inject(OpsStore);
+      const list = document.createElement('app-file-list');
+      const evt = {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        target: list,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as DispatchEvent;
+      expect(TestBed.inject(KeyboardDispatcher).handle(evt)).toBe('PASTE_FILES');
+      await flush();
+      expect(dialogs.open()).toBe('copy-move');
+      const req = ops.copyMove()!;
+      expect(req.kind).toBe('copy');
+      expect(req.side).toBe('left');
+      expect(req.target).toBe('/src');
+      expect(req.sourceDir).toBe('/finder');
+      expect(req.sources.map((e) => e.path)).toEqual(['/finder/Grüße 🎉.txt', '/finder/b.txt']);
+      // nothing was copied yet: the dialog is the confirmation
+      expect((TestBed.inject(JobsApi) as FakeJobsApi).started).toEqual([]);
+    });
+
+    it('a text field keeps Mod+V – the clipboard is not even read', () => {
+      const input = document.createElement('input');
+      const evt = {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        target: input,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as DispatchEvent;
+      expect(TestBed.inject(KeyboardDispatcher).handle(evt)).toBeNull();
+      expect(evt.preventDefault).not.toHaveBeenCalled();
+      expect(files.reads).toBe(0);
+    });
+
+    it('pastes into the right panel when that one is active; files of several folders too', async () => {
+      ws.setActive('right');
+      files.files = copied(['a.txt'], null);
+      expect(await actions.run('PASTE_FILES')).toBe(true);
+      const req = TestBed.inject(OpsStore).copyMove()!;
+      expect([req.side, req.target, req.sourceDir]).toEqual(['right', '/target', '']);
+    });
+
+    it('says why nothing happens: no files, gone, already here – and never opens a dialog', async () => {
+      await actions.run('PASTE_FILES');
+      expect(actions.messages().at(-1)).toContain('holds no files');
+      files.files = { entries: [], parent: null, missing: 2 };
+      await actions.run('PASTE_FILES');
+      expect(actions.messages().at(-1)).toContain('do not exist');
+      files.files = copied(['b.txt'], '/src');
+      await actions.run('PASTE_FILES');
+      expect(actions.messages().at(-1)).toContain('already in this folder');
+      expect(dialogs.open()).toBeNull();
+    });
+
+    it('reports entries that are gone and pastes the rest', async () => {
+      files.files = { ...copied(['a.txt']), missing: 1 };
+      await actions.run('PASTE_FILES');
+      expect(actions.messages().at(-1)).toBe(
+        '1 item in the clipboard does not exist and was left out.',
+      );
+      expect(dialogs.open()).toBe('copy-move');
+    });
+
+    it('drops the answer when the user went on while the clipboard was read', async () => {
+      files.files = copied(['a.txt']);
+      files.before = () => ws.setActive('right');
+      await actions.run('PASTE_FILES');
+      expect(dialogs.open()).toBeNull();
+      files.before = () => dialogs.show('tools');
+      ws.setActive('left');
+      await actions.run('PASTE_FILES');
+      expect(dialogs.open()).toBe('tools');
+      expect(TestBed.inject(OpsStore).copyMove()).toBeNull();
+    });
+
+    it('a clipboard that cannot be read becomes a message', async () => {
+      files.fail = { code: 'io', message: 'The clipboard could not be read', path: null };
+      await actions.run('PASTE_FILES');
+      expect(actions.messages().at(-1)).toContain('Paste files from clipboard');
+      expect(dialogs.open()).toBeNull();
+    });
   });
 
   it('tools become extra actions with shortcuts; the keymap wins, conflicts are reported', async () => {

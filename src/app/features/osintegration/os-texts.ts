@@ -14,6 +14,11 @@ export const OS_EN = {
   noEditTool: 'No tool "edit" is configured (tools.json).',
   copied: (n: number, what: 'names' | 'paths', json: boolean) =>
     `${n} ${what === 'names' ? (n === 1 ? 'name' : 'names') : n === 1 ? 'path' : 'paths'} copied${json ? ' as JSON' : ''}.`,
+  pasteNoFiles: 'The clipboard holds no files – copy them in the file manager first.',
+  pasteGone: 'The files in the clipboard do not exist (any more).',
+  pasteSameFolder: 'The files in the clipboard are already in this folder.',
+  pasteMissing: (n: number) =>
+    `${n} ${n === 1 ? 'item' : 'items'} in the clipboard ${n === 1 ? 'does' : 'do'} not exist and ${n === 1 ? 'was' : 'were'} left out.`,
   toolStarted: (label: string, n: number) =>
     n === 1 ? `${label} started.` : `${label} started ${n} times.`,
   toolsHeading: 'Tools',

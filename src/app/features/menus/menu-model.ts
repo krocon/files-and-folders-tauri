@@ -215,6 +215,9 @@ export const MENU_BAR: readonly TopMenu[] = [
           '-',
         ],
       },
+      // after the native Paste: text fields keep ⌘V, the file list gets it from the dispatcher
+      'PASTE_FILES',
+      '-',
       'SELECT_ALL',
       'DESELECT_ALL',
       'INVERT_MARKS',
@@ -503,6 +506,7 @@ const CONTEXT: Readonly<Record<ContextKind, readonly MenuDef[]>> = {
     'OPEN_MKDIR_DLG',
     'OPEN_CREATE_FILE_DLG',
     'OPEN_MULTIMKDIR_DLG',
+    'PASTE_FILES',
     '-',
     'RELOAD_DIR',
     'TOGGLE_HIDDEN_FILES',
