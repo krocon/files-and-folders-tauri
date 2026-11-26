@@ -173,6 +173,15 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
       füllen (TC „Kurz“), `property` im Kopf-Mausereignis, „Breite des Codes“ nachträglich ändern,
       `setColumnHeaderLabel(property, …)`, `minWidth` einer Gewichts-Spalte wird nicht eingehalten (Name wird in
       schmalen Panels bzw. mit vielen Spalten zu `…` statt waagerecht zu scrollen – schon vor 041 so).
+- [ ] GuiExpert Table nach einem Drag ins System (26.11.2026, Branch `fix/table-press-nach-system-drag`): der native
+      Drag behält das `mouseup`, die Table blieb „gedrückt“ und zog nach einem Klick auf einen Spaltenkopf mit der
+      nächsten Mausbewegung eine Spalte (Name-Spalte als leere, grünliche Drop-Zone, Spalten vertauscht). Bei uns
+      behoben: `releaseTableMouse` (G25: kein API, um einen Press zu beenden – an `mono/TODO.md` melden) und keine
+      `mousemove` an die Table, solange eine Zeile gedrückt ist (G26: veraltete Spalten-Aktion nach einem Klick ohne
+      Ziehen, im Core seit 1.1.110 behoben). **Offen:** Table von 1.1.105 auf 1.1.118 heben (eigener Branch – Cover-Grid
+      bekam dort eigene Tastatur-Navigation, Bilder-Übersicht und Kurz-/Miniaturansicht danach prüfen), dann kann
+      `onPressMouseMove` in `file-list.ts` weg. **Bei Marc prüfen:** Spaltenkopf doppelklicken, Datei in den Finder
+      ziehen, Liste danach normal.
 - [ ] 041 offen: Miniaturen in Archiven, auf Servern und in Ergebnis-Tabs (Suche, flach); Spalten Eigentümer und
       Link-Ziel; Sortieren aus der Kurz-/Miniaturansicht heraus (nur über die Vollansicht); Kachelgröße per
       Strg+Mausrad. **Bei Marc prüfen:** echte App auf dem Mac – Miniaturen eines Ordners mit ~2 000 Fotos

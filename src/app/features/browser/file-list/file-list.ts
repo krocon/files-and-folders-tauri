@@ -667,6 +667,8 @@ export class FileList implements OnDestroy {
       return;
     }
     this.press = { x: evt.clientX, y: evt.clientY, pointerId: evt.pointerId, row };
+    this.lastPointer = { x: evt.clientX, y: evt.clientY };
+    window.addEventListener('mousemove', this.onPressMouseMove, true);
     window.addEventListener('pointermove', this.onPointerMove, true);
     window.addEventListener('pointerup', this.onPointerUp, true);
     window.addEventListener('pointercancel', this.onPointerCancel, true);
@@ -674,6 +676,17 @@ export class FileList implements OnDestroy {
     window.addEventListener('keyup', this.onDragKey, true);
     document.addEventListener('mouseout', this.onWindowOut, true);
   }
+
+  /**
+   * A pressed row belongs to our drag, not to the table: it sees no mouse moves until the
+   * release. With them it started its own drag at the first pixel – and after a click on a
+   * column header that is a column move: the column went to the one under the pointer.
+   * TODO(guiexpert): a press without a drag leaves the column action set (G26, fixed in
+   * 1.1.110 – this listener can go with that version).
+   */
+  private readonly onPressMouseMove = (evt: MouseEvent): void => {
+    evt.stopPropagation();
+  };
 
   private readonly onPointerMove = (evt: PointerEvent): void => {
     const press = this.press;
@@ -732,6 +745,7 @@ export class FileList implements OnDestroy {
    */
   private handOffToSystem(buttons: number): void {
     this.endPress();
+    this.releaseTables(); // the system keeps the mouseup
     if (buttons & 1) {
       void this.dnd.handOff();
     } else {
@@ -753,7 +767,18 @@ export class FileList implements OnDestroy {
       this.dnd.cancel();
     }
     this.endPress();
+    this.releaseTables(); // no mouseup after a cancelled pointer
   };
+
+  /**
+   * The mouseup of this press never reaches the page (the system has the mouse): the table
+   * and the grid are told, else they stay pressed and go on dragging with the next move.
+   */
+  private releaseTables(): void {
+    const { x, y } = this.lastPointer;
+    this.bridge?.releaseMouse(x, y);
+    this.grid()?.releaseMouse(x, y);
+  }
 
   /**
    * Esc cancels; Shift/⌘ switch between copy and move without moving the mouse;
@@ -795,6 +820,7 @@ export class FileList implements OnDestroy {
     }
     this.press = null;
     this.dragging = false;
+    window.removeEventListener('mousemove', this.onPressMouseMove, true);
     window.removeEventListener('pointermove', this.onPointerMove, true);
     window.removeEventListener('pointerup', this.onPointerUp, true);
     window.removeEventListener('pointercancel', this.onPointerCancel, true);

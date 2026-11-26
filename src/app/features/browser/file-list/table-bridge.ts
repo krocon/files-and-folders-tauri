@@ -62,6 +62,8 @@ export interface TableBridge {
   startRename(path: string, selectEnd: number, done: (value: string | null) => void): boolean;
   /** Displayed index of the body row containing `element` (drag and drop), -1 if none. */
   rowIndexAt(element: Element): number;
+  /** The mouse press in the table is over without a mouseup (see {@link releaseTableMouse}). */
+  releaseMouse(x: number, y: number): void;
   /**
    * Column titles (by property) and row height changed (language, density – design
    * 015): applied to the live model and repainted, no new table.
@@ -77,6 +79,22 @@ export interface Presentation {
 
 /** The parts of the table state that belong to a tab. */
 export const TAB_TABLE_PARTS: readonly TableStatePart[] = ['columns', 'sort', 'scroll'];
+
+/**
+ * Ends the table's own mouse press when the mouseup never reaches the page: a drag handed
+ * to the system (design 028 – the native drag keeps the mouse) or a cancelled pointer.
+ * Without it the table stays "pressed": the next mouse move goes on as a drag of whatever
+ * the last press started – after a click on a column header that is a column move, the
+ * column under the pointer stays an empty drop zone and the columns change places.
+ *
+ * TODO(guiexpert): no API to end a press (G25) – a mouseup at the host does it; it does not
+ * bubble, so nobody else takes it for a click.
+ */
+export function releaseTableMouse(api: TableApi | undefined, x: number, y: number): void {
+  api
+    ?.getTableScope()
+    .hostElement?.dispatchEvent(new MouseEvent('mouseup', { button: 0, clientX: x, clientY: y }));
+}
 
 export function createTableBridge(
   api: TableApi,
@@ -210,6 +228,9 @@ export function createTableBridge(
       return Number.isInteger(index) && index >= 0 && index < body.getFilteredRows().length
         ? index
         : -1;
+    },
+    releaseMouse(x, y) {
+      releaseTableMouse(api, x, y);
     },
     setPresentation({ headers, rowHeight }) {
       const header = api.getTableModel().getAreaModel('header');
