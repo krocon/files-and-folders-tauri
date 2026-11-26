@@ -176,7 +176,8 @@ Fertig und in `main`: **001–022, 024–026, 028–031** (023 verworfen); **032
 - [ ] GuiExpert Table nach einem Drag ins System (26.11.2026, Branch `fix/table-press-nach-system-drag`): der native
       Drag behält das `mouseup`, die Table blieb „gedrückt“ und zog nach einem Klick auf einen Spaltenkopf mit der
       nächsten Mausbewegung eine Spalte (Name-Spalte als leere, grünliche Drop-Zone, Spalten vertauscht). Bei uns
-      behoben: `releaseTableMouse` (G25: kein API, um einen Press zu beenden – an `mono/TODO.md` melden) und keine
+      behoben: `releaseTableMouse` (G25: kein API, um einen Press zu beenden – als `mono/prompts/028-press-ohne-mouseup.md` angelegt: Core beendet
+      den Press selbst + `tableApi.releaseMouse()`; nach dem Release `releaseTableMouse` darauf umstellen) und keine
       `mousemove` an die Table, solange eine Zeile gedrückt ist (G26: veraltete Spalten-Aktion nach einem Klick ohne
       Ziehen, im Core seit 1.1.110 behoben). **Offen:** Table von 1.1.105 auf 1.1.118 heben (eigener Branch – Cover-Grid
       bekam dort eigene Tastatur-Navigation, Bilder-Übersicht und Kurz-/Miniaturansicht danach prüfen), dann kann
