@@ -82,8 +82,14 @@ export const TEXTS_EN = {
   runProgramConfirm: 'Run',
   pathInput: 'Go to path',
   /** Tooltip of the breadcrumbs' free area (053). */
+  /** Placeholder of the path field (079): what Enter does with a file path. */
+  pathPlaceholder: 'Folder or file – a file is opened (Shift+Enter: only go there)',
+  /** Tooltip of the path field (079). */
+  pathFieldHint:
+    'Enter: go to the folder; a file path also opens the file like a double click.\nShift+Enter: only go there, nothing is opened.\nEsc: cancel.',
   enterPathHint: (shortcut: string) =>
-    shortcut ? `Click to enter a path (${shortcut})` : 'Click to enter a path',
+    (shortcut ? `Click to enter a path (${shortcut})` : 'Click to enter a path') +
+    ' – a file path opens the file',
   folderMenu: 'Folders: home, drives, tabs of the other panel, favourites, recent',
   showHidden: 'Show hidden files',
   filter: 'Filter',

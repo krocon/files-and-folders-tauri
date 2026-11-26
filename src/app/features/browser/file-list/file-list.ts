@@ -16,13 +16,7 @@ import {
 } from '@angular/core';
 import { TableSignalComponent } from '@guiexpert/angular-table';
 import { TableApi, TableColumnStateIf, TableStateIf } from '@guiexpert/table';
-import {
-  DirEntry,
-  DirectoryListing,
-  isNavigableDir,
-  isParentRow,
-  parentRow,
-} from '../../../core/fs/fs.models';
+import { DirEntry, DirectoryListing, parentRow } from '../../../core/fs/fs.models';
 import { ActionService } from '../../../core/actions/action.service';
 import { Side, ViewMode } from '../../../core/session/session.models';
 import { ImageOverviewApi } from '../../../core/imageoverview/image-overview-api';
@@ -40,7 +34,7 @@ import {
 } from '../../dnd/dnd-logic';
 import { DragStore } from '../../dnd/drag.store';
 import { recordPerf, since } from '../../../shared/perf';
-import { FileActionsStore } from '../../fileactions/file-actions.store';
+import { EntryActivator } from '../entry-activator';
 import { FileBrowserStore } from '../file-browser.store';
 import { DuplicatesStore } from '../../duplicates/duplicates.store';
 import { DUP_TEXTS } from '../../duplicates/duplicates-texts';
@@ -528,22 +522,9 @@ export class FileList implements OnDestroy {
     const bridge = createTableBridge(api, table.body, table.columnDefs);
     const controller = new FileListController(bridge, this.store, {
       openInNewTab: (entry) => this.openInNewTab.emit(entry),
-      doubleClick: (entry, modifiers) => {
-        // a rule of the double-click actions goes first (designs 072, 073)
-        if (this.injector.get(FileActionsStore).handleDoubleClick(entry, modifiers, this.store)) {
-          return 'rule';
-        }
-        if (
-          this.settings.get('behavior.doubleClick') !== 'view' ||
-          isNavigableDir(entry) ||
-          isParentRow(entry)
-        ) {
-          return 'open';
-        }
-        // the click put the cursor on the entry: the viewer opens it
-        void this.injector.get(ActionService).run('OPEN_VIEW_DLG');
-        return 'handled';
-      },
+      // the one chain rule → viewer → open (designs 072, 073, 079 E1)
+      doubleClick: (entry, modifiers) =>
+        this.injector.get(EntryActivator).decide(entry, modifiers, this.store),
     });
     this.bridge = bridge;
     this.controller = controller;

@@ -1121,6 +1121,37 @@ fn the_view_is_steered_only_inside_the_roots() {
     );
 }
 
+/// Design 079: a file path typed into the path field opens the file like a double
+/// click. A client's `navigate` with the same path is no way to that: it is refused
+/// before the window hears of it, starts no job, and no tool opens or runs a file.
+#[test]
+fn navigate_to_a_file_path_opens_nothing() {
+    let f = fx();
+    let mut c = f.client("c");
+    for tool in ["navigate", "open_tab"] {
+        assert_eq!(
+            c.tool(tool, json!({ "side": "left", "path": f.p("docs/a.txt") }))
+                .unwrap_err(),
+            "not_a_directory",
+            "{tool}"
+        );
+    }
+    assert_eq!(
+        f.requests()
+            .iter()
+            .filter(|r| !matches!(r, UiRequest::Pair { .. }))
+            .count(),
+        0,
+        "a file path never reaches the window"
+    );
+    assert!(f.jobs.list().is_empty(), "nothing was started");
+    // "open" would be tier 3, which does not exist
+    for name in ["open", "open_file", "open_path", "run", "launch", "execute"] {
+        assert!(tools::find(name).is_none(), "{name}");
+    }
+    assert!(tools::TOOLS.iter().all(|t| t.tier <= 2));
+}
+
 // ---- tier 2 ----
 
 #[test]

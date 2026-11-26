@@ -181,6 +181,16 @@ describe('McpStore (design 071)', () => {
       expect(last.left.markedTotal).toBe(2);
     });
 
+    // design 079: typing a file path opens the file – a client's `navigate` never does
+    it('navigate with a file path only asks the panel to navigate: nothing is opened', async () => {
+      const id = ask({ kind: 'navigate', client: 'Claude', side: 'left', path: A.path });
+      await settle();
+      expect(ws.navigateRequest()).toMatchObject({ side: 'left', path: A.path, cursor: null });
+      expect(api.replyTo(id)).toEqual({ ok: true });
+      expect(fsApi.opened).toEqual([]);
+      expect(jobsApi.started.filter((j) => j.spec.kind === 'viewEntry')).toEqual([]);
+    });
+
     it('steers the view: navigate, cursor, marks – only entries the panel lists', async () => {
       const nav = ask({ kind: 'navigate', client: 'Claude', side: 'right', path: '/src' });
       expect(ws.navigateRequest()).toMatchObject({ side: 'right', path: '/src' });

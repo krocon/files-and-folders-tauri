@@ -27,6 +27,18 @@ import { By } from '@angular/platform-browser';
 import { blankProfile } from '../remote/remote-logic';
 import { RemoteStore } from '../remote/remote.store';
 import { EMPTY_STATS } from '../../core/search/search.models';
+import { ActionService } from '../../core/actions/action.service';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
+import { DialogService } from '../../shared/dialog/dialog.service';
+import { FileActionsApi } from '../../core/fileactions/file-actions-api';
+import { FileActionRule } from '../../core/fileactions/file-actions.models';
+import { ClipboardApi } from '../../core/os/clipboard';
+import { OsApi } from '../../core/os/os-api';
+import { SettingsStore } from '../../core/settings/settings.store';
+import { FakeFileActionsApi } from '../../../testing/fake-file-actions-api';
+import { FakeClipboardApi, FakeOsApi } from '../../../testing/fake-os-api';
+import { FileActionsStore } from '../fileactions/file-actions.store';
 
 /** jsdom has no layout – the real table is tested end-to-end; here a stand-in. */
 @Component({ selector: 'app-file-list', template: '<div class="stub-list" tabindex="0"></div>' })
@@ -52,9 +64,11 @@ describe('FilePanel', () => {
   let fs: FakeFsApi;
   let ws: WorkspaceStore;
   let watch: FakeWatchApi;
+  let fileActions: FakeFileActionsApi;
 
   beforeEach(() => {
     fs = new FakeFsApi();
+    fileActions = new FakeFileActionsApi();
     watch = new FakeWatchApi();
     fs.handler = (p) => {
       switch (p) {
@@ -95,6 +109,9 @@ describe('FilePanel', () => {
         { provide: SessionApi, useValue: new FakeSessionApi() },
         { provide: WatchApi, useValue: watch },
         { provide: KeymapApi, useValue: new FakeKeymapApi() },
+        { provide: FileActionsApi, useValue: fileActions },
+        { provide: OsApi, useValue: new FakeOsApi() },
+        { provide: ClipboardApi, useValue: new FakeClipboardApi() },
       ],
     });
     TestBed.overrideComponent(FilePanel, {
@@ -387,6 +404,435 @@ describe('FilePanel', () => {
     expect(store.path()).toBe('/other');
     expect(store.cursorPath()).toBe('/other/x');
     expect(input()).toBeNull();
+  });
+
+  describe('079: a file path typed into the path field opens the file like a double click', () => {
+    const CLIP = '/media/clip.mp4';
+    const mediaListing = (extra: DirectoryListing['entries'] = []) =>
+      withSegments(
+        listing('/media', [
+          dir('sub', { path: '/media/sub' }),
+          entry('clip.mp4', { path: CLIP }),
+          entry('.secret.txt', { path: '/media/.secret.txt', hidden: true }),
+          entry('pack.zip', { path: '/media/pack.zip' }),
+          entry('Ünï cödé 🎬 x.txt', { path: '/media/Ünï cödé 🎬 x.txt' }),
+          ...extra,
+        ]),
+        ['/', 'media'],
+      );
+    let original: FakeFsApi['handler'];
+
+    beforeEach(() => {
+      original = fs.handler;
+      fs.handler = (p) =>
+        p === '/media'
+          ? Promise.resolve(mediaListing())
+          : p === '/media/pack.zip'
+            ? Promise.resolve(
+                withSegments(listing(p, [entry('in.txt', { path: `${p}/in.txt` })], '/media'), [
+                  '/',
+                  'media',
+                  'pack.zip',
+                ]),
+              )
+            : p === CLIP
+              ? Promise.reject({ code: 'not_a_directory', message: 'a file', path: p })
+              : original(p);
+      const file = (path: string) => ({ dir: '/media', select: path });
+      fs.locations = {
+        [CLIP]: file(CLIP),
+        // Rust drops a trailing separator (`normalize_lexically`)
+        [`${CLIP}/`]: file(CLIP),
+        '/media/.secret.txt': file('/media/.secret.txt'),
+        '/media/pack.zip': file('/media/pack.zip'),
+        '/media/Ünï cödé 🎬 x.txt': file('/media/Ünï cödé 🎬 x.txt'),
+        '/media/late.txt': file('/media/late.txt'),
+        '/media': { dir: '/media', select: null },
+        '~/media/': { dir: '/media', select: null },
+        '/data/a.txt': { dir: '/data', select: '/data/a.txt' },
+      };
+    });
+
+    type Rendered = Awaited<ReturnType<typeof render>>;
+    const input = (h: Rendered) => h.el.querySelector<HTMLInputElement>('.path-input');
+
+    async function edit(h: Rendered): Promise<void> {
+      ws.requestPathEdit('left');
+      await h.settle();
+    }
+
+    /** Types `value` and presses Enter (`shift`: Shift+Enter). */
+    async function enter(h: Rendered, value: string, shift = false): Promise<void> {
+      if (!input(h)) {
+        await edit(h);
+      }
+      input(h)!.value = value;
+      if (shift) {
+        input(h)!.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Enter',
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      } else {
+        h.el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      }
+      await h.settle();
+      await h.settle();
+    }
+
+    it('goes to the folder, puts the cursor on the file and opens it once – after the listing', async () => {
+      const h = await render();
+      const hanging = deferred<DirectoryListing>();
+      fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+      await enter(h, CLIP);
+      // the folder is not listed yet: nothing runs, the field stays
+      expect(fs.opened).toEqual([]);
+      expect(input(h)).not.toBeNull();
+      hanging.resolve(mediaListing());
+      await h.settle();
+      await h.settle();
+      expect(h.store.path()).toBe('/media');
+      expect(h.store.cursorPath()).toBe(CLIP);
+      expect(fs.opened).toEqual([{ path: CLIP, allowExecutable: false }]);
+      expect(input(h)).toBeNull();
+      expect(ws.activeSide()).toBe('left');
+      // the other tab is untouched, Back leads to the folder before
+      expect(ws.panels().left.tabs[1].path).toBe('/other');
+      expect(h.store.canGoBack()).toBe(true);
+      await h.store.back();
+      expect(h.store.path()).toBe('/data');
+      expect(fs.opened.length).toBe(1);
+    });
+
+    it('spaces, umlauts and emoji in the name', async () => {
+      const h = await render();
+      await enter(h, '/media/Ünï cödé 🎬 x.txt');
+      expect(fs.opened.map((o) => o.path)).toEqual(['/media/Ünï cödé 🎬 x.txt']);
+    });
+
+    it('a folder path, a path with a separator at the end and Shift+Enter only go there', async () => {
+      const h = await render();
+      await enter(h, '/media');
+      expect(h.store.path()).toBe('/media');
+      await enter(h, '~/media/');
+      expect(h.store.path()).toBe('/media');
+      await h.store.load('/data');
+      // `…/clip.mp4/` reads as a folder: where it is, nothing starts
+      await enter(h, `${CLIP}/`);
+      expect(h.store.path()).toBe('/media');
+      expect(h.store.cursorPath()).toBe(CLIP);
+      await h.store.load('/data');
+      await enter(h, CLIP, true);
+      expect(h.store.path()).toBe('/media');
+      expect(h.store.cursorPath()).toBe(CLIP);
+      expect(input(h)).toBeNull();
+      expect(fs.opened).toEqual([]);
+    });
+
+    it('names the key for "only go there" in the field', async () => {
+      const h = await render();
+      await edit(h);
+      expect(input(h)!.placeholder).toContain('Shift+Enter');
+      expect(input(h)!.title).toContain('Shift+Enter');
+    });
+
+    it('a typo in the name: the error stays in the field, the tab stays, nothing starts', async () => {
+      const h = await render();
+      await enter(h, '/media/clipp.mp4');
+      expect(h.el.querySelector('.path-error')?.textContent).toContain('does not exist');
+      expect(input(h)).not.toBeNull();
+      expect(h.store.path()).toBe('/data');
+      expect(fs.opened).toEqual([]);
+    });
+
+    it('an archive is entered like on a double click', async () => {
+      const h = await render();
+      await enter(h, '/media/pack.zip');
+      expect(h.store.path()).toBe('/media/pack.zip');
+      expect(fs.opened).toEqual([]);
+    });
+
+    it('E3: a hidden file opens although no row can show it; the filter stays', async () => {
+      const h = await render();
+      await enter(h, '/media/.secret.txt');
+      expect(h.store.path()).toBe('/media');
+      expect(h.store.hiddenVisible()).toBe(false);
+      expect(h.store.visibleEntries().some((e) => e.hidden)).toBe(false);
+      expect(fs.opened.map((o) => o.path)).toEqual(['/media/.secret.txt']);
+    });
+
+    it('a double-click rule without keys runs instead of the default app, one with Shift never', async () => {
+      const rule = (id: string, modifiers: FileActionRule['modifiers']): FileActionRule => ({
+        id,
+        trigger: 'doubleClick',
+        modifiers,
+        pattern: '*.mp4',
+        confirm: false,
+        command: 'player %N',
+        terminal: false,
+      });
+      fileActions.loaded = {
+        rules: [rule('shifted', ['shift']), rule('plain', [])],
+        warning: null,
+        problems: [],
+      };
+      await TestBed.inject(FileActionsStore).init();
+      const h = await render();
+      h.store.setMarked(['/data/a.txt'], true);
+      await enter(h, CLIP);
+      expect(fileActions.runs.map((r) => [r.id, r.file])).toEqual([['plain', CLIP]]);
+      expect(fs.opened).toEqual([]);
+      expect(h.store.cursorPath()).toBe(CLIP);
+    });
+
+    it('"double click views": the viewer opens the file', async () => {
+      const settings = TestBed.inject(SettingsStore);
+      await settings.init();
+      settings.set('behavior.doubleClick', 'view');
+      const viewed: (string | null)[] = [];
+      const h = await render();
+      TestBed.inject(ActionService).register({
+        OPEN_VIEW_DLG: { run: () => void viewed.push(ws.panel()?.store.cursorPath() ?? null) },
+      });
+      await enter(h, CLIP);
+      expect(viewed).toEqual([CLIP]);
+      expect(fs.opened).toEqual([]);
+    });
+
+    it('a failing open: the tab stays in the folder with the cursor on the file, the panel reports', async () => {
+      const h = await render();
+      fs.openFile = () => Promise.reject({ code: 'permission_denied', message: 'no', path: CLIP });
+      await enter(h, CLIP);
+      expect(h.store.path()).toBe('/media');
+      expect(h.store.cursorPath()).toBe(CLIP);
+      expect(h.store.error()?.code).toBe('permission_denied');
+      expect(input(h)).toBeNull();
+    });
+
+    it('a tab switch while the folder is read: nothing opens, least of all in the other tab', async () => {
+      const h = await render();
+      const hanging = deferred<DirectoryListing>();
+      fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+      await enter(h, CLIP);
+      ws.selectTab('left', 1);
+      await h.settle();
+      hanging.resolve(mediaListing());
+      await h.settle();
+      await h.settle();
+      expect(h.store.path()).toBe('/other');
+      expect(fs.opened).toEqual([]);
+    });
+
+    it('a second Enter with another path: only the last input opens', async () => {
+      const h = await render();
+      const hanging = deferred<DirectoryListing>();
+      fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+      await enter(h, CLIP);
+      await enter(h, '/data/a.txt');
+      hanging.resolve(mediaListing());
+      await h.settle();
+      await h.settle();
+      expect(h.store.path()).toBe('/data');
+      expect(fs.opened.map((o) => o.path)).toEqual(['/data/a.txt']);
+    });
+
+    it('E6: never opens from a kept listing – the folder is read first, a file gone since is an error', async () => {
+      // /media is on a network drive: its listing is kept (design 030 E1)
+      const net = (l: DirectoryListing): DirectoryListing => ({ ...l, network: true });
+      fs.handler = (p) =>
+        p === '/media'
+          ? Promise.resolve(net(mediaListing([entry('late.txt', { path: '/media/late.txt' })])))
+          : original(p);
+      const h = await render();
+      await h.store.load('/media');
+      await h.store.load('/data');
+      const hanging = deferred<DirectoryListing>();
+      fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+      await enter(h, '/media/late.txt');
+      // not shown from the cache: the panel waits for Rust
+      expect(h.store.cachedAt()).toBeNull();
+      expect(h.store.loading()).toBe(true);
+      expect(fs.opened).toEqual([]);
+      hanging.resolve(net(mediaListing()));
+      await h.settle();
+      await h.settle();
+      expect(h.store.path()).toBe('/media');
+      expect(fs.opened).toEqual([]);
+      expect(h.el.querySelector('.path-error')?.textContent).toContain('does not exist');
+    });
+
+    describe('review 079', () => {
+      /** Enter on `value` while the listing of /media hangs; `finish` delivers it. */
+      async function enterHanging(h: Rendered, value = CLIP): Promise<() => Promise<void>> {
+        const hanging = deferred<DirectoryListing>();
+        fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+        await enter(h, value);
+        return async () => {
+          hanging.resolve(mediaListing());
+          await h.settle();
+          await h.settle();
+        };
+      }
+
+      it('#1: another spelling of the name – Rust answers with the listed one, that entry opens', async () => {
+        // what `resolve_location` returns for README-style input on a case-insensitive volume
+        fs.locations['/media/CLIP.MP4'] = { dir: '/media', select: CLIP };
+        const h = await render();
+        await enter(h, '/media/CLIP.MP4');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened.map((o) => o.path)).toEqual([CLIP]);
+        expect(h.el.querySelector('.path-error')).toBeNull();
+      });
+
+      it('#2: Esc while the folder is read – this input does nothing more', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        input(h)!.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+        );
+        await h.settle();
+        expect(input(h)).toBeNull();
+        await finish();
+        expect(fs.opened).toEqual([]);
+        expect(h.el.querySelector('.path-error')).toBeNull();
+      });
+
+      it('#2: the focus left the field while the folder is read – it goes there, nothing opens', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        input(h)!.dispatchEvent(new FocusEvent('blur'));
+        await h.settle();
+        const focus = ws.focusRequest();
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        // the focus is where the user put it
+        expect(ws.focusRequest()).toBe(focus);
+      });
+
+      it('#2: the other side became active meanwhile – nothing opens, the side stays active', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        ws.setActive('right');
+        const focus = ws.focusRequest();
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(fs.opened).toEqual([]);
+        expect(ws.activeSide()).toBe('right');
+        expect(ws.focusRequest()).toBe(focus);
+        expect(input(h)).toBeNull();
+      });
+
+      it('#3: a dialog opened while the folder is read – only goes there', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        TestBed.inject(DialogService).show('settings');
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        expect(TestBed.inject(DialogService).open()).toBe('settings');
+      });
+
+      it('#4: right after an MCP client changed the view nothing opens – no rule either – and the user is told', async () => {
+        fileActions.loaded = {
+          rules: [
+            {
+              id: 'plain',
+              trigger: 'doubleClick',
+              modifiers: [],
+              pattern: '*.mp4',
+              confirm: false,
+              command: 'player %N',
+              terminal: false,
+            },
+          ],
+          warning: null,
+          problems: [],
+        };
+        await TestBed.inject(FileActionsStore).init();
+        const guard = TestBed.inject(McpGuardService);
+        let now = 1_000;
+        guard.now = () => now;
+        const actions = TestBed.inject(ActionService);
+        const h = await render();
+        guard.changed('left', 'Claude', null);
+        await enter(h, CLIP);
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        expect(fileActions.runs).toEqual([]);
+        expect(actions.messages().join('\n')).toContain('MCP client just changed the view');
+        // the lock is over: the same input opens
+        now += 2_000;
+        await h.store.load('/data');
+        await enter(h, CLIP);
+        expect(fileActions.runs.map((r) => r.file)).toEqual([CLIP]);
+      });
+
+      it('#5: the unchanged field in the root of an archive does not "open" the archive again', async () => {
+        fileActions.loaded = {
+          rules: [
+            {
+              id: 'zip',
+              trigger: 'doubleClick',
+              modifiers: [],
+              pattern: '*.zip',
+              confirm: false,
+              command: 'unzipper %N',
+              terminal: false,
+            },
+          ],
+          warning: null,
+          problems: [],
+        };
+        await TestBed.inject(FileActionsStore).init();
+        const h = await render();
+        await h.store.load('/media/pack.zip');
+        await edit(h);
+        expect(input(h)!.value).toBe('/media/pack.zip');
+        await enter(h, input(h)!.value);
+        // like before 079: the folder of the archive, cursor on it
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe('/media/pack.zip');
+        expect(fileActions.runs).toEqual([]);
+        expect(fs.opened).toEqual([]);
+      });
+
+      it('a program asks the same question as a double click before it runs', async () => {
+        fs.executables.add(CLIP);
+        const confirm = TestBed.inject(ConfirmService);
+        const asked: string[] = [];
+        let answer = false;
+        confirm.ask = (q) => (asked.push(q.detail ?? ''), Promise.resolve(answer));
+        const h = await render();
+        await enter(h, CLIP);
+        expect(asked).toEqual([CLIP]);
+        expect(fs.opened).toEqual([]);
+        answer = true;
+        await h.store.load('/data');
+        await enter(h, CLIP);
+        expect(asked).toEqual([CLIP, CLIP]);
+        expect(fs.opened).toEqual([{ path: CLIP, allowExecutable: true }]);
+      });
+    });
+
+    it('navigating to a file path by any other way opens nothing', async () => {
+      const h = await render();
+      ws.requestNavigate('left', CLIP);
+      await h.settle();
+      ws.requestNavigate('left', '/media', CLIP);
+      await h.settle();
+      expect(h.store.cursorPath()).toBe(CLIP);
+      ws.selectTab('left', 1);
+      await h.settle();
+      expect(fs.opened).toEqual([]);
+      expect(fileActions.runs).toEqual([]);
+    });
   });
 
   it('053: a click into the free area of the crumbs opens the field, the path stands once', async () => {

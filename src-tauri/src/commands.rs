@@ -157,8 +157,50 @@ fn location_of(path: &std::path::Path) -> Result<Location, FsError> {
         .ok_or_else(|| FsError::new(FsErrorCode::NotADirectory, "No parent folder", Some(path)))?;
     Ok(Location {
         dir: parent.to_string_lossy().into_owned(),
-        select: Some(path.to_string_lossy().into_owned()),
+        select: Some(listed_path(&parent, path).to_string_lossy().into_owned()),
     })
+}
+
+/// Entries of the folder looked at to find the listed name of a typed file.
+const LISTED_NAME_SCAN: usize = 100_000;
+
+/// The file at `path` under the name its folder `parent` lists it with (review 079 #1).
+/// On a case-insensitive volume `README.TXT` finds `ReadMe.txt`, and a name typed in NFC
+/// finds the one stored in NFD – but the listing knows only the stored name, and the
+/// panel looks the entry up by its path. The entry is found by its identity (device and
+/// inode / volume and file index, links not followed), never by folding names here. The
+/// typed name wins if the folder lists it; whatever cannot be read leaves the typed path.
+fn listed_path(parent: &std::path::Path, path: &std::path::Path) -> PathBuf {
+    let typed_path = || path.to_path_buf();
+    let (Some(typed), Some(id)) = (path.file_name(), crate::platform::entry_id(path)) else {
+        return typed_path();
+    };
+    let Ok(entries) = std::fs::read_dir(parent) else {
+        return typed_path();
+    };
+    let typed_lower = typed.to_string_lossy().to_lowercase();
+    // another name of the same file; one that differs only in case is preferred (hard links)
+    let mut found: Option<(std::ffi::OsString, bool)> = None;
+    for entry in entries.take(LISTED_NAME_SCAN).flatten() {
+        let name = entry.file_name();
+        if name == typed {
+            return typed_path();
+        }
+        let same_case = name.to_string_lossy().to_lowercase() == typed_lower;
+        // cheap first: the inode from the folder itself; elsewhere only names that differ in case
+        #[cfg(unix)]
+        let candidate = std::os::unix::fs::DirEntryExt::ino(&entry) == id.1;
+        #[cfg(not(unix))]
+        let candidate = same_case;
+        if !candidate
+            || found.as_ref().is_some_and(|(_, best)| *best || !same_case)
+            || crate::platform::entry_id(&entry.path()) != Some(id)
+        {
+            continue;
+        }
+        found = Some((name, same_case));
+    }
+    found.map_or_else(typed_path, |(name, _)| parent.join(name))
 }
 
 /// Opens a file with the default application; executables only with `allow_executable`.
@@ -1508,6 +1550,71 @@ mod tests {
             );
             assert!(crate::paths::validate_job_path(raw).is_err());
         }
+    }
+
+    /// Review 079 #1: a file typed in another spelling (`README.TXT` for `ReadMe.txt` on a
+    /// case-insensitive volume, NFC for a name stored as NFD) resolves to the name its folder
+    /// lists – the panel looks the entry up by exactly that path. What the file system of the
+    /// temp folder folds is found out by trying, not guessed from the OS.
+    #[test]
+    fn a_file_typed_in_another_spelling_resolves_to_its_listed_name() {
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path();
+        for name in ["ReadMe.txt", "plain.txt", "Cafe\u{301} 🎬.txt", "one.bin"] {
+            std::fs::write(dir.join(name), "x").unwrap();
+        }
+        std::fs::hard_link(dir.join("one.bin"), dir.join("two.bin")).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(dir.join("plain.txt"), dir.join("Link.txt")).unwrap();
+        // (typed, listed): the second is what the folder really lists
+        let mut cases = vec![
+            ("ReadMe.txt", "ReadMe.txt"),
+            ("README.TXT", "ReadMe.txt"),
+            ("readme.txt", "ReadMe.txt"),
+            ("PLAIN.TXT", "plain.txt"),
+            // precomposed é typed, decomposed stored
+            ("Caf\u{e9} 🎬.txt", "Cafe\u{301} 🎬.txt"),
+            ("Cafe\u{301} 🎬.txt", "Cafe\u{301} 🎬.txt"),
+            // two names of one file: the typed one, else the one that differs only in case
+            ("one.bin", "one.bin"),
+            ("two.bin", "two.bin"),
+            ("TWO.BIN", "two.bin"),
+        ];
+        if cfg!(unix) {
+            // a link is its own entry, never the name of its target
+            cases.push(("Link.txt", "Link.txt"));
+            cases.push(("LINK.TXT", "Link.txt"));
+        }
+        let mut folded = 0;
+        for (typed, listed) in cases {
+            let path = dir.join(typed);
+            if std::fs::metadata(&path).is_err() {
+                // this file system keeps the spellings apart: the typed name does not exist
+                assert_ne!(typed, listed);
+                assert_eq!(
+                    location_of(&path).unwrap_err().code,
+                    FsErrorCode::NotFound,
+                    "{typed}"
+                );
+                continue;
+            }
+            folded += usize::from(typed != listed);
+            let loc = location_of(&path).unwrap();
+            assert_eq!(loc.dir, dir.to_string_lossy(), "{typed}");
+            assert_eq!(
+                loc.select.as_deref(),
+                Some(dir.join(listed).to_string_lossy().as_ref()),
+                "{typed}"
+            );
+        }
+        eprintln!("spellings folded by this file system: {folded}");
+        // a folder stays what was typed (the listing takes its path from there)
+        std::fs::create_dir(dir.join("Sub")).unwrap();
+        let sub = location_of(&dir.join("Sub")).unwrap();
+        assert_eq!(
+            (sub.dir, sub.select),
+            (dir.join("Sub").to_string_lossy().into_owned(), None)
+        );
     }
 
     /// Review 016 #7: a folder inside an archive is never a resolved location (target).

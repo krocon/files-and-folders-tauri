@@ -56,6 +56,14 @@ zwei Zeilen über die volle Breite.
 - **Freie Fläche = Pfad eingeben** (053): Klick links neben/zwischen die Segmente öffnet das Pfadfeld (alles markiert,
   Ende sichtbar; Tastatur: „Go to path…“ `Mod+L`). Beim Überfahren dezent eine Feld-Andeutung mit Stift, Tooltip mit
   vollem Pfad und Kürzel. Nur im Ordner-Kopf, nicht in Ergebnis-Köpfen.
+- **Enter im Pfadfeld** (079): Ordnerpfad → hinwechseln. **Dateipfad** → in den Ordner wechseln, Cursor auf die
+  Datei, Fokus in die Liste, dann die Datei öffnen wie per Doppelklick ohne Taste (Doppelklick-Regel → Ansicht →
+  Standard-App; ein Archiv wird betreten). **Shift+Enter** oder ein Pfad mit `/` am Ende: nur hinspringen. Fehler
+  (Tippfehler, Datei inzwischen weg) stehen im Feld, das Feld bleibt offen, nichts startet. Platzhalter und Tooltip
+  des Feldes nennen beide Tasten. Serverpfade und Pfade in ein Archiv werden nicht geöffnet. Nichts öffnet, wenn
+  der Nutzer inzwischen woanders ist (Esc, Fokus aus dem Feld, andere Seite aktiv, ein Dialog offen), wenn ein
+  MCP-Client gerade die Ansicht geändert hat (mit Meldung) oder wenn das Feld unverändert
+  abgeschickt wird. Die Schreibweise darf abweichen (`README.TXT` für `ReadMe.txt`, wo das Dateisystem das zulässt).
 - **Feste Höhe** (049): `--panel-header-height` (eine Zeile `--panel-header-line` = 1,25rem + Polsterung). Pfadfeld,
   Fehlerhinweis und alle Kopf-Varianten (Suche, Flach, Dubletten, Belegung, Archiv/Server) passen in diese Zeile –
   Tab-Leiste und Liste bewegen sich nie; beide Seiten sind immer gleich hoch.

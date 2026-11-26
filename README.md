@@ -62,6 +62,10 @@ Each side has a clickable path, favourites, a status line and as many tabs as yo
 or onto the other side, swap the panels, or make the target show the same folder as the source. Tabs, cursor,
 marks, sort order and column widths survive a restart; every tab even remembers its last 50 folders.
 
+Click into the path (or press `Ctrl+L` / `⌘L`) and type or paste where you want to go. A folder is shown; the full
+path of a **file** takes the tab to its folder, puts the cursor on the file and opens it exactly like a double click
+would – including your double-click actions. `Shift+Enter` only goes there and opens nothing.
+
 `Tab` switch side · `Ctrl+T` / `Ctrl+W` new / close tab · `Ctrl+U` swap panels · `Ctrl+Alt+O` target = source ·
 macOS: `Tab` · `⌘⌥T` / `⌘⌥W` · `⌘U` · `⌘⌥O`
 

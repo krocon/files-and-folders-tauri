@@ -54,12 +54,12 @@
   Menü-Icons `MenuItem.icon`, Pfadleiste, Actions-Menü-Wording/Ellipse `OPENS_DIALOG`, Hauptmenü „Commands“/
   „Configuration“, Dialog-Tasten, Löschdialog-Zähler, Token `--color-dialog-danger-text`, „Open folder in new tab“ in
   Ergebnis-Tabs) und Prompt 072 (Doppelklick-Aktionen: Muster → Kommando, `file-actions.json`) und Prompt 073 (Doppelklick mit gehaltenen Tasten: `modifiers`, Hook `doubleClick(entry, modifiers)` → `'rule'|'handled'|'open'`, Markierung zurück bei Treffer) und Prompt 074 (Bilder-Übersicht: Fenstermodus über beiden Panels, GuiExpert Cover-Grid wie Comic Commander, Schema `fnfthumb`, `image_overview/`, `images/raw.rs`, `Mod+Shift+I`) und Prompt 075 (Nach Updates suchen: feste GitHub-URL in `update_check.rs`, `reqwest` mit eigener rustls-Konfiguration, `update-check.json`, `general.checkForUpdates` Default aus, Aktion `CHECK_FOR_UPDATES`) und Prompt 076 (Dialog-Kürzel dauerhaft als Tastenkappe an jedem Knopf, `data-no-dialog-key`, Rolle `hint:`; Option `view.dialogKeys` = unterstrichener Buchstabe mit Alt, `mnemonic.ts`) und die Farbschemata 062–068 (One Dark, True Dark/Black/Light, Matrix, Solarized Light, Mystico C64,
-  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) und Prompt 071 (MCP-Schnittstelle: Brücke `--mcp` ↔ Unix-Socket nur für den Nutzer, Tools in drei Stufen – lesen, Ansicht steuern, vorschlagen –, Kopplung im Fenster, `mcp.enabled` Default aus, `docs/mcp.md`; offen: Windows-Transport, `propose_pack`/`propose_extract`/`propose_dedupe`) und Prompt 077 (Rückstände aufräumen: „Ordner aufräumen“ mit Urteil je Startordner `CleanScan.roots`, Profile, Größengrenzen, `clean::plan_tree` im Job, `core/folders/release-extras.ts`; externes Review offen) und Prompt 078 (URL-Download: „Von URLs laden…“ `Mod+Alt+U`, yt-dlp als Job `download` ohne Shell, `url_download/`, `url-download.json` mit Erlaubnisliste, Einstellungstyp `string` für `download.*Path`; Abnahme mit echtem yt-dlp und externes Review offen) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
+  Rainglow; `EXTRA_THEMES`, `scripts/rainglow-theme.mjs`, `docs/themes.md`) und Prompt 041 (Spalten wählen/anordnen: `view.columns` global, Breiten je Tab, `column-layout.ts`; neue Listing-Felder `createdMs`/`accessedMs`/`mode`/`winAttrs`; Ansicht je Tab `TabSession.view` = Voll/Kurz/Miniaturen über `file-grid/` = GuiExpert Cover-Grid vor der verdeckten Table, Miniaturen aus der Bilder-Übersicht `fnfthumb`; `OPEN_COLUMNS_DLG`, `VIEW_MODE_*`) und Prompt 071 (MCP-Schnittstelle: Brücke `--mcp` ↔ Unix-Socket nur für den Nutzer, Tools in drei Stufen – lesen, Ansicht steuern, vorschlagen –, Kopplung im Fenster, `mcp.enabled` Default aus, `docs/mcp.md`; offen: Windows-Transport, `propose_pack`/`propose_extract`/`propose_dedupe`) und Prompt 077 (Rückstände aufräumen: „Ordner aufräumen“ mit Urteil je Startordner `CleanScan.roots`, Profile, Größengrenzen, `clean::plan_tree` im Job, `core/folders/release-extras.ts`; externes Review offen) und Prompt 078 (URL-Download: „Von URLs laden…“ `Mod+Alt+U`, yt-dlp als Job `download` ohne Shell, `url_download/`, `url-download.json` mit Erlaubnisliste, Einstellungstyp `string` für `download.*Path`; Abnahme mit echtem yt-dlp und externes Review offen) und Prompt 079 (Dateipfad im Pfadfeld: Enter wechselt in den Ordner und öffnet die Datei wie ein Doppelklick ohne Taste, Shift+Enter springt nur hin; `EntryActivator`, `LoadOptions.fresh`/`onListed`; Klick-Durchlauf im echten Fenster offen) sind fertig, 022–031 und 042 mit externem Review. **023 (eingebauter Editor) ist verworfen.** Als Nächstes: die offenen Prompts
   (Reihenfolge `prompts/README.md` „Nächste Prompts“), vor allem aber die CI für macOS/Windows (`TODO.md` §3).
   Details: `docs/roadmap.md`, `prompts/README.md`.
 - **Vorlage/SOLL** ist die alte Version `files-and-folders-mr`, Quellcode lokal unter **`old_project/`** (gitignored;
   in Remote-Sitzungen per `device_bash` als `tar` ohne Bilder/Fonts holen). Nur lesen, Lizenz §8.
-- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–078 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
+- Weiterentwicklung über **Feature-Prompts** in `prompts/` (erledigte 001–079 ohne 023 samt Design-Dokumenten unter `prompts/done/`; Kürzel wie „029 E11“ im Code verweisen dorthin) (Index und Reihenfolge: `prompts/README.md`, gemeinsame
   Regeln: `prompts/000-arbeitsweise.md`). Fachliche Grundlage: `docs/legacy-analysis.md` (AngularJS/Node 2016),
   `docs/legacy-analysis-mr.md` (Angular 20/NestJS 2025, maßgeblich bei Abweichungen), **`docs/ui-layout.md`**
   (verbindlicher Fensteraufbau: zwei Seiten mit Header, Tabs, Liste, Statuszeile; Button-Leiste) und
@@ -215,7 +215,9 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/menu/             MenuApi (set_app_menu, subscribe_menu, close_main_window), DTOs des nativen Menüs
   app/features/menus/        menu-model.ts (rein: Menüleiste, Kontext-Menüs, nativer Spec), MenuService (Root:
                              Kontextmenü, nativ/HTML, Ereignis-Brücke), MenuBar (HTML, Win/Linux), Menü-Aktionen
-  app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge)
+  app/features/browser/      FileBrowserStore (Zustand je Panel), file-list/ (GuiExpert Table, Controller, Bridge),
+                             entry-activator.ts (Root: die eine Kette Doppelklick-Regel → Ansicht → Öffnen, 079;
+                             `decide` für die Liste, `activate` nur für Enter im Pfadfeld)
   app/features/browser/file-grid/, features/columns/  Spalten und Ansichten (041): `file-list/column-layout.ts` (rein:
                              Auswahl `view.columns`, Layout je Art des Tabs, Breiten, Datumsbreite messen), ColumnsStore
                              (Root: Dialog mit Live-Vorschau, Haken-Einträge `column:<property>` der Menüs), Dialog,
@@ -430,6 +432,13 @@ prompts/                     Feature-Prompts (s. o.)
   yt-dlp darf **keinen Helfer per bloßem Namen suchen**: immer `--ffmpeg-location` und `--no-js-runtimes`, `PATH` des
   Prozesses nur mit absoluten Ordnern (`jobs/download.rs::child_env`), unter Windows ein leerer Arbeitsordner +
   `--paths` (`DownloadEnv.neutral_cwd`). `download.*Path` wird nie importiert (`settings::LOCAL_ONLY_KEYS`).
+- **Ein Pfad öffnet nur nach Enter im Pfadfeld** (079): `EntryActivator.activate` hat genau einen Rufer
+  (`FilePanel.submitPath`, Spec prüft das am Quelltext). Navigieren – Verlauf, Favoriten, Restore, `GOTO_FILE`,
+  Palette, Drag & Drop, MCP `navigate` – öffnet nie eine Datei; es gibt keinen Command „Pfad öffnen“, `opener.rs`
+  bleibt der einzige Weg. Geöffnet wird nur ein Eintrag aus einem frisch von Rust gelesenen Listing
+  (`LoadOptions.fresh` + `onListed`), nie aus dem `ListingCache`, und nur solange der Nutzer noch dort ist (kein Esc,
+  Fokus nicht woanders, Seite aktiv, kein Dialog, keine MCP-Sperre). Den Namen der Datei, wie ihr Ordner ihn listet,
+  liefert Rust (`commands::listed_path`) – kein Case-Folding im Frontend.
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.

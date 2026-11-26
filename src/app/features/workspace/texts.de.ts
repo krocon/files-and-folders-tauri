@@ -74,10 +74,13 @@ export const TEXTS_DE: Translation<typeof TEXTS_EN> = {
   runProgramMessage: 'Diese Datei ist ein Programm. Nur ausführen, wenn Sie ihm vertrauen.',
   runProgramConfirm: 'Ausführen',
   pathInput: 'Gehe zu Pfad',
+  pathPlaceholder: 'Ordner oder Datei – eine Datei wird geöffnet (Umschalt+Enter: nur hinspringen)',
+  pathFieldHint:
+    'Enter: in den Ordner wechseln; ein Dateipfad öffnet die Datei zusätzlich wie ein Doppelklick.\nUmschalt+Enter: nur hinspringen, nichts wird geöffnet.\nEsc: abbrechen.',
   enterPathHint: (shortcut) =>
-    shortcut
+    (shortcut
       ? `Klicken, um einen Pfad einzugeben (${shortcut})`
-      : 'Klicken, um einen Pfad einzugeben',
+      : 'Klicken, um einen Pfad einzugeben') + ' – ein Dateipfad öffnet die Datei',
   folderMenu: 'Ordner: Home, Laufwerke, Tabs der anderen Seite, Favoriten, zuletzt',
   showHidden: 'Versteckte Dateien zeigen',
   filter: 'Filter',

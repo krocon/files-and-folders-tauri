@@ -58,6 +58,16 @@ export interface LoadOptions {
    * loading overlay – `refreshing` instead of `loading`.
    */
   readonly background?: boolean;
+  /**
+   * Never from the `ListingCache` (design 079 E6): the caller acts on an entry of the
+   * answer, so it waits for Rust instead of seeing a kept, unchecked listing first.
+   */
+  readonly fresh?: boolean;
+  /**
+   * Called once with the listing of exactly this request when it is shown – not for a
+   * request that was superseded or failed (design 079: open only what this answer lists).
+   */
+  readonly onListed?: (listing: DirectoryListing) => void;
 }
 
 /** A folder size calculation of this panel (a `dirSize` job of the engine). */
@@ -339,7 +349,7 @@ export class FileBrowserStore implements OnDestroy {
     const startedAt = Date.now();
     const background = options.background === true;
     // a slow folder seen before: at once from the cache, then checked (design 030 E2)
-    const hit = !background && path !== undefined ? this.cache.get(path) : null;
+    const hit = !background && !options.fresh && path !== undefined ? this.cache.get(path) : null;
     if (hit) {
       const leaving = this.searchKey() === null ? this.listing() : null;
       const leavingState = leaving ? this.captureFolderState() : null;
@@ -387,6 +397,7 @@ export class FileBrowserStore implements OnDestroy {
       const leaving = this.searchKey() === null ? this.listing() : null;
       const leavingState = leaving ? this.captureFolderState() : null;
       this.apply(listing, options, leaving, leavingState, startedAt);
+      options.onListed?.(listing);
     } catch (err) {
       if (seq !== this.requestSeq) {
         return;
