@@ -14,6 +14,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -1495,6 +1496,69 @@ fn calls_are_rate_limited() {
     sender.join().unwrap();
     assert!(limited > 0, "120 calls at once exceed the burst");
     assert!(limited < 120);
+}
+
+/// The transport of a client that stopped reading: a few bytes still go out, then the
+/// write fails (on the socket: after its write timeout).
+struct Stalled {
+    room: usize,
+    failed_writes: Arc<AtomicUsize>,
+}
+
+impl Write for Stalled {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if self.room == 0 {
+            self.failed_writes.fetch_add(1, Ordering::SeqCst);
+            return Err(std::io::ErrorKind::TimedOut.into());
+        }
+        let n = buf.len().min(self.room);
+        self.room -= n;
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+// An answer that could not be written may be half on the wire: whatever followed would
+// not be a message any more, and every further answer would wait for the timeout again.
+#[test]
+fn a_failed_write_closes_the_connection() {
+    let f = fx();
+    let closes = Arc::new(AtomicUsize::new(0));
+    let failed_writes = Arc::new(AtomicUsize::new(0));
+    let counted = closes.clone();
+    let conn = f
+        .hub
+        .connect(Box::new(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+        }))
+        .expect("a place for the connection");
+    let input = [
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": { "name": "c", "version": "1" } } }),
+        json!({ "jsonrpc": "2.0", "id": 2, "method": "ping" }),
+        json!({ "jsonrpc": "2.0", "id": 3, "method": "ping" }),
+    ]
+    .map(|v| format!("{v}\n"))
+    .concat();
+    let writer = Stalled {
+        room: 10,
+        failed_writes: failed_writes.clone(),
+    };
+    super::session::serve(
+        &f.hub,
+        conn.clone(),
+        std::io::Cursor::new(input.into_bytes()),
+        Box::new(writer),
+    );
+    // the transport was shut down – once – and nothing was written behind the half line
+    assert_eq!(closes.load(Ordering::SeqCst), 1);
+    assert_eq!(failed_writes.load(Ordering::SeqCst), 1);
+    assert!(conn.is_closed());
+    assert_eq!(f.hub.connection_count(), 0);
 }
 
 // ---- the bridge ----

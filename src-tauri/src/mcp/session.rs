@@ -8,7 +8,7 @@ use super::protocol::{self, Incoming};
 use super::{Call, Conn, McpError, McpHub, tools};
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Read, Write};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Reads one line of at most `max` bytes. `Ok(None)` = end of the stream; an
@@ -43,14 +43,40 @@ fn plain(name: &str) -> String {
         .collect()
 }
 
-type Out = Arc<Mutex<Box<dyn Write + Send>>>;
+/// Where the answers of one connection go.
+struct Output {
+    writer: Mutex<Box<dyn Write + Send>>,
+    /// A write failed: nothing is written any more.
+    broken: AtomicBool,
+    hub: Arc<McpHub>,
+    conn: Arc<Conn>,
+}
 
+type Out = Arc<Output>;
+
+/// Writes one message. A write that fails – the client is gone, or it did not read for
+/// the transport's write timeout – ends the connection: the line may be half on the
+/// wire, so whatever followed would not be a message any more, and every further
+/// answer would wait for the timeout again.
 fn send(out: &Out, line: &str) -> bool {
-    let mut w = out.lock().unwrap_or_else(|e| e.into_inner());
-    w.write_all(line.as_bytes())
-        .and_then(|_| w.write_all(b"\n"))
-        .and_then(|_| w.flush())
-        .is_ok()
+    {
+        let mut w = out.writer.lock().unwrap_or_else(|e| e.into_inner());
+        // checked under the lock: answers that waited behind the failed one see it
+        if out.broken.load(Ordering::SeqCst) {
+            return false;
+        }
+        let written = w
+            .write_all(line.as_bytes())
+            .and_then(|_| w.write_all(b"\n"))
+            .and_then(|_| w.flush());
+        if written.is_ok() {
+            return true;
+        }
+        out.broken.store(true, Ordering::SeqCst);
+    }
+    // shuts the transport down: the reader ends and cleans up
+    out.hub.disconnect(Some(out.conn.id));
+    false
 }
 
 fn run_call(hub: Arc<McpHub>, conn: Arc<Conn>, out: Out, id: Value, params: Value) {
@@ -119,7 +145,12 @@ pub fn serve<R: BufRead>(
     mut reader: R,
     writer: Box<dyn Write + Send>,
 ) {
-    let out: Out = Arc::new(Mutex::new(writer));
+    let out: Out = Arc::new(Output {
+        writer: Mutex::new(writer),
+        broken: AtomicBool::new(false),
+        hub: hub.clone(),
+        conn: conn.clone(),
+    });
     let mut initialized = false;
     loop {
         let line = match read_line(&mut reader, MAX_LINE_BYTES) {
