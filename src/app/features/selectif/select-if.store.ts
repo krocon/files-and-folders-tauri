@@ -191,8 +191,13 @@ export class SelectIfStore {
       return false;
     }
     const entries = panel.controller()?.displayedEntries() ?? panel.store.visibleEntries();
+    const removing = panel.store.removing();
     return entries.some(
-      (e) => e.name !== '..' && !e.path.startsWith('\0') && !panel.store.isUnmarkable(e.path),
+      (e) =>
+        e.name !== '..' &&
+        !e.path.startsWith('\0') &&
+        !panel.store.isUnmarkable(e.path) &&
+        !removing.has(e.path),
     );
   }
 
@@ -211,10 +216,13 @@ export class SelectIfStore {
       }
     }
     const entries = panel.controller()?.displayedEntries() ?? panel.store.visibleEntries();
+    // what a running job takes away (struck through in the list) counts as gone: it is
+    // neither marked nor the companion of another entry (Marc, 26.11.2026)
+    const removing = panel.store.removing();
     const unmarkablePaths = new Set<string>();
     let hasSubfolders = false;
     for (const e of entries) {
-      if (panel.store.isUnmarkable(e.path)) {
+      if (panel.store.isUnmarkable(e.path) || removing.has(e.path)) {
         unmarkablePaths.add(e.path);
       }
       if (!hasSubfolders && Boolean((e as Partial<SearchHit>).relDir)) {
@@ -222,9 +230,9 @@ export class SelectIfStore {
       }
     }
     const other = this.ws.panel(otherSide(side));
-    const otherEntries = other
-      ? (other.controller()?.displayedEntries() ?? other.store.visibleEntries())
-      : [];
+    const otherEntries = (
+      other ? (other.controller()?.displayedEntries() ?? other.store.visibleEntries()) : []
+    ).filter((e) => !removing.has(e.path));
     this.request.set({
       side,
       entries,
