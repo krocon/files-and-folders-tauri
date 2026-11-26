@@ -1461,14 +1461,26 @@ fn a_cancelled_call_gets_no_answer_and_frees_the_window() {
 fn calls_are_rate_limited() {
     let f = fx();
     let mut c = f.client("c");
-    let ids: Vec<u64> = (0..120)
-        .map(|_| {
-            c.start(
-                "tools/call",
-                json!({ "name": "get_workspace", "arguments": {} }),
-            )
-        })
-        .collect();
+    // A client reads while it writes. 120 answers do not fit a socket's buffer (8 KB on
+    // macOS): the app stops reading once it cannot write, the test could not send the
+    // rest, and after the write timeout an answer was gone (CI, macOS, 26.11.2026).
+    let ids: Vec<u64> = (c.next + 1..=c.next + 120).collect();
+    c.next += 120;
+    let mut writer = c.writer.try_clone().unwrap();
+    let sender = std::thread::spawn({
+        let ids = ids.clone();
+        move || {
+            for id in ids {
+                let call = json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "method": "tools/call",
+                    "params": { "name": "get_workspace", "arguments": {} },
+                });
+                writer.write_all(format!("{call}\n").as_bytes()).unwrap();
+            }
+        }
+    });
     let mut limited = 0;
     for id in ids {
         let r = c.answer(id);
@@ -1480,6 +1492,7 @@ fn calls_are_rate_limited() {
             limited += 1;
         }
     }
+    sender.join().unwrap();
     assert!(limited > 0, "120 calls at once exceed the burst");
     assert!(limited < 120);
 }
