@@ -131,7 +131,7 @@ export class UrlDownloadStore {
 
   /**
    * The MCP client whose folder (or marks) still stand on the chosen side (design 071,
-   * review 078 #4): a client can navigate the other panel – the default target – into a
+   * review 078 #4): a client can navigate a panel – also the default target – into a
    * folder of its choice. The dialog says so next to the target.
    */
   readonly targetChangedBy = computed<string | null>(() => {

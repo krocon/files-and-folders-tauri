@@ -209,10 +209,14 @@ export function targetChoices(
   });
 }
 
-/** The side chosen when the dialog opens: the other panel (like F5), else the active one. */
+/**
+ * The side chosen when the dialog opens: the active panel – a download has no source
+ * panel, it lands where the user is (Marc, 26.11.2026; before: the other one, like F5).
+ * Else the other one.
+ */
 export function defaultTarget(choices: readonly TargetChoice[]): Side | null {
   const free = choices.filter((c) => c.blocked === null);
-  return (free.find((c) => !c.active) ?? free[0])?.side ?? null;
+  return (free.find((c) => c.active) ?? free[0])?.side ?? null;
 }
 
 /** `/Users/…/Filme.nosync` – cut in the middle; the path stays opaque (never split). */

@@ -152,7 +152,7 @@ export class WorkspaceStore {
   readonly panels = signal<Panels>(EMPTY_PANELS);
   /** Messages for the user (session warnings, replaced folders, save errors). */
   readonly notices = signal<readonly string[]>([]);
-  // notices go by themselves after a minute (or are dismissed before)
+  // notices go by themselves after some seconds (or are dismissed before)
   private readonly expiring = expireNotices(this.notices);
   /** Asks a panel to focus its list (`seq` makes repeated requests distinct). */
   readonly focusRequest = signal<{ side: Side; seq: number } | null>(null);

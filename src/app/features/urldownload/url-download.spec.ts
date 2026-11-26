@@ -177,15 +177,15 @@ describe('download from URLs: pure logic (design 078)', () => {
     }
   });
 
-  it('offers left and right, the other side first, and blocks what is no local folder', () => {
+  it('offers left and right, the active side first, and blocks what is no local folder', () => {
     const both = targetChoices({ left: folder('/l', 'a'), right: folder('/r', 'b') }, 'left');
     expect(both).toEqual([
       { side: 'left', path: '/l', tabId: 'a', active: true, blocked: null },
       { side: 'right', path: '/r', tabId: 'b', active: false, blocked: null },
     ]);
-    expect(defaultTarget(both)).toBe('right');
+    expect(defaultTarget(both)).toBe('left');
     expect(defaultTarget(targetChoices({ left: folder('/l'), right: folder('/r') }, 'right'))).toBe(
-      'left',
+      'right',
     );
     const blocked = (view: Partial<SideView>) =>
       targetChoices({ left: folder('/l'), right: { ...folder('/r'), ...view } }, 'left');
@@ -196,8 +196,13 @@ describe('download from URLs: pure logic (design 078)', () => {
     });
     expect(blocked({ result: true, path: null })[1].blocked).toBe('result');
     expect(blocked({ path: null })[1].blocked).toBe('noFolder');
-    // the other side is blocked: the active one is chosen
     expect(defaultTarget(blocked({ archive: true }))).toBe('left');
+    // the active side is blocked: the other one is chosen
+    expect(
+      defaultTarget(
+        targetChoices({ left: folder('/l'), right: { ...folder('/r'), archive: true } }, 'right'),
+      ),
+    ).toBe('left');
     const none = targetChoices({ left: null, right: { ...folder('/r'), archive: true } }, 'left');
     expect(none.map((c) => c.blocked)).toEqual(['noFolder', 'archive']);
     expect(defaultTarget(none)).toBeNull();
@@ -302,7 +307,7 @@ describe('download from URLs: store and dialog (design 078)', () => {
     });
   }
 
-  it('opens with the other side as target and both folders to choose from', async () => {
+  it('opens with the active side as target and both folders to choose from', async () => {
     expect(ws.activeSide()).toBe('left');
     await open();
     expect(dialogs.open()).toBe('url-download');
@@ -310,21 +315,21 @@ describe('download from URLs: store and dialog (design 078)', () => {
       ['left', '/home/marc/Download.nosync', true, null],
       ['right', '/home/marc/Filme.nosync', false, null],
     ]);
-    expect(s.side()).toBe('right');
-    expect(s.target()?.path).toBe('/home/marc/Filme.nosync');
+    expect(s.side()).toBe('left');
+    expect(s.target()?.path).toBe('/home/marc/Download.nosync');
     expect(s.tools()?.ytDlp.state).toBe('ok');
     // nothing was read from the clipboard by opening
     expect(clip.reads).toBe(0);
     // overwrite is never preselected
     expect(s.form().overwrite).toBe(false);
-    s.setSide('left');
-    expect(s.target()?.path).toBe('/home/marc/Download.nosync');
+    s.setSide('right');
+    expect(s.target()?.path).toBe('/home/marc/Filme.nosync');
   });
 
   it('follows the panels while it is open: the path shown is the path used', async () => {
     await open();
     await type('https://a.example/1');
-    await right.load('/home/marc/Musik');
+    await left.load('/home/marc/Musik');
     expect(s.target()?.path).toBe('/home/marc/Musik');
     await s.run();
     expect(jobsApi.started[0].spec).toMatchObject({
@@ -340,9 +345,10 @@ describe('download from URLs: store and dialog (design 078)', () => {
       );
     await right.load('/home/x.zip/inner');
     expect(actions.state('OPEN_URL_DOWNLOAD_DLG')).toBe('ready');
+    ws.setActive('right');
     await open();
     expect(s.choices()[1].blocked).toBe('archive');
-    // the other (active) side is chosen instead
+    // the active side cannot take a download: the other one is chosen instead
     expect(s.side()).toBe('left');
     // a blocked side cannot be chosen
     s.setSide('right');
@@ -382,7 +388,7 @@ describe('download from URLs: store and dialog (design 078)', () => {
     expect(spec).toEqual({
       kind: 'download',
       urls: ['https://a.example/1', 'https://b.example/2'],
-      targetDir: '/home/marc/Filme.nosync',
+      targetDir: '/home/marc/Download.nosync',
       options: DEFAULT_DOWNLOAD_OPTIONS,
     });
     // the spec has typed options only – no program, no argument list
@@ -581,12 +587,12 @@ describe('download from URLs: store and dialog (design 078)', () => {
     expect(s.runError()).toContain('PowerShell');
   });
 
-  // review 078 #4: an MCP client can navigate the other side – which is the default target
+  // review 078 #4: an MCP client can navigate a side – also the one that is the default target
   it('says so when an MCP client chose the folder of the target', async () => {
     const guard = TestBed.inject(McpGuardService);
-    guard.changed('right', 'Evil client', null);
+    guard.changed('left', 'Evil client', null);
     await open();
-    expect(s.side()).toBe('right');
+    expect(s.side()).toBe('left');
     expect(s.targetChangedBy()).toBe('Evil client');
     const fixture = TestBed.createComponent(UrlDownloadDialog);
     await fixture.whenStable();
@@ -595,19 +601,19 @@ describe('download from URLs: store and dialog (design 078)', () => {
     expect(hint?.textContent).toContain('Evil client');
     expect(hint?.getAttribute('role')).toBe('alert');
     // the side the user is on is theirs
-    s.setSide('left');
+    s.setSide('right');
     expect(s.targetChangedBy()).toBeNull();
     await fixture.whenStable();
     expect(el.querySelector('.mcp-hint')).toBeNull();
     // the user touched the panel again: the folder is theirs
-    s.setSide('right');
-    guard.userTouched('right');
+    s.setSide('left');
+    guard.userTouched('left');
     expect(s.targetChangedBy()).toBeNull();
     // starting a download into it is a knowing confirmation
-    guard.changed('right', 'Evil client', null);
+    guard.changed('left', 'Evil client', null);
     await type('https://a.example/1');
     await s.run();
-    expect(guard.influence('right', new Set())).toBeNull();
+    expect(guard.influence('left', new Set())).toBeNull();
   });
 
   it('an own preset travels as its id; one that is gone blocks the start', async () => {
@@ -681,8 +687,8 @@ describe('download from URLs: store and dialog (design 078)', () => {
     const el: HTMLElement = fixture.nativeElement;
     const select = el.querySelector<HTMLSelectElement>('select.target');
     expect([...(select?.options ?? [])].map((o) => [o.textContent?.trim(), o.selected])).toEqual([
-      ['Left · /home/marc/Download.nosync (active panel)', false],
-      ['Right · /home/marc/Filme.nosync', true],
+      ['Left · /home/marc/Download.nosync (active panel)', true],
+      ['Right · /home/marc/Filme.nosync', false],
     ]);
     expect(el.querySelector('#fnf-dl-count')?.textContent?.trim()).toBe(
       '1 URL · 1 invalid (line 2: only http and https) · 1 repeated',
@@ -692,10 +698,10 @@ describe('download from URLs: store and dialog (design 078)', () => {
     expect(start?.disabled).toBe(true);
     // the select changes the target by keyboard (a native select)
     if (select) {
-      select.value = 'left';
+      select.value = 'right';
       select.dispatchEvent(new Event('change'));
     }
-    expect(s.side()).toBe('left');
+    expect(s.side()).toBe('right');
     // Enter in the textarea does not start; Mod+Enter does (when the input is valid)
     await type('https://a.example/1');
     await fixture.whenStable();
