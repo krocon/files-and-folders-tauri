@@ -96,6 +96,10 @@ Lange Tools laufen als normale Jobs (sichtbar unter „Tasks“). Ein Tool warte
 gezeigten Ordners), `quick_view` (Eintrag im Ordner der aktiven Seite), `show_results` (Ergebnis-Tab mit genau diesen
 Pfaden, ohne `side` auf der anderen Seite), `cancel_job` (nur Jobs dieser Verbindung).
 
+Navigieren öffnet nie eine Datei: `navigate` und `open_tab` nehmen nur Ordner (`not_a_directory` für einen
+Dateipfad, die Anfrage erreicht das Fenster nicht). Dass ein **getippter** Dateipfad im Pfadfeld die Datei öffnet
+(Design 079), hängt an der Enter-Taste des Nutzers in diesem Feld – „Öffnen“ wäre Stufe 3 und existiert nicht.
+
 Diese Tools ändern keine Datei – aber sie ändern, worauf deine nächste Taste wirkt. Deshalb:
 
 - MCP nimmt nie den Tastaturfokus (kein Seitenwechsel durch `show_results`/`open_tab`).
