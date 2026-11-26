@@ -166,6 +166,7 @@ Meldungen des Betriebssystems werden nicht durchgereicht (sie können Pfade nenn
 | Verbindungen | 4 |
 | Aufrufe je Verbindung | 4 gleichzeitig, 20 je Sekunde (Vorrat 40) |
 | laufende Jobs je Verbindung | 2 |
+| Antworten abholen | Ein Client muss lesen: Kann die App 10 s lang nichts schreiben, schließt sie die Verbindung |
 | Listen | Default 200, höchstens 2000 Einträge – `truncated` sagt, dass es mehr gibt |
 | Pfade je Aufruf | 100–2000 je nach Tool, ein Vorschlag höchstens 5000 Einträge |
 | `read_text` | Default 64 KiB, höchstens 256 KiB |
