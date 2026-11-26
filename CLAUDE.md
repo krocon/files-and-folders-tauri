@@ -436,7 +436,9 @@ prompts/                     Feature-Prompts (s. o.)
   (`FilePanel.submitPath`, Spec prüft das am Quelltext). Navigieren – Verlauf, Favoriten, Restore, `GOTO_FILE`,
   Palette, Drag & Drop, MCP `navigate` – öffnet nie eine Datei; es gibt keinen Command „Pfad öffnen“, `opener.rs`
   bleibt der einzige Weg. Geöffnet wird nur ein Eintrag aus einem frisch von Rust gelesenen Listing
-  (`LoadOptions.fresh` + `onListed`), nie aus dem `ListingCache`.
+  (`LoadOptions.fresh` + `onListed`), nie aus dem `ListingCache`, und nur solange der Nutzer noch dort ist (kein Esc,
+  Fokus nicht woanders, Seite aktiv, kein Dialog, keine MCP-Sperre). Den Namen der Datei, wie ihr Ordner ihn listet,
+  liefert Rust (`commands::listed_path`) – kein Case-Folding im Frontend.
 - **Plattformcode** hinter `cfg`-Funktionen bzw. einem Modul `platform/` mit gleicher Signatur je OS.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md` (Tabelle
   „Abhängigkeiten“). Keine UI-Frameworks (Material o. ä.); Styling mit CSS (natives Nesting) + Tokens – kein SCSS.
