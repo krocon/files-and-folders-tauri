@@ -949,7 +949,12 @@ export class OpsStore {
     }
   }
 
-  /** Unmarks the processed entries (not the failed ones) and reports errors. */
+  /**
+   * The job has the entries: their marks go at once (Marc, 26.11.2026 – before: when the
+   * job had finished, failed ones stayed marked), so the next selection never takes
+   * along what the queue already works on. Errors are reported when the job ends; the
+   * task list offers the retry. Disk usage keeps its basket until Rust dropped the rows.
+   */
   private afterJob(
     id: string,
     side: Side,
@@ -962,6 +967,11 @@ export class OpsStore {
       usageScan !== undefined
         ? usageKey(usageScan)
         : (this.ws.panel(side)?.store.searchKey() ?? null);
+    const usage = isUsageKey(searchKey);
+    const source = this.ws.panel(side)?.store;
+    if (!usage && source?.locationKey() === folder) {
+      source.setMarked(paths, false);
+    }
     void this.jobs.whenFinished(id).then((job: JobInfo) => {
       const store = this.ws.panel(side)?.store;
       const ran = job.state === 'done' || job.state === 'doneWithErrors';
@@ -969,7 +979,7 @@ export class OpsStore {
       const done = paths.filter((p) => !failed.has(p));
       // deleted or moved away from a result tab: they leave the result (design 009 E4) – only
       // if every entry went (errors/skips may concern entries inside a source folder)
-      if (isUsageKey(searchKey)) {
+      if (usage) {
         // disk usage (design 033 E3): Rust drops what is really gone and corrects the sums
         if (removes && job.state !== 'failed') {
           void this.usage.afterRemoval(scanIdOf(searchKey), done);
@@ -982,7 +992,7 @@ export class OpsStore {
       ) {
         this.search.removePaths(searchKey, done);
       }
-      if (ran && store?.locationKey() === folder) {
+      if (usage && ran && store?.locationKey() === folder) {
         store.setMarked(done, false);
       }
       if (ran) {

@@ -9,6 +9,7 @@ import windowsKeymap from '../../core/actions/keymaps/windows.json';
 import { DirEntry, EntryKind } from '../../core/fs/fs.models';
 import { FsApi } from '../../core/fs/fs-api';
 import { JobsApi } from '../../core/jobs/jobs-api';
+import { JobsStore } from '../../core/jobs/jobs.store';
 import { SessionApi } from '../../core/session/session-api';
 import { SettingsApi } from '../../core/settings/settings-api';
 import { SettingsStore } from '../../core/settings/settings.store';
@@ -187,6 +188,31 @@ describe('SelectIfStore, actions and SelectIfDialog (design 046)', () => {
     freshStore.open();
     expect(freshStore.rule().targetMatcher).toEqual({ kind: 'category', category: 'images' });
     expect(freshStore.previewRows().map((r) => r.name)).toEqual(['mainboard_1.webp']);
+  });
+
+  it('leaves out what a running job takes away – neither marked nor a companion', async () => {
+    const jobs = TestBed.inject(JobsStore);
+    await jobs.init();
+    await left.load(DL);
+    // the movie is on its way out (struck through in the list), its cover is not
+    await jobs.start({
+      kind: 'move',
+      sources: [`${DL}/Coup (2019).mkv`],
+      targetDir: '/backup',
+      background: false,
+      options: { conflictDefault: 'ask', renameTo: null },
+    });
+    expect(left.removingOf(`${DL}/Coup (2019).mkv`)).toBeDefined();
+    store.open();
+    const ev = store.evaluation();
+    // 8 movies + 8 covers: the cover of the leaving movie has no movie any more
+    expect(ev.rulePrimaryPaths.size).toBe(8);
+    expect(ev.nextMarkedPaths.size).toBe(16);
+    expect(ev.nextMarkedPaths.has(`${DL}/Coup (2019).mkv`)).toBe(false);
+    expect(ev.nextMarkedPaths.has(`${DL}/Coup (2019).jpg`)).toBe(false);
+    expect(store.apply()).toBe(true);
+    expect(left.marked().size).toBe(16);
+    expect(left.marked().has(`${DL}/Coup (2019).mkv`)).toBe(false);
   });
 
   it('supports add, remove and intersect combine modes on existing marks', async () => {

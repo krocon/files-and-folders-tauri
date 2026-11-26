@@ -36,7 +36,8 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   Cover, verwaiste Bilder ohne Film, RAW-Fotos ohne JPEG, Einträge ohne Entsprechung im anderen Panel oder nach Größe,
   Alter/Datum und Namensmuster (1–8 Bedingungen mit UND/ODER, Ersetzen/Hinzufügen/Entfernen/Einschränken, Live-Vorschau,
   7 Schnellvorlagen und eigene speicherbare Vorlagen in `settings.json`). Funktioniert in lokalen Ordnern, Archiven,
-  auf Servern, in der Flachen Ansicht (pro Unterordner) und in Ergebnis-Tabs.
+  auf Servern, in der Flachen Ansicht (pro Unterordner) und in Ergebnis-Tabs. Was ein laufender Job gerade entfernt
+  (durchgestrichen), gilt als weg: Es wird weder markiert noch zählt es als Gegenstück.
 - Ohne gespeicherte Sitzung: beide Seiten im Home-Ordner des aktuellen Benutzers.
 - **Navigation** (Prompt 003): „..“-Zeile, Zurück/Vor je Tab (auch Maustasten 4/5) mit Cursor und Scrollposition,
   Cursor und Markierung je Ordner gemerkt, Menü ▾ mit Home, Favoriten und zuletzt besuchten Ordnern (`Alt+F1`/`Alt+F2`),
@@ -161,6 +162,9 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   durchgestrichen, kursiv, gedämpft und schraffiert; in der Spalte _Größe_ dreht ein kleiner Kreisel mit dem
   Fortschritt des Jobs (`…` solange er plant bzw. beim Papierkorb für einen einzelnen Eintrag). Im Diagramm der
   Speicherbelegung pulsieren die betroffenen Segmente samt Inhalt, im Sammelkorb sind sie durchgestrichen.
+- **Markierung nach dem Start**: Sobald Kopieren, Verschieben oder Löschen als Job gestartet ist, sind die Einträge
+  nicht mehr markiert – die nächste Auswahl nimmt nichts mit, woran die Warteschlange schon arbeitet. Fehlgeschlagene
+  Einträge werden gemeldet und lassen sich in der Task-Liste wiederholen; neu markiert werden sie nicht.
 - Fehler einzelner Dateien werden gesammelt und in der Task-Liste gelistet; Beenden mit laufenden Jobs fragt nach.
 - Meldungen unten rechts verschwinden nach einigen Sekunden von selbst – 6 bis 20, je nach Länge des Textes (oder
   vorher mit _Dismiss_).

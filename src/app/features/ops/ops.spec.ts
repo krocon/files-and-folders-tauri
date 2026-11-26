@@ -117,7 +117,7 @@ describe('file operations (design 006)', () => {
     expect(actions.state('OPEN_RENAME_DLG')).toBe('disabled');
   });
 
-  it('F5: marked entries to the other panel, then unmarked', async () => {
+  it('F5: marked entries to the other panel – unmarked as soon as the job has them', async () => {
     left.setMarked(['/src/Ordner', '/src/a.txt'], true);
     await actions.run('OPEN_COPY_DLG');
     expect(dialogs.open()).toBe('copy-move');
@@ -135,9 +135,21 @@ describe('file operations (design 006)', () => {
       background: false,
       options: { conflictDefault: 'skip', renameTo: null },
     });
+    // the queue works on them: the marks are gone before the job ends (Marc, 26.11.2026)
+    expect(left.marked().size).toBe(0);
+    // what the user marks meanwhile is theirs – the end of the job does not touch it
+    left.setMarked(['/src/a.txt', '/src/b.txt'], true);
     finish(0);
     await flush();
-    expect(left.marked().size).toBe(0);
+    expect([...left.marked()]).toEqual(['/src/a.txt', '/src/b.txt']);
+  });
+
+  it('a job that could not be started leaves the marks', async () => {
+    left.setMarked(['/src/a.txt'], true);
+    await actions.run('OPEN_MOVE_DLG');
+    jobsApi.refuse = { code: 'io', message: 'no', path: null };
+    expect(await ops.runCopyMove(ops.copyMove()!, INPUT)).not.toBeNull();
+    expect([...left.marked()]).toEqual(['/src/a.txt']);
   });
 
   it('the target is the folder of the selected tab on the other side (helper ws.targetDir)', async () => {
@@ -336,11 +348,12 @@ describe('file operations (design 006)', () => {
     expect(dialogs.open()).toBe('delete');
   });
 
-  it('Shift+F8: permanent; failed entries stay marked and are reported', async () => {
+  it('Shift+F8: permanent; the marks go with the start, failed entries are reported', async () => {
     left.setMarked(['/src/a.txt', '/src/b.txt'], true);
     await actions.run('DELETE_PERMANENT');
     expect(ops.del()!.mode).toBe('permanent');
     await ops.runDelete(ops.del()!, false);
+    expect(left.marked().size).toBe(0);
     finish(0, 'doneWithErrors', {
       itemsFailed: 1,
       errors: [
@@ -348,7 +361,8 @@ describe('file operations (design 006)', () => {
       ],
     });
     await flush();
-    expect([...left.marked()]).toEqual(['/src/b.txt']);
+    // not marked again behind the user's back: the task list has the retry (design 048)
+    expect(left.marked().size).toBe(0);
     expect(jobs.messages().at(-1)).toContain('1 error');
   });
 
