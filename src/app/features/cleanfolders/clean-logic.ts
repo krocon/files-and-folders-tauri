@@ -263,6 +263,8 @@ export interface RootRow {
   readonly removes: string;
   readonly keeps: string;
   readonly selectable: boolean;
+  /** The folder goes as a whole (the verdict itself; `verdict` is its text). */
+  readonly residue: boolean;
 }
 
 export function rootRows(
@@ -280,6 +282,7 @@ export function rootRows(
       removes: removesText(r),
       keeps: keepsText(r, o),
       selectable: can,
+      residue: r.verdict === 'residue',
     };
   });
 }
@@ -287,6 +290,14 @@ export function rootRows(
 /** Muted rows: nothing to select. */
 export function rootRowClass(row: RootRow): string | null {
   return row.selectable ? null : 'fnf-mr-unchanged';
+}
+
+/**
+ * The word "leftover" is red (table theme `fnf-cl-residue`): the folder goes as a whole.
+ * Colour only as a hint – the text says it; "partly" and "stays" are plain.
+ */
+export function rootCellClass(row: RootRow, column: string): string | null {
+  return row.residue && column === 'verdict' ? 'fnf-cl-residue' : null;
 }
 
 function reasonText(reason: KeepReason, o: CleanOptions): string {

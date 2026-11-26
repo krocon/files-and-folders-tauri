@@ -15,6 +15,7 @@ import {
   detailRowClass,
   loosened,
   MAX_LIMIT_MB,
+  rootCellClass,
   rootRowClass,
 } from './clean-logic';
 import { CL_TEXTS } from './clean-texts';
@@ -201,6 +202,7 @@ const PAGE = 10;
               [columns]="columns"
               [rows]="cl.rows()"
               [rowClass]="rootClass"
+              [cellClass]="rootCellClass"
               [activeIndex]="cl.active()"
               [labelledBy]="labelId"
               (rowClick)="onRowClick($event)"
@@ -369,6 +371,7 @@ export class CleanFoldersDialog {
   protected readonly detailsId = DETAILS_ID;
   protected readonly helpId = HELP_ID;
   protected readonly rootClass = rootRowClass;
+  protected readonly rootCellClass = rootCellClass;
   protected readonly detailClass = detailRowClass;
   protected readonly junkNames = DEFAULT_JUNK.join('; ');
   protected readonly extraNames = [...DEFAULT_JUNK, ...RELEASE_EXTRAS].join('; ');

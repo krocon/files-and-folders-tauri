@@ -35,12 +35,15 @@ export interface GridColumn {
 
 /** Row class per row (e.g. `fnf-mr-error`, `fnf-mr-unchanged` from the table theme). */
 export type RowClassFn<T> = (row: T) => string | null;
+/** Class of one cell: the row and the `property` of its column. */
+export type CellClassFn<T> = (row: T, column: string) => string | null;
 
 class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
   constructor(
     columnDefs: ColumnDefIf[],
     private readonly rowClass: () => RowClassFn<T> | null,
     private readonly activeIndex: () => number,
+    private readonly cellClass: () => CellClassFn<T> | null = () => null,
   ) {
     super('body', [], columnDefs, ROW_HEIGHT);
   }
@@ -54,6 +57,11 @@ class GridBodyModel<T> extends AreaModelObjectArrayWithColumndefs<T> {
     const extra = this.rowClass()?.(row);
     if (extra) {
       classes.push(extra);
+    }
+    const property = this.columnDefs[columnIndex]?.property;
+    const cell = property === undefined ? null : this.cellClass()?.(row, String(property));
+    if (cell) {
+      classes.push(cell);
     }
     if (rowIndex === this.activeIndex()) {
       classes.push('fnf-grid-active');
@@ -108,6 +116,8 @@ export class PreviewGrid<T extends object> implements OnInit {
   readonly columns = input.required<readonly GridColumn[]>();
   readonly rows = input.required<readonly T[]>();
   readonly rowClass = input<RowClassFn<T> | null>(null);
+  /** Class of single cells (e.g. one coloured word), in addition to the row class. */
+  readonly cellClass = input<CellClassFn<T> | null>(null);
   /** Id of the element that labels the grid. */
   readonly labelledBy = input<string | null>(null);
   /** Highlighted row (a list driven from an input field, design 009 folder finder); -1 = none. */
@@ -191,6 +201,7 @@ export class PreviewGrid<T extends object> implements OnInit {
       columnDefs,
       () => this.rowClass(),
       () => this.activeIndex(),
+      () => this.cellClass(),
     );
     this.model = TableFactory.createTableModel({
       bodyAreaModel: body,

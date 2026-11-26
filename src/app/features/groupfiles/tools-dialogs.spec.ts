@@ -28,6 +28,7 @@ class StubGrid {
   readonly rows = input.required<readonly unknown[]>();
   readonly columns = input<unknown>();
   readonly rowClass = input<unknown>();
+  readonly cellClass = input<unknown>();
   readonly labelledBy = input<string | null>(null);
   readonly activeIndex = input<number>(-1);
 }

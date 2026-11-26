@@ -250,6 +250,13 @@
   color: var(--color-muted);
 }
 
+/* clean folders (design 077 §10): the verdict "leftover" – the folder goes as a whole. The
+   token has its contrast pair against the list background; in the active row the cursor's
+   own text colour stays (red on the cursor colour is not readable in every scheme). */
+.ge-table .fnf-cl-residue:not(.fnf-grid-active) {
+  color: var(--color-error-text);
+}
+
 .ge-table .fnf-mr-new {
   font-weight: 600;
 }

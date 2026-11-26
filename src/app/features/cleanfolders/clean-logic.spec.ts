@@ -17,6 +17,7 @@ import {
   loosened,
   removesText,
   restoreCleanForm,
+  rootCellClass,
   rootRows,
   selection,
   sums,
@@ -293,6 +294,26 @@ describe('clean folders: pure helpers (design 077)', () => {
     ];
     for (const [name, args, want] of cases) {
       expect(cleanInput(...args), name).toEqual(want);
+    }
+  });
+
+  it('only the verdict "leftover" is red – its word stays, other verdicts and cells are plain', () => {
+    const scan = cleanScan([
+      { path: '/f/A', over: { verdict: 'residue' }, items: [{ path: '/f/A', kind: 'dir' }] },
+      { path: '/f/B', over: { keepFiles: 1 }, items: [{ path: '/f/B/leer', kind: 'dir' }] },
+      { path: '/f/C', over: { keepFiles: 1 } },
+    ]);
+    const rows = rootRows(scan, selection(scan, new Set()), RELEASE);
+    expect(rows.map((r) => [r.verdict, rootCellClass(r, 'verdict')])).toEqual([
+      ['leftover', 'fnf-cl-residue'],
+      ['partly', null],
+      ['stays', null],
+    ]);
+    // a deselected leftover is still one
+    const none = rootRows(scan, selection(scan, new Set(['/f/A'])), RELEASE);
+    expect(rootCellClass(none[0], 'verdict')).toBe('fnf-cl-residue');
+    for (const column of ['check', 'name', 'removes', 'keeps']) {
+      expect(rootCellClass(rows[0], column), column).toBeNull();
     }
   });
 

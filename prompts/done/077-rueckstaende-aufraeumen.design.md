@@ -345,5 +345,6 @@ stehen) – sichtbar im vorbelegten Dialog, Papierkorb als Default.
 `clean_never_takes_subtitles_alone_or_next_to_content`; Frontend `clean-logic.spec.ts` (Optionen je Profil, Liste).
 **Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im Fenster (wie §6); der echte Ordner wurde nicht angefasst.
 
-**Außerdem:** Das Urteil „Rückstand“ steht in der Ordnerliste rot (`--color-danger`, Zellklasse `fnf-cl-residue`);
-der Text bleibt, „teilweise“ und „bleibt“ sind unverändert.
+**Außerdem:** Das Urteil „Rückstand“ steht in der Ordnerliste rot (vorhandenes Token `--color-error-text`, das sein
+Kontrastpaar gegen den Listenhintergrund hat; Zellklasse `fnf-cl-residue` über `PreviewGrid.cellClass`). Der Text
+bleibt, „teilweise“ und „bleibt“ sind unverändert; in der aktiven Zeile gilt die Textfarbe des Cursors.
