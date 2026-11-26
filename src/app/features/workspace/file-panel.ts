@@ -34,6 +34,8 @@ import { JobsStore } from '../../core/jobs/jobs.store';
 import { WatchService } from '../../core/watch/watch.service';
 import { WatchEvent } from '../../core/watch/watch.models';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
+import { EntryActivator } from '../browser/entry-activator';
+import { endsWithSeparator } from './path-input-logic';
 import { Side, ViewMode } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
 import { FileBrowserStore } from '../browser/file-browser.store';
@@ -290,6 +292,7 @@ export class FilePanel implements OnInit {
   });
   private readonly injector = inject(Injector);
   private readonly fsApi = inject(FsApi);
+  private readonly activator = inject(EntryActivator);
   private readonly confirm = inject(ConfirmService);
   private readonly jobs = inject(JobsStore);
   private readonly watch = inject(WatchService);
@@ -623,8 +626,21 @@ export class FilePanel implements OnInit {
     this.pathError.set(null);
   }
 
-  protected async submitPath(evt: Event, value: string): Promise<void> {
+  /** Counts the inputs of the path field: only the latest one may act (design 079). */
+  private pathSubmitSeq = 0;
+
+  /**
+   * Enter in the path field (also "Go to path…"). A folder is shown; a file path shows its
+   * folder with the cursor on the file and then opens the file like a double click with no
+   * key held (design 079) – unless `jumpOnly` (Shift+Enter) or the input ends with a
+   * separator. This is the only way a typed path opens anything.
+   */
+  protected async submitPath(evt: Event, value: string, jumpOnly = false): Promise<void> {
     evt.preventDefault();
+    const submit = ++this.pathSubmitSeq;
+    const tabId = this.tab().id;
+    // another tab became active or a newer input is on its way: this one does nothing more
+    const stale = () => submit !== this.pathSubmitSeq || this.tab().id !== tabId;
     // a server address opens the connection dialog with it (design 034 E8)
     if (isServerUrl(value)) {
       this.editingPath.set(false);
@@ -632,6 +648,7 @@ export class FilePanel implements OnInit {
       void this.remote.openUrl(value.trim());
       return;
     }
+    // a server path is only navigated: opening a file there would be a transfer (079 E2)
     if (isRemotePath(value.trim())) {
       await this.store.load(value.trim());
       this.editingPath.set(false);
@@ -640,17 +657,49 @@ export class FilePanel implements OnInit {
     }
     try {
       const loc = await this.fsApi.resolveLocation(value);
-      await this.store.load(loc.dir, loc.select !== null ? { cursor: loc.select } : {});
+      if (stale()) {
+        return;
+      }
+      const select = loc.select;
+      const open = select !== null && !jumpOnly && !endsWithSeparator(value);
+      const answer: { listing: DirectoryListing | null } = { listing: null };
+      await this.store.load(loc.dir, {
+        ...(select !== null ? { cursor: select } : {}),
+        // opening waits for Rust: never from a kept, unchecked listing (079 E6)
+        ...(open
+          ? { fresh: true, onListed: (l: DirectoryListing) => void (answer.listing = l) }
+          : {}),
+      });
+      if (stale()) {
+        return;
+      }
       if (this.store.error()) {
         this.pathError.set(describeFsError(this.store.error()!));
         this.store.dismissError();
         return;
       }
+      // the entry of exactly this answer, hidden or filtered out or not (079 E3)
+      const listed = answer.listing;
+      const entry = listed?.entries.find((e) => e.path === select) ?? null;
+      if (listed !== null && entry === null) {
+        // gone between resolving and listing: nothing to open
+        this.pathError.set(describeFsError({ code: 'not_found', message: '', path: select }));
+        return;
+      }
       this.editingPath.set(false);
       this.pathError.set(null);
-      this.ws.requestFocus(this.side());
+      if (entry === null) {
+        this.ws.requestFocus(this.side());
+        return;
+      }
+      // focus first and directly: a later focus request would take it from the viewer
+      this.ws.setActive(this.side());
+      this.list()?.focus();
+      await this.activator.activate(entry, this.store);
     } catch (err) {
-      this.pathError.set(describeFsError(toFsError(err)));
+      if (!stale()) {
+        this.pathError.set(describeFsError(toFsError(err)));
+      }
     }
   }
 
@@ -672,6 +721,17 @@ export class FilePanel implements OnInit {
       evt.preventDefault();
       evt.stopPropagation();
       this.cancelPathEdit();
+    } else if (
+      evt.key === 'Enter' &&
+      evt.shiftKey &&
+      !evt.altKey &&
+      !evt.ctrlKey &&
+      !evt.metaKey &&
+      !evt.isComposing
+    ) {
+      // Shift+Enter: only go there, a file is not opened (design 079 E5)
+      evt.stopPropagation();
+      void this.submitPath(evt, (evt.target as HTMLInputElement).value, true);
     }
   }
 

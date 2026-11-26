@@ -323,6 +323,8 @@
         spellcheck="false"
         [id]="pathId + '-input'"
         [attr.aria-label]="texts.pathInput"
+        [attr.placeholder]="texts.pathPlaceholder"
+        [attr.title]="texts.pathFieldHint"
         [attr.aria-invalid]="pathError() ? 'true' : null"
         [attr.aria-describedby]="pathError() ? pathId + '-error' : null"
         [value]="store.path() ?? ''"
