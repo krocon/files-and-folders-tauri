@@ -232,6 +232,8 @@ mod tests {
         assert_eq!(conf["identifier"], APP_ID);
     }
 
+    // the socket is a Unix socket (no Windows transport yet) and these paths are Unix paths
+    #[cfg(unix)]
     #[test]
     fn the_data_folder_follows_the_platform() {
         let home = Path::new("/Users/u");
@@ -260,6 +262,8 @@ mod tests {
         assert!(data_dir_from(None, None, true).is_none());
     }
 
+    // the socket is a Unix socket (no Windows transport yet) and these paths are Unix paths
+    #[cfg(unix)]
     #[test]
     fn a_socket_path_must_fit() {
         assert!(checked(PathBuf::from("relative.sock")).is_err());
