@@ -94,7 +94,7 @@ Ordnername macht weiter nichts zu echtem Beiwerk.)*
 ### E5 – Eingabe ✅ (F8 als Maßstab)
 Markierung vorhanden → die markierten **echten Ordner** (Links nicht; markierte Dateien werden gezählt und als
 Hinweis genannt). Keine Markierung → der Ordner unter dem Cursor (echter Ordner, nicht `..`). Sonst (Cursor auf
-Datei/`..`, oder nur Dateien markiert) → der Panel-Ordner. Markierte/Cursor-Ordner dürfen als Ganzes gehen
+Datei/`..`, oder nur Dateien markiert) → der Panel-Ordner *(seit 26.11.2026: seine Unterordner einzeln, s. §12)*. Markierte/Cursor-Ordner dürfen als Ganzes gehen
 (`includeRoots = true`); der **Panel-Ordner selbst nie** (`includeRoots = false`) – man sägt nicht den Ast ab, auf
 dem das Panel sitzt. Die frühere Checkbox „Auch der Startordner selbst“ entfällt (alte gemerkte Werte werden
 ignoriert).
@@ -390,8 +390,44 @@ Ordner mit seinen Größen), `pictures_are_companions_only_in_their_two_places`,
 Werbeordner) bleiben. `Die Simpsons Special … (2024)` (nur eine `.nfo`) ist ebenfalls „Rückstand“ – wie schon vorher.
 **Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im Fenster.
 
-**Offen (Marcs Entscheidung):** Ohne Markierung und mit dem Cursor auf `..`/einer Datei ist der Panel-Ordner selbst
-der Startordner (E5) – er geht nie, und ein Ordner, der bleibt, wird nicht ausgeweidet (E3). Im Profil
-„Release-Reste“ findet der Dialog dann in `Filme.nosync` **nichts**, obwohl fünf Unterordner Rückstände sind; sie
-müssen markiert sein. Ob der Dialog in diesem Fall die Unterordner des Panel-Ordners einzeln beurteilen soll, ist
-nicht entschieden.
+**War offen, entschieden in §12:** ohne Markierung fand der Dialog im Panel-Ordner nichts.
+
+## 12. Dritter Nachtrag 26.11.2026 – ohne Markierung: die Unterordner einzeln (Branch `fix/aufraeumen-bilder`)
+
+**Anlass:** Ohne Markierung und mit dem Cursor auf `..`/einer Datei ist der Panel-Ordner der Startordner (E5). Er
+geht nie, und ein Ordner, der bleibt, wird nicht ausgeweidet (E3) – im Profil „Release-Reste“ fand der Dialog in
+`Filme.nosync` deshalb **nichts**, obwohl sechs Unterordner Rückstände sind. Marc: „Ja, einbauen“.
+
+**Regel (ändert E5):** Ist der Panel-Ordner selbst der Startordner, beurteilt Rust **jeden Ordner direkt darin als
+eigenen Startordner** – genau so, als wäre er markiert (er darf als Ganzes gehen, Begleiter gelten, eigene Zeile mit
+Urteil, abwählbar). Der Panel-Ordner selbst geht weiter nie, und seine eigenen Dateien werden nicht angesehen.
+Keine Startordner sind, was der Durchlauf auch sonst nie betritt: versteckte Ordner, Pakete (`.app` …), Links,
+fremde Dateisysteme, Namen, die kein Unicode sind. Gefahrenprüfung je Unterordner wie bei markierten (`/Users` →
+das Home ist nie Rückstand). Reihenfolge: nach Namen (Rust kennt die Sortierung des Panels nicht).
+
+**Rückfall auf das alte Verhalten** (der Ordner selbst wird durchsucht, eine Zeile):
+- der Ordner hat keinen solchen Unterordner (oder mehr als `MAX_ROOTS`, oder er ist nicht lesbar);
+- Profil „Eigene“ mit **„Dateien nach Muster löschen“**: das wirkt wie seit 008 auf den Ordner selbst und alles
+  darunter – sonst gingen Treffer direkt im Panel-Ordner verloren;
+- Profil „Eigene“ ohne „Leere Ordner löschen“.
+
+**Umsetzung:** `CleanOptions.child_roots` / `childRoots` (Default aus, fehlendes Feld = aus) – das Frontend setzt
+sie nur für den Panel-Ordner (`cleanInput` → `CleanInput.childRoots`, `cleanOptions(form, includeRoots, childRoots)`).
+Rust löst **selbst und frisch** auf (`clean::child_roots`; nicht das Listing des Panels, das aus dem Cache stammen
+kann und dessen Filter Rust nichts angehen) und meldet in `CleanScan.child_roots`, ob `roots` die Unterordner sind.
+Mit `child_roots` geht der gegebene Ordner nie, auch nicht mit `include_roots`. Der **Job bleibt unverändert**: er
+bekommt wie bisher die gewählten Wurzeln aus dem Scan – hier die Unterordner – und die Optionen so, wie sie für
+diese gelten (`rootOptions`: `includeRoots: true`, `childRoots: false`). Schickte das Fenster die Optionen des
+Scans unverändert, lehnt der Job jeden Startordner ab („The start folder itself is not deleted“) – der Fehler wäre
+harmlos. Der Titel nennt dann „n Ordner in <Ordner>“.
+
+**Tests (vorher rot):** Rust `clean.rs` › `child_roots_judge_every_subfolder_on_its_own` (gleich dem Ergebnis mit
+markierten Ordnern; nichts Verstecktes, kein Paket, kein Link, keine losen Dateien),
+`child_roots_without_a_subfolder_scan_the_folder_itself`, `child_roots_know_the_dangerous_folders`,
+`child_roots_are_optional_and_cancellable`; `jobs/tests_tools.rs` ›
+`clean_takes_the_leftovers_below_the_panel_folder` (auch: unveränderte Optionen → nichts geht); Frontend
+`clean-logic.spec.ts` › „nothing marked: the subfolders of the panel folder are judged one by one“, `tools.spec.ts`
+› „nothing marked: the subfolders are judged, and the job gets them as folders that may go“.
+**Geprüft am echten Ordner (nur lesend, Startordner = `Filme.nosync`):** elf Zeilen, sechs „Rückstand“ (die fünf
+genannten und `Die Simpsons Special …`), fünf „bleibt“. **Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im
+Fenster.

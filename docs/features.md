@@ -86,8 +86,8 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   je Datei, Hinweisen zu doppelten/fehlenden Folgen und mehreren Serien. Nach dem Verschieben öffnet sich auf Wunsch
   _Ordner aufräumen_ mit den Release-Ordnern, die nur noch Beiwerk enthalten (Papierkorb, mit Vorschau).
 - **Ordner aufräumen** (`Strg+Alt+R`, macOS `⌘⌥R`, Kontextmenü auf Ordnern und Markierung; 008, 077): nimmt die
-  markierten Ordner (sonst den Ordner unter dem Cursor, sonst den Ordner des Panels) und fällt **je Ordner ein
-  Urteil**: _Rückstand_ (nur leere Ordner und Beiwerk – geht als Ganzes, als **ein** Papierkorb-Eintrag),
+  markierten Ordner (sonst den Ordner unter dem Cursor, sonst **jeden Unterordner** des Panel-Ordners – der selbst
+  nie geht) und fällt **je Ordner ein Urteil**: _Rückstand_ (nur leere Ordner und Beiwerk – geht als Ganzes, als **ein** Papierkorb-Eintrag),
   _teilweise_ (hat Inhalt, darunter gehen wirklich leere Unterordner) oder _bleibt_ – mit Grund („3 Dateien · 1,8 GB
   (.cbr)“, „Sample größer als 300 MiB“). Profile: _Nur leere Ordner_ (Standard beim ersten Mal, plus `.DS_Store`,
   `Thumbs.db`, `desktop.ini`), _Release-Reste_ (zusätzlich `*.nfo`, `*.sfv`, `*.srr`, `*.md5`, `*-proof.jpg/jpeg/png`

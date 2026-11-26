@@ -101,6 +101,7 @@ describe('folder tool dialogs (design 008)', () => {
       folder: '/src',
       roots: ['/src'],
       includeRoots: false,
+      childRoots: false,
       ignored: 0,
     });
     const f = TestBed.createComponent(CleanFoldersDialog);
@@ -141,6 +142,7 @@ describe('folder tool dialogs (design 008)', () => {
       folder: '/filme',
       roots: ['/filme/Comics', '/filme/Rest'],
       includeRoots: true,
+      childRoots: false,
       ignored: 2,
     });
     folders.scan = cleanScan([
@@ -230,6 +232,7 @@ describe('folder tool dialogs (design 008)', () => {
       folder: '/src',
       roots: ['/src/a'],
       includeRoots: true,
+      childRoots: false,
       ignored: 0,
     });
     cl.form.set({ ...DEFAULT_CLEAN_FORM, profile: 'release' });
@@ -259,6 +262,7 @@ describe('folder tool dialogs (design 008)', () => {
       folder: '/src',
       roots: ['/src/a'],
       includeRoots: true,
+      childRoots: false,
       ignored: 0,
       changedBy: 'Claude Code',
     });

@@ -840,6 +840,57 @@ fn clean_takes_subtitles_with_a_release_leftover() {
     assert!(d.path().is_dir());
 }
 
+/// Third addendum 26.11.2026: nothing marked – the scan judges the subfolders of the
+/// panel's folder, and the job gets them as its start folders, as if they were marked.
+#[cfg(unix)]
+#[test]
+fn clean_takes_the_leftovers_below_the_panel_folder() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let dir = crate::clean::tests::filme(d.path());
+    let o = CleanOptions {
+        include_roots: false,
+        child_roots: true,
+        ..crate::clean::tests::release()
+    };
+    let scan = find_empty_dirs(std::slice::from_ref(&dir), &o).unwrap();
+    assert!(scan.child_roots);
+    let roots: Vec<PathBuf> = scan.roots.iter().map(|r| PathBuf::from(&r.path)).collect();
+    // the options as the scan had them name the panel's folder: the job refuses every
+    // start folder then – nothing goes by mistake
+    let info = h.finish(&h.clean(&roots, scan.items.clone(), o.clone()));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(dir.join("Tigerland (2000)").is_dir() && dir.join("leer").is_dir());
+    // as the dialog sends them: the subfolders are start folders that may go
+    let job = CleanOptions {
+        include_roots: true,
+        child_roots: false,
+        ..o
+    };
+    let info = h.finish(&h.clean(&roots, scan.items, job));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let mut left: Vec<String> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    left.sort();
+    assert_eq!(
+        left,
+        [
+            ".DS_Store",
+            ".versteckt",
+            "Film ä",
+            "Programm.app",
+            "link",
+            "lose.nfo",
+            "rename.sh"
+        ]
+    );
+    // the film's folder was not gutted
+    assert!(dir.join("Film ä/Sample/film-sample.mkv").is_file());
+    assert!(dir.join(".versteckt/leer").is_dir());
+}
+
 /// Second addendum 26.11.2026: the pictures of a release (in `Proof`, or named like
 /// their folder) go with the leftover, too.
 #[test]

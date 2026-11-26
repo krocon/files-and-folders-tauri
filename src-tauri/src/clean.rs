@@ -109,6 +109,14 @@ pub struct CleanOptions {
     /// and never larger than `junk_max_bytes`. Every other picture is content. Empty = off.
     #[serde(default)]
     pub companion_pictures: Vec<String>,
+    /// The start folders are only where to look (the panel's own folder, nothing
+    /// marked – third addendum 26.11.2026 of design 077): every folder directly inside
+    /// is judged as a start folder of its own and may go as a whole. The given folder
+    /// never goes, whatever `include_roots` says, and its own files are not looked at.
+    /// Hidden folders, packages, links and other file systems are no start folders.
+    /// A folder without such a subfolder is scanned itself, as without this option.
+    #[serde(default)]
+    pub child_roots: bool,
 }
 
 impl Default for CleanOptions {
@@ -124,6 +132,7 @@ impl Default for CleanOptions {
             junk_dirs_beside_content: false,
             companion_junk: Vec::new(),
             companion_pictures: Vec::new(),
+            child_roots: false,
         }
     }
 }
@@ -258,6 +267,9 @@ pub struct CleanScan {
     /// The scan was cancelled (a newer one started, the dialog closed).
     pub cancelled: bool,
     pub visited: u64,
+    /// `roots` are the subfolders of the given folders (`CleanOptions::child_roots`):
+    /// each may go as a whole – the job needs them as its start folders.
+    pub child_roots: bool,
 }
 
 /// What a file is for the cleaning.
@@ -1101,6 +1113,61 @@ pub fn scan(
     scan_limited(roots, options, home, cancel, MAX_VISITED)
 }
 
+/// The folders directly inside `dirs` that can be start folders of their own
+/// (`CleanOptions::child_roots`), by name: real folders on the file system of their
+/// parent – no links, nothing hidden, no packages, no name that is not Unicode; what
+/// the walk never enters is no start folder either. `None`: there is none (or more
+/// than [`MAX_ROOTS`], or a folder could not be read) – the given folders are scanned
+/// themselves then.
+fn child_roots(dirs: &[PathBuf], cancel: &AtomicBool) -> Result<Option<Vec<PathBuf>>, FsError> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    for dir in dirs {
+        let meta = fs::metadata(dir).map_err(|e| FsError::from_io(&e, dir))?;
+        if !meta.is_dir() {
+            return Err(FsError::new(
+                FsErrorCode::NotADirectory,
+                "The start folder is not a folder",
+                Some(dir),
+            ));
+        }
+        let dev = file_id(&meta).map(|f| f.0);
+        let Ok(rd) = fs::read_dir(dir) else {
+            return Ok(None); // the walk reports it
+        };
+        let mut found: Vec<(String, PathBuf)> = Vec::new();
+        for entry in rd {
+            if cancel.load(Ordering::Relaxed) {
+                return Ok(None); // the walk notes the cancel
+            }
+            let Ok(entry) = entry else {
+                continue;
+            };
+            if !entry.file_type().is_ok_and(|t| t.is_dir()) {
+                continue; // a link has its own type: never a folder here
+            }
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else {
+                continue;
+            };
+            let path = entry.path();
+            let Some(meta) = fs::symlink_metadata(&path).ok().filter(|m| m.is_dir()) else {
+                continue;
+            };
+            let same_fs = dev.is_none() || file_id(&meta).map(|f| f.0) == dev;
+            if !same_fs || crate::listing::is_hidden(name, &meta) || is_package(name) {
+                continue;
+            }
+            if out.len() + found.len() >= MAX_ROOTS {
+                return Ok(None);
+            }
+            found.push((name.to_lowercase(), path));
+        }
+        found.sort();
+        out.extend(found.into_iter().map(|f| f.1));
+    }
+    Ok((!out.is_empty()).then_some(out))
+}
+
 fn scan_limited(
     roots: &[PathBuf],
     options: &CleanOptions,
@@ -1108,8 +1175,20 @@ fn scan_limited(
     cancel: &AtomicBool,
     max_visited: u64,
 ) -> Result<CleanScan, FsError> {
-    let roots = merge_roots(roots)?;
+    let given = merge_roots(roots)?;
     let m = Matcher::new(options)?;
+    // nothing marked: the subfolders are the start folders, each may go as a whole –
+    // the given folder never does, also where it is scanned itself for want of one
+    let children = match options.child_roots {
+        true => child_roots(&given, cancel)?,
+        false => None,
+    };
+    let may_go = match options.child_roots {
+        true => children.is_some(),
+        false => options.include_roots,
+    };
+    let expanded = children.is_some();
+    let roots = children.unwrap_or(given);
     let mut danger = DangerCheck::new(home);
     let mut ctx = Ctx {
         m: &m,
@@ -1145,12 +1224,13 @@ fn scan_limited(
         let linked = !fs::symlink_metadata(root).is_ok_and(|m| m.is_dir());
         let risk = danger.of(root);
         ctx.root = root.clone();
-        ctx.root_may_go = options.include_roots && !linked && risk.is_none();
+        ctx.root_may_go = may_go && !linked && risk.is_none();
         let first = ctx.scan.items.len();
         let went = ctx.root_walk(root, dev);
         let v = ctx.verdict(root, first, went, risk, linked);
         ctx.scan.roots.push(v);
     }
+    ctx.scan.child_roots = expanded;
     if ctx.scan.cancelled {
         ctx.scan.items.clear(); // a partial list must never be deleted
         for r in &mut ctx.scan.roots {
@@ -2300,6 +2380,191 @@ pub(crate) mod tests {
         assert!(Matcher::new(&many).is_err());
     }
 
+    // ---- addendum 3 of 26.11.2026: nothing marked – the subfolders are the start folders ----
+
+    /// The panel's folder with Marc's two leftovers, a film, an empty folder, loose
+    /// files and what is never a start folder. Returns it.
+    #[cfg(unix)]
+    pub(crate) fn filme(base: &Path) -> PathBuf {
+        let dir = base.join("Filme.nosync");
+        fs::create_dir(&dir).unwrap();
+        tigerland(&dir);
+        schrei(&dir);
+        fs::create_dir_all(dir.join("Film ä/Sample")).unwrap();
+        fs::write(dir.join("Film ä/film.mkv"), "film").unwrap();
+        fs::write(dir.join("Film ä/Sample/film-sample.mkv"), "s").unwrap();
+        fs::create_dir(dir.join("leer")).unwrap();
+        // never start folders: hidden, a package, a link
+        fs::create_dir_all(dir.join(".versteckt/leer")).unwrap();
+        fs::create_dir_all(dir.join("Programm.app/Contents")).unwrap();
+        std::os::unix::fs::symlink(dir.join("leer"), dir.join("link")).unwrap();
+        // the folder's own files are not looked at
+        fs::write(dir.join("rename.sh"), "x").unwrap();
+        fs::write(dir.join("lose.nfo"), "x").unwrap();
+        fs::write(dir.join(".DS_Store"), "x").unwrap();
+        dir
+    }
+
+    fn below(o: CleanOptions) -> CleanOptions {
+        CleanOptions {
+            include_roots: false,
+            child_roots: true,
+            ..o
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn child_roots_judge_every_subfolder_on_its_own() {
+        let t = tempfile::tempdir().unwrap();
+        let dir = filme(t.path());
+        // as it was: the folder itself, which never goes – and is not gutted
+        let own = CleanOptions {
+            include_roots: false,
+            ..release()
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&dir), &own).unwrap();
+        assert!(!scan.child_roots);
+        assert_eq!(scan.roots.len(), 1);
+        assert_eq!(numbers(&scan.roots[0]), (Verdict::Partial, 1, 0, 0));
+        // now: one verdict per subfolder, by name
+        let scan = find_empty_dirs(std::slice::from_ref(&dir), &below(release())).unwrap();
+        assert!(scan.child_roots);
+        let got: Vec<(&str, Verdict)> = scan
+            .roots
+            .iter()
+            .map(|r| (r.name.as_str(), r.verdict))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("Ein Schrei in der Dunkelheit (1988)", Verdict::Residue),
+                ("Film ä", Verdict::Keep),
+                ("leer", Verdict::Residue),
+                ("Tigerland (2000)", Verdict::Residue),
+            ]
+        );
+        assert!(
+            scan.roots
+                .iter()
+                .all(|r| r.path.starts_with(&path_string(&dir)))
+        );
+        assert_eq!(numbers(&scan.roots[0]).3, SCHREI_BYTES);
+        assert_eq!(numbers(&scan.roots[3]).3, TIGERLAND_BYTES);
+        // nothing of the folder itself is listed, and none of its own files counted
+        assert!(scan.items.iter().all(|i| i.path != path_string(&dir)));
+        assert!(
+            scan.items
+                .iter()
+                .all(|i| !i.path.contains(".versteckt") && !i.path.contains("Programm.app"))
+        );
+        assert_eq!(scan.roots[1].keep_files, 1);
+        assert_eq!(scan.roots.iter().map(|r| r.keep_files).sum::<u64>(), 1);
+        // exactly what marking these folders gives
+        let marked: Vec<PathBuf> = scan.roots.iter().map(|r| PathBuf::from(&r.path)).collect();
+        let by_hand = find_empty_dirs(&marked, &release()).unwrap();
+        assert_eq!(by_hand.items, scan.items);
+        assert_eq!(by_hand.roots, scan.roots);
+        assert!(!by_hand.child_roots);
+        // `include_roots` never lets the given folder go
+        let both = CleanOptions {
+            include_roots: true,
+            ..below(release())
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&dir), &both).unwrap();
+        assert_eq!(scan.roots.len(), 4);
+        assert!(scan.items.iter().all(|i| i.path != path_string(&dir)));
+        // "only empty folders" finds the one empty folder – as a leftover of its own
+        let scan = find_empty_dirs(std::slice::from_ref(&dir), &below(only_empty())).unwrap();
+        let residues: Vec<&str> = scan
+            .roots
+            .iter()
+            .filter(|r| r.verdict == Verdict::Residue)
+            .map(|r| r.name.as_str())
+            .collect();
+        assert_eq!(residues, ["leer"]);
+        assert_eq!(scan.items.len(), 1);
+    }
+
+    #[test]
+    fn child_roots_without_a_subfolder_scan_the_folder_itself() {
+        let t = tempfile::tempdir().unwrap();
+        let dir = t.path().join("nur Dateien");
+        fs::create_dir_all(dir.join(".git/refs")).unwrap();
+        fs::write(dir.join("a.nfo"), "n").unwrap();
+        let scan = find_empty_dirs(std::slice::from_ref(&dir), &below(release())).unwrap();
+        assert!(!scan.child_roots);
+        assert_eq!(scan.roots.len(), 1);
+        let v = &scan.roots[0];
+        // only extras inside – but it is the panel's folder: it stays
+        assert_eq!(v.path, path_string(&dir));
+        assert_eq!(v.verdict, Verdict::Keep);
+        assert!(scan.items.is_empty());
+        // also with `include_roots` (which the dialog never sends together) and
+        // nothing but an extra inside: without the option it would be a leftover
+        let extras = t.path().join("nur Beiwerk");
+        fs::create_dir(&extras).unwrap();
+        fs::write(extras.join("a.nfo"), "n").unwrap();
+        let both = CleanOptions {
+            include_roots: true,
+            ..below(release())
+        };
+        let scan = find_empty_dirs(std::slice::from_ref(&extras), &both).unwrap();
+        assert!(!scan.child_roots);
+        assert_eq!(scan.roots[0].verdict, Verdict::Keep);
+        assert!(scan.items.is_empty());
+        let scan = find_empty_dirs(std::slice::from_ref(&extras), &release()).unwrap();
+        assert_eq!(scan.roots[0].verdict, Verdict::Residue);
+        // a start folder that is no folder is still an error
+        let file = dir.join("a.nfo");
+        assert!(find_empty_dirs(&[file], &below(release())).is_err());
+    }
+
+    #[test]
+    fn child_roots_know_the_dangerous_folders() {
+        let t = tempfile::tempdir().unwrap();
+        let users = t.path().join("Users");
+        let home = users.join("marc");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(users.join("Shared")).unwrap();
+        let scan = scan(
+            std::slice::from_ref(&users),
+            &below(only_empty()),
+            Some(&home),
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        assert!(scan.child_roots);
+        let home_v = scan.roots.iter().find(|r| r.name == "marc").unwrap();
+        // an empty home folder is never a leftover
+        assert_eq!(home_v.danger, Some(Danger::Home));
+        assert_eq!(home_v.verdict, Verdict::Keep);
+        let shared = scan.roots.iter().find(|r| r.name == "Shared").unwrap();
+        assert_eq!(shared.verdict, Verdict::Residue);
+        assert_eq!(scan.items.len(), 1);
+    }
+
+    #[test]
+    fn child_roots_are_optional_and_cancellable() {
+        // an old job spec has no such field: off
+        let o: CleanOptions = serde_json::from_str("{}").unwrap();
+        assert!(!o.child_roots);
+        let o: CleanOptions = serde_json::from_str(r#"{"childRoots":true}"#).unwrap();
+        assert!(o.child_roots);
+        let t = tempfile::tempdir().unwrap();
+        fs::create_dir_all(t.path().join("a/leer")).unwrap();
+        let scan = scan_limited(
+            &[t.path().to_path_buf()],
+            &below(only_empty()),
+            None,
+            &AtomicBool::new(true),
+            MAX_VISITED,
+        )
+        .unwrap();
+        assert!(scan.cancelled && scan.items.is_empty());
+        assert!(scan.roots.iter().all(|r| r.incomplete && r.count == 0));
+    }
+
     // ---- addendum 2 of 26.11.2026: pictures of a release are companions, too ----
 
     /// Marc's folder "Ein Schrei in der Dunkelheit (1988)": the proof picture has no
@@ -2589,6 +2854,7 @@ pub(crate) mod tests {
             keys(&v),
             [
                 "cancelled",
+                "childRoots",
                 "items",
                 "roots",
                 "truncated",

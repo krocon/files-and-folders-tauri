@@ -19,10 +19,12 @@ import {
   removesText,
   restoreCleanForm,
   rootCellClass,
+  rootOptions,
   rootRows,
   selection,
   sums,
 } from './clean-logic';
+import { CL_TEXTS } from './clean-texts';
 
 const MIB = 1024 * 1024;
 const RELEASE = cleanOptions({ ...DEFAULT_CLEAN_FORM, profile: 'release' }, true);
@@ -93,6 +95,7 @@ describe('clean folders: pure helpers (design 077)', () => {
       junkDirsBesideContent: false,
       companionJunk: [],
       companionPictures: [],
+      childRoots: false,
     });
     // a text in the custom fields never leaks into another profile
     expect(
@@ -113,6 +116,7 @@ describe('clean folders: pure helpers (design 077)', () => {
       companionJunk: ['*.idx', '*.sub', '*.srt', '*.ass', '*.ssa', '*.sup', '*.vtt'],
       // pictures: companions in `Proof` or named like their folder (second addendum)
       companionPictures: ['*.jpg', '*.jpeg', '*.png'],
+      childRoots: false,
     });
     expect(RELEASE.companionJunk).toEqual([...RELEASE_SUBTITLES]);
     expect(RELEASE.companionPictures).toEqual([...RELEASE_PICTURES]);
@@ -242,6 +246,45 @@ describe('clean folders: pure helpers (design 077)', () => {
     }
   });
 
+  it('nothing marked: the subfolders of the panel folder are judged one by one', () => {
+    const release = { ...DEFAULT_CLEAN_FORM, profile: 'release' as const };
+    const custom = { ...DEFAULT_CLEAN_FORM, profile: 'custom' as const };
+    // the panel's own folder never goes – Rust takes its subfolders as start folders
+    for (const form of [DEFAULT_CLEAN_FORM, release, custom, { ...custom, junkOn: true }]) {
+      expect(cleanOptions(form, false, true), form.profile).toMatchObject({
+        includeRoots: false,
+        childRoots: true,
+      });
+      // marked folders and the folder under the cursor are start folders themselves
+      expect(cleanOptions(form, true, false).childRoots, form.profile).toBe(false);
+      expect(cleanOptions(form, true).childRoots, form.profile).toBe(false);
+    }
+    // "delete files matching" works on the folder itself and all below it (design 008)
+    expect(cleanOptions({ ...custom, patternsOn: true }, false, true)).toMatchObject({
+      patterns: ['*.bak'],
+      childRoots: false,
+    });
+    // … an empty pattern field is no pattern
+    expect(
+      cleanOptions({ ...custom, patternsOn: true, patternsText: ' ; ' }, false, true).childRoots,
+    ).toBe(true);
+    // without "delete empty folders" no folder goes at all
+    expect(cleanOptions({ ...custom, emptyDirs: false }, false, true).childRoots).toBe(false);
+
+    // what Rust listed are start folders that may go: for the texts and for the job
+    const sent = cleanOptions(release, false, true);
+    const below = cleanScan([{ path: '/src/A' }], { childRoots: true });
+    expect(rootOptions(sent, below)).toEqual({ ...sent, includeRoots: true, childRoots: false });
+    // no subfolder: Rust scanned the folder itself – it stays the panel's folder
+    const own = cleanScan([{ path: '/src' }]);
+    expect(rootOptions(sent, own)).toBe(sent);
+    expect(rootOptions(sent, null)).toBe(sent);
+    // a subfolder that holds only an extra and stays is not "the folder of the panel"
+    const v = rootVerdict('/src/A', { junkKept: 1 });
+    expect(keepsText(v, sent)).toContain(CL_TEXTS.ownFolder);
+    expect(keepsText(v, rootOptions(sent, below))).not.toContain(CL_TEXTS.ownFolder);
+  });
+
   it('rules that were loosened are never hidden (review 077 #6)', () => {
     const release = { ...DEFAULT_CLEAN_FORM, profile: 'release' as const };
     expect(loosened(DEFAULT_CLEAN_FORM)).toBe(false);
@@ -289,32 +332,44 @@ describe('clean folders: pure helpers (design 077)', () => {
       [
         'marked folders',
         ['/src', [d1, file, d2], file],
-        { roots: ['/src/A', '/src/B'], includeRoots: true, ignored: 1 },
+        { roots: ['/src/A', '/src/B'], includeRoots: true, childRoots: false, ignored: 1 },
       ],
       [
         'a link is no folder',
         ['/src', [d1, link], null],
-        { roots: ['/src/A'], includeRoots: true, ignored: 1 },
+        { roots: ['/src/A'], includeRoots: true, childRoots: false, ignored: 1 },
       ],
-      ['cursor folder', ['/src', [], d2], { roots: ['/src/B'], includeRoots: true, ignored: 0 }],
+      [
+        'cursor folder',
+        ['/src', [], d2],
+        { roots: ['/src/B'], includeRoots: true, childRoots: false, ignored: 0 },
+      ],
       [
         'cursor on a file',
         ['/src', [], file],
-        { roots: ['/src'], includeRoots: false, ignored: 0 },
+        { roots: ['/src'], includeRoots: false, childRoots: true, ignored: 0 },
       ],
-      ['cursor on ".."', ['/src', [], up], { roots: ['/src'], includeRoots: false, ignored: 0 }],
+      [
+        'cursor on ".."',
+        ['/src', [], up],
+        { roots: ['/src'], includeRoots: false, childRoots: true, ignored: 0 },
+      ],
       [
         'cursor on a link',
         ['/src', [], link],
-        { roots: ['/src'], includeRoots: false, ignored: 0 },
+        { roots: ['/src'], includeRoots: false, childRoots: true, ignored: 0 },
       ],
       // marks win over the cursor – as F8 never deletes the cursor entry next to marks
       [
         'only files marked',
         ['/src', [file], d1],
-        { roots: ['/src'], includeRoots: false, ignored: 1 },
+        { roots: ['/src'], includeRoots: false, childRoots: true, ignored: 1 },
       ],
-      ['no cursor', ['/src', [], null], { roots: ['/src'], includeRoots: false, ignored: 0 }],
+      [
+        'no cursor',
+        ['/src', [], null],
+        { roots: ['/src'], includeRoots: false, childRoots: true, ignored: 0 },
+      ],
     ];
     for (const [name, args, want] of cases) {
       expect(cleanInput(...args), name).toEqual(want);

@@ -1759,6 +1759,7 @@
       truncated: false,
       cancelled: false,
       visited,
+      childRoots: false,
     };
   }
 

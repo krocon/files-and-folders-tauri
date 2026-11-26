@@ -36,6 +36,14 @@ export interface CleanOptions {
    * up to `junkMaxBytes`. Empty = off.
    */
   readonly companionPictures: readonly string[];
+  /**
+   * The start folders are only where to look (the panel's own folder, nothing marked –
+   * third addendum 26.11.2026 of design 077): Rust judges every real, visible folder
+   * directly inside as a start folder of its own, which may go as a whole. The given
+   * folder never goes and its own files are not looked at. Without such a subfolder the
+   * folder is scanned itself (`CleanScan.childRoots` says which it was).
+   */
+  readonly childRoots: boolean;
 }
 
 export type CleanKind = 'dir' | 'file';
@@ -124,6 +132,11 @@ export interface CleanScan {
   /** The search was cancelled (review 008 #2); then `items` is empty. */
   readonly cancelled: boolean;
   readonly visited: number;
+  /**
+   * `roots` are the subfolders of the given folders (`CleanOptions.childRoots`): each may
+   * go as a whole, and the job gets them as its start folders (`rootOptions`).
+   */
+  readonly childRoots: boolean;
 }
 
 export interface CreatedFolders {

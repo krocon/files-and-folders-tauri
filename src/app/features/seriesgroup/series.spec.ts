@@ -348,6 +348,8 @@ describe('group series by season (design 045)', () => {
       companionJunk: [...RELEASE_SUBTITLES],
       // … and so do its pictures in their two places (second addendum)
       companionPictures: [...RELEASE_PICTURES],
+      // prepared start folders are start folders: never their subfolders
+      childRoots: false,
     });
     expect(cl.mode()).toBe('trash');
     // the dialog names the junk that leaves with a folder (review 045 #2)
