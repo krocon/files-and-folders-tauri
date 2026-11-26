@@ -31,7 +31,7 @@ function rowClass(r: GroupRow): string | null {
   imports: [Modal, DialogKey, PreviewGrid],
   template: `
     @if (gf.request(); as req) {
-      <app-modal [heading]="heading()" width="min(64rem, 92vw)" height="80vh" (closed)="gf.close()">
+      <app-modal [heading]="heading()" width="min(64rem, 92vw)" height="86vh" (closed)="gf.close()">
         <div class="tool">
           <div class="row">
             <label class="field">

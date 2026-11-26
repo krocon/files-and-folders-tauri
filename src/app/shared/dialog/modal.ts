@@ -2,12 +2,14 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   ElementRef,
   inject,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { eventKey, strokeFromEvent } from '../../core/actions/shortcut';
 import type { DialogKey } from './dialog-key';
@@ -78,9 +80,12 @@ const CLICKABLE = [
         [attr.aria-describedby]="describedBy()"
         aria-modal="true"
         [attr.aria-labelledby]="titleId"
+        [class.grows]="grows()"
         [style.width]="width()"
-        [style.height]="fill() ? null : height()"
-        [style.max-height]="!fill() && height() ? '90vh' : null"
+        [style.height]="fill() || grows() ? null : height()"
+        [style.max-height]="!fill() && !grows() && height() ? '90vh' : null"
+        [style.--dialog-min]="grows() ? minHeight() : null"
+        [style.--dialog-grown]="grows() && grown() > 0 ? grown() + 'px' : null"
       >
         <h2 class="title" [class.compact]="compact()" [id]="titleId">{{ heading() }}</h2>
         <ng-content />
@@ -98,6 +103,12 @@ export class Modal {
   readonly width = input('34rem');
   /** Fixed height for large dialogs (multi-rename); default: as high as the content. */
   readonly height = input<string | null>(null);
+  /**
+   * At least this high – and as high as the content needs while the window has room, so
+   * nothing scrolls that could be shown (the settings: tabs of very different length).
+   * The height that was reached stays while the dialog is open. Not together with `fill`.
+   */
+  readonly minHeight = input<string | null>(null);
   /** The full height of the window (a small margin): large tool dialogs with a preview table. */
   readonly fill = input(false);
   /** Less space under the title (design 073 E23): dialogs whose content starts with an intro. */
@@ -113,6 +124,9 @@ export class Modal {
   readonly mnemonics = input(true);
   readonly closed = output<void>();
   protected readonly titleId = `fnf-modal-${++modalSeq}`;
+  protected readonly grows = computed(() => this.minHeight() !== null && !this.fill());
+  /** The largest height the dialog had (px) – it does not shrink below it again. */
+  protected readonly grown = signal(0);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly platform = inject(DIALOG_PLATFORM);
   private readonly keyStyle = inject(DIALOG_KEY_STYLE);
@@ -138,19 +152,39 @@ export class Modal {
       });
       inject(DestroyRef).onDestroy(() => mo.disconnect());
     }
+    const destroyRef = inject(DestroyRef);
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => this.scheduleMnemonics());
       ro.observe(this.host.nativeElement);
-      inject(DestroyRef).onDestroy(() => ro.disconnect());
+      destroyRef.onDestroy(() => ro.disconnect());
     }
     afterNextRender(() => {
       const el = this.host.nativeElement;
+      this.keepHeight(el.querySelector<HTMLElement>('.dialog'), destroyRef);
       const target = el.querySelector<HTMLElement>('[data-autofocus]') ?? this.focusables()[0];
       target?.focus();
       if (target instanceof HTMLInputElement) {
         target.select(); // typing replaces a suggested value
       }
     });
+  }
+
+  /**
+   * A dialog with `minHeight` remembers the largest height it had: the style sheet
+   * keeps it at least that high (and inside the window).
+   */
+  private keepHeight(dialog: HTMLElement | null, destroyRef: DestroyRef): void {
+    if (!dialog || !this.grows() || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const ro = new ResizeObserver(() => {
+      const height = Math.round(dialog.offsetHeight);
+      if (height > this.grown()) {
+        this.grown.set(height);
+      }
+    });
+    ro.observe(dialog);
+    destroyRef.onDestroy(() => ro.disconnect());
   }
 
   protected onBackdrop(evt: PointerEvent): void {

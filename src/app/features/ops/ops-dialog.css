@@ -128,13 +128,14 @@ code {
 }
 
 .names {
-  max-height: 8rem;
+  /* more in a high window (modal.css) */
+  max-height: calc(8rem + var(--dialog-spare, 0px));
   margin: 0;
   overflow: auto;
 
   /* a proposal of an MCP client (design 071): the whole list, scrollable */
   &.all {
-    max-height: min(40vh, 22rem);
+    max-height: calc(min(40vh, 22rem) + var(--dialog-spare, 0px));
     padding: var(--spacing-1) var(--spacing-1) var(--spacing-1) var(--spacing-4);
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-sm);

@@ -184,7 +184,8 @@ import { DEDUPE_PAGE, DuplicatesStore } from './duplicates.store';
     .groups {
       border: var(--border-width) solid var(--color-border);
       border-radius: var(--radius-sm);
-      max-height: 22rem;
+      /* more in a high window (modal.css) */
+      max-height: calc(22rem + var(--dialog-spare, 0px));
       overflow: auto;
     }
     .pager {

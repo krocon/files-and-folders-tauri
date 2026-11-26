@@ -57,7 +57,8 @@
 }
 
 .grid {
-  max-height: min(60vh, 34rem);
+  /* more in a high window (modal.css) */
+  max-height: calc(min(60vh, 34rem) + var(--dialog-spare, 0px));
   overflow: auto;
   padding: var(--spacing-1);
   outline: none;

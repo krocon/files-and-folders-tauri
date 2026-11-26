@@ -93,7 +93,8 @@
   flex: none;
   min-width: 0;
   min-height: 4rem;
-  max-height: 12rem;
+  /* more in a high window (modal.css) */
+  max-height: calc(12rem + var(--dialog-spare, 0px));
   margin: 0;
   padding: 2px;
   overflow-y: auto;

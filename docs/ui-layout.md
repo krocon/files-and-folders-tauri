@@ -142,6 +142,19 @@ Jeder Knopf mit Rolle trägt `aria-keyshortcuts` und einen Tooltip „Tastenkür
 behält seine Alt-Buchstaben (005). Neue Dialoge: jeder `.btn.primary` braucht eine Rolle (`dialog-roles.spec.ts`).
 Übersicht im ⌨-Dialog, Abschnitt „In Dialogen“; Tabelle aller Dialoge: `prompts/done/057-dialog-tasten.design.md`.
 
+## Dialoge: Größe
+
+Ein Dialog nutzt die Höhe des Fensters, statt früh zu scrollen (`shared/dialog/modal.css`):
+
+- **Ohne Höhenangabe** ist er so hoch wie sein Inhalt, höchstens `--dialog-room` (Fensterhöhe minus Abstand oben
+  und ein kleiner Rand unten – kein fester Anteil wie früher 80 %).
+- **`minHeight`** (Einstellungen): mindestens so hoch, sonst so hoch wie der Inhalt des gewählten Tabs; die einmal
+  erreichte Höhe bleibt, solange der Dialog offen ist (die Knöpfe springen beim Tab-Wechsel nicht zurück).
+- **`height`** in `vh` für Dialoge mit Tabelle (sie braucht eine feste Höhe), **`fill`** für die großen Werkzeuge.
+- **Listen im Dialog** mit eigener Obergrenze legen `--dialog-spare` drauf
+  (`max-height: calc(12rem + var(--dialog-spare, 0px))`): was das Fenster höher ist als ein kleines (50rem), kommt
+  der Liste zugute. Keine festen `rem`-Obergrenzen ohne diesen Zuschlag.
+
 ## Abweichungen von der alten Version (bewusst)
 
 - Splitter-Position, Sortierung und aktive Seite werden gespeichert.
