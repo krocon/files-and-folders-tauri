@@ -8,6 +8,7 @@ import {
 } from '../../core/folders/folders.models';
 import {
   RELEASE_EXTRAS,
+  RELEASE_PICTURES,
   RELEASE_SAMPLES,
   RELEASE_SUBTITLES,
 } from '../../core/folders/release-extras';
@@ -85,8 +86,17 @@ function split(text: string): string[] {
     .filter((s) => s !== '');
 }
 
-/** The options Rust gets for a form. `includeRoots`: the start folders may go as a whole. */
-export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions {
+/**
+ * The options Rust gets for a form. `includeRoots`: the start folders may go as a whole.
+ * `childRoots`: the start folder is the panel's own – its subfolders are judged one by one.
+ * Not with "delete files matching": that works on the folder itself and everything below
+ * it, as it always did (design 008).
+ */
+export function cleanOptions(
+  f: CleanForm,
+  includeRoots: boolean,
+  childRoots = false,
+): CleanOptions {
   const limits = {
     junkMaxBytes: f.junkMaxMb * MIB,
     largeJunkMaxBytes: f.sampleMaxMb * MIB,
@@ -102,6 +112,8 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         ...limits,
         junkDirsBesideContent: false,
         companionJunk: [],
+        companionPictures: [],
+        childRoots,
       };
     case 'release':
       return {
@@ -114,19 +126,36 @@ export function cleanOptions(f: CleanForm, includeRoots: boolean): CleanOptions 
         junkDirsBesideContent: f.junkDirsBesideContent,
         // subtitles go with a leftover, never on their own or next to content (Rust decides)
         companionJunk: [...RELEASE_SUBTITLES],
+        // … and so do its pictures: in `Proof`, or named like their folder (Rust decides)
+        companionPictures: [...RELEASE_PICTURES],
+        childRoots,
       };
-    case 'custom':
+    case 'custom': {
+      const patterns = f.patternsOn ? split(f.patternsText) : [];
       return {
         emptyDirs: f.emptyDirs,
         includeRoots: f.emptyDirs && includeRoots,
         junk: f.emptyDirs && f.junkOn ? split(f.junkText) : [],
-        patterns: f.patternsOn ? split(f.patternsText) : [],
+        patterns,
         largeJunk: [],
         ...limits,
         junkDirsBesideContent: f.emptyDirs && f.junkDirsBesideContent,
         companionJunk: [],
+        companionPictures: [],
+        childRoots: childRoots && f.emptyDirs && patterns.length === 0,
       };
+    }
   }
+}
+
+/**
+ * The options as they hold for the start folders the scan names. Where Rust judged the
+ * subfolders of the panel's folder (`CleanScan.childRoots`), these are start folders that
+ * may go as a whole – for the texts of the dialog and for the job, which gets them as its
+ * roots. Sent unchanged, the job refuses every one of them (fail-safe).
+ */
+export function rootOptions(o: CleanOptions, scan: CleanScan | null): CleanOptions {
+  return scan?.childRoots ? { ...o, includeRoots: true, childRoots: false } : o;
 }
 
 /** What the dialog works on (design 077 E5). */
@@ -134,6 +163,8 @@ export interface CleanInput {
   readonly roots: readonly string[];
   /** Marked folders and the folder under the cursor may go as a whole – the panel's own folder never. */
   readonly includeRoots: boolean;
+  /** The panel's own folder is the start folder: its subfolders are judged one by one. */
+  readonly childRoots: boolean;
   /** Marked entries that are no real folders (files, links): ignored, counted for a hint. */
   readonly ignored: number;
 }
@@ -143,7 +174,8 @@ const realDir = (e: DirEntry | null | undefined): e is DirEntry =>
 
 /**
  * Start folders like F8 picks its entries: the marked real folders (not links); without
- * marks the folder under the cursor; otherwise the folder the panel shows.
+ * marks the folder under the cursor; otherwise the folder the panel shows – which never
+ * goes itself: Rust judges each of its subfolders instead (`childRoots`).
  */
 export function cleanInput(
   folder: string,
@@ -153,12 +185,17 @@ export function cleanInput(
   const real = marked.filter((e) => !isParentRow(e));
   const dirs = real.filter(realDir).map((e) => e.path);
   if (dirs.length > 0) {
-    return { roots: dirs, includeRoots: true, ignored: real.length - dirs.length };
+    return {
+      roots: dirs,
+      includeRoots: true,
+      childRoots: false,
+      ignored: real.length - dirs.length,
+    };
   }
   if (real.length === 0 && realDir(cursor)) {
-    return { roots: [cursor.path], includeRoots: true, ignored: 0 };
+    return { roots: [cursor.path], includeRoots: true, childRoots: false, ignored: 0 };
   }
-  return { roots: [folder], includeRoots: false, ignored: real.length };
+  return { roots: [folder], includeRoots: false, childRoots: true, ignored: real.length };
 }
 
 /** A verdict that offers something to delete. */

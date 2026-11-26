@@ -213,8 +213,13 @@ describe('folder tools (design 008)', () => {
     expect(cl.canRun()).toBe(false);
     await new Promise((r) => setTimeout(r, 5));
     expect(folders.scans[0].roots).toEqual(['/src']);
-    // the panel's own folder never goes as a whole (design 077 E5)
-    expect(folders.scans[0].options).toMatchObject({ includeRoots: false, patterns: [] });
+    // the panel's own folder never goes as a whole (design 077 E5) – Rust is asked to
+    // judge its subfolders; here it found none and scanned the folder itself
+    expect(folders.scans[0].options).toMatchObject({
+      includeRoots: false,
+      childRoots: true,
+      patterns: [],
+    });
     expect(cl.rows()).toHaveLength(1);
     expect(cl.rows()[0]).toMatchObject({ check: '☑', verdict: 'partly' });
     expect(cl.canRun()).toBe(true);
@@ -257,6 +262,52 @@ describe('folder tools (design 008)', () => {
     expect(JSON.stringify(TestBed.inject(SettingsStore).get('dialogs.recent'))).not.toContain(
       'trash',
     );
+  });
+
+  it('nothing marked: the subfolders are judged, and the job gets them as folders that may go', async () => {
+    await left.load('/src');
+    left.setCursor('/src/Solo 1.mp3');
+    // Rust answers with one verdict per subfolder of the panel's folder
+    folders.scan = cleanScan(
+      [
+        {
+          path: '/src/Rest',
+          items: [{ path: '/src/Rest', kind: 'dir', junk: 1, bytes: 7, soft: true }],
+          over: { verdict: 'residue' },
+        },
+        { path: '/src/Film', over: { keepFiles: 1, keepBytes: 9 } },
+        {
+          path: '/src/Leer',
+          items: [{ path: '/src/Leer', kind: 'dir' }],
+          over: { verdict: 'residue' },
+        },
+      ],
+      { childRoots: true },
+    );
+    await actions.run('OPEN_DELETE_EMPTY_FOLDERS_DLG');
+    cl.update({ profile: 'release' });
+    await cl.scanNow();
+    expect(folders.scans.at(-1)).toMatchObject({
+      roots: ['/src'],
+      options: { includeRoots: false, childRoots: true },
+    });
+    expect(cl.rows().map((r) => [r.name, r.check, r.verdict])).toEqual([
+      ['Rest', '☑', 'leftover'],
+      ['Film', '–', 'stays'],
+      ['Leer', '☑', 'leftover'],
+    ]);
+    // for the listed folders the options say what is true: they may go
+    expect(cl.rootOptions()).toMatchObject({ includeRoots: true, childRoots: false });
+    cl.toggle(2);
+    await cl.run();
+    expect(jobsApi.started[0].spec).toMatchObject({
+      kind: 'clean',
+      // the selected subfolders are the job's start folders – never the panel's folder
+      roots: ['/src/Rest'],
+      items: [{ path: '/src/Rest', kind: 'dir' }],
+      mode: 'trash',
+      options: { includeRoots: true, childRoots: false },
+    });
   });
 
   it('marked folders: a verdict per folder, deselecting, the job gets only the selected ones', async () => {

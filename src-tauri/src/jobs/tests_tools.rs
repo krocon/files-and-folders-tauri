@@ -840,6 +840,100 @@ fn clean_takes_subtitles_with_a_release_leftover() {
     assert!(d.path().is_dir());
 }
 
+/// Third addendum 26.11.2026: nothing marked – the scan judges the subfolders of the
+/// panel's folder, and the job gets them as its start folders, as if they were marked.
+#[cfg(unix)]
+#[test]
+fn clean_takes_the_leftovers_below_the_panel_folder() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let dir = crate::clean::tests::filme(d.path());
+    let o = CleanOptions {
+        include_roots: false,
+        child_roots: true,
+        ..crate::clean::tests::release()
+    };
+    let scan = find_empty_dirs(std::slice::from_ref(&dir), &o).unwrap();
+    assert!(scan.child_roots);
+    let roots: Vec<PathBuf> = scan.roots.iter().map(|r| PathBuf::from(&r.path)).collect();
+    // the options as the scan had them name the panel's folder: the job refuses every
+    // start folder then – nothing goes by mistake
+    let info = h.finish(&h.clean(&roots, scan.items.clone(), o.clone()));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert!(dir.join("Tigerland (2000)").is_dir() && dir.join("leer").is_dir());
+    // as the dialog sends them: the subfolders are start folders that may go
+    let job = CleanOptions {
+        include_roots: true,
+        child_roots: false,
+        ..o
+    };
+    let info = h.finish(&h.clean(&roots, scan.items, job));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let mut left: Vec<String> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    left.sort();
+    assert_eq!(
+        left,
+        [
+            ".DS_Store",
+            ".versteckt",
+            "Film ä",
+            "Programm.app",
+            "link",
+            "lose.nfo",
+            "rename.sh"
+        ]
+    );
+    // the film's folder was not gutted
+    assert!(dir.join("Film ä/Sample/film-sample.mkv").is_file());
+    assert!(dir.join(".versteckt/leer").is_dir());
+}
+
+/// Second addendum 26.11.2026: the pictures of a release (in `Proof`, or named like
+/// their folder) go with the leftover, too.
+#[test]
+fn clean_takes_pictures_with_a_release_leftover() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::schrei(d.path());
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    assert_eq!(scan.items.len(), 5, "{:?}", scan.items);
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o));
+    assert_eq!(info.state, JobState::Done, "{:?}", info.summary);
+    let sum = info.summary.unwrap();
+    assert_eq!((sum.items_done, sum.items_failed), (5, 0));
+    assert_eq!(sum.bytes_done, crate::clean::tests::SCHREI_BYTES);
+    assert!(!root.exists());
+    assert!(d.path().is_dir());
+}
+
+/// The job decides again: a picture that came into `Proof` after the preview is too
+/// large to be one of the release – the folder stays, nothing of it is touched.
+#[test]
+fn clean_never_takes_a_picture_that_is_no_companion() {
+    let h = Harness::new();
+    let d = tempdir().unwrap();
+    let root = crate::clean::tests::schrei(d.path());
+    let rel = root.join(crate::clean::tests::SCHREI_RELEASE);
+    let o = crate::clean::tests::release();
+    let scan = find_empty_dirs(std::slice::from_ref(&root), &o).unwrap();
+    // after the preview the real extras went: pictures and subtitles are content
+    fs::remove_file(rel.join(format!(
+        "{}.nfo",
+        crate::clean::tests::SCHREI_RELEASE.to_lowercase()
+    )))
+    .unwrap();
+    fs::remove_dir_all(rel.join("Sample")).unwrap();
+    let info = h.finish(&h.clean(std::slice::from_ref(&root), scan.items, o));
+    assert_eq!(info.state, JobState::DoneWithErrors, "{:?}", info.summary);
+    assert_eq!(fs::read_dir(rel.join("Proof")).unwrap().count(), 1);
+    assert_eq!(fs::read_dir(rel.join("Subs")).unwrap().count(), 4);
+    assert_eq!(fs::read_dir(&rel).unwrap().count(), 3);
+}
+
 /// The job decides again: subtitles are no extras without a real one, and never
 /// next to content – whatever the list says.
 #[test]

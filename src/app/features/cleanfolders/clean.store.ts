@@ -22,6 +22,7 @@ import {
   detailRows,
   jobItems,
   restoreCleanForm,
+  rootOptions,
   rootRows,
   selectable,
   selection,
@@ -40,6 +41,8 @@ export interface CleanRequest {
   readonly roots: readonly string[];
   /** The start folders may go as a whole (marked / under the cursor) – the panel's folder never. */
   readonly includeRoots: boolean;
+  /** `folder` itself is the start folder: Rust judges its subfolders one by one. */
+  readonly childRoots: boolean;
   /** Marked entries that are no folders: ignored (a hint says so). */
   readonly ignored: number;
   /**
@@ -92,9 +95,10 @@ export class CleanFoldersStore {
    */
   private ownForm: CleanForm | null = null;
 
-  readonly options = computed(() =>
-    cleanOptions(this.form(), this.request()?.includeRoots ?? false),
-  );
+  readonly options = computed(() => {
+    const req = this.request();
+    return cleanOptions(this.form(), req?.includeRoots ?? false, req?.childRoots ?? false);
+  });
   /** The search result belongs to the current options. */
   readonly scan = computed(() => {
     const s = this.scanned();
@@ -103,15 +107,20 @@ export class CleanFoldersStore {
   readonly scanning = computed(
     () => this.request() !== null && this.scan() === null && this.scanError() === null,
   );
+  /**
+   * The options as they hold for the listed start folders: the subfolders of the panel's
+   * folder may go as a whole. For the texts and for the job.
+   */
+  readonly rootOptions = computed(() => rootOptions(this.options(), this.scan()));
 
   /** The start folders that will be cleaned. */
   readonly selected = computed(() => selection(this.scan(), this.deselected()));
-  readonly rows = computed(() => rootRows(this.scan(), this.selected(), this.options()));
+  readonly rows = computed(() => rootRows(this.scan(), this.selected(), this.rootOptions()));
   readonly activeRoot = computed<RootVerdict | null>(() => {
     const roots = this.scan()?.roots ?? [];
     return roots[Math.min(this.active(), roots.length - 1)] ?? null;
   });
-  readonly details = computed(() => detailRows(this.scan(), this.activeRoot(), this.options()));
+  readonly details = computed(() => detailRows(this.scan(), this.activeRoot(), this.rootOptions()));
   readonly sums = computed(() => sums(this.scan(), this.selected()));
   /** Something could be deleted (selected or not). */
   readonly offers = computed(() => (this.scan()?.roots ?? []).some(selectable));
@@ -175,7 +184,14 @@ export class CleanFoldersStore {
       this.ownForm = this.form();
     }
     this.form.set(form);
-    this.show({ side, folder, roots: [...roots], includeRoots: true, ignored: 0 });
+    this.show({
+      side,
+      folder,
+      roots: [...roots],
+      includeRoots: true,
+      childRoots: false,
+      ignored: 0,
+    });
   }
 
   private show(req: CleanRequest): void {
@@ -300,7 +316,8 @@ export class CleanFoldersStore {
         roots: scan.roots.filter((r) => selected.has(r.path)).map((r) => r.path),
         items: jobItems(scan, selected),
         mode,
-        options: this.options(),
+        // … and where they are the subfolders of the panel's folder, they may go
+        options: this.rootOptions(),
       });
     } catch (e) {
       this.runError.set(toFsError(e));

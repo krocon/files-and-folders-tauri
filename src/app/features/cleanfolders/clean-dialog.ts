@@ -405,6 +405,11 @@ export class CleanFoldersDialog {
     if (!req) {
       return '';
     }
+    // nothing marked: the folders that are judged are the ones inside the panel's folder
+    const scan = this.cl.scan();
+    if (scan?.childRoots) {
+      return this.t.title(this.t.foldersIn(scan.roots.length, req.folder));
+    }
     return this.t.title(
       req.roots.length === 1 ? req.roots[0] : this.t.foldersIn(req.roots.length, req.folder),
     );

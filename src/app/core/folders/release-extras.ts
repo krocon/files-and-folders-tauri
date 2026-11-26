@@ -5,7 +5,8 @@
  * Narrow on purpose (review 077 #1): the profile is preselected-and-Enter away from the
  * trash, so every pattern must be something only a release produces. Deliberately not in
  * here: `*.url` (browser favourites), images in general (`*.jpg`, `*.png` – photo folders;
- * only `*-proof.*` pictures), subtitles (they are companions, see `RELEASE_SUBTITLES`), archive
+ * only `*-proof.*` pictures; others are companions by their place, see `RELEASE_PICTURES`),
+ * subtitles (they are companions, see `RELEASE_SUBTITLES`), archive
  * parts (`*.rar`, `*.r00` – large and not to be had again), and "sample" in the name of
  * anything but a video (`sample-contract.docx`, `config.sample.json`). The folder name
  * `Sample` alone makes nothing an extra – and neither does `Subs`.
@@ -64,3 +65,14 @@ export const RELEASE_SUBTITLES: readonly string[] = [
   '*.sup',
   '*.vtt',
 ];
+
+/**
+ * Pictures of a release – **companions by their place** (second addendum 26.11.2026 of
+ * design 077): a proof without "-proof" in its name (`Proof/film-grp.jpg`) and a cover next
+ * to the `.nfo` (`Film-GRP/film-grp.jpg`). The ending alone says nothing – Rust
+ * (`CleanOptions.companionPictures`) takes such a file only inside a folder named `Proof`
+ * or when it is named like the folder it lies in, only up to the limit for extras, and only
+ * under the conditions of every companion: its start folder goes as a whole and holds a real
+ * extra. A photo folder with an `.nfo` or a checksum file stays what it is: content.
+ */
+export const RELEASE_PICTURES: readonly string[] = ['*.jpg', '*.jpeg', '*.png'];

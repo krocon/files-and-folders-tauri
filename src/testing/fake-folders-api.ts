@@ -69,6 +69,7 @@ export function cleanScan(
     truncated: false,
     cancelled: false,
     visited: items.length,
+    childRoots: false,
     ...over,
   };
 }
@@ -81,6 +82,7 @@ const EMPTY_SCAN: CleanScan = {
   truncated: false,
   cancelled: false,
   visited: 0,
+  childRoots: false,
 };
 
 export const EMPTY_TREE: FileTree = {

@@ -84,16 +84,17 @@ probieren“ (kein zweiter Scan auf Verdacht).
 avi, m4v, mov, wmv, ts, mpg, mpeg, webm – 40 Muster, weil die Mustersprache nur `*`/`?` kennt).
 *(Nach dem Review enger gefasst, s. §9 Befund 1: vorher `*.url`, `*-proof.*` und Samples jeder Endung.)* Die Serien-Engine (045) nutzt weiter beide
 zusammen als „Extras“ ihres Dialogs.
-**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner), Untertitel und ein Ordner `Subs` *(seit
-26.11.2026 Begleiter, s. §10)*,
+**Bewusst nicht:** Bilder allgemein (`*.jpg`/`*.png` – Fotoordner; *seit 26.11.2026 an zwei Orten Begleiter, s.
+§11*), Untertitel und ein Ordner `Subs` *(seit 26.11.2026 Begleiter, s. §10)*,
 Archivteile (`*.rar`, `*.r00`: groß und unwiederbringlich – auch nicht als Option; wer das will, nimmt „Eigene“ und
 hebt die Grenze an), **keine Ordner-Regel** („alles in `Sample/`/`Proof/` ist Beiwerk“): `sample/` gibt es auch in
-Code-Projekten; in Releases heißen die Dateien selbst `…-sample.*`.
+Code-Projekten; in Releases heißen die Dateien selbst `…-sample.*`. *(§11: Bilder in `Proof/` sind Begleiter – der
+Ordnername macht weiter nichts zu echtem Beiwerk.)*
 
 ### E5 – Eingabe ✅ (F8 als Maßstab)
 Markierung vorhanden → die markierten **echten Ordner** (Links nicht; markierte Dateien werden gezählt und als
 Hinweis genannt). Keine Markierung → der Ordner unter dem Cursor (echter Ordner, nicht `..`). Sonst (Cursor auf
-Datei/`..`, oder nur Dateien markiert) → der Panel-Ordner. Markierte/Cursor-Ordner dürfen als Ganzes gehen
+Datei/`..`, oder nur Dateien markiert) → der Panel-Ordner *(seit 26.11.2026: seine Unterordner einzeln, s. §12)*. Markierte/Cursor-Ordner dürfen als Ganzes gehen
 (`includeRoots = true`); der **Panel-Ordner selbst nie** (`includeRoots = false`) – man sägt nicht den Ast ab, auf
 dem das Panel sitzt. Die frühere Checkbox „Auch der Startordner selbst“ entfällt (alte gemerkte Werte werden
 ignoriert).
@@ -348,3 +349,85 @@ stehen) – sichtbar im vorbelegten Dialog, Papierkorb als Default.
 **Außerdem:** Das Urteil „Rückstand“ steht in der Ordnerliste rot (vorhandenes Token `--color-error-text`, das sein
 Kontrastpaar gegen den Listenhintergrund hat; Zellklasse `fnf-cl-residue` über `PreviewGrid.cellClass`). Der Text
 bleibt, „teilweise“ und „bleibt“ sind unverändert; in der aktiven Zeile gilt die Textfarbe des Cursors.
+
+## 11. Zweiter Nachtrag 26.11.2026 – Bilder eines Release als Begleiter (Branch `fix/aufraeumen-bilder`)
+
+**Anlass (Marc):** Fünf Ordner in `Filme.nosync` „sind auch Rückstände“. Der echte Scan (nur lesend, jeder Ordner
+als Startordner, Profil „Release-Reste“) ergab: vier davon – `Das Wunder von Manhattan (1994)`, `Der Vetter aus
+Dingsda German (1934)`, `Moskau in New York (1984)`, `Tigerland (2000)` – bekommen seit §10 schon das Urteil
+„Rückstand“. Nur **`Ein Schrei in der Dunkelheit (1988)`** blieb stehen, wegen zweier Bilder (und mit ihnen der vier
+Untertitel): `<Release>/Proof/<release>.jpg` (244 KB, **ohne** „-proof“ im Namen) und `<Release>/<release>.jpg`
+(226 KB, ein Cover neben der `.nfo`) – beide heißen wie der Release-Ordner.
+
+**Regel:** Bilder (`*.jpg`, `*.jpeg`, `*.png`) sind **Begleiter nach ihrem Ort** – nie nach der Endung allein:
+1. sie liegen in einem Ordner namens **`Proof`** (Groß-/Kleinschreibung egal; `Proofs`, `Covers` … nicht), **oder**
+2. sie heißen **wie der Ordner, in dem sie liegen** (`Film-GRP/film-grp.jpg`, ohne Endung, Groß-/Kleinschreibung
+   egal). Davon gibt es je Endung höchstens eines pro Ordner – die Regel kann nie eine Sammlung treffen.
+
+Dazu gelten die Bedingungen jedes Begleiters aus §10 (Startordner geht als Ganzes **und** enthält echtes Beiwerk)
+und die **Grenze für Beiwerk** aus dem Formular (`junkMaxBytes`, Default 1 MiB – dieselbe wie für `*-proof.jpg`;
+darüber schlicht Inhalt, kein neuer Grund). Versteckte Bilder sind Inhalt.
+
+**Bewusst enger als bei Untertiteln** (Fotos sind unwiederbringlich): ein Fotoordner mit `.nfo` oder
+Prüfsummendatei bleibt Inhalt (`Urlaub/IMG_1.jpg` + `sums.md5`), auch das eine Bild, das wie sein Ordner heißt,
+sobald irgendetwas bleibt. **Verworfen:** „Bild heißt wie die `.nfo`/ein Beiwerk daneben“ (`IMG_1.jpg` + `IMG_1.md5`
+je Foto würde einen ganzen Fotoordner zum Rückstand machen), „Bild heißt wie ein Ordner weiter oben“ und feste
+Namen (`cover.jpg`, `poster.jpg`, `folder.jpg` – liegen auch in Musik- und Filmordnern mit Inhalt; dort bleiben sie
+ohnehin, aber als Regel ohne Anlass).
+
+**Umsetzung:** neue Option `CleanOptions.companion_pictures` / `companionPictures` (Default leer, fehlendes Feld =
+aus; nur „Release-Reste“ füllt sie aus `RELEASE_PICTURES`). `Matcher::classify_in(folder, …)` bekommt den Namen des
+Ordners (`classify` = ohne Ordner, kein Bild ist Begleiter) und liefert `FileClass::Companion`; alles Weitere ist die
+Mechanik aus §10 (`root_walk`, `companions_stand`, `plan_tree` nur für `top == root`). `clean::PROOF_DIR`.
+
+**Tests (alle vorher rot):** Rust `clean.rs` › `pictures_go_with_a_release_leftover` (Fixture `schrei` = der echte
+Ordner mit seinen Größen), `pictures_are_companions_only_in_their_two_places`, `a_large_picture_is_content`,
+`plan_tree_knows_pictures_only_for_a_whole_start_folder`, `picture_patterns_are_checked_and_optional`;
+`jobs/tests_tools.rs` › `clean_takes_pictures_with_a_release_leftover`,
+`clean_never_takes_a_picture_that_is_no_companion`; Frontend `clean-logic.spec.ts`, `series.spec.ts`.
+**Geprüft am echten Ordner (nur lesend):** alle fünf genannten Ordner „Rückstand“; `Defilade …`, `New RTS …`,
+`Problem LG …` (einzelne `.srt`, `.m4a`, `(BQ).jpg`), `_alt` und `R J Decker S02 …` (`.URL`/`.txt` in einem
+Werbeordner) bleiben. `Die Simpsons Special … (2024)` (nur eine `.nfo`) ist ebenfalls „Rückstand“ – wie schon vorher.
+**Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im Fenster.
+
+**War offen, entschieden in §12:** ohne Markierung fand der Dialog im Panel-Ordner nichts.
+
+## 12. Dritter Nachtrag 26.11.2026 – ohne Markierung: die Unterordner einzeln (Branch `fix/aufraeumen-bilder`)
+
+**Anlass:** Ohne Markierung und mit dem Cursor auf `..`/einer Datei ist der Panel-Ordner der Startordner (E5). Er
+geht nie, und ein Ordner, der bleibt, wird nicht ausgeweidet (E3) – im Profil „Release-Reste“ fand der Dialog in
+`Filme.nosync` deshalb **nichts**, obwohl sechs Unterordner Rückstände sind. Marc: „Ja, einbauen“.
+
+**Regel (ändert E5):** Ist der Panel-Ordner selbst der Startordner, beurteilt Rust **jeden Ordner direkt darin als
+eigenen Startordner** – genau so, als wäre er markiert (er darf als Ganzes gehen, Begleiter gelten, eigene Zeile mit
+Urteil, abwählbar). Der Panel-Ordner selbst geht weiter nie, und seine eigenen Dateien werden nicht angesehen.
+Keine Startordner sind, was der Durchlauf auch sonst nie betritt: versteckte Ordner, Pakete (`.app` …), Links,
+fremde Dateisysteme, Namen, die kein Unicode sind. Gefahrenprüfung je Unterordner wie bei markierten (`/Users` →
+das Home ist nie Rückstand). Reihenfolge: nach Namen (Rust kennt die Sortierung des Panels nicht).
+
+**Rückfall auf das alte Verhalten** (der Ordner selbst wird durchsucht, eine Zeile):
+- der Ordner hat keinen solchen Unterordner (oder mehr als `MAX_ROOTS`, oder er ist nicht lesbar);
+- Profil „Eigene“ mit **„Dateien nach Muster löschen“**: das wirkt wie seit 008 auf den Ordner selbst und alles
+  darunter – sonst gingen Treffer direkt im Panel-Ordner verloren;
+- Profil „Eigene“ ohne „Leere Ordner löschen“.
+
+**Umsetzung:** `CleanOptions.child_roots` / `childRoots` (Default aus, fehlendes Feld = aus) – das Frontend setzt
+sie nur für den Panel-Ordner (`cleanInput` → `CleanInput.childRoots`, `cleanOptions(form, includeRoots, childRoots)`).
+Rust löst **selbst und frisch** auf (`clean::child_roots`; nicht das Listing des Panels, das aus dem Cache stammen
+kann und dessen Filter Rust nichts angehen) und meldet in `CleanScan.child_roots`, ob `roots` die Unterordner sind.
+Mit `child_roots` geht der gegebene Ordner nie, auch nicht mit `include_roots`. Der **Job bleibt unverändert**: er
+bekommt wie bisher die gewählten Wurzeln aus dem Scan – hier die Unterordner – und die Optionen so, wie sie für
+diese gelten (`rootOptions`: `includeRoots: true`, `childRoots: false`). Schickte das Fenster die Optionen des
+Scans unverändert, lehnt der Job jeden Startordner ab („The start folder itself is not deleted“) – der Fehler wäre
+harmlos. Der Titel nennt dann „n Ordner in <Ordner>“.
+
+**Tests (vorher rot):** Rust `clean.rs` › `child_roots_judge_every_subfolder_on_its_own` (gleich dem Ergebnis mit
+markierten Ordnern; nichts Verstecktes, kein Paket, kein Link, keine losen Dateien),
+`child_roots_without_a_subfolder_scan_the_folder_itself`, `child_roots_know_the_dangerous_folders`,
+`child_roots_are_optional_and_cancellable`; `jobs/tests_tools.rs` ›
+`clean_takes_the_leftovers_below_the_panel_folder` (auch: unveränderte Optionen → nichts geht); Frontend
+`clean-logic.spec.ts` › „nothing marked: the subfolders of the panel folder are judged one by one“, `tools.spec.ts`
+› „nothing marked: the subfolders are judged, and the job gets them as folders that may go“.
+**Geprüft am echten Ordner (nur lesend, Startordner = `Filme.nosync`):** elf Zeilen, sechs „Rückstand“ (die fünf
+genannten und `Die Simpsons Special …`), fünf „bleibt“. **Nicht geprüft:** echter Papierkorb und Klick-Durchlauf im
+Fenster.
