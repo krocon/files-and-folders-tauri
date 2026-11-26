@@ -35,6 +35,9 @@ import { WatchService } from '../../core/watch/watch.service';
 import { WatchEvent } from '../../core/watch/watch.models';
 import { DirEntry, DirectoryListing, PathSegment } from '../../core/fs/fs.models';
 import { EntryActivator } from '../browser/entry-activator';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
+import { DialogService } from '../../shared/dialog/dialog.service';
+import { MCP_TEXTS } from '../mcp/mcp-texts';
 import { endsWithSeparator } from './path-input-logic';
 import { Side, ViewMode } from '../../core/session/session.models';
 import { formatSize } from '../../shared/format';
@@ -293,6 +296,8 @@ export class FilePanel implements OnInit {
   private readonly injector = inject(Injector);
   private readonly fsApi = inject(FsApi);
   private readonly activator = inject(EntryActivator);
+  private readonly dialogs = inject(DialogService);
+  private readonly mcpGuard = inject(McpGuardService);
   private readonly confirm = inject(ConfirmService);
   private readonly jobs = inject(JobsStore);
   private readonly watch = inject(WatchService);
@@ -616,18 +621,24 @@ export class FilePanel implements OnInit {
 
   /** Esc: close and give the focus back to the list. */
   protected cancelPathEdit(): void {
+    // an input still on its way does nothing more (review 079 #2)
+    this.pathSubmitSeq++;
     this.closePathEdit();
     this.ws.requestFocus(this.side());
   }
 
   /** Focus left the input (Tab): close, but let the focus go where the user moved it. */
   protected closePathEdit(): void {
+    // the user left the field: an input on its way still goes there, but opens nothing
+    this.pathLeftAt = this.pathSubmitSeq;
     this.editingPath.set(false);
     this.pathError.set(null);
   }
 
   /** Counts the inputs of the path field: only the latest one may act (design 079). */
   private pathSubmitSeq = 0;
+  /** Inputs up to this one were left behind (focus moved on): they open nothing (review 079 #2). */
+  private pathLeftAt = 0;
 
   /**
    * Enter in the path field (also "Go to path…"). A folder is shown; a file path shows its
@@ -661,7 +672,12 @@ export class FilePanel implements OnInit {
         return;
       }
       const select = loc.select;
-      const open = select !== null && !jumpOnly && !endsWithSeparator(value);
+      const open =
+        select !== null &&
+        !jumpOnly &&
+        !endsWithSeparator(value) &&
+        // the field as it was offered (the root of an archive is a file path): as before 079
+        value.trim() !== this.store.path();
       const answer: { listing: DirectoryListing | null } = { listing: null };
       await this.store.load(loc.dir, {
         ...(select !== null ? { cursor: select } : {}),
@@ -686,10 +702,26 @@ export class FilePanel implements OnInit {
         this.pathError.set(describeFsError({ code: 'not_found', message: '', path: select }));
         return;
       }
+      // is the user still here? Not after the focus left the field, the other side became
+      // active or a dialog opened while the folder was read (review 079 #2, #3)
+      const attended =
+        submit > this.pathLeftAt &&
+        this.ws.activeSide() === this.side() &&
+        this.dialogs.open() === null;
       this.editingPath.set(false);
       this.pathError.set(null);
+      if (!attended) {
+        // it went there; focus and activity stay where the user put them, nothing opens
+        return;
+      }
       if (entry === null) {
         this.ws.requestFocus(this.side());
+        return;
+      }
+      if (this.mcpGuard.locked()) {
+        // an MCP client just changed the view: nothing opens, no rule either (review 079 #4)
+        this.ws.requestFocus(this.side());
+        this.actions.report(`${this.texts.pathInput}: ${MCP_TEXTS.viewLocked}`);
         return;
       }
       // focus first and directly: a later focus request would take it from the viewer

@@ -28,6 +28,9 @@ import { blankProfile } from '../remote/remote-logic';
 import { RemoteStore } from '../remote/remote.store';
 import { EMPTY_STATS } from '../../core/search/search.models';
 import { ActionService } from '../../core/actions/action.service';
+import { McpGuardService } from '../../core/mcp/mcp-guard.service';
+import { ConfirmService } from '../../shared/dialog/confirm.service';
+import { DialogService } from '../../shared/dialog/dialog.service';
 import { FileActionsApi } from '../../core/fileactions/file-actions-api';
 import { FileActionRule } from '../../core/fileactions/file-actions.models';
 import { ClipboardApi } from '../../core/os/clipboard';
@@ -659,6 +662,163 @@ describe('FilePanel', () => {
       expect(h.store.path()).toBe('/media');
       expect(fs.opened).toEqual([]);
       expect(h.el.querySelector('.path-error')?.textContent).toContain('does not exist');
+    });
+
+    describe('review 079', () => {
+      /** Enter on `value` while the listing of /media hangs; `finish` delivers it. */
+      async function enterHanging(h: Rendered, value = CLIP): Promise<() => Promise<void>> {
+        const hanging = deferred<DirectoryListing>();
+        fs.handler = (p) => (p === '/media' ? hanging.promise : original(p));
+        await enter(h, value);
+        return async () => {
+          hanging.resolve(mediaListing());
+          await h.settle();
+          await h.settle();
+        };
+      }
+
+      it('#1: another spelling of the name – Rust answers with the listed one, that entry opens', async () => {
+        // what `resolve_location` returns for README-style input on a case-insensitive volume
+        fs.locations['/media/CLIP.MP4'] = { dir: '/media', select: CLIP };
+        const h = await render();
+        await enter(h, '/media/CLIP.MP4');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened.map((o) => o.path)).toEqual([CLIP]);
+        expect(h.el.querySelector('.path-error')).toBeNull();
+      });
+
+      it('#2: Esc while the folder is read – this input does nothing more', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        input(h)!.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+        );
+        await h.settle();
+        expect(input(h)).toBeNull();
+        await finish();
+        expect(fs.opened).toEqual([]);
+        expect(h.el.querySelector('.path-error')).toBeNull();
+      });
+
+      it('#2: the focus left the field while the folder is read – it goes there, nothing opens', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        input(h)!.dispatchEvent(new FocusEvent('blur'));
+        await h.settle();
+        const focus = ws.focusRequest();
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        // the focus is where the user put it
+        expect(ws.focusRequest()).toBe(focus);
+      });
+
+      it('#2: the other side became active meanwhile – nothing opens, the side stays active', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        ws.setActive('right');
+        const focus = ws.focusRequest();
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(fs.opened).toEqual([]);
+        expect(ws.activeSide()).toBe('right');
+        expect(ws.focusRequest()).toBe(focus);
+        expect(input(h)).toBeNull();
+      });
+
+      it('#3: a dialog opened while the folder is read – only goes there', async () => {
+        const h = await render();
+        const finish = await enterHanging(h);
+        TestBed.inject(DialogService).show('settings');
+        await finish();
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        expect(TestBed.inject(DialogService).open()).toBe('settings');
+      });
+
+      it('#4: right after an MCP client changed the view nothing opens – no rule either – and the user is told', async () => {
+        fileActions.loaded = {
+          rules: [
+            {
+              id: 'plain',
+              trigger: 'doubleClick',
+              modifiers: [],
+              pattern: '*.mp4',
+              confirm: false,
+              command: 'player %N',
+              terminal: false,
+            },
+          ],
+          warning: null,
+          problems: [],
+        };
+        await TestBed.inject(FileActionsStore).init();
+        const guard = TestBed.inject(McpGuardService);
+        let now = 1_000;
+        guard.now = () => now;
+        const actions = TestBed.inject(ActionService);
+        const h = await render();
+        guard.changed('left', 'Claude', null);
+        await enter(h, CLIP);
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe(CLIP);
+        expect(fs.opened).toEqual([]);
+        expect(fileActions.runs).toEqual([]);
+        expect(actions.messages().join('\n')).toContain('MCP client just changed the view');
+        // the lock is over: the same input opens
+        now += 2_000;
+        await h.store.load('/data');
+        await enter(h, CLIP);
+        expect(fileActions.runs.map((r) => r.file)).toEqual([CLIP]);
+      });
+
+      it('#5: the unchanged field in the root of an archive does not "open" the archive again', async () => {
+        fileActions.loaded = {
+          rules: [
+            {
+              id: 'zip',
+              trigger: 'doubleClick',
+              modifiers: [],
+              pattern: '*.zip',
+              confirm: false,
+              command: 'unzipper %N',
+              terminal: false,
+            },
+          ],
+          warning: null,
+          problems: [],
+        };
+        await TestBed.inject(FileActionsStore).init();
+        const h = await render();
+        await h.store.load('/media/pack.zip');
+        await edit(h);
+        expect(input(h)!.value).toBe('/media/pack.zip');
+        await enter(h, input(h)!.value);
+        // like before 079: the folder of the archive, cursor on it
+        expect(h.store.path()).toBe('/media');
+        expect(h.store.cursorPath()).toBe('/media/pack.zip');
+        expect(fileActions.runs).toEqual([]);
+        expect(fs.opened).toEqual([]);
+      });
+
+      it('a program asks the same question as a double click before it runs', async () => {
+        fs.executables.add(CLIP);
+        const confirm = TestBed.inject(ConfirmService);
+        const asked: string[] = [];
+        let answer = false;
+        confirm.ask = (q) => (asked.push(q.detail ?? ''), Promise.resolve(answer));
+        const h = await render();
+        await enter(h, CLIP);
+        expect(asked).toEqual([CLIP]);
+        expect(fs.opened).toEqual([]);
+        answer = true;
+        await h.store.load('/data');
+        await enter(h, CLIP);
+        expect(asked).toEqual([CLIP, CLIP]);
+        expect(fs.opened).toEqual([{ path: CLIP, allowExecutable: true }]);
+      });
     });
 
     it('navigating to a file path by any other way opens nothing', async () => {
