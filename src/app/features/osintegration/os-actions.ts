@@ -17,6 +17,7 @@ export function registerOsActions(
     COPY_2_CLIPBOARD_FULLNAMES: { enabled: some, run: () => os.copy('paths', 'lines') },
     COPY_2_CLIPBOARD_NAMES_AS_JSON: { enabled: some, run: () => os.copy('names', 'json') },
     COPY_2_CLIPBOARD_FULLNAMES_AS_JSON: { enabled: some, run: () => os.copy('paths', 'json') },
+    PASTE_FILES: { enabled: () => os.pasteTarget() !== null, run: () => os.paste() },
     REVEAL_IN_FILE_MANAGER: { enabled: folder, run: () => os.reveal() },
     OPEN_TERMINAL_HERE: { enabled: folder, run: () => os.terminal() },
     OPEN_EDIT_DLG: { enabled: some, run: () => os.edit() },

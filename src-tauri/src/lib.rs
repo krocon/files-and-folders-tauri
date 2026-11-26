@@ -48,6 +48,7 @@ pub mod attributes;
 pub mod buttons;
 pub mod checksum;
 pub mod clean;
+pub mod clipboard_files;
 pub mod collect;
 pub mod commands;
 pub mod compare;
@@ -345,6 +346,7 @@ pub fn run() {
             commands::watch::watch_dirs,
             commands::watch::describe_paths,
             commands::os_drag::start_os_drag,
+            commands::clipboard::clipboard_files,
             commands::set_archive_password,
             commands::config::load_buttons,
             commands::config::save_buttons,

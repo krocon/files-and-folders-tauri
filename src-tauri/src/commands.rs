@@ -1,6 +1,7 @@
 //! Tauri command layer. Kept thin: validate input, resolve defaults, run the
 //! blocking file-system work off the async runtime threads.
 
+pub mod clipboard;
 pub mod config;
 pub mod disk_usage;
 pub mod duplicates;
@@ -1799,7 +1800,7 @@ pub fn close_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), FsError> {
 /// slow call there freezes the whole window. Only the menu/window commands may.
 #[cfg(test)]
 mod command_rules {
-    const SOURCES: [(&str, &str); 16] = [
+    const SOURCES: [(&str, &str); 17] = [
         ("commands/mcp.rs", include_str!("commands/mcp.rs")),
         (
             "commands/url_download.rs",
@@ -1824,6 +1825,10 @@ mod command_rules {
         ("commands/palette.rs", include_str!("commands/palette.rs")),
         ("commands/shell.rs", include_str!("commands/shell.rs")),
         ("commands/os_drag.rs", include_str!("commands/os_drag.rs")),
+        (
+            "commands/clipboard.rs",
+            include_str!("commands/clipboard.rs"),
+        ),
         ("commands/starter.rs", include_str!("commands/starter.rs")),
         (
             "commands/file_actions.rs",

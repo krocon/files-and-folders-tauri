@@ -1551,6 +1551,8 @@ dependencies = [
  "md-5",
  "memchr",
  "notify",
+ "objc2-app-kit",
+ "objc2-foundation",
  "open",
  "regex",
  "reqwest",

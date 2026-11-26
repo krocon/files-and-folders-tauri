@@ -7,6 +7,7 @@ import { RenameApi, TauriRenameApi } from './core/rename/rename-api';
 import { FoldersApi, TauriFoldersApi } from './core/folders/folders-api';
 import { OsApi, TauriOsApi } from './core/os/os-api';
 import { ClipboardApi, WebClipboardApi } from './core/os/clipboard';
+import { FileClipboardApi, TauriFileClipboardApi } from './core/os/file-clipboard-api';
 import { PreviewApi, TauriPreviewApi } from './core/preview/preview-api';
 import { DiskUsageApi, TauriDiskUsageApi } from './core/diskusage/disk-usage-api';
 import { TauriThemeApi, ThemeApi } from './core/theme/theme-api';
@@ -26,6 +27,7 @@ export const appConfig: ApplicationConfig = {
     { provide: FoldersApi, useClass: TauriFoldersApi },
     { provide: OsApi, useClass: TauriOsApi },
     { provide: ClipboardApi, useClass: WebClipboardApi },
+    { provide: FileClipboardApi, useClass: TauriFileClipboardApi },
     { provide: PreviewApi, useClass: TauriPreviewApi },
     { provide: DiskUsageApi, useClass: TauriDiskUsageApi },
     { provide: ThemeApi, useClass: TauriThemeApi },

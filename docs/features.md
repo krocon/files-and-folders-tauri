@@ -193,6 +193,10 @@ gebaut mit **Tauri 2**, **Angular 22** (Signals, zoneless), **TypeScript**, **CS
   `{"id": "edit", "label": "Edit", "program": "gnome-text-editor", "args": ["{files}"]}` eintragen).
 - **Zwischenablage**: Namen (`Strg/⌘+Alt+N`) bzw. volle Pfade (`Strg/⌘+Alt+C`) der markierten Einträge (sonst
   Cursor, Ordner eingeschlossen) als Zeilen; als JSON über Befehlspalette/Actions-Menü.
+- **Dateien einfügen** (`Strg/⌘+V`): im Finder, Explorer oder Dateimanager kopierte Dateien und Ordner in den Ordner
+  des aktiven Panels kopieren – es öffnet sich der normale Kopieren-Dialog (Ziel vorbelegt), Enter startet. Auch im
+  Menü „Bearbeiten“ und im Kontextmenü der freien Fläche. Immer Kopieren, nie Verschieben; in Textfeldern fügt
+  `Strg/⌘+V` weiter Text ein.
 - **Shell-Zeile** (Prompt 021, `Shift+F11`): Befehlszeile über der Button-Leiste im Ordner des aktiven Panels (im
   Ergebnis-Tab im Suchordner, im Archiv gesperrt). Ausgabe gestreamt (stderr farbig, Exit-Code), Esc bzw. `Ctrl+C`
   bricht samt Kindprozessen ab; `cd`, `cd ..`, `cd ~`, `cd -` navigieren das Panel, `clear`/`cls` leert. ↑/↓ blättern im
@@ -297,6 +301,7 @@ Navigation (`↑ ↓ Bild↑ Bild↓ Pos1 Ende`) bleibt bei der Tabelle.
 | Volle Pfade in die Shell einfügen     | `Ctrl+Alt+Enter`                                              | `⌘⌥Enter`                |
 | Copy names to clipboard               | `Ctrl+Alt+N`                                                  | `⌘⌥N`                    |
 | Copy full paths to clipboard          | `Ctrl+Alt+C`                                                  | `⌘⌥C`                    |
+| Paste files from clipboard            | `Ctrl+V`                                                      | `⌘V`                     |
 | Show in file manager                  | `Ctrl+Shift+F`                                                | `⌘⇧F`                    |
 | Open terminal here                    | `Ctrl+Shift+C`                                                | `⌘⇧C`                    |
 | Command Palette…                      | `Ctrl+Shift+P`                                                | `⌘⇧P`, `⌘⌃G`             |

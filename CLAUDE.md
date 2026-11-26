@@ -125,7 +125,8 @@ src/                         Angular 22 (zoneless, Signals, OnPush, Standalone)
                              anderes Panel, Größe/Alter/Name, Katalog .cases.json), SelectIfStore (Root: Live-Auswertung,
                              Vorlagen in `selectIf.templates`, letzte Regel in `dialogs.recent`), Dialog, Aktion
                              OPEN_SELECT_IF_DLG (Mod+Alt+S)
-  app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText
+  app/core/os/               OsApi (Laufwerke, Dateimanager, Terminal, Tools), ClipboardApi + clipboardText,
+                             FileClipboardApi (`clipboard_files`: Dateien aus der System-Zwischenablage, `PASTE_FILES`)
   app/core/file-icon/        FileIconService (Icon-Zuordnung nach Dateiendung/Kategorie zu Font Awesome)
   app/features/osintegration/ OsStore (Tools als Extra-Aktionen, Zwischenablage, Terminal), VolumesStore (Laufwerke
                              im Ordnermenü), Tool-Konfigurationsdialog
@@ -342,6 +343,9 @@ src-tauri/                   Rust (Tauri 2)
   src/starter.rs             Startermenü (032): `starter.json`, `sanitize`/`problems`, TC-Platzhalter → Tool-Platzhalter,
                              `to_tool`; Commands `commands/starter.rs` (Start über `commands::launch_tool`)
   src/os_drag.rs             Ziehen ins System (028): Pfade prüfen; Command `commands/os_drag.rs` (Main-Thread)
+  src/clipboard_files.rs     Dateien einfügen (`Mod+V`): Pfade der System-Zwischenablage prüfen (fremde Daten, ≤ 10 000),
+                             URI-Listen lesen; `platform/clipboard.rs` (NSPasteboard / CF_HDROP / GTK), Command
+                             `commands/clipboard.rs` (liest nur – kopiert wird über den normalen Kopieren-Dialog)
   src/platform.rs, platform/ Plattformcode je OS: Umbenennen ohne Ersetzen, `volumes.rs` (Laufwerke mit Timeout),
                              `desktop.rs` (Finder/Explorer/FileManager1, Terminal), `terminal_run.rs` (Programm im Terminalfenster über ein quotiertes Skript, 072), `os_drag.rs` (nativer Drag:
                              Crate `drag` auf macOS/Windows, eigenes GTK unter Linux), `origin_mark.rs` (Mark-of-the-Web/

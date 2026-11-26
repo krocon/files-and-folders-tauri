@@ -12,6 +12,11 @@ export const OS_DE: Translation<typeof OS_EN> = {
   noEditTool: 'Kein Tool „edit“ konfiguriert (tools.json).',
   copied: (n, what, json) =>
     `${n} ${what === 'names' ? (n === 1 ? 'Name' : 'Namen') : n === 1 ? 'Pfad' : 'Pfade'} kopiert${json ? ' (JSON)' : ''}.`,
+  pasteNoFiles: 'Die Zwischenablage enthält keine Dateien – zuerst im Dateimanager kopieren.',
+  pasteGone: 'Die Dateien in der Zwischenablage existieren nicht (mehr).',
+  pasteSameFolder: 'Die Dateien in der Zwischenablage liegen bereits in diesem Ordner.',
+  pasteMissing: (n) =>
+    `${n} ${n === 1 ? 'Element' : 'Elemente'} in der Zwischenablage ${n === 1 ? 'existiert' : 'existieren'} nicht und ${n === 1 ? 'wurde' : 'wurden'} ausgelassen.`,
   toolStarted: (label, n) => (n === 1 ? `${label} gestartet.` : `${label} ${n}-mal gestartet.`),
   toolsHeading: 'Tools',
   toolsPalette: 'Mit Tool öffnen',

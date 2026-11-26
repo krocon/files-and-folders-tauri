@@ -25,6 +25,7 @@ export const ACTION_LABELS_DE: Readonly<Record<ActionId, string>> = {
   COPY_2_CLIPBOARD_FULLNAMES: 'Vollständige Pfade in die Zwischenablage',
   COPY_2_CLIPBOARD_NAMES_AS_JSON: 'Namen als JSON kopieren',
   COPY_2_CLIPBOARD_FULLNAMES_AS_JSON: 'Vollständige Pfade als JSON kopieren',
+  PASTE_FILES: 'Dateien aus der Zwischenablage einfügen…',
   REVEAL_IN_FILE_MANAGER: 'Im Dateimanager zeigen',
   OPEN_CONNECTIONS_DLG: 'Mit Server verbinden…',
   REMOTE_DISCONNECT: 'Verbindung zum Server trennen',
