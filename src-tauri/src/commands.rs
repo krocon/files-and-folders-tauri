@@ -130,6 +130,16 @@ pub async fn resolve_location<R: Runtime>(
         .map_err(|e| FsError::new(FsErrorCode::Io, format!("Resolving failed: {e}"), None))?
 }
 
+/// Why a folder is not there (a favourite that fails to open): gone for good, or only
+/// its drive away? Reads metadata only. A server path has no answer here.
+#[tauri::command]
+pub async fn diagnose_missing_path(path: String) -> Result<crate::missing::MissingPath, FsError> {
+    let path = validate_input_path(&path)?;
+    tauri::async_runtime::spawn_blocking(move || crate::missing::diagnose(&path))
+        .await
+        .map_err(|e| FsError::new(FsErrorCode::Io, format!("Checking failed: {e}"), None))
+}
+
 /// A typed path → folder (+ file to select). A folder inside an archive is
 /// refused with a clear message: it is no target (archives are read-only) and
 /// typed virtual paths are not navigated (review 016 #7).

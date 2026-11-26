@@ -275,7 +275,40 @@ export class FilePanel implements OnInit {
 
   protected readonly errorText = computed(() => {
     const err = this.store.error();
-    return err ? describeFsError(err) : null;
+    if (!err) {
+      return null;
+    }
+    const info = this.store.missing()?.info;
+    if (info?.reason === 'volume') {
+      return TEXTS.missing.volume(info.volume ?? '');
+    }
+    return info?.reason === 'network' ? TEXTS.missing.network : describeFsError(err);
+  });
+  /**
+   * Ways out of a folder that is not there: gone for good → remove the favourite or go to
+   * the nearest folder that exists; only away (drive, network) → retry first.
+   */
+  protected readonly missing = computed(() => {
+    const m = this.store.missing();
+    if (!m) {
+      return null;
+    }
+    const info = m.info;
+    const away = info?.reason === 'volume' || info?.reason === 'network';
+    const nearest =
+      info &&
+      info.reason !== 'volume' &&
+      info.nearest !== null &&
+      info.nearest !== this.store.path()
+        ? { path: info.nearest, name: info.nearestName ?? info.nearest }
+        : null;
+    return {
+      path: m.path,
+      away,
+      gone: info?.reason === 'gone',
+      nearest,
+      favorite: this.ws.isFavorite(m.path),
+    };
   });
   protected readonly isFavorite = computed(() => this.ws.isFavorite(this.store.path()));
   protected readonly segments = computed(() => this.store.listing()?.segments ?? []);
@@ -358,6 +391,13 @@ export class FilePanel implements OnInit {
   });
 
   constructor() {
+    // a folder that is gone for good is no recent folder any more (if it is back, it stays)
+    effect(() => {
+      const m = this.store.missing();
+      if (m?.info?.reason === 'gone' && m.info.nearest !== m.path) {
+        untracked(() => this.ws.forgetRecent(m.path));
+      }
+    });
     effect(() => {
       const id = this.tabId();
       untracked(() => void this.showTab(id));
@@ -795,6 +835,18 @@ export class FilePanel implements OnInit {
     const hint = this.texts.enterPathHint(this.pathShortcut());
     return path === null ? hint : `${path}\n${hint}`;
   });
+
+  protected removeMissingFavorite(): void {
+    const m = this.missing();
+    if (m?.favorite) {
+      this.ws.toggleFavorite(m.path);
+    }
+    this.store.dismissError();
+  }
+
+  protected openFromMissing(path: string): void {
+    void this.store.load(path);
+  }
 
   protected toggleFavorite(): void {
     const path = this.store.path();

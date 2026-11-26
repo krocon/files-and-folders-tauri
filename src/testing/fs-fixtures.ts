@@ -1,4 +1,11 @@
-import { Danger, DirEntry, DirectoryListing, Location, PathCheck } from '../app/core/fs/fs.models';
+import {
+  Danger,
+  DirEntry,
+  DirectoryListing,
+  Location,
+  MissingPath,
+  PathCheck,
+} from '../app/core/fs/fs.models';
 import { FsApi } from '../app/core/fs/fs-api';
 
 export function entry(name: string, overrides: Partial<DirEntry> = {}): DirEntry {
@@ -44,6 +51,15 @@ export class FakeFsApi extends FsApi {
     return loc
       ? Promise.resolve(loc)
       : Promise.reject({ code: 'not_found', message: 'No such file or directory', path: input });
+  }
+
+  /** Answers of `diagnoseMissing` by path; anything else rejects. */
+  missing: Record<string, MissingPath> = {};
+  diagnoseMissing(path: string): Promise<MissingPath> {
+    const info = this.missing[path];
+    return info
+      ? Promise.resolve(info)
+      : Promise.reject({ code: 'io', message: 'no answer', path });
   }
 
   readonly opened: { path: string; allowExecutable: boolean }[] = [];

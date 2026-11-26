@@ -69,6 +69,7 @@ pub mod keymap;
 pub mod listing;
 pub mod listing_gate;
 pub mod mcp;
+pub mod missing;
 pub mod model;
 pub mod mr_import;
 pub mod opener;
@@ -285,6 +286,7 @@ pub fn run() {
             commands::load_keymap_override,
             commands::save_keymap_override,
             commands::resolve_location,
+            commands::diagnose_missing_path,
             commands::open_file,
             commands::make_dir,
             commands::create_file,

@@ -333,6 +333,78 @@ describe('FilePanel', () => {
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('does not exist');
   });
 
+  describe('a folder that is not there (favourite, recent)', () => {
+    const buttons = (el: HTMLElement) =>
+      [...el.querySelectorAll<HTMLButtonElement>('[role="alert"] button')].map((b) =>
+        b.textContent?.trim(),
+      );
+    const press = (el: HTMLElement, label: string) =>
+      [...el.querySelectorAll<HTMLButtonElement>('[role="alert"] button')]
+        .find((b) => b.textContent?.trim() === label)!
+        .click();
+
+    it('gone for good: the favourite can be removed, the nearest folder opened; no recent any more', async () => {
+      fs.missing['/gone'] = {
+        reason: 'gone',
+        nearest: '/other',
+        nearestName: 'other',
+        volume: null,
+      };
+      const { el, store, settle } = await render();
+      ws.toggleFavorite('/gone');
+      ws.addRecent('/gone');
+      await store.load('/gone');
+      await settle();
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('does not exist');
+      expect(buttons(el)).toEqual(['Go to “other”', 'Remove from favourites', 'Dismiss']);
+      expect(ws.recent()).not.toContain('/gone');
+      expect(ws.isFavorite('/gone')).toBe(true);
+
+      press(el, 'Remove from favourites');
+      await settle();
+      expect(ws.isFavorite('/gone')).toBe(false);
+      expect(el.querySelector('[role="alert"]')).toBeNull();
+
+      await store.load('/gone');
+      await settle();
+      expect(buttons(el)).toEqual(['Go to “other”', 'Dismiss']);
+      press(el, 'Go to “other”');
+      await settle();
+      await settle();
+      expect(store.path()).toBe('/other');
+      expect(el.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('only away: a drive that is not connected offers a retry first and keeps the recent folder', async () => {
+      fs.missing['/gone'] = { reason: 'volume', nearest: null, nearestName: null, volume: 'NAS' };
+      const { el, store, settle } = await render();
+      ws.toggleFavorite('/gone');
+      ws.addRecent('/gone');
+      await store.load('/gone');
+      await settle();
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'The drive “NAS” is not connected.',
+      );
+      expect(buttons(el)).toEqual(['Retry', 'Remove from favourites', 'Dismiss']);
+      expect(ws.recent()).toContain('/gone');
+      const before = fs.calls.length;
+      press(el, 'Retry');
+      await settle();
+      expect(fs.calls.slice(before)).toEqual(['/gone']);
+      expect(ws.isFavorite('/gone')).toBe(true);
+    });
+
+    it('without an answer from Rust the plain error stays, with the favourite still removable', async () => {
+      const { el, store, settle } = await render();
+      await store.load('/gone');
+      await settle();
+      expect(buttons(el)).toEqual(['Dismiss']);
+      ws.toggleFavorite('/gone');
+      await settle();
+      expect(buttons(el)).toEqual(['Remove from favourites', 'Dismiss']);
+    });
+  });
+
   it('shows a server tab after a restart as "not connected" with its name, not the internal path (034)', async () => {
     TestBed.inject(RemoteStore).profiles.set([
       { ...blankProfile('Mein Server'), id: 'srv1', host: 'example.org' },
