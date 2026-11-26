@@ -11,7 +11,8 @@
 
 .entries {
   min-height: 14rem;
-  max-height: 22rem;
+  /* more in a high window (modal.css) */
+  max-height: calc(22rem + var(--dialog-spare, 0px));
 
   [role='treeitem'] {
     display: flex;

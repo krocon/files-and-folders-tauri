@@ -7,6 +7,13 @@
   align-items: flex-start;
   padding-top: 8vh;
   background: var(--color-backdrop);
+  /* What a dialog may take of the window: everything below the gap at the top, */
+  /* with a small margin at the bottom – no fixed share that leaves room unused. */
+  --dialog-room: calc(100vh - 8vh - var(--spacing-3));
+  /* What the window is higher than a small one (50rem): lists inside a dialog add */
+  /* it to their own limit (`max-height: calc(12rem + var(--dialog-spare, 0px))`) */
+  /* and scroll later. Less than the room grows by, so the dialog still fits. */
+  --dialog-spare: max(0px, calc((100vh - 50rem) * 0.85));
 }
 
 /* fill: the dialog takes the window height (multi-rename) */
@@ -21,7 +28,7 @@
 
 .dialog {
   max-width: calc(100vw - 2rem);
-  max-height: 80vh;
+  max-height: var(--dialog-room);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
@@ -34,6 +41,13 @@
   box-shadow: var(--shadow-popup);
   /* own focus ring colour in dialogs (design 019 E5) */
   --color-focus: var(--color-dialog-focus);
+}
+
+/* minHeight: as high as the content, at least `--dialog-min`, and never lower again */
+/* than it once was (`--dialog-grown`, set by the modal) – a short tab does not make */
+/* the buttons jump. A min-height beats max-height, so the room caps it here. */
+.dialog.grows {
+  min-height: min(max(var(--dialog-min), var(--dialog-grown, 0px)), var(--dialog-room));
 }
 
 .title {

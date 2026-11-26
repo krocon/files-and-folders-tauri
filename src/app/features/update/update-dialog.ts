@@ -124,7 +124,8 @@ export function releaseDate(iso: string, loc: string): string {
       font-size: var(--font-size-sm);
     }
     .notes {
-      max-height: 12rem;
+      /* more in a high window (modal.css) */
+      max-height: calc(12rem + var(--dialog-spare, 0px));
       margin: 0;
       padding: var(--spacing-2);
       overflow: auto;

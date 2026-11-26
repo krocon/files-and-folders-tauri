@@ -211,7 +211,8 @@ const FOCUSABLE = 'select, input, button';
       display: flex;
       flex-direction: column;
       gap: var(--spacing-1);
-      max-height: 20rem;
+      /* more in a high window (modal.css) */
+      max-height: calc(20rem + var(--dialog-spare, 0px));
       overflow: auto;
     }
     .rule {

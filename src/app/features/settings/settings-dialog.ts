@@ -63,7 +63,7 @@ const LINE_LISTS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   selector: 'app-settings-dialog',
   imports: [Modal, DialogKey, NgTemplateOutlet],
   template: `
-    <app-modal [heading]="t.title" width="54rem" height="38rem" (closed)="dialogs.close()">
+    <app-modal [heading]="t.title" width="54rem" minHeight="38rem" (closed)="dialogs.close()">
       <div class="settings">
         <input
           data-autofocus
