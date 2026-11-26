@@ -121,13 +121,13 @@ pub fn file_paths() -> Result<Vec<String>, FsError> {
     Ok(Vec::new())
 }
 
-#[cfg(test)]
+// only macOS: the other systems need a display (GTK) or would fight over the clipboard
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
     /// Whatever the clipboard holds right now: reading never fails or panics, and
     /// what comes back are absolute paths, at most one more than the limit.
-    #[cfg(target_os = "macos")]
     #[test]
     fn reading_the_clipboard_gives_absolute_paths() {
         let paths = file_paths().unwrap();
