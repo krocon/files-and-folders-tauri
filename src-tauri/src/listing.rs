@@ -281,12 +281,11 @@ mod tests {
         }
         let l = list_directory(root).unwrap();
         for e in &l.entries {
-            assert_eq!(
-                stat_entry(Path::new(&e.path)).as_ref(),
-                Some(e),
-                "{}",
-                e.name
-            );
+            // reading an entry may move its access time (a link on Linux) – not compared
+            let mut stat = stat_entry(Path::new(&e.path)).expect("the entry is there");
+            assert!(stat.accessed_ms.is_some() == e.accessed_ms.is_some());
+            stat.accessed_ms = e.accessed_ms;
+            assert_eq!(&stat, e, "{}", e.name);
         }
         assert_eq!(stat_entry(&root.join("gone")), None);
         #[cfg(unix)]
